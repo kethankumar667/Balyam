@@ -705,6 +705,7 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_human_seat_count: input.humanSeatCount,
       p_bot_seat_count: input.botSeatCount,
       p_is_solo: input.isSolo,
+      ...(input.participantDebits !== undefined ? { p_participant_debits: input.participantDebits } : {}),
     });
     return { ...envelope, result: toSettlement(envelope.result) };
   }

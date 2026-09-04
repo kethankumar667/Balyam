@@ -329,9 +329,11 @@ describe("BHALYAM — Maximum Capacity Multiplayer & Dynamic Economy Certificati
       expect(schedule.secondPlaceCoins).toBe("192");
       expect(schedule.thirdPlaceCoins).toBe("128");
 
-      // Host was debited 800 coins: 5000 - 800 = 4200
+      // Host was debited 100 coins for their own seat: 5000 - 100 = 4900
       const hostWallet = await economy.getWallet(hostId);
-      expect(hostWallet.balance).toBe("4200");
+      expect(hostWallet.balance).toBe("4900");
+      const p2Wallet = await economy.getWallet(otherHumanIds[0]);
+      expect(p2Wallet.balance).toBe("4900");
     });
 
     it("conserves exact coin balance and prize pool for 10-player human UNO match", async () => {
@@ -379,7 +381,7 @@ describe("BHALYAM — Maximum Capacity Multiplayer & Dynamic Economy Certificati
       expect(schedule.thirdPlaceCoins).toBe("160");
 
       const hostWallet = await economy.getWallet(hostId);
-      expect(hostWallet.balance).toBe("4000");
+      expect(hostWallet.balance).toBe("4900");
     });
 
     it("conserves exact coin balance and prize pool for 12-player human Tambola match", async () => {
@@ -427,7 +429,7 @@ describe("BHALYAM — Maximum Capacity Multiplayer & Dynamic Economy Certificati
       expect(schedule.thirdPlaceCoins).toBe("192");
 
       const hostWallet = await economy.getWallet(hostId);
-      expect(hostWallet.balance).toBe("3800");
+      expect(hostWallet.balance).toBe("4900");
     });
   });
 });

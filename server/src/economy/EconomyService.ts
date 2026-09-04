@@ -12,6 +12,7 @@ import {
   type MarkIntentFailedInput,
   type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
+  type ParticipantDebitSpec,
   type ParticipantIdentityKind,
   type RewardVoucherRecord,
   type SettlementParticipantInput as RepoSettlementParticipantInput,
@@ -192,6 +193,7 @@ export interface CommitMatchEntryRequest {
   humanSeatCount: number;
   botSeatCount: number;
   isSolo: boolean;
+  participantDebits?: ParticipantDebitSpec[];
 }
 
 export interface CommitMatchEntryResult {
@@ -517,6 +519,7 @@ export class EconomyService {
       humanSeatCount: request.humanSeatCount,
       botSeatCount: request.botSeatCount,
       isSolo: request.isSolo,
+      participantDebits: request.participantDebits,
     };
 
     const outcome = await this.withRetry("commitMatchEntry", request.matchId, () =>

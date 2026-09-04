@@ -137,6 +137,7 @@ export interface MatchEconomySettlementRecord {
   totalWorldBankCut: string;
   totalRefunded: string;
   refundReason: string | null;
+  participantDebits?: ParticipantDebitSpec[];
   /**
    * Present only once `status === "ABANDONMENT_FORFEITED"`. Deliberately a
    * SEPARATE field from `refundReason` — a forfeiture and a refund are two
@@ -259,6 +260,12 @@ export interface EconomyOperationResult<T> {
 
 /* ═══════════════════════════ Input DTOs ══════════════════════════════════ */
 
+export interface ParticipantDebitSpec {
+  identityId: string;
+  identityKind: ParticipantIdentityKind;
+  amountCoins: string;
+}
+
 export interface CommitMatchEntryInput {
   /** Also this operation's idempotency key. */
   matchId: string;
@@ -269,6 +276,12 @@ export interface CommitMatchEntryInput {
   humanSeatCount: number;
   botSeatCount: number;
   isSolo: boolean;
+  /**
+   * Optional per-player seat staking specification.
+   * When provided, each participant is debited their specified amountCoins from their own wallet.
+   * If omitted, falls back to legacy single host wallet debit.
+   */
+  participantDebits?: ParticipantDebitSpec[];
 }
 
 export interface SettlementParticipantInput {

@@ -203,7 +203,9 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(room.phase).toBe("playing");
       expect(room.currentMatchId).not.toBeNull();
       const aliceAfterCommit = await service.getWallet(MEMBER_A);
-      expect(aliceAfterCommit.balance).toBe("4800"); // 5000 - 200 (2-seat commitment)
+      expect(aliceAfterCommit.balance).toBe("4900"); // 5000 - 100 (per-seat commitment)
+      const bobAfterCommit = await service.getWallet(MEMBER_B);
+      expect(bobAfterCommit.balance).toBe("4900"); // 5000 - 100 (per-seat commitment)
 
       playRpsToCompletion(rooms, "s_a", "s_b");
       await drainRoomEconomy(rooms);
@@ -211,7 +213,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
       const alice = await service.getWallet(MEMBER_A);
       const worldBank = await service.getWorldBankSnapshot();
-      expect(alice.balance).toBe("4950"); // 4800 + 150 (1st place prize)
+      expect(alice.balance).toBe("5050"); // 4900 + 150 (1st place prize)
       expect(worldBank.baseFeeRevenue).toBe("50"); // the 2-seat world bank cut
     });
   });
@@ -343,7 +345,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       playRpsToCompletion(rooms, "s_a", "s_b2");
       await drainRoomEconomy(rooms);
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
     });
   });
 
@@ -360,7 +362,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.setReady("s_a", true);
       rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // Alice funded THIS match
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // Alice committed her seat (100)
 
       // Alice (host) is dropped mid-match after her grace window expires.
       // For a 2-seat game, a departure is ALSO a walkover — RPS's own
@@ -377,8 +379,8 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const roomAfterFailover = peek(rooms, host.code);
       expect(roomAfterFailover.hostId).not.toBe(host.playerId); // Bob is now host
       expect(commitSpy).toHaveBeenCalledTimes(1); // never a second commit from reassignment
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // debited once, never refunded
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("1150"); // 1000 + 150 forfeit win
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // debited once, never refunded
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("1050"); // 1000 - 100 commitment + 150 forfeit win
 
       // A later rematch charges the NEW host (Bob), never Alice again — a
       // reassigned host funds only a NEW match's entry going forward. Bob
@@ -390,8 +392,8 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.requestRematch("s_b"); // sole human requester auto-accepts -> settles and arms REMATCH_COUNTDOWN_MS immediately
       await vi.advanceTimersByTimeAsync(3_000);
       expect(commitSpy).toHaveBeenCalledTimes(2);
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("1050"); // 1150 - 100 (1-seat solo commitment)
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // untouched by the rematch
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("950"); // 1050 - 100 (1-seat solo commitment)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched by the rematch
     }, 30_000);
   });
 
@@ -415,7 +417,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await rooms.requestGameStart("s_a");
 
       const matchId = peek(rooms, host.code).currentMatchId!;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4600"); // 5000 - 400 (4 seats @ 100)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice + bot)
       const bobBalanceBeforeFailover = (await service.getWallet(MEMBER_B)).balance;
 
       rooms.leaveRoom("s_a"); // host leaves; Bob (signed-in), Casey (guest), and a bot remain
@@ -452,7 +454,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const matchId = peek(rooms, host.code).currentMatchId!;
       const roomRef = peek(rooms, host.code);
       const originalHostId = roomRef.hostId;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4600"); // 5000 - 400 (4 seats @ 100)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice + bot)
 
       rooms.leaveRoom("s_a");
       await drainRoomEconomy(rooms);
@@ -469,7 +471,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
       expect(settlement?.totalForfeited).toBe("400");
       expect(settlement?.totalRefunded).toBe("0");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4600"); // never refunded
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
       expect(worldBank.abandonmentForfeitureRevenue).toBe("400");
       expect(worldBank.guestEscrowLiability).toBe("0"); // no guest voucher ever created
@@ -520,7 +522,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
       const matchId = peek(rooms, host.code).currentMatchId!;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4700"); // 5000 - 300 (3 seats @ 100)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice + bot)
 
       rooms.handleDisconnect("s_a"); // Alice (host) disconnects
       vi.advanceTimersByTime(11 * 60_000); // past MATCH_GRACE_PERIOD_MS -> grace-expiry timer fires
@@ -529,7 +531,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
       expect(settlement?.totalForfeited).toBe("300");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4700"); // never refunded
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
       expect(worldBank.abandonmentForfeitureRevenue).toBe("300");
       expect(worldBank.guestEscrowLiability).toBe("0");
@@ -566,8 +568,8 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
       expect(settlement?.hostIdentityId).toBe(MEMBER_A); // ORIGINAL economic owner — never changes across handoffs
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4700"); // 5000 - 300 (3 seats), never refunded
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("1000"); // Bob was never charged for this match
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100, never refunded
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("900"); // 1000 - 100 commitment, never refunded
     });
 
     it("a local pass-and-play seat cannot inherit an economically active match — forfeits rather than continuing under a phantom host", async () => {
@@ -719,7 +721,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(refundSpy).not.toHaveBeenCalled();
       expect(forfeitSpy).not.toHaveBeenCalled();
       expect(roomRef.lifecycleState).toBe("CLOSED");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // untouched final prize
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050"); // untouched final prize
     });
 
     it("duplicate post-completion leave is idempotent: the second leaveRoom call for an already-torn-down room is a safe no-op", async () => {
@@ -957,7 +959,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const redemption = await service.redeemVoucher(issuedRawCode, MEMBER_C);
       expect(redemption.applied).toBe(true);
       expect(redemption.voucher.status).toBe("REDEEMED");
-      expect((await service.getWallet(MEMBER_C)).balance).toBe("950"); // 1000 - 200 (commitment) + 150 (redemption)
+      expect((await service.getWallet(MEMBER_C)).balance).toBe("1050"); // 1000 - 100 (commitment) + 150 (redemption)
     });
   });
 
@@ -1041,7 +1043,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
       const alice = await service.getWallet(MEMBER_A);
-      expect(alice.balance).toBe("4950"); // 4800 + 150 — the forfeit win settled correctly, not refunded
+      expect(alice.balance).toBe("5050"); // 4900 + 150 — the forfeit win settled correctly, not refunded
     });
   });
 
@@ -1074,7 +1076,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(peek(rooms, host.code).currentMatchId).toBeNull(); // cleared once settlement is queued+processed
 
       const alice = await service.getWallet(MEMBER_A);
-      expect(alice.balance).toBe("4800"); // 5000 - 200 committed, NOT refunded — proves isValidRanking was true, not forced false
+      expect(alice.balance).toBe("4900"); // 5000 - 100 committed, NOT refunded — proves isValidRanking was true, not forced false
 
       const settlement = await service.getSettlement(matchId!);
       expect(settlement?.status).toBe("SETTLED"); // not REFUNDED — a resolved guest identity let this settle for real

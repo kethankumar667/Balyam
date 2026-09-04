@@ -94,6 +94,36 @@ describe("SupabaseEconomyRepository", () => {
       });
     });
 
+    it("commitMatchEntry includes p_participant_debits when participantDebits is provided", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(200, {
+          applied: true,
+          operation: "commit_match_entry",
+          idempotencyKey: "match-entry:m2",
+          result: settlementRow({ match_id: "m2" }),
+        }),
+      );
+      const repo = new SupabaseEconomyRepository(CONFIG);
+      const debits = [
+        { identityId: "host_1", identityKind: "guest" as const, amountCoins: "100" },
+        { identityId: "guest_2", identityKind: "guest" as const, amountCoins: "100" },
+      ];
+      await repo.commitMatchEntry({
+        matchId: "m2",
+        roomCode: "ROOM2",
+        hostIdentityId: "host_1",
+        seatCount: 2,
+        humanSeatCount: 2,
+        botSeatCount: 0,
+        isSolo: false,
+        participantDebits: debits,
+      });
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string);
+      expect(body.p_participant_debits).toEqual(debits);
+    });
+
     it("settleMatchEconomy sends participants with camelCase keys UNCHANGED — the migration's jsonb_array_elements loop reads camelCase, not snake_case", async () => {
       fetchMock.mockResolvedValueOnce(
         jsonResponse(200, {

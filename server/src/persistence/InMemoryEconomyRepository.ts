@@ -731,33 +731,77 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new UnsupportedSeatCountError(`No prize schedule for ${input.seatCount} seats`);
     }
 
-    const totalCost = toBig(input.seatCount.toString()) * toBig(this.configuration.seatCostCoins);
-    const hostWallet = this.wallets.get(input.hostIdentityId)!;
+    let totalCollectedAmount = 0n;
+    if (input.participantDebits && input.participantDebits.length > 0) {
+      // 1. Validation pass: every participant must exist, be unfrozen, and have sufficient balance
+      for (const p of input.participantDebits) {
+        this.ensureWalletLocked(p.identityId);
+        const wallet = this.wallets.get(p.identityId);
+        if (!wallet) {
+          throw new WalletNotFoundError(`Wallet for ${p.identityId} does not exist`);
+        }
+        if (wallet.isFrozen) {
+          throw new WalletFrozenError(`Player ${p.identityId} cannot commit a match entry while frozen`);
+        }
+        const cost = toBig(p.amountCoins);
+        if (toBig(wallet.balance) < cost) {
+          throw new InsufficientFundsError(
+            `Player ${p.identityId} balance ${wallet.balance} is less than required commitment ${p.amountCoins}`,
+          );
+        }
+        totalCollectedAmount += cost;
+      }
 
-    if (hostWallet.isFrozen) {
-      throw new WalletFrozenError(`Host ${input.hostIdentityId} cannot commit a match entry while frozen`);
+      // 2. Execution pass: debit each participant's wallet
+      for (const p of input.participantDebits) {
+        const wallet = this.wallets.get(p.identityId)!;
+        const cost = toBig(p.amountCoins);
+        const entryType: WalletLedgerEntryType = input.isSolo
+          ? "SOLO_ENTRY_DEBIT"
+          : input.botSeatCount > 0 && input.humanSeatCount <= 1
+            ? "BOT_ENTRY_DEBIT"
+            : "ROOM_ENTRY_DEBIT";
+
+        const debited = this.debitWallet(wallet, cost, {
+          entryType,
+          sourceKind: "match",
+          sourceId: input.matchId,
+          idempotencyKey: `${idempotencyKey}:debit:${p.identityId}`,
+          description: `Match entry commitment: ${p.amountCoins} coins (${input.roomCode ?? "SOLO"})`,
+          lifetimeField: "lifetimeSpent",
+        });
+        this.wallets.set(p.identityId, debited);
+      }
+    } else {
+      const totalCost = toBig(input.seatCount.toString()) * toBig(this.configuration.seatCostCoins);
+      const hostWallet = this.wallets.get(input.hostIdentityId)!;
+
+      if (hostWallet.isFrozen) {
+        throw new WalletFrozenError(`Host ${input.hostIdentityId} cannot commit a match entry while frozen`);
+      }
+      if (toBig(hostWallet.balance) < totalCost) {
+        throw new InsufficientFundsError(
+          `Host balance ${hostWallet.balance} is less than required commitment ${fromBig(totalCost)}`,
+        );
+      }
+
+      const entryType: WalletLedgerEntryType = input.isSolo
+        ? "SOLO_ENTRY_DEBIT"
+        : input.botSeatCount > 0 && input.humanSeatCount <= 1
+          ? "BOT_ENTRY_DEBIT"
+          : "ROOM_ENTRY_DEBIT";
+
+      const debited = this.debitWallet(hostWallet, totalCost, {
+        entryType,
+        sourceKind: "match",
+        sourceId: input.matchId,
+        idempotencyKey,
+        description: `Match commitment: ${input.seatCount} seats (${input.roomCode ?? "SOLO"})`,
+        lifetimeField: "lifetimeSpent",
+      });
+      this.wallets.set(input.hostIdentityId, debited);
+      totalCollectedAmount = totalCost;
     }
-    if (toBig(hostWallet.balance) < totalCost) {
-      throw new InsufficientFundsError(
-        `Host balance ${hostWallet.balance} is less than required commitment ${fromBig(totalCost)}`,
-      );
-    }
-
-    const entryType: WalletLedgerEntryType = input.isSolo
-      ? "SOLO_ENTRY_DEBIT"
-      : input.botSeatCount > 0 && input.humanSeatCount <= 1
-        ? "BOT_ENTRY_DEBIT"
-        : "ROOM_ENTRY_DEBIT";
-
-    const debited = this.debitWallet(hostWallet, totalCost, {
-      entryType,
-      sourceKind: "match",
-      sourceId: input.matchId,
-      idempotencyKey,
-      description: `Match commitment: ${input.seatCount} seats (${input.roomCode ?? "SOLO"})`,
-      lifetimeField: "lifetimeSpent",
-    });
-    this.wallets.set(input.hostIdentityId, debited);
 
     const now = Date.now();
     const settlement: MatchEconomySettlementRecord = {
@@ -768,13 +812,14 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       humanSeatCount: input.humanSeatCount,
       botSeatCount: input.botSeatCount,
       costPerSeat: this.configuration.seatCostCoins,
-      totalCollected: fromBig(totalCost),
+      totalCollected: fromBig(totalCollectedAmount),
       totalWalletRewarded: "0",
       totalGuestEscrow: "0",
       totalBotCollection: "0",
       totalWorldBankCut: "0",
       totalRefunded: "0",
       refundReason: null,
+      participantDebits: input.participantDebits ? clone(input.participantDebits) : undefined,
       totalForfeited: "0",
       forfeitureReason: null,
       status: "COMMITTED",
@@ -807,7 +852,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         humanSeatCount: input.humanSeatCount,
         botSeatCount: input.botSeatCount,
         costPerSeat: this.configuration.seatCostCoins,
-        totalCollected: fromBig(totalCost),
+        totalCollected: fromBig(totalCollectedAmount),
         isSolo: input.isSolo,
       },
     );
@@ -1178,20 +1223,38 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     idempotencyKey: string,
     reason: string,
   ): EconomyOperationResult<MatchEconomySettlementRecord> {
-    const hostWallet = this.wallets.get(settlement.hostIdentityId);
-    if (!hostWallet) {
-      throw new WalletNotFoundError(`Host wallet ${settlement.hostIdentityId} does not exist`);
-    }
     const refundAmount = toBig(settlement.totalCollected);
-    const credited = this.creditWallet(hostWallet, refundAmount, {
-      entryType: "MATCH_REFUND",
-      sourceKind: "match",
-      sourceId: settlement.matchId,
-      idempotencyKey,
-      description: `Refund match commitment: ${reason}`,
-      lifetimeField: "lifetimeRefunded",
-    });
-    this.wallets.set(settlement.hostIdentityId, credited);
+    if (settlement.participantDebits && settlement.participantDebits.length > 0) {
+      for (const p of settlement.participantDebits) {
+        const wallet = this.wallets.get(p.identityId);
+        if (wallet) {
+          const cost = toBig(p.amountCoins);
+          const credited = this.creditWallet(wallet, cost, {
+            entryType: "MATCH_REFUND",
+            sourceKind: "match",
+            sourceId: settlement.matchId,
+            idempotencyKey: `${idempotencyKey}:refund:${p.identityId}`,
+            description: `Refund match commitment: ${reason}`,
+            lifetimeField: "lifetimeRefunded",
+          });
+          this.wallets.set(p.identityId, credited);
+        }
+      }
+    } else {
+      const hostWallet = this.wallets.get(settlement.hostIdentityId);
+      if (!hostWallet) {
+        throw new WalletNotFoundError(`Host wallet ${settlement.hostIdentityId} does not exist`);
+      }
+      const credited = this.creditWallet(hostWallet, refundAmount, {
+        entryType: "MATCH_REFUND",
+        sourceKind: "match",
+        sourceId: settlement.matchId,
+        idempotencyKey,
+        description: `Refund match commitment: ${reason}`,
+        lifetimeField: "lifetimeRefunded",
+      });
+      this.wallets.set(settlement.hostIdentityId, credited);
+    }
 
     const now = Date.now();
     const updated: MatchEconomySettlementRecord = {

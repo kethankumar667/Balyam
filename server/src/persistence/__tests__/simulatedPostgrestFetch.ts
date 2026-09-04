@@ -248,6 +248,7 @@ async function dispatchRpc(
         humanSeatCount: args.p_human_seat_count as number,
         botSeatCount: args.p_bot_seat_count as number,
         isSolo: args.p_is_solo as boolean,
+        participantDebits: (args.p_participant_debits as any) ?? undefined,
       });
       return { ...r, result: encodeSettlement(r.result) };
     }

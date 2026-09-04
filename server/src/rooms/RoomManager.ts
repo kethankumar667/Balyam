@@ -115,6 +115,7 @@ import {
   InsufficientFundsError,
   WalletFrozenError,
   UnsupportedSeatCountError,
+  type ParticipantDebitSpec,
 } from "../persistence/EconomyRepository.js";
 import { resolveIdentity } from "./economyIdentity.js";
 import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
@@ -1904,11 +1905,56 @@ export class RoomManager {
    * nothing about an unsupported table size. See
    * `economy/economyCapacityContract.ts` for the full root cause.
    */
-  private economyErrorMessage(err: unknown): string {
-    if (err instanceof InsufficientFundsError) return "You don't have enough coins to start this match.";
+  private economyErrorMessage(err: unknown, room?: Room): string {
+    if (err instanceof InsufficientFundsError) {
+      if (room && err.message) {
+        for (const player of room.players.values()) {
+          if (player.identityId && err.message.includes(player.identityId)) {
+            return `${player.name} does not have enough coins to start this match.`;
+          }
+        }
+      }
+      return err.message && err.message.length > 0
+        ? err.message
+        : "You don't have enough coins to start this match.";
+    }
     if (err instanceof WalletFrozenError) return "Your wallet is currently frozen.";
     if (err instanceof UnsupportedSeatCountError) return "This table size is not yet supported by the game economy.";
     return "Could not start the match right now. Try again.";
+  }
+
+  /**
+   * Constructs the authoritative per-participant debit specifications for
+   * match entry commitment.
+   *
+   * Economic Invariant:
+   * Each identified non-bot participant pays 100 coins (1 seat).
+   * The host pays for their own seat (100 coins) plus covers any bot seats
+   * and any unassigned human seats (e.g. local pass-and-play).
+   * Total sum of all debits strictly equals seatCount * 100 coins.
+   */
+  private buildParticipantDebits(host: Player, playersList: Player[], costPerSeat = "100"): ParticipantDebitSpec[] {
+    const costBig = BigInt(costPerSeat);
+    const otherIdentifiedParticipants = playersList.filter(
+      (p) => !p.isBot && p.id !== host.id && !!p.identityId && p.identityId.trim().length > 0,
+    );
+
+    const otherDebits: ParticipantDebitSpec[] = otherIdentifiedParticipants.map((p) => ({
+      identityId: p.identityId!,
+      identityKind: p.isGuest ? "guest" : "member",
+      amountCoins: costPerSeat,
+    }));
+
+    const hostSeats = Math.max(1, playersList.length - otherDebits.length);
+    const hostAmount = (BigInt(hostSeats) * costBig).toString();
+
+    const hostDebit: ParticipantDebitSpec = {
+      identityId: host.identityId!,
+      identityKind: host.isGuest ? "guest" : "member",
+      amountCoins: hostAmount,
+    };
+
+    return [hostDebit, ...otherDebits];
   }
 
   /**
@@ -2153,6 +2199,7 @@ export class RoomManager {
     this.transitionLifecycle(room, "STARTING", "Committing match entry");
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
+    const participantDebits = this.buildParticipantDebits(hostPlayer, playersList);
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -2163,6 +2210,7 @@ export class RoomManager {
         humanSeatCount,
         botSeatCount,
         isSolo: playersList.length === 1,
+        participantDebits,
       });
 
       const freshRoom = this.rooms.get(room.code);
@@ -2229,7 +2277,7 @@ export class RoomManager {
       this.executeMatchStart(room, attempt);
     } catch (err) {
       this.transitionLifecycle(room, "READY_CHECK", "Entry commitment failed");
-      this.io.sockets.sockets.get(attempt.hostSocketId)?.emit("room:error", this.economyErrorMessage(err));
+      this.io.sockets.sockets.get(attempt.hostSocketId)?.emit("room:error", this.economyErrorMessage(err, room));
       if (room.activeStartAttempt?.id === attempt.id) {
         room.activeStartAttempt = null;
       }
@@ -5106,6 +5154,7 @@ export class RoomManager {
     room.economyCommitPending = true;
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
+    const participantDebits = this.buildParticipantDebits(host, playersList);
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -5116,6 +5165,7 @@ export class RoomManager {
         humanSeatCount,
         botSeatCount,
         isSolo: playersList.length === 1,
+        participantDebits,
       });
       // Same comprehensive re-validation as `requestGameStart`, adapted to the rematch
       // flow: verifies room instance, active operation token, host presence and role,
@@ -5164,7 +5214,7 @@ export class RoomManager {
       room.terminalPayload = null;
       this.startRematch(room);
     } catch (err) {
-      this.io.to(room.code).emit("room:error", this.economyErrorMessage(err));
+      this.io.to(room.code).emit("room:error", this.economyErrorMessage(err, room));
       logger.warn({
         message: `commitMatchEntry failed for rematch in room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
         module: "ECONOMY_ROOM",
