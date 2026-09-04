@@ -43,17 +43,20 @@
 - `commit_match_entry` is a database RPC. The pre-flight cost preview shown to the client (`quote_match_checkout`) is an **application-level, read-only** operation, not a database RPC — see §6a.
 
 ### 2.3 Payout Schedules & House Take
-Seat counts are constrained strictly to **1 through 5 seats**. Unsupported seat counts are rejected.
+Approved seat counts: 1 through 12 (`ECONOMY_APPROVED_SEAT_COUNTS`, `economyCapacityContract.ts`). Every table from 2 seats up pays a flat 20% platform take; the remaining 80% pays out ranked, top-3 max, per the 2026-09-05/06 standardization (`20260905000000_economy_expand_prize_schedules_6_to_12.sql`, `20260906000002_economy_prize_schedules_ranked_payout_2_to_5.sql`):
 
 | Tier | Seats | Total Collected | 1st Place | 2nd Place | 3rd Place | World Bank Take |
 |---|---|---|---|---|---|---|
 | **Solo** | 1 | 100 | 0 (Practice) | — | — | 100 (100%) |
-| **2 Players** | 2 | 200 | 150 | 0 | — | 50 (25%) |
-| **3 Players** | 3 | 300 | 150 | 100 | 0 | 50 (16.67%) |
-| **4 Players** | 4 | 400 | 175 | 125 | 50 | 50 (12.5%) |
-| **5 Players** | 5 | 500 | 200 | 150 | 100 | 50 (10%) |
+| **2 Players** | 2 | 200 | 160 | — | — | 40 (20%) |
+| **3 Players** | 3 | 300 | 150 | 90 | — | 60 (20%) |
+| **4 Players** | 4 | 400 | 160 | 96 | 64 | 80 (20%) |
+| **5 Players** | 5 | 500 | 200 | 120 | 80 | 100 (20%) |
+| **6-12 Players** | 6-12 | 100/seat | 40%/seat | 24%/seat | 16%/seat | 20% |
 
-The World Bank take for a solo (1-seat) match is recorded under the ledger type `SOLO_ENTRY_COLLECTION`, distinct from the multiplayer `BASE_FEE_REVENUE` type used for 2-5 seat matches — see §4.
+A 2-seat table has no 2nd/3rd place to pay (winner takes the whole 80% pool); a 3-seat table has no 3rd place (80% splits 1st/2nd at 62.5%/37.5%). `economyCapacityContract.ts`'s `validateEconomyCapacityContract` enforces both the conservation identity (collected = 1st + 2nd + 3rd + world bank) and that no schedule ever pays a rank that seat count cannot produce.
+
+The World Bank take for a solo (1-seat) match is recorded under the ledger type `SOLO_ENTRY_COLLECTION`, distinct from the multiplayer `BASE_FEE_REVENUE` type used for 2+ seat matches — see §4.
 
 ### 2.4 Bot Placement Accounting
 - Bots **never** receive wallets, accounts, or reward vouchers.

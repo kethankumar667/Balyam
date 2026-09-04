@@ -170,10 +170,10 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
       expect(settleEvent.isReplay).toBe(false);
       expect(settleEvent.raceLost).toBe(false);
       expect(settleEvent.payload).toMatchObject({
-        totalWalletRewarded: "150",
+        totalWalletRewarded: "160",
         totalGuestEscrow: "0",
         totalBotCollection: "0",
-        totalWorldBankCut: "50",
+        totalWorldBankCut: "40",
         totalCollected: "200",
       });
     });
@@ -728,8 +728,8 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
       expect(settleEvent.payload).toMatchObject({
         totalWalletRewarded: "0",
         totalGuestEscrow: "150",
-        totalBotCollection: "100",
-        totalWorldBankCut: "50",
+        totalBotCollection: "90",
+        totalWorldBankCut: "60",
         totalCollected: "300",
       });
     });

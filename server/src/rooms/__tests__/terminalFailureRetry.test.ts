@@ -230,7 +230,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(room.lifecycleState).toBe("COMPLETED");
     expect(room.terminalPayload).toBeNull();
     expect(room.currentMatchId).toBeNull();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050"); // 5000 - 100 (entry) + 150 (1st place)
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // 5000 - 100 (entry) + 150 (1st place)
   });
 
   it("Test B: refund persistence failure, then a successful retry recovers the match", async () => {
@@ -334,7 +334,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     // Alice — the ORIGINAL winner, from the stored payload — was credited,
     // proving retry did not (and structurally could not, given the
     // players map was just cleared) recompute the ranking.
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
   });
 
   it("Test E: a conflicting terminal outcome cannot replace the already-stored decision", async () => {
@@ -492,7 +492,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     // The retry in abandonRoom succeeded, completing settlement intent persistence before teardown
     await rooms.drainEconomySettlementQueue();
     const wallet = await service.getWallet(MEMBER_A);
-    expect(wallet.balance).toBe("5050"); // 5000 - 100 + 150
+    expect(wallet.balance).toBe("5060"); // 5000 - 100 + 150
   });
 
   it("Test J: drainEconomySettlementQueue automatically sweeps and retries in-memory rooms in FAILED terminalStatus", async () => {
@@ -515,7 +515,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     await rooms.drainEconomySettlementQueue();
 
     expect(room.terminalStatus).toBe("COMPLETED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
   });
 
   it("Test K (Phase 6): signed-member failure-retry recovers via periodic in-process sweep with verified wallet and ledger state", async () => {
@@ -554,25 +554,25 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(settlement?.status).toBe("SETTLED");
     // Member wallet receives expected prize
     const wallet = await service.getWallet(MEMBER_A);
-    expect(wallet.balance).toBe("5050"); // 5000 - 100 (entry) + 150 (1st place)
+    expect(wallet.balance).toBe("5060"); // 5000 - 100 (entry) + 160 (1st place)
 
     // Exactly one MATCH_PRIZE_CREDIT ledger entry exists
     const ledger = await repo.listLedger(MEMBER_A);
     const prizeCredits = ledger.filter((l) => l.entryType === "MATCH_PRIZE_CREDIT");
     expect(prizeCredits.length).toBe(1);
-    expect(prizeCredits[0].amount).toBe("150");
+    expect(prizeCredits[0].amount).toBe("160");
 
     // Duplicate periodic retry does not add second reward
     await rooms.retryAllFailedTerminalRooms();
     await rooms.drainEconomySettlementQueue();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     const ledgerAfter = await repo.listLedger(MEMBER_A);
     expect(ledgerAfter.filter((l) => l.entryType === "MATCH_PRIZE_CREDIT").length).toBe(1);
 
     // World bank total economy conservation remains sound
     const wb = await service.getWorldBankSnapshot();
-    expect(wb.baseFeeRevenue).toBe("50"); // 200 collected - 150 prize = 50 cut
-    expect(settlement?.totalWorldBankCut).toBe("50");
+    expect(wb.baseFeeRevenue).toBe("40"); // 200 collected - 160 prize = 40 cut
+    expect(settlement?.totalWorldBankCut).toBe("40");
   });
 
   it("Test L (Phase 7): guest winner failure-retry issues exactly one bearer voucher in escrow without leaking raw codes", async () => {
@@ -610,7 +610,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     // Exactly one guest voucher record created
     const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
     expect(vouchers.length).toBe(1);
-    expect(vouchers[0].coinAmount).toBe("150");
+    expect(vouchers[0].coinAmount).toBe("160");
     expect(vouchers[0].issuedToGuestId).toBe(guestId);
     expect(vouchers[0].status).toBe("ACTIVE");
     expect(vouchers[0].codeHash).toMatch(/^[0-9a-f]{64}$/); // Hash only, no raw code leak
@@ -686,12 +686,12 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     const matchId = intents[0].matchId;
     const settlement = await service.getSettlement(matchId);
     expect(settlement?.status).toBe("SETTLED");
-    expect(settlement?.totalGuestEscrow).toBe("150");
+    expect(settlement?.totalGuestEscrow).toBe("160");
 
     // Exactly one voucher created for the guest who joined via socket event
     const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
     expect(vouchers.length).toBe(1);
-    expect(vouchers[0].coinAmount).toBe("150");
+    expect(vouchers[0].coinAmount).toBe("160");
     expect(vouchers[0].issuedToGuestId).toBe(guestId);
     expect(vouchers[0].status).toBe("ACTIVE");
   });
@@ -783,7 +783,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
 
       await rooms.drainEconomySettlementQueue();
       expect(room.terminalStatus).toBe("COMPLETED");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
 
     it("Scenario D: periodic failed-room retry racing host manual retry triggers exactly one persistence attempt", async () => {
@@ -812,7 +812,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
       expect(createIntentSpy).toHaveBeenCalledTimes(1);
       await rooms.drainEconomySettlementQueue();
       expect(room.terminalStatus).toBe("COMPLETED");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
 
     it("Scenario E: retry succeeds while a cleanup request is waiting, safely closing room after COMPLETED", async () => {
@@ -840,7 +840,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
       // Retry succeeded, room safely closed
       expect(peek(rooms, host.code)).toBeUndefined();
       await rooms.drainEconomySettlementQueue();
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
 
     it("Scenario F: retry fails while a cleanup request is waiting, leaving room visible and recoverable in FAILED status", async () => {
@@ -873,7 +873,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
       await rooms.retryAllFailedTerminalRooms();
       await rooms.drainEconomySettlementQueue();
       expect(room.terminalStatus).toBe("COMPLETED");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
   });
 

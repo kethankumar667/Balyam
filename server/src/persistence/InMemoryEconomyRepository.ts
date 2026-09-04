@@ -286,13 +286,24 @@ const DEFAULT_CONFIG: EconomyConfigurationRecord = {
   isActive: true,
 };
 
-/** Mirrors the migration's own seed data exactly — Section 10 of the migration. */
+/**
+ * Mirrors the migration's own seed data exactly — Section 10 of
+ * `20260826000000_economy_v1.sql` for seat 1, and
+ * `20260906000000_economy_prize_schedules_ranked_payout.sql` for seats 2-5
+ * (6-12 were already on this exact 20%-platform / 50-30-20-ranked formula
+ * from the earlier `20260905000000_economy_expand_prize_schedules_6_to_12.sql`
+ * — seats 2-5 predate that formula and paid a flatter, non-conforming cut
+ * until the 2026-09-05 product decision to standardize every seat count on
+ * one rule: platform keeps 20%, the remaining 80% pays out top-3 ranked
+ * 50/30/20 (top-2 ranked 62.5/37.5 at 3 seats, winner-take-all at 2 seats —
+ * there is no 3rd/2nd place to pay at a 2- or 3-seat table).
+ */
 const DEFAULT_SCHEDULES: EconomyPrizeScheduleRecord[] = [
   { seatCount: 1, collectedCoins: "100", firstPlaceCoins: "0", secondPlaceCoins: "0", thirdPlaceCoins: "0", worldBankCoins: "100" },
-  { seatCount: 2, collectedCoins: "200", firstPlaceCoins: "150", secondPlaceCoins: "0", thirdPlaceCoins: "0", worldBankCoins: "50" },
-  { seatCount: 3, collectedCoins: "300", firstPlaceCoins: "150", secondPlaceCoins: "100", thirdPlaceCoins: "0", worldBankCoins: "50" },
-  { seatCount: 4, collectedCoins: "400", firstPlaceCoins: "175", secondPlaceCoins: "125", thirdPlaceCoins: "50", worldBankCoins: "50" },
-  { seatCount: 5, collectedCoins: "500", firstPlaceCoins: "200", secondPlaceCoins: "150", thirdPlaceCoins: "100", worldBankCoins: "50" },
+  { seatCount: 2, collectedCoins: "200", firstPlaceCoins: "160", secondPlaceCoins: "0", thirdPlaceCoins: "0", worldBankCoins: "40" },
+  { seatCount: 3, collectedCoins: "300", firstPlaceCoins: "150", secondPlaceCoins: "90", thirdPlaceCoins: "0", worldBankCoins: "60" },
+  { seatCount: 4, collectedCoins: "400", firstPlaceCoins: "160", secondPlaceCoins: "96", thirdPlaceCoins: "64", worldBankCoins: "80" },
+  { seatCount: 5, collectedCoins: "500", firstPlaceCoins: "200", secondPlaceCoins: "120", thirdPlaceCoins: "80", worldBankCoins: "100" },
   { seatCount: 6, collectedCoins: "600", firstPlaceCoins: "240", secondPlaceCoins: "144", thirdPlaceCoins: "96", worldBankCoins: "120" },
   { seatCount: 7, collectedCoins: "700", firstPlaceCoins: "280", secondPlaceCoins: "168", thirdPlaceCoins: "112", worldBankCoins: "140" },
   { seatCount: 8, collectedCoins: "800", firstPlaceCoins: "320", secondPlaceCoins: "192", thirdPlaceCoins: "128", worldBankCoins: "160" },

@@ -210,7 +210,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         });
         const status = await ctx.repo.getVoucherStatus(hash);
         expect(status?.status).toBe("ACTIVE");
-        expect(status?.coinAmount).toBe("150");
+        expect(status?.coinAmount).toBe("160");
       });
 
       it("returns null for a codeHash matching no voucher", async () => {
@@ -234,7 +234,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
       it("returns the schedule for a supported seatCount", async () => {
         const schedule = await ctx.repo.getPrizeSchedule(5);
         expect(schedule).toMatchObject({
-          seatCount: 5, firstPlaceCoins: "200", secondPlaceCoins: "150", thirdPlaceCoins: "100", worldBankCoins: "50",
+          seatCount: 5, firstPlaceCoins: "200", secondPlaceCoins: "120", thirdPlaceCoins: "80", worldBankCoins: "100",
         });
       });
 
@@ -485,9 +485,9 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
           matchId, isValidRanking: true,
           participants: [{ identityId: member, identityKind: "member", placement: 1 }],
         });
-        expect(settled.result.totalWalletRewarded).toBe("150");
+        expect(settled.result.totalWalletRewarded).toBe("160");
         const ledger = await ctx.repo.listLedger(member);
-        expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "150")).toBe(true);
+        expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
       });
 
       it("escrows a guest participant's prize with ZERO coin_ledger_entries impact on their own wallet", async () => {
@@ -524,7 +524,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
           participants: [{ identityId: "bot_seat_1", identityKind: "bot", placement: 1 }],
         });
         const after = await ctx.repo.getWorldBankSnapshot();
-        expect(BigInt(after.botPrizeRevenue) - BigInt(before.botPrizeRevenue)).toBe(150n);
+        expect(BigInt(after.botPrizeRevenue) - BigInt(before.botPrizeRevenue)).toBe(160n);
       });
 
       it("tags a solo (1-seat) settlement's world bank collection distinctly from a multiplayer base fee", async () => {
@@ -948,10 +948,10 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const result = await ctx.repo.redeemRewardVoucher(hash, member);
         expect(result.result.status).toBe("REDEEMED");
         const memberAfter = await ctx.repo.getWallet(member);
-        expect(BigInt(memberAfter!.balance) - BigInt(memberBefore.balance)).toBe(150n);
+        expect(BigInt(memberAfter!.balance) - BigInt(memberBefore.balance)).toBe(160n);
         const worldBankAfter = await ctx.repo.getWorldBankSnapshot();
-        expect(BigInt(worldBankBefore.guestEscrowLiability) - BigInt(worldBankAfter.guestEscrowLiability)).toBe(150n);
-        expect(BigInt(worldBankAfter.totalVoucherRedeemed) - BigInt(worldBankBefore.totalVoucherRedeemed)).toBe(150n);
+        expect(BigInt(worldBankBefore.guestEscrowLiability) - BigInt(worldBankAfter.guestEscrowLiability)).toBe(160n);
+        expect(BigInt(worldBankAfter.totalVoucherRedeemed) - BigInt(worldBankBefore.totalVoucherRedeemed)).toBe(160n);
       });
 
       it("rejects with OnlyMembersCanRedeemError for a guest caller, before disclosing whether the code exists", async () => {

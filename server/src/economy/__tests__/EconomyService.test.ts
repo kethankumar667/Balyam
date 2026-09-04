@@ -228,7 +228,7 @@ describe("EconomyService — wallet & ledger", () => {
 /* ═══════════════════════ checkout quotation ═════════════════════════════ */
 
 describe("EconomyService — quoteMatchCheckout", () => {
-  it("quotes a 2-seat match: cost 100/seat, 1st place 150, world bank 50 (per DEFAULT_SCHEDULES)", async () => {
+  it("quotes a 2-seat match: cost 100/seat, 1st place 160, world bank 40 (per DEFAULT_SCHEDULES)", async () => {
     const repo = freshRepo();
     seedHost(repo, "host_2seat", "1000");
     const service = freshService(repo);
@@ -237,15 +237,15 @@ describe("EconomyService — quoteMatchCheckout", () => {
     });
     expect(quote.costPerSeat).toBe("100");
     expect(quote.totalCommitment).toBe("200");
-    expect(quote.prizeDistribution).toEqual({ firstPlace: "150", secondPlace: "0", thirdPlace: "0" });
-    expect(quote.worldBankContribution).toBe("50");
+    expect(quote.prizeDistribution).toEqual({ firstPlace: "160", secondPlace: "0", thirdPlace: "0" });
+    expect(quote.worldBankContribution).toBe("40");
     expect(quote.hostBalance).toBe("1000");
     expect(quote.projectedBalance).toBe("800");
     expect(quote.hasSufficientFunds).toBe(true);
     expect(quote.shortfall).toBeNull();
   });
 
-  it("quotes a 5-seat match: cost 100/seat, full prize ladder, world bank 50", async () => {
+  it("quotes a 5-seat match: cost 100/seat, full prize ladder, world bank 100", async () => {
     const repo = freshRepo();
     seedHost(repo, "host_5seat", "1000");
     const service = freshService(repo);
@@ -256,7 +256,7 @@ describe("EconomyService — quoteMatchCheckout", () => {
     expect(quote.humanSeatCount).toBe(3);
     expect(quote.botSeatCount).toBe(2);
     expect(quote.totalCommitment).toBe("500");
-    expect(quote.prizeDistribution).toEqual({ firstPlace: "200", secondPlace: "150", thirdPlace: "100" });
+    expect(quote.prizeDistribution).toEqual({ firstPlace: "200", secondPlace: "120", thirdPlace: "80" });
   });
 
   it("rejects a structurally invalid seat count (zero) before ever reaching the repository's schedule lookup", async () => {
@@ -563,13 +563,13 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     });
     expect(result.applied).toBe(true);
     expect(result.settlement.status).toBe("SETTLED");
-    expect(result.settlement.totalWalletRewarded).toBe("150");
-    expect(result.settlement.totalWorldBankCut).toBe("50");
+    expect(result.settlement.totalWalletRewarded).toBe("160");
+    expect(result.settlement.totalWorldBankCut).toBe("40");
     expect(result.issuedVouchers).toEqual([]);
     const winner = await repo.getWallet("member_winner");
     // ensureWallet's first-touch provisioning grants the member starter bonus
-    // (5000, DEFAULT_CONFIG) before the 150 prize credit lands on top of it.
-    expect(winner?.balance).toBe("5150");
+    // (5000, DEFAULT_CONFIG) before the 160 prize credit lands on top of it.
+    expect(winner?.balance).toBe("5160");
   });
 
   it("a guest winner gets a server-generated voucher, never a wallet credit", async () => {
@@ -588,7 +588,7 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     expect(result.issuedVouchers).toHaveLength(1);
     const ack = result.issuedVouchers[0]!;
     expect(ack.identityId).toBe("guest_winner");
-    expect(ack.coinAmount).toBe("150");
+    expect(ack.coinAmount).toBe("160");
     expect(typeof ack.rawCode).toBe("string");
     expect(ack.rawCode.length).toBeGreaterThan(0);
 
@@ -596,7 +596,7 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     expect(guestWallet).toBeNull(); // never credited — escrowed instead
 
     const status = await service.getVoucherStatus(ack.rawCode);
-    expect(status).toEqual({ status: "ACTIVE", coinAmount: "150" });
+    expect(status).toEqual({ status: "ACTIVE", coinAmount: "160" });
   });
 
   it("a replayed settlement returns applied:false with the original settlement and issues NO new vouchers", async () => {
@@ -705,11 +705,11 @@ describe("EconomyService — voucher redemption", () => {
     const result = await service.redeemVoucher(rawCode, "redeemer");
     expect(result.applied).toBe(true);
     expect(result.voucher.status).toBe("REDEEMED");
-    expect(result.voucher.coinAmount).toBe("150");
+    expect(result.voucher.coinAmount).toBe("160");
     expect("codeHash" in result.voucher).toBe(false);
     const wallet = await repo.getWallet("redeemer");
-    // 5000 member starter grant (first-touch provisioning) + 150 redeemed.
-    expect(wallet?.balance).toBe("5150");
+    // 5000 member starter grant (first-touch provisioning) + 160 redeemed.
+    expect(wallet?.balance).toBe("5160");
   });
 
   it("a replayed redemption by the SAME member returns applied:false, credited only once", async () => {
@@ -722,7 +722,7 @@ describe("EconomyService — voucher redemption", () => {
     expect(first.applied).toBe(true);
     expect(second.applied).toBe(false);
     const wallet = await repo.getWallet("redeemer2");
-    expect(wallet?.balance).toBe("5150"); // 5000 starter grant + 150, credited exactly once
+    expect(wallet?.balance).toBe("5160"); // 5000 starter grant + 150, credited exactly once
   });
 
   it("a frozen redeemer wallet is refused with WalletFrozenError", async () => {

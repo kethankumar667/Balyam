@@ -151,7 +151,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     expect(settlement?.status).toBe("SETTLED");
     const recovered = await serviceB.getTerminalIntent(intent.id);
     expect(recovered?.status).toBe("COMPLETED");
-    expect((await serviceB.getWallet(MEMBER_A)).balance).toBe("4950"); // 5000 - 200 (entry) + 150 (1st place)
+    expect((await serviceB.getWallet(MEMBER_A)).balance).toBe("4960"); // 5000 - 200 (entry) + 160 (1st place)
   });
 
   it("Test C: a claim's lease expires and a second worker reclaims it — no duplicate application", async () => {
@@ -188,7 +188,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     expect(settlement?.status).toBe("SETTLED");
     const final = await service.getTerminalIntent(claim.intent!.id);
     expect(final?.status).toBe("COMPLETED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // exactly one application, not two
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // exactly one application, not two
   });
 
   it("Test D: operation succeeds but completion acknowledgement never happens — replay produces no duplicate mutation", async () => {
@@ -210,7 +210,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     const applyResult = await service.settleMatchEconomy(settlementRequest(matchId, MEMBER_A, MEMBER_B));
     expect(applyResult.applied).toBe(true);
     const balanceAfterRealApplication = (await service.getWallet(MEMBER_A)).balance;
-    expect(balanceAfterRealApplication).toBe("4950");
+    expect(balanceAfterRealApplication).toBe("4960");
     // Intent is still PROCESSING — completeTerminalIntent was never called.
 
     // A fresh worker, once the lease is force-expired by advancing the
@@ -303,7 +303,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
       refundReason: undefined,
     });
     await worker.drain();
-    expect((await service.getWallet(MEMBER_B)).balance).toBe("5150"); // Bob, not Alice, was credited
+    expect((await service.getWallet(MEMBER_B)).balance).toBe("5160"); // Bob, not Alice, was credited
     expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // Alice only ever debited the entry cost
   });
 
@@ -517,7 +517,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     expect(replaySettle.applied).toBe(false);
     const settleResult = await service.getSettlement(settleMatchId);
     expect(settleResult?.status).toBe("SETTLED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // 5000 - 200 (entry) + 150 (1st place)
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // 5000 - 200 (entry) + 160 (1st place)
 
     // Refund
     const refundMatchId = "match_recon_refund";
@@ -526,7 +526,7 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     await worker.drain();
     const refundResult = await service.getSettlement(refundMatchId);
     expect(refundResult?.status).toBe("REFUNDED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // debited 200 then fully refunded — net unchanged
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // debited 200 then fully refunded — net unchanged
 
     // Forfeiture
     const forfeitMatchId = "match_recon_forfeit";

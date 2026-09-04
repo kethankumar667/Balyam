@@ -213,8 +213,8 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
       const alice = await service.getWallet(MEMBER_A);
       const worldBank = await service.getWorldBankSnapshot();
-      expect(alice.balance).toBe("5050"); // 4900 + 150 (1st place prize)
-      expect(worldBank.baseFeeRevenue).toBe("50"); // the 2-seat world bank cut
+      expect(alice.balance).toBe("5060"); // 4900 + 160 (1st place prize)
+      expect(worldBank.baseFeeRevenue).toBe("40"); // the 2-seat world bank cut
     });
   });
 
@@ -376,7 +376,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       playRpsToCompletion(rooms, "s_a", "s_b2");
       await drainRoomEconomy(rooms);
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
   });
 
@@ -411,7 +411,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(roomAfterFailover.hostId).not.toBe(host.playerId); // Bob is now host
       expect(commitSpy).toHaveBeenCalledTimes(1); // never a second commit from reassignment
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // debited once, never refunded
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("1050"); // 1000 - 100 commitment + 150 forfeit win
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // 1000 - 100 commitment + 160 forfeit win
 
       // A later rematch charges the NEW host (Bob), never Alice again — a
       // reassigned host funds only a NEW match's entry going forward. Bob
@@ -423,7 +423,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.requestRematch("s_b"); // sole human requester auto-accepts -> settles and arms REMATCH_COUNTDOWN_MS immediately
       await vi.advanceTimersByTimeAsync(3_000);
       expect(commitSpy).toHaveBeenCalledTimes(2);
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("950"); // 1050 - 100 (1-seat solo commitment)
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("960"); // 1060 - 100 (1-seat solo commitment)
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched by the rematch
     }, 30_000);
   });
@@ -744,7 +744,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(refundSpy).not.toHaveBeenCalled();
       expect(forfeitSpy).not.toHaveBeenCalled();
       expect(roomRef.lifecycleState).toBe("CLOSED");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("5050"); // untouched final prize
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // untouched final prize
     });
 
     it("duplicate post-completion leave is idempotent: the second leaveRoom call for an already-torn-down room is a safe no-op", async () => {
@@ -955,7 +955,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await drainRoomEconomy(rooms);
 
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.guestEscrowLiability).toBe("150");
+      expect(worldBank.guestEscrowLiability).toBe("160");
       // No repository method exists to enumerate vouchers by guest — this
       // integration proves issuance via the World Bank escrow liability
       // moving by exactly the prize amount, matching Phase 5's own test
@@ -988,7 +988,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const redemption = await service.redeemVoucher(issuedRawCode, MEMBER_C);
       expect(redemption.applied).toBe(true);
       expect(redemption.voucher.status).toBe("REDEEMED");
-      expect((await service.getWallet(MEMBER_C)).balance).toBe("1050"); // 1000 - 100 (commitment) + 150 (redemption)
+      expect((await service.getWallet(MEMBER_C)).balance).toBe("1060"); // 1000 - 100 (commitment) + 160 (redemption)
     });
   });
 
@@ -1076,7 +1076,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       expect(peek(rooms, host.code).currentMatchId).toBeNull();
       const alice = await service.getWallet(MEMBER_A);
-      expect(alice.balance).toBe("5050"); // 4900 + 150 — the forfeit win settled correctly, not refunded
+      expect(alice.balance).toBe("5060"); // 4900 + 150 — the forfeit win settled correctly, not refunded
     });
   });
 
@@ -1113,7 +1113,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       const settlement = await service.getSettlement(matchId!);
       expect(settlement?.status).toBe("SETTLED"); // not REFUNDED — a resolved guest identity let this settle for real
-      expect(settlement?.totalGuestEscrow).toBe("150"); // 1st-place prize, paid into escrow (a guest never gets a wallet credit)
+      expect(settlement?.totalGuestEscrow).toBe("160"); // 1st-place prize, paid into escrow (a guest never gets a wallet credit)
       expect(settlement?.totalWalletRewarded).toBe("0"); // the winner is a guest, so no member wallet was credited
     });
 
@@ -1568,7 +1568,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     await rooms.requestGameStart("s_a");
     playRpsToCompletion(rooms, "s_a", "s_b");
     await drainRoomEconomy(rooms);
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050"); // first match settled normally
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // first match settled normally
 
     rooms.requestRematch("s_a");
     rooms.respondRematch("s_b", "accept");
@@ -1580,7 +1580,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     vi.advanceTimersByTime(3000); // fires the countdown -> requestRematchStart -> gated commitMatchEntry begins
     await committed; // the REAL rematch debit has genuinely happened now
 
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // 5050 - 100 (rematch entry)
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // 5060 - 100 (rematch entry)
     expect((rooms as unknown as { rooms: Map<string, Room> }).rooms.has(host.code)).toBe(true);
 
     rooms.leaveRoom("s_a");
@@ -1594,7 +1594,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     expect(refundSpy).toHaveBeenCalledTimes(1);
     expect(refundSpy).toHaveBeenCalledWith(matchId, expect.any(String));
     expect(forfeitSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050"); // rematch debit fully reversed, first match's prize untouched
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // rematch debit fully reversed, first match's prize untouched
     const settlement = await service.getSettlement(matchId);
     expect(settlement?.status).toBe("REFUNDED");
   });
@@ -1796,7 +1796,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     expect(room.phase).toBe("playing");
     expect(room.currentMatchId).not.toBeNull();
     expect(refundSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950"); // 5050 - 100 rematch entry
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // 5050 - 100 rematch entry
   });
 
   it("refund-versus-teardown race cannot produce duplicate terminal operations: exactly one terminal settlement status survives", async () => {
@@ -1877,7 +1877,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     await rooms.requestGameStart("s_a");
     playRpsToCompletion(rooms, "s_a", "s_b");
     await drainRoomEconomy(rooms);
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
 
     rooms.requestRematch("s_a");
     rooms.respondRematch("s_b", "accept");
@@ -1889,7 +1889,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     vi.advanceTimersByTime(3000); // fires the countdown -> requestRematchStart
     await committed;
 
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4950");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960");
 
     rooms.handleDisconnect("s_a");
     rooms.handleDisconnect("s_b");
@@ -1902,7 +1902,7 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
     expect(refundSpy).toHaveBeenCalledTimes(1);
     expect(forfeitSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5050");
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
   });
 

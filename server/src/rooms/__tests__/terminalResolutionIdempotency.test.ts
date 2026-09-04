@@ -463,7 +463,7 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("SETTLED");
       const alice = await service.getWallet(MEMBER_A);
-      expect(alice.balance).toBe("5050"); // debited 100, credited 150 prize — exactly once
+      expect(alice.balance).toBe("5060"); // debited 100, credited 150 prize — exactly once
     }, 15_000);
   });
 });

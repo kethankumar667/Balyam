@@ -283,7 +283,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r === true).length).toBe(1);
 
       const voucherStatus = await repo.getVoucherStatus(raceHash);
-      expect(voucherStatus?.coinAmount).toBe("150");
+      expect(voucherStatus?.coinAmount).toBe("160");
       expect(fixture.snapshot().vouchers.filter((v) => v.codeHash === raceHash)).toHaveLength(1);
     });
   });
@@ -345,7 +345,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet(redeemer);
-      expect(wallet?.balance).toBe("5150"); // 5000 starter + 150 voucher, once
+      expect(wallet?.balance).toBe("5160"); // 5000 starter + 150 voucher, once
 
       // A DIFFERENT member attempting the same voucher after it's redeemed is a hard rejection, not a replay.
       const otherMember = crypto.randomUUID();
@@ -441,14 +441,14 @@ describe("InMemoryEconomyRepository", () => {
         ],
       });
       expect(settled.result.totalWalletRewarded).toBe("200");
-      expect(settled.result.totalGuestEscrow).toBe("150");
-      expect(settled.result.totalBotCollection).toBe("100");
-      expect(settled.result.totalWorldBankCut).toBe("50");
+      expect(settled.result.totalGuestEscrow).toBe("120");
+      expect(settled.result.totalBotCollection).toBe("80");
+      expect(settled.result.totalWorldBankCut).toBe("100");
 
       const snapshot = await repo.getWorldBankSnapshot();
-      expect(snapshot.baseFeeRevenue).toBe("50");
-      expect(snapshot.botPrizeRevenue).toBe("100");
-      expect(snapshot.guestEscrowLiability).toBe("150");
+      expect(snapshot.baseFeeRevenue).toBe("100");
+      expect(snapshot.botPrizeRevenue).toBe("80");
+      expect(snapshot.guestEscrowLiability).toBe("120");
       expect(snapshot.totalVoucherRedeemed).toBe("0");
 
       // The guest's own wallet must never change — no ledger row for the escrow event.
@@ -481,7 +481,7 @@ describe("InMemoryEconomyRepository", () => {
       });
 
       const afterDeposit = await repo.getWorldBankSnapshot();
-      expect(afterDeposit.guestEscrowLiability).toBe("150");
+      expect(afterDeposit.guestEscrowLiability).toBe("160");
 
       const redeemer = crypto.randomUUID();
       fixture.seedIdentity(redeemer, "member");
@@ -491,10 +491,10 @@ describe("InMemoryEconomyRepository", () => {
 
       const afterRedemption = await repo.getWorldBankSnapshot();
       expect(afterRedemption.guestEscrowLiability).toBe("0");
-      expect(afterRedemption.totalVoucherRedeemed).toBe("150");
+      expect(afterRedemption.totalVoucherRedeemed).toBe("160");
 
       const memberWallet = await repo.getWallet(redeemer);
-      expect(memberWallet?.balance).toBe("5150");
+      expect(memberWallet?.balance).toBe("5160");
     });
   });
 

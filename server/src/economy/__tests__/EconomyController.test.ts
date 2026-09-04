@@ -572,7 +572,7 @@ describe("POST /api/economy/vouchers/redeem", () => {
     const body = res.body as { applied: boolean; voucher: { status: string }; newBalance: string };
     expect(body.applied).toBe(true);
     expect(body.voucher.status).toBe("REDEEMED");
-    expect(body.newBalance).toBe("5150"); // 5000 starter grant + 150
+    expect(body.newBalance).toBe("5160"); // 5000 starter grant + 150
     expect("codeHash" in body.voucher).toBe(false);
   });
 
@@ -633,7 +633,7 @@ describe("GET /api/economy/vouchers/:voucherId", () => {
     const rawCode = await settleWithGuestWinner("m_api_status", "host_status");
     const res = await server.request(`/api/economy/vouchers/${encodeURIComponent(rawCode)}`);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ voucher: { status: "ACTIVE", coinAmount: "150" } });
+    expect(res.body).toEqual({ voucher: { status: "ACTIVE", coinAmount: "160" } });
   });
 
   it("returns 404 for a code that matches no voucher", async () => {

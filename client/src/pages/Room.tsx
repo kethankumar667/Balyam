@@ -263,9 +263,70 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "chess",
 ]);
 
+/**
+ * Friendly text for a `room:startCancelled` reason, shown to the host via
+ * the same `lastError` banner `room:error` already uses.
+ *
+ * ── Why this exists ────────────────────────────────────────────────────
+ * `RoomManager.cancelActiveStartAttempt` fires for a dozen reasons — a
+ * player's tab going hidden mid-preflight, a wrong device orientation, the
+ * roster changing, a disconnect — and until now NONE of them reached the
+ * player: only `usePlayerCapability` listened for this event, and it just
+ * cleared an internal ref. The 5s `preflight_timeout` was the only start
+ * failure with a visible message (its own separate `room:error`), because
+ * every OTHER cancellation happens (and clears `activeStartAttempt`)
+ * strictly before that timer fires, so its guard silently never matches
+ * either. Every real player symptom this produced was identical: click
+ * "Start Game", nothing visibly happens, and the button is clickable again
+ * with no explanation — trivially triggered by something as ordinary as a
+ * second player's tab not being the focused one for a moment.
+ */
+function startCancelledMessage(reason: string): string {
+  switch (reason) {
+    case "PAGE_NOT_VISIBLE":
+    case "capability_unsatisfied":
+      return "Start cancelled — a player's browser tab wasn't active. Ask everyone to switch back to this game, then try again.";
+    case "ORIENTATION_REQUIRED":
+    case "orientation_required":
+      return "Start cancelled — a player needs to rotate their device, then try again.";
+    case "attempt_expired":
+    case "preflight_timeout":
+      return "Start timed out waiting for players to confirm readiness. Try again.";
+    case "roster_changed":
+    case "seat_reclaimed":
+      return "Start cancelled — the table changed while starting. Try again.";
+    case "host_migrated":
+      return "Start cancelled — the host changed. The new host can try again.";
+    case "player_disconnected":
+      return "Start cancelled — a player disconnected. Try again once everyone is back.";
+    case "player_unready":
+      return "Start cancelled — a player un-readied. Try again once everyone is ready.";
+    default:
+      return "Start was cancelled. Try again.";
+  }
+}
+
 export default function Room() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+
+  // Pre-warm the socket the instant this page mounts — before the player has
+  // even confirmed their name. `attemptJoin` (below) is the only other call
+  // to `getSocket()` in this component, and it is gated behind
+  // `playerName`/`mustDeclare`, so a guest arriving here for the first time
+  // via a shared room link never started the connection handshake until
+  // AFTER reading the room code, typing a name, and submitting
+  // `NameEntryForRoom`. That serialized the socket's connect time onto the
+  // "Connecting…" screen right when it mattered most: joining someone
+  // else's already-hosted room, which for a first-time guest always goes
+  // through name entry first. A returning player (name already stored)
+  // barely notices this gap, which is why it reads as "joining a hosted
+  // room is slow" rather than "every room is slow". Mirrors the same
+  // pre-warm `JoinRoomModal`/`GameRoomSheet` already do on modal open.
+  useEffect(() => {
+    getSocket();
+  }, []);
+
   const {
     playerId,
     playerName,
@@ -457,6 +518,10 @@ export default function Room() {
     socket.on("room:error", setError);
     socket.on("game:error", setError);
     socket.on("rematch:state", setRematch);
+    const onStartCancelled = (payload: { startAttemptId: string; reason: string }) => {
+      setError(startCancelledMessage(payload.reason));
+    };
+    socket.on("room:startCancelled", onStartCancelled);
 
     return () => {
       socket.off("connect", onConnect);
@@ -467,6 +532,7 @@ export default function Room() {
       socket.off("room:error", setError);
       socket.off("game:error", setError);
       socket.off("rematch:state", setRematch);
+      socket.off("room:startCancelled", onStartCancelled);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
       // but the user can navigate away via browser back / tab close without
       // ever clicking Leave. Drop fullscreen here too so they don't end up
