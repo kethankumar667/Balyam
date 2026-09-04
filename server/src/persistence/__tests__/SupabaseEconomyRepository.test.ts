@@ -124,6 +124,47 @@ describe("SupabaseEconomyRepository", () => {
       expect(body.p_participant_debits).toEqual(debits);
     });
 
+    it("commitMatchEntry falls back to 7 parameters if database returns PGRST202", async () => {
+      // First call fails with PGRST202 (function signature with p_participant_debits not found)
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(404, {
+          code: "PGRST202",
+          message: "Could not find the function public.commit_match_entry in schema cache",
+        }),
+      );
+      // Fallback call succeeds
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(200, {
+          applied: true,
+          operation: "commit_match_entry",
+          idempotencyKey: "match-entry:m3",
+          result: settlementRow({ match_id: "m3" }),
+        }),
+      );
+      const repo = new SupabaseEconomyRepository(CONFIG);
+      const debits = [
+        { identityId: "host_1", identityKind: "guest" as const, amountCoins: "100" },
+        { identityId: "guest_2", identityKind: "guest" as const, amountCoins: "100" },
+      ];
+      const res = await repo.commitMatchEntry({
+        matchId: "m3",
+        roomCode: "ROOM3",
+        hostIdentityId: "host_1",
+        seatCount: 2,
+        humanSeatCount: 2,
+        botSeatCount: 0,
+        isSolo: false,
+        participantDebits: debits,
+      });
+
+      expect(res.applied).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, initFallback] = fetchMock.mock.calls[1] as [string, RequestInit];
+      const fallbackBody = JSON.parse(initFallback.body as string);
+      expect(fallbackBody.p_participant_debits).toBeUndefined();
+      expect(fallbackBody.p_seat_count).toBe(2);
+    });
+
     it("settleMatchEconomy sends participants with camelCase keys UNCHANGED — the migration's jsonb_array_elements loop reads camelCase, not snake_case", async () => {
       fetchMock.mockResolvedValueOnce(
         jsonResponse(200, {

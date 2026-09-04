@@ -697,7 +697,7 @@ export class SupabaseEconomyRepository implements EconomyRepository {
   async commitMatchEntry(
     input: CommitMatchEntryInput,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
-    const envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", {
+    const baseParams: Record<string, unknown> = {
       p_match_id: input.matchId,
       p_room_code: input.roomCode,
       p_host_identity_id: input.hostIdentityId,
@@ -705,8 +705,30 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_human_seat_count: input.humanSeatCount,
       p_bot_seat_count: input.botSeatCount,
       p_is_solo: input.isSolo,
-      ...(input.participantDebits !== undefined ? { p_participant_debits: input.participantDebits } : {}),
-    });
+    };
+
+    let envelope: RawEnvelope<SettlementRow>;
+    if (input.participantDebits !== undefined && input.participantDebits.length > 0) {
+      try {
+        envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", {
+          ...baseParams,
+          p_participant_debits: input.participantDebits,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.includes("Could not find the function") ||
+          msg.includes("PGRST202") ||
+          msg.includes("p_participant_debits")
+        ) {
+          envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
+    }
     return { ...envelope, result: toSettlement(envelope.result) };
   }
 
