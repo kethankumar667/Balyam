@@ -90,14 +90,6 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
             title={statusText}
             aria-hidden="true"
           />
-          {isMember && (
-            <span
-              className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-200/40 dark:bg-amber-500/15 px-1.5 py-0.5 rounded-full border border-amber-500/20"
-              title="Registered Member"
-            >
-              VIP
-            </span>
-          )}
         </div>
       )}
       {/* Screen-reader live region for verified balance updates */}

@@ -79,9 +79,17 @@ export default function PlayerList({
                   Auto
                 </span>
               )}
-              {p.isHost && (
+              {p.isHost ? (
                 <span className="text-[11px] font-extrabold uppercase tracking-wider bg-orange-500/10 text-[#EA5A1F] dark:text-orange-400 border border-[#EA5A1F]/30 rounded-full px-2 py-0.5">
                   Host
+                </span>
+              ) : p.isBot ? (
+                <span className="text-[11px] font-bold uppercase tracking-wider bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-400/30 rounded-full px-2 py-0.5">
+                  Bot
+                </span>
+              ) : (
+                <span className="text-[11px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 rounded-full px-2 py-0.5">
+                  Player
                 </span>
               )}
               {p.isReady ? (

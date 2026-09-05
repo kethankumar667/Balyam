@@ -35,7 +35,7 @@ const QUICK_AMOUNTS = ["500", "1000", "2500", "5000", "10000", "50000"];
 const REASON_PRESETS = [
   "Admin manual top-up via console",
   "Support compensation for disconnected match",
-  "VIP player promotional bonus",
+  "Loyalty promotional bonus",
   "Community event tournament prize",
 ];
 

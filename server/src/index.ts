@@ -20,6 +20,7 @@ import {
 } from "./security/operationalAuth.js";
 import { createOperationalRouter } from "./observability/OperationalController.js";
 import { createDashboardRouter } from "./admin/DashboardController.js";
+import { createAdminUsersRouter } from "./admin/AdminUsersController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
@@ -284,6 +285,7 @@ app.get("/api/rooms/:code/alive", (req, res) => {
  * admin/DashboardController.ts for why that boundary matters.
  */
 app.use("/api/admin/dashboard", createDashboardRouter());
+app.use("/api/admin/users", createAdminUsersRouter());
 
 /**
  * Last stop for anything a handler threw.

@@ -46,4 +46,21 @@ describe("PlayerList — Quit badge", () => {
     expect(screen.queryByText("Quit")).toBeNull();
     expect(screen.queryByText("Auto")).toBeNull();
   });
+
+  it("shows correct role badges: Host, Bot, and Player", () => {
+    render(
+      <PlayerList
+        players={[
+          makePlayer({ id: "h1", name: "HostPlayer", isHost: true }),
+          makePlayer({ id: "b1", name: "BotPlayer", isBot: true }),
+          makePlayer({ id: "p1", name: "RegularPlayer" }),
+        ]}
+        selfId="p1"
+      />,
+    );
+
+    expect(screen.getByText("Host")).toBeDefined();
+    expect(screen.getByText("Bot")).toBeDefined();
+    expect(screen.getByText("Player")).toBeDefined();
+  });
 });

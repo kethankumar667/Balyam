@@ -57,6 +57,59 @@ import { verifyAccessToken } from "../lib/supabaseAuth.js";
 /** Shortest key we will accept in production. Stops `admin` / `changeme`. */
 const MIN_SECRET_LENGTH = 16;
 
+export type PlatformRole = "super_admin" | "admin" | "member";
+
+export interface DynamicRoleAssignment {
+  userId: string;
+  role: PlatformRole;
+  reason?: string;
+  assignedBy?: string;
+  assignedAt: number;
+}
+
+const dynamicUserRoles = new Map<string, DynamicRoleAssignment>();
+
+export function setUserRole(
+  userId: string,
+  role: PlatformRole,
+  metadata?: { reason?: string; assignedBy?: string },
+): void {
+  const normalizedId = userId.trim();
+  if (role === "member") {
+    dynamicUserRoles.delete(normalizedId);
+  } else {
+    dynamicUserRoles.set(normalizedId, {
+      userId: normalizedId,
+      role,
+      reason: metadata?.reason,
+      assignedBy: metadata?.assignedBy,
+      assignedAt: Date.now(),
+    });
+  }
+}
+
+export function getUserRole(userId: string, email?: string | null): PlatformRole {
+  const normalizedId = userId.trim();
+  const assigned = dynamicUserRoles.get(normalizedId);
+  if (assigned) return assigned.role;
+
+  const envAdminUserIds = (process.env.ADMIN_USER_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (envAdminUserIds.includes(normalizedId)) {
+    return "super_admin";
+  }
+  if (email && (email.toLowerCase().startsWith("superadmin@") || email.toLowerCase().includes("admin@bhalyam.io"))) {
+    return "super_admin";
+  }
+  return "member";
+}
+
+export function listDynamicRoles(): DynamicRoleAssignment[] {
+  return Array.from(dynamicUserRoles.values());
+}
+
 export interface OperationalAuthConfig {
   /** The shared ops key, or `""` when unset. */
   secret: string;
@@ -74,10 +127,12 @@ export interface OperationalAuthConfig {
  */
 export function operationalAuthConfig(): OperationalAuthConfig {
   const secret = (process.env.OPERATIONAL_SECRET ?? process.env.ADMIN_API_KEY ?? "").trim();
-  const adminUserIds = (process.env.ADMIN_USER_IDS ?? "")
+  const envAdminUserIds = (process.env.ADMIN_USER_IDS ?? "")
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
+  const dynamicAdmins = Array.from(dynamicUserRoles.keys());
+  const adminUserIds = Array.from(new Set([...envAdminUserIds, ...dynamicAdmins]));
   return { secret, adminUserIds, configured: secret.length > 0 || adminUserIds.length > 0 };
 }
 

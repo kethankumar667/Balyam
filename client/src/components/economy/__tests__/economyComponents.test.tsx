@@ -95,7 +95,7 @@ describe("Economy V1 Presentational Components Suite", () => {
 
       const chip = screen.getByRole("button");
       expect(screen.getByText("5,000")).toBeDefined();
-      expect(screen.getByText("VIP")).toBeDefined();
+      expect(screen.queryByText("VIP")).toBeNull();
       expect(chip.getAttribute("aria-label")).toContain("5000 coins");
 
       fireEvent.click(chip);

@@ -30,6 +30,14 @@ vi.mock("@tsparticles/confetti", () => ({
   confetti: vi.fn(),
 }));
 
+vi.mock("../../core/recovery/roomLiveness", () => ({
+  checkRoomAlive: vi.fn().mockResolvedValue({
+    alive: true,
+    game: "ludo",
+    phase: "playing",
+  }),
+}));
+
 // Mock game boards for page-wrapper DVH tests to prevent infinite game loops
 vi.mock("../../games/nokiacricket/NokiaCricketBoard", () => ({
   default: () => <div data-testid="nokia-cricket-board" />,
@@ -173,7 +181,7 @@ describe("Launch Remediation — P0-03: WCAG Touch Target Compliance (≥44x44px
     expect(closeBtn.className).toContain("min-h-[44px]");
   });
 
-  it("enforces ≥44x44px touch target on RejoinBanner dismiss button", () => {
+  it("enforces ≥44x44px touch target on RejoinBanner dismiss button", async () => {
     saveActiveSession({
       sessionId: "sess_99",
       roomId: "ROOM99",
@@ -190,7 +198,7 @@ describe("Launch Remediation — P0-03: WCAG Touch Target Compliance (≥44x44px
       </MemoryRouter>
     );
 
-    const dismissBtn = screen.getByRole("button", { name: /Dismiss rejoin notice/i });
+    const dismissBtn = await screen.findByRole("button", { name: /Dismiss rejoin notice/i });
     expect(dismissBtn.className).toContain("min-w-[44px]");
     expect(dismissBtn.className).toContain("min-h-[44px]");
 

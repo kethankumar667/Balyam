@@ -102,7 +102,7 @@ export default function ParticipantRow({
               </span>
             )}
 
-            {player.isHost && (
+            {player.isHost ? (
               <span
                 className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 border border-amber-300/60 dark:border-amber-700/50 rounded-md px-1.5 py-0.5 flex items-center gap-0.5 shrink-0"
                 title="Room Host"
@@ -110,9 +110,7 @@ export default function ParticipantRow({
                 <Crown size={12} aria-hidden />
                 <span>Host</span>
               </span>
-            )}
-
-            {player.isBot && (
+            ) : player.isBot ? (
               <span
                 className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-0.5 shrink-0 flex items-center gap-0.5"
                 title={player.bingoDifficulty ? `Bot (${player.bingoDifficulty})` : "AI Bot"}
@@ -120,11 +118,12 @@ export default function ParticipantRow({
                 <Bot size={12} aria-hidden />
                 <span>Bot</span>
               </span>
-            )}
-
-            {player.isLocal && (
-              <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/70 rounded-md px-1.5 py-0.5 shrink-0">
-                Local
+            ) : (
+              <span
+                className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/50 dark:border-emerald-700/40 rounded-md px-1.5 py-0.5 shrink-0"
+                title="Table Player"
+              >
+                Player
               </span>
             )}
           </div>
@@ -146,7 +145,7 @@ export default function ParticipantRow({
               </span>
             ) : (
               <span className="text-[10px] font-bold text-[#5C4328] dark:text-slate-300">
-                {player.isBot ? "AI Player" : "Human Player"}
+                {player.isBot ? "Bot" : player.isHost ? "Host" : "Player"}
               </span>
             )}
           </div>

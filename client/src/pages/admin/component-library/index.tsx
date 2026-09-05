@@ -354,7 +354,7 @@ export default function AdminComponentLibraryPage() {
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">Member VIP (Synced)</span>
+                <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">Member (Synced)</span>
                 <WalletBalanceChip balance={DEMO_WALLET_MEMBER.balance} isMember={true} syncStatus="synced" onClick={() => {}} />
               </div>
               <div className="flex flex-col items-center gap-1.5">

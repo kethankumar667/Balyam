@@ -115,6 +115,13 @@ export function usePlayerCapability({
    */
   const activePreflightRef = useRef<StartPreflightPayload | null>(null);
 
+  /**
+   * Cancels whatever `handleStartPreflight` is currently waiting on (see
+   * below) — a pending retry-until-deadline for an earlier preflight that a
+   * newer preflight, a cancellation, or unmount has now superseded.
+   */
+  const cancelPendingRetryRef = useRef<(() => void) | null>(null);
+
   // ── Effect 1: preflight challenge responder ────────────────────────────
   useEffect(() => {
     if (!roomCode || !playerId || !game) return;
@@ -122,6 +129,9 @@ export function usePlayerCapability({
     const socket = getSocket();
 
     const handleStartPreflight = (payload: StartPreflightPayload): void => {
+      cancelPendingRetryRef.current?.();
+      cancelPendingRetryRef.current = null;
+
       // Stash the active preflight so the continuous monitor (Effect 2) can
       // compare against it when deciding whether to emit reportUnavailable.
       activePreflightRef.current = payload;
@@ -132,35 +142,77 @@ export function usePlayerCapability({
         return;
       }
 
-      const visible = isPageVisible();
-      const orientationOk = isOrientationSatisfied(payload.requiredOrientation);
-
-      if (visible && orientationOk) {
+      /** True (and acked) iff both conditions hold right now. */
+      const tryAcknowledge = (): boolean => {
+        if (!isPageVisible() || !isOrientationSatisfied(payload.requiredOrientation)) {
+          return false;
+        }
         socket.emit("room:acknowledgeStart", {
           startAttemptId: payload.startAttemptId,
           roomRevision: payload.roomRevision,
           visible: true,
           orientationSatisfied: true,
         });
-        return;
-      }
+        return true;
+      };
 
-      // Determine the most specific decline reason (visibility takes priority
-      // over orientation since a hidden tab cannot show the rotation prompt).
-      const reason: StartBlockReason = !visible
-        ? "PAGE_NOT_VISIBLE"
-        : "ORIENTATION_REQUIRED";
+      if (tryAcknowledge()) return;
 
-      socket.emit("room:declineStart", {
-        startAttemptId: payload.startAttemptId,
-        reason,
-      });
+      /**
+       * Not satisfied at this exact instant — which is routinely a one-frame
+       * artifact, not a real problem: clicking "Start" lives in ONE window/
+       * tab, and the very act of clicking it is what makes every OTHER
+       * window/tab not the OS-focused one for a moment (two windows on one
+       * machine testing together; a friend's phone screen briefly dimming;
+       * a notification stealing focus). The server already budgets
+       * `expiresAt - now` (5s) for every participant to confirm — declining
+       * instantly on a single bad snapshot spent none of that budget and
+       * killed the WHOLE match start over something that, in every case
+       * above, resolves on its own within a heartbeat. So: keep re-checking
+       * on the same signals Effect 2 already listens for, and only decline
+       * if the deadline actually passes still unsatisfied — a real,
+       * sustained backgrounded tab or wrong orientation still fails
+       * exactly as before, just no longer punished for a transient blip.
+       */
+      let settled = false;
+      const recheck = (): void => {
+        if (settled || tryAcknowledge() === false) return;
+        settled = true;
+        cleanup();
+      };
+      const cleanup = (): void => {
+        document.removeEventListener("visibilitychange", recheck);
+        window.removeEventListener("resize", recheck);
+        window.removeEventListener("orientationchange", recheck);
+        window.clearTimeout(deadlineTimer);
+        if (cancelPendingRetryRef.current === cleanup) cancelPendingRetryRef.current = null;
+      };
+      document.addEventListener("visibilitychange", recheck);
+      window.addEventListener("resize", recheck, { passive: true });
+      window.addEventListener("orientationchange", recheck, { passive: true });
+      const deadlineTimer = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        // Still unsatisfied when the server's own deadline arrived — a
+        // genuine, sustained block, not a blip. Determine the most specific
+        // decline reason (visibility takes priority over orientation since a
+        // hidden tab cannot show the rotation prompt).
+        const reason: StartBlockReason = !isPageVisible()
+          ? "PAGE_NOT_VISIBLE"
+          : "ORIENTATION_REQUIRED";
+        socket.emit("room:declineStart", { startAttemptId: payload.startAttemptId, reason });
+      }, Math.max(0, payload.expiresAt - Date.now()));
+      cancelPendingRetryRef.current = cleanup;
     };
 
     const handleStartCancelled = (): void => {
       // Clear the active preflight when the attempt is cancelled so the
-      // continuous monitor knows no attempt is in flight.
+      // continuous monitor knows no attempt is in flight, and stop waiting
+      // on a retry for an attempt that no longer exists.
       activePreflightRef.current = null;
+      cancelPendingRetryRef.current?.();
+      cancelPendingRetryRef.current = null;
     };
 
     socket.on("room:startPreflight", handleStartPreflight);
@@ -169,6 +221,8 @@ export function usePlayerCapability({
     return () => {
       socket.off("room:startPreflight", handleStartPreflight);
       socket.off("room:startCancelled", handleStartCancelled);
+      cancelPendingRetryRef.current?.();
+      cancelPendingRetryRef.current = null;
       // Don't clear activePreflightRef here — the continuous monitor (Effect 2)
       // has its own independent lifecycle and shares the ref across both effects.
     };
@@ -185,19 +239,42 @@ export function usePlayerCapability({
     const socket = getSocket();
 
     /**
-     * Emits `room:reportUnavailable` only when there is an active in-flight
-     * start attempt. We do NOT want to spam the server with unavailability
-     * events during routine lobby browsing — only when the server is actively
-     * collecting preflight acks.
+     * A short window a reported unavailability must SURVIVE before it is
+     * actually sent — see the matching reasoning in Effect 1's
+     * `handleStartPreflight`. `visibilitychange`/`resize` fire on one-frame
+     * artifacts (the click that triggers a start attempt necessarily
+     * unfocuses every OTHER window/tab for an instant) just as readily as on
+     * a real backgrounded tab, and `room:reportUnavailable` was an
+     * unconditional, immediate hard-cancel with no way to tell the two
+     * apart. A real problem is still there 800ms later; a focus-shift blip
+     * from clicking a button is not — this is short enough that Effect 2's
+     * whole reason for existing ("caught immediately rather than only at a
+     * timeout") still holds, well under the server's 5s preflight window.
      */
-    const reportUnavailable = (reason: "PAGE_NOT_VISIBLE" | "ORIENTATION_REQUIRED"): void => {
-      if (!activePreflightRef.current) return;
-      socket.emit("room:reportUnavailable", { reason });
+    const UNAVAILABILITY_GRACE_MS = 800;
+    let graceTimer: number | null = null;
+
+    /**
+     * Emits `room:reportUnavailable` only when there is an active in-flight
+     * start attempt, AND only once the condition has survived the grace
+     * window above — never on the strength of a single event.
+     */
+    const reportUnavailable = (
+      reason: "PAGE_NOT_VISIBLE" | "ORIENTATION_REQUIRED",
+      stillBad: () => boolean,
+    ): void => {
+      if (!activePreflightRef.current || graceTimer !== null) return;
+      graceTimer = window.setTimeout(() => {
+        graceTimer = null;
+        if (activePreflightRef.current && stillBad()) {
+          socket.emit("room:reportUnavailable", { reason });
+        }
+      }, UNAVAILABILITY_GRACE_MS);
     };
 
     const handleVisibilityChange = (): void => {
       if (!isPageVisible()) {
-        reportUnavailable("PAGE_NOT_VISIBLE");
+        reportUnavailable("PAGE_NOT_VISIBLE", () => !isPageVisible());
       }
     };
 
@@ -221,7 +298,7 @@ export function usePlayerCapability({
         // stored in activePreflightRef if one is in flight.
         const req = activePreflightRef.current?.requiredOrientation;
         if (req === "landscape" && portrait) {
-          reportUnavailable("ORIENTATION_REQUIRED");
+          reportUnavailable("ORIENTATION_REQUIRED", () => isMobilePortrait() && !isOrientationSatisfied("landscape"));
         }
       }
     };
@@ -235,6 +312,7 @@ export function usePlayerCapability({
     }
 
     return () => {
+      if (graceTimer !== null) window.clearTimeout(graceTimer);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }

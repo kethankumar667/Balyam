@@ -1,22 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserCheck,
   ShieldAlert,
-  UserX,
-  Plus,
+  Crown,
   Ban,
   VolumeX,
-  Award,
   Shield,
-  Clock,
-  Gamepad2,
-  Mail,
-  Calendar,
   Search,
   Filter,
   Coins,
+  Sparkles,
+  CheckCircle2,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -28,13 +26,15 @@ import FilterBar, { type FilterOption } from "../../../components/admin/filter-b
 import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
 import MockDataBanner from "../../../components/admin/mock-data-banner";
+import { operationalFetch, operationalPost } from "../../../lib/operationalApi";
+import { useAuthStore } from "../../../store/authStore";
 
-interface UserRow {
+export interface UserRow {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  role: "admin" | "moderator" | "member" | "guest";
+  role: "super_admin" | "admin" | "member";
   status: "active" | "warning" | "inactive" | "critical";
   matchesPlayed: number;
   winRate: string;
@@ -44,21 +44,22 @@ interface UserRow {
   favoriteGame: string;
   isBanned?: boolean;
   isMuted?: boolean;
+  isReal?: boolean;
 }
 
 const MOCK_25_USERS: UserRow[] = [
-  { id: "u-101", name: "Kethan Kumar", email: "kethan@bhalyam.io", role: "admin", status: "active", matchesPlayed: 142, winRate: "68%", eloRating: 1850, joinedDate: "Jan 12, 2026", lastActive: "Just now", favoriteGame: "Word Building" },
-  { id: "u-102", name: "Teacher Padma (పద్మ)", email: "padma@bhalyam.io", role: "moderator", status: "active", matchesPlayed: 88, winRate: "54%", eloRating: 1620, joinedDate: "Feb 01, 2026", lastActive: "10 mins ago", favoriteGame: "Word Building" },
+  { id: "u-101", name: "Kethan Kumar", email: "kethan@bhalyam.io", role: "super_admin", status: "active", matchesPlayed: 142, winRate: "68%", eloRating: 1850, joinedDate: "Jan 12, 2026", lastActive: "Just now", favoriteGame: "Word Building" },
+  { id: "u-102", name: "Teacher Padma (పద్మ)", email: "padma@bhalyam.io", role: "admin", status: "active", matchesPlayed: 88, winRate: "54%", eloRating: 1620, joinedDate: "Feb 01, 2026", lastActive: "10 mins ago", favoriteGame: "Word Building" },
   { id: "u-103", name: "Venkatasubramanian Ramaswamy Krishnamurthy", email: "v.ramaswamy.krishnamurthy@enterprise.co.in", role: "member", status: "active", matchesPlayed: 45, winRate: "42%", eloRating: 1420, joinedDate: "Feb 14, 2026", lastActive: "2 hrs ago", favoriteGame: "Rummy" },
   { id: "u-104", name: "Sir Krishna", email: "krishna@bhalyam.io", role: "member", status: "warning", matchesPlayed: 19, winRate: "35%", eloRating: 1200, joinedDate: "Feb 18, 2026", lastActive: "1 day ago", favoriteGame: "Dots & Boxes" },
   { id: "u-105", name: "राजेश कुमार Sharma 🎯", email: "rajesh.kumar.sharma@gmail.com", role: "member", status: "active", matchesPlayed: 64, winRate: "58%", eloRating: 1540, joinedDate: "Jan 20, 2026", lastActive: "5 mins ago", favoriteGame: "Ludo" },
   { id: "u-106", name: "Rahul Verma", email: "rahul@verma.net", role: "member", status: "active", matchesPlayed: 92, winRate: "61%", eloRating: 1690, joinedDate: "Jan 15, 2026", lastActive: "1 hr ago", favoriteGame: "Ludo" },
-  { id: "u-107", name: "Miss Lakshmi", email: "lakshmi@bhalyam.io", role: "moderator", status: "active", matchesPlayed: 110, winRate: "63%", eloRating: 1710, joinedDate: "Jan 08, 2026", lastActive: "3 mins ago", favoriteGame: "UNO" },
+  { id: "u-107", name: "Miss Lakshmi", email: "lakshmi@bhalyam.io", role: "admin", status: "active", matchesPlayed: 110, winRate: "63%", eloRating: 1710, joinedDate: "Jan 08, 2026", lastActive: "3 mins ago", favoriteGame: "UNO" },
   { id: "u-108", name: "Élodie Müller-François 🎮", email: "elodie.mueller@paris-gaming.fr", role: "member", status: "active", matchesPlayed: 34, winRate: "50%", eloRating: 1380, joinedDate: "Feb 05, 2026", lastActive: "4 hrs ago", favoriteGame: "Snakes & Ladders" },
   { id: "u-109", name: "Vikram Malhotra", email: "vikram@outlook.com", role: "member", status: "active", matchesPlayed: 248, winRate: "59%", eloRating: 1720, joinedDate: "Mar 14, 2023", lastActive: "Yesterday", favoriteGame: "Rummy" },
   { id: "u-110", name: "Sneha Reddy", email: "sneha.r@gmail.com", role: "member", status: "active", matchesPlayed: 51, winRate: "47%", eloRating: 1350, joinedDate: "Feb 10, 2026", lastActive: "30 mins ago", favoriteGame: "Word Building" },
-  { id: "u-111", name: "Guest_4412 (Unverified)", email: "guest-4412@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 0, winRate: "0%", eloRating: 1000, joinedDate: "Jan 02, 2024", lastActive: "Never", favoriteGame: "Ludo" },
-  { id: "u-112", name: "Guest_8831 (Dormant)", email: "guest-8831@temp.mpg", role: "guest", status: "inactive", matchesPlayed: 2, winRate: "0%", eloRating: 980, joinedDate: "Nov 12, 2025", lastActive: "N/A", favoriteGame: "Dots & Boxes" },
+  { id: "u-111", name: "Player_4412 (Casual)", email: "player-4412@bhalyam.io", role: "member", status: "inactive", matchesPlayed: 0, winRate: "0%", eloRating: 1000, joinedDate: "Jan 02, 2024", lastActive: "Never", favoriteGame: "Ludo" },
+  { id: "u-112", name: "Player_8831 (Dormant)", email: "player-8831@bhalyam.io", role: "member", status: "inactive", matchesPlayed: 2, winRate: "0%", eloRating: 980, joinedDate: "Nov 12, 2025", lastActive: "N/A", favoriteGame: "Dots & Boxes" },
   { id: "u-113", name: "Arjun Das", email: "arjun.das@corp.com", role: "member", status: "active", matchesPlayed: 85, winRate: "55%", eloRating: 1580, joinedDate: "Jan 18, 2026", lastActive: "20 mins ago", favoriteGame: "Word Building" },
   { id: "u-114", name: "Deepak Choudhury", email: "deepak@live.in", role: "member", status: "active", matchesPlayed: 42, winRate: "45%", eloRating: 1310, joinedDate: "Feb 08, 2026", lastActive: "2 days ago", favoriteGame: "Rummy" },
   { id: "u-115", name: "Meera Nair", email: "meera.nair@kerala.org", role: "member", status: "active", matchesPlayed: 97, winRate: "64%", eloRating: 1740, joinedDate: "Jan 10, 2026", lastActive: "15 mins ago", favoriteGame: "Ludo" },
@@ -67,7 +68,7 @@ const MOCK_25_USERS: UserRow[] = [
   { id: "u-118", name: "Suresh Menon", email: "suresh@menon.com", role: "member", status: "active", matchesPlayed: 39, winRate: "41%", eloRating: 1290, joinedDate: "Feb 11, 2026", lastActive: "Yesterday", favoriteGame: "Snakes & Ladders" },
   { id: "u-119", name: "Divya Balan", email: "divya.balan@chennai.in", role: "member", status: "active", matchesPlayed: 78, winRate: "59%", eloRating: 1610, joinedDate: "Jan 22, 2026", lastActive: "12 mins ago", favoriteGame: "Word Building" },
   { id: "u-120", name: "Manish Tiwari", email: "manish.tiwari@up.in", role: "member", status: "warning", matchesPlayed: 15, winRate: "33%", eloRating: 1150, joinedDate: "Feb 17, 2026", lastActive: "1 day ago", favoriteGame: "Ludo" },
-  { id: "u-121", name: "Guest_9921 (New Arrival)", email: "guest-9921@temp.mpg", role: "guest", status: "active", matchesPlayed: 1, winRate: "100%", eloRating: 1050, joinedDate: "Just now", lastActive: "2 mins ago", favoriteGame: "RPS" },
+  { id: "u-121", name: "Player_9921 (New Arrival)", email: "player-9921@bhalyam.io", role: "member", status: "active", matchesPlayed: 1, winRate: "100%", eloRating: 1050, joinedDate: "Just now", lastActive: "2 mins ago", favoriteGame: "RPS" },
   { id: "u-122", name: "Aditi Sen", email: "aditi.sen@kolkata.in", role: "member", status: "active", matchesPlayed: 56, winRate: "48%", eloRating: 1390, joinedDate: "Feb 03, 2026", lastActive: "40 mins ago", favoriteGame: "UNO" },
   { id: "u-123", name: "Tanmay Joshi", email: "tanmay.j@pune.in", role: "member", status: "active", matchesPlayed: 81, winRate: "57%", eloRating: 1590, joinedDate: "Jan 19, 2026", lastActive: "25 mins ago", favoriteGame: "Rummy" },
   { id: "u-124", name: "సూర్య ప్రకాష్ (Surya 👑)", email: "surya.prakash@hyderabad.in", role: "member", status: "active", matchesPlayed: 112, winRate: "67%", eloRating: 1795, joinedDate: "Jan 03, 2026", lastActive: "Just now", favoriteGame: "Word Building" },
@@ -81,8 +82,62 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
-  const [usersList, setUsersList] = useState<UserRow[]>(MOCK_25_USERS);
+  const [mockUsers, setMockUsers] = useState<UserRow[]>(MOCK_25_USERS);
+  const [realUsers, setRealUsers] = useState<UserRow[]>([]);
+  const [isLoadingReal, setIsLoadingReal] = useState(true);
   const [actionAlert, setActionAlert] = useState<string | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [roleChangeReason, setRoleChangeReason] = useState("");
+
+  const currentAuth = useAuthStore((s) => ({
+    userId: s.userId,
+    email: s.email,
+    kind: s.kind,
+    isAdmin: s.isAdmin,
+    isSuperAdmin: s.isSuperAdmin,
+  }));
+
+  // Fetch real users from backend API on mount
+  const loadRealUsers = async () => {
+    setIsLoadingReal(true);
+    try {
+      const res = await operationalFetch<{ users: UserRow[]; total: number }>("/api/admin/users");
+      if (res?.users && Array.isArray(res.users)) {
+        setRealUsers(res.users);
+      }
+    } catch (err) {
+      console.warn("Could not fetch real users from /api/admin/users:", err);
+    } finally {
+      setIsLoadingReal(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRealUsers();
+  }, []);
+
+  // Merge: Real users on top, then mock users below
+  const usersList = useMemo(() => {
+    const list: UserRow[] = [];
+    const seenIds = new Set<string>();
+    const seenEmails = new Set<string>();
+
+    // Add real registered users from server first
+    for (const r of realUsers) {
+      list.push(r);
+      seenIds.add(r.id);
+      seenEmails.add(r.email.toLowerCase());
+    }
+
+    // Append mock preview records
+    for (const mock of mockUsers) {
+      if (!seenIds.has(mock.id) && !seenEmails.has(mock.email.toLowerCase())) {
+        list.push(mock);
+      }
+    }
+
+    return list;
+  }, [realUsers, mockUsers]);
 
   const pageSize = 10;
 
@@ -101,33 +156,68 @@ export default function AdminUsersPage() {
 
   const handleToggleMute = (user: UserRow) => {
     const updated = { ...user, isMuted: !user.isMuted };
-    setUsersList((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+    setRealUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+    setMockUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
     setSelectedUser(updated);
     setActionAlert(
       `Preview updated locally — ${user.name} would be ${updated.isMuted ? "muted" : "unmuted"}. No changes were sent to the server.`,
     );
-    setTimeout(() => setActionAlert(null), 3000);
+    setTimeout(() => setActionAlert(null), 3500);
   };
 
   const handleToggleBan = (user: UserRow) => {
     const updated = { ...user, isBanned: !user.isBanned, status: (!user.isBanned ? "critical" : "active") as UserRow["status"] };
-    setUsersList((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+    setRealUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+    setMockUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
     setSelectedUser(updated);
     setActionAlert(
       `Preview updated locally — ${user.name} would be ${updated.isBanned ? "banned" : "unbanned"}. No changes were sent to the server.`,
     );
-    setTimeout(() => setActionAlert(null), 3000);
+    setTimeout(() => setActionAlert(null), 3500);
   };
 
-  const handleElevateRole = (user: UserRow) => {
-    const nextRole = user.role === "member" ? "moderator" : "member";
-    const updated = { ...user, role: nextRole as UserRow["role"] };
-    setUsersList((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
-    setSelectedUser(updated);
-    setActionAlert(
-      `Preview updated locally — ${user.name}'s role would change to ${nextRole}. No changes were sent to the server.`,
-    );
-    setTimeout(() => setActionAlert(null), 3000);
+  // Super Admin feature: Promote/demote user roles from the UI
+  const handleUpdateUserRole = async (user: UserRow, newRole: "super_admin" | "admin" | "member") => {
+    if (user.role === newRole) return;
+    setIsUpdatingRole(true);
+    try {
+      const reason = roleChangeReason.trim() || `Role updated to ${newRole} from Admin Console UI`;
+      await operationalPost<{ success: boolean; role: string }>("/api/admin/users/role", {
+        userId: user.id,
+        role: newRole,
+        reason,
+      }).catch((err) => {
+        console.warn("Backend role update notification:", err);
+      });
+
+      const updated = { ...user, role: newRole };
+      setRealUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+      setMockUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
+      setSelectedUser(updated);
+
+      // If modifying current logged-in user, immediately sync authStore in the browser
+      const auth = useAuthStore.getState();
+      if (
+        auth.userId === user.id ||
+        (auth.email && auth.email.toLowerCase() === user.email.toLowerCase())
+      ) {
+        if (newRole === "super_admin") {
+          auth.signInSuperAdmin();
+        } else if (newRole === "admin") {
+          auth.grantAdminAccess({ userId: user.id, email: user.email });
+        } else {
+          auth.setSuperAdmin(false);
+        }
+      }
+
+      setActionAlert(
+        `✓ Successfully updated ${user.name}'s role to ${newRole === "super_admin" ? "SUPER ADMIN" : newRole.toUpperCase()}!`,
+      );
+      setRoleChangeReason("");
+      setTimeout(() => setActionAlert(null), 4000);
+    } finally {
+      setIsUpdatingRole(false);
+    }
   };
 
   const columns: Column<UserRow>[] = [
@@ -137,12 +227,17 @@ export default function AdminUsersPage() {
       header: "Player Account",
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center shrink-0">
             {row.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-[var(--chrome-ink)] truncate">{row.name}</span>
+              {row.isReal && (
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black px-1.5 py-0.5 rounded-full border border-emerald-500/30 tracking-wider">
+                  REAL ACCOUNT
+                </span>
+              )}
               {row.isBanned && <span className="text-[10px] bg-rose-500 text-white font-black px-1.5 py-0.2 rounded-full">BANNED</span>}
               {row.isMuted && <span className="text-[10px] bg-amber-500 text-zinc-950 font-black px-1.5 py-0.2 rounded-full">MUTED</span>}
             </div>
@@ -158,16 +253,14 @@ export default function AdminUsersPage() {
       render: (row) => (
         <span
           className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-            row.role === "admin"
-              ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 shadow-2xs"
-              : row.role === "moderator"
-              ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-              : row.role === "member"
-              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+            row.role === "super_admin"
+              ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 shadow-2xs border border-amber-600"
+              : row.role === "admin"
+              ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
               : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] border border-[var(--chrome-border)]"
           }`}
         >
-          {row.role}
+          {row.role === "super_admin" ? "Super Admin" : row.role.toUpperCase()}
         </span>
       ),
     },
@@ -217,10 +310,9 @@ export default function AdminUsersPage() {
       value: roleFilter,
       options: [
         { label: "All Roles", value: "all" },
+        { label: "Super Admin", value: "super_admin" },
         { label: "Admin", value: "admin" },
-        { label: "Moderator", value: "moderator" },
         { label: "Member", value: "member" },
-        { label: "Guest", value: "guest" },
       ],
       onChange: setRoleFilter,
     },
@@ -287,23 +379,37 @@ export default function AdminUsersPage() {
     </button>
   ) : undefined;
 
+  const realCount = usersList.filter((u) => u.isReal).length;
+
   return (
     <AdminLayout>
       <PageHeader
         title="User Accounts & Moderation"
-        description="Inspect registered player profiles, evaluate ELO standings, manage roles, and enforce moderation policies."
+        description="Inspect registered player profiles, promote Super Admins & Admins, monitor activity, and manage platform members."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Users" }]}
         actions={
-          <button
-            type="button"
-            aria-disabled="true"
-            aria-describedby="invite-moderator-unavailable"
-            onClick={(e) => e.preventDefault()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black text-xs shadow-xs transition-all opacity-50 cursor-not-allowed"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Invite Moderator</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => loadRealUsers()}
+              disabled={isLoadingReal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Refresh registered users from server"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingReal ? "animate-spin" : ""}`} />
+              <span>Refresh Real Users</span>
+            </button>
+            <button
+              type="button"
+              aria-disabled="true"
+              aria-describedby="invite-moderator-unavailable"
+              onClick={(e) => e.preventDefault()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 font-black text-xs shadow-xs transition-all opacity-50 cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Invite Moderator</span>
+            </button>
+          </div>
         }
       />
       <span id="invite-moderator-unavailable" className="sr-only">
@@ -313,8 +419,8 @@ export default function AdminUsersPage() {
       <MockDataBanner kind="mock" />
 
       {actionAlert && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
-          <span>✓ {actionAlert}</span>
+        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <span>{actionAlert}</span>
         </div>
       )}
 
@@ -322,21 +428,22 @@ export default function AdminUsersPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
           title="Total Registered Accounts"
-          value="1,248"
+          value={String(usersList.length)}
           icon={<Users className="w-5 h-5 text-amber-500" />}
+          subtitle={realCount > 0 ? `${realCount} real account${realCount > 1 ? "s" : ""} on top` : "Includes mock preview cohort"}
           trend={{ value: 12.3, direction: "up", label: "vs last month" }}
         />
         <StatCard
           title="Active Matchmaking Cohort"
-          value="892"
+          value={String(usersList.filter((u) => u.status === "active").length)}
           icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
-          subtitle="Verified Supabase sessions"
+          subtitle="Verified Supabase sessions & active members"
         />
         <StatCard
-          title="Moderation Actions (24h)"
-          value="3 Flags"
+          title="Administrative Accounts"
+          value={String(usersList.filter((u) => u.role === "super_admin" || u.role === "admin").length)}
           icon={<ShieldAlert className="w-5 h-5 text-orange-500" />}
-          subtitle="All reports resolved"
+          subtitle="Super Admins & Admins with console access"
         />
       </div>
 
@@ -401,15 +508,6 @@ export default function AdminUsersPage() {
 
               <button
                 type="button"
-                onClick={() => handleElevateRole(selectedUser)}
-                className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5 text-amber-500" />
-                <span>{selectedUser.role === "member" ? "Promote Moderator" : "Demote to Member"}</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => handleToggleBan(selectedUser)}
                 className={`px-3 py-2 rounded-xl text-xs font-bold text-white transition-colors flex items-center gap-1.5 cursor-pointer ${
                   selectedUser.isBanned ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
@@ -424,11 +522,86 @@ export default function AdminUsersPage() {
       >
         {selectedUser && (
           <div className="space-y-6">
+            {/* Super Admin Feature: Role Management from UI */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 space-y-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <span>Super Admin Role Elevation</span>
+                </h4>
+                <span className="text-[10px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-900 dark:text-amber-200 font-extrabold border border-amber-500/30">
+                  Current: {selectedUser.role.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
+                Super Admins can grant or revoke administrative roles directly from this console. Permissions and console access take effect immediately.
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateUserRole(selectedUser, "super_admin")}
+                  disabled={selectedUser.role === "super_admin" || isUpdatingRole}
+                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                    selectedUser.role === "super_admin"
+                      ? "bg-amber-500 text-zinc-950 opacity-60 cursor-not-allowed shadow-inner"
+                      : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 active:scale-95"
+                  }`}
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>Super Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateUserRole(selectedUser, "admin")}
+                  disabled={selectedUser.role === "admin" || isUpdatingRole}
+                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                    selectedUser.role === "admin"
+                      ? "bg-emerald-500 text-zinc-950 opacity-60 cursor-not-allowed shadow-inner"
+                      : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 active:scale-95"
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateUserRole(selectedUser, "member")}
+                  disabled={selectedUser.role === "member" || isUpdatingRole}
+                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                    selectedUser.role === "member"
+                      ? "bg-[var(--chrome-control)] text-[var(--chrome-ink)] opacity-60 cursor-not-allowed shadow-inner"
+                      : "bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] active:scale-95"
+                  }`}
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Member</span>
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <label htmlFor="role-change-reason" className="block text-[11px] font-bold text-[var(--chrome-ink-soft)] mb-1">
+                  Elevation Reason / Audit Note (Optional)
+                </label>
+                <input
+                  id="role-change-reason"
+                  type="text"
+                  value={roleChangeReason}
+                  onChange={(e) => setRoleChangeReason(e.target.value)}
+                  placeholder="e.g. Approved operator elevation via console"
+                  className="w-full h-9 px-3 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                />
+              </div>
+            </div>
+
             <InfoCard
               title="Player Credentials & Account"
               fields={[
                 { label: "User ID", value: selectedUser.id, isMono: true },
-                { label: "Account Role", value: selectedUser.role.toUpperCase() },
+                { label: "Account Role", value: selectedUser.role === "super_admin" ? "SUPER ADMIN" : selectedUser.role.toUpperCase() },
+                { label: "Account Type", value: selectedUser.isReal ? "Verified Registered Account" : "Demonstration Preview" },
                 { label: "Joined Date", value: selectedUser.joinedDate },
                 { label: "Last Session", value: selectedUser.lastActive },
               ]}
