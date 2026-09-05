@@ -7,6 +7,7 @@ import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useHaptics } from "../../hooks/useHaptics";
 import { useTranslation } from "../../hooks/useTranslation";
 import { announceNumber, stopAnnouncing } from "./announcer";
+import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
 
 export interface BingoBoardProps {
   state: BingoPlayerState;
@@ -66,6 +67,11 @@ export interface BingoBoardModel {
   lockBoard: () => void;
   callNumber: (num: number) => void;
   claimBingo: () => void;
+
+  theme: GameSkinTheme;
+  toggleTheme: () => void;
+  isNotebook: boolean;
+  isNeon: boolean;
 }
 
 function emitMove(type: string, data?: unknown): void {
@@ -229,6 +235,8 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     [play]
   );
 
+  const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("bingo", "notebook");
+
   return {
     state,
     players,
@@ -263,5 +271,10 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     lockBoard,
     callNumber,
     claimBingo,
+
+    theme,
+    toggleTheme,
+    isNotebook,
+    isNeon,
   };
 }

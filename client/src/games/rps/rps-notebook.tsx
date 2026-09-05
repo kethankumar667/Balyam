@@ -45,6 +45,7 @@ import type { RpsChoice } from "@shared/types";
 import type { RoundOutcome } from "./useRpsBoard";
 import { findAvatar } from "../../lib/avatars";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
 
 /* ─────────────────────── Palette constants ─────────────────────── */
 const PAPER   = "#F5E9C4";
@@ -218,20 +219,11 @@ export function NotebookTopBar({
         </div>
 
         {onSkin && (
-          <button
-            onClick={onSkin}
-            className="px-3 py-1.5 rounded font-bold transition hover:brightness-95 active:scale-[0.97]"
-            style={{
-              background: PAPER_L,
-              border: `1.5px solid ${BORDER}`,
-              color: INK,
-              fontSize: 13,
-              boxShadow: "1px 2px 5px rgba(0,0,0,0.18)",
-            }}
-            title="Switch to the broadcast look"
-          >
-            Broadcast view
-          </button>
+          <GameThemeToggle
+            theme="notebook"
+            onToggle={onSkin}
+            variant="compact"
+          />
         )}
 
         {onHelp && (

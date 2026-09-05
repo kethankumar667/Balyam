@@ -8,6 +8,7 @@ import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
 import { useSkin } from "../skin";
 import { RpsClashOverlay, RpsWinnerCelebration } from "./RpsAnimations";
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
 import {
   NotebookPage,
   NotebookPlayerCard,
@@ -76,18 +77,11 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           <span className="text-xs font-bold" style={{ color: "#4a5a82" }}>
             to <span style={{ color: "#c0392b", fontWeight: 900 }}>{m.target}</span>
           </span>
-          <button
-            onClick={() => setSkin("broadcast")}
-            className="min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition active:scale-95 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a2952]"
-            style={{
-              background: "#FBF5E0",
-              border: "1.5px solid rgba(46,40,25,0.5)",
-              color: "#1a2952",
-            }}
-            title="Switch to the broadcast look"
-          >
-            Broadcast
-          </button>
+          <GameThemeToggle
+            theme="notebook"
+            onToggle={() => setSkin("broadcast")}
+            variant="compact"
+          />
           <TutorialButton onClick={() => tut.setOpen(true)} />
           {props.onLeave && (
             <button

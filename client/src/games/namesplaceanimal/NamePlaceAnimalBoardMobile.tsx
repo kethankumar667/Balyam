@@ -6,6 +6,9 @@ import FloatingReactionsLayer from "../../components/reactions/FloatingReactions
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { NpatLetterRevealBurst, NpatWinnerCelebration } from "./NpatAnimations";
 
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
+import type { GameSkinTheme } from "../../hooks/useGameTheme";
+
 export interface NamePlaceAnimalBoardProps {
   state: NamePlaceAnimalPublicState;
   myAnswers: NamePlaceAnimalAnswers;
@@ -15,6 +18,10 @@ export interface NamePlaceAnimalBoardProps {
   messages?: ChatMessage[];
   roomCode?: string;
   roomPhase?: string;
+  theme?: GameSkinTheme;
+  toggleTheme?: () => void;
+  isNotebook?: boolean;
+  isNeon?: boolean;
 }
 
 const SAMPLE_CLUES: Record<string, Record<NamePlaceAnimalCategory, string>> = {
@@ -52,6 +59,10 @@ export default function NamePlaceAnimalBoardMobile({
   messages,
   roomCode,
   roomPhase,
+  theme,
+  toggleTheme,
+  isNotebook,
+  isNeon,
 }: NamePlaceAnimalBoardProps) {
   const reactions = useSeatReactions(myPlayerId);
   const [form, setForm] = useState<NamePlaceAnimalAnswers>(() => ({
@@ -135,7 +146,9 @@ export default function NamePlaceAnimalBoardMobile({
   const isStopped = Boolean(state.stoppedByPlayerId);
 
   return (
-    <div className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4 transition-all duration-300 ${
+    <div className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 font-sans space-y-4 transition-all duration-300 ${
+      isNeon ? "bg-slate-950 text-slate-100" : isNotebook ? "bg-[#fbf8ee] text-slate-800" : "text-ink-hi"
+    } ${
       isStopped ? "animate-shake bg-red-950/20" : ""
     }`}>
       {/* 🚨 Emergency STOP Lockdown Siren Banner */}
@@ -153,17 +166,32 @@ export default function NamePlaceAnimalBoardMobile({
       )}
 
       {/* Header Banner */}
-      <div className="bg-surface-0 border border-brand-500/30 rounded-2xl p-4 shadow-lg text-center relative overflow-hidden space-y-3">
+      <div className={`border rounded-2xl p-4 shadow-lg text-center relative overflow-hidden space-y-3 ${
+        isNeon
+          ? "bg-slate-900/90 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+          : isNotebook
+          ? "bg-[#fffdf8] border-amber-900/20 shadow-md ring-1 ring-amber-400/20"
+          : "bg-surface-0 border-brand-500/30"
+      }`}>
         <div className="flex justify-between items-center text-xs">
-          <span className="font-semibold uppercase tracking-wider text-ink-mid">
+          <span className={`font-semibold uppercase tracking-wider ${isNeon ? "text-cyan-400" : isNotebook ? "text-amber-900/70" : "text-ink-mid"}`}>
             Round {state.round} of {state.totalRounds} • {state.themePack?.toUpperCase() ?? "CLASSIC"}
           </span>
-          <button
-            onClick={() => setShowClues(!showClues)}
-            className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold cursor-pointer text-[11px]"
-          >
-            💡 {showClues ? "Close Clues" : "Need a Clue?"}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {toggleTheme && (
+              <GameThemeToggle theme={theme ?? "notebook"} onToggle={toggleTheme} variant="compact" />
+            )}
+            <button
+              onClick={() => setShowClues(!showClues)}
+              className={`px-2.5 py-0.5 rounded-full font-bold cursor-pointer text-[11px] ${
+                isNeon
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                  : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              💡 {showClues ? "Close Clues" : "Need a Clue?"}
+            </button>
+          </div>
         </div>
 
         {/* 🔤 3D Roulette Letter Spinner */}
@@ -174,7 +202,13 @@ export default function NamePlaceAnimalBoardMobile({
                 key="roulette-spin"
                 animate={{ rotateY: [0, 720, 1440], scale: [0.8, 1.3, 1] }}
                 transition={{ duration: 1.2, ease: "easeInOut" }}
-                className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-600 to-amber-300 text-white font-display text-4xl flex items-center justify-center shadow-2xl border-4 border-amber-200"
+                className={`w-20 h-20 rounded-2xl ${
+                  isNeon
+                    ? "bg-gradient-to-tr from-cyan-600 via-purple-600 to-pink-500 text-white border-2 border-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+                    : isNotebook
+                    ? "bg-[#fffdfa] text-amber-900 border-2 border-amber-800/30 shadow-md font-serif"
+                    : "bg-gradient-to-tr from-amber-500 via-orange-600 to-amber-300 text-white border-4 border-amber-200 shadow-2xl"
+                } font-display text-4xl flex items-center justify-center`}
               >
                 🎲
               </motion.div>
@@ -184,7 +218,13 @@ export default function NamePlaceAnimalBoardMobile({
                 initial={{ rotateY: 180, scale: 0.3, opacity: 0 }}
                 animate={{ rotateY: 360, scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 260, damping: 15 }}
-                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white font-display text-5xl flex items-center justify-center shadow-2xl border-4 border-amber-200 animate-glow-pulse"
+                className={`w-20 h-20 rounded-2xl ${
+                  isNeon
+                    ? "bg-gradient-to-br from-cyan-500 via-purple-600 to-pink-500 text-white border-2 border-cyan-300 shadow-[0_0_30px_rgba(168,85,247,0.5)]"
+                    : isNotebook
+                    ? "bg-[#fbf4e2] text-amber-900 border-2 border-amber-700/40 shadow-inner font-serif"
+                    : "bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white border-4 border-amber-200 shadow-2xl"
+                } font-display text-5xl flex items-center justify-center animate-glow-pulse`}
               >
                 {letter}
               </motion.div>
@@ -196,15 +236,15 @@ export default function NamePlaceAnimalBoardMobile({
         {state.phase === "playing" && (
           <div className="space-y-1.5 pt-1">
             <div className="flex justify-between items-center text-xs font-bold">
-              <span className={`flex items-center gap-1 ${secondsLeft <= 5 || isStopped ? "text-red-500 animate-pulse font-extrabold" : "text-amber-600 dark:text-amber-400"}`}>
+              <span className={`flex items-center gap-1 ${secondsLeft <= 5 || isStopped ? "text-red-500 animate-pulse font-extrabold" : isNeon ? "text-cyan-400" : "text-amber-600 dark:text-amber-400"}`}>
                 ⏱️ {secondsLeft}s Left
               </span>
-              <span className="text-[10px] text-ink-mute">Starts with '{letter}'</span>
+              <span className={`text-[10px] ${isNeon ? "text-cyan-300/70" : isNotebook ? "text-amber-900/60" : "text-ink-mute"}`}>Starts with '{letter}'</span>
             </div>
-            <div className="w-full h-2 bg-surface-1 rounded-full overflow-hidden border border-surface-rim">
+            <div className={`w-full h-2 rounded-full overflow-hidden border ${isNeon ? "bg-slate-900 border-cyan-500/30" : "bg-surface-1 border-surface-rim"}`}>
               <motion.div
                 className={`h-full transition-all duration-1000 ${
-                  secondsLeft <= 5 || isStopped ? "bg-red-500 animate-pulse" : "bg-gradient-to-r from-amber-400 to-orange-500"
+                  secondsLeft <= 5 || isStopped ? "bg-red-500 animate-pulse" : isNeon ? "bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500" : "bg-gradient-to-r from-amber-400 to-orange-500"
                 }`}
                 style={{ width: `${progressPct}%` }}
               />
@@ -220,12 +260,16 @@ export default function NamePlaceAnimalBoardMobile({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 shadow-lg space-y-2 overflow-hidden text-xs"
+            className={`border rounded-2xl p-3 shadow-lg space-y-2 overflow-hidden text-xs ${
+              isNeon
+                ? "bg-cyan-950/30 border-cyan-500/30 text-cyan-200"
+                : "bg-amber-500/10 border-amber-500/30"
+            }`}
           >
-            <div className="font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider text-[11px]">
+            <div className={`font-bold uppercase tracking-wider text-[11px] ${isNeon ? "text-cyan-400" : "text-amber-700 dark:text-amber-300"}`}>
               💡 Select a Category for a Clue (-50% points)
             </div>
-            <p className="text-[10px] text-ink-mid">
+            <p className="text-[10px] opacity-80">
               Revealing a clue reduces correct score for that category from 10 pts to 5 pts.
             </p>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -233,17 +277,27 @@ export default function NamePlaceAnimalBoardMobile({
                 const label = categoryLabels[idx];
                 const isRevealed = revealedClues.has(cat);
                 return (
-                  <div key={cat} className="bg-surface-0 p-2 rounded-lg border border-surface-rim flex flex-col justify-between">
-                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[10px] uppercase">{label}</span>
+                  <div key={cat} className={`p-2 rounded-lg border flex flex-col justify-between ${
+                    isNeon
+                      ? "bg-slate-900/90 border-cyan-500/30"
+                      : isNotebook
+                      ? "bg-[#fffdfa] border-amber-900/20"
+                      : "bg-surface-0 border-surface-rim"
+                  }`}>
+                    <span className={`font-bold text-[10px] uppercase ${isNeon ? "text-cyan-400" : "text-amber-600 dark:text-amber-400"}`}>{label}</span>
                     {isRevealed ? (
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px] block mt-1">
+                      <span className="font-semibold text-emerald-400 text-[11px] block mt-1">
                         {clues[cat]}
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleRequestCategoryClue(cat)}
-                        className="mt-1.5 py-1 px-2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 font-bold hover:bg-amber-500/30 transition text-[10px] text-center cursor-pointer"
+                        className={`mt-1.5 py-1 px-2 rounded font-bold transition text-[10px] text-center cursor-pointer ${
+                          isNeon
+                            ? "bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30"
+                            : "bg-amber-500/20 text-amber-800 dark:text-amber-200 hover:bg-amber-500/30"
+                        }`}
                       >
                         Get {label} clue
                       </button>
@@ -267,21 +321,31 @@ export default function NamePlaceAnimalBoardMobile({
               const isValidLetter = !val.trim() || val.trim()[0].toUpperCase() === letter;
               const isClueRevealed = revealedClues.has(cat);
               return (
-                <div key={cat} className="bg-surface-0 border border-surface-rim rounded-xl p-3 shadow-md">
+                <div key={cat} className={`border rounded-xl p-3 shadow-md ${
+                  isNeon
+                    ? "bg-slate-900/80 border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.12)]"
+                    : isNotebook
+                    ? "bg-[#fffefc] border-amber-900/15 shadow-sm"
+                    : "bg-surface-0 border-surface-rim"
+                }`}>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300">
+                    <label className={`block text-xs font-bold uppercase tracking-wider ${
+                      isNeon ? "text-cyan-400" : isNotebook ? "text-amber-900" : "text-amber-600 dark:text-amber-300"
+                    }`}>
                       {label}
                     </label>
                     {!isClueRevealed ? (
                       <button
                         type="button"
                         onClick={() => handleRequestCategoryClue(cat)}
-                        className="text-[10px] text-amber-600 dark:text-amber-300 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        className={`text-[10px] hover:underline font-bold flex items-center gap-1 cursor-pointer ${
+                          isNeon ? "text-cyan-400" : "text-amber-600 dark:text-amber-300"
+                        }`}
                       >
                         💡 Get Clue (-50% pts)
                       </button>
                     ) : (
-                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 truncate max-w-[170px]">
+                      <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 truncate max-w-[170px]">
                         💡 {clues[cat]}
                       </span>
                     )}
@@ -292,9 +356,15 @@ export default function NamePlaceAnimalBoardMobile({
                     placeholder={`${label} starting with ${letter}...`}
                     value={val}
                     onChange={(e) => handleChange(cat, e.target.value)}
-                    className={`w-full px-3 py-2 bg-surface-1 border ${
-                      !isValidLetter ? "border-red-500 text-red-600 dark:text-red-300" : "border-surface-rim text-ink-hi"
-                    } rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-60`}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 disabled:opacity-60 ${
+                      !isValidLetter
+                        ? "border-red-500 text-red-400"
+                        : isNeon
+                        ? "bg-slate-950/80 border-cyan-500/30 text-cyan-100 focus:border-cyan-400 focus:ring-cyan-500/40"
+                        : isNotebook
+                        ? "bg-[#fdfbf7] border-amber-900/20 text-slate-800 focus:ring-amber-400 font-serif"
+                        : "bg-surface-1 border-surface-rim text-ink-hi focus:ring-amber-400"
+                    }`}
                   />
                 </div>
               );

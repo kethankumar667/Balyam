@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import NamePlaceAnimalBoardMobile from "./NamePlaceAnimalBoardMobile";
 import NamePlaceAnimalBoardDesktop from "./NamePlaceAnimalBoardDesktop";
 import type { ChatMessage, NamePlaceAnimalAnswers, NamePlaceAnimalPublicState, Player } from "@shared/types";
+import { useGameTheme } from "../../hooks/useGameTheme";
 
 export interface NamePlaceAnimalBoardContainerProps {
   state: NamePlaceAnimalPublicState;
@@ -9,8 +10,6 @@ export interface NamePlaceAnimalBoardContainerProps {
   myPlayerId: string;
   onMove: (type: string, data?: unknown) => void;
   players?: Player[];
-  /** Room chrome (chat/voice/players/reactions) — wired up so InlineRoomRail
-   *  can mount; previously this board never received them at all. */
   messages?: ChatMessage[];
   roomCode?: string;
   roomPhase?: string;
@@ -25,6 +24,7 @@ function isDesktopLayout(): boolean {
 
 export default function NamePlaceAnimalBoard(props: NamePlaceAnimalBoardContainerProps) {
   const [isDesktop, setIsDesktop] = useState<boolean>(() => isDesktopLayout());
+  const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("namesplaceanimal", "notebook");
 
   useEffect(() => {
     const onResize = () => setIsDesktop(isDesktopLayout());
@@ -52,6 +52,10 @@ export default function NamePlaceAnimalBoard(props: NamePlaceAnimalBoardContaine
     messages: props.messages,
     roomCode: props.roomCode,
     roomPhase: props.roomPhase,
+    theme,
+    toggleTheme,
+    isNotebook,
+    isNeon,
   };
 
   return isDesktop ? (

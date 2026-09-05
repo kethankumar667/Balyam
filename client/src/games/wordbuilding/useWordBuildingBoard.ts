@@ -11,6 +11,7 @@ import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useTutorialGate } from "../../components/GameTutorial";
 import { inkFor, type Ink } from "./inks";
 import { useCoach, type CoachState } from "../../components/CoachHintButton";
+import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
 
 /**
  * Shared props for every Word Building shell (picker, mobile, desktop).
@@ -52,6 +53,10 @@ export interface WordBuildingBoardModel {
   /** AI Coach. Lives on the model so the grid can highlight the suggested
    *  cell while the button renders wherever each shell has room. */
   coach: CoachState;
+  theme: GameSkinTheme;
+  toggleTheme: () => void;
+  isNotebook: boolean;
+  isNeon: boolean;
 }
 
 /**
@@ -237,6 +242,8 @@ export function useWordBuildingBoard({
   // AI Coach. Server-computed, requested on demand — see CoachHintButton.
   const coach = useCoach();
 
+  const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("wordbuilding", "notebook");
+
   return {
     size,
     myTurn,
@@ -259,5 +266,9 @@ export function useWordBuildingBoard({
     placeLetter,
     remainingSec,
     coach,
+    theme,
+    toggleTheme,
+    isNotebook,
+    isNeon,
   };
 }

@@ -124,6 +124,23 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           </button>
         )}
       </div>
+      <button
+        type="button"
+        onClick={() =>
+          m.updateSettings({
+            theme: m.settings.theme === "neon" ? "paper" : "neon",
+          })
+        }
+        className={labelChip}
+        style={chipStyle}
+        title={`Current theme: ${m.settings.theme}. Click to switch theme.`}
+        aria-label="Toggle board theme"
+      >
+        <span aria-hidden>{m.settings.theme === "neon" ? "⚡" : "📓"}</span>
+        <span className="hidden sm:inline">
+          {m.settings.theme === "neon" ? "Neon" : "Paper"}
+        </span>
+      </button>
       <button onClick={m.toggleSound} className={iconChip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
         {m.soundOn ? "🔊" : "🔈"}
       </button>

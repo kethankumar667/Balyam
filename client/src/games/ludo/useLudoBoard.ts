@@ -106,6 +106,7 @@ export interface LudoBoardModel {
   showSettings: boolean;
   setShowSettings: (v: boolean) => void;
   settings: LudoSettings;
+  updateSettings: (patch: Partial<LudoSettings>) => void;
   reduceMotion: boolean;
   soundOn: boolean;
   toggleSound: () => void;
@@ -373,7 +374,7 @@ export function useLudoBoard({
     [],
   );
   const [showSettings, setShowSettings] = useState(false);
-  const [settings] = useLudoSettings();
+  const [settings, updateSettings] = useLudoSettings();
   const reduceMotion = prefersReducedMotion(settings);
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
   const [toast, setToast] = useState<LudoToast | null>(null);
@@ -1259,6 +1260,7 @@ export function useLudoBoard({
     showSettings,
     setShowSettings,
     settings,
+    updateSettings,
     reduceMotion,
     soundOn,
     toggleSound,

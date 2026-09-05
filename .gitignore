@@ -8,6 +8,7 @@ build/
 .vscode/
 .idea/
 coverage/
+*.tsbuildinfo
 
 # Generated placeholder audio (client/scripts/gen-placeholder-audio.mjs).
 # ~7 MB of synthesized stand-ins, rebuilt by `npm run audio:placeholders`

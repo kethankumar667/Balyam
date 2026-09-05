@@ -9,8 +9,10 @@ export const BINGO_LETTERS: BingoLetter[] = ["B", "I", "N", "G", "O"];
 /** B-I-N-G-O Letter Header display (B-I-N-G-O strikeout letters) */
 export function BingoLetterBanner({
   completedLetters = [],
+  isNeon,
 }: {
   completedLetters?: BingoLetter[];
+  isNeon?: boolean;
 }) {
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-3 py-1">
@@ -21,13 +23,17 @@ export function BingoLetterBanner({
             key={letter}
             className={`relative flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-2xl font-black text-xl sm:text-2xl transition-all duration-300 shadow-md ${
               isStruck
-                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white scale-110 ring-4 ring-amber-300/60 shadow-amber-500/50"
+                ? isNeon
+                  ? "bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 text-white scale-110 ring-4 ring-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.6)]"
+                  : "bg-gradient-to-br from-amber-400 to-amber-600 text-white scale-110 ring-4 ring-amber-300/60 shadow-amber-500/50"
+                : isNeon
+                ? "bg-slate-900/90 border-2 border-purple-500/30 text-purple-200 opacity-70"
                 : "bg-white/80 border-2 border-bhalyam-wood/30 text-bhalyam-wood-dark opacity-60"
             }`}
           >
             {letter}
             {isStruck && (
-              <span className="absolute inset-0 flex items-center justify-center text-rose-600 font-extrabold text-2xl sm:text-3xl">
+              <span className={`absolute inset-0 flex items-center justify-center font-extrabold text-2xl sm:text-3xl ${isNeon ? "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]" : "text-rose-600"}`}>
                 ✕
               </span>
             )}
@@ -39,24 +45,7 @@ export function BingoLetterBanner({
 }
 
 /** 5x5 Grid representing a player's Bingo board (numbers 1-25) */
-/**
- * The pen stroke over a struck number.
- *
- * Marked cells used to become solid green tiles. That reads as a spreadsheet
- * selection, and worse, it hid the grid — you scan a bingo card for LINES,
- * and five filled blocks are harder to read as a line than five struck
- * numbers on a page.
- *
- * Jitter is derived from the cell index rather than random, so a given cell
- * always strikes the same way: it re-renders on every broadcast, and a
- * stroke that wriggled each time would be a distraction. Different per cell,
- * stable per cell — which is exactly how a page of real pen marks looks.
- *
- * Hand-rolled SVG rather than roughjs (already a dependency): roughjs draws
- * to canvas, and 25 canvases inside a grid that re-renders on every call is
- * a lot of machinery for two strokes.
- */
-function PenStrike({ seed }: { seed: number }) {
+function PenStrike({ seed, isNeon }: { seed: number; isNeon?: boolean }) {
   // Cheap deterministic hash → a few stable pseudo-random offsets.
   const j = (n: number, spread: number) =>
     (((Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1 * spread - spread / 2;
@@ -68,11 +57,12 @@ function PenStrike({ seed }: { seed: number }) {
       aria-hidden
     >
       <g
-        stroke="#C2410C"
+        stroke={isNeon ? "#38bdf8" : "#C2410C"}
         strokeWidth={3.2}
         strokeLinecap="round"
-        opacity={0.85}
+        opacity={isNeon ? 0.95 : 0.85}
         fill="none"
+        filter={isNeon ? "drop-shadow(0 0 4px #38bdf8)" : undefined}
       >
         <path
           d={`M ${7 + j(1, 4)} ${9 + j(2, 4)} Q 20 ${20 + j(3, 6)} ${33 + j(4, 4)} ${31 + j(5, 4)}`}
@@ -99,19 +89,21 @@ export function CallOutPanel({
   iHaveMarked,
   waitingOn,
   wasAutoMarkedForMe,
+  isNeon,
 }: {
   number: number | null;
   secondsLeft: number | null;
   iHaveMarked: boolean;
   waitingOn: string[];
   wasAutoMarkedForMe: boolean;
+  isNeon?: boolean;
 }) {
   if (number == null) {
     // The rescue is otherwise invisible — the cell just fills in — so
     // players never learn that missing one costs them nothing.
     if (!wasAutoMarkedForMe) return null;
     return (
-      <div className="w-full rounded-xl border-2 border-bhalyam-wood/25 bg-bhalyam-cream/80 px-3 py-2 text-center text-sm font-bold text-bhalyam-wood-dark/80">
+      <div className={`w-full rounded-xl border-2 px-3 py-2 text-center text-sm font-bold ${isNeon ? "border-purple-500/30 bg-slate-900/80 text-purple-200" : "border-bhalyam-wood/25 bg-bhalyam-cream/80 text-bhalyam-wood-dark/80"}`}>
         Marked for you — you never lose a number
       </div>
     );
@@ -121,11 +113,17 @@ export function CallOutPanel({
 
   return (
     <div
-      className={`w-full rounded-xl border-2 px-3 py-2.5 ${
+      className={`w-full rounded-xl border-2 px-3 py-2.5 transition-colors duration-300 ${
         iHaveMarked
-          ? "border-bhalyam-wood/25 bg-bhalyam-cream/80"
+          ? isNeon
+            ? "border-purple-500/30 bg-slate-900/80 text-slate-200"
+            : "border-bhalyam-wood/25 bg-bhalyam-cream/80"
           : urgent
-          ? "border-red-500 bg-red-50"
+          ? isNeon
+            ? "border-red-500 bg-red-950/80 text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+            : "border-red-500 bg-red-50"
+          : isNeon
+          ? "border-cyan-500 bg-cyan-950/70 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
           : "border-amber-500 bg-amber-100"
       }`}
       role="status"
@@ -133,10 +131,10 @@ export function CallOutPanel({
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-bhalyam-wood-dark/60">
+          <span className={`text-[11px] font-black uppercase tracking-wider ${isNeon ? "text-cyan-400" : "text-bhalyam-wood-dark/60"}`}>
             Called
           </span>
-          <span className="text-2xl font-black tabular-nums text-bhalyam-wood-dark">
+          <span className={`text-2xl font-black tabular-nums ${isNeon ? "text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.6)]" : "text-bhalyam-wood-dark"}`}>
             {number}
           </span>
         </div>
@@ -144,7 +142,7 @@ export function CallOutPanel({
         {!iHaveMarked ? (
           <span
             className={`text-sm font-black tabular-nums ${
-              urgent ? "text-red-600" : "text-bhalyam-wood-dark/80"
+              urgent ? (isNeon ? "text-red-400" : "text-red-600") : (isNeon ? "text-cyan-300" : "text-bhalyam-wood-dark/80")
             }`}
           >
             Tap it — {secondsLeft ?? 0}s
@@ -152,12 +150,12 @@ export function CallOutPanel({
         ) : waitingOn.length > 0 ? (
           // Named, not a spinner: "waiting for Ravi" is a fact players can
           // act on (nudge him), where a spinner is just a stalled screen.
-          <span className="truncate text-xs font-bold text-bhalyam-wood-dark/70">
+          <span className={`truncate text-xs font-bold ${isNeon ? "text-slate-400" : "text-bhalyam-wood-dark/70"}`}>
             Waiting for {waitingOn.slice(0, 2).join(", ")}
             {waitingOn.length > 2 ? ` +${waitingOn.length - 2}` : ""}
           </span>
         ) : (
-          <span className="text-xs font-bold text-emerald-700">Marked ✓</span>
+          <span className={`text-xs font-bold ${isNeon ? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "text-emerald-700"}`}>Marked ✓</span>
         )}
       </div>
     </div>
@@ -179,9 +177,11 @@ export function CallOutPanel({
 export function AutoMarkToggle({
   enabled,
   onChange,
+  isNeon,
 }: {
   enabled: boolean;
   onChange: (on: boolean) => void;
+  isNeon?: boolean;
 }) {
   return (
     <button
@@ -191,15 +191,19 @@ export function AutoMarkToggle({
       onClick={() => onChange(!enabled)}
       className={`flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors ${
         enabled
-          ? "border-emerald-600 bg-emerald-50"
+          ? isNeon
+            ? "border-cyan-500 bg-cyan-950/60 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+            : "border-emerald-600 bg-emerald-50"
+          : isNeon
+          ? "border-purple-500/30 bg-slate-900/80 text-slate-200 hover:border-purple-500/50"
           : "border-bhalyam-wood/25 bg-bhalyam-cream/70 hover:border-bhalyam-wood/40"
       }`}
     >
       <span>
-        <span className="block text-xs font-black uppercase tracking-wider text-bhalyam-wood-dark/70">
+        <span className={`block text-xs font-black uppercase tracking-wider ${isNeon ? "text-cyan-400" : "text-bhalyam-wood-dark/70"}`}>
           Mark for me
         </span>
-        <span className="block text-[11px] leading-snug text-bhalyam-wood-dark/60">
+        <span className={`block text-[11px] leading-snug ${isNeon ? "text-slate-400" : "text-bhalyam-wood-dark/60"}`}>
           {enabled
             ? "Numbers are struck off automatically"
             : "Tap each number yourself"}
@@ -208,7 +212,7 @@ export function AutoMarkToggle({
       <span
         aria-hidden
         className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
-          enabled ? "bg-emerald-600" : "bg-bhalyam-wood/30"
+          enabled ? (isNeon ? "bg-cyan-500" : "bg-emerald-600") : (isNeon ? "bg-slate-700" : "bg-bhalyam-wood/30")
         }`}
       >
         <span
@@ -229,6 +233,7 @@ export function BingoGrid({
   size = "md",
   markableNumber = null,
   onMarkCell,
+  isNeon,
 }: {
   board: BingoBoard;
   onCellClick?: (val: number) => void;
@@ -243,6 +248,7 @@ export function BingoGrid({
    */
   markableNumber?: number | null;
   onMarkCell?: (val: number) => void;
+  isNeon?: boolean;
 }) {
   const cellDimensions =
     size === "lg"
@@ -252,7 +258,14 @@ export function BingoGrid({
       : "h-12 w-12 sm:h-14 sm:w-14 text-sm sm:text-base";
 
   return (
-    <div id="bingo-board-container" className="inline-grid grid-cols-5 gap-1.5 sm:gap-2 rounded-2xl bg-bhalyam-cream/90 p-2.5 sm:p-3.5 border-3 border-bhalyam-wood/40 shadow-xl">
+    <div
+      id="bingo-board-container"
+      className={`inline-grid grid-cols-5 gap-1.5 sm:gap-2 rounded-2xl p-2.5 sm:p-3.5 shadow-xl transition-colors duration-300 ${
+        isNeon
+          ? "bg-slate-900/90 border-2 border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.2)]"
+          : "bg-bhalyam-cream/90 border-3 border-bhalyam-wood/40"
+      }`}
+    >
       {board.map((cell) => {
         const isMarked = cell.marked || (calledSet && calledSet.has(cell.value));
         const canClick = isMyTurn && !isMarked && onCellClick;
@@ -273,20 +286,24 @@ export function BingoGrid({
             aria-label={canMark ? `Mark ${cell.value}` : String(cell.value)}
             className={`${cellDimensions} relative flex items-center justify-center rounded-xl font-black tabular-nums transition-all duration-200 shadow-sm border-2 ${
               isMarked
-                ? // Struck, not filled. The number stays readable underneath
-                  // because that is what a pen does to paper — and because a
-                  // solid tile hides the board you are trying to read lines
-                  // across.
-                  "bg-white/90 border-bhalyam-wood/25 text-bhalyam-wood-dark/70"
+                ? isNeon
+                  ? "bg-slate-800/80 border-slate-700 text-slate-400"
+                  : "bg-white/90 border-bhalyam-wood/25 text-bhalyam-wood-dark/70"
                 : canMark
-                ? "bg-amber-200 border-amber-500 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-4 ring-amber-400/70 animate-pulse"
+                ? isNeon
+                  ? "bg-purple-950/90 border-cyan-400 text-cyan-300 cursor-pointer active:scale-95 ring-4 ring-cyan-400/70 shadow-[0_0_15px_rgba(6,182,212,0.6)] animate-pulse"
+                  : "bg-amber-200 border-amber-500 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-4 ring-amber-400/70 animate-pulse"
                 : canClick
-                ? "bg-white hover:bg-amber-100 border-amber-400 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-2 ring-amber-400/50"
+                ? isNeon
+                  ? "bg-slate-800/90 hover:bg-slate-700 border-purple-400 text-purple-200 cursor-pointer active:scale-95 ring-2 ring-purple-400/50 shadow-[0_0_10px_rgba(168,85,247,0.4)]"
+                  : "bg-white hover:bg-amber-100 border-amber-400 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-2 ring-amber-400/50"
+                : isNeon
+                ? "bg-slate-900/80 border-slate-700/60 text-slate-200 opacity-90"
                 : "bg-white/90 border-bhalyam-wood/20 text-bhalyam-wood-dark opacity-90"
             }`}
           >
             {cell.value}
-            {isMarked && <PenStrike seed={cell.index} />}
+            {isMarked && <PenStrike seed={cell.index} isNeon={isNeon} />}
           </button>
         );
       })}
@@ -370,10 +387,12 @@ export function ClaimButton({
   onClaim,
   disabled,
   className,
+  isNeon,
 }: {
   onClaim: () => void;
   disabled: boolean;
   className?: string;
+  isNeon?: boolean;
 }) {
   return (
     <button
@@ -382,7 +401,9 @@ export function ClaimButton({
       disabled={disabled}
       className={
         "min-h-[48px] rounded-2xl px-8 py-3.5 font-black uppercase tracking-wider text-white text-lg shadow-xl transition-all " +
-        "bg-gradient-to-r from-rose-600 via-red-500 to-amber-600 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed animate-pulse " +
+        (isNeon
+          ? "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-500 shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed animate-pulse "
+          : "bg-gradient-to-r from-rose-600 via-red-500 to-amber-600 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed animate-pulse ") +
         (className ?? "")
       }
     >

@@ -50,8 +50,9 @@ import { currentAccessToken } from "../store/authStore";
  * the string literal `VITE_OPERATIONAL_KEY` would otherwise have been
  * replaced with. That elimination — not just "this code doesn't run" but
  * "this string does not exist in the emitted file" — is what
- * `operationalApi.buildLeak.test.ts` proves against a real `vite build`
- * output, not just against source.
+ * `scripts/quality-gates/adminKeySecretLeakGuard.mjs` (`npm run
+ * check:admin-key-leak`) proves against a real `vite build` output, not
+ * just against source — run it after `npm run build:client`.
  *
  * Never widen this gate. Never read `VITE_OPERATIONAL_KEY` outside a `DEV`
  * check, and never move the value into `localStorage`, a log line, an error

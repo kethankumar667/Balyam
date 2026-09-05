@@ -5,8 +5,20 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
 
-export default function TambolaBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: TambolaBoardProps) {
+export default function TambolaBoardDesktop({
+  state,
+  selfId,
+  onMove,
+  players,
+  messages,
+  roomCode,
+  roomPhase,
+  theme,
+  toggleTheme,
+  isNeon,
+}: TambolaBoardProps) {
   const isArranging = state.phase === "arranging";
   const reactions = useSeatReactions();
   const myPlayer = state.players.find((p) => p.id === selfId);
@@ -40,18 +52,23 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players, me
   /* ── 1. Arranging / Shuffle Phase ── */
   if (isArranging) {
     return (
-      <div className="min-h-[calc(100vh-6rem)] max-w-4xl mx-auto p-6 flex flex-col items-center justify-center text-ink-hi font-sans">
-        <div className="w-full bg-surface-0 border-2 border-surface-rim rounded-3xl p-8 shadow-2xl space-y-6 text-center">
-          <div>
-            <div className="text-xs font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
-              Tambola / Housie Lounge
+      <div className={`min-h-[calc(100vh-6rem)] max-w-4xl mx-auto p-6 flex flex-col items-center justify-center font-sans transition-colors duration-300 ${isNeon ? "bg-slate-950 text-slate-100" : "text-ink-hi"}`}>
+        <div className={`w-full border-2 rounded-3xl p-8 shadow-2xl space-y-6 text-center transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.2)]" : "bg-surface-0 border-surface-rim"}`}>
+          <div className="flex items-center justify-between">
+            <div className="text-left">
+              <div className="text-xs font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
+                Tambola / Housie Lounge
+              </div>
+              <h1 className="text-3xl font-display font-black mt-1">
+                Arrange Your Lucky Ticket
+              </h1>
+              <p className="text-sm text-ink-mid mt-1 max-w-lg">
+                Click <strong className="text-pink-600 font-black">Shuffle Ticket</strong> to generate a fresh ticket (1-90) until you get your favorite numbers, then click <strong className="text-emerald-600 font-black">Ready / Start</strong>!
+              </p>
             </div>
-            <h1 className="text-3xl font-display font-black text-ink-hi mt-1">
-              Arrange Your Lucky Ticket
-            </h1>
-            <p className="text-sm text-ink-mid mt-2 max-w-lg mx-auto">
-              Click <strong className="text-pink-600 font-black">Shuffle Ticket</strong> to generate a fresh ticket (1-90) until you get your favorite numbers, then click <strong className="text-emerald-600 font-black">Ready / Start</strong>!
-            </p>
+            {toggleTheme && theme && (
+              <GameThemeToggle theme={theme} onToggle={toggleTheme} variant="compact" />
+            )}
           </div>
 
           {/* 3x9 Ticket Preview */}
@@ -150,16 +167,21 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players, me
   /* ── 2. Playing / Finished Phase ── */
   return (
     <>
-    <div className="min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 text-ink-hi font-sans grid grid-cols-12 gap-6">
+    <div className={`min-h-[calc(100vh-6rem)] max-w-6xl mx-auto p-6 font-sans grid grid-cols-12 gap-6 transition-colors duration-300 ${isNeon ? "bg-slate-950 text-slate-100" : "text-ink-hi"}`}>
       {/* Left Column (Interactive Ticket & Claim Panel) */}
       <div className="col-span-7 space-y-6 flex flex-col justify-between">
         {/* Banner */}
-        <div className="bg-surface-0 border border-pink-500/30 rounded-2xl p-6 shadow-xl flex items-center justify-between">
+        <div className={`border rounded-2xl p-6 shadow-xl flex items-center justify-between transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-pink-500/30 shadow-[0_0_20px_rgba(236,72,153,0.15)]" : "bg-surface-0 border-pink-500/30"}`}>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">
-              Tambola / Housie Lounge
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">
+                Tambola / Housie Lounge
+              </span>
+              {toggleTheme && theme && (
+                <GameThemeToggle theme={theme} onToggle={toggleTheme} variant="compact" />
+              )}
             </div>
-            <h1 className="text-2xl font-display text-ink-hi mt-1">Your Ticket</h1>
+            <h1 className="text-2xl font-display mt-1">Your Ticket</h1>
             <p className="text-xs text-ink-mid mt-1">
               Mark called numbers and claim prizes as soon as you meet the row/ticket condition!
             </p>
@@ -177,11 +199,11 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players, me
         </div>
 
         {/* 3x9 Ticket Grid */}
-        <div className="bg-surface-0 border border-surface-rim rounded-2xl p-6 shadow-xl space-y-3 flex-1 flex flex-col justify-center">
+        <div className={`border rounded-2xl p-6 shadow-xl space-y-3 flex-1 flex flex-col justify-center transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-purple-500/30" : "bg-surface-0 border-surface-rim"}`}>
           <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
             Player Ticket
           </div>
-          <div className="grid grid-rows-3 gap-3 bg-surface-1/80 p-4 rounded-xl border border-surface-rim">
+          <div className={`grid grid-rows-3 gap-3 p-4 rounded-xl border ${isNeon ? "bg-slate-950/60 border-purple-500/20" : "bg-surface-1/80 border-surface-rim"}`}>
             {state.myTicket.map((row, rIdx) => (
               <div key={rIdx} className="grid grid-cols-9 gap-2">
                 {row.map((val, cIdx) => {
@@ -190,7 +212,7 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players, me
                   const isCurrent = val > 0 && state.currentCall === val;
 
                   if (val === 0) {
-                    return <div key={cIdx} className="bg-surface-0/50 rounded-xl h-12" />;
+                    return <div key={cIdx} className={`${isNeon ? "bg-slate-900/40" : "bg-surface-0/50"} rounded-xl h-12`} />;
                   }
 
                   return (
@@ -200,11 +222,19 @@ export default function TambolaBoardDesktop({ state, selfId, onMove, players, me
                       disabled={!isCalled}
                       className={`h-12 rounded-xl font-bold text-sm flex items-center justify-center transition border active:scale-95 ${
                         isMarked
-                          ? "bg-emerald-500 border-emerald-300 text-black shadow-lg"
+                          ? isNeon
+                            ? "bg-emerald-500 border-cyan-300 text-black shadow-[0_0_15px_rgba(16,185,129,0.8)]"
+                            : "bg-emerald-500 border-emerald-300 text-black shadow-lg"
                           : isCurrent
-                          ? "bg-pink-500 border-white text-white animate-pulse"
+                          ? isNeon
+                            ? "bg-pink-600 border-white text-white animate-pulse shadow-[0_0_15px_rgba(236,72,153,0.8)]"
+                            : "bg-pink-500 border-white text-white animate-pulse"
                           : isCalled
-                          ? "bg-pink-500/20 hover:bg-pink-500/30 border-pink-500/40 text-pink-700 dark:text-pink-200 cursor-pointer"
+                          ? isNeon
+                            ? "bg-purple-950/80 hover:bg-purple-900 border-pink-500/50 text-pink-300 cursor-pointer shadow-[0_0_8px_rgba(236,72,153,0.3)]"
+                            : "bg-pink-500/20 hover:bg-pink-500/30 border-pink-500/40 text-pink-700 dark:text-pink-200 cursor-pointer"
+                          : isNeon
+                          ? "bg-slate-900/90 border-slate-800 text-slate-400 opacity-60"
                           : "bg-surface-0 border-surface-rim text-ink-mute opacity-60"
                       }`}
                     >

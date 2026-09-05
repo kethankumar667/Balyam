@@ -18,6 +18,7 @@ import {
   IconTrophy,
   type ProSide,
 } from "../pro/pro-kit";
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
 
 /**
  * ROCK PAPER SCISSORS — broadcast skin.
@@ -150,9 +151,11 @@ export function ProTopBar({
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-1.5">
         {onSkin && (
-          <ProIconButton title="Switch skin" onClick={onSkin}>
-            <IconSkin size={15} />
-          </ProIconButton>
+          <GameThemeToggle
+            theme="neon"
+            onToggle={onSkin}
+            variant="compact"
+          />
         )}
         {onHelp && (
           <ProIconButton title="How to play" onClick={onHelp}>

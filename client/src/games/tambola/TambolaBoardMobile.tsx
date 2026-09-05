@@ -5,6 +5,8 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import GameThemeToggle from "../../components/theme/GameThemeToggle";
+import type { GameSkinTheme } from "../../hooks/useGameTheme";
 
 export interface TambolaBoardProps {
   state: TambolaPlayerState;
@@ -15,9 +17,13 @@ export interface TambolaBoardProps {
   messages: ChatMessage[];
   roomCode: string;
   roomPhase: string;
+  theme?: GameSkinTheme;
+  toggleTheme?: () => void;
+  isNotebook?: boolean;
+  isNeon?: boolean;
 }
 
-export default function TambolaBoardMobile({ state, selfId, onMove, players, messages, roomCode, roomPhase }: TambolaBoardProps) {
+export default function TambolaBoardMobile({ state, selfId, onMove, players, messages, roomCode, roomPhase, theme, toggleTheme, isNeon }: TambolaBoardProps) {
   const [showCalledList, setShowCalledList] = useState(false);
   const reactions = useSeatReactions();
   const isArranging = state.phase === "arranging";
@@ -52,33 +58,38 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
   /* ── 1. Arranging / Shuffle Phase (Mobile) ── */
   if (isArranging) {
     return (
-      <div className="flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4 justify-center">
-        <div className="bg-surface-0 border-2 border-surface-rim rounded-2xl p-5 shadow-xl space-y-4 text-center">
-          <div>
-            <div className="text-[11px] font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
-              Tambola / Housie Lounge
+      <div className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 font-sans space-y-4 justify-center transition-colors duration-300 ${isNeon ? "bg-slate-950 text-slate-100" : "text-ink-hi"}`}>
+        <div className={`border-2 rounded-2xl p-5 shadow-xl space-y-4 text-center transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-purple-500/30" : "bg-surface-0 border-surface-rim"}`}>
+          <div className="flex items-center justify-between">
+            <div className="text-left">
+              <div className="text-[11px] font-black uppercase tracking-widest text-pink-600 dark:text-pink-400">
+                Tambola / Housie Lounge
+              </div>
+              <h1 className="text-2xl font-display font-black mt-1">
+                Your Lucky Ticket
+              </h1>
             </div>
-            <h1 className="text-2xl font-display font-black text-ink-hi mt-1">
-              Your Lucky Ticket
-            </h1>
-            <p className="text-xs text-ink-mid mt-1.5">
-              Tap <strong className="text-pink-600 font-bold">Shuffle</strong> until you like your numbers, then tap <strong className="text-emerald-600 font-bold">Start Game</strong>!
-            </p>
+            {toggleTheme && theme && (
+              <GameThemeToggle theme={theme} onToggle={toggleTheme} variant="compact" />
+            )}
           </div>
+          <p className="text-xs text-ink-mid">
+            Tap <strong className="text-pink-600 font-bold">Shuffle</strong> until you like your numbers, then tap <strong className="text-emerald-600 font-bold">Start Game</strong>!
+          </p>
 
           {/* 3x9 Ticket Preview */}
-          <div className="bg-surface-1/90 p-3 rounded-xl border border-surface-rim shadow-inner">
+          <div className={`p-3 rounded-xl border shadow-inner ${isNeon ? "bg-slate-950/60 border-purple-500/20" : "bg-surface-1/90 border-surface-rim"}`}>
             <div className="grid grid-rows-3 gap-1.5">
               {state.myTicket.map((row, rIdx) => (
                 <div key={rIdx} className="grid grid-cols-9 gap-1">
                   {row.map((val, cIdx) => {
                     if (val === 0) {
-                      return <div key={cIdx} className="bg-surface-0/50 rounded-lg h-9" />;
+                      return <div key={cIdx} className={`${isNeon ? "bg-slate-900/40" : "bg-surface-0/50"} rounded-lg h-9`} />;
                     }
                     return (
                       <div
                         key={cIdx}
-                        className="h-9 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center bg-white/90 dark:bg-surface-0 border border-surface-rim text-ink-hi shadow-xs"
+                        className={`h-9 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center border shadow-xs ${isNeon ? "bg-slate-900 border-purple-500/40 text-slate-100" : "bg-white/90 dark:bg-surface-0 border-surface-rim text-ink-hi"}`}
                       >
                         {val}
                       </div>
@@ -158,11 +169,14 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
 
   /* ── 2. Playing / Finished Phase (Mobile) ── */
   return (
-    <div className="flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 text-ink-hi font-sans space-y-4">
+    <div className={`flex flex-col min-h-[calc(100vh-5rem)] max-w-md mx-auto p-4 font-sans space-y-4 transition-colors duration-300 ${isNeon ? "bg-slate-950 text-slate-100" : "text-ink-hi"}`}>
       {/* Current Call Display */}
-      <div className="bg-surface-0 border border-pink-500/30 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden flex flex-col items-center">
-        <div className="flex justify-between w-full text-xs text-ink-mid mb-2">
+      <div className={`border rounded-2xl p-4 text-center shadow-lg relative overflow-hidden flex flex-col items-center transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-pink-500/30 shadow-[0_0_20px_rgba(236,72,153,0.15)]" : "bg-surface-0 border-pink-500/30"}`}>
+        <div className="flex justify-between items-center w-full text-xs text-ink-mid mb-2">
           <span>Tambola / Housie</span>
+          {toggleTheme && theme && (
+            <GameThemeToggle theme={theme} onToggle={toggleTheme} variant="compact" />
+          )}
           <span>Called: {state.calledNumbers.length} / 90</span>
         </div>
 
@@ -209,13 +223,13 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
       </AnimatePresence>
 
       {/* Tambola Ticket (3x9 Grid) */}
-      <div className="bg-surface-0 border border-surface-rim rounded-2xl p-3 shadow-xl">
+      <div className={`border rounded-2xl p-3 shadow-xl transition-colors duration-300 ${isNeon ? "bg-slate-900/90 border-purple-500/30" : "bg-surface-0 border-surface-rim"}`}>
         <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-2 flex justify-between items-center">
           <span>Your Ticket</span>
           <span className="text-[11px] text-ink-mid">Tap numbers as they're called</span>
         </div>
 
-        <div className="grid grid-rows-3 gap-1.5 bg-surface-1/80 p-2 rounded-xl border border-surface-rim">
+        <div className={`grid grid-rows-3 gap-1.5 p-2 rounded-xl border ${isNeon ? "bg-slate-950/60 border-purple-500/20" : "bg-surface-1/80 border-surface-rim"}`}>
           {state.myTicket.map((row, rIdx) => (
             <div key={rIdx} className="grid grid-cols-9 gap-1">
               {row.map((val, cIdx) => {
@@ -224,7 +238,7 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
                 const isCurrent = val > 0 && state.currentCall === val;
 
                 if (val === 0) {
-                  return <div key={cIdx} className="bg-surface-0/50 rounded-lg h-9" />;
+                  return <div key={cIdx} className={`${isNeon ? "bg-slate-900/40" : "bg-surface-0/50"} rounded-lg h-9`} />;
                 }
 
                 return (
@@ -234,11 +248,19 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
                     disabled={!isCalled}
                     className={`h-9 rounded-lg font-bold text-xs flex items-center justify-center transition border active:scale-95 ${
                       isMarked
-                        ? "bg-emerald-500 border-emerald-300 text-black shadow-lg"
+                        ? isNeon
+                          ? "bg-emerald-500 border-cyan-300 text-black shadow-[0_0_12px_rgba(16,185,129,0.8)]"
+                          : "bg-emerald-500 border-emerald-300 text-black shadow-lg"
                         : isCurrent
-                        ? "bg-pink-500 border-white text-white animate-pulse"
+                        ? isNeon
+                          ? "bg-pink-600 border-white text-white animate-pulse shadow-[0_0_15px_rgba(236,72,153,0.8)]"
+                          : "bg-pink-500 border-white text-white animate-pulse"
                         : isCalled
-                        ? "bg-pink-500/20 border-pink-500/40 text-pink-700 dark:text-pink-200 cursor-pointer"
+                        ? isNeon
+                          ? "bg-purple-950/80 border-pink-500/50 text-pink-300 cursor-pointer shadow-[0_0_8px_rgba(236,72,153,0.3)]"
+                          : "bg-pink-500/20 border-pink-500/40 text-pink-700 dark:text-pink-200 cursor-pointer"
+                        : isNeon
+                        ? "bg-slate-900/90 border-slate-800 text-slate-400 opacity-70"
                         : "bg-surface-0 border-surface-rim text-ink-mute opacity-70"
                     }`}
                   >

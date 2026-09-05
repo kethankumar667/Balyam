@@ -52,7 +52,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
 
   return (
     <div
-      className="relative w-full mx-auto px-2 pt-3 pb-2"
+      className={`relative w-full mx-auto px-2 pt-3 pb-2 rounded-2xl transition-colors duration-300 ${m.isNeon ? "bg-slate-950 text-slate-100" : ""}`}
       style={{ maxWidth: 980, fontFamily: "'Caveat', 'Patrick Hand', 'Georgia', serif" }}
     >
       <StudentBar
@@ -69,6 +69,9 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         onTarget={reactions.openTarget}
         activeTargetId={reactions.activeTargetId}
         onCloseTarget={reactions.closeTarget}
+        theme={m.theme}
+        onToggleTheme={m.toggleTheme}
+        isNeon={m.isNeon}
       />
 
       <WorkbookBoard m={m} state={state} cellPx={cellPx} roomCode={roomCode} />
@@ -79,6 +82,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         nameOf={m.nameOf}
         selfId={selfId}
         className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 px-1"
+        isNeon={m.isNeon}
       />
 
       {/* In-board chat / players / voice / reactions rail — parity with the

@@ -37,7 +37,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
 
   return (
     <div
-      className="relative w-full mx-auto"
+      className={`relative w-full mx-auto p-2 sm:p-4 rounded-2xl transition-colors duration-300 ${m.isNeon ? "bg-slate-950 text-slate-100" : ""}`}
       style={{ maxWidth: 1200, fontFamily: "'Caveat', 'Patrick Hand', 'Georgia', serif" }}
     >
       <StudentBar
@@ -54,6 +54,9 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
         onTarget={reactions.openTarget}
         activeTargetId={reactions.activeTargetId}
         onCloseTarget={reactions.closeTarget}
+        theme={m.theme}
+        onToggleTheme={m.toggleTheme}
+        isNeon={m.isNeon}
       />
 
       <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 items-start mt-1">
@@ -68,6 +71,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
             nameOf={m.nameOf}
             selfId={selfId}
             className="grid grid-cols-1 gap-3"
+            isNeon={m.isNeon}
           />
           <InlineRoomRail
             code={roomCode ?? ""}

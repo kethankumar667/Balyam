@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import TambolaBoardMobile from "./TambolaBoardMobile";
 import TambolaBoardDesktop from "./TambolaBoardDesktop";
 import type { ChatMessage, Player, TambolaPlayerState } from "@shared/types";
+import { useGameTheme } from "../../hooks/useGameTheme";
 
 export interface TambolaBoardContainerProps {
   state: TambolaPlayerState;
@@ -23,6 +24,7 @@ function isDesktopLayout(): boolean {
 
 export default function TambolaBoard(props: TambolaBoardContainerProps) {
   const [isDesktop, setIsDesktop] = useState<boolean>(() => isDesktopLayout());
+  const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("tambola", "notebook");
 
   useEffect(() => {
     const onResize = () => setIsDesktop(isDesktopLayout());
@@ -34,9 +36,11 @@ export default function TambolaBoard(props: TambolaBoardContainerProps) {
     };
   }, []);
 
+  const themeProps = { theme, toggleTheme, isNotebook, isNeon };
+
   return isDesktop ? (
-    <TambolaBoardDesktop {...props} />
+    <TambolaBoardDesktop {...props} {...themeProps} />
   ) : (
-    <TambolaBoardMobile {...props} />
+    <TambolaBoardMobile {...props} {...themeProps} />
   );
 }
