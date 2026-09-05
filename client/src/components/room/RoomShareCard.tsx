@@ -1,8 +1,7 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
-import { Ticket, QrCode, Camera, Copy, Link2, Check } from "lucide-react";
+import { Ticket, QrCode, Copy, Link2, Check } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
-import { captureAndShareScreenshot } from "../../lib/screenshot";
 
 const FRIENDLY_GAME_NAMES: Partial<Record<GameKind, string>> = {
   handcricket: "Hand Cricket",
@@ -36,8 +35,6 @@ export default function RoomShareCard({
 }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [sharingScreenshot, setSharingScreenshot] = useState(false);
-  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
   const roomUrl = `${window.location.origin}/room/${code}`;
   const gameName = FRIENDLY_GAME_NAMES[game] ?? game;
@@ -84,20 +81,6 @@ export default function RoomShareCard({
     window.open(waUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function handleScreenshotShare() {
-    if (sharingScreenshot) return;
-    setSharingScreenshot(true);
-    try {
-      const res = await captureAndShareScreenshot();
-      if (res.message) {
-        setFeedbackToast(res.message);
-        setTimeout(() => setFeedbackToast(null), 3000);
-      }
-    } finally {
-      setSharingScreenshot(false);
-    }
-  }
-
   return (
     <>
       <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 relative overflow-hidden">
@@ -118,18 +101,6 @@ export default function RoomShareCard({
             >
               <QrCode size={15} aria-hidden />
               <span className="sr-only sm:not-sr-only sm:ml-1 text-[11px]">QR</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleScreenshotShare}
-              disabled={sharingScreenshot}
-              title="Share Room Snapshot"
-              aria-label="Share Screenshot of Room"
-              className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] p-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer disabled:opacity-50"
-            >
-              <Camera size={15} aria-hidden />
-              <span className="sr-only sm:not-sr-only sm:ml-1 text-[11px]">Snapshot</span>
             </button>
           </div>
         </div>
@@ -183,15 +154,6 @@ export default function RoomShareCard({
             </button>
           </div>
         </div>
-
-        {feedbackToast && (
-          <div
-            role="status"
-            className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 text-center animate-in fade-in"
-          >
-            {feedbackToast}
-          </div>
-        )}
       </div>
 
       <QrCodeModal

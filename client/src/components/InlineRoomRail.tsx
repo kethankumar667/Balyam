@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Ticket, Users, Mic, MessageSquare, X } from "lucide-react";
 import type { ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
-import { captureAndShareScreenshot } from "../lib/screenshot";
 import {
   QUICK_REACTIONS,
   THROW_REACTIONS,
@@ -221,23 +220,6 @@ export default function InlineRoomRail({
             onClick={() => { setReactionTarget(null); setOpen(open === "emoji" ? null : "emoji"); }}
           >
             <span className="text-lg leading-none">🙂</span>
-          </InlineButton>
-          <InlineButton
-            label="Take Screenshot"
-            paper={paper}
-            active={false}
-            onClick={async () => {
-              const res = await captureAndShareScreenshot();
-              if (res.message) {
-                const toast = document.createElement("div");
-                toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-white font-bold text-xs shadow-2xl border border-amber-400/40 animate-fade-in";
-                toast.innerText = res.message;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 2500);
-              }
-            }}
-          >
-            <span className="text-base leading-none">📸</span>
           </InlineButton>
         </nav>
       </div>

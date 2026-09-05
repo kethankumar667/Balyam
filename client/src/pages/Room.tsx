@@ -18,7 +18,6 @@ import Chat from "../components/Chat";
 import ChatMessageToast from "../components/ChatMessageToast";
 import RoomCode from "../components/RoomCode";
 import RoomCodeShare from "../components/RoomCodeShare";
-import RoomNameEditor from "../components/RoomNameEditor";
 import AppLayout from "../components/layout/AppLayout";
 import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
 import RematchPanel from "../components/RematchPanel";

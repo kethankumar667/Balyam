@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { RoomPublicState } from "@shared/types";
 import { LogOut } from "lucide-react";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
-import RoomNameEditor from "../RoomNameEditor";
 import RummyRoomHistory from "../nostalgia/RummyRoomHistory";
 import LeaveRoomModal from "./LeaveRoomModal";
 import { WalletBalanceChip } from "../economy/WalletBalanceChip";
@@ -45,11 +44,6 @@ export default function RoomHeader({
             <span className="text-xs font-black text-[#1E293B] dark:text-[#F6EDDC] uppercase tracking-wider">
               {GAME_DISPLAY_NAMES[roomState.game] || roomState.game.toUpperCase()}
             </span>
-          </div>
-
-          {/* Table name editor / display */}
-          <div className="min-w-0 flex-1 max-w-[200px] sm:max-w-none">
-            <RoomNameEditor name={roomState.name} isHost={isHost} />
           </div>
 
           {/* Rummy room history teaser if rummy */}

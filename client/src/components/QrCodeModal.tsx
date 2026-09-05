@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { captureAndShareScreenshot } from "../lib/screenshot";
 import { toast } from "../hooks/useToast";
 import Modal from "./Modal";
 
@@ -185,23 +184,6 @@ export default function QrCodeModal({
           >
             <CopyIcon className="w-4 h-4" />
             {copiedLink ? "Link Copied!" : "Copy Link"}
-          </button>
-
-          <button
-            type="button"
-            onClick={async () => {
-              const res = await captureAndShareScreenshot();
-              if (res.message) {
-                toast.info(res.message);
-              }
-            }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px]
-                       rounded-xl bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700
-                       text-white font-bold text-xs border border-transparent dark:border-slate-700
-                       shadow-md active:scale-[0.98] transition cursor-pointer"
-          >
-            <span>📸</span>
-            Share Image
           </button>
         </div>
     </Modal>

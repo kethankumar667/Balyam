@@ -301,46 +301,6 @@ export default function AppSidebar({
             <span className="truncate">{isDark ? "Switch to light mode" : "Switch to dark mode"}</span>
           </button>
         </div>
-
-        {/* Pinned Nostalgic Quote Card */}
-        {section.showPromoNote && (
-          <div className="mt-auto pt-3">
-            <div className="relative p-2.5 rounded-2xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-center transition-all shadow-xs select-none">
-              {/* Washi tape */}
-              <div className="absolute -top-1.5 left-3 w-7 h-2.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-2xs rotate-[-6deg]" />
-              <div className="absolute -top-1.5 right-3 w-7 h-2.5 bg-[var(--chrome-active-bg)] border-y border-[var(--chrome-border)] shadow-2xs rotate-[6deg]" />
-
-              <p className="font-script text-[14px] font-bold text-[var(--chrome-accent)] leading-snug">
-                Play Together.
-              </p>
-              <p className="font-script text-[14px] font-bold text-[var(--chrome-accent)] leading-snug">
-                Remember Forever. <span className="text-xs">♡</span>
-              </p>
-
-              {/* Dotted flight loop with paper plane */}
-              <div className="flex justify-center mt-0.5 text-[var(--chrome-accent)]">
-                <svg
-                  viewBox="0 0 50 18"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-11 h-4"
-                  aria-hidden
-                >
-                  <path
-                    d="M 2 13 Q 18 2 32 11 Q 40 16 46 4"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeDasharray="2.5 2.5"
-                  />
-                  <g transform="translate(38, 1) rotate(15) scale(0.48)">
-                    <polygon points="0,15 25,0 12,25 9,16" fill="currentColor" />
-                    <polygon points="25,0 9,16 12,25" fill="currentColor" opacity="0.7" />
-                  </g>
-                </svg>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
 import QrCodeModal from "./QrCodeModal";
-import { captureAndShareScreenshot } from "../lib/screenshot";
 import { useAudio } from "../hooks/useAudio";
 import { AUDIO } from "../constants/audio";
 import { useHaptics } from "../hooks/useHaptics";
@@ -199,25 +198,6 @@ export default function RoomCodeShare({
           >
             <span aria-hidden className="text-sm">🔗</span>
             <span>Share Link</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={async () => {
-              const res = await captureAndShareScreenshot();
-              if (res.message) {
-                toast.info(res.message);
-              }
-            }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl min-h-[44px]
-                       bg-white dark:bg-slate-800 hover:bg-[#FFF9EE] dark:hover:bg-slate-700/80
-                       active:scale-95 text-[#352C24] dark:text-slate-100 font-semibold text-xs sm:text-sm px-3.5 py-2
-                       border border-[#EEDBCA] dark:border-slate-700/80
-                       shadow-xs transition-all duration-150 cursor-pointer w-full sm:w-auto"
-            aria-label="Share Screenshot Image"
-          >
-            <span aria-hidden className="text-sm">🖼️</span>
-            <span>Share Image</span>
           </button>
         </div>
       </div>

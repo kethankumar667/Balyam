@@ -34,7 +34,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
   /* ──────────────────────── 1. Home Section ──────────────────────── */
   home: {
     id: "home",
-    showPromoNote: true,
+    showPromoNote: false,
     items: [
       // Primary Group
       {
