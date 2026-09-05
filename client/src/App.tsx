@@ -31,6 +31,9 @@ const LazyHowToPlayPage = lazy(() => import("./pages/HowToPlayPage"));
 const LazyCommunityRulesPage = lazy(() => import("./pages/CommunityRulesPage"));
 const LazySupportFaqsPage = lazy(() => import("./pages/SupportFaqsPage"));
 const LazyContactUsPage = lazy(() => import("./pages/ContactUsPage"));
+const LazyWriteReviewPage = lazy(() => import("./pages/WriteReviewPage"));
+const LazyFeedbackPage = lazy(() => import("./pages/FeedbackPage"));
+const LazyTestimonialsPage = lazy(() => import("./pages/TestimonialsPage"));
 const LazyTermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 const LazySafetyCenterPage = lazy(() => import("./pages/SafetyCenterPage"));
 const LazyAboutPage = lazy(() => import("./pages/AboutPage"));
@@ -56,6 +59,7 @@ const LazyAdminSystemHealthPage = lazy(() => import("./pages/admin/system-health
 const LazyAdminAuditLogsPage = lazy(() => import("./pages/admin/audit-logs"));
 const LazyAdminSettingsPage = lazy(() => import("./pages/admin/settings"));
 const LazyAdminEconomyPage = lazy(() => import("./pages/admin/economy"));
+const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
 const LazyAdminComponentLibraryPage = lazy(() => import("./pages/admin/component-library"));
 const LazyLeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const LazyTournamentsPage = lazy(() => import("./pages/TournamentsPage"));
@@ -84,6 +88,9 @@ export interface RouteComponents {
   CommunityRulesPage?: React.ComponentType;
   SupportFaqsPage?: React.ComponentType;
   ContactUsPage?: React.ComponentType;
+  WriteReviewPage?: React.ComponentType;
+  FeedbackPage?: React.ComponentType;
+  TestimonialsPage?: React.ComponentType;
   TermsOfServicePage?: React.ComponentType;
   SafetyCenterPage?: React.ComponentType;
   AboutPage?: React.ComponentType;
@@ -109,6 +116,7 @@ export interface RouteComponents {
   AdminAuditLogsPage?: React.ComponentType;
   AdminSettingsPage?: React.ComponentType;
   AdminEconomyPage?: React.ComponentType;
+  AdminReviewsPage?: React.ComponentType;
   AdminComponentLibraryPage?: React.ComponentType;
   LeaderboardPage?: React.ComponentType;
   TournamentsPage?: React.ComponentType;
@@ -275,6 +283,9 @@ export default function App({ components = {} }: AppProps) {
   const CommunityRulesPage = components.CommunityRulesPage ?? LazyCommunityRulesPage;
   const SupportFaqsPage = components.SupportFaqsPage ?? LazySupportFaqsPage;
   const ContactUsPage = components.ContactUsPage ?? LazyContactUsPage;
+  const WriteReviewPage = components.WriteReviewPage ?? LazyWriteReviewPage;
+  const FeedbackPage = components.FeedbackPage ?? LazyFeedbackPage;
+  const TestimonialsPage = components.TestimonialsPage ?? LazyTestimonialsPage;
   const TermsOfServicePage = components.TermsOfServicePage ?? LazyTermsOfServicePage;
   const SafetyCenterPage = components.SafetyCenterPage ?? LazySafetyCenterPage;
   const AboutPage = components.AboutPage ?? LazyAboutPage;
@@ -300,6 +311,7 @@ export default function App({ components = {} }: AppProps) {
   const AdminAuditLogsPage = components.AdminAuditLogsPage ?? LazyAdminAuditLogsPage;
   const AdminSettingsPage = components.AdminSettingsPage ?? LazyAdminSettingsPage;
   const AdminEconomyPage = components.AdminEconomyPage ?? LazyAdminEconomyPage;
+  const AdminReviewsPage = components.AdminReviewsPage ?? LazyAdminReviewsPage;
   const AdminComponentLibraryPage = components.AdminComponentLibraryPage ?? LazyAdminComponentLibraryPage;
   const LeaderboardPage = components.LeaderboardPage ?? LazyLeaderboardPage;
   const TournamentsPage = components.TournamentsPage ?? LazyTournamentsPage;
@@ -389,6 +401,9 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
             <Route path="/help/contact" element={<Navigate to="/contact" replace />} />
             <Route path="/support/contact" element={<Navigate to="/contact" replace />} />
+            <Route path="/reviews/write" element={<WriteReviewPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/testimonials" element={<TestimonialsPage />} />
             <Route path="/help" element={<Navigate to="/how-to-play" replace />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/help/privacy" element={<Navigate to="/privacy" replace />} />
@@ -451,6 +466,16 @@ export default function App({ components = {} }: AppProps) {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminEconomyPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reviews"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminReviewsPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }

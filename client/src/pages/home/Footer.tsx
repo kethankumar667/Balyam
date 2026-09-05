@@ -20,6 +20,8 @@ import {
   Globe,
   ChevronDown,
   Check,
+  Star,
+  MessageSquareText,
 } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { WhatsappGlyph } from "./icons";
@@ -167,6 +169,33 @@ export function Footer() {
                   >
                     <Mail className="w-3.5 h-3.5 text-[#EA580C] shrink-0" />
                     <span>Contact Us</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/testimonials"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
+                  >
+                    <Star className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Testimonials</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/reviews/write"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
+                  >
+                    <Star className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Write a Review</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/feedback"
+                    className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-2 min-h-[28px]"
+                  >
+                    <MessageSquareText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Leave us Feedback</span>
                   </Link>
                 </li>
               </ul>

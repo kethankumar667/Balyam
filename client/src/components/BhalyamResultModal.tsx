@@ -8,6 +8,7 @@ import { findAvatar } from "../lib/avatars";
 import CountUp from "./CountUp";
 import { SettlementView } from "./economy/SettlementView";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
+import RateThisGameCTA from "./reviews/RateThisGameCTA";
 
 export interface RankedPlayerResult {
   id: string;
@@ -352,6 +353,8 @@ export default function BhalyamResultModal({
               Leave Table
             </button>
           </div>
+
+          {roomState?.game && <RateThisGameCTA gameId={roomState.game} />}
         </div>
       </motion.div>
     </div>

@@ -8,3 +8,4 @@ export { default as AdminAnalyticsPage } from "./analytics";
 export { default as AdminSystemHealthPage } from "./system-health";
 export { default as AdminAuditLogsPage } from "./audit-logs";
 export { default as AdminSettingsPage } from "./settings";
+export { default as AdminReviewsPage } from "./reviews";

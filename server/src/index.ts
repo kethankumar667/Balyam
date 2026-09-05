@@ -29,6 +29,9 @@ import { initialiseProgressionStore, persistenceStatus } from "./persistence/ind
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
 import type { EconomyService } from "./economy/EconomyService.js";
+import { initialiseReviewsStore, reviewsStoreStatus } from "./reviews/index.js";
+import { createReviewsRouter, createAdminReviewsRouter } from "./reviews/ReviewsController.js";
+import { createAdminFeedbackRouter } from "./admin/AdminFeedbackController.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
 import { progressionSync } from "./persistence/ProgressionSync.js";
 import { profileRouter } from "./profile/ProfileController.js";
@@ -171,6 +174,7 @@ app.get("/health", (_req, res) => {
       queue: roomManager.economySettlementQueueStatus(),
       voucher: voucherHmacDurability(),
     },
+    reviews: reviewsStoreStatus(),
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -226,6 +230,27 @@ try {
   });
   process.exit(1);
 }
+
+/**
+ * Reviews & Testimonials V1's boot-time wiring — same shape as the economy
+ * block immediately above, one step simpler because nothing else at
+ * module-load time needs a `ReviewsService` instance the way `RoomManager`
+ * needs `economyService` at construction.
+ */
+let reviewsService: Awaited<ReturnType<typeof initialiseReviewsStore>>["service"];
+try {
+  const reviewsBoot = await initialiseReviewsStore();
+  reviewsService = reviewsBoot.service;
+} catch (err) {
+  logger.error({
+    message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
+    module: "SERVER",
+  });
+  process.exit(1);
+}
+app.use("/api/reviews", createReviewsRouter(reviewsService));
+app.use("/api/admin/reviews", createAdminReviewsRouter(reviewsService));
+app.use("/api/admin/feedback", createAdminFeedbackRouter());
 
 const roomManager = new RoomManager(io, economyService);
 // Blocker 06: startup recovery. Discovers and processes any PENDING,

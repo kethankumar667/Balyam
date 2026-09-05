@@ -120,6 +120,25 @@ export class PostgrestClient {
     return Number.isFinite(total) ? total : 0;
   }
 
+  /**
+   * Plain `INSERT`, no conflict handling — a real unique-violation raises a
+   * normal `PostgrestError` (status 409, Postgres code `23505` in the body).
+   * Prefer `insertIgnoringDuplicates` when the caller wants that violation
+   * silently swallowed; use this when the caller wants to catch it itself
+   * (e.g. to attach the row that already occupies the conflicting slot) or
+   * when the target uniqueness is a PARTIAL index, which `on_conflict`
+   * cannot reliably target (see `SupabaseReviewsRepository`'s own header).
+   */
+  async insert<T>(table: string, rows: unknown[]): Promise<T[]> {
+    if (rows.length === 0) return [];
+    const { body } = await this.call(table, table, {
+      method: "POST",
+      headers: this.headers({ Prefer: "return=representation" }),
+      body: JSON.stringify(rows),
+    });
+    return (Array.isArray(body) ? body : []) as T[];
+  }
+
   /** UPSERT. `onConflict` names the unique columns to merge on. */
   async upsert(table: string, rows: unknown[], onConflict: string): Promise<void> {
     if (rows.length === 0) return;
@@ -158,6 +177,26 @@ export class PostgrestClient {
       method: "DELETE",
       headers: this.headers({ Prefer: "return=minimal" }),
     });
+  }
+
+  /**
+   * `PATCH /table?<query>`, returning the rows actually updated.
+   *
+   * Callers that need a state-transition guard (e.g. "only move a review
+   * from pending to approved") put that in `query` itself
+   * (`status=eq.pending`), not just in `patch` — an empty returned array
+   * then means the transition was illegal or lost a race, not that nothing
+   * matched by id, and the caller can tell those apart from the id it
+   * already knows exists.
+   */
+  async update<T>(table: string, patch: unknown, query: string): Promise<T[]> {
+    if (!query) throw new Error(`Refusing an unfiltered UPDATE on ${table}`);
+    const { body } = await this.call(table, `${table}?${query}`, {
+      method: "PATCH",
+      headers: this.headers({ Prefer: "return=representation" }),
+      body: JSON.stringify(patch),
+    });
+    return (Array.isArray(body) ? body : []) as T[];
   }
 
   /** Call a Postgres function through PostgREST. */

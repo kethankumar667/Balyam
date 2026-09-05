@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { logger } from "../lib/logger.js";
+import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 
 /**
  * Community reports & support tickets.
@@ -22,6 +23,16 @@ import { logger } from "../lib/logger.js";
  * non-critical state — swap for a real table alongside the other
  * `ProgressionRepository`-style persistence work if this needs to survive
  * a restart or be reviewable by a moderator later.
+ *
+ * `/feedback` (added alongside `/reports`/`/tickets`, Reviews & Testimonials
+ * V1) is the general "Leave us Feedback" form and inherits this exact same
+ * in-memory gap deliberately — it's a lower-stakes inbox than the reviews
+ * feature it shipped with, which DOES get durable storage (see
+ * `server/src/reviews/index.ts`) because reviews are permanent public
+ * content and feedback is not. If feedback ever needs to survive a
+ * restart, its eventual table shape follows the same repository +
+ * boot-chooser pattern reviews already established, not a third bespoke
+ * persistence approach.
  */
 
 export interface CommunityReportRecord {
@@ -46,8 +57,26 @@ export interface SupportTicketRecord {
   createdAt: number;
 }
 
+/**
+ * The general "Leave us Feedback" form — bug reports, suggestions, or
+ * anything else that isn't a game/platform review and isn't a community
+ * report. Open to anyone, including fully anonymous callers (no
+ * `requireIdentity`, matching `/reports` and `/tickets`'s own stance) — it's
+ * an inbox an operator reads, never public-facing content, so it does not
+ * need the moderation-queue machinery `reviews` has.
+ */
+export interface FeedbackRecord {
+  id: string;
+  category: "bug" | "suggestion" | "other";
+  message: string;
+  email: string | null;
+  submitterId: string | null;
+  createdAt: number;
+}
+
 const communityReports: CommunityReportRecord[] = [];
 const supportTickets: SupportTicketRecord[] = [];
+const feedbackSubmissions: FeedbackRecord[] = [];
 
 /** Exposed for tests — not a public read API (these can carry PII). */
 export function _allCommunityReports(): readonly CommunityReportRecord[] {
@@ -55,6 +84,10 @@ export function _allCommunityReports(): readonly CommunityReportRecord[] {
 }
 export function _allSupportTickets(): readonly SupportTicketRecord[] {
   return supportTickets;
+}
+/** Exposed for tests and `AdminFeedbackController.ts` — not a public read API. */
+export function _allFeedbackSubmissions(): readonly FeedbackRecord[] {
+  return feedbackSubmissions;
 }
 
 function genTicket(prefix: "REP" | "TKT"): string {
@@ -119,4 +152,34 @@ supportRouter.post("/tickets", (req, res) => {
   logger.info({ message: "Support ticket submitted", module: "support", playerId: record.submitterId ?? undefined, ticket: record.ticket, category: record.category });
 
   res.status(201).json({ ticket: record.ticket });
+});
+
+const FEEDBACK_CATEGORIES = new Set(["bug", "suggestion", "other"]);
+
+/** Open to anonymous callers, so keyed by IP rather than identity. */
+const feedbackRateLimit = rateLimitByCaller({ capacity: 10, refillPerSec: 10 / 3600, keyOf: callerIp });
+
+/** POST /api/support/feedback — "Leave us Feedback" form. No identity required. */
+supportRouter.post("/feedback", feedbackRateLimit, (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const message = trimmedOrNull(body.message, 2000);
+  const categoryRaw = trimmedOrNull(body.category, 20);
+  const category = categoryRaw && FEEDBACK_CATEGORIES.has(categoryRaw) ? (categoryRaw as FeedbackRecord["category"]) : null;
+  if (!message || !category) {
+    res.status(400).json({ error: "A message and a valid category (bug, suggestion, or other) are required" });
+    return;
+  }
+
+  const record: FeedbackRecord = {
+    id: randomUUID(),
+    category,
+    message,
+    email: trimmedOrNull(body.email, 200),
+    submitterId: req.player?.playerId ?? null,
+    createdAt: Date.now(),
+  };
+  feedbackSubmissions.push(record);
+  logger.info({ message: "Feedback submitted", module: "support", playerId: record.submitterId ?? undefined, category: record.category });
+
+  res.status(201).json({ id: record.id });
 });
