@@ -118,63 +118,77 @@ export default function AchievementsPanel({ achievements }: AchievementsPanelPro
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-500" />
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+          <h2 className="text-sm font-bold text-stone-900 dark:text-white">
             Player Achievements ({unlockedCount} / {achievements.length} Unlocked)
           </h2>
         </div>
-        <span className="text-xs font-bold text-[#EA580C] bg-[#FFF7ED] dark:bg-amber-950/30 border border-[#FFEDD5] dark:border-amber-900/50 px-3 py-1 rounded-full">
+        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 px-3 py-1 rounded-full">
           {completionPct}% Completed
         </span>
       </div>
 
       {/* 4-column Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {achievements.map((ach) => (
-          <div
-            key={ach.id}
-            className={`bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-3.5 shadow-xs hover:border-amber-500/40 transition flex flex-col justify-between ${
-              ach.unlocked ? "border-amber-500/30 ring-1 ring-amber-500/20" : ""
-            }`}
-          >
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                {renderBadgeIcon(ach)}
-                {ach.unlocked ? (
-                  <span className="text-[10px] font-mono font-black bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7] px-2.5 py-0.5 rounded-full uppercase">
-                    UNLOCKED
-                  </span>
-                ) : (
-                  <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
-                    {ach.currentProgress} / {ach.targetValue}
-                  </span>
-                )}
-              </div>
+        {achievements.map((ach) => {
+          const isUnlocked = ach.unlocked;
 
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                  {ach.title}
-                </h3>
-                <p className="text-xs text-slate-400 font-medium leading-snug mt-1 min-h-[32px]">
-                  {ach.description}
-                </p>
+          return (
+            <div
+              key={ach.id}
+              className={`group relative rounded-3xl p-0.5 transition-all duration-300 ${
+                isUnlocked
+                  ? "bg-gradient-to-b from-amber-500/40 via-amber-500/10 to-amber-500/30 shadow-md shadow-amber-500/5 hover:-translate-y-0.5"
+                  : "bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-stone-700/30 dark:via-transparent dark:to-stone-800/20 shadow-xs hover:-translate-y-0.5"
+              }`}
+            >
+              <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-3.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="group-hover:scale-105 transition-transform">
+                      {renderBadgeIcon(ach)}
+                    </div>
+                    {isUnlocked ? (
+                      <span className="text-[10px] font-mono font-black bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        UNLOCKED
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono font-bold text-stone-600 dark:text-slate-300 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        {ach.currentProgress} / {ach.targetValue}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-sm text-stone-900 dark:text-white leading-tight">
+                      {ach.title}
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug mt-1 min-h-[32px]">
+                      {ach.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="pt-2 border-t border-stone-200/60 dark:border-white/5 space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-bold text-stone-400 dark:text-slate-400">
+                    <span className="uppercase tracking-wider">Progress</span>
+                    <span>{ach.progressPercent}%</span>
+                  </div>
+                  <div className="h-1.5 bg-stone-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isUnlocked
+                          ? "bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400"
+                          : "bg-gradient-to-r from-stone-400 to-stone-500 dark:from-slate-600 dark:to-slate-400"
+                      }`}
+                      style={{ width: `${ach.progressPercent}%` }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* Progress bar */}
-            <div className="pt-2 border-t border-[#F3EFE9] dark:border-[#202740] space-y-1.5">
-              <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                <span className="uppercase">Progress</span>
-                <span>{ach.progressPercent}%</span>
-              </div>
-              <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
-                  style={{ width: `${ach.progressPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

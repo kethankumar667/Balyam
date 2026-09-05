@@ -97,104 +97,117 @@ export default function ProfileOverviewPage() {
       {/* ── Section 3: Bottom Row (Favorite Games + Achievements) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Favorite Games Panel */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Favorite Games
-              </h3>
+        <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-rose-500/20 dark:via-transparent dark:to-purple-500/10 shadow-sm self-start">
+          <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-6 sm:p-7 space-y-4 border border-stone-200/60 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-500 border border-rose-200/60 dark:border-rose-500/30 flex items-center justify-center shadow-xs">
+                  <Heart className="w-4 h-4 fill-rose-500" />
+                </div>
+                <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+                  Favorite Games
+                </h3>
+              </div>
+              <Link
+                to="/favorites"
+                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition"
+              >
+                View all →
+              </Link>
             </div>
-            <Link
-              to="/favorites"
-              className="text-xs font-bold text-[#6D28D9] hover:underline"
-            >
-              View all →
-            </Link>
+            {stats && <FavoriteGames stats={stats} />}
           </div>
-          {stats && <FavoriteGames stats={stats} />}
         </div>
 
         {/* Achievements Panel */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-500" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Achievements ({unlockedCount}/25)
-              </h3>
-            </div>
-            <Link
-              to="/profile/achievements"
-              className="text-xs font-bold text-[#EA580C] hover:underline"
-            >
-              All 25 badges →
-            </Link>
-          </div>
-
-          {/* List of 3 Preview Achievements */}
-          <div className="space-y-3">
-            {recentAchievements.length > 0 ? (
-              recentAchievements.map((ach) => (
-                <div
-                  key={ach.id}
-                  className="bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] rounded-2xl p-3.5 space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
-                        {ach.id.includes("streak") ? (
-                          <Flame className="w-4 h-4 text-amber-500" />
-                        ) : ach.id.includes("win") ? (
-                          <Trophy className="w-4 h-4 text-amber-500" />
-                        ) : (
-                          <span className="text-sm">🎲</span>
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                          {ach.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 leading-snug">
-                          {ach.description}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
-                      {ach.currentProgress} / {ach.targetValue}
-                    </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
-                        style={{ width: `${ach.progressPercent}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">
-                      {ach.progressPercent}%
-                    </span>
-                  </div>
+        <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-amber-500/20 dark:via-transparent dark:to-amber-500/10 shadow-sm self-start">
+          <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-6 sm:p-7 space-y-4 border border-stone-200/60 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 border border-amber-200/60 dark:border-amber-500/30 flex items-center justify-center shadow-xs">
+                  <Award className="w-4 h-4" />
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-6 text-xs text-slate-400">
-                No achievements tracked yet.
+                <div>
+                  <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+                    Achievements
+                  </h3>
+                  <span className="text-[11px] text-stone-400 dark:text-slate-400 font-medium">
+                    {unlockedCount} of 25 unlocked
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
+              <Link
+                to="/profile/achievements"
+                className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition"
+              >
+                All badges →
+              </Link>
+            </div>
 
-          {/* View All Achievements Button */}
-          <div className="pt-1">
-            <Link
-              to="/profile/achievements"
-              className="w-full py-2.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            >
-              <span>View All Achievements</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </Link>
+            {/* List of 3 Preview Achievements */}
+            <div className="space-y-2.5">
+              {recentAchievements.length > 0 ? (
+                recentAchievements.map((ach) => (
+                  <div
+                    key={ach.id}
+                    className="group bg-stone-50/80 dark:bg-[#151c2e] border border-stone-200/60 dark:border-white/5 rounded-2xl p-3.5 space-y-2 hover:border-amber-500/30 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1c243c] border border-stone-200/80 dark:border-white/10 text-stone-600 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                          {ach.id.includes("streak") ? (
+                            <Flame className="w-4 h-4 text-amber-500" />
+                          ) : ach.id.includes("win") ? (
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                          ) : (
+                            <span className="text-sm">🎲</span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs text-stone-900 dark:text-white">
+                            {ach.title}
+                          </h4>
+                          <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-snug">
+                            {ach.description}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-stone-600 dark:text-slate-300 bg-stone-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
+                        {ach.currentProgress} / {ach.targetValue}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="flex-1 h-1.5 bg-stone-200/70 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
+                          style={{ width: `${ach.progressPercent}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold text-stone-400 dark:text-slate-400 shrink-0">
+                        {ach.progressPercent}%
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-xs text-stone-400 dark:text-slate-500">
+                  No achievements tracked yet.
+                </div>
+              )}
+            </div>
+
+            {/* View All Achievements Button */}
+            <div className="pt-1">
+              <Link
+                to="/profile/achievements"
+                className="w-full py-2.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-stone-700 dark:text-slate-200 bg-stone-100/80 dark:bg-slate-800/60 rounded-xl border border-stone-200 dark:border-slate-700 hover:bg-stone-200/80 dark:hover:bg-slate-800 transition"
+              >
+                <span>View All Achievements</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

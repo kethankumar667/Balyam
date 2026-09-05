@@ -149,13 +149,19 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
     it("displays World Bank treasury reserve cards and health status score", async () => {
       renderDashboard();
 
+      // "World Bank Treasury Reserves" is the section title and renders
+      // unconditionally, even while worldBank is still loading — waiting on
+      // it alone lets this proceed before the mocked snapshot has resolved.
+      // "Guest Escrow Liability" only renders once worldBank is populated,
+      // so waiting on it guarantees the data-dependent assertions below see
+      // the loaded state instead of racing it.
       await waitFor(() => {
-        expect(screen.getByText("World Bank Treasury Reserves")).toBeDefined();
+        expect(screen.getByText("Guest Escrow Liability")).toBeDefined();
       });
 
+      expect(screen.getByText("World Bank Treasury Reserves")).toBeDefined();
       expect(screen.getByText("BHALYAM Economy Health & Operations")).toBeDefined();
       expect(screen.getByText("HEALTHY")).toBeDefined();
-      expect(screen.getByText("Guest Escrow Liability")).toBeDefined();
       expect(screen.getByText("Vouchers Redeemed")).toBeDefined();
     });
 

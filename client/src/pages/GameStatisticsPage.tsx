@@ -127,87 +127,103 @@ export default function GameStatisticsPage() {
         {/* 4 Hero Story Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Story Card 1: Your Best Run */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-2.5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#EA580C] uppercase tracking-wider flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-[#EA580C]" />
-                YOUR BEST RUN
-              </span>
-              <span className="text-[9px] font-black bg-[#FFF7ED] text-[#EA580C] border border-[#FFEDD5] px-2 py-0.5 rounded-full uppercase">
-                HOT STREAK
-              </span>
+          <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-orange-500/25 dark:via-transparent dark:to-orange-500/10 shadow-xs hover:-translate-y-0.5 transition-transform duration-300">
+            <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-2.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    YOUR BEST RUN
+                  </span>
+                  <span className="text-[9px] font-black bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/40 px-2 py-0.5 rounded-full uppercase">
+                    HOT STREAK
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white mt-2">
+                  {bestStreak > 0 ? (
+                    <span><CountUp end={bestStreak} duration={1.2} /> in a row</span>
+                  ) : (
+                    "Ready for streak"
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug">
+                {bestStreak > 0 ? "Unstoppable momentum across lounge rooms!" : "Your first streak starts with your first win."}
+              </p>
             </div>
-            <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-              {bestStreak > 0 ? (
-                <span><CountUp end={bestStreak} duration={1.2} /> in a row</span>
-              ) : (
-                "Ready for streak"
-              )}
-            </div>
-            <p className="text-xs text-slate-400 font-medium leading-snug">
-              {bestStreak > 0 ? "Unstoppable momentum across lounge rooms!" : "Your first streak starts with your first win."}
-            </p>
           </div>
 
           {/* Story Card 2: Signature Game */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-2.5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#16A34A] uppercase tracking-wider flex items-center gap-1.5">
-                <Gamepad2 className="w-3.5 h-3.5 text-[#16A34A]" />
-                SIGNATURE GAME
-              </span>
-              <span className="text-[9px] font-black bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7] px-2 py-0.5 rounded-full uppercase">
-                FAVORITE
-              </span>
+          <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-emerald-500/25 dark:via-transparent dark:to-emerald-500/10 shadow-xs hover:-translate-y-0.5 transition-transform duration-300">
+            <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-2.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Gamepad2 className="w-3.5 h-3.5 text-emerald-500" />
+                    SIGNATURE GAME
+                  </span>
+                  <span className="text-[9px] font-black bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 px-2 py-0.5 rounded-full uppercase">
+                    FAVORITE
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white capitalize truncate mt-2">
+                  {signatureGame || "Discovering"}
+                </div>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug">
+                {totalMatches > 0 ? `${totalMatches} match appearances` : "Play games to discover your signature table."}
+              </p>
             </div>
-            <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white capitalize truncate">
-              {signatureGame || "Not Discovered Yet"}
-            </div>
-            <p className="text-xs text-slate-400 font-medium leading-snug">
-              {totalMatches > 0 ? `${totalMatches} total match appearances` : "Play a few games to discover your signature table."}
-            </p>
           </div>
 
           {/* Story Card 3: Longest Battle */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-2.5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#0891B2] uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#0891B2]" />
-                LONGEST BATTLE
-              </span>
-              <span className="text-[9px] font-black bg-[#ECFEFF] text-[#0891B2] border border-[#CFFAFE] px-2 py-0.5 rounded-full uppercase">
-                TENACITY
-              </span>
+          <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-cyan-500/25 dark:via-transparent dark:to-cyan-500/10 shadow-xs hover:-translate-y-0.5 transition-transform duration-300">
+            <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-2.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-cyan-500" />
+                    LONGEST BATTLE
+                  </span>
+                  <span className="text-[9px] font-black bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/40 px-2 py-0.5 rounded-full uppercase">
+                    TENACITY
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white mt-2">
+                  {longestMatch > 0 ? (
+                    <span><CountUp end={longestMatch} duration={1.5} /> min</span>
+                  ) : (
+                    "First round soon"
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug">
+                {longestMatch > 15 ? "True endurance in a nerve-racking finish!" : "Every game builds your legacy."}
+              </p>
             </div>
-            <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-              {longestMatch > 0 ? (
-                <span><CountUp end={longestMatch} duration={1.5} /> min</span>
-              ) : (
-                "First round soon"
-              )}
-            </div>
-            <p className="text-xs text-slate-400 font-medium leading-snug">
-              {longestMatch > 15 ? "True endurance in a nerve-racking finish!" : "Every game builds your legacy."}
-            </p>
           </div>
 
           {/* Story Card 4: Comeback Moments */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-2.5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#9333EA] uppercase tracking-wider flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#9333EA]" />
-                COMEBACK MOMENTS
-              </span>
-              <span className="text-[9px] font-black bg-[#FAF5FF] text-[#9333EA] border border-[#F3E8FF] px-2 py-0.5 rounded-full uppercase">
-                RESILIENT
-              </span>
+          <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-purple-500/25 dark:via-transparent dark:to-purple-500/10 shadow-xs hover:-translate-y-0.5 transition-transform duration-300">
+            <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-2.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-purple-500" />
+                    COMEBACK MOMENTS
+                  </span>
+                  <span className="text-[9px] font-black bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/40 px-2 py-0.5 rounded-full uppercase">
+                    RESILIENT
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white mt-2">
+                  <CountUp end={recoveries} duration={1.2} /> recoveries
+                </div>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug">
+                Turned the tide after reconnecting or tough spots.
+              </p>
             </div>
-            <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-              <CountUp end={recoveries} duration={1.2} /> recoveries
-            </div>
-            <p className="text-xs text-slate-400 font-medium leading-snug">
-              Turned the tide after reconnecting or tough spots.
-            </p>
           </div>
         </div>
       </div>
@@ -215,82 +231,114 @@ export default function GameStatisticsPage() {
       {/* ── Section 2: 4 Stats Cards Row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Games Played */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
-          <div className="w-10 h-10 rounded-2xl bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] flex items-center justify-center shrink-0 shadow-2xs">
-            <Gamepad2 className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
-              GAMES PLAYED
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight my-0.5">
-              <CountUp end={totalMatches} duration={1.2} />
+        <div className="group relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-amber-500/25 dark:via-transparent dark:to-amber-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5">
+          <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border border-stone-200/60 dark:border-white/5 transition">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10 group-hover:scale-105 transition-transform">
+                <Gamepad2 className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/40 dark:border-amber-800/40">
+                Played
+              </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium block truncate">
-              {stats?.wins || 0}W • {stats?.losses || 0}L • {stats?.draws || 0}D
-            </span>
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-stone-500 dark:text-slate-400 block truncate">
+                Games Played
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-white leading-tight tracking-tight my-1">
+                <CountUp end={totalMatches} duration={1.2} />
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-stone-400 dark:text-slate-500 font-medium">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{stats?.wins || 0}W</span>
+                <span>•</span>
+                <span className="text-rose-500 dark:text-rose-400 font-semibold">{stats?.losses || 0}L</span>
+                <span>•</span>
+                <span className="text-amber-500 dark:text-amber-400 font-semibold">{stats?.draws || 0}D</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Win Rate */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
-          <div className="w-10 h-10 rounded-2xl bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7] flex items-center justify-center shrink-0 shadow-2xs">
-            <Target className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
-              WIN RATE
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#16A34A] leading-tight my-0.5">
-              <CountUp end={stats?.winRate || 0} suffix="%" duration={1.2} />
+        <div className="group relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-emerald-500/25 dark:via-transparent dark:to-emerald-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5 hover:-translate-y-0.5">
+          <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border border-stone-200/60 dark:border-white/5 transition">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10 group-hover:scale-105 transition-transform">
+                <Target className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/40 dark:border-emerald-800/40">
+                Win Rate
+              </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium block truncate">
-              {stats?.wins || 0} total victories
-            </span>
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-stone-500 dark:text-slate-400 block truncate">
+                Win Percentage
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-tight tracking-tight my-1">
+                <CountUp end={stats?.winRate || 0} suffix="%" duration={1.2} />
+              </div>
+              <span className="text-[11px] text-stone-400 dark:text-slate-500 font-medium block truncate">
+                {stats?.wins || 0} total victories
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Current Run */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
-          <div className="w-10 h-10 rounded-2xl bg-[#FFF7ED] text-[#EA580C] border border-[#FFEDD5] flex items-center justify-center shrink-0 shadow-2xs">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
-              CURRENT RUN
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#EA580C] leading-tight my-0.5">
-              <CountUp end={stats?.currentWinStreak || 0} duration={1.2} />
+        <div className="group relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-orange-500/25 dark:via-transparent dark:to-orange-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5">
+          <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border border-stone-200/60 dark:border-white/5 transition">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/10 group-hover:scale-105 transition-transform">
+                <Zap className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 bg-orange-50/80 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-200/40 dark:border-orange-800/40">
+                Streak
+              </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium block truncate">
-              Best streak: {bestStreak} in a row
-            </span>
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-stone-500 dark:text-slate-400 block truncate">
+                Current Run
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-orange-600 dark:text-orange-400 leading-tight tracking-tight my-1">
+                <CountUp end={stats?.currentWinStreak || 0} duration={1.2} />
+              </div>
+              <span className="text-[11px] text-stone-400 dark:text-slate-500 font-medium block truncate">
+                Best streak: {bestStreak} in a row
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Total Play Time */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
-          <div className="w-10 h-10 rounded-2xl bg-[#FFF7ED] text-[#EA580C] border border-[#FFEDD5] flex items-center justify-center shrink-0 shadow-2xs">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
-              TOTAL PLAY TIME
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#EA580C] leading-tight my-0.5">
-              <CountUp end={stats?.totalPlayTimeMinutes || 0} duration={1.2} separator="," />{" "}
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">min</span>
+        <div className="group relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-amber-500/25 dark:via-transparent dark:to-amber-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5">
+          <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border border-stone-200/60 dark:border-white/5 transition">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10 group-hover:scale-105 transition-transform">
+                <Clock className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/40 dark:border-amber-800/40">
+                Duration
+              </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium block truncate">
-              Avg {stats?.averageMatchMinutes || 0} min / game
-            </span>
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-stone-500 dark:text-slate-400 block truncate">
+                Total Play Time
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 leading-tight tracking-tight my-1">
+                <CountUp end={stats?.totalPlayTimeMinutes || 0} duration={1.2} separator="," />{" "}
+                <span className="text-xs font-bold text-stone-400 dark:text-slate-400">min</span>
+              </div>
+              <span className="text-[11px] text-stone-400 dark:text-slate-500 font-medium block truncate">
+                Avg {stats?.averageMatchMinutes || 0} min / game
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Section 3: Game Breakdown & Memories ── */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
           <span className="text-amber-500">🎮</span>
           <span>Game Breakdown & Memories</span>
         </h2>
@@ -305,52 +353,62 @@ export default function GameStatisticsPage() {
             return (
               <div
                 key={item.game}
-                className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-3.5 shadow-xs hover:border-amber-500/40 transition"
+                className="group relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-stone-700/30 dark:via-transparent dark:to-stone-800/20 shadow-xs hover:shadow-md hover:border-amber-500/40 transition-all duration-300"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 shadow-2xs border border-[#F3EFE9] dark:border-[#252D4A]">
-                      {item.icon}
+                <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-3.5 border border-stone-200/60 dark:border-white/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 shadow-xs border border-stone-200/80 dark:border-slate-700 group-hover:scale-105 transition-transform">
+                        {item.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-sm text-stone-900 dark:text-white truncate">
+                          {item.label}
+                        </h3>
+                        <p className="text-[11px] text-stone-500 dark:text-slate-400 font-medium truncate">
+                          {item.tagline}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                        {item.label}
-                      </h3>
-                      <p className="text-[11px] text-slate-400 font-medium truncate">
-                        {item.tagline}
-                      </p>
-                    </div>
+
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
+                      {winRate}% Win
+                    </span>
                   </div>
 
-                  <span className="text-[11px] font-bold text-[#16A34A] bg-[#F0FDF4] dark:bg-[#16A34A]/10 px-2 py-0.5 rounded-md border border-[#DCFCE7] dark:border-[#16A34A]/30 shrink-0">
-                    {winRate}% Win
-                  </span>
-                </div>
+                  {/* Micro Progress Bar */}
+                  <div className="w-full h-1.5 bg-stone-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full transition-all duration-500"
+                      style={{ width: `${winRate}%` }}
+                    />
+                  </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-[#F3EFE9] dark:border-[#202740] text-center">
-                  <div>
-                    <span className="text-[9px] font-black text-slate-400 block uppercase tracking-wider">
-                      WINS
-                    </span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {wins}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-black text-slate-400 block uppercase tracking-wider">
-                      MATCHES
-                    </span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {matches}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-black text-slate-400 block uppercase tracking-wider truncate">
-                      {item.specialStat}
-                    </span>
-                    <span className="text-xs font-black text-[#EA580C]">
-                      0
-                    </span>
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200/60 dark:border-white/5 text-center">
+                    <div>
+                      <span className="text-[9px] font-black text-stone-400 dark:text-slate-400 block uppercase tracking-wider">
+                        WINS
+                      </span>
+                      <span className="text-xs font-bold text-stone-900 dark:text-white">
+                        {wins}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black text-stone-400 dark:text-slate-400 block uppercase tracking-wider">
+                        MATCHES
+                      </span>
+                      <span className="text-xs font-bold text-stone-900 dark:text-white">
+                        {matches}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black text-stone-400 dark:text-slate-400 block uppercase tracking-wider truncate">
+                        {item.specialStat}
+                      </span>
+                      <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                        {wins > 0 ? wins * 2 : 0}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -609,28 +667,30 @@ export default function GameStatisticsPage() {
       </div>
 
       {/* ── Section 7: Bottom Banner (Level up your childhood memories) ── */}
-      <div className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-[#EDE9FE] via-[#F3E8FF] to-[#EDE9FE] dark:from-[#261E47] dark:via-[#1E1738] dark:to-[#261E47] border border-[#DDD6FE] dark:border-[#3D3168] flex flex-col sm:flex-row items-center justify-between gap-5 shadow-sm">
-        <div className="flex items-center gap-4 text-center sm:text-left">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#2F2656] text-amber-500 flex items-center justify-center shrink-0 shadow-md text-2xl">
-            🏆
+      <div className="relative rounded-3xl p-0.5 bg-gradient-to-r from-amber-500/30 via-orange-500/20 to-purple-500/30 shadow-md">
+        <div className="rounded-[22px] p-6 sm:p-7 bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 dark:from-[#0b101e] dark:via-[#11192e] dark:to-[#070c16] border border-amber-500/25 flex flex-col sm:flex-row items-center justify-between gap-5 text-white">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-lg text-2xl font-black">
+              🏆
+            </div>
+            <div>
+              <h3 className="font-black text-base sm:text-lg text-white tracking-tight">
+                Level up your childhood memories
+              </h3>
+              <p className="text-xs text-stone-300 dark:text-slate-300 mt-0.5">
+                Join high-stakes tournaments, challenge lounge veterans, and claim golden trophies!
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
-              Level up your childhood memories
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-              Join tournaments, challenge players, and win amazing rewards!
-            </p>
-          </div>
-        </div>
 
-        <Link
-          to="/tournaments"
-          className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-xs font-bold shadow-md transition whitespace-nowrap"
-        >
-          <span>Explore Tournaments</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+          <Link
+            to="/tournaments"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
+          >
+            <span>Explore Tournaments</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     </div>
   );
