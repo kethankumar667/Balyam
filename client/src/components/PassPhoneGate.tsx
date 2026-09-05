@@ -32,7 +32,7 @@ export default function PassPhoneGate({
   children: React.ReactNode;
 }) {
   const activePlayer = activePlayerId
-    ? players.find((p) => p.id === activePlayerId) ?? null
+    ? (players ?? []).find((p) => p.id === activePlayerId) ?? null
     : null;
   const shouldGate = isHost && activePlayer?.isLocal === true;
 

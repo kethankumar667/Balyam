@@ -53,7 +53,7 @@ import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
 import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
-import type { GameKind, Player, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
+import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
@@ -305,6 +305,157 @@ function startCancelledMessage(reason: string): string {
   }
 }
 
+function LudoBoardContainer({
+  gameState,
+  roomState,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+  handleScorecardClose,
+}: {
+  gameState: LudoState;
+  roomState: RoomPublicState;
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+  handleScorecardClose: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate
+      activePlayerId={activePid}
+      players={players}
+      isHost={isHost}
+    >
+      <LudoBoard
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+        onScorecardClose={handleScorecardClose}
+      />
+    </PassPhoneGate>
+  );
+}
+
+function SnlBoardContainer({
+  gameState,
+  roomState,
+  playerId,
+  messages,
+}: {
+  gameState: SnlState;
+  roomState: RoomPublicState;
+  playerId: string | null;
+  messages: ChatMessage[];
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate
+      activePlayerId={activePid}
+      players={players}
+      isHost={isHost}
+    >
+      <SnlBoard
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+      />
+    </PassPhoneGate>
+  );
+}
+
+function DotsBoxesBoardContainer({
+  gameState,
+  roomState,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+  handleScorecardClose,
+}: {
+  gameState: DotsBoxesPublicState;
+  roomState: RoomPublicState;
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+  handleScorecardClose: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate
+      activePlayerId={activePid}
+      players={players}
+      isHost={isHost}
+    >
+      <DotsBoxesBoard
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+        onScorecardClose={handleScorecardClose}
+      />
+    </PassPhoneGate>
+  );
+}
+
+function WordBuildingBoardContainer({
+  gameState,
+  roomState,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+}: {
+  gameState: WordBuildingPublicState;
+  roomState: RoomPublicState;
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate
+      activePlayerId={activePid}
+      players={players}
+      isHost={isHost}
+    >
+      <WordBuildingBoard
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+      />
+    </PassPhoneGate>
+  );
+}
+
 export default function Room() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -472,6 +623,9 @@ export default function Room() {
           setTimeout(() => navigate("/"), 4000);
           return;
         }
+        if (res.state) {
+          setRoomState(res.state);
+        }
         if (res.playerId) {
           setPlayerId(res.playerId);
           recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
@@ -481,7 +635,7 @@ export default function Room() {
         }
       }
     );
-  }, [code, playerName, mustDeclare, seatFor, setPlayerId, rememberSeat, setError, reset, navigate]);
+  }, [code, playerName, mustDeclare, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
 
   const handleRetryConnection = useCallback(() => {
     joinInFlightRef.current = false;
@@ -1374,59 +1528,23 @@ export default function Room() {
               )}
 
               {roomState.game === "ludo" && gameState != null && (
-                (() => {
-                  const ls = gameState as LudoState;
-                  const isHost = roomState.hostId === playerId;
-                  const activePid = ls.turnPlayerId;
-                  const activeP = roomState.players.find((p) => p.id === activePid);
-                  const effectiveSelfId =
-                    isHost && activeP?.isLocal ? activePid : playerId;
-                  return (
-                    <PassPhoneGate
-                      activePlayerId={activePid}
-                      players={roomState.players}
-                      isHost={isHost}
-                    >
-                      <LudoBoard
-                        state={ls}
-                        players={roomState.players}
-                        selfId={effectiveSelfId}
-                        messages={messages}
-                        roomCode={roomState.code}
-                        roomPhase={roomState.phase}
-                        onLeave={requestLeaveConfirmation}
-                        onScorecardClose={handleScorecardClose}
-                      />
-                    </PassPhoneGate>
-                  );
-                })()
+                <LudoBoardContainer
+                  gameState={gameState as LudoState}
+                  roomState={roomState}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                  handleScorecardClose={handleScorecardClose}
+                />
               )}
 
               {roomState.game === "snl" && gameState != null && (
-                (() => {
-                  const ss = gameState as SnlState;
-                  const isHost = roomState.hostId === playerId;
-                  const activePid = ss.turnPlayerId;
-                  const activeP = roomState.players.find((p) => p.id === activePid);
-                  const effectiveSelfId =
-                    isHost && activeP?.isLocal ? activePid : playerId;
-                  return (
-                    <PassPhoneGate
-                      activePlayerId={activePid}
-                      players={roomState.players}
-                      isHost={isHost}
-                    >
-                      <SnlBoard
-                        state={ss}
-                        players={roomState.players}
-                        selfId={effectiveSelfId}
-                        messages={messages}
-                        roomCode={roomState.code}
-                        roomPhase={roomState.phase}
-                      />
-                    </PassPhoneGate>
-                  );
-                })()
+                <SnlBoardContainer
+                  gameState={gameState as SnlState}
+                  roomState={roomState}
+                  playerId={playerId}
+                  messages={messages}
+                />
               )}
 
               {roomState.game === "handcricket" && gameState != null && (
@@ -1458,60 +1576,24 @@ export default function Room() {
               )}
 
               {roomState.game === "dotsboxes" && gameState != null && (
-                (() => {
-                  const dbs = gameState as DotsBoxesPublicState;
-                  const isHost = roomState.hostId === playerId;
-                  const activePid = dbs.turnPlayerId;
-                  const activeP = roomState.players.find((p) => p.id === activePid);
-                  const effectiveSelfId =
-                    isHost && activeP?.isLocal ? activePid : playerId;
-                  return (
-                    <PassPhoneGate
-                      activePlayerId={activePid}
-                      players={roomState.players}
-                      isHost={isHost}
-                    >
-                      <DotsBoxesBoard
-                        state={dbs}
-                        players={roomState.players}
-                        selfId={effectiveSelfId}
-                        messages={messages}
-                        roomCode={roomState.code}
-                        roomPhase={roomState.phase}
-                        onLeave={requestLeaveConfirmation}
-                        onScorecardClose={handleScorecardClose}
-                      />
-                    </PassPhoneGate>
-                  );
-                })()
+                <DotsBoxesBoardContainer
+                  gameState={gameState as DotsBoxesPublicState}
+                  roomState={roomState}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                  handleScorecardClose={handleScorecardClose}
+                />
               )}
 
               {roomState.game === "wordbuilding" && gameState != null && (
-                (() => {
-                  const wbs = gameState as WordBuildingPublicState;
-                  const isHost = roomState.hostId === playerId;
-                  const activePid = wbs.turnPlayerId;
-                  const activeP = roomState.players.find((p) => p.id === activePid);
-                  const effectiveSelfId =
-                    isHost && activeP?.isLocal ? activePid : playerId;
-                  return (
-                    <PassPhoneGate
-                      activePlayerId={activePid}
-                      players={roomState.players}
-                      isHost={isHost}
-                    >
-                      <WordBuildingBoard
-                        state={wbs}
-                        players={roomState.players}
-                        selfId={effectiveSelfId}
-                        messages={messages}
-                        roomCode={roomState.code}
-                        roomPhase={roomState.phase}
-                        onLeave={requestLeaveConfirmation}
-                      />
-                    </PassPhoneGate>
-                  );
-                })()
+                <WordBuildingBoardContainer
+                  gameState={gameState as WordBuildingPublicState}
+                  roomState={roomState}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                />
               )}
 
               {roomState.game === "stargame" && gameState != null && (

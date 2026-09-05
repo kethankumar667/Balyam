@@ -196,7 +196,8 @@ export function useLudoBoard({
    * Falls back to the paint color for states produced before the split, where
    * the two were the same field.
    */
-  const armOf = (pid: string): LudoColor => state.playerArms?.[pid] ?? state.playerColors[pid];
+  const armOf = (pid: string): LudoColor =>
+    state.playerArms?.[pid] ?? state.playerColors?.[pid] ?? "red";
 
   const myTurn = state.turnPlayerId === selfId;
   // Brief settle gap between consecutive rolls — see ROLL_COOLDOWN_MS.
@@ -333,6 +334,10 @@ export function useLudoBoard({
    */
   useEffect(() => {
     if (hasAutoOpenedInstructionsRef.current) return;
+    // Never auto-open while a match is in progress or finished.
+    // The tutorial modal should only auto-open when first arriving before play starts.
+    if (state.phase === "playing" || state.phase === "finished") return;
+
     const safeToOpen = !myTurn || state.turnDeadline === null;
     if (!safeToOpen) return;
     let alreadySeen = true;
@@ -343,9 +348,14 @@ export function useLudoBoard({
     }
     if (!alreadySeen) {
       hasAutoOpenedInstructionsRef.current = true;
+      try {
+        localStorage.setItem(LUDO_TUTORIAL_KEY, "1");
+      } catch {
+        /* localStorage unavailable — silent */
+      }
       setShowInstructionsRaw(true);
     }
-  }, [myTurn, state.turnDeadline]);
+  }, [myTurn, state.turnDeadline, state.phase]);
 
   const setShowInstructions = useCallback(
     (v: boolean) => {
@@ -742,7 +752,7 @@ export function useLudoBoard({
 
   // ---- Per-player background tint ----
   useEffect(() => {
-    const myColor = selfId ? state.playerColors[selfId] : null;
+    const myColor = selfId ? state.playerColors?.[selfId] : null;
     if (!myColor) return;
     const hex = COLOR_HEX[myColor];
     const prev = document.body.style.backgroundImage;
@@ -1081,11 +1091,11 @@ export function useLudoBoard({
   }, [allTokens]);
 
   // Decide cross (≤4) vs polygon (≥5) board mode
-  const playerCount = state.playerOrder.length;
+  const playerCount = state.playerOrder?.length ?? 0;
   const usePolygon = playerCount >= 5;
   const arms = useMemo(() => {
     const r: Record<string, LudoColor> = {};
-    for (const pid of state.playerOrder) {
+    for (const pid of state.playerOrder ?? []) {
       const a = armOf(pid);
       if (a) r[pid] = a;
     }
@@ -1095,9 +1105,9 @@ export function useLudoBoard({
 
   const armPaint = useMemo(() => {
     const r: Partial<Record<LudoColor, LudoColor>> = {};
-    for (const pid of state.playerOrder) {
+    for (const pid of state.playerOrder ?? []) {
       const a = armOf(pid);
-      const paint = state.playerColors[pid];
+      const paint = state.playerColors?.[pid];
       if (a && paint) r[a] = paint;
     }
     return r;
@@ -1106,10 +1116,10 @@ export function useLudoBoard({
 
   const activeColors = useMemo(
     () =>
-      state.playerOrder
+      (state.playerOrder ?? [])
         .map((pid) => armOf(pid))
         .filter((c): c is LudoColor => !!c),
-    [state.playerOrder, state.playerColors]
+    [state.playerOrder, state.playerArms, state.playerColors]
   );
   // 5-8 players all use the reference-exact print-design boards
   // (print-board.ts). They fulfil the PolygonBoardGeometry contract, so
@@ -1174,12 +1184,12 @@ export function useLudoBoard({
       return null;
     }
     if (t.state === "track" && t.trackPos != null) {
-      const cell = TRACK_CELLS[t.trackPos];
+      const cell = TRACK_CELLS[t.trackPos] ?? TRACK_CELLS[0];
       return cellToPct(cell.row, cell.col);
     }
     if (t.state === "stretch" && t.stretchPos != null) {
-      const cell = STRETCH_CELLS[color][t.stretchPos];
-      return cellToPct(cell.row, cell.col);
+      const cell = (STRETCH_CELLS[color] ?? STRETCH_CELLS.red)[t.stretchPos];
+      if (cell) return cellToPct(cell.row, cell.col);
     }
     return null;
   }
@@ -1213,13 +1223,13 @@ export function useLudoBoard({
     }
 
     // Cross-board (N <= 4) layout
-    const palette = YARD_CELLS[color];
-    const yardSlot = palette[tokenIdx];
+    const palette = YARD_CELLS[color] ?? YARD_CELLS.red;
+    const yardSlot = palette[tokenIdx] ?? palette[0];
     if (token.state === "yard") {
       return cellToPct(yardSlot.row, yardSlot.col);
     }
     if (token.state === "home") {
-      const slot = HOME_SLOTS[color][tokenIdx];
+      const slot = (HOME_SLOTS[color] ?? HOME_SLOTS.red)[tokenIdx] ?? { row: 7, col: 7 };
       return cellToPct(slot.row, slot.col);
     }
     // Same occupancy-aware fan as the polygon board. `fanSlot` works in cell
@@ -1227,11 +1237,11 @@ export function useLudoBoard({
     const fan = fanFor(token, color);
     const u = cellToPct(1, 1).left - cellToPct(0, 0).left;
     if (token.state === "stretch") {
-      const cell = STRETCH_CELLS[color][token.stretchPos ?? 0];
+      const cell = (STRETCH_CELLS[color] ?? STRETCH_CELLS.red)[token.stretchPos ?? 0] ?? { row: 7, col: 7 };
       const p = cellToPct(cell.row, cell.col);
       return { left: p.left + fan.dx * u, top: p.top + fan.dy * u, scale: fan.scale };
     }
-    const cell = TRACK_CELLS[token.trackPos ?? 0];
+    const cell = TRACK_CELLS[token.trackPos ?? 0] ?? TRACK_CELLS[0];
     const p = cellToPct(cell.row, cell.col);
     return { left: p.left + fan.dx * u, top: p.top + fan.dy * u, scale: fan.scale };
   }

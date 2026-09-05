@@ -196,11 +196,28 @@ export function registerSocketHandlers(
     // already); this one stays a plain handler since nothing here needs to
     // await it — requestGameStart owns its own success/failure signaling
     // via room:state/room:error broadcasts, not this callback's return.
-    void rooms.requestGameStart(socket.id);
+    // The `.catch()` here is NOT about that signaling — `void` alone never
+    // catches a rejection, it only tells the linter the value is intentionally
+    // discarded — it is the same crash-isolation every other async handler in
+    // this file already has (see `room:leave`, `game:move` below), for a path
+    // that runs on literally every match start.
+    void rooms.requestGameStart(socket.id).catch((err) => {
+      logger.error({
+        message: `room:startGame handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
   });
 
   socket.on("room:acknowledgeStart", (payload) => {
-    rooms.acknowledgeStart(socket.id, payload);
+    void rooms.acknowledgeStart(socket.id, payload).catch((err) => {
+      logger.error({
+        message: `room:acknowledgeStart handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
   });
 
   socket.on("room:declineStart", (payload) => {

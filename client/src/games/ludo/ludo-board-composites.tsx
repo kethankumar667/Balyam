@@ -208,11 +208,11 @@ const QUADRANT_ORDER: Record<number, number> = {
   135: 4, // Bottom-Right
 };
 
-function orderedSeats(state: LudoState, players: Player[], selfId?: string | null): LudoSeatMeta[] {
-  const byId = new Map(players.map((p) => [p.id, p]));
-  const seats = state.playerOrder
+function orderedSeats(state: LudoState, players: Player[] = [], selfId?: string | null): LudoSeatMeta[] {
+  const byId = new Map((players ?? []).map((p) => [p.id, p]));
+  const seats = (state.playerOrder ?? [])
     .map((pid) => {
-      const color = state.playerColors[pid];
+      const color = state.playerArms?.[pid] ?? state.playerColors?.[pid] ?? "red";
       const p = byId.get(pid);
       return {
         pid,
@@ -234,6 +234,14 @@ function orderedSeats(state: LudoState, players: Player[], selfId?: string | nul
       };
     })
     .filter((s): s is LudoSeatMeta => !!s.color);
+
+  // 5-8 players: polygon board order rotated so local player is first
+  if ((state.playerOrder?.length ?? 0) >= 5) {
+    if (!selfId) return seats;
+    const selfIdx = seats.findIndex((s) => s.pid === selfId);
+    if (selfIdx <= 0) return seats;
+    return [...seats.slice(selfIdx), ...seats.slice(0, selfIdx)];
+  }
 
   const selfSeat = selfId ? seats.find((s) => s.pid === selfId) : null;
   const selfBase = selfSeat ? (CROSS_YARD_ANGLES[selfSeat.color] ?? 225) : 225;
@@ -282,8 +290,8 @@ function LudoPlayerCard({
   /** Tapping an opponent's card aims a reaction at them. */
   onTarget?: (playerId: string) => void;
 }) {
-  const rim = COLOR_HEX_DARK[seat.color];
-  const tint = COLOR_HEX[seat.color];
+  const rim = (seat.color && COLOR_HEX_DARK[seat.color]) || "#971B2B";
+  const tint = (seat.color && COLOR_HEX[seat.color]) || "#D7263D";
   const offline = !seat.online;
   const avatarPx = ultra ? 26 : dense ? 28 : isManyPlayers ? 28 : 34;
 

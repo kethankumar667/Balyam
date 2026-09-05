@@ -47,12 +47,32 @@ class RoomRecoveryManager {
   private bindSocketEvents(): void {
     if (!this.socket) return;
 
+    /**
+     * These two handlers used to call `this.attemptRecovery(...)` directly,
+     * which independently emits its OWN `room:join` for the seat. Room.tsx
+     * has its own complete, tested reconnect handshake (`attemptJoin`,
+     * fired from the exact same socket `connect` event) reading from its
+     * own seat storage — so on every reconnect while a room page was
+     * mounted, BOTH systems fired `room:join` for the same seat off the
+     * same underlying event, racing each other: two `roomRevision` bumps
+     * instead of one (which the match-start preflight matches exactly by
+     * revision), double-counted recovery metrics, and two overlapping ack
+     * round-trips independently racing to update client state. `attachRoom`
+     * has exactly one caller (`Room.tsx`, on its own successful join) and
+     * `currentRoomCode` is in-memory singleton state that cannot survive a
+     * full page reload — so whenever it is set, a mounted `Room.tsx` for
+     * that exact room is provably also present and about to run its own
+     * `attemptJoin("reconnect")` on this identical event. Nothing is lost
+     * by leaving the actual re-join to it: this now only drives the
+     * `RecoveryBanner` state machine ("Reconnecting…" / "Restoring room…"),
+     * and `Room.tsx` reports the outcome back via `connectionStateManager`
+     * once ITS join ack actually resolves (see its own comment).
+     */
     this.socket.on("connect", () => {
-      if (this.currentRoomCode) {
-        this.attemptRecovery(this.currentRoomCode);
-      } else {
-        connectionStateManager.transition("CONNECTED", "Socket connected");
-      }
+      connectionStateManager.transition(
+        this.currentRoomCode ? "RECOVERING" : "CONNECTED",
+        "Socket connected",
+      );
     });
 
     this.socket.on("disconnect", (reason) => {
@@ -72,11 +92,10 @@ class RoomRecoveryManager {
     });
 
     this.socket.io.on("reconnect", () => {
-      if (this.currentRoomCode) {
-        this.attemptRecovery(this.currentRoomCode);
-      } else {
-        connectionStateManager.transition("CONNECTED", "Socket reconnected");
-      }
+      connectionStateManager.transition(
+        this.currentRoomCode ? "RECOVERING" : "CONNECTED",
+        "Socket reconnected",
+      );
     });
   }
 
@@ -211,11 +230,24 @@ class RoomRecoveryManager {
     return `${prefix}_${this.lastActionTimestamp}_${rand}`;
   }
 
+  /**
+   * `handleNetworkOnline`/`handleVisibilityChange`/`handlePageShow`/
+   * `handleFocus` all used to call `this.attemptRecovery(...)` directly on
+   * these same four browser signals — the SAME duplicate-`room:join` race
+   * as `bindSocketEvents`'s "connect"/"reconnect" handlers (see that
+   * comment), just reached from a different trigger. `lib/socket.ts`'s own
+   * `installNetworkRecovery` already listens for these identical
+   * online/visibilitychange/focus events and actively PROBES the socket
+   * (`net:ping` with a timeout) before deciding whether to rebuild the
+   * transport — so if the connection is genuinely stale, that probe forces
+   * a real reconnect, which fires the socket's own `connect` event, which
+   * is the ALREADY-fixed path into Room.tsx's `attemptJoin("reconnect")`.
+   * If the probe succeeds, the socket was never actually dead and there is
+   * nothing here to recover. Either way, this class doesn't need — and
+   * must not run — a second, uncoordinated attempt at the same room:join.
+   */
   private handleNetworkOnline(): void {
     telemetry.network("network_online");
-    if (this.currentRoomCode) {
-      this.attemptRecovery(this.currentRoomCode);
-    }
   }
 
   private handleNetworkOffline(): void {
@@ -228,9 +260,6 @@ class RoomRecoveryManager {
       eventBus.publish("TAB_HIDDEN", {});
     } else {
       eventBus.publish("TAB_VISIBLE", {});
-      if (this.currentRoomCode && !connectionStateManager.isOnline()) {
-        this.attemptRecovery(this.currentRoomCode);
-      }
     }
   }
 
@@ -240,15 +269,11 @@ class RoomRecoveryManager {
 
   private handlePageShow(): void {
     eventBus.publish("APP_FOREGROUND", {});
-    if (this.currentRoomCode && !connectionStateManager.isOnline()) {
-      this.attemptRecovery(this.currentRoomCode);
-    }
   }
 
   private handleFocus(): void {
-    if (this.currentRoomCode && !connectionStateManager.isOnline()) {
-      this.attemptRecovery(this.currentRoomCode);
-    }
+    // See the shared comment above `handleNetworkOnline` — recovery on this
+    // signal is `lib/socket.ts`'s job (probe-then-rebuild), not this class's.
   }
 
   private handleBlur(): void {

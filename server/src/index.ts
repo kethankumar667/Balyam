@@ -329,7 +329,26 @@ io.on("connection", (socket) => {
     serverResourceTracker.unregister("socket", socket.id);
     metricsCollector.onSocketDisconnect();
     globalRateLimiter.removeSocket(socket.id);
-    roomManager.handleDisconnect(socket.id);
+    // Every OTHER handler that calls into RoomManager from this file
+    // (`room:leave`, `game:move`, `room:retryTerminalPersistence`) wraps its
+    // call in a catch. This is the one call into RoomManager on this whole
+    // socket that never got that treatment, despite firing on every single
+    // disconnect — the single highest-frequency entry point into the exact
+    // machinery (turn timers, host reassignment, takeover arming) most
+    // likely to touch a specific game engine's edge case. A throw here for
+    // one room must disconnect only that room's players, never crash the
+    // process out from under every other one — see the global
+    // `uncaughtException` handler's own comment for why that backstop alone
+    // is not enough to lean on.
+    try {
+      roomManager.handleDisconnect(socket.id);
+    } catch (err) {
+      logger.error({
+        message: `handleDisconnect failed for socket ${socket.id}: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    }
   });
 });
 
@@ -531,3 +550,55 @@ function shutdown(signal: string): void {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGHUP", () => shutdown("SIGHUP"));
+
+/**
+ * Last-resort safety net — this process holds EVERY active room in memory,
+ * so an exception from any one of them must never take down the others.
+ *
+ * ── The gap this closes ────────────────────────────────────────────────
+ * Before this, neither event had a handler at all. Node's default for an
+ * unhandled promise rejection (v15+, no flag override — see `package.json`'s
+ * plain `node dist/...` start command) is to crash exactly like an uncaught
+ * synchronous throw. A single bug anywhere in a specific room's turn timer,
+ * disconnect handler, or match-start flow — reachable by one unlucky board
+ * state, not necessarily a common one — was an outage for every concurrent
+ * room and every connected player, not just the one that hit it. The
+ * connectivity audit this responds to found several call sites exactly this
+ * fragile (`handleDisconnect`'s own invocation, `acknowledgeStart`,
+ * `requestGameStart`, the rematch-start timer) and hardened those directly
+ * with their own try/catch — see each site's own comment — but a boundary
+ * this cheap and this final is worth having regardless of how thoroughly the
+ * known call sites are covered today: it is the difference between an
+ * unforeseen bug in room A logging a stack trace and one taking every other
+ * room's players down with it.
+ *
+ * ── Why these two are NOT symmetric ───────────────────────────────────────
+ * `unhandledRejection`: logged only, process stays up. A rejected promise
+ * unwound its OWN async chain cleanly — nothing about the shared process
+ * state is known to be corrupt, so the room that triggered it degrades (that
+ * one operation failed) while every other room keeps running.
+ *
+ * `uncaughtException`: Node's own guidance is that the stack unwound
+ * ABNORMALLY and the process's internal state has no guaranteed integrity
+ * from this point on — "just log and keep going" is explicitly the wrong
+ * advice for this one. So this still exits, via the SAME graceful
+ * `shutdown()` every deploy already uses (drains queued progression/economy
+ * writes, closes sockets cleanly) rather than a bare `process.exit()` — the
+ * one thing this changes from today's actual crash is that it happens with a
+ * full stack trace on record and a clean drain instead of whatever the
+ * runtime's own default unhandled-exception path does.
+ */
+process.on("unhandledRejection", (reason) => {
+  logger.error({
+    message: `Unhandled promise rejection: ${reason instanceof Error ? reason.stack ?? reason.message : String(reason)}`,
+    module: "SERVER",
+  });
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error({
+    message: `Uncaught exception — shutting down: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
+    module: "SERVER",
+  });
+  shutdown("uncaughtException");
+});

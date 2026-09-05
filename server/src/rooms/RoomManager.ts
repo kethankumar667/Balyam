@@ -2860,7 +2860,26 @@ export class RoomManager {
      */
     if (!this.hasConnectedHuman(room)) return;
 
-    const pending = engine.pendingActors();
+    // This runs synchronously from several call sites that are themselves
+    // bare `setTimeout` callbacks with no catch of their own (`armTakeover`'s
+    // timer in particular — mid-disconnect, not mid a normal `game:move` that
+    // the socket layer already wraps). `pendingActors()` is per-game engine
+    // code, ten independent implementations deep, called here for a board
+    // state nobody chose to be in (an auto-play takeover, not a move a human
+    // just made) — exactly the combination least likely to have been
+    // exercised by that engine's own tests. One bad state in one game must
+    // degrade that one room's auto-play, not crash every other room's.
+    let pending: string[];
+    try {
+      pending = engine.pendingActors();
+    } catch (err) {
+      logger.error({
+        message: `pendingActors() threw in room ${room.code} (game ${room.game}): ${err instanceof Error ? err.message : String(err)}`,
+        module: "BOT",
+        roomCode: room.code,
+      });
+      return;
+    }
     /**
      * Bots AND seats the server has taken over. A dropped player is driven by
      * exactly the same machinery, which is why the takeover works in every
@@ -5123,8 +5142,17 @@ export class RoomManager {
       // relying on this completing synchronously, so (unlike `startGame`)
       // making the gate async here required no caller-impact analysis at
       // all. See `requestRematchStart`'s own doc comment for why a rematch
-      // needs its own commitment in the first place.
-      void this.requestRematchStart(room);
+      // needs its own commitment in the first place. `.catch()` isolates
+      // this room's rematch-commit failure from every other room's socket
+      // handlers — a bare `void` here would not catch a rejection, only
+      // silence the linter about the discarded value.
+      void this.requestRematchStart(room).catch((err) => {
+        logger.error({
+          message: `requestRematchStart failed for room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+          module: "ECONOMY_ROOM",
+          roomCode: room.code,
+        });
+      });
     }, REMATCH_COUNTDOWN_MS);
     this.broadcastRematch(room);
   }
