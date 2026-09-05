@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import type { Server } from "socket.io";
+import crypto from "crypto";
 import { RoomManager, type Room } from "../RoomManager.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { MatchAlreadyForfeitedError } from "../../persistence/EconomyRepository.js";
 import { metricsCollector } from "../../observability/MetricsCollector.js";
+import { registerSocketHandlers } from "../../sockets/index.js";
+import { clearVerificationCache } from "../../lib/supabaseAuth.js";
+import { clearGuestIdentityProvisioningCache } from "../../auth/identity.js";
+import { InMemoryProgressionRepository } from "../../persistence/InMemoryProgressionRepository.js";
+import { setProgressionRepository } from "../../persistence/index.js";
 import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents } from "@shared/types.js";
 
 const origRequestGameStart = RoomManager.prototype.requestGameStart;
@@ -215,6 +221,112 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const worldBank = await service.getWorldBankSnapshot();
       expect(alice.balance).toBe("5060"); // 4900 + 160 (1st place prize)
       expect(worldBank.baseFeeRevenue).toBe("40"); // the 2-seat world bank cut
+    });
+
+    /**
+     * Same claim as the test above, but through the REAL socket transport
+     * boundary instead of `createRoomAs`/`joinRoomAs` — those two helpers
+     * hand `identityId` straight to `RoomManager.createRoom`/`joinRoom`,
+     * skipping the exact step a live player's very first `room:create`/
+     * `room:join` actually goes through: `sockets/index.ts`'s handler
+     * verifying their Supabase access token and resolving `identityId` via
+     * `resolveIdentity()` (which now also awaits
+     * `ensureMemberIdentityProvisioned` — see `auth/identity.ts`).
+     *
+     * This is the reported bug, reproduced as closely as an in-memory
+     * suite can: two real members (real HS256-signed tokens verified via
+     * `jwt-secret` mode, not a test shortcut), one hosting, one joining —
+     * proving the SECOND player's identity actually reaches
+     * `buildParticipantDebits` and gets their own seat debited, rather
+     * than silently falling out of `otherIdentifiedParticipants` and
+     * having the host cover it. The one thing an in-memory repo genuinely
+     * cannot reproduce is that `ProgressionRepository` and
+     * `EconomyRepository` are the SAME `player_identities` table in
+     * production (Supabase) but two independent, unconnected stand-ins in
+     * memory (`InMemoryEconomyRepository`'s own doc comment on its
+     * `identities` map says so directly) — so both members' economy
+     * identities are seeded directly here, matching the realistic
+     * production starting condition of two already-registered accounts,
+     * to isolate exactly the wiring this test exists to check.
+     */
+    it("real socket layer: a joining member's own token resolves to their own identityId, and their own seat gets debited — not absorbed by the host", async () => {
+      const JWT_SECRET = "test-jwt-secret-for-economy-integration";
+      const PROJECT_URL = "https://example.supabase.co";
+      const savedEnv = { url: process.env.SUPABASE_URL, secret: process.env.SUPABASE_JWT_SECRET };
+      process.env.SUPABASE_JWT_SECRET = JWT_SECRET;
+      process.env.SUPABASE_URL = PROJECT_URL;
+      clearVerificationCache();
+      clearGuestIdentityProvisioningCache();
+      setProgressionRepository(new InMemoryProgressionRepository());
+
+      function mintMemberToken(sub: string): string {
+        const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
+        const header = b64({ alg: "HS256", typ: "JWT" });
+        const payload = b64({
+          sub, aud: "authenticated", iss: `${PROJECT_URL}/auth/v1`, exp: Math.floor(Date.now() / 1000) + 3600,
+        });
+        const sig = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${payload}`).digest("base64url");
+        return `${header}.${payload}.${sig}`;
+      }
+
+      function mockSocket(id: string) {
+        const listeners: Record<string, (...args: unknown[]) => unknown> = {};
+        const socket = {
+          id,
+          use: () => {},
+          on: (ev: string, handler: (...args: unknown[]) => unknown) => { listeners[ev] = handler; },
+          emit: vi.fn(),
+          join: () => {},
+          leave: () => {},
+        };
+        return { socket, listeners };
+      }
+
+      try {
+        const { repo, service } = freshEconomy();
+        repo.testFixture.seedIdentity(MEMBER_A, "member");
+        repo.testFixture.seedIdentity(MEMBER_B, "member");
+        const { io } = makeIo();
+        const rooms = new RoomManager(io, service);
+
+        const aHost = mockSocket("s_a");
+        registerSocketHandlers(io, aHost.socket as any, rooms);
+        let createAck: any;
+        await aHost.listeners["room:create"](
+          { name: "Alice", game: "rps", hostKind: "member", accessToken: mintMemberToken(MEMBER_A) },
+          (ack: any) => { createAck = ack; },
+        );
+        expect(createAck?.ok).toBe(true);
+        const code = createAck.code;
+
+        const bJoin = mockSocket("s_b");
+        registerSocketHandlers(io, bJoin.socket as any, rooms);
+        let joinAck: any;
+        await bJoin.listeners["room:join"](
+          { name: "Bob", code, accountKind: "member", accessToken: mintMemberToken(MEMBER_B) },
+          (ack: any) => { joinAck = ack; },
+        );
+        expect(joinAck?.ok).toBe(true);
+
+        const room = peek(rooms, code);
+        expect(room.players.get(createAck.playerId)?.identityId).toBe(MEMBER_A);
+        // The exact assertion this test exists for: the joiner resolved to
+        // THEIR OWN identity, not null and not accidentally the host's.
+        expect(room.players.get(joinAck.playerId)?.identityId).toBe(MEMBER_B);
+
+        rooms.setReady("s_a", true);
+        rooms.setReady("s_b", true);
+        await rooms.requestGameStart("s_a");
+
+        expect(peek(rooms, code).phase).toBe("playing");
+        expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // own seat only
+        expect((await service.getWallet(MEMBER_B)).balance).toBe("4900"); // own seat only — NOT "4800" (host covering both)
+      } finally {
+        if (savedEnv.url === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = savedEnv.url;
+        if (savedEnv.secret === undefined) delete process.env.SUPABASE_JWT_SECRET; else process.env.SUPABASE_JWT_SECRET = savedEnv.secret;
+        clearVerificationCache();
+        setProgressionRepository(null);
+      }
     });
   });
 
