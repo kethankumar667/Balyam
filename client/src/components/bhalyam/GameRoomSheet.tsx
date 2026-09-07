@@ -26,6 +26,10 @@ import { currentAccessToken, currentAccountKind, useCapabilities } from "../../s
 import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
+import { AudioManager } from "../../services/AudioManager";
+import { HapticsManager } from "../../services/HapticsManager";
+import { AUDIO } from "../../constants/audio";
+import SeatAvatar from "../profile/SeatAvatar";
 import {
   BHALYAM_GAMES,
   getGameAccent,
@@ -864,55 +868,76 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       ariaLabelledBy="game-room-sheet-title"
       className="animate-fade-in"
       panelClassName="bhalyam-font custom-scrollbar relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl
-                 max-h-[92dvh] overflow-y-auto
-                 bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
-                 border-2 border-[#EEDBCA] dark:border-slate-800
+                 max-h-[92dvh] overflow-y-auto overflow-x-hidden
+                 bg-[#0B101D] dark:bg-[#070B14] text-slate-100
+                 border-2 border-amber-500/30 dark:border-amber-500/30
                  rounded-t-3xl md:rounded-3xl
-                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
+                 shadow-[0_-16px_50px_-10px_rgba(0,0,0,0.95)]
+                 md:shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)]"
       panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
         {/* Pull handle (mobile bottom-sheet only) */}
         <div className="md:hidden flex justify-center pt-2.5">
-          <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
+          <span aria-hidden className="w-12 h-1.5 rounded-full bg-amber-500/40 dark:bg-amber-500/40 shadow-sm" />
         </div>
 
+        {/* Ambient Arena Stadium Lighting Effect */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-28 left-1/2 -translate-x-1/2 w-[480px] h-[320px] rounded-full blur-3xl opacity-25"
+          style={{
+            background: `radial-gradient(circle, ${getGameAccent(meta).to} 0%, ${getGameAccent(meta).from} 50%, transparent 80%)`,
+          }}
+        />
+        {/* Subtle Arcade Grid Texture Overlay */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:24px_24px] opacity-30"
+        />
+
         {/* Header */}
-        <header className="flex items-center gap-3 p-4 md:px-6 md:py-4 border-b-2 border-[#EEDBCA]/60 dark:border-slate-800">
+        <header className="relative flex items-center gap-3 p-4 md:px-6 md:py-4 border-b-2 border-slate-800/80">
           <span
-            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center text-white flex-shrink-0 shadow-md"
+            className="inline-flex w-12 h-12 md:w-14 md:h-14 rounded-2xl items-center justify-center text-white flex-shrink-0 shadow-lg border border-white/20 relative group"
             style={{
               background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
-              boxShadow: `0 6px 14px -4px ${getGameAccent(meta).to}66`,
+              boxShadow: `0 0 20px -2px ${getGameAccent(meta).to}99`,
             }}
             aria-hidden
           >
-            <Glyph className="w-6 h-6" />
+            <Glyph className="w-6 h-6 md:w-7 md:h-7 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110" />
+            <span className="absolute -inset-0.5 rounded-2xl bg-gradient-to-tr from-white/25 to-transparent opacity-60 pointer-events-none" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2
-              id="game-room-sheet-title"
-              className="font-bold text-[#2B3550] dark:text-slate-100 text-lg md:text-xl leading-tight truncate"
-            >
-              {meta.title}
-            </h2>
-            {meta.teluguTitle ? (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-[#8A6D4B] dark:text-slate-400">
-                {meta.teluguTitle} · {isSolo ? "Solo Play" : "Quick Match"}
-              </div>
-            ) : (
-              <div className="text-[10px] uppercase tracking-widest font-bold text-[#8A6D4B] dark:text-slate-400">
-                {isSolo ? "Solo Play" : "Quick Match"}
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2
+                id="game-room-sheet-title"
+                className="font-black text-white text-lg md:text-2xl leading-tight truncate tracking-wide font-display drop-shadow-sm"
+              >
+                {meta.title}
+              </h2>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9.5px] font-mono font-black text-emerald-400 uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {isSolo ? "SOLO ARCADE" : "LIVE ARENA"}
+              </span>
+            </div>
+            <div className="text-[11px] font-bold text-amber-400/90 font-mono tracking-wider mt-0.5 truncate">
+              {meta.teluguTitle && <span>{meta.teluguTitle} · </span>}
+              <span className="text-slate-400">
+                {isSolo ? "Solo Skill Challenge" : "Multiplayer Battle Lounge"}
+              </span>
+            </div>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              AudioManager.getInstance().play(AUDIO.UI_CLICK);
+              onClose();
+            }}
             aria-label="Close"
             className="w-10 h-10 rounded-full inline-flex items-center justify-center
-                       bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200
-                       hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 transition-all duration-150 cursor-pointer"
+                       bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white
+                       border border-slate-700 active:scale-95 transition-all cursor-pointer shadow-md"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -920,41 +945,49 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
         {/* Mobile Segmented Tab Switcher (<md only) */}
         {!passPlay && !isSolo && (
-          <div className="md:hidden px-4 pt-3 pb-1">
+          <div className="md:hidden px-4 pt-3 pb-1 relative">
             <div
               role="tablist"
               aria-label="Room action modes"
-              className="grid grid-cols-2 p-1 bg-[#FFF4E0] dark:bg-[#1E2738] rounded-2xl border border-[#EEDBCA] dark:border-slate-700/60 shadow-sm"
+              className="grid grid-cols-2 p-1.5 bg-slate-900/95 rounded-2xl border border-amber-500/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={mobileTab === "create"}
                 aria-label="Create room tab"
-                onClick={() => setMobileTab("create")}
-                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
+                onClick={() => {
+                  AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                  HapticsManager.getInstance().subtle();
+                  setMobileTab("create");
+                }}
+                className={`py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
                   mobileTab === "create"
-                    ? "bg-white dark:bg-amber-500/20 text-[#2B3550] dark:text-amber-300 shadow-sm border border-[#EEDBCA]/60 dark:border-amber-400/30"
-                    : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
+                    ? "bg-gradient-to-r from-amber-500/30 via-amber-500/20 to-orange-500/25 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] border border-amber-400/60 border-b-2 border-b-amber-400"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 }`}
               >
-                <SparkIcon className="w-3.5 h-3.5 text-amber-500" />
-                <span>Create Table</span>
+                <SparkIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span className="tracking-wide uppercase">Host Table</span>
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={mobileTab === "join"}
                 aria-label="Join by code tab"
-                onClick={() => setMobileTab("join")}
-                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
+                onClick={() => {
+                  AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                  HapticsManager.getInstance().subtle();
+                  setMobileTab("join");
+                }}
+                className={`py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
                   mobileTab === "join"
-                    ? "bg-white dark:bg-amber-500/20 text-[#2B3550] dark:text-amber-300 shadow-sm border border-[#EEDBCA]/60 dark:border-amber-400/30"
-                    : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
+                    ? "bg-gradient-to-r from-amber-500/30 via-amber-500/20 to-orange-500/25 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] border border-amber-400/60 border-b-2 border-b-amber-400"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 }`}
               >
-                <ArrowRightIcon className="w-3.5 h-3.5 text-amber-500" />
-                <span>Join by Code</span>
+                <ArrowRightIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span className="tracking-wide uppercase">Join by Code</span>
               </button>
             </div>
           </div>
@@ -966,8 +999,22 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           {/* Left Column: Name, Pass & Play, Core Rules & Customization */}
           <div className="md:col-span-7 space-y-4">
             {/* Name input */}
-            <Field label="Your name" htmlFor="grs-name" error={nameError}>
-              <div className="relative flex items-center">
+            <Field label="🎮 Contender Tag · Your name" htmlFor="grs-name" error={nameError}>
+              <div
+                className={`relative flex items-center rounded-2xl bg-slate-900/95 border-2 transition-all p-1.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] ${
+                  nameError
+                    ? "border-rose-500 focus-within:ring-2 focus-within:ring-rose-500/30"
+                    : "border-slate-700/80 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/20"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-500/40 bg-slate-800 flex items-center justify-center shrink-0 shadow-sm ml-0.5">
+                  <SeatAvatar
+                    avatar={avatarId ?? undefined}
+                    name={name.trim() || playerName.trim() || "Player"}
+                    className="w-full h-full"
+                    textClassName="text-xs font-black"
+                  />
+                </div>
                 <input
                   id="grs-name"
                   type="text"
@@ -979,30 +1026,26 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   }}
                   placeholder="e.g. Sri Krishna"
                   maxLength={20}
+                  aria-label="Your name"
                   aria-invalid={nameError ? true : undefined}
                   aria-describedby={nameError ? "grs-name-error" : undefined}
-                  className={`w-full min-h-[46px] pl-3.5 pr-11 rounded-2xl
-                             bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
-                             text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                             font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed
-                             focus:outline-none focus:ring-4
-                             transition-all duration-200
-                             ${nameError
-                               ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                               : "border-[#EEDBCA] dark:border-slate-700/80 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                  className="w-full min-h-[42px] px-3 bg-transparent text-white font-black text-sm placeholder:text-slate-500 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none"
                 />
                 <button
                   type="button"
                   title="Roll random nostalgic nickname"
                   aria-label="Roll random nostalgic nickname"
                   onClick={() => {
+                    AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                    HapticsManager.getInstance().subtle();
                     const picked = NOSTALGIC_NICKNAMES[Math.floor(Math.random() * NOSTALGIC_NICKNAMES.length)];
                     setName(picked);
                     if (nameError) setNameError(null);
                   }}
-                  className="absolute right-2 w-7 h-7 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-700 dark:text-amber-300 flex items-center justify-center transition cursor-pointer text-sm"
+                  className="mr-0.5 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 text-amber-300 border border-amber-400/40 flex items-center gap-1 transition cursor-pointer text-xs font-bold shrink-0 shadow-sm"
                 >
-                  🎲
+                  <span className="text-sm">🎲</span>
+                  <span className="hidden sm:inline text-[10px] uppercase font-mono font-black tracking-wider">Roll Tag</span>
                 </button>
               </div>
             </Field>
@@ -1030,7 +1073,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             )}
 
             {/* Entry stake — cross-game, applies to every mode */}
-            <Field label="Entry stake per seat">
+            <Field label="🪙 Entry Stake Per Seat">
               <OptionGrid
                 items={ENTRY_STAKE_OPTION_ITEMS}
                 value={entryStakeTier}
@@ -1040,19 +1083,19 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               />
             </Field>
             {isGuestHost && (
-              <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-semibold -mt-2">
-                Guests can host at the 100-coin table only. Sign in to unlock higher stakes.
+              <p className="text-[11px] text-amber-300/80 font-semibold -mt-2 flex items-center gap-1.5">
+                <span>🔒</span> Guests can host at the 100-coin table only. Sign in to unlock higher stakes.
               </p>
             )}
             {entryStakeTier === "custom" && (
-              <Field label="Custom stake (coins)">
-                <div className="rounded-2xl p-3 bg-amber-500/10 border-2 border-amber-500/30">
+              <Field label="Custom Stake (Coins)">
+                <div className="rounded-2xl p-3.5 bg-slate-900/90 border-2 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-mono">
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">
-                      Per seat
+                    <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+                      <span>🪙</span> Per seat wager
                     </span>
-                    <span className="text-lg font-black tabular-nums text-amber-700 dark:text-amber-300">
-                      {customStake}
+                    <span className="text-xl font-black tabular-nums text-amber-300">
+                      {customStake} <span className="text-xs font-normal text-slate-400">COINS</span>
                     </span>
                   </div>
                   <input
@@ -1062,15 +1105,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     step={ENTRY_STAKE_STEP_COINS}
                     value={customStake}
                     onChange={(e) => setCustomStake(Number(e.target.value))}
-                    className="w-full accent-amber-500"
+                    className="w-full accent-amber-500 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 mt-1 font-semibold">
-                    <span>{ENTRY_STAKE_MIN_COINS}</span>
-                    <span>{ENTRY_STAKE_MAX_COINS}</span>
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono font-bold">
+                    <span>MIN {ENTRY_STAKE_MIN_COINS}</span>
+                    <span>MAX {ENTRY_STAKE_MAX_COINS}</span>
                   </div>
                 </div>
               </Field>
             )}
+
 
             {/* Per-game Primary Options */}
             {game === "snl" && (
@@ -1155,13 +1199,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
                 {hcMode === "galli" && (
                   <Field label="Overs per innings">
-                    <div className="rounded-2xl p-3 bg-amber-500/10 border-2 border-amber-500/30">
+                    <div className="rounded-2xl p-3.5 bg-slate-900/90 border-2 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-mono">
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">
-                          Street cricket
+                        <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+                          <span>🔥</span> Street cricket overs
                         </span>
-                        <span className="text-lg font-black tabular-nums text-amber-700 dark:text-amber-300">
-                          {hcGalliOvers}
+                        <span className="text-xl font-black tabular-nums text-amber-300">
+                          {hcGalliOvers} <span className="text-xs font-normal text-slate-400">OVERS</span>
                         </span>
                       </div>
                       <input
@@ -1170,12 +1214,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                         max={HC_GALLI_MAX_OVERS}
                         value={hcGalliOvers}
                         onChange={(e) => setHcGalliOvers(Number(e.target.value))}
-                        className="w-full accent-amber-500"
+                        className="w-full accent-amber-500 cursor-pointer"
                       />
-                      <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 mt-1 font-semibold">
-                        <span>{HC_GALLI_MIN_OVERS}</span>
-                        <span>10</span>
-                        <span>{HC_GALLI_MAX_OVERS}</span>
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono font-bold">
+                        <span>MIN {HC_GALLI_MIN_OVERS}</span>
+                        <span>DEFAULT 10</span>
+                        <span>MAX {HC_GALLI_MAX_OVERS}</span>
                       </div>
                     </div>
                   </Field>
@@ -1345,33 +1389,57 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           </div>
 
           {/* Right Column: Mini Summary Card, Primary CTA & Join by Code */}
-          <div className="md:col-span-5 flex flex-col justify-between space-y-4 md:border-l-2 md:border-[#EEDBCA]/60 md:dark:border-slate-800 md:pl-6">
+          <div className="md:col-span-5 flex flex-col justify-between space-y-4 md:border-l-2 md:border-slate-800/80 md:pl-6">
             
-            {/* Summary Card */}
+            {/* Summary Card — Styled as an illuminated Arena Match Ticket / Table Pass */}
             <div className="space-y-4">
-              <div className="rounded-2xl p-3 bg-[#FFF9EE] dark:bg-[#161D2B] border border-[#EEDBCA] dark:border-slate-700/60 flex items-center gap-3">
+              <div className="rounded-2xl p-4 bg-slate-900/95 border-2 border-amber-500/30 relative overflow-hidden shadow-lg">
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
-                  style={{
-                    background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
-                  }}
-                >
-                  <Glyph className="w-5 h-5" />
+                  aria-hidden="true"
+                  className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-500/15 via-transparent to-transparent pointer-events-none"
+                />
+
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-md border border-white/20"
+                    style={{
+                      background: `linear-gradient(135deg, ${getGameAccent(meta).from}, ${getGameAccent(meta).to})`,
+                      boxShadow: `0 0 16px -2px ${getGameAccent(meta).to}88`,
+                    }}
+                  >
+                    <Glyph className="w-6 h-6 filter drop-shadow" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-black text-sm text-white font-display uppercase tracking-wide truncate">
+                        {meta.title}
+                      </span>
+                      <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-black uppercase border border-amber-500/40 shrink-0">
+                        {isSolo ? "SOLO" : sealedTable ? "BOTS" : "LIVE ARENA"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-amber-400 font-mono font-black mt-0.5 flex items-center gap-1.5">
+                      <span>🪙 STAKE: {entryStakeCoins} COINS</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="text-slate-400 font-medium">
+                        {isSolo ? "Arcade High Score" : sealedTable ? "Practice Table" : "Multiplayer Match"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-xs text-[#2B3550] dark:text-slate-100 flex items-center gap-1.5">
-                    <span>{meta.title}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold uppercase">
-                      {isSolo ? "Solo" : sealedTable ? "Private" : "Live Room"}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-[#8A6D4B] dark:text-slate-400 truncate mt-0.5 font-medium">
-                    {isSolo
-                      ? "✨ Solo arcade challenge"
-                      : sealedTable
-                      ? "🤖 AI opponents · 📵 Just this device"
-                      : "⚡ Real-time match · 🤖 AI practice bots"}
-                  </div>
+
+                {/* Perforated ticket divider line */}
+                <div className="my-3 border-t border-dashed border-slate-700/80 relative">
+                  <div className="absolute -left-6 -top-1.5 w-3 h-3 rounded-full bg-[#0B101D] dark:bg-[#070B14]" />
+                  <div className="absolute -right-6 -top-1.5 w-3 h-3 rounded-full bg-[#0B101D] dark:bg-[#070B14]" />
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-400 uppercase tracking-wider text-[10px] font-bold">Arena Status</span>
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5 text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Live Table Ready
+                  </span>
                 </div>
               </div>
             </div>
@@ -1383,43 +1451,52 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 {/* Primary CTA — swaps label/handler in Pass & Play mode */}
                 <button
                   type="button"
-                  onClick={passPlay ? startPassAndPlay : createRoom}
+                  onClick={() => {
+                    AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                    HapticsManager.getInstance().subtle();
+                    if (passPlay) {
+                      startPassAndPlay();
+                    } else {
+                      createRoom();
+                    }
+                  }}
                   disabled={busy}
-                  className="w-full inline-flex items-center justify-center gap-2
-                             min-h-[52px] rounded-2xl
+                  className="w-full inline-flex items-center justify-center gap-2.5
+                             min-h-[56px] rounded-2xl
                              bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400
-                             text-slate-950 font-black text-[15px]
-                             border border-amber-300/60
-                             disabled:opacity-50 disabled:cursor-wait
-                             active:scale-[0.98] transition-all duration-150 cursor-pointer
-                             shadow-[0_6px_20px_-4px_rgba(245,158,11,0.55)] hover:shadow-[0_8px_24px_-4px_rgba(245,158,11,0.7)]"
+                             text-slate-950 font-black text-[15px] sm:text-[16px] tracking-wide uppercase font-display
+                             border-2 border-amber-300/80 border-b-4 border-b-amber-700
+                             active:border-b-2 active:translate-y-[2px]
+                             disabled:opacity-50 disabled:cursor-wait disabled:border-b-2
+                             transition-all duration-150 cursor-pointer
+                             shadow-[0_8px_25px_-4px_rgba(245,158,11,0.6)] hover:shadow-[0_12px_32px_-4px_rgba(245,158,11,0.8)]"
                 >
                   {busy ? (
-                    "Working…"
+                    "Entering Arena…"
                   ) : passPlay ? (
                     <>
-                      <SparkIcon className="w-5 h-5" />
-                      Start Pass &amp; Play
+                      <SparkIcon className="w-5 h-5 text-slate-950" />
+                      <span>Start Pass &amp; Play</span>
                     </>
                   ) : RETRO_ROUTES[game] ? (
                     <>
-                      <SparkIcon className="w-5 h-5" />
-                      Launch Arcade Game
+                      <SparkIcon className="w-5 h-5 text-slate-950" />
+                      <span>Launch Arcade Game</span>
                     </>
                   ) : isSolo ? (
                     <>
-                      <SparkIcon className="w-5 h-5" />
-                      Start Game
+                      <SparkIcon className="w-5 h-5 text-slate-950" />
+                      <span>Enter Solo Arena</span>
                     </>
                   ) : sealedTable ? (
                     <>
-                      <SparkIcon className="w-5 h-5" />
-                      Play vs Bots
+                      <SparkIcon className="w-5 h-5 text-slate-950" />
+                      <span>Play vs Bots</span>
                     </>
                   ) : (
                     <>
-                      <SparkIcon className="w-5 h-5" />
-                      Create Room
+                      <SparkIcon className="w-5 h-5 text-slate-950" />
+                      <span>Create Room</span>
                     </>
                   )}
                 </button>
@@ -1429,8 +1506,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <div className="md:hidden text-center pt-1">
                     <button
                       type="button"
-                      onClick={() => setMobileTab("join")}
-                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                        HapticsManager.getInstance().subtle();
+                        setMobileTab("join");
+                      }}
+                      className="text-xs font-black text-amber-400 hover:text-amber-300 inline-flex items-center gap-1.5 cursor-pointer font-mono uppercase tracking-wider"
                     >
                       <span>Have a code? Enter room code</span>
                       <ArrowRightIcon className="w-3.5 h-3.5" />
@@ -1441,10 +1522,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
               {/* Join divider — desktop only (md:flex), hidden in mobile tab flow */}
               {!passPlay && !isSolo && (
-                <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
-                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
-                  <span>{caps.joinByCode ? "Or join room" : "Playing with friends"}</span>
-                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
+                <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-black text-amber-400 font-mono py-1">
+                  <span className="flex-1 h-px bg-slate-800" />
+                  <span>{caps.joinByCode ? "Or join with ticket" : "Playing with friends"}</span>
+                  <span className="flex-1 h-px bg-slate-800" />
                 </div>
               )}
 
@@ -1464,7 +1545,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 {/* Join by code — hidden in Pass & Play or Solo mode */}
                 {!passPlay && !isSolo && caps.joinByCode && (
                   <div className="space-y-2.5">
-                    <Field label="Room code" htmlFor="grs-code" error={codeError}>
+                    <Field label="🎟️ Enter 6-Char Room Code" htmlFor="grs-code" error={codeError}>
                       <input
                         id="grs-code"
                         type="text"
@@ -1478,33 +1559,37 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                         maxLength={6}
                         aria-invalid={codeError ? true : undefined}
                         aria-describedby={codeError ? "grs-code-error" : undefined}
-                        className={`w-full min-h-[44px] px-3.5 rounded-2xl
-                                   bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
-                                   text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                                   font-mono font-black tracking-[0.35em] text-center text-base
+                        className={`w-full min-h-[48px] px-3.5 rounded-2xl
+                                   bg-slate-900/90 border-2 border-dashed
+                                   text-amber-300 placeholder:text-slate-600
+                                   font-mono font-black tracking-[0.35em] text-center text-lg
                                    disabled:opacity-60 disabled:cursor-not-allowed
-                                   focus:outline-none focus:ring-4
+                                   focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20
                                    transition-all duration-200
                                    ${codeError
                                      ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                                     : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                                     : "border-amber-500/40"}`}
                       />
                     </Field>
                     <button
                       type="button"
-                      onClick={joinRoom}
+                      onClick={() => {
+                        AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                        HapticsManager.getInstance().subtle();
+                        joinRoom();
+                      }}
                       disabled={busy}
                       className="w-full inline-flex items-center justify-center gap-2
-                                 min-h-[44px] rounded-2xl
-                                 bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
-                                 border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
+                                 min-h-[48px] rounded-2xl
+                                 bg-slate-800 hover:bg-slate-700 text-white font-black text-[14px] uppercase tracking-wider
+                                 border-2 border-slate-700 border-b-4 border-b-slate-950
+                                 active:border-b-2 active:translate-y-[2px]
                                  disabled:opacity-50 disabled:cursor-wait
-                                 active:scale-[0.98] transition-all duration-150 cursor-pointer
-                                 shadow-md"
+                                 transition-all duration-150 cursor-pointer shadow-md"
                     >
-                      {busy ? "Working…" : (
+                      {busy ? "Entering…" : (
                         <>
-                          Join Room <ArrowRightIcon className="w-4 h-4" />
+                          Join Room <ArrowRightIcon className="w-4 h-4 text-amber-400" />
                         </>
                       )}
                     </button>
@@ -1516,10 +1601,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <div className="md:hidden text-center pt-1">
                     <button
                       type="button"
-                      onClick={() => setMobileTab("create")}
-                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                        HapticsManager.getInstance().subtle();
+                        setMobileTab("create");
+                      }}
+                      className="text-xs font-black text-amber-400 hover:text-amber-300 inline-flex items-center gap-1.5 cursor-pointer font-mono uppercase tracking-wider"
                     >
-                      <span>← Want to host your own table? Setup table</span>
+                      <span>← Setup your own table</span>
                     </button>
                   </div>
                 )}
@@ -1577,33 +1666,33 @@ function UnavailableGameSheet({
       ariaLabelledBy="game-unavailable-title"
       className="animate-fade-in"
       panelClassName="bhalyam-font relative w-full max-w-lg
-                 bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
-                 border-2 border-[#EEDBCA] dark:border-slate-800
+                 bg-[#0B101D] dark:bg-[#070B14] text-slate-100
+                 border-2 border-amber-500/30 dark:border-amber-500/30
                  rounded-t-3xl md:rounded-3xl
-                 shadow-[0_-12px_40px_-8px_rgba(74,44,22,0.45)]
-                 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)]"
+                 shadow-[0_-16px_50px_-10px_rgba(0,0,0,0.95)]
+                 md:shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)]"
       panelStyle={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
         <div className="md:hidden flex justify-center pt-2.5">
-          <span aria-hidden className="w-10 h-1.5 rounded-full bg-[#EEDBCA] dark:bg-slate-700" />
+          <span aria-hidden className="w-12 h-1.5 rounded-full bg-amber-500/40 dark:bg-amber-500/40" />
         </div>
 
         <div className="p-6 text-center space-y-4">
           <div
-            className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-sm"
+            className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg border border-white/20"
             style={{ background: `linear-gradient(135deg, ${accent.from}, ${accent.to})` }}
           >
-            <Glyph className="w-8 h-8" />
+            <Glyph className="w-8 h-8 filter drop-shadow" />
           </div>
 
           <div>
             <h2
               id="game-unavailable-title"
-              className="bhalyam-display text-[22px] leading-tight text-[#2B3550] dark:text-slate-100"
+              className="bhalyam-display text-[22px] leading-tight text-white font-black"
             >
               {meta?.title ?? "This game"} isn&apos;t available
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-[#8A6D4B] dark:text-slate-400">
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
               This one has been taken out of BHALYAM for now. The tile is still
               here because we&apos;d like to bring it back — there&apos;s just
               nothing to play behind it today.
@@ -1614,12 +1703,11 @@ function UnavailableGameSheet({
             type="button"
             onClick={onClose}
             className="w-full min-h-[50px] rounded-2xl
-                       bg-[#2B3550] hover:bg-[#1E2738]
-                       dark:bg-slate-800 dark:hover:bg-slate-700
-                       text-white font-bold text-[14px]
-                       border border-transparent dark:border-slate-700/80
+                       bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400
+                       text-slate-950 font-black text-[14px] uppercase tracking-wider
+                       border-b-4 border-amber-700 active:border-b-2 active:translate-y-[2px]
                        active:scale-[0.98] transition-all duration-150 cursor-pointer
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 shadow-lg"
           >
             Pick another game
           </button>
@@ -1645,9 +1733,9 @@ function Field({
     <div className="space-y-1.5">
       <label
         htmlFor={htmlFor}
-        className="block text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400"
+        className="block text-[11px] uppercase tracking-widest font-black text-amber-400 font-mono flex items-center justify-between"
       >
-        {label}
+        <span>{label}</span>
       </label>
       {children}
       {error && (
@@ -1655,7 +1743,7 @@ function Field({
           id={htmlFor ? `${htmlFor}-error` : undefined}
           role="alert"
           aria-live="polite"
-          className="text-[12px] font-semibold text-rose-600 dark:text-rose-400 leading-tight pl-0.5"
+          className="text-[12px] font-bold text-rose-400 leading-tight pl-0.5"
         >
           {error}
         </p>
@@ -1668,6 +1756,46 @@ interface OptionItem<T extends string> {
   id: T;
   label: string;
   blurb: string;
+}
+
+function getOptionGlyph(id: string): string | null {
+  const map: Record<string, string> = {
+    // Hand Cricket
+    international: "🌍",
+    ipl: "🏏",
+    single: "⚔️",
+    tournament: "🏆",
+    galli: "🔥",
+    t20: "⚡",
+    odi: "🎯",
+    test: "🛡️",
+    // Difficulty
+    easy: "🟢",
+    medium: "🟡",
+    hard: "🔴",
+    // Rummy
+    points: "🎲",
+    pool: "🎱",
+    deals: "🃏",
+    // Uno match length
+    single_uno: "⚡",
+    "250": "🎯",
+    "500": "🏆",
+    // Uno turn timer
+    "15": "⚡",
+    "20": "⏱️",
+    "30": "⏳",
+    // Word building
+    common: "📖",
+    unrestricted: "📚",
+    // Snake
+    solid: "🧱",
+    wrap: "🌀",
+    "nokia-monochrome": "📟",
+    "nokia-color": "🌈",
+    "neon-modern": "✨",
+  };
+  return map[id.toLowerCase()] ?? null;
 }
 
 function OptionGrid<T extends string>({
@@ -1685,32 +1813,105 @@ function OptionGrid<T extends string>({
 }) {
   const gridCls =
     cols === 1
-      ? "grid-cols-1 gap-2"
+      ? "grid-cols-1 gap-2.5"
       : cols === 2
-      ? "grid-cols-2 gap-2"
-      : "grid-cols-3 gap-1.5 sm:gap-2";
+      ? "grid-cols-2 gap-2 sm:gap-2.5"
+      : "grid-cols-3 gap-2";
   return (
     <div className={`grid ${gridCls}`}>
       {items.map((item) => {
         const isActive = item.id === value;
         const isDisabled = disabledIds.includes(item.id);
+        const glyph = getOptionGlyph(item.id);
+
+        const isStakeTier =
+          item.id === "100" ||
+          item.id === "200" ||
+          item.id === "500" ||
+          item.id === "1000" ||
+          item.id === "custom";
+
+        const stakeBadge =
+          item.id === "100"
+            ? "ROOKIE"
+            : item.id === "200"
+            ? "CHALLENGER"
+            : item.id === "500"
+            ? "HIGH ROLLER"
+            : item.id === "1000"
+            ? "CHAMPION"
+            : item.id === "custom"
+            ? "CUSTOM POT"
+            : null;
+
         return (
           <button
             key={item.id}
             type="button"
             disabled={isDisabled}
-            onClick={() => onChange(item.id)}
-            className={`text-left rounded-2xl p-2 sm:p-3 border-2 min-h-[52px] sm:min-h-[64px]
-                        active:scale-[0.98] transition-all duration-150 cursor-pointer
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                        ${isActive
-                          ? "bg-amber-50 dark:bg-amber-500/15 border-amber-500 dark:border-amber-400 text-slate-950 dark:text-amber-300 shadow-[0_4px_14px_rgba(245,158,11,0.25)] dark:shadow-[0_0_18px_rgba(245,158,11,0.25)]"
-                          : "bg-[#FFF9EE] dark:bg-[#161D2B] border-[#EEDBCA] dark:border-slate-700/70 text-[#2B3550] dark:text-slate-200 hover:border-amber-400/60 dark:hover:border-slate-600 dark:hover:bg-[#1C2536]"}`}
+            onClick={() => {
+              AudioManager.getInstance().play(AUDIO.UI_CLICK);
+              HapticsManager.getInstance().subtle();
+              onChange(item.id);
+            }}
+            className={`group text-left rounded-2xl p-2.5 sm:p-3.5 transition-all duration-150 cursor-pointer
+                        min-h-[56px] sm:min-h-[66px] flex flex-col justify-between relative overflow-hidden
+                        disabled:opacity-40 disabled:cursor-not-allowed
+                        ${
+                          isActive
+                            ? "bg-gradient-to-b from-amber-500/25 via-amber-500/15 to-orange-500/10 border-2 border-amber-400 text-white shadow-[0_0_18px_rgba(245,158,11,0.3)] border-b-4 border-b-amber-500 active:border-b-2 active:translate-y-[2px]"
+                            : "bg-slate-900/90 border-2 border-slate-800 text-slate-200 hover:border-slate-700 hover:bg-slate-800/80 border-b-4 border-b-slate-950 active:border-b-2 active:translate-y-[2px]"
+                        }`}
           >
-            <div className={`font-bold text-xs sm:text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
-              {item.label}
+            {/* Top row: glyph / badge or active indicator */}
+            <div className="flex items-center justify-between gap-1 w-full">
+              {isStakeTier && stakeBadge ? (
+                <span
+                  className={`text-[8.5px] font-mono font-black uppercase px-1.5 py-0.5 rounded tracking-wider ${
+                    isActive
+                      ? "bg-amber-400 text-slate-950 font-black shadow-sm"
+                      : "bg-slate-800 text-slate-400 border border-slate-700"
+                  }`}
+                >
+                  {stakeBadge}
+                </span>
+              ) : glyph ? (
+                <span className="text-sm select-none" aria-hidden="true">
+                  {glyph}
+                </span>
+              ) : null}
+
+              {/* Active illuminated pip */}
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0 ml-auto"
+                />
+              )}
             </div>
-            <div className={`text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 leading-snug line-clamp-2 ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
+
+            {/* Middle: Label */}
+            <div
+              className={`font-black text-xs sm:text-[13px] leading-snug mt-1 ${
+                isActive ? "text-amber-300 font-display" : "text-white"
+              }`}
+            >
+              {isStakeTier ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-amber-400">🪙</span>
+                  <span>{item.label}</span>
+                </span>
+              ) : (
+                item.label
+              )}
+            </div>
+
+            {/* Bottom: Blurb */}
+            <div
+              className={`text-[9.5px] sm:text-[10px] mt-0.5 leading-snug line-clamp-2 ${
+                isActive ? "text-amber-100/90 font-semibold" : "text-slate-400 font-medium"
+              }`}
+            >
               {item.blurb}
             </div>
           </button>
@@ -1728,25 +1929,35 @@ function UnoHouseRuleGrid({
   onToggle: (id: UnoHouseRuleKey) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2.5">
       {UNO_HOUSE_RULES.map((rule) => {
         const isActive = flags[rule.id];
         return (
           <button
             key={rule.id}
             type="button"
-            onClick={() => onToggle(rule.id)}
+            onClick={() => {
+              AudioManager.getInstance().play(AUDIO.UI_CLICK);
+              HapticsManager.getInstance().subtle();
+              onToggle(rule.id);
+            }}
             aria-pressed={isActive}
-            className={`text-left rounded-2xl p-3 border-2 min-h-[64px]
-                        active:scale-[0.98] transition-all duration-150 cursor-pointer
-                        ${isActive
-                          ? "bg-amber-50 dark:bg-amber-500/15 border-amber-500 dark:border-amber-400 text-slate-950 dark:text-amber-300 shadow-[0_4px_14px_rgba(245,158,11,0.25)] dark:shadow-[0_0_18px_rgba(245,158,11,0.25)]"
-                          : "bg-[#FFF9EE] dark:bg-[#161D2B] border-[#EEDBCA] dark:border-slate-700/70 text-[#2B3550] dark:text-slate-200 hover:border-amber-400/60 dark:hover:border-slate-600 dark:hover:bg-[#1C2536]"}`}
+            className={`text-left rounded-2xl p-3 transition-all duration-150 cursor-pointer min-h-[66px] flex flex-col justify-between
+                        ${
+                          isActive
+                            ? "bg-gradient-to-b from-amber-500/25 via-amber-500/15 to-orange-500/10 border-2 border-amber-400 text-white shadow-[0_0_18px_rgba(245,158,11,0.3)] border-b-4 border-b-amber-500 active:border-b-2 active:translate-y-[2px]"
+                            : "bg-slate-900/90 border-2 border-slate-800 text-slate-200 hover:border-slate-700 hover:bg-slate-800/80 border-b-4 border-b-slate-950 active:border-b-2 active:translate-y-[2px]"
+                        }`}
           >
-            <div className={`font-bold text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
-              {rule.label}
+            <div className="flex items-center justify-between gap-1 w-full">
+              <span className={`font-black text-xs sm:text-[13px] leading-tight ${isActive ? "text-amber-300" : "text-white"}`}>
+                {rule.label}
+              </span>
+              {isActive && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
+              )}
             </div>
-            <div className={`text-[10px] mt-1 leading-snug ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
+            <div className={`text-[10px] mt-1 leading-snug ${isActive ? "text-amber-100/90 font-semibold" : "text-slate-400"}`}>
               {rule.blurb}
             </div>
           </button>
@@ -1767,14 +1978,6 @@ function CloseIcon({ className }: { className?: string }) {
 
 /**
  * Pass & Play toggle + name inputs.
- *
- * When OFF: shows a single row with an explanatory subtitle and a checkbox-
- * style toggle.
- * When ON: expands to N name inputs (host already provided their own name
- * up top) plus an Add Player row that appears while seats remain.
- *
- * `maxExtraSeats` reflects the per-game cap minus 1 (for the host) — Ludo
- * allows 4 total → 3 extras; SnL allows 10 → 9 extras.
  */
 function PassPlayBlock({
   on,
@@ -1804,26 +2007,29 @@ function PassPlayBlock({
   }
   return (
     <div
-      className={`rounded-2xl border-2 p-3.5 transition-colors duration-200
+      className={`rounded-2xl border-2 p-3.5 transition-all duration-200 border-b-4
                   ${on
-                    ? "border-amber-500 dark:border-amber-400/80 bg-amber-500/10 dark:bg-amber-500/10"
-                    : "border-[#EEDBCA] dark:border-slate-700/70 bg-[#FFF9EE] dark:bg-[#161D2B]"}`}
+                    ? "border-amber-400 bg-amber-500/15 border-b-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+                    : "border-slate-800 bg-slate-900/90 border-b-slate-950"}`}
     >
       <label className="flex items-start gap-3 cursor-pointer">
         <input
           type="checkbox"
           checked={on}
-          onChange={onToggle}
+          onChange={() => {
+            AudioManager.getInstance().play(AUDIO.UI_TOGGLE);
+            HapticsManager.getInstance().subtle();
+            onToggle();
+          }}
           className="mt-0.5 w-5 h-5 accent-amber-500 rounded cursor-pointer"
           aria-label="Toggle Pass and Play mode"
         />
         <span className="flex-1 min-w-0">
-          <span className="block font-bold text-[#2B3550] dark:text-slate-100 text-[14px] leading-tight">
-            Pass &amp; Play (1 device)
+          <span className="block font-black text-white text-[14px] leading-tight flex items-center gap-1.5">
+            <span>📱 Pass &amp; Play (Single Device Hotseat)</span>
           </span>
-          <span className="block text-[11px] text-[#8A6D4B] dark:text-slate-400 mt-0.5">
-            Two or more players share this phone and take turns. No room code
-            needed.
+          <span className="block text-[11px] text-slate-400 mt-0.5 font-medium">
+            Two or more players take turns on this phone. No room code needed.
           </span>
         </span>
       </label>
@@ -1838,12 +2044,12 @@ function PassPlayBlock({
                 onChange={(e) => setAt(i, e.target.value)}
                 placeholder={`Player ${i + 2}`}
                 maxLength={20}
-                className="flex-1 min-h-[42px] px-3.5 rounded-xl
-                           bg-white dark:bg-[var(--surface-0)] border-2 border-[#EEDBCA] dark:border-slate-700
-                           text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                           font-semibold text-[13px]
-                           focus:outline-none focus:border-amber-500 dark:focus:border-amber-400
-                           focus:ring-2 focus:ring-amber-400/20 dark:focus:ring-amber-500/20
+                className="flex-1 min-h-[44px] px-3.5 rounded-xl
+                           bg-slate-950/80 border-2 border-slate-700
+                           text-white placeholder:text-slate-500
+                           font-bold text-[13px]
+                           focus:outline-none focus:border-amber-400
+                           focus:ring-2 focus:ring-amber-400/20
                            transition-all duration-200"
                 aria-label={`Name for player ${i + 2}`}
               />
@@ -1853,12 +2059,11 @@ function PassPlayBlock({
                   onClick={() => removeSlot(i)}
                   aria-label={`Remove player ${i + 2}`}
                   className="w-9 h-9 rounded-full inline-flex items-center justify-center
-                             bg-[#FFF4E0] dark:bg-[#1E2738] text-[#2B3550] dark:text-slate-200
-                             hover:bg-[#EEDCC2] dark:hover:bg-[#2A374F] active:scale-95 cursor-pointer
-                             focus:outline-none focus:ring-2 focus:ring-amber-500
+                             bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-slate-700 active:scale-95 cursor-pointer
+                             border border-slate-700
                              transition-all duration-200"
                 >
-                  <CloseIcon className="w-3 h-3" />
+                  <CloseIcon className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -1867,12 +2072,12 @@ function PassPlayBlock({
             <button
               type="button"
               onClick={addSlot}
-              className="w-full min-h-[38px] rounded-xl border-2 border-dashed
-                         border-amber-500/50 dark:border-amber-400/50 text-[#8A6D4B] dark:text-amber-300
-                         text-[12px] font-bold hover:bg-amber-500/10
-                         transition-colors duration-200 cursor-pointer"
+              className="w-full min-h-[40px] rounded-xl border-2 border-dashed
+                         border-amber-500/50 text-amber-300
+                         text-[12px] font-black hover:bg-amber-500/10
+                         transition-colors duration-200 cursor-pointer flex items-center justify-center gap-1.5"
             >
-              + Add another player
+              <span>+ Add another player</span>
             </button>
           )}
         </div>
