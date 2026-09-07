@@ -20,3 +20,4 @@ export * from "./LobbyCoinFlight";
 export * from "./LobbyDebitAnimation";
 export * from "./fixtures";
 export * from "./motion";
+export * from "./pendingVoucher";

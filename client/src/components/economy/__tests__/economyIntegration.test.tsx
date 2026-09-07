@@ -9,7 +9,10 @@ import {
   VoucherRedemptionModal,
   EconomyErrorBoundary,
   formatCoinString,
+  getPendingVoucher,
+  clearPendingVoucher,
 } from "../index";
+import VoucherWonModal from "../VoucherWonModal";
 import AdminEconomyPage from "../../../pages/admin/economy";
 
 describe("Economy V1 UI Integration Suite", () => {
@@ -405,10 +408,115 @@ describe("Economy V1 UI Integration Suite", () => {
         expect(screen.getByText("175")).toBeDefined();
       });
 
-      // Clicking Claim Coins as a guest should navigate to /signup
+      // Clicking Claim Coins as a guest should navigate to /signup and preserve voucher code
       const claimButton = screen.getByText("Claim Coins");
       expect(claimButton).toBeDefined();
       fireEvent.click(claimButton);
+
+      const pending = getPendingVoucher();
+      expect(pending?.code).toBe("VOUCH-TEST-123");
+      expect(pending?.amount).toBe("175");
+      clearPendingVoucher();
+    });
+
+    it("VoucherWonModal saves code to pending storage and navigates on Claim Coins", () => {
+      clearPendingVoucher();
+      const onClose = vi.fn();
+
+      render(
+        <MemoryRouter>
+          <VoucherWonModal
+            coinAmount="250"
+            rawCode="VOUCH-WON-456"
+            onClose={onClose}
+          />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByText("You won a prize!")).toBeDefined();
+      expect(screen.getByText("VOUCH-WON-456")).toBeDefined();
+
+      const claimBtn = screen.getByRole("button", { name: /claim coins/i });
+      fireEvent.click(claimBtn);
+
+      expect(onClose).toHaveBeenCalled();
+      const pending = getPendingVoucher();
+      expect(pending?.code).toBe("VOUCH-WON-456");
+      expect(pending?.amount).toBe("250");
+      clearPendingVoucher();
+    });
+
+    it("VoucherRedemptionModal in auto-claim mode renders fancy UI, prefilled code, and redeems on Claim Coins", async () => {
+      clearPendingVoucher();
+      const { useAuthStore } = await import("../../../store/authStore");
+      useAuthStore.setState({ isMember: true, kind: "member" });
+
+      global.fetch = vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
+        if (url.includes("/api/economy/vouchers/VOUCH-AUTO-777")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              voucher: {
+                status: "ACTIVE",
+                coinAmount: "500",
+              },
+            }),
+          } as Response);
+        }
+        if (url.includes("/api/economy/vouchers/redeem") && opts?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              applied: true,
+              voucher: {
+                id: 1,
+                codeHash: "hash123",
+                coinAmount: "500",
+                status: "REDEEMED",
+              },
+              newBalance: "1500",
+            }),
+          } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      });
+
+      const onSuccess = vi.fn();
+
+      render(
+        <MemoryRouter>
+          <VoucherRedemptionModal
+            isOpen={true}
+            initialCode="VOUCH-AUTO-777"
+            initialAmount="500"
+            isAutoClaimPrompt={true}
+            onClose={() => {}}
+            onSuccess={onSuccess}
+          />
+        </MemoryRouter>,
+      );
+
+      // Verify fancy celebratory headers
+      expect(screen.getByText("Claim Your Match Coins!")).toBeDefined();
+      expect(screen.getByText("✨ Welcome to BHALYAM Club")).toBeDefined();
+      expect(screen.getByText("VOUCH-AUTO-777")).toBeDefined();
+      expect(screen.getByText("Auto-filled")).toBeDefined();
+
+      // Wait for auto-verification
+      await waitFor(() => {
+        expect(screen.getByText("VERIFIED")).toBeDefined();
+      });
+
+      // Next action is just clicking Claim Coins
+      const claimBtn = screen.getByRole("button", { name: /claim coins/i });
+      fireEvent.click(claimBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("🎉 Coins Added to Wallet!")).toBeDefined();
+        expect(onSuccess).toHaveBeenCalledWith("1500", "500");
+      });
+
+      useAuthStore.setState({ isMember: false, kind: "guest" });
     });
   });
 

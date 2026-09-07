@@ -14,6 +14,8 @@ import { PlayYourWaySection } from "./home/PlayYourWaySection";
 import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
+import { VoucherRedemptionModal } from "../components/economy";
+import { getPendingVoucher, clearPendingVoucher, type PendingVoucherData } from "../components/economy/pendingVoucher";
 
 /**
  * BHALYAM home — the app's landing surface.
@@ -43,6 +45,18 @@ export default function BhalyamHome() {
     return !journeyTracker.getState().hasCompletedWelcome;
   });
   const isMember = useAuthStore((s) => s.isMember);
+  const [pendingVoucher, setPendingVoucher] = useState<PendingVoucherData | null>(null);
+
+  // Check for an unredeemed voucher preserved across guest signup
+  useEffect(() => {
+    if (isMember) {
+      const stored = getPendingVoucher();
+      if (stored && stored.code) {
+        setPendingVoucher(stored);
+      }
+    }
+  }, [isMember]);
+
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
   // this fetch to back for them — `enabled: false` until the caller is a
@@ -84,9 +98,22 @@ export default function BhalyamHome() {
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
         <WelcomeModal
-          open={welcomeOpen}
+          open={welcomeOpen && !pendingVoucher}
           onClose={() => setWelcomeOpen(false)}
           onStartQuest={() => setSheetGame("uno")}
+        />
+        <VoucherRedemptionModal
+          isOpen={Boolean(pendingVoucher)}
+          initialCode={pendingVoucher?.code}
+          initialAmount={pendingVoucher?.amount}
+          isAutoClaimPrompt={true}
+          onClose={() => {
+            clearPendingVoucher();
+            setPendingVoucher(null);
+          }}
+          onSuccess={() => {
+            clearPendingVoucher();
+          }}
         />
       </div>
     </AppLayout>

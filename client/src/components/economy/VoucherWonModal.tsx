@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { PartyPopper, Copy, Check, ShieldAlert } from "lucide-react";
+import { PartyPopper, Copy, Check, ShieldAlert, Sparkles } from "lucide-react";
 import { CoinAmount } from "./CoinAmount";
+import { savePendingVoucher } from "./pendingVoucher";
 
 export interface VoucherWonModalProps {
   coinAmount: string;
@@ -11,19 +12,13 @@ export interface VoucherWonModalProps {
 }
 
 /**
- * Shown to a GUEST the moment they win a nonzero prize — the one and only
- * time their voucher's raw redemption code ever reaches a client (see
- * `shared/types.ts`'s `economy:voucherIssued` doc comment: the database
- * only ever stores a hash of this code, by design, so a guest who loses it
- * here has no other way to recover it).
- *
- * Deliberately does NOT persist `rawCode` anywhere (no localStorage, no
- * telemetry) — `VoucherRedemptionModal.tsx`'s own header states that
- * invariant for this exact class of data, and this modal holds to it too:
- * the code lives only in this component's own state until the player signs
- * up and redeems it, or navigates away and it is gone.
+ * Shown to a GUEST the moment they win a nonzero prize.
+ * If the user clicks "Claim Coins", the voucher code and amount are safely preserved
+ * in pending session storage, navigating them to the signup page. Upon completing signup
+ * and landing on the home page, the auto-claim modal pops up with the code pre-filled.
  */
 export function VoucherWonModal({ coinAmount, rawCode, onClose }: VoucherWonModalProps) {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -31,6 +26,12 @@ export function VoucherWonModal({ coinAmount, rawCode, onClose }: VoucherWonModa
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleClaimCoins = () => {
+    savePendingVoucher(rawCode, coinAmount);
+    onClose();
+    navigate("/signup");
   };
 
   return (
@@ -59,8 +60,8 @@ export function VoucherWonModal({ coinAmount, rawCode, onClose }: VoucherWonModa
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            As a guest, your winnings are held as a reward code. Sign up for a free BHALYAM account and redeem
-            this code to add the coins to your wallet.
+            As a guest, your winnings are held as a reward code. Sign up for a free BHALYAM account and claim
+            your coins directly into your permanent wallet!
           </p>
 
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
@@ -84,24 +85,25 @@ export function VoucherWonModal({ coinAmount, rawCode, onClose }: VoucherWonModa
 
           <div className="flex items-start gap-1.5 text-[11px] text-rose-700 dark:text-rose-400 font-semibold text-left">
             <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>Copy this code now — it will not be shown again, and there is no other way to recover it.</span>
+            <span>Copy this code or click Claim Coins below to deposit it into your permanent member wallet.</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleClaimCoins}
+              className="w-full py-3 rounded-full font-black text-sm text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950" />
+              Claim Coins
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-full font-bold text-xs text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+              className="w-full py-2 rounded-full font-bold text-xs text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
             >
               I've saved it
             </button>
-            <Link
-              to="/signup"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-full font-bold text-xs text-white bg-[#EA580C] hover:bg-[#C2410C] transition text-center"
-            >
-              Sign Up Now
-            </Link>
           </div>
         </motion.div>
       </div>
