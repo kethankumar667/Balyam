@@ -14,6 +14,11 @@ import type {
 import {
   HC_GALLI_MAX_OVERS,
   HC_GALLI_MIN_OVERS,
+  ENTRY_STAKE_PRESET_TIERS,
+  ENTRY_STAKE_MIN_COINS,
+  ENTRY_STAKE_MAX_COINS,
+  ENTRY_STAKE_STEP_COINS,
+  isValidEntryStakeCoins,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
@@ -121,6 +126,12 @@ function asGameKind(slug: BhalyamGameSlug): GameKind {
 }
 
 /* ── Option catalogs (copied verbatim from old Lobby so behaviour matches) ── */
+
+const ENTRY_STAKE_OPTION_ITEMS: { id: string; label: string; blurb: string }[] = ENTRY_STAKE_PRESET_TIERS.map((tier) => ({
+  id: String(tier),
+  label: `${tier} coins`,
+  blurb: `${tier} per seat`,
+})).concat([{ id: "custom", label: "Custom", blurb: "Pick your own amount" }]);
 
 const DIFFICULTIES: { id: SnlDifficulty; label: string; blurb: string }[] = [
   { id: "easy",    label: "Easy",    blurb: "12 ladders, 5 snakes — friendly" },
@@ -302,6 +313,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     useRoomStore();
 
   const [name, setName] = useState(playerName);
+  // Custom entry stake (2026-09-08): the host's chosen per-seat cost. A
+  // guest host is always clamped to the 100-coin tier — see the OptionGrid
+  // below (disabledIds) and, authoritatively, RoomManager.createRoom /
+  // checkHostEconomyEligibility server-side, which never trust this UI
+  // gate alone.
+  const [entryStakeTier, setEntryStakeTier] = useState<string>("100");
+  const [customStake, setCustomStake] = useState<number>(500);
+  const isGuestHost = currentAccountKind() === "guest";
+  const entryStakeCoins = entryStakeTier === "custom" ? customStake : Number(entryStakeTier);
   const [difficulty, setDifficulty] = useState<SnlDifficulty>("medium");
   const [rummyMode, setRummyMode] = useState<RummyMatchMode>("single");
   const [hcMode, setHcMode] = useState<HcMode>("single");
@@ -487,6 +507,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           hostKind: currentAccountKind(),
           accessToken: cred.accessToken ?? currentAccessToken(),
           guestToken: cred.guestToken,
+          entryStakeCoins,
           snlOptions: game === "snl" ? { difficulty } : undefined,
           rummyOptions: game === "rummy" ? { mode: rummyMode } : undefined,
           hcOptions:
@@ -661,6 +682,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         hostKind: currentAccountKind(),
         accessToken: cred.accessToken ?? currentAccessToken(),
         guestToken: cred.guestToken,
+        entryStakeCoins,
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
@@ -931,6 +953,49 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     : 9
                 }
               />
+            )}
+
+            {/* Entry stake — cross-game, applies to every mode */}
+            <Field label="Entry stake per seat">
+              <OptionGrid
+                items={ENTRY_STAKE_OPTION_ITEMS}
+                value={entryStakeTier}
+                onChange={setEntryStakeTier}
+                cols={3}
+                disabledIds={isGuestHost ? ["200", "500", "1000", "custom"] : []}
+              />
+            </Field>
+            {isGuestHost && (
+              <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-semibold -mt-2">
+                Guests can host at the 100-coin table only. Sign in to unlock higher stakes.
+              </p>
+            )}
+            {entryStakeTier === "custom" && (
+              <Field label="Custom stake (coins)">
+                <div className="rounded-2xl p-3 bg-amber-500/10 border-2 border-amber-500/30">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">
+                      Per seat
+                    </span>
+                    <span className="text-lg font-black tabular-nums text-amber-700 dark:text-amber-300">
+                      {customStake}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={ENTRY_STAKE_MIN_COINS}
+                    max={ENTRY_STAKE_MAX_COINS}
+                    step={ENTRY_STAKE_STEP_COINS}
+                    value={customStake}
+                    onChange={(e) => setCustomStake(Number(e.target.value))}
+                    className="w-full accent-amber-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 mt-1 font-semibold">
+                    <span>{ENTRY_STAKE_MIN_COINS}</span>
+                    <span>{ENTRY_STAKE_MAX_COINS}</span>
+                  </div>
+                </div>
+              </Field>
             )}
 
             {/* Per-game Primary Options */}

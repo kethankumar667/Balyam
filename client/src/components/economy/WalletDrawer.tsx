@@ -21,6 +21,14 @@ import { useWallet, useLedger } from "../../hooks/useEconomy";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog";
+import type { GameKind } from "@shared/types";
+
+/** `entry.gameKind` is a raw string from the server, not narrowed to `GameKind` — falls back to the raw value for a kind this client build doesn't recognize, rather than hiding it. */
+function friendlyGameName(gameKind: string | null): string | null {
+  if (!gameKind) return null;
+  return GAME_DISPLAY_NAMES[gameKind as GameKind] ?? gameKind;
+}
 
 export interface WalletDrawerProps {
   isOpen: boolean;
@@ -373,6 +381,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     <div className="space-y-2">
                       {entries.map((entry) => {
                         const { type, label } = mapEntryToDeltaType(entry.entryType);
+                        const gameName = friendlyGameName(entry.gameKind);
                         return (
                           <div
                             key={entry.id}
@@ -389,7 +398,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                               </div>
                               <div className="min-w-0">
                                 <span className="text-xs font-bold text-ink-hi dark:text-text-hi block truncate">
-                                  {label}
+                                  {gameName ? `${label} — ${gameName}` : label}
                                 </span>
                                 <span className="text-[10px] text-ink-lo dark:text-text-lo block">
                                   {formatTimeAgo(entry.createdAt)}
@@ -456,6 +465,14 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                           <span className="text-ink-lo dark:text-text-lo">Entry Type:</span>
                           <span className="font-bold text-ink-hi dark:text-text-hi">{selectedEntry.entryType}</span>
                         </div>
+                        {friendlyGameName(selectedEntry.gameKind) && (
+                          <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
+                            <span className="text-ink-lo dark:text-text-lo">Game:</span>
+                            <span className="font-bold text-ink-hi dark:text-text-hi">
+                              {friendlyGameName(selectedEntry.gameKind)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between py-1 border-b border-black/5 dark:border-white/5">
                           <span className="text-ink-lo dark:text-text-lo">Amount:</span>
                           <CoinDelta

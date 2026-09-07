@@ -62,7 +62,10 @@ const peek = (rooms: RoomManager, code: string) =>
  */
 function hostAs(rooms: RoomManager, socket: string, name: string, kind: AccountKind) {
   const args: unknown[] = [socket, name, "ludo"];
-  while (args.length < rooms.createRoom.length - 1) args.push(undefined);
+  // -2, not -1: `identityId` and `entryStakeCoins` both trail `hostKind` now
+  // (2026-09-08) — this must land `kind` in `hostKind`'s slot specifically,
+  // the same hazard avatarSharing.test.ts's own comment describes.
+  while (args.length < rooms.createRoom.length - 2) args.push(undefined);
   args.push(kind);
   return rooms.createRoom(...(args as Parameters<RoomManager["createRoom"]>));
 }

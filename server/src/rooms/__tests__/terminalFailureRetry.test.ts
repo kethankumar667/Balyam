@@ -99,7 +99,7 @@ function createRoomAs(
   identityId: string | null,
 ) {
   const totalParams = rooms.createRoom.length;
-  const optionsCount = totalParams - 3 - 3;
+  const optionsCount = totalParams - 3 - 4; // 3 leading (socketId,name,game), 4 trailing (avatar,hostKind,identityId,entryStakeCoins)
   const args: unknown[] = [socketId, name, game];
   for (let i = 0; i < optionsCount; i++) args.push(undefined);
   args.push(undefined, hostKind, identityId);
@@ -297,9 +297,9 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(room!.terminalStatus).toBe("COMPLETED");
     const settlement = await service.getSettlement(matchId);
     expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // entry fee forfeited, never refunded
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // entry fee forfeited (own seat + the bot's), never refunded
     const worldBank = await service.getWorldBankSnapshot();
-    expect(worldBank.abandonmentForfeitureRevenue).toBe("200");
+    expect(worldBank.abandonmentForfeitureRevenue).toBe("300");
   });
 
   it("Test D: retry reuses the exact stored payload, not a recomputed one", async () => {

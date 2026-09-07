@@ -173,6 +173,8 @@ interface LedgerRow {
   source_id: string;
   idempotency_key: string;
   description: string;
+  /** Which game this match-related entry belongs to (e.g. "handcricket") — `null` for non-match entries (starter grants, admin adjustments, voucher redemptions). */
+  game_kind: string | null;
   created_at: string;
 }
 
@@ -349,6 +351,7 @@ function toLedgerEntry(row: LedgerRow): CoinLedgerEntryRecord {
     sourceId: row.source_id,
     idempotencyKey: row.idempotency_key,
     description: row.description,
+    gameKind: row.game_kind,
     createdAt: ms(row.created_at),
   };
 }
@@ -696,23 +699,19 @@ export class SupabaseEconomyRepository implements EconomyRepository {
     return { ...envelope, result: toWallet(envelope.result) };
   }
 
-  async commitMatchEntry(
+  /**
+   * The `p_participant_debits`-aware call + its own PGRST202 fallback,
+   * factored out so `commitMatchEntry` can wrap it a second time for the
+   * (independent, purely cosmetic) `p_game_kind` fallback below without
+   * duplicating this logic.
+   */
+  private async commitMatchEntryRpc(
+    baseParams: Record<string, unknown>,
     input: CommitMatchEntryInput,
-  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
-    const baseParams: Record<string, unknown> = {
-      p_match_id: input.matchId,
-      p_room_code: input.roomCode,
-      p_host_identity_id: input.hostIdentityId,
-      p_seat_count: input.seatCount,
-      p_human_seat_count: input.humanSeatCount,
-      p_bot_seat_count: input.botSeatCount,
-      p_is_solo: input.isSolo,
-    };
-
-    let envelope: RawEnvelope<SettlementRow>;
+  ): Promise<RawEnvelope<SettlementRow>> {
     if (input.participantDebits !== undefined && input.participantDebits.length > 0) {
       try {
-        envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", {
+        return await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", {
           ...baseParams,
           p_participant_debits: input.participantDebits,
         });
@@ -738,13 +737,50 @@ export class SupabaseEconomyRepository implements EconomyRepository {
               `to this database now. Match ${input.matchId} will incorrectly bill the host for every seat. Underlying error: ${msg}`,
             module: "ECONOMY",
           });
-          envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
-        } else {
-          throw err;
+          return await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
         }
+        throw err;
       }
-    } else {
-      envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
+    }
+    return await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
+  }
+
+  async commitMatchEntry(
+    input: CommitMatchEntryInput,
+  ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
+    const baseParams: Record<string, unknown> = {
+      p_match_id: input.matchId,
+      p_room_code: input.roomCode,
+      p_host_identity_id: input.hostIdentityId,
+      p_seat_count: input.seatCount,
+      p_human_seat_count: input.humanSeatCount,
+      p_bot_seat_count: input.botSeatCount,
+      p_is_solo: input.isSolo,
+    };
+
+    let envelope: RawEnvelope<SettlementRow>;
+    try {
+      envelope = await this.commitMatchEntryRpc({ ...baseParams, p_game_kind: input.gameKind ?? null }, input);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Could not find the function") || msg.includes("PGRST202") || msg.includes("p_game_kind")) {
+        // Purely cosmetic — p_game_kind only affects the ledger row's
+        // display label (game_kind ends up null for this match); it never
+        // touches an amount, a payer, or a balance. Logged at warn, unlike
+        // the p_participant_debits fallback above, which DOES affect real
+        // money. Apply supabase/migrations/20260909000000_economy_ledger_
+        // game_kind.sql to close it.
+        logger.warn({
+          message:
+            "commit_match_entry RPC does not accept p_game_kind — falling back without it; ledger rows for " +
+            `match ${input.matchId} will not show which game this was. Apply supabase/migrations/` +
+            `20260909000000_economy_ledger_game_kind.sql to this database. Underlying error: ${msg}`,
+          module: "ECONOMY",
+        });
+        envelope = await this.commitMatchEntryRpc(baseParams, input);
+      } else {
+        throw err;
+      }
     }
     return { ...envelope, result: toSettlement(envelope.result) };
   }
@@ -752,7 +788,7 @@ export class SupabaseEconomyRepository implements EconomyRepository {
   async settleMatchEconomy(
     input: SettleMatchEconomyInput,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
-    const envelope = await this.rpc<RawEnvelope<SettlementRow>>("settle_match_economy", {
+    const baseParams: Record<string, unknown> = {
       p_match_id: input.matchId,
       p_is_valid_ranking: input.isValidRanking,
       // The migration's own jsonb_array_elements loop reads camelCase keys
@@ -762,7 +798,45 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       // through as-is; no case conversion here would be a real bug.
       p_participants: input.participants,
       p_refund_reason: input.refundReason ?? null,
-    });
+    };
+
+    let envelope: RawEnvelope<SettlementRow>;
+    if (input.prizeByPlacement !== undefined && input.worldBankCutCoins !== undefined) {
+      try {
+        envelope = await this.rpc<RawEnvelope<SettlementRow>>("settle_match_economy", {
+          ...baseParams,
+          p_prize_by_placement: input.prizeByPlacement,
+          p_world_bank_cut_coins: input.worldBankCutCoins,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.includes("Could not find the function") ||
+          msg.includes("PGRST202") ||
+          msg.includes("p_prize_by_placement")
+        ) {
+          // Louder than the commit_match_entry fallback's own log, by
+          // design: a stale database here doesn't just misattribute WHO
+          // pays — it pays out the WRONG AMOUNT for any non-default entry
+          // stake, silently, with no error of its own. Apply
+          // supabase/migrations/20260908000000_economy_custom_entry_stake.sql
+          // to close this.
+          logger.error({
+            message:
+              "settle_match_economy RPC does not accept p_prize_by_placement — falling back to the legacy " +
+              "fixed-schedule payout. Apply supabase/migrations/20260908000000_economy_custom_entry_stake.sql " +
+              `to this database now. Match ${input.matchId} will incorrectly settle against the FIXED ` +
+              `100-coin schedule regardless of this room's actual entry stake. Underlying error: ${msg}`,
+            module: "ECONOMY",
+          });
+          envelope = await this.rpc<RawEnvelope<SettlementRow>>("settle_match_economy", baseParams);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      envelope = await this.rpc<RawEnvelope<SettlementRow>>("settle_match_economy", baseParams);
+    }
     return { ...envelope, result: toSettlement(envelope.result) };
   }
 

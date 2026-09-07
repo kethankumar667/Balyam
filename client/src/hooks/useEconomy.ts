@@ -349,6 +349,7 @@ export function useCheckoutQuote(input: MatchCheckoutQuoteInput | null) {
   const seatCount = input?.seatCount;
   const humanSeatCount = input?.humanSeatCount;
   const botSeatCount = input?.botSeatCount;
+  const entryStakeCoins = input?.entryStakeCoins;
 
   useEffect(() => {
     if (!input || seatCount === undefined) {
@@ -366,6 +367,7 @@ export function useCheckoutQuote(input: MatchCheckoutQuoteInput | null) {
       seatCount,
       humanSeatCount: humanSeatCount ?? 1,
       botSeatCount: botSeatCount ?? 0,
+      entryStakeCoins,
     })
       .then((res) => {
         if (!isCancelled) {
@@ -384,7 +386,7 @@ export function useCheckoutQuote(input: MatchCheckoutQuoteInput | null) {
     return () => {
       isCancelled = true;
     };
-  }, [seatCount, humanSeatCount, botSeatCount]);
+  }, [seatCount, humanSeatCount, botSeatCount, entryStakeCoins]);
 
   return {
     quote,

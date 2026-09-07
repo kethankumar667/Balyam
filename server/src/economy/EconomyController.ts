@@ -413,15 +413,20 @@ export function createEconomyRouter(service: EconomyService): Router {
   router.post("/checkout/quote", requireIdentity, async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const { seatCount, humanSeatCount, botSeatCount } = body;
+    const { seatCount, humanSeatCount, botSeatCount, entryStakeCoins } = body;
     if (!isPlainInteger(seatCount) || !isNonNegativeInteger(humanSeatCount) || !isNonNegativeInteger(botSeatCount)) {
       res.status(400).json({ error: "InvalidRequest", message: "seatCount, humanSeatCount, and botSeatCount must be integers." });
+      return;
+    }
+    if (entryStakeCoins !== undefined && !isPlainInteger(entryStakeCoins)) {
+      res.status(400).json({ error: "InvalidRequest", message: "entryStakeCoins must be an integer when provided." });
       return;
     }
     try {
       const quote = await service.quoteMatchCheckout({
         hostIdentityId: callerId(req),
         seatCount, humanSeatCount, botSeatCount,
+        entryStakeCoins: entryStakeCoins as number | undefined,
       });
       res.json({ quote });
       logOutcome(req, res, "POST /checkout/quote", "quoteMatchCheckout", null, startedAt, "ok");

@@ -91,6 +91,7 @@ describe("SupabaseEconomyRepository", () => {
         p_human_seat_count: 1,
         p_bot_seat_count: 1,
         p_is_solo: false,
+        p_game_kind: null,
       });
     });
 
@@ -162,6 +163,67 @@ describe("SupabaseEconomyRepository", () => {
       const [, initFallback] = fetchMock.mock.calls[1] as [string, RequestInit];
       const fallbackBody = JSON.parse(initFallback.body as string);
       expect(fallbackBody.p_participant_debits).toBeUndefined();
+      expect(fallbackBody.p_seat_count).toBe(2);
+    });
+
+    it("commitMatchEntry sends p_game_kind when gameKind is provided", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(200, {
+          applied: true,
+          operation: "commit_match_entry",
+          idempotencyKey: "match-entry:m4",
+          result: settlementRow({ match_id: "m4" }),
+        }),
+      );
+      const repo = new SupabaseEconomyRepository(CONFIG);
+      await repo.commitMatchEntry({
+        matchId: "m4",
+        roomCode: "ROOM4",
+        hostIdentityId: "host_1",
+        seatCount: 2,
+        humanSeatCount: 2,
+        botSeatCount: 0,
+        isSolo: false,
+        gameKind: "handcricket",
+      });
+
+      const body = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string);
+      expect(body.p_game_kind).toBe("handcricket");
+    });
+
+    it("commitMatchEntry falls back without p_game_kind if the database returns PGRST202 for it — a cosmetic-only fallback, never bills the wrong amount", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(404, {
+          code: "PGRST202",
+          message:
+            "Could not find the function public.commit_match_entry(p_bot_seat_count, p_game_kind, p_host_identity_id, " +
+            "p_human_seat_count, p_is_solo, p_match_id, p_room_code, p_seat_count) in the schema cache",
+        }),
+      );
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(200, {
+          applied: true,
+          operation: "commit_match_entry",
+          idempotencyKey: "match-entry:m5",
+          result: settlementRow({ match_id: "m5" }),
+        }),
+      );
+      const repo = new SupabaseEconomyRepository(CONFIG);
+      const res = await repo.commitMatchEntry({
+        matchId: "m5",
+        roomCode: "ROOM5",
+        hostIdentityId: "host_1",
+        seatCount: 2,
+        humanSeatCount: 2,
+        botSeatCount: 0,
+        isSolo: false,
+        gameKind: "handcricket",
+      });
+
+      expect(res.applied).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const fallbackBody = JSON.parse((fetchMock.mock.calls[1] as [string, RequestInit])[1].body as string);
+      expect(fallbackBody.p_game_kind).toBeUndefined();
       expect(fallbackBody.p_seat_count).toBe(2);
     });
 

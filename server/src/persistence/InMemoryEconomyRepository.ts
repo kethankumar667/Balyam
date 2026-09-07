@@ -793,6 +793,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
           idempotencyKey: `${idempotencyKey}:debit:${p.identityId}`,
           description: `Match entry commitment: ${p.amountCoins} coins (${input.roomCode ?? "SOLO"})`,
           lifetimeField: "lifetimeSpent",
+          gameKind: input.gameKind ?? null,
         });
         this.wallets.set(p.identityId, debited);
       }
@@ -822,10 +823,28 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         idempotencyKey,
         description: `Match commitment: ${input.seatCount} seats (${input.roomCode ?? "SOLO"})`,
         lifetimeField: "lifetimeSpent",
+        gameKind: input.gameKind ?? null,
       });
       this.wallets.set(input.hostIdentityId, debited);
       totalCollectedAmount = totalCost;
     }
+
+    // Derived from what was ACTUALLY collected, not assumed from the global
+    // config — the same fix commit_match_entry's SQL body needs (custom
+    // entry stakes, 2026-09-08). Every seat costs the same amount by
+    // construction (RoomManager.buildParticipantDebits' own invariant), so
+    // this division is always exact; fail loud rather than truncate if it
+    // somehow isn't.
+    const seatCountBig = BigInt(input.seatCount);
+    if (input.participantDebits && input.participantDebits.length > 0 && totalCollectedAmount % seatCountBig !== 0n) {
+      throw new InvalidSeatConfigurationError(
+        `NON_UNIFORM_SEAT_COST: total debits ${totalCollectedAmount} do not divide evenly across ${input.seatCount} seats`,
+      );
+    }
+    const costPerSeatCoins =
+      input.participantDebits && input.participantDebits.length > 0
+        ? fromBig(totalCollectedAmount / seatCountBig)
+        : this.configuration.seatCostCoins;
 
     const now = Date.now();
     const settlement: MatchEconomySettlementRecord = {
@@ -835,7 +854,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       seatCount: input.seatCount,
       humanSeatCount: input.humanSeatCount,
       botSeatCount: input.botSeatCount,
-      costPerSeat: this.configuration.seatCostCoins,
+      costPerSeat: costPerSeatCoins,
       totalCollected: fromBig(totalCollectedAmount),
       totalWalletRewarded: "0",
       totalGuestEscrow: "0",
@@ -844,6 +863,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       totalRefunded: "0",
       refundReason: null,
       participantDebits: input.participantDebits ? clone(input.participantDebits) : undefined,
+      gameKind: input.gameKind ?? null,
       totalForfeited: "0",
       forfeitureReason: null,
       status: "COMMITTED",
@@ -852,7 +872,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     };
     this.settlements.set(input.matchId, settlement);
     this.settlementSnapshots.set(input.matchId, {
-      costPerSeat: this.configuration.seatCostCoins,
+      costPerSeat: costPerSeatCoins,
       schedule: clone(schedule),
     });
 
@@ -875,7 +895,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         seatCount: input.seatCount,
         humanSeatCount: input.humanSeatCount,
         botSeatCount: input.botSeatCount,
-        costPerSeat: this.configuration.seatCostCoins,
+        costPerSeat: costPerSeatCoins,
         totalCollected: fromBig(totalCollectedAmount),
         isSolo: input.isSolo,
       },
@@ -947,21 +967,35 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       );
     }
 
-    const snapshot = this.settlementSnapshots.get(input.matchId);
-    const schedule = snapshot?.schedule ?? this.prizeSchedules.get(settlement.seatCount);
-    if (!schedule) {
-      // Unreachable via any path this repository itself creates — every
-      // COMMITTED settlement always has a snapshot. Guarded defensively
-      // rather than asserted with a non-null assertion.
-      throw new UnsupportedSeatCountError(`No prize schedule snapshot for match ${input.matchId}`);
-    }
     const isSolo = settlement.seatCount === 1;
-    const prizeByPlacement = (placement: number): bigint => {
-      if (placement === 1) return toBig(schedule.firstPlaceCoins);
-      if (placement === 2) return toBig(schedule.secondPlaceCoins);
-      if (placement === 3) return toBig(schedule.thirdPlaceCoins);
-      return 0n;
-    };
+    let prizeByPlacement: (placement: number) => bigint;
+    let scheduleWorldBankCut: bigint;
+
+    if (input.prizeByPlacement && input.worldBankCutCoins !== undefined) {
+      // Percentage-of-actual-pool amounts (custom entry stakes, 2026-09-08)
+      // — computed by EconomyService against this match's real
+      // totalCollected, replacing the fixed schedule snapshot below.
+      const amounts = input.prizeByPlacement.map(toBig);
+      prizeByPlacement = (placement: number): bigint => amounts[placement - 1] ?? 0n;
+      scheduleWorldBankCut = toBig(input.worldBankCutCoins);
+    } else {
+      // ── Legacy fixed-schedule path — unchanged from before custom stakes ──
+      const snapshot = this.settlementSnapshots.get(input.matchId);
+      const schedule = snapshot?.schedule ?? this.prizeSchedules.get(settlement.seatCount);
+      if (!schedule) {
+        // Unreachable via any path this repository itself creates — every
+        // COMMITTED settlement always has a snapshot. Guarded defensively
+        // rather than asserted with a non-null assertion.
+        throw new UnsupportedSeatCountError(`No prize schedule snapshot for match ${input.matchId}`);
+      }
+      prizeByPlacement = (placement: number): bigint => {
+        if (placement === 1) return toBig(schedule.firstPlaceCoins);
+        if (placement === 2) return toBig(schedule.secondPlaceCoins);
+        if (placement === 3) return toBig(schedule.thirdPlaceCoins);
+        return 0n;
+      };
+      scheduleWorldBankCut = toBig(schedule.worldBankCoins);
+    }
 
     let totalWalletRewarded = 0n;
     let totalGuestEscrow = 0n;
@@ -981,6 +1015,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
             idempotencyKey: `${idempotencyKey}:credit:${participant.identityId}`,
             description: `Match placement ${participant.placement} prize`,
             lifetimeField: "lifetimeEarned",
+            gameKind: settlement.gameKind ?? null,
           });
           this.wallets.set(participant.identityId, credited);
           totalWalletRewarded += prize;
@@ -1054,7 +1089,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     }
 
     let totalWorldBankCut = 0n;
-    const worldBankCut = toBig(schedule.worldBankCoins);
+    const worldBankCut = scheduleWorldBankCut;
     if (worldBankCut > 0n) {
       this.moveWorldBank("baseFeeRevenue", worldBankCut, {
         entryType: isSolo ? "SOLO_ENTRY_COLLECTION" : "BASE_FEE_REVENUE",
@@ -1260,6 +1295,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
             idempotencyKey: `${idempotencyKey}:refund:${p.identityId}`,
             description: `Refund match commitment: ${reason}`,
             lifetimeField: "lifetimeRefunded",
+            gameKind: settlement.gameKind ?? null,
           });
           this.wallets.set(p.identityId, credited);
         }
@@ -1276,6 +1312,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         idempotencyKey,
         description: `Refund match commitment: ${reason}`,
         lifetimeField: "lifetimeRefunded",
+        gameKind: settlement.gameKind ?? null,
       });
       this.wallets.set(settlement.hostIdentityId, credited);
     }
@@ -1495,6 +1532,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       idempotencyKey: string;
       description: string;
       lifetimeField: "lifetimeGranted" | "lifetimeEarned" | "lifetimeRefunded";
+      gameKind?: string | null;
     },
   ): CoinWalletRecord {
     const balanceBefore = toBig(wallet.balance);
@@ -1522,6 +1560,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       idempotencyKey: string;
       description: string;
       lifetimeField: "lifetimeSpent";
+      gameKind?: string | null;
     },
   ): CoinWalletRecord {
     const balanceBefore = toBig(wallet.balance);
@@ -1549,7 +1588,14 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     balanceBefore: bigint,
     balanceAfter: bigint,
     versionBefore: number,
-    meta: { entryType: WalletLedgerEntryType; sourceKind: string; sourceId: string; idempotencyKey: string; description: string },
+    meta: {
+      entryType: WalletLedgerEntryType;
+      sourceKind: string;
+      sourceId: string;
+      idempotencyKey: string;
+      description: string;
+      gameKind?: string | null;
+    },
   ): void {
     const entry: CoinLedgerEntryRecord = {
       id: this.nextWalletLedgerId++,
@@ -1564,6 +1610,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       sourceId: meta.sourceId,
       idempotencyKey: meta.idempotencyKey,
       description: meta.description,
+      gameKind: meta.gameKind ?? null,
       createdAt: Date.now(),
     };
     this.walletLedger.push(entry);

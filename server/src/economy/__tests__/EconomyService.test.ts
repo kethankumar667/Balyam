@@ -41,6 +41,9 @@ import {
   InvalidParticipantShapeError,
   InvalidRankingShapeError,
   InvalidRequestError,
+  PrizeMathConservationError,
+  computePrizePool,
+  winnersForSeatCount,
 } from "../EconomyService.js";
 import { hashVoucherCode } from "../voucherCrypto.js";
 
@@ -954,5 +957,168 @@ describe("EconomyService — adminAdjustWallet", () => {
 
     expect(res.applied).toBe(true);
     expect(res.result.balance).toBe("8000"); // 5000 starter + 3000
+  });
+});
+
+/* ═══════════════════════ custom entry stake — percentage prize math ═══════ */
+
+describe("winnersForSeatCount", () => {
+  it.each([
+    [1, 0],
+    [2, 1],
+    [3, 2],
+    [4, 3],
+    [5, 3],
+    [6, 3],
+    [12, 3],
+  ])("seatCount %i -> %i winners", (seatCount, expected) => {
+    expect(winnersForSeatCount(seatCount)).toBe(expected);
+  });
+});
+
+describe("computePrizePool", () => {
+  it("solo (seatCount 1) is 100% World Bank at any stake — zero winners", () => {
+    expect(computePrizePool(100n, 1)).toEqual({ worldBankCut: 100n, winnerPrizes: [] });
+    expect(computePrizePool(5000n, 1)).toEqual({ worldBankCut: 5000n, winnerPrizes: [] });
+  });
+
+  it("500-coin stake x 5 seats: 2500 total -> 500 world bank / 1000-600-400 winners", () => {
+    expect(computePrizePool(2500n, 5)).toEqual({ worldBankCut: 500n, winnerPrizes: [1000n, 600n, 400n] });
+  });
+
+  it("1000-coin stake x 7 seats: 7000 total -> 1400 world bank / 2800-1680-1120 winners", () => {
+    expect(computePrizePool(7000n, 7)).toEqual({ worldBankCut: 1400n, winnerPrizes: [2800n, 1680n, 1120n] });
+  });
+
+  it("200-coin stake x 2 seats (1 winner): 400 total -> 80 world bank / 320 winner", () => {
+    expect(computePrizePool(400n, 2)).toEqual({ worldBankCut: 80n, winnerPrizes: [320n] });
+  });
+
+  it("500-coin stake x 3 seats (2 winners): 1500 total -> 300 world bank / 750-450", () => {
+    expect(computePrizePool(1500n, 3)).toEqual({ worldBankCut: 300n, winnerPrizes: [750n, 450n] });
+  });
+
+  it("custom 5000-coin stake x 12 seats stays exact with zero rounding remainder", () => {
+    const total = 5000n * 12n; // 60000
+    const { worldBankCut, winnerPrizes } = computePrizePool(total, 12);
+    expect(winnerPrizes.reduce((a, b) => a + b, 0n) + worldBankCut).toBe(total);
+    expect(worldBankCut).toBe(12000n); // 20%
+    expect(winnerPrizes).toEqual([24000n, 14400n, 9600n]); // 50/30/20 of the 48000 winner pool
+  });
+
+  it("GOLDEN: reproduces every existing economy_prize_schedules row exactly at the default 100-coin stake (zero-regression proof)", () => {
+    // Hardcoded from InMemoryEconomyRepository.ts's own DEFAULT_SCHEDULES —
+    // the seed data a prior migration already computed using this exact
+    // 20%/50-30-20%/62.5-37.5% formula. If this ever fails, the percentage
+    // model has drifted from the payout policy every existing match today
+    // was settled under.
+    const golden: Record<number, { first: bigint; second: bigint; third: bigint; worldBank: bigint }> = {
+      2: { first: 160n, second: 0n, third: 0n, worldBank: 40n },
+      3: { first: 150n, second: 90n, third: 0n, worldBank: 60n },
+      4: { first: 160n, second: 96n, third: 64n, worldBank: 80n },
+      5: { first: 200n, second: 120n, third: 80n, worldBank: 100n },
+      6: { first: 240n, second: 144n, third: 96n, worldBank: 120n },
+      7: { first: 280n, second: 168n, third: 112n, worldBank: 140n },
+      8: { first: 320n, second: 192n, third: 128n, worldBank: 160n },
+      9: { first: 360n, second: 216n, third: 144n, worldBank: 180n },
+      10: { first: 400n, second: 240n, third: 160n, worldBank: 200n },
+      11: { first: 440n, second: 264n, third: 176n, worldBank: 220n },
+      12: { first: 480n, second: 288n, third: 192n, worldBank: 240n },
+    };
+
+    for (const [seatCountStr, expected] of Object.entries(golden)) {
+      const seatCount = Number(seatCountStr);
+      const totalCollected = 100n * BigInt(seatCount);
+      const { worldBankCut, winnerPrizes } = computePrizePool(totalCollected, seatCount);
+      expect(worldBankCut, `seatCount ${seatCount} world bank cut`).toBe(expected.worldBank);
+      expect(winnerPrizes[0] ?? 0n, `seatCount ${seatCount} 1st place`).toBe(expected.first);
+      expect(winnerPrizes[1] ?? 0n, `seatCount ${seatCount} 2nd place`).toBe(expected.second);
+      expect(winnerPrizes[2] ?? 0n, `seatCount ${seatCount} 3rd place`).toBe(expected.third);
+    }
+  });
+
+  it("throws PrizeMathConservationError for a totalCollected that is not a multiple of 100 (defensive self-check, not an expected input)", () => {
+    // A stake that is NOT a multiple of 100 is never supposed to reach this
+    // function (validated far upstream, see isValidEntryStakeCoins) — this
+    // proves the self-check is a REAL guard, not merely a documented claim.
+    // 1001 split 3 ways truncates to 400/240/160 + 200 world bank = 1000,
+    // one coin short of the actual total.
+    expect(() => computePrizePool(1001n, 4)).toThrow(PrizeMathConservationError);
+  });
+});
+
+describe("EconomyService — quoteMatchCheckout with a custom entry stake", () => {
+  it("quotes a 5-seat match at a 500-coin custom stake with percentage-based prizes, not the fixed 100-coin schedule", async () => {
+    const repo = freshRepo();
+    const service = freshService(repo);
+    repo.testFixture.seedWallet({ identityId: "host_custom_1", identityKind: "member", balance: "10000", lifetimeGranted: "10000", starterGranted: true });
+
+    const quote = await service.quoteMatchCheckout({
+      hostIdentityId: "host_custom_1",
+      seatCount: 5,
+      humanSeatCount: 5,
+      botSeatCount: 0,
+      entryStakeCoins: 500,
+    });
+
+    expect(quote.costPerSeat).toBe("500");
+    expect(quote.totalCommitment).toBe("2500");
+    expect(quote.prizeDistribution).toEqual({ firstPlace: "1000", secondPlace: "600", thirdPlace: "400" });
+    expect(quote.worldBankContribution).toBe("500");
+  });
+
+  it("omitting entryStakeCoins still uses the global default rate (backward compatible)", async () => {
+    const repo = freshRepo();
+    const service = freshService(repo);
+    repo.testFixture.seedWallet({ identityId: "host_default_1", identityKind: "member", balance: "10000", lifetimeGranted: "10000", starterGranted: true });
+
+    const quote = await service.quoteMatchCheckout({
+      hostIdentityId: "host_default_1",
+      seatCount: 4,
+      humanSeatCount: 4,
+      botSeatCount: 0,
+    });
+
+    expect(quote.costPerSeat).toBe("100");
+    expect(quote.prizeDistribution).toEqual({ firstPlace: "160", secondPlace: "96", thirdPlace: "64" });
+  });
+});
+
+describe("EconomyService — settleMatchEconomy with a custom entry stake", () => {
+  it("settles a match committed with per-participant debits at a non-100 stake using percentage math, not the fixed schedule", async () => {
+    const repo = freshRepo();
+    const service = freshService(repo);
+    repo.testFixture.seedWallet({ identityId: "p1_custom", identityKind: "member", balance: "5000", lifetimeGranted: "5000", starterGranted: true });
+    repo.testFixture.seedWallet({ identityId: "p2_custom", identityKind: "member", balance: "5000", lifetimeGranted: "5000", starterGranted: true });
+
+    await service.commitMatchEntry({
+      matchId: "match_custom_stake_1",
+      roomCode: "ROOM1",
+      hostIdentityId: "p1_custom",
+      seatCount: 2,
+      humanSeatCount: 2,
+      botSeatCount: 0,
+      isSolo: false,
+      participantDebits: [
+        { identityId: "p1_custom", identityKind: "member", amountCoins: "500" },
+        { identityId: "p2_custom", identityKind: "member", amountCoins: "500" },
+      ],
+    });
+
+    const result = await service.settleMatchEconomy({
+      matchId: "match_custom_stake_1",
+      isValidRanking: true,
+      participants: [
+        { identityId: "p1_custom", identityKind: "member", placement: 1 },
+        { identityId: "p2_custom", identityKind: "member", placement: 2 },
+      ],
+    });
+
+    expect(result.applied).toBe(true);
+    expect(result.settlement.costPerSeat).toBe("500");
+    expect(result.settlement.totalCollected).toBe("1000");
+    // 2 seats -> 1 winner -> 100% of the 800-coin winner pool (20% of 1000 = 200 to World Bank).
+    expect((await service.getWallet("p1_custom")).balance).toBe("5300"); // 5000 - 500 + 800
+    expect((await service.getWallet("p2_custom")).balance).toBe("4500"); // 5000 - 500
   });
 });

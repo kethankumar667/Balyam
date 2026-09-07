@@ -67,6 +67,7 @@ import {
   PlayerStartReadiness,
   RoomStartReadiness,
 } from "@shared/types.js";
+import { ENTRY_STAKE_MIN_COINS, GUEST_HOST_ENTRY_STAKE_COINS, isValidEntryStakeCoins } from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
@@ -184,6 +185,26 @@ const IDLE_STRIKES_BEFORE_TAKEOVER = 2;
  * sub-moves/turn) at 2.5 real turns, half of what this constant says.
  */
 const AUTO_PLAY_TURN_CAP = 5;
+/**
+ * Sub-moves of bot-play a genuinely DISCONNECTED seat gets before being
+ * forced out as a forfeit (2026-09-09) — gates `disconnectSubMovesPlayed`
+ * (see its own doc comment on the `Room` interface for why this counts
+ * SUB-moves, not strict turns like its `AUTO_PLAY_TURN_CAP` sibling: a
+ * strict-turn count relies on `lastAutoTurnActor`, which never changes
+ * across this seat's own consecutive rounds in a genuine 2-human match, so
+ * it would never advance past 1 for the entire disconnect).
+ *
+ * This count is NEVER sufficient on its own: it is always paired with
+ * `GRACE_PERIOD_MS` at the call site (see `scheduleBotMoveIfNeeded`),
+ * because a genuine network drop's real reconnection time (a WiFi-to-mobile
+ * handoff measured over 100s — see `MATCH_GRACE_PERIOD_MS`'s own doc
+ * comment) can easily outlast 5 sub-moves of a fast game (Hand Cricket
+ * resolves one in ~1.2-2s, so the cap alone would forfeit a real player in
+ * under 20 seconds). An idle seat has no such concern — it is CONNECTED,
+ * just not acting — which is why `AUTO_PLAY_TURN_CAP` above stays
+ * turn-count-only with no time floor.
+ */
+const DISCONNECT_FORFEIT_TURN_CAP = 5;
 /** How long the host's rematch request stays open before auto-cancelling. */
 const REMATCH_REQUEST_WINDOW_MS = 30_000;
 /** Countdown shown to everyone after all responses are in before the new game auto-starts. */
@@ -351,6 +372,29 @@ export interface Room {
    */
   autoTurnsPlayed: Map<string, number>;
   /**
+   * Sub-moves the server has played for a DISCONNECTED seat since its
+   * current disconnect episode began (2026-09-09) — gates
+   * `DISCONNECT_FORFEIT_TURN_CAP`, reset on reconnect exactly like
+   * `autoTurnsPlayed`. Deliberately its OWN counter, reusing neither
+   * sibling: not `autoPlayedFor` (documented above as "never reset,
+   * purely informational" — reusing it would resurrect the exact
+   * cross-episode-accumulation bug that field is already known for), and
+   * not `autoTurnsPlayed` (its `lastAutoTurnActor`-based "turn changed"
+   * heuristic only detects a new turn when a DIFFERENT auto-driven seat's
+   * move interrupts this one's — true in the idle test's 3-seat rotation
+   * with a bot, but never true in a genuine 2-human match: the OTHER
+   * (real, connected) player's own moves never touch `lastAutoTurnActor`
+   * at all, so the disconnected seat would stay "the last actor" forever
+   * and the count would freeze at 1 for the entire disconnect — silently
+   * disabling this whole feature for the exact 2-human scenario it exists
+   * for). Counting sub-moves instead of strict turns is slightly
+   * premature for a multi-sub-move engine (Ludo roll+move ≈ 2 sub-moves
+   * per turn), but that direction is always safe: it only makes the cap
+   * fire SOONER, never later, and `GRACE_PERIOD_MS` remains the real
+   * fairness floor regardless of how this count is derived.
+   */
+  disconnectSubMovesPlayed: Map<string, number>;
+  /**
    * The seat id `scheduleBotMoveIfNeeded` most recently applied an
    * auto-move for. A turn boundary for turn-counting purposes is "the next
    * auto-move fires for a DIFFERENT seat than this one" — consecutive
@@ -427,6 +471,20 @@ export interface Room {
    */
   committedCostPerSeat: string | null;
   committedTotalPot: string | null;
+  /**
+   * The host's chosen per-seat entry stake for this room, in coins. Set
+   * once at `createRoom` and never changed afterward — there is no "change
+   * stake" flow. Unlike `committedCostPerSeat` (which only exists while a
+   * match is actively funded), this persists for the room's entire
+   * lifetime and is what `buildParticipantDebits` reads as `costPerSeat`
+   * for every match/rematch this room ever starts. A guest host is always
+   * exactly `GUEST_HOST_ENTRY_STAKE_COINS` — enforced both at creation
+   * (rejecting a guest's non-100 request outright) and, authoritatively,
+   * in `checkHostEconomyEligibility` (a guest can inherit an existing
+   * higher-stake room via host migration, which creation-time validation
+   * alone cannot cover).
+   */
+  entryStakeCoins: number;
   /**
    * In-memory guard against firing `commitMatchEntry` twice for the same
    * start attempt — e.g. a double-click or a duplicate socket emit racing
@@ -527,11 +585,18 @@ interface HostEconomyEligibility {
  *  - An unresolved identityId (null/empty) is rejected: there is no wallet to debit.
  *  - A guest may play solo or against any number of bots (`soloVsBots: true`).
  *  - A guest CANNOT host multiplayer matches containing other real human players (`hasOtherHumanPlayers === true`).
- *  - A registered member may host bot-only, mixed, or all-human matches.
+ *  - A guest may host ONLY at exactly `GUEST_HOST_ENTRY_STAKE_COINS`, unconditionally —
+ *    independent of `hasOtherHumanPlayers` (2026-09-08, custom entry stakes). This is the
+ *    AUTHORITATIVE check for that rule: `RoomManager.createRoom` also rejects a guest's
+ *    non-100 request at creation time, but that alone cannot cover a room that migrated
+ *    to a guest host later (see `reassignHost`) — this check re-runs on every match/
+ *    rematch start regardless of how the room got here.
+ *  - A registered member may host bot-only, mixed, or all-human matches at any valid stake.
  */
 function checkHostEconomyEligibility(
   host: Player,
   playersList: Player[],
+  entryStakeCoins: number,
   isRematch = false,
 ): HostEconomyEligibility {
   if (!host.identityId || host.identityId.trim().length === 0) {
@@ -540,6 +605,15 @@ function checkHostEconomyEligibility(
       error: isRematch
         ? "Host identity not resolved. Please sign in or refresh."
         : "Player identity not resolved. Please refresh or sign in.",
+    };
+  }
+
+  if (host.isGuest && entryStakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
+    return {
+      eligible: false,
+      error: isRematch
+        ? "This room's entry stake requires a signed-in host. Sign in to start, or ask a member to host instead."
+        : "Guests can only host matches at the 100-coin table. Sign in to host at a higher stake, or ask a member to host instead.",
     };
   }
 
@@ -1099,6 +1173,7 @@ export class RoomManager {
       lastMatchId: room.lastMatchId ?? null,
       committedCostPerSeat: room.committedCostPerSeat ?? null,
       committedTotalPot: room.committedTotalPot ?? null,
+      entryStakeCoins: room.entryStakeCoins,
     };
   }
 
@@ -1264,7 +1339,22 @@ export class RoomManager {
      * at all; either way, `Player.identityId` simply stays unset and this
      * room behaves exactly as it did before this integration.
      */
-    identityId?: string | null
+    identityId?: string | null,
+    /**
+     * Appended for the same reason as `avatar`/`hostKind`/`identityId`
+     * above. Absent or malformed clamps to `ENTRY_STAKE_MIN_COINS` (today's
+     * fixed 100-coin behavior, unchanged) — creation itself never fails
+     * over a bad number from a legitimate host. A GUEST requesting
+     * anything other than `GUEST_HOST_ENTRY_STAKE_COINS` is the one case
+     * that's rejected outright (thrown, caught by the socket handler's
+     * existing try/catch — see sockets/index.ts's `room:create`), rather
+     * than silently overridden, per this codebase's preference for loud
+     * failures over quietly ignoring what was asked. See
+     * `checkHostEconomyEligibility` for the authoritative, unconditional
+     * re-check this creation-time validation cannot fully replace (a room
+     * can migrate to a guest host later, at start time).
+     */
+    entryStakeCoins?: number
   ): { code: string; playerId: string; seatToken: string; state: RoomPublicState } {
     const createStart = performance.now();
     let code = generateRoomCode();
@@ -1286,6 +1376,21 @@ export class RoomManager {
      * The live client always sends the field, in both create paths.
      */
     const hostIsGuest = hostKind === "guest";
+
+    // Resolve the room's entry stake — see this parameter's own doc comment
+    // for the reject-vs-clamp reasoning.
+    let resolvedEntryStake: number;
+    if (hostIsGuest) {
+      if (entryStakeCoins !== undefined && entryStakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
+        throw new Error(
+          "Guests can only host matches at the 100-coin table. Sign in to host at a higher stake, or ask a member to host instead.",
+        );
+      }
+      resolvedEntryStake = GUEST_HOST_ENTRY_STAKE_COINS;
+    } else {
+      resolvedEntryStake =
+        entryStakeCoins !== undefined && isValidEntryStakeCoins(entryStakeCoins) ? entryStakeCoins : ENTRY_STAKE_MIN_COINS;
+    }
 
     const playerId = newPlayerId();
     const player: Player = {
@@ -1325,6 +1430,7 @@ export class RoomManager {
       idleStrikes: new Map(),
       autoPlayedFor: new Map(),
       autoTurnsPlayed: new Map(),
+      disconnectSubMovesPlayed: new Map(),
       lastAutoTurnActor: null,
       turnTimer: null,
       dealGateWaitTimer: null,
@@ -1357,6 +1463,7 @@ export class RoomManager {
       lastMatchId: null,
       committedCostPerSeat: null,
       committedTotalPot: null,
+      entryStakeCoins: resolvedEntryStake,
       economyCommitPending: false,
       pendingCommitOperationId: null,
       terminalStatus: "IDLE",
@@ -1985,10 +2092,18 @@ export class RoomManager {
    * match entry commitment.
    *
    * Economic Invariant:
-   * Each identified non-bot participant pays 100 coins (1 seat).
-   * The host pays for their own seat (100 coins) plus covers any bot seats
-   * and any unassigned human seats (e.g. local pass-and-play).
-   * Total sum of all debits strictly equals seatCount * 100 coins.
+   * Each identified non-bot participant pays `costPerSeat` (1 seat).
+   * The host pays for their own seat plus covers any bot seats and any
+   * unassigned human seats (e.g. local pass-and-play).
+   * Total sum of all debits strictly equals `seatCount * costPerSeat`, for
+   * ANY room composition — including bots. (2026-09-08 fix: bot seats were
+   * previously never actually debited to anyone here, despite this same
+   * comment already claiming otherwise — invisible only because
+   * `commit_match_entry`'s SQL used to independently recompute
+   * `total_collected` from the global rate regardless of what was actually
+   * debited. Fixing that SQL bug — required for custom entry stakes to
+   * record the real total — would otherwise make a paid room mixing bots
+   * with 2+ humans fail `total_collected_calc`'s own CHECK constraint.)
    */
   private buildParticipantDebits(host: Player, playersList: Player[], costPerSeat = "100"): ParticipantDebitSpec[] {
     const costBig = BigInt(costPerSeat);
@@ -2003,7 +2118,8 @@ export class RoomManager {
     }));
 
     const humanPlayers = playersList.filter((p) => !p.isBot);
-    const hostSeats = Math.max(1, humanPlayers.length - otherDebits.length);
+    const botSeatCount = playersList.length - humanPlayers.length;
+    const hostSeats = Math.max(1, humanPlayers.length - otherDebits.length) + botSeatCount;
     const hostAmount = (BigInt(hostSeats) * costBig).toString();
 
     const hostDebit: ParticipantDebitSpec = {
@@ -2120,7 +2236,7 @@ export class RoomManager {
     }
 
     if (this.economyService) {
-      const eligibility = checkHostEconomyEligibility(player, playersList, false);
+      const eligibility = checkHostEconomyEligibility(player, playersList, room.entryStakeCoins, false);
       if (!eligibility.eligible) {
         this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
         return;
@@ -2270,7 +2386,7 @@ export class RoomManager {
     this.transitionLifecycle(room, "STARTING", "Committing match entry");
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
-    const participantDebits = this.buildParticipantDebits(hostPlayer, playersList);
+    const participantDebits = this.buildParticipantDebits(hostPlayer, playersList, String(room.entryStakeCoins));
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -2282,6 +2398,7 @@ export class RoomManager {
         botSeatCount,
         isSolo: playersList.length === 1,
         participantDebits,
+        gameKind: room.game,
       });
 
       const freshRoom = this.rooms.get(room.code);
@@ -3008,14 +3125,25 @@ export class RoomManager {
           if (this.isAutoDriven(room, botId)) {
             room.autoPlayedFor.set(botId, (room.autoPlayedFor.get(botId) ?? 0) + 1);
 
-            // The turn cap only ever applies to an IDLE takeover — see
-            // `isIdleAutoDriven`'s own doc comment for why a disconnect must
-            // not be pre-empted by it.
+            // An idle takeover is turn-capped via `autoTurnsPlayed` (a real
+            // TURN count — see `lastAutoTurnActor`'s own doc comment for why
+            // that heuristic is reliable there: another idle/bot seat's
+            // interleaved moves reliably marks each turn boundary).
+            //
+            // A genuine disconnect is capped differently, via the sibling
+            // `disconnectSubMovesPlayed` — see ITS OWN doc comment on the
+            // `Room` interface for exactly why `lastAutoTurnActor`'s
+            // heuristic cannot be reused here (it would freeze at 1 for the
+            // entire disconnect in a genuine 2-human match, since the other,
+            // real, connected player's own moves never touch it). A
+            // disconnect additionally needs `GRACE_PERIOD_MS` of real
+            // elapsed time before its cap can act — an idle seat (connected,
+            // just not acting) needs no such floor.
             if (this.isIdleAutoDriven(room, botId)) {
               // A new TURN for this seat starts exactly when the auto-move
               // actor changes from whatever it was last time — consecutive
               // sub-moves for the SAME seat (roll→move, draw→discard) are one
-              // turn, not two. See `lastAutoTurnActor`'s own doc comment.
+              // turn, not two.
               const isNewTurn = room.lastAutoTurnActor !== botId;
               room.lastAutoTurnActor = botId;
               if (isNewTurn) {
@@ -3025,6 +3153,15 @@ export class RoomManager {
                   await this.forceQuitAutoPlayedSeat(room, botId);
                   return;
                 }
+              }
+            } else if (this.isDisconnectedAutoDriven(room, botId)) {
+              const subMoves = (room.disconnectSubMovesPlayed.get(botId) ?? 0) + 1;
+              room.disconnectSubMovesPlayed.set(botId, subMoves);
+              const awaySince = this.disconnectAwaySince(room, botId);
+              const timeFloorMet = awaySince !== undefined && Date.now() - awaySince >= GRACE_PERIOD_MS;
+              if (subMoves > DISCONNECT_FORFEIT_TURN_CAP && timeFloorMet) {
+                await this.forceQuitAutoPlayedSeat(room, botId);
+                return;
               }
             }
           }
@@ -3754,18 +3891,19 @@ export class RoomManager {
    * Is this seat auto-driven for being IDLE, specifically — as opposed to a
    * genuine socket disconnect?
    *
-   * `AUTO_PLAY_TURN_CAP` only ever fires for this case. A disconnect already
-   * has its own correct, economically-aware termination path: up to
-   * `MATCH_GRACE_PERIOD_MS` (10 minutes), then the grace-expiry reaper —
-   * which, critically, also runs the "no eligible signed-in successor"
-   * forfeiture check a mid-match gameplay quit has no way to know about (a
-   * guest or bot cannot legitimately inherit the ORIGINAL host's economic
-   * commitment). Ending a disconnected host's takeover early via the turn
-   * cap would let the match reach an ordinary settlement instead of that
-   * forfeiture — real money routed differently than the existing, tested
-   * rule requires. An IDLE seat (connected, just not acting) was never on
-   * any such timer, so the turn cap is pure upside there: it closes a real
-   * gap (previously unbounded) rather than racing an existing one.
+   * `AUTO_PLAY_TURN_CAP` fires for this case alone, and turn-count ALONE is
+   * always sufficient here — an idle seat is CONNECTED, just not acting, so
+   * there is no reconnection-time fairness concern to protect against.
+   *
+   * A genuine disconnect is handled by the sibling `isDisconnectedAutoDriven`
+   * below: also turn-capped (2026-09-09, `DISCONNECT_FORFEIT_TURN_CAP`), but
+   * that cap is never sufficient BY ITSELF — see its own doc comment and
+   * `DISCONNECT_FORFEIT_TURN_CAP`'s. Both paths ultimately still run through
+   * `forceQuitAutoPlayedSeat`, which preserves the same "no eligible
+   * signed-in successor" forfeiture check (via `reassignHost`) the original
+   * `MATCH_GRACE_PERIOD_MS` reaper always ran — a guest or bot still can
+   * never legitimately inherit the original host's economic commitment,
+   * regardless of which of the two paths ends the seat.
    */
   private isIdleAutoDriven(room: Room, playerId: string): boolean {
     const p = room.players.get(playerId);
@@ -3775,6 +3913,37 @@ export class RoomManager {
       return !!host?.isAutoPlaying && host.autoPlayReason === "idle";
     }
     return p.isAutoPlaying === true && p.autoPlayReason === "idle";
+  }
+
+  /**
+   * Is this seat auto-driven for being genuinely DISCONNECTED, as opposed to
+   * merely idle? Mirrors `isIdleAutoDriven`'s own local-seat delegation
+   * exactly — a pass-and-play seat has no socket of its own, so it inherits
+   * whatever reason the HOST's connection carries.
+   */
+  private isDisconnectedAutoDriven(room: Room, playerId: string): boolean {
+    const p = room.players.get(playerId);
+    if (!p || p.isBot) return false;
+    if (p.isLocal) {
+      const host = room.players.get(room.hostId);
+      return !!host?.isAutoPlaying && host.autoPlayReason === "disconnected";
+    }
+    return p.isAutoPlaying === true && p.autoPlayReason === "disconnected";
+  }
+
+  /**
+   * `awaySince` for whoever is ACTUALLY disconnected behind this seat — the
+   * seat itself normally, or (mirroring `isDisconnectedAutoDriven`'s own
+   * local-seat delegation) the host's for a pass-and-play seat, which has no
+   * `awaySince` of its own. `undefined` when there is no meaningful answer
+   * (not disconnected, or the timestamp is somehow missing) — callers must
+   * treat that as "the time floor is not met", never as "elapsed forever".
+   */
+  private disconnectAwaySince(room: Room, playerId: string): number | undefined {
+    const p = room.players.get(playerId);
+    if (!p) return undefined;
+    if (p.isLocal) return room.players.get(room.hostId)?.awaySince;
+    return p.awaySince;
   }
 
   /**
@@ -3938,6 +4107,7 @@ export class RoomManager {
     room.idleStrikes.delete(playerId);
     room.autoPlayedFor.delete(playerId);
     room.autoTurnsPlayed.delete(playerId);
+    room.disconnectSubMovesPlayed.delete(playerId);
     if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
   }
 
@@ -3956,8 +4126,10 @@ export class RoomManager {
     p.isAutoPlaying = false;
     delete p.autoPlayReason;
     // A fresh episode next time this seat disconnects deserves its own full
-    // AUTO_PLAY_TURN_CAP allowance, not whatever was left over from this one.
+    // AUTO_PLAY_TURN_CAP / DISCONNECT_FORFEIT_TURN_CAP allowance, not
+    // whatever was left over from this one.
     room.autoTurnsPlayed.delete(playerId);
+    room.disconnectSubMovesPlayed.delete(playerId);
     if (room.lastAutoTurnActor === playerId) room.lastAutoTurnActor = null;
     this.systemMessage(room, `${p.name} is back — they have the table again.`);
   }
@@ -3989,10 +4161,12 @@ export class RoomManager {
   }
 
   /**
-   * The auto-play turn cap has been reached (`AUTO_PLAY_TURN_CAP`
-   * consecutive turns played by the server on this seat's behalf) — force
-   * the seat out of active play. Called from `scheduleBotMoveIfNeeded` in
-   * place of applying what would have been the seat's next auto-move.
+   * The auto-play turn cap has been reached — either `AUTO_PLAY_TURN_CAP`
+   * consecutive turns for an idle seat, or `DISCONNECT_FORFEIT_TURN_CAP`
+   * turns AND `GRACE_PERIOD_MS` of elapsed time for a genuinely disconnected
+   * one (see both constants' own doc comments) — force the seat out of
+   * active play. Called from `scheduleBotMoveIfNeeded` in place of applying
+   * what would have been the seat's next auto-move.
    *
    * Two very different outcomes depending on what the engine supports:
    *
@@ -5274,7 +5448,7 @@ export class RoomManager {
       return;
     }
 
-    const eligibility = checkHostEconomyEligibility(host, playersList, true);
+    const eligibility = checkHostEconomyEligibility(host, playersList, room.entryStakeCoins, true);
     if (!eligibility.eligible) {
       this.io.to(room.code).emit("room:error", eligibility.error!);
       this.cancelRematch(room, null);
@@ -5295,7 +5469,7 @@ export class RoomManager {
     const operationId = `op_rematch_${matchId}`;
     room.pendingCommitOperationId = operationId;
     room.economyCommitPending = true;
-    const participantDebits = this.buildParticipantDebits(host, playersList);
+    const participantDebits = this.buildParticipantDebits(host, playersList, String(room.entryStakeCoins));
 
     try {
       const result = await this.economyService.commitMatchEntry({
@@ -5307,6 +5481,7 @@ export class RoomManager {
         botSeatCount,
         isSolo: playersList.length === 1,
         participantDebits,
+        gameKind: room.game,
       });
       // Same comprehensive re-validation as `requestGameStart`, adapted to the rematch
       // flow: verifies room instance, active operation token, host presence and role,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Gamepad2,
@@ -15,11 +15,14 @@ import {
   Flame,
   CheckCircle2,
   X,
-  Volume2,
+  Printer,
+  BookOpen,
+  Filter,
 } from "lucide-react";
-import AppLayout from "../components/layout/AppLayout";
+import HelpLayout from "../components/layout/HelpLayout";
 import Modal from "../components/Modal";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
+import { HapticsManager } from "../services/HapticsManager";
 
 interface GameRuleDetail {
   slug: string;
@@ -28,6 +31,7 @@ interface GameRuleDetail {
   players: string;
   duration: string;
   difficulty: "Easy" | "Medium" | "Strategic";
+  category: "board" | "cards" | "quick" | "2player";
   tagline: string;
   objective: string;
   steps: string[];
@@ -42,6 +46,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2 Players",
     duration: "5–10 min",
     difficulty: "Easy",
+    category: "2player",
     tagline: "The timeless classroom finger-cricket duel.",
     objective: "Score the highest runs while batting and outwit your opponent to take their wicket while bowling.",
     steps: [
@@ -63,6 +68,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2–4 Players",
     duration: "15–25 min",
     difficulty: "Easy",
+    category: "board",
     tagline: "Classic board game of rolling sixes and cutting tokens.",
     objective: "Navigate all 4 of your colored tokens from your home base around the track into the center home triangle.",
     steps: [
@@ -84,6 +90,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2–6 Players",
     duration: "10–20 min",
     difficulty: "Medium",
+    category: "cards",
     tagline: "13-card Indian Rummy with pure sequences and sets.",
     objective: "Form valid sequences (runs of same suit) and sets (same rank, different suits) with all 13 cards.",
     steps: [
@@ -104,6 +111,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2–4 Players",
     duration: "10–15 min",
     difficulty: "Easy",
+    category: "board",
     tagline: "Climb glorious ladders and dodge venomous snakes.",
     objective: "Be the first player to travel from square 1 to square 100 on the classic childhood board.",
     steps: [
@@ -123,6 +131,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2–4 Players",
     duration: "10–15 min",
     difficulty: "Easy",
+    category: "cards",
     tagline: "Match colors, unleash Draw-4s, and scream UNO!",
     objective: "Be the first player to discard all cards from your hand by matching color, number, or action symbol.",
     steps: [
@@ -142,6 +151,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2 Players",
     duration: "5–10 min",
     difficulty: "Easy",
+    category: "2player",
     tagline: "Connect grid lines, close boxes, and claim territory.",
     objective: "Complete the 4th side of square boxes on the grid to claim ownership and capture the highest score.",
     steps: [
@@ -162,6 +172,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2 Players",
     duration: "5–10 min",
     difficulty: "Medium",
+    category: "2player",
     tagline: "Test your vocabulary in real-time letter chain duels.",
     objective: "Build valid English words where each word starts with the last letter of the opponent's previous word.",
     steps: [
@@ -181,6 +192,7 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
     players: "2–4 Players",
     duration: "5–10 min",
     difficulty: "Easy",
+    category: "quick",
     tagline: "Cross 5 numbers in rows, columns, or diagonals to strike B-I-N-G-O.",
     objective: "Lock your 5x5 grid and cross off numbers called out to complete 5 distinct lines.",
     steps: [
@@ -195,181 +207,349 @@ const GAME_RULES_CATALOG: Record<string, GameRuleDetail> = {
   },
 };
 
+const CATEGORY_FILTERS = [
+  { id: "all", label: "All Games" },
+  { id: "2player", label: "2 Players" },
+  { id: "board", label: "Board Games" },
+  { id: "cards", label: "Card Games" },
+  { id: "quick", label: "Quick Play (<10m)" },
+];
+
 export default function HowToPlayPage() {
   const [selectedGameRule, setSelectedGameRule] = useState<GameRuleDetail | null>(null);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  const filteredGames = useMemo(() => {
+    return Object.values(GAME_RULES_CATALOG).filter((game) => {
+      if (activeCategory === "all") return true;
+      if (activeCategory === "2player") return game.players.includes("2") || game.category === "2player";
+      if (activeCategory === "board") return game.category === "board";
+      if (activeCategory === "cards") return game.category === "cards";
+      if (activeCategory === "quick") return game.duration.includes("5") || game.category === "quick";
+      return true;
+    });
+  }, [activeCategory]);
+
+  const handleCategoryChange = (catId: string) => {
+    try {
+      HapticsManager.getInstance().subtle();
+    } catch {
+      // ignore
+    }
+    setActiveCategory(catId);
+  };
+
+  const handlePrint = () => {
+    try {
+      HapticsManager.getInstance().subtle();
+    } catch {
+      // ignore
+    }
+    window.print();
+  };
+
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedGameRule) {
+        setSelectedGameRule(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedGameRule]);
 
   return (
-    <AppLayout showFallingPetals>
-      <div className="min-h-screen bhalyam-paper py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto space-y-12">
-          {/* ── Page Hero ── */}
-          <div className="text-center space-y-4 max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[#EA580C] text-xs font-bold font-mono uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Player Guide & Rulebook</span>
-            </div>
+    <HelpLayout
+      title="How to Play"
+      subtitle="Official rulebooks, match mechanics, and winning strategies for all 16+ Indian nostalgic games."
+      badgeText="Lounge Rulebook"
+    >
+      <div className="space-y-10 text-stone-800 dark:text-slate-100">
+        {/* ── Quick Header Actions & Print Button ── */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              {filteredGames.length} Official Game Guides
+            </span>
+          </div>
 
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              Welcome to <span className="text-[#EA580C]">BHALYAM</span>
-            </h1>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handlePrint}
+              type="button"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 dark:text-slate-300 bg-white dark:bg-[#151A2E] border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-slate-800 transition shadow-2xs cursor-pointer min-h-[44px] focus-visible:outline-2 focus-visible:outline-amber-500"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Rulebook</span>
+            </button>
 
-            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium">
-              Pick a game. Call your friends. Make a memory.
-            </p>
+            <button
+              onClick={() => setJoinModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-sm transition min-h-[44px] cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Join a Lounge</span>
+            </button>
+          </div>
+        </div>
 
-            {/* Quick Action Buttons */}
-            <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to="/games"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm shadow-md transition"
-              >
-                <Gamepad2 className="w-4 h-4" />
-                <span>Explore Games</span>
-              </Link>
-
-              <button
-                onClick={() => setJoinModalOpen(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-[#151A2E] text-slate-800 dark:text-slate-200 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-sm shadow-xs transition cursor-pointer"
-              >
-                <Users className="w-4 h-4 text-amber-500" />
-                <span>Join a Lounge</span>
-              </button>
-
-              <Link
-                to="/games"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-bold text-sm shadow-xs transition"
-              >
-                <PlusCircle className="w-4 h-4 text-amber-400" />
-                <span>Create a Room</span>
-              </Link>
+        {/* ── Visual Cheat Sheets Strip (Audience Power) ── */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Rummy Cheat Sheet */}
+          <div className="rounded-3xl p-0.5 bg-gradient-to-b from-amber-500/25 to-transparent shadow-xs">
+            <div className="rounded-[22px] p-5 sm:p-6 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🎴</span> CHEAT SHEET • RUMMY
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  Golden Rule
+                </span>
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-stone-900 dark:text-white">
+                Pure vs. Impure Sequences
+              </h3>
+              <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed">
+                You cannot declare in 13-Card Rummy without at least <strong className="text-amber-600 dark:text-amber-400">1 Pure Sequence</strong> (3+ consecutive cards of same suit with ZERO jokers).
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300/60 dark:border-emerald-700/40 text-emerald-800 dark:text-emerald-300">
+                  <div className="font-bold mb-1">✓ Pure Sequence</div>
+                  <div className="text-xs font-black">4♠ • 5♠ • 6♠</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-700/40 text-amber-800 dark:text-amber-300">
+                  <div className="font-bold mb-1">✓ Impure (w/ Joker)</div>
+                  <div className="text-xs font-black">7♥ • 8♥ • 🃏</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ── Section 1: Your First Game (4-Step Journey) ── */}
-          <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-10 shadow-xs space-y-8">
+          {/* Ludo Cheat Sheet */}
+          <div className="rounded-3xl p-0.5 bg-gradient-to-b from-sky-500/25 to-transparent shadow-xs">
+            <div className="rounded-[22px] p-5 sm:p-6 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black text-sky-600 dark:text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🎲</span> CHEAT SHEET • LUDO
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                  Tactical Sanctuary
+                </span>
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-stone-900 dark:text-white">
+                Safe Star Sanctuaries & Bonus Turns
+              </h3>
+              <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed">
+                Tokens resting on star cells (★) can never be cut. Cutting an opponent's token or rolling a 6 grants an immediate bonus roll!
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                <div className="p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-300/60 dark:border-sky-700/40 text-sky-800 dark:text-sky-300">
+                  <div className="font-bold mb-1">★ Star Cells</div>
+                  <div>Cannot be captured</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-300/60 dark:border-purple-700/40 text-purple-800 dark:text-purple-300">
+                  <div className="font-bold mb-1">⚡ Bonus Rolls</div>
+                  <div>Roll 6 or Cut Token</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 1: Your First Game in 4 Easy Steps ── */}
+        <section className="rounded-3xl p-0.5 bg-gradient-to-b from-amber-500/20 via-stone-300/20 dark:via-white/5 to-transparent shadow-sm">
+          <div className="rounded-[22px] p-6 sm:p-8 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-6">
             <div className="text-center max-w-xl mx-auto space-y-1">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
                 Your First Game in 4 Easy Steps
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-500 dark:text-slate-400">
                 Multiplayer-first, zero downloads required, instant nostalgic fun in your browser.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Step 1 */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 border border-[#F3EFE9] dark:border-[#202740] rounded-2xl p-5 space-y-3 relative group hover:border-amber-500/40 transition">
-                <span className="text-2xl font-black text-[#EA580C] font-mono block">
+              <div className="bg-stone-50 dark:bg-[#162035] border border-stone-200/70 dark:border-white/10 rounded-2xl p-5 space-y-2 hover:border-amber-500/40 transition">
+                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono block">
                   01
                 </span>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Choose a Game
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <h4 className="font-bold text-sm text-stone-900 dark:text-white">Choose a Game</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
                   Browse our catalog of Indian childhood favorites — Hand Cricket, Ludo, Classic Rummy, UNO, and more.
                 </p>
               </div>
 
-              {/* Step 2 */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 border border-[#F3EFE9] dark:border-[#202740] rounded-2xl p-5 space-y-3 relative group hover:border-amber-500/40 transition">
-                <span className="text-2xl font-black text-[#EA580C] font-mono block">
+              <div className="bg-stone-50 dark:bg-[#162035] border border-stone-200/70 dark:border-white/10 rounded-2xl p-5 space-y-2 hover:border-amber-500/40 transition">
+                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono block">
                   02
                 </span>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Create or Join
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <h4 className="font-bold text-sm text-stone-900 dark:text-white">Create or Join</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
                   Instantly generate a 6-character room code, or enter a friend's code to join their active lounge.
                 </p>
               </div>
 
-              {/* Step 3 */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 border border-[#F3EFE9] dark:border-[#202740] rounded-2xl p-5 space-y-3 relative group hover:border-amber-500/40 transition">
-                <span className="text-2xl font-black text-[#EA580C] font-mono block">
+              <div className="bg-stone-50 dark:bg-[#162035] border border-stone-200/70 dark:border-white/10 rounded-2xl p-5 space-y-2 hover:border-amber-500/40 transition">
+                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono block">
                   03
                 </span>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Invite Friends
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <h4 className="font-bold text-sm text-stone-900 dark:text-white">Invite Friends</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
                   Share your room invite via WhatsApp, Web Share link, or QR code. No login required for guests to join.
                 </p>
               </div>
 
-              {/* Step 4 */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 border border-[#F3EFE9] dark:border-[#202740] rounded-2xl p-5 space-y-3 relative group hover:border-amber-500/40 transition">
-                <span className="text-2xl font-black text-[#EA580C] font-mono block">
+              <div className="bg-stone-50 dark:bg-[#162035] border border-stone-200/70 dark:border-white/10 rounded-2xl p-5 space-y-2 hover:border-amber-500/40 transition">
+                <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono block">
                   04
                 </span>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Play & Relive
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <h4 className="font-bold text-sm text-stone-900 dark:text-white">Play &amp; Relive</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
                   Enjoy real-time turns, send nostalgic sound reactions, talk over WebRTC voice, and play instant rematches.
                 </p>
               </div>
             </div>
           </div>
+        </section>
 
-          {/* ── Section 2: How BHALYAM Works (Core Concepts) ── */}
-          <div className="space-y-6">
-            <div className="text-center max-w-xl mx-auto space-y-1">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                How BHALYAM Works
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Understanding Lounges, Bots, and our server-authoritative multiplayer platform.
+        {/* ── Section 2: Interactive Filter Bar & Game Rules Catalog ── */}
+        <section className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-amber-500" />
+                <span>Game Rules Directory</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-500 dark:text-slate-400 mt-0.5">
+                Select any game below to review full official rules, player counts, and win strategies.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Card 1: Lounges */}
-              <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-4 shadow-xs">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center text-xl">
-                  🏠
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] touch-pan-x py-1">
+              {CATEGORY_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => handleCategoryChange(f.id)}
+                  type="button"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition min-h-[38px] whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500 ${
+                    activeCategory === f.id
+                      ? "bg-amber-500 text-stone-950 shadow-2xs font-extrabold"
+                      : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {filteredGames.map((game) => (
+              <div
+                key={game.slug}
+                className="rounded-3xl p-0.5 bg-gradient-to-b from-amber-500/15 to-transparent hover:from-amber-500/35 transition-all shadow-xs group flex flex-col"
+              >
+                <div className="rounded-[22px] p-5 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl">{game.icon}</span>
+                      <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-slate-300">
+                        {game.difficulty}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-sm text-stone-900 dark:text-white">
+                        {game.title}
+                      </h4>
+                      <p className="text-xs text-stone-500 dark:text-slate-400 line-clamp-2 mt-1">
+                        {game.tagline}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] text-stone-400 font-medium pt-1">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-amber-500" />
+                        {game.players}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-stone-400" />
+                        {game.duration}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 space-y-1.5">
+                    <button
+                      onClick={() => setSelectedGameRule(game)}
+                      type="button"
+                      className="w-full py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-500 hover:text-stone-950 text-[#EA580C] dark:text-amber-400 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] focus-visible:outline-2 focus-visible:outline-amber-500"
+                    >
+                      <span>Read Rules</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <Link
+                      to="/games"
+                      className="w-full py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-slate-400 text-[11px] font-bold transition flex items-center justify-center gap-1 min-h-[36px]"
+                    >
+                      <Gamepad2 className="w-3 h-3" />
+                      <span>Play vs Bots</span>
+                    </Link>
+                  </div>
                 </div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Digital Lounges
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  A lounge is your private digital room. The room host selects the game options (e.g. max players, round targets), while friends join seamlessly with the 6-character room code.
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Section 3: Core Platform Concepts ── */}
+        <section className="space-y-4">
+          <div className="text-center max-w-xl mx-auto space-y-1">
+            <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
+              How BHALYAM Works
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-slate-400">
+              Understanding Lounges, Bots, and our server-authoritative multiplayer platform.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="rounded-3xl p-0.5 bg-gradient-to-b from-amber-500/20 to-transparent shadow-xs">
+              <div className="rounded-[22px] p-6 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3">
+                <span className="text-2xl block">🏠</span>
+                <h4 className="font-bold text-base text-stone-900 dark:text-white">Digital Lounges</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
+                  A lounge is your private digital room. The room host selects the game options while friends join seamlessly with the 6-character room code.
                 </p>
-                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 pt-2 border-t border-[#F3EFE9] dark:border-[#222A44]">
+                <ul className="text-xs text-stone-600 dark:text-slate-300 space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Host controls start & game options</span>
+                    <span>Host controls start &amp; options</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Automatic host migration if host leaves</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Seamless rematch negotiations</span>
+                    <span>Automatic host failover</span>
                   </li>
                 </ul>
               </div>
+            </div>
 
-              {/* Card 2: Playing with Bots */}
-              <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-4 shadow-xs">
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-500 flex items-center justify-center text-xl">
-                  🤖
-                </div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Intelligent Bot Seats
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Can't find enough friends? Add an automated bot with a single tap. BHALYAM bots run on realistic human-like think delays and fair server-computed heuristics.
+            <div className="rounded-3xl p-0.5 bg-gradient-to-b from-purple-500/20 to-transparent shadow-xs">
+              <div className="rounded-[22px] p-6 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3">
+                <span className="text-2xl block">🤖</span>
+                <h4 className="font-bold text-base text-stone-900 dark:text-white">Intelligent Bot Seats</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
+                  Can't find enough friends? Add an automated bot with a single tap. BHALYAM bots run on human-like think delays and fair server-computed heuristics.
                 </p>
-                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 pt-2 border-t border-[#F3EFE9] dark:border-[#222A44]">
+                <ul className="text-xs text-stone-600 dark:text-slate-300 space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                    <span>Customizable bot names (Pintu, Chintu)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                    <span>Replaces disconnected players automatically</span>
+                    <span>Nostalgic bot names (Pintu, Chintu)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
@@ -377,125 +557,29 @@ export default function HowToPlayPage() {
                   </li>
                 </ul>
               </div>
+            </div>
 
-              {/* Card 3: Realtime & Reconnect */}
-              <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 space-y-4 shadow-xs">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center text-xl">
-                  ⚡
-                </div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Network Resilience
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Internet hiccups happen. BHALYAM automatically reserves your seat for 600 seconds with cryptographic tokens, allowing instant reconnection without losing game state.
+            <div className="rounded-3xl p-0.5 bg-gradient-to-b from-blue-500/20 to-transparent shadow-xs">
+              <div className="rounded-[22px] p-6 bg-white/95 dark:bg-[#111827]/95 border border-stone-200/80 dark:border-white/10 space-y-3">
+                <span className="text-2xl block">⚡</span>
+                <h4 className="font-bold text-base text-stone-900 dark:text-white">Network Resilience</h4>
+                <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
+                  Internet hiccups happen. BHALYAM automatically reserves your seat for 600 seconds with cryptographic tokens, allowing instant reconnection without losing turns.
                 </p>
-                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 pt-2 border-t border-[#F3EFE9] dark:border-[#222A44]">
+                <ul className="text-xs text-stone-600 dark:text-slate-300 space-y-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>10-minute seat holding grace period</span>
+                    <span>10-minute seat reservation</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Auto-play moves during disconnection</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Pass & Play for 1 shared device</span>
+                    <span>Pass &amp; Play for 1 shared phone</span>
                   </li>
                 </ul>
               </div>
             </div>
           </div>
-
-          {/* ── Section 3: Visual Game Rules Catalog ── */}
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EFEBE4] dark:border-[#222A44] pb-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>📖 Game Rules Directory</span>
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                  Select any game below to review full official rules, player counts, and win strategies.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Object.values(GAME_RULES_CATALOG).map((game) => (
-                <div
-                  key={game.slug}
-                  className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-5 space-y-3.5 shadow-xs hover:shadow-md transition flex flex-col justify-between group"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-3xl">{game.icon}</span>
-                      <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {game.difficulty}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                        {game.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
-                        {game.tagline}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium pt-1">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3 text-amber-500" />
-                        {game.players}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        {game.duration}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedGameRule(game)}
-                    className="w-full py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-500 hover:text-white text-[#EA580C] dark:text-amber-400 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
-                  >
-                    <span>Read Game Rules</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Section 4: Multiplayer FAQ Quick Strip ── */}
-          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/25 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="space-y-1 text-center sm:text-left">
-              <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                Have specific questions about scoring, bans, or account XP?
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Explore our full community guidelines and answers in the Support & FAQ hub.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <Link
-                to="/community-rules"
-                className="px-5 py-2.5 rounded-xl bg-white dark:bg-[#151A2E] text-slate-800 dark:text-slate-200 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50 font-bold text-xs shadow-xs transition"
-              >
-                Community Rules
-              </Link>
-              <Link
-                to="/support"
-                className="px-5 py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs shadow-md transition flex items-center gap-1.5"
-              >
-                <span>Support & FAQs</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
 
       {/* ── Game Rules Modal ── */}
@@ -504,18 +588,17 @@ export default function HowToPlayPage() {
           open={Boolean(selectedGameRule)}
           onClose={() => setSelectedGameRule(null)}
           ariaLabel={`${selectedGameRule.title} Official Rules`}
-          panelClassName="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-8 shadow-2xl max-w-2xl w-full text-left max-h-[85vh] overflow-y-auto"
+          panelClassName="bg-white dark:bg-[#151A2E] border border-stone-200 dark:border-[#222A44] rounded-3xl p-6 sm:p-8 shadow-2xl max-w-2xl w-full text-left max-h-[85vh] overflow-y-auto"
         >
           <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-[#EFEBE4] dark:border-[#222A44] pb-4">
+            <div className="flex items-start justify-between border-b border-stone-200 dark:border-[#222A44] pb-4">
               <div className="flex items-center gap-3.5">
                 <span className="text-4xl">{selectedGameRule.icon}</span>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  <h2 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
                     {selectedGameRule.title} Rules
                   </h2>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 font-medium mt-1">
+                  <div className="flex items-center gap-3 text-xs text-stone-400 font-medium mt-1">
                     <span>👥 {selectedGameRule.players}</span>
                     <span>•</span>
                     <span>⏱️ {selectedGameRule.duration}</span>
@@ -527,37 +610,36 @@ export default function HowToPlayPage() {
 
               <button
                 onClick={() => setSelectedGameRule(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition cursor-pointer"
+                aria-label="Close rule details"
+                className="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 flex items-center justify-center hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer min-h-[44px] min-w-[44px] focus-visible:outline-2 focus-visible:outline-amber-500"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Objective */}
             <div className="space-y-1.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
-              <h4 className="text-xs font-bold text-[#EA580C] uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-[#EA580C] dark:text-amber-400 uppercase tracking-wider">
                 Objective
               </h4>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+              <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 font-medium leading-relaxed">
                 {selectedGameRule.objective}
               </p>
             </div>
 
-            {/* Step-by-Step Rules */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">
                 Step-by-Step Gameplay
               </h4>
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {selectedGameRule.steps.map((step, idx) => (
                   <div
                     key={idx}
-                    className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-[#F3EFE9] dark:border-[#252D4A]"
+                    className="flex items-start gap-3 p-3 rounded-2xl bg-stone-50 dark:bg-stone-900/50 border border-stone-200/70 dark:border-white/10"
                   >
-                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                       {idx + 1}
                     </span>
-                    <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 leading-relaxed">
                       {step}
                     </p>
                   </div>
@@ -565,10 +647,9 @@ export default function HowToPlayPage() {
               </div>
             </div>
 
-            {/* Strategy & Pro Tips */}
             {selectedGameRule.tips.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Flame className="w-3.5 h-3.5 text-amber-500" />
                   <span>Winning Strategy Tips</span>
                 </h4>
@@ -576,7 +657,7 @@ export default function HowToPlayPage() {
                   {selectedGameRule.tips.map((tip, idx) => (
                     <p
                       key={idx}
-                      className="text-xs text-slate-600 dark:text-slate-400 italic pl-3 border-l-2 border-amber-500"
+                      className="text-xs text-stone-600 dark:text-slate-400 italic pl-3 border-l-2 border-amber-500"
                     >
                       "{tip}"
                     </p>
@@ -585,17 +666,16 @@ export default function HowToPlayPage() {
               </div>
             )}
 
-            {/* Action Footer */}
             <div className="pt-2 flex items-center gap-3">
               <Link
                 to="/games"
-                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs text-center shadow-md hover:from-amber-600 hover:to-orange-600 transition"
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs text-center shadow-md hover:from-amber-600 hover:to-orange-600 transition min-h-[44px] flex items-center justify-center"
               >
                 Play {selectedGameRule.title} Now
               </Link>
               <button
                 onClick={() => setSelectedGameRule(null)}
-                className="py-3 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 transition cursor-pointer"
+                className="py-3 px-5 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-slate-300 font-bold text-xs hover:bg-stone-200 transition cursor-pointer min-h-[44px]"
               >
                 Close
               </button>
@@ -611,6 +691,6 @@ export default function HowToPlayPage() {
           onClose={() => setJoinModalOpen(false)}
         />
       )}
-    </AppLayout>
+    </HelpLayout>
   );
 }

@@ -94,6 +94,7 @@ function ledgerEntry(id: number, amount: string): CoinLedgerEntryRecord {
     sourceId: "src_1",
     idempotencyKey: `key_${id}`,
     description: "test entry",
+    gameKind: null,
     createdAt: Date.now(),
   };
 }

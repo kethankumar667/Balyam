@@ -337,6 +337,7 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
             sourceId: "system",
             idempotencyKey: "starter-1",
             description: "Starter coin grant",
+            gameKind: null,
             createdAt: Date.now() - 3600000,
           },
         ],

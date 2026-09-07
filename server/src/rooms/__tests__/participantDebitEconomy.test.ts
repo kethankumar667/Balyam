@@ -104,7 +104,7 @@ function createRoomAs(
   identityId: string | null,
 ) {
   const totalParams = rooms.createRoom.length;
-  const optionsCount = totalParams - 3 - 3;
+  const optionsCount = totalParams - 3 - 4; // 3 leading (socketId,name,game), 4 trailing (avatar,hostKind,identityId,entryStakeCoins)
   const args: unknown[] = [socketId, name, game];
   for (let i = 0; i < optionsCount; i++) args.push(undefined);
   args.push(undefined, hostKind, identityId);
@@ -167,7 +167,7 @@ describe("Per-Player Coin Deduction (Guest and Human Seat Staking)", () => {
     ]);
   });
 
-  it("bots are not billed to host: in Host + Guest + 1 Bot match, host pays 100 (self only) and guest pays 100", async () => {
+  it("bot seats are billed to the host: in Host + Guest + 1 Bot match, host pays 200 (self + bot) and guest pays 100", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, HOST_MEMBER, "5000");
     seedGuest(repo, GUEST_ID, "2000");
@@ -190,9 +190,9 @@ describe("Per-Player Coin Deduction (Guest and Human Seat Staking)", () => {
     const hostWallet = await service.getWallet(HOST_MEMBER);
     const guestWallet = await service.getWallet(GUEST_ID);
 
-    expect(hostWallet.balance).toBe("4900"); // 5000 - 100 (1 self; bot is free)
+    expect(hostWallet.balance).toBe("4800"); // 5000 - 200 (own seat + the bot's, now correctly charged to the host)
     expect(guestWallet.balance).toBe("1900"); // 2000 - 100
-    expect(room.committedTotalPot).toBe("200"); // 2 human seats * 100
+    expect(room.committedTotalPot).toBe("300"); // 3 seats * 100 (2 humans + the bot)
   });
 
   it("blocks game start and notifies host with player name when guest has insufficient coins", async () => {

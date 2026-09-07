@@ -131,10 +131,16 @@ export default function GamesPage() {
           ) : (
             <ul
               role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full min-w-0"
+              style={{ perspective: 1200 }}
             >
               {displayedGames.map((game) => (
-                <li key={game.slug} role="listitem" className="w-full min-w-0 flex flex-col">
+                <li
+                  key={game.slug}
+                  role="listitem"
+                  className="w-full min-w-0 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(217,119,6,0.25)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] rounded-2xl"
+                  style={{ transformStyle: "preserve-3d" }}
+                >
                   <GameCard
                     game={game}
                     onSelect={() => openGameSheet(game.slug)}

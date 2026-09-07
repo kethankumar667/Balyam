@@ -104,6 +104,7 @@ describe("BHALYAM — Client Multiplayer Game Flow & Recovery Certification Suit
         ],
         spectatorCount: 0,
         sealed: false,
+        entryStakeCoins: 100,
         lifecycleState: "IN_PROGRESS",
         maxPlayers: 4,
         name: "Ludo Room",

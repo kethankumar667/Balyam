@@ -87,6 +87,7 @@ describe("DataTable — Strict Generic Typing & DTO Protection (Phase 5.3)", () 
         sourceId: "signup",
         idempotencyKey: "idem_101",
         description: "Welcome starter grant",
+        gameKind: null,
         createdAt: 1787800000000,
       },
     ];

@@ -77,6 +77,7 @@ describe("RoomStore Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_alice",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_alice", name: "Alice", isHost: true, isReady: true, isConnected: true },
       ],

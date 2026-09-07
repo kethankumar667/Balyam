@@ -73,6 +73,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     bingoHistory: [],
     ludoHistory: [],
     sealed: false,
+    entryStakeCoins: 100,
     roomRevision: 1,
     lifecycleState: "FINALIZING",
   };

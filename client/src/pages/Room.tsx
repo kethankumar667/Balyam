@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, lazy, Suspense } from "react";
+import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
@@ -39,6 +40,8 @@ import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
+import RoomConnectingLoader from "../components/loading/RoomConnectingLoader";
+import RoomNameEntryChamber from "../components/room/RoomNameEntryChamber";
 import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
 import FallingPetals from "../animations/app/FallingPetals";
 import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
@@ -851,7 +854,12 @@ export default function Room() {
 
   const { quote: lobbyQuote, isLoading: isLobbyQuoteLoading } = useCheckoutQuote(
     roomState?.phase === "lobby" && !isPlayingWithBots && lobbySeatCount > 0 && lobbySeatCount <= ECONOMY_MAX_APPROVED_SEAT_COUNT
-      ? { seatCount: lobbySeatCount, humanSeatCount: lobbyHumanSeatCount, botSeatCount: lobbyBotSeatCount }
+      ? {
+          seatCount: lobbySeatCount,
+          humanSeatCount: lobbyHumanSeatCount,
+          botSeatCount: lobbyBotSeatCount,
+          entryStakeCoins: roomState?.entryStakeCoins,
+        }
       : null,
   );
 
@@ -1147,9 +1155,21 @@ export default function Room() {
     if (isFullscreenActive()) void exitFullscreen();
     destroyVoiceSession();
     recoveryManager.detachRoom();
-    getSocket().emit("room:leave");
-    reset();
-    navigate("/");
+    // Wait for the server to confirm it actually PROCESSED the leave
+    // (bounded, so a bad connection can never hang navigation) instead of
+    // firing the emit and navigating away in the same tick. On a flaky
+    // connection (mobile backgrounding mid-navigation especially), an
+    // unconfirmed emit can lose its race against the page tearing the
+    // socket down — the server then only ever sees a raw disconnect, and an
+    // intentional Leave silently falls through to the far slower
+    // reconnect-grace path instead of declaring the opponent winner right
+    // away. See "room:leave" in shared/types.ts.
+    getSocket()
+      .timeout(1500)
+      .emit("room:leave", () => {
+        reset();
+        navigate("/");
+      });
   }
 
   // Read winnerId from opaque gameState without an inline cast.
@@ -1823,18 +1843,9 @@ export default function Room() {
  * extra keyframes or libraries.
  */
 function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => void }) {
-  const [takingLong, setTakingLong] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setTakingLong(true);
-    }, 12_000);
-    return () => window.clearTimeout(timer);
-  }, []);
-
   const handleRetry = () => {
-    setTakingLong(false);
     if (onRetry) {
       onRetry();
     } else {
@@ -1844,65 +1855,10 @@ function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => vo
   };
 
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-screen flex flex-col items-center justify-center gap-7 p-6 text-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div className="relative h-20 w-20" aria-hidden>
-        <span className="absolute inset-0 rounded-full border-4 border-[#E4B128]/25" />
-        <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#E4B128] animate-spin" />
-        <span className="absolute inset-[34%] rounded-full bg-[#E4B128]/70 animate-ping" />
-        <span className="absolute inset-[38%] rounded-full bg-[#E4B128]" />
-      </div>
-      <div>
-        <div
-          className="flex items-center justify-center gap-1 text-lg font-bold text-[#6C5A48]"
-          role="status"
-          aria-live="polite"
-        >
-          <span>Connecting to room</span>
-          <span className="ml-1 inline-flex gap-1">
-            <ConnectingDot delay="0ms" />
-            <ConnectingDot delay="160ms" />
-            <ConnectingDot delay="320ms" />
-          </span>
-        </div>
-        {code && (
-          <div className="mt-3 font-mono text-xl font-black tracking-[0.35em] text-[#2B3550]">
-            {code.toUpperCase()}
-          </div>
-        )}
-
-        {takingLong && (
-          <div className="mt-6 max-w-sm mx-auto space-y-3 bg-[#FFF4E0] dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700/80 rounded-2xl p-4 animate-fade-in shadow-sm">
-            <p className="text-xs text-[#8A6D4B] dark:text-slate-300 font-medium leading-relaxed">
-              Connecting is taking longer than usual — the game server may be waking up or your connection is slow.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 text-white shadow-xs transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-              >
-                Retry Connection
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-[#796651] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 hover:bg-slate-50 active:scale-95 transition cursor-pointer min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-              >
-                Return to Lounge
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ConnectingDot({ delay }: { delay: string }) {
-  return (
-    <span
-      className="h-1.5 w-1.5 rounded-full bg-[#6C5A48] animate-bounce"
-      style={{ animationDelay: delay }}
+    <RoomConnectingLoader
+      code={code}
+      onRetry={handleRetry}
+      onReturnHome={() => navigate("/")}
     />
   );
 }
@@ -1922,53 +1878,13 @@ function NameEntryForRoom({
    *  asked to introduce themselves. */
   guest?: boolean;
 }) {
-  const [draft, setDraft] = useState(initialName);
-  const trimmed = draft.trim().slice(0, 20);
-  const canSubmit = trimmed.length >= 1;
   return (
-    <div className="bhalyam-font bhalyam-paper min-h-screen flex items-center justify-center p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) onSubmit(trimmed);
-        }}
-        className="w-full max-w-md bg-[#F6EDDB] border border-[#E8D8BE] rounded-2xl p-6 sm:p-7 space-y-4 shadow-[0_18px_30px_-22px_rgba(74,44,22,0.45)]"
-      >
-        <div className="text-center">
-          <div className="text-[11px] uppercase tracking-widest font-bold text-[#A3886E]">
-            {guest ? "Joining as a guest" : "Joining room"}
-          </div>
-          <div className="font-mono text-[28px] sm:text-[32px] tracking-[0.35em] font-black text-[#2B3550] mt-1">
-            {code.toUpperCase()}
-          </div>
-          <p className="text-[#6E5E4D] text-sm mt-3">
-            {guest
-              ? "This is someone else's table. Tell them who's sitting down."
-              : "Enter your name so your friends know who just walked in."}
-          </p>
-        </div>
-        <input
-          autoFocus
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Your name"
-          maxLength={20}
-          className="w-full rounded-xl border border-[var(--room-field-edge)] bg-[var(--room-field)] text-[var(--room-ink)]
-                     text-lg px-4 py-3 outline-none focus:border-[#EA5A1F]
-                     focus:ring-2 focus:ring-[#EA5A1F]/30 placeholder:text-[var(--room-ink-mute)]"
-        />
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full rounded-xl bg-[#EA5A1F] hover:bg-[#D84F17]
-                     text-white font-bold text-base py-3 disabled:opacity-40
-                     disabled:cursor-not-allowed transition-colors"
-        >
-          {guest ? "Enter the game" : "Join Room"}
-        </button>
-      </form>
-    </div>
+    <RoomNameEntryChamber
+      code={code}
+      onSubmit={onSubmit}
+      initialName={initialName}
+      guest={guest}
+    />
   );
 }
 
@@ -2013,6 +1929,16 @@ function GenericScorecardModal({
   const radius = 10;
   const circ = 2 * Math.PI * radius;
 
+  const handleContinue = () => {
+    HapticsManager.getInstance().subtle();
+    onClose();
+  };
+
+  const handleLeave = () => {
+    HapticsManager.getInstance().subtle();
+    onLeave();
+  };
+
   if (previewMode) {
     return (
       <BoardPreviewPill
@@ -2023,110 +1949,125 @@ function GenericScorecardModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[65] bg-black/75 flex items-center justify-center p-4">
-      <div
-        className="rounded-2xl shadow-2xl max-w-sm w-full p-5 space-y-4"
-        style={{
-          background: "linear-gradient(160deg, #2F3A54 0%, #1a2236 100%)",
-          border: "1px solid rgba(228,177,40,0.35)",
-        }}
+    <div className="fixed inset-0 z-[65] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none" style={{ perspective: 1000 }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: -15 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="relative max-w-sm w-full rounded-3xl p-2 bg-gradient-to-b from-amber-400/50 via-amber-200/20 to-amber-500/30 dark:from-amber-500/30 dark:via-slate-800/60 dark:to-amber-500/20 shadow-[0_25px_60px_-10px_rgba(0,0,0,0.85),0_0_40px_rgba(245,158,11,0.25)] border border-amber-300/80 dark:border-amber-400/40"
+        style={{ transformStyle: "preserve-3d" }}
       >
-        {/* Header — game name + circular countdown */}
-        <div className="flex items-center justify-between">
-          <div className="text-xs uppercase tracking-widest font-bold text-amber-400/70">
-            {gameName ?? "Game"} · Results
+        {/* Inner 3D Scorecard Core */}
+        <div
+          className="rounded-[22px] bg-gradient-to-b from-[#1E2738] via-[#141B2A] to-[#0D121D] p-5 sm:p-6 space-y-4 border border-slate-700/80 text-white shadow-inner"
+          style={{ transform: "translateZ(25px)" }}
+        >
+          {/* Header — game name + circular countdown timer */}
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/35">
+              <span>{gameName ?? "Game"} · RESULTS</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded-full border border-white/10">
+              <svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true">
+                <circle cx="14" cy="14" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+                <circle
+                  cx="14"
+                  cy="14"
+                  r={radius}
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="3"
+                  strokeDasharray={`${circ * pct} ${circ}`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 14 14)"
+                />
+              </svg>
+              <span className="text-xs font-mono font-bold text-amber-300 w-6 text-center">{secondsLeft}s</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-              <circle cx="14" cy="14" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" />
-              <circle
-                cx="14" cy="14" r={radius} fill="none"
-                stroke="#E4B128" strokeWidth="2.5"
-                strokeDasharray={`${circ * pct} ${circ}`}
-                strokeLinecap="round"
-                transform="rotate(-90 14 14)"
-              />
-            </svg>
-            <span className="text-xs font-mono text-slate-400 w-7 text-right">{secondsLeft}s</span>
+
+          {/* 3D Floating Champion Relic */}
+          <div className="flex flex-col items-center justify-center pt-1" style={{ transform: "translateZ(40px)" }}>
+            <motion.div
+              animate={{ y: [0, -6, 0], rotateZ: [-2, 2, -2] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              className="w-14 h-14 rounded-2xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 p-0.5 shadow-[0_10px_25px_rgba(245,158,11,0.5)] border border-yellow-200 flex items-center justify-center text-3xl"
+            >
+              🏆
+            </motion.div>
+            <div className="mt-2 text-center">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-400 block">
+                {winnerName ? "CHAMPION OF THE TABLE" : "MATCH COMPLETE"}
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black font-display tracking-tight text-white drop-shadow-md">
+                {winnerName ? `${winnerName} Wins!` : "Game Concluded!"}
+              </h3>
+            </div>
           </div>
-        </div>
 
-        {/* Winner headline */}
-        <div className="text-xl font-extrabold text-center text-white py-1">
-          {winnerName ? `🏆 ${winnerName} wins!` : "Game Over!"}
-        </div>
-
-        {/* Player list */}
-        <div className="space-y-1.5">
-          {players.map((p) => {
-            const isWinner = p.id === winnerId;
-            const isSelf = p.id === selfId;
-            return (
-              <div
-                key={p.id}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
-                style={{
-                  background: isWinner
-                    ? "rgba(228,177,40,0.15)"
-                    : isSelf
-                    ? "rgba(255,255,255,0.07)"
-                    : "rgba(255,255,255,0.04)",
-                  border: isWinner
-                    ? "1px solid rgba(228,177,40,0.35)"
-                    : "1px solid transparent",
-                }}
-              >
+          {/* 3D Stepped Leaderboard Ranks */}
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+            {players.map((p, idx) => {
+              const isWinner = p.id === winnerId;
+              const isSelf = p.id === selfId;
+              const medal = isWinner ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`;
+              return (
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0"
-                  style={{
-                    background: isWinner
-                      ? "linear-gradient(135deg, #E4B128, #9A7410)"
-                      : "rgba(255,255,255,0.12)",
-                    color: isWinner ? "#1a0e00" : "#e2d9cb",
-                  }}
+                  key={p.id}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all ${
+                    isWinner
+                      ? "bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-500/15 border-t border-x border-amber-300/60 border-b-[3px] border-amber-600 shadow-[0_4px_12px_rgba(217,119,6,0.25)]"
+                      : isSelf
+                      ? "bg-white/10 border border-white/20"
+                      : "bg-white/5 border border-white/5"
+                  }`}
                 >
-                  {p.name.charAt(0).toUpperCase()}
+                  <span className="w-6 text-center text-sm font-black text-amber-300 shrink-0">
+                    {medal}
+                  </span>
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center font-bold text-xs shrink-0 text-amber-200">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 text-xs sm:text-sm font-bold text-white/95 truncate">
+                    {p.name} {isSelf && <span className="text-[10px] text-amber-400 font-normal">(You)</span>}
+                  </span>
+                  {isWinner && (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                      Winner
+                    </span>
+                  )}
                 </div>
-                <span className="flex-1 text-sm font-semibold text-white/90 truncate">
-                  {isSelf ? "You" : p.name}
-                </span>
-                {isWinner && <span className="text-base">🏆</span>}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <button
-            onClick={() => setPreviewMode(true)}
-            className="rounded-lg px-3 py-2 text-xs font-bold transition flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-500 text-white cursor-pointer shadow"
-          >
-            👁 Preview Board
-          </button>
-          <button
-            onClick={onLeave}
-            className="flex-1 rounded-lg py-2 text-xs font-semibold transition cursor-pointer"
-            style={{
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              color: "rgba(255,255,255,0.70)",
-            }}
-          >
-            Leave
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg py-2 text-xs font-extrabold transition cursor-pointer"
-            style={{
-              background: "linear-gradient(135deg, #E4B128, #9A7410)",
-              color: "#1a0e00",
-            }}
-          >
-            Continue
-          </button>
+          {/* 3D Tactile Actions Bar */}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setPreviewMode(true)}
+              className="px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 active:scale-95 cursor-pointer min-h-[44px]"
+            >
+              <span>👁 Board</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLeave}
+              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 active:scale-95 cursor-pointer min-h-[44px] flex items-center justify-center"
+            >
+              Leave
+            </button>
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-[#1a0e00] bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 border-t border-yellow-200 border-b-[4px] border-amber-700 hover:brightness-105 active:border-b-[1px] active:translate-y-[3px] shadow-[0_4px_14px_rgba(217,119,6,0.35)] transition-all cursor-pointer min-h-[44px] flex items-center justify-center"
+            >
+              Continue
+            </button>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -86,7 +86,7 @@ function createRoomAs(
   identityId: string | null,
 ) {
   const totalParams = rooms.createRoom.length; // socketId, name, game, ...options, avatar, hostKind, identityId
-  const optionsCount = totalParams - 3 - 3; // 3 leading (socketId,name,game), 3 trailing (avatar,hostKind,identityId)
+  const optionsCount = totalParams - 3 - 4; // 3 leading (socketId,name,game), 4 trailing (avatar,hostKind,identityId,entryStakeCoins)
   const args: unknown[] = [socketId, name, game];
   for (let i = 0; i < optionsCount; i++) args.push(undefined);
   args.push(undefined, hostKind, identityId); // avatar, hostKind, identityId
@@ -560,7 +560,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await rooms.requestGameStart("s_a");
 
       const matchId = peek(rooms, host.code).currentMatchId!;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100 (Alice only; bot is free)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice's own seat + the bot's, now correctly charged to the host)
       const bobBalanceBeforeFailover = (await service.getWallet(MEMBER_B)).balance;
 
       rooms.leaveRoom("s_a"); // host leaves; Bob (signed-in), Casey (guest), and a bot remain
@@ -597,7 +597,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const matchId = peek(rooms, host.code).currentMatchId!;
       const roomRef = peek(rooms, host.code);
       const originalHostId = roomRef.hostId;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100 (Alice only; bot is free)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice's own seat + the bot's, now correctly charged to the host)
 
       rooms.leaveRoom("s_a");
       await drainRoomEconomy(rooms);
@@ -612,11 +612,11 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("300"); // 3 human seats @ 100, bot is free
+      expect(settlement?.totalForfeited).toBe("400"); // 4 seats @ 100 (3 humans + the bot, now correctly billed to the host)
       expect(settlement?.totalRefunded).toBe("0");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // never refunded
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.abandonmentForfeitureRevenue).toBe("300");
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("400");
       expect(worldBank.guestEscrowLiability).toBe("0"); // no guest voucher ever created
       expect(worldBank.botPrizeRevenue).toBe("0"); // no bot winnings ever created
     });
@@ -665,7 +665,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
       const matchId = peek(rooms, host.code).currentMatchId!;
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100 (Alice only; bot is free)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // 5000 - 200 (Alice's own seat + the bot's, now correctly charged to the host)
 
       rooms.handleDisconnect("s_a"); // Alice (host) disconnects
       vi.advanceTimersByTime(11 * 60_000); // past MATCH_GRACE_PERIOD_MS -> grace-expiry timer fires
@@ -673,10 +673,10 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("200");
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // never refunded
+      expect(settlement?.totalForfeited).toBe("300"); // 3 seats @ 100 (2 humans + the bot, now correctly billed to the host)
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.abandonmentForfeitureRevenue).toBe("200");
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("300");
       expect(worldBank.guestEscrowLiability).toBe("0");
       expect(worldBank.botPrizeRevenue).toBe("0");
     });

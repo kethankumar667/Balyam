@@ -132,6 +132,19 @@ export class VoucherHashPolicyViolationError extends EconomyServiceError {
 export class EconomyServiceInfrastructureError extends EconomyServiceError {
   readonly code = "ECONOMY_SERVICE_INFRASTRUCTURE_ERROR";
 }
+/**
+ * `computePrizePool`'s own defensive self-check failed — the computed
+ * winner prizes plus the World Bank cut do not sum to `totalCollected`.
+ * Proven unreachable for any stake that is a positive multiple of 100
+ * coins (every weight below reduces to eighths or tenths of a pool that is
+ * always a multiple of 80), so this firing means a stake slipped past
+ * validation somewhere upstream — thrown here, before ever reaching the
+ * repository, so that bug surfaces as a clear service-level error instead
+ * of an opaque `SETTLEMENT_CONSERVATION_VIOLATION` from the database.
+ */
+export class PrizeMathConservationError extends EconomyServiceError {
+  readonly code = "PRIZE_MATH_CONSERVATION_ERROR";
+}
 
 /* ═══════════════════════════ Bigint-safe arithmetic ═══════════════════════ */
 
@@ -158,6 +171,71 @@ function fromBig(value: bigint): string {
   return value.toString();
 }
 
+/* ═══════════════════════ Percentage-of-pool prize math ═══════════════════
+ *
+ * Replaces the old fixed `economy_prize_schedules` lookup as the source of
+ * prize AMOUNTS (the schedule itself is still consulted elsewhere purely as
+ * the seat-count approval gate, and as the legacy settlement fallback when
+ * a room's stake was never customized). Custom per-room entry stakes (2026-
+ * 09-08) mean a fixed table of absolute amounts can no longer cover every
+ * possible pool size — every match now pays out a fixed PERCENTAGE of
+ * whatever it actually collected.
+ */
+
+/**
+ * How many placements are paid for a given seat count. Verified against
+ * every existing `economy_prize_schedules` row (2026-09 payout
+ * standardization): winners = min(seatCount - 1, 3), capped at 3
+ * regardless of table size. A solo match (seatCount <= 1) pays 0 winners —
+ * see `computePrizePool`'s own special case for why that means 100% World
+ * Bank, not "0% platform cut."
+ */
+export function winnersForSeatCount(seatCount: number): number {
+  if (seatCount <= 1) return 0;
+  return Math.min(seatCount - 1, 3);
+}
+
+/** Exact bigint fractions of the 80% "winner pool" — never floats, never rounded. */
+const RANK_WEIGHTS_BY_WINNER_COUNT: Readonly<Record<number, ReadonlyArray<readonly [bigint, bigint]>>> = {
+  1: [[1n, 1n]],
+  2: [[5n, 8n], [3n, 8n]],
+  3: [[1n, 2n], [3n, 10n], [1n, 5n]],
+};
+
+/**
+ * Platform always takes exactly 20% of `totalCollected`; the remaining 80%
+ * ("winner pool") splits among winners by `RANK_WEIGHTS_BY_WINNER_COUNT`.
+ *
+ * Because every entry stake is validated elsewhere to be a positive
+ * multiple of 100 coins, `totalCollected` (stake × seatCount) is always a
+ * multiple of 100, so the 80% winner pool is always a multiple of 80 —
+ * which divides evenly by every denominator used above (2, 5, 8, 10) for
+ * any seat count 2-12. The result is always an exact integer split with
+ * zero rounding remainder; the conservation check below is a defensive
+ * proof of that claim, not a case expected to ever actually fire.
+ */
+export function computePrizePool(totalCollected: bigint, seatCount: number): { worldBankCut: bigint; winnerPrizes: bigint[] } {
+  const winnerCount = winnersForSeatCount(seatCount);
+  if (winnerCount === 0) {
+    // Solo: the entire pool is the platform's — there is no second party to
+    // split a "winner pool" with, so applying the generic 20% split here
+    // would leave 80% of the pool credited to nobody.
+    return { worldBankCut: totalCollected, winnerPrizes: [] };
+  }
+  const worldBankCut = (totalCollected * 20n) / 100n;
+  const winnerPool = totalCollected - worldBankCut;
+  const weights = RANK_WEIGHTS_BY_WINNER_COUNT[winnerCount] ?? [];
+  const winnerPrizes = weights.map(([num, den]) => (winnerPool * num) / den);
+  const sum = winnerPrizes.reduce((a, b) => a + b, 0n) + worldBankCut;
+  if (sum !== totalCollected) {
+    throw new PrizeMathConservationError(
+      `Computed prize distribution (winners ${winnerPrizes.join(",")} + world bank ${worldBankCut}) ` +
+        `does not sum to totalCollected ${totalCollected} for seatCount ${seatCount}`,
+    );
+  }
+  return { worldBankCut, winnerPrizes };
+}
+
 /* ═══════════════════════════ Public DTOs ══════════════════════════════════ */
 
 export interface MatchCheckoutQuoteInput {
@@ -165,6 +243,8 @@ export interface MatchCheckoutQuoteInput {
   seatCount: number;
   humanSeatCount: number;
   botSeatCount: number;
+  /** Omit to use the global `economy_configurations.seat_cost_coins` rate (today's fixed behavior, unchanged). */
+  entryStakeCoins?: number;
 }
 
 export interface MatchCheckoutQuote {
@@ -197,6 +277,8 @@ export interface CommitMatchEntryRequest {
   botSeatCount: number;
   isSolo: boolean;
   participantDebits?: ParticipantDebitSpec[];
+  /** Machine game key (e.g. "handcricket") — display metadata for the wallet ledger only, never a business rule input. */
+  gameKind?: string;
 }
 
 export interface CommitMatchEntryResult {
@@ -506,14 +588,17 @@ export class EconomyService {
     ]);
 
     if (!schedule) {
+      // The schedule row's existence remains the seat-count approval gate —
+      // only its AMOUNTS are superseded by computePrizePool below.
       throw new UnsupportedSeatCountError(`No prize schedule for ${input.seatCount} seats`);
     }
 
-    const costPerSeat = toBig(config.seatCostCoins);
+    const costPerSeat = input.entryStakeCoins !== undefined ? BigInt(input.entryStakeCoins) : toBig(config.seatCostCoins);
     const totalCommitment = costPerSeat * BigInt(input.seatCount);
     const hostBalance = wallet ? toBig(wallet.balance) : 0n;
     const projectedBalance = hostBalance - totalCommitment;
     const hasSufficientFunds = hostBalance >= totalCommitment;
+    const { worldBankCut, winnerPrizes } = computePrizePool(totalCommitment, input.seatCount);
 
     const quote: MatchCheckoutQuote = {
       seatCount: input.seatCount,
@@ -522,11 +607,11 @@ export class EconomyService {
       costPerSeat: fromBig(costPerSeat),
       totalCommitment: fromBig(totalCommitment),
       prizeDistribution: {
-        firstPlace: schedule.firstPlaceCoins,
-        secondPlace: schedule.secondPlaceCoins,
-        thirdPlace: schedule.thirdPlaceCoins,
+        firstPlace: fromBig(winnerPrizes[0] ?? 0n),
+        secondPlace: fromBig(winnerPrizes[1] ?? 0n),
+        thirdPlace: fromBig(winnerPrizes[2] ?? 0n),
       },
-      worldBankContribution: schedule.worldBankCoins,
+      worldBankContribution: fromBig(worldBankCut),
       hostBalance: fromBig(hostBalance),
       projectedBalance: fromBig(projectedBalance),
       hasSufficientFunds,
@@ -569,6 +654,7 @@ export class EconomyService {
       botSeatCount: request.botSeatCount,
       isSolo: request.isSolo,
       participantDebits: request.participantDebits,
+      gameKind: request.gameKind,
     };
 
     const outcome = await this.withRetry("commitMatchEntry", request.matchId, () =>
@@ -664,21 +750,14 @@ export class EconomyService {
       }
     }
 
-    const schedule = await this.withRetry("settleMatchEconomy:schedule", request.matchId, () =>
-      this.repository.getPrizeSchedule(settlement.seatCount),
-    );
-    if (!schedule) {
-      // Unreachable in practice — commitMatchEntry could not have succeeded
-      // for this seatCount without a schedule exisiting. Guarded rather than
-      // assumed.
-      throw new UnsupportedSeatCountError(`No prize schedule for ${settlement.seatCount} seats`);
-    }
-    const prizeFor = (placement: number): bigint => {
-      if (placement === 1) return toBig(schedule.firstPlaceCoins);
-      if (placement === 2) return toBig(schedule.secondPlaceCoins);
-      if (placement === 3) return toBig(schedule.thirdPlaceCoins);
-      return 0n;
-    };
+    // Percentage-of-actual-pool amounts (custom entry stakes, 2026-09-08) —
+    // computed against THIS match's real totalCollected, replacing the old
+    // fixed economy_prize_schedules lookup as the source of prize amounts.
+    // The schedule row's existence was already proven at commit time
+    // (commitMatchEntry could not have succeeded for this seatCount
+    // without one); it is no longer re-consulted here at all.
+    const { worldBankCut, winnerPrizes } = computePrizePool(toBig(settlement.totalCollected), settlement.seatCount);
+    const prizeFor = (placement: number): bigint => winnerPrizes[placement - 1] ?? 0n;
 
     const build = (): { repoParticipants: RepoSettlementParticipantInput[]; issuedVouchers: IssuedVoucherAck[] } => {
       const repoParticipants: RepoSettlementParticipantInput[] = [];
@@ -739,6 +818,8 @@ export class EconomyService {
             matchId: request.matchId,
             isValidRanking: true,
             participants: attempt.repoParticipants,
+            prizeByPlacement: winnerPrizes.map(fromBig),
+            worldBankCutCoins: fromBig(worldBankCut),
           }),
         );
         this.logOutcome("settleMatchEconomy", request.matchId, startedAt, outcome.applied);

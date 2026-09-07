@@ -47,6 +47,8 @@ export interface CoinLedgerEntryRecord {
   sourceId: string;
   idempotencyKey: string;
   description: string;
+  /** Which game this match-related entry belongs to (e.g. "handcricket") — `null` for non-match entries (starter grants, admin adjustments, voucher redemptions). */
+  gameKind: string | null;
   createdAt: number;
 }
 
@@ -54,6 +56,8 @@ export interface MatchCheckoutQuoteInput {
   seatCount: number;
   humanSeatCount: number;
   botSeatCount: number;
+  /** Omit to use the platform default rate (100 coins/seat, today's fixed behavior, unchanged). */
+  entryStakeCoins?: number;
 }
 
 export interface MatchCheckoutQuote {

@@ -278,6 +278,8 @@ export interface RoomPublicState {
    */
   committedCostPerSeat?: string | null;
   committedTotalPot?: string | null;
+  /** The room's chosen per-seat entry stake, in coins — set once at creation, unchanged for the room's whole lifetime. See `ENTRY_STAKE_*`/`isValidEntryStakeCoins` above. */
+  entryStakeCoins: number;
 }
 
 /**
@@ -850,6 +852,39 @@ export const HC_POWERPLAY_OVERS: Record<HcFormat, number> = {
 /** Min/max overs the host may pick when starting a Galli match. */
 export const HC_GALLI_MIN_OVERS = 2;
 export const HC_GALLI_MAX_OVERS = 20;
+
+/**
+ * Custom per-room entry stake (2026-09-08). A host picks how many coins
+ * each seat costs instead of the platform-wide fixed rate; every human
+ * participant (member or guest) pays exactly this amount for their own
+ * seat. `ENTRY_STAKE_PRESET_TIERS` are the picker's quick-select options —
+ * a custom amount is still valid as long as it satisfies
+ * `isValidEntryStakeCoins` below, whether or not it's one of these four.
+ */
+export const ENTRY_STAKE_PRESET_TIERS = [100, 200, 500, 1000] as const;
+export const ENTRY_STAKE_MIN_COINS = 100;
+export const ENTRY_STAKE_MAX_COINS = 5000;
+export const ENTRY_STAKE_STEP_COINS = 100;
+/**
+ * Guests may host a multiplayer match ONLY at exactly this stake — never a
+ * preset above it, never a custom amount. Enforced server-side in
+ * `RoomManager.createRoom` (rejects a guest's differing request outright)
+ * and, authoritatively and unconditionally, in
+ * `RoomManager.checkHostEconomyEligibility` (covers a guest who inherits a
+ * higher-stake room via host migration) — never trust a disabled client
+ * control alone for this.
+ */
+export const GUEST_HOST_ENTRY_STAKE_COINS = 100;
+
+/** A positive multiple of `ENTRY_STAKE_STEP_COINS`, within [MIN, MAX] — shared by the client picker and the server's authoritative check. */
+export function isValidEntryStakeCoins(value: number): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= ENTRY_STAKE_MIN_COINS &&
+    value <= ENTRY_STAKE_MAX_COINS &&
+    value % ENTRY_STAKE_STEP_COINS === 0
+  );
+}
 
 /** Wickets allowed per innings (standard cricket: 10 — losing the 11th = all out). */
 export const HC_WICKETS_PER_INNINGS = 10;
@@ -2523,6 +2558,18 @@ export interface CreateRoomPayload {
    * server-side exactly like `accessToken`; never trusted as a bare id.
    */
   guestToken?: string;
+  /**
+   * The host's chosen per-seat stake, in coins — see `ENTRY_STAKE_*`/
+   * `isValidEntryStakeCoins` above. Absent means the platform default (100
+   * coins, today's fixed behavior — a client that hasn't been taught this
+   * field keeps working unchanged). A guest's request above
+   * `GUEST_HOST_ENTRY_STAKE_COINS` is rejected outright by `RoomManager
+   * .createRoom`, not silently overridden; a member's malformed/out-of-
+   * bounds value clamps to the platform default rather than failing room
+   * creation. See `checkHostEconomyEligibility` for the authoritative,
+   * unconditional re-check at match start.
+   */
+  entryStakeCoins?: number;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -2797,7 +2844,15 @@ export interface ClientToServerEvents {
       error?: string;
     }) => void
   ) => void;
-  "room:leave": () => void;
+  /**
+   * `ack` fires only after the server has fully PROCESSED the leave (not
+   * merely received the packet) — the client waits on it (with a bounded
+   * timeout as the safety net) before navigating away, so an intentional
+   * leave on a flaky connection can't lose the race against page navigation
+   * tearing down the socket mid-flight and silently falling through to the
+   * far slower disconnect-grace path instead.
+   */
+  "room:leave": (ack?: () => void) => void;
   "room:setReady": (ready: boolean) => void;
   /** `difficulty` is only meaningful for game === "bingo"; every other game ignores it. */
   "room:addBot": (botName?: string, difficulty?: BotDifficulty) => void;

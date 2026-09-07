@@ -91,7 +91,8 @@ export function registerSocketHandlers(
         payload.spaceWarOptions,
         payload.avatar,
         hostKind,
-        identityId
+        identityId,
+        payload.entryStakeCoins
       );
       // `seatToken` goes to this socket's ack only — never into a broadcast.
       ack({ ok: true, code, playerId, seatToken, state });
@@ -132,14 +133,22 @@ export function registerSocketHandlers(
     }
   });
 
-  socket.on("room:leave", () => {
-    void rooms.leaveRoom(socket.id).catch((err) => {
-      logger.error({
-        message: `room:leave handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
-        module: "SOCKET",
-        socketId: socket.id,
+  socket.on("room:leave", (ack) => {
+    rooms
+      .leaveRoom(socket.id)
+      .catch((err) => {
+        logger.error({
+          message: `room:leave handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+          module: "SOCKET",
+          socketId: socket.id,
+        });
+      })
+      .finally(() => {
+        // Ack unconditionally, success or failure — the client is only
+        // waiting to know the packet was actually processed before it
+        // navigates away, not to hear that it succeeded.
+        if (typeof ack === "function") ack();
       });
-    });
   });
 
   socket.on("room:setReady", (ready) => {

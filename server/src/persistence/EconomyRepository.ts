@@ -93,6 +93,8 @@ export interface CoinLedgerEntryRecord {
   sourceId: string;
   idempotencyKey: string;
   description: string;
+  /** Which game this match-related entry belongs to (e.g. "handcricket") — `null` for non-match entries (starter grants, admin adjustments, voucher redemptions). */
+  gameKind: string | null;
   createdAt: number;
 }
 
@@ -138,6 +140,14 @@ export interface MatchEconomySettlementRecord {
   totalRefunded: string;
   refundReason: string | null;
   participantDebits?: ParticipantDebitSpec[];
+  /**
+   * Machine game key (e.g. "handcricket") set once at commit time — carried
+   * on the settlement so `settleMatchEconomy`/`refundMatchEntry`, which only
+   * ever look up the match by id, can still tag their own ledger rows with
+   * it without needing it passed in again. `null` for a solo/legacy commit
+   * that supplied no game context.
+   */
+  gameKind?: string | null;
   /**
    * Present only once `status === "ABANDONMENT_FORFEITED"`. Deliberately a
    * SEPARATE field from `refundReason` — a forfeiture and a refund are two
@@ -282,6 +292,13 @@ export interface CommitMatchEntryInput {
    * If omitted, falls back to legacy single host wallet debit.
    */
   participantDebits?: ParticipantDebitSpec[];
+  /**
+   * Machine game key (e.g. "handcricket") — purely display metadata for the
+   * wallet ledger's `game_kind` column, never a business rule input. Omit
+   * for a solo/legacy caller with no game context; `null` on the resulting
+   * ledger rows either way.
+   */
+  gameKind?: string;
 }
 
 export interface SettlementParticipantInput {
@@ -299,6 +316,17 @@ export interface SettleMatchEconomyInput {
   isValidRanking: boolean;
   participants: SettlementParticipantInput[];
   refundReason?: string;
+  /**
+   * Percentage-of-actual-pool prize amounts, computed by `EconomyService`
+   * against this match's real `totalCollected` (custom entry stakes) —
+   * index 0 is 1st place, index 1 is 2nd, index 2 is 3rd. Omit entirely to
+   * use the legacy fixed `economy_prize_schedules` lookup frozen at commit
+   * time (bigint-as-string, always, matching every other amount at this
+   * boundary). Required together with `worldBankCutCoins`.
+   */
+  prizeByPlacement?: string[];
+  /** The platform's cut for THIS settlement — required together with `prizeByPlacement`, ignored otherwise. */
+  worldBankCutCoins?: string;
 }
 
 export interface IssueGuestVoucherInput {

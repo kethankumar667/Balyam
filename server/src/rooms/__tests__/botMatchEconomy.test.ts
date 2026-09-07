@@ -92,7 +92,7 @@ function createRoomAs(
   identityId: string | null,
 ) {
   const totalParams = rooms.createRoom.length;
-  const optionsCount = totalParams - 3 - 3;
+  const optionsCount = totalParams - 3 - 4; // 3 leading (socketId,name,game), 4 trailing (avatar,hostKind,identityId,entryStakeCoins)
   const args: unknown[] = [socketId, name, game];
   for (let i = 0; i < optionsCount; i++) args.push(undefined);
   args.push(undefined, hostKind, identityId);

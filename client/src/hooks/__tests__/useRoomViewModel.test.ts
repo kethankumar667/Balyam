@@ -20,6 +20,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_host",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_host", name: "Host Player", isHost: true, isReady: true, isConnected: true },
         { id: "p_guest", name: "Guest Player", isHost: false, isReady: false, isConnected: true },
@@ -60,6 +61,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_host",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_host", name: "Player 1", isHost: true, isReady: true, isConnected: true },
         { id: "p_bot", name: "Bot 1", isHost: false, isReady: true, isConnected: true, isBot: true },
@@ -92,6 +94,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_host",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_host", name: "Host", isHost: true, isReady: true, isConnected: true },
       ],
@@ -119,6 +122,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_host",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_host", name: "Host", isHost: true, isReady: true, isConnected: true, penColor: "gold" },
       ],
@@ -143,6 +147,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_1",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_1", name: "Player 1", isHost: true, isReady: true, isConnected: true },
         { id: "p_2", name: "Player 2", isHost: false, isReady: true, isConnected: true },
@@ -176,6 +181,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_1",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_1", name: "Player 1", isHost: true, isReady: true, isConnected: true },
         { id: "p_2", name: "Player 2", isHost: false, isReady: true, isConnected: true },
@@ -214,6 +220,7 @@ describe("computeRoomViewModel Characterization Suite", () => {
       phase: "lobby",
       hostId: "p_1",
       sealed: false,
+      entryStakeCoins: 100,
       players: [
         { id: "p_1", name: "Player 1", isHost: true, isReady: true, isConnected: true },
         { id: "p_2", name: "Player 2", isHost: false, isReady: true, isConnected: true },

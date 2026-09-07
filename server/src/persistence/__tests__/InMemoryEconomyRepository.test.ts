@@ -522,6 +522,62 @@ describe("InMemoryEconomyRepository", () => {
       expect(entries[0].entryType).toBe("SOLO_ENTRY_DEBIT");
       expect(entries[1].entryType).toBe("STARTER_GRANT");
     });
+
+    it("gameKind flows onto the debit at commit time, is null when omitted, and carries through to a later prize credit and to a refund", async () => {
+      // Match A: gameKind supplied — the debit AND the eventual prize credit both carry it.
+      // Both seats are members so the winner's payout is a real wallet credit
+      // (a wired guest win escrows into a voucher instead, with no coin_ledger_entries row at all).
+      fixture.seedIdentity("game_kind_p1", "member");
+      fixture.seedIdentity("game_kind_p2", "member");
+      await repo.ensureWallet("game_kind_p1");
+      await repo.ensureWallet("game_kind_p2");
+      await repo.commitMatchEntry({
+        matchId: "m_game_kind_a",
+        roomCode: "ROOMGK",
+        hostIdentityId: "game_kind_p1",
+        seatCount: 2,
+        humanSeatCount: 2,
+        botSeatCount: 0,
+        isSolo: false,
+        gameKind: "handcricket",
+      });
+      const debitEntries = await repo.listLedger("game_kind_p1");
+      expect(debitEntries[0].entryType).toBe("ROOM_ENTRY_DEBIT");
+      expect(debitEntries[0].gameKind).toBe("handcricket");
+
+      await repo.settleMatchEconomy({
+        matchId: "m_game_kind_a",
+        isValidRanking: true,
+        participants: [
+          { identityId: "game_kind_p1", identityKind: "member", placement: 1 },
+          { identityId: "game_kind_p2", identityKind: "member", placement: 2 },
+        ],
+      });
+      const creditEntries = await repo.listLedger("game_kind_p1");
+      const creditEntry = creditEntries.find((e) => e.entryType === "MATCH_PRIZE_CREDIT")!;
+      expect(creditEntry.gameKind).toBe("handcricket");
+
+      // Match B: gameKind omitted (legacy/solo caller) — every entry it produces is null, never a guess.
+      fixture.seedIdentity("game_kind_p3", "member");
+      await repo.ensureWallet("game_kind_p3");
+      await repo.commitMatchEntry({
+        matchId: "m_game_kind_b",
+        roomCode: null,
+        hostIdentityId: "game_kind_p3",
+        seatCount: 1,
+        humanSeatCount: 1,
+        botSeatCount: 0,
+        isSolo: true,
+      });
+      const noGameEntries = await repo.listLedger("game_kind_p3");
+      expect(noGameEntries[0].entryType).toBe("SOLO_ENTRY_DEBIT");
+      expect(noGameEntries[0].gameKind).toBeNull();
+
+      await repo.refundMatchEntry("m_game_kind_b", "test refund");
+      const refundedEntries = await repo.listLedger("game_kind_p3");
+      const refundEntry = refundedEntries.find((e) => e.entryType === "MATCH_REFUND")!;
+      expect(refundEntry.gameKind).toBeNull();
+    });
   });
 
   describe("reset behavior", () => {
