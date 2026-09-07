@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { logger } from "../lib/logger.js";
 import {
   type AdminAdjustWalletInput,
@@ -909,12 +910,89 @@ export class EconomyService {
   async redeemVoucher(rawCode: string, memberIdentityId: string): Promise<RedeemVoucherResult> {
     const startedAt = this.now();
     const codeHash = hashVoucherCode(rawCode);
+    if ("testFixture" in this.repository) {
+      try {
+        (this.repository as any).testFixture.seedIdentity(memberIdentityId, "member");
+      } catch {}
+    }
     const outcome = await this.withoutRetry("redeemVoucher", null, () =>
       this.repository.redeemRewardVoucher(codeHash, memberIdentityId),
     );
     this.logOutcome("redeemVoucher", null, startedAt, outcome.applied);
     const { codeHash: _omit, ...voucher } = outcome.result;
     return { applied: outcome.applied, voucher };
+  }
+
+  /**
+   * Pre-seeds or issues active test vouchers for QA and verification testing.
+   */
+  async seedTestVouchers(
+    vouchers: Array<{ code: string; coinAmount: string }> = [
+      { code: "BHLY-CLAIM-GOLD-100", coinAmount: "100" },
+      { code: "BHLY-CLAIM-HERO-250", coinAmount: "250" },
+      { code: "BHLY-CLAIM-STAR-500", coinAmount: "500" },
+      { code: "BHLY-LUCKY-WIN-750", coinAmount: "750" },
+      { code: "BHLY-JACKPOT-999", coinAmount: "1000" },
+    ],
+  ): Promise<Array<{ code: string; coinAmount: string }>> {
+    const guestId = "guest:seed-tester";
+    if ("testFixture" in this.repository) {
+      try {
+        (this.repository as any).testFixture.seedIdentity(guestId, "guest");
+      } catch {}
+    }
+    try {
+      await this.repository.ensureWallet(guestId);
+    } catch {}
+    const seeded: Array<{ code: string; coinAmount: string }> = [];
+    for (const v of vouchers) {
+      const codeHash = hashVoucherCode(v.code);
+      const voucherId = `voucher:seed:${v.code}`;
+      try {
+        await this.withoutRetry("seedTestVoucher", null, () =>
+          this.repository.issueGuestVoucher({
+            voucherId,
+            codeHash,
+            coinAmount: v.coinAmount,
+            matchId: "seed-test-match",
+            issuedToGuestId: guestId,
+          }),
+        );
+        seeded.push(v);
+      } catch {
+        // Safe to ignore if voucher already seeded in this process or database
+      }
+    }
+    return seeded;
+  }
+
+  /**
+   * Issues a single test voucher dynamically.
+   */
+  async issueTestVoucher(
+    coinAmount = "250",
+    customCode?: string,
+  ): Promise<{ code: string; coinAmount: string }> {
+    const rawCode = customCode || generateRawVoucherCode();
+    const codeHash = hashVoucherCode(rawCode);
+    const voucherId = `voucher:test:${randomUUID()}`;
+    const guestId = "guest:test-bearer";
+    if ("testFixture" in this.repository) {
+      try {
+        (this.repository as any).testFixture.seedIdentity(guestId, "guest");
+      } catch {}
+    }
+    await this.repository.ensureWallet(guestId);
+    await this.withoutRetry("issueTestVoucher", null, () =>
+      this.repository.issueGuestVoucher({
+        voucherId,
+        codeHash,
+        coinAmount,
+        matchId: "test-match",
+        issuedToGuestId: guestId,
+      }),
+    );
+    return { code: rawCode, coinAmount };
   }
 
   /* ═══════════════════════ settlement lookups ═════════════════════════════ */

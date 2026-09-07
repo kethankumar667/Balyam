@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { logger } from "../lib/logger.js";
-import { verifyAccessToken } from "../lib/supabaseAuth.js";
+import { verifyAccessToken, verificationMode } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "./guestToken.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
 import { progressionRepository } from "../persistence/index.js";
@@ -293,6 +293,15 @@ export const requireIdentity: RequestHandler = (req, res, next) => {
 
 /** The route needs a real account. Used where a guest genuinely cannot act. */
 export const requireMember: RequestHandler = (req, res, next) => {
+  if (verificationMode() === "off") {
+    if (!req.player) {
+      req.player = { kind: "member", playerId: "dev_member", email: "dev_member@bhalyam.io" };
+    } else if (req.player.kind === "guest") {
+      req.player = { kind: "member", playerId: req.player.playerId, email: null };
+    }
+    next();
+    return;
+  }
   if (!req.player) {
     deny(res, 401, "Sign in, or request a guest identity from POST /api/auth/guest.");
     return;

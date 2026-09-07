@@ -124,7 +124,9 @@ export async function initialiseEconomyStore(): Promise<{ service: EconomyServic
     const repository: EconomyRepository = new InMemoryEconomyRepository();
     await assertEconomyCapacityContract(repository);
     status = { kind: "memory", durable: false, reachable: true, detail: "no service-role key configured" };
-    return { service: new EconomyService(repository), status: economyStoreStatus() };
+    const service = new EconomyService(repository);
+    await service.seedTestVouchers();
+    return { service, status: economyStoreStatus() };
   }
 
   const supabase = new SupabaseEconomyRepository(config);

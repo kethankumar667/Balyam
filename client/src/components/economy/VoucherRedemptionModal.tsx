@@ -41,7 +41,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
   isAutoClaimPrompt = false,
 }) => {
   const navigate = useNavigate();
-  const isMember = useAuthStore((s) => s.isMember);
+  const isMember = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
   const [voucherCode, setVoucherCode] = useState<string>(initialCode || "");
   const [buttonState, setButtonState] = useState<EconomyActionButtonState>("idle");
   const [verifiedVoucher, setVerifiedVoucher] = useState<VoucherStatusView | null>(null);

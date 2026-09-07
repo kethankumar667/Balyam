@@ -45,17 +45,18 @@ export default function BhalyamHome() {
     return !journeyTracker.getState().hasCompletedWelcome;
   });
   const isMember = useAuthStore((s) => s.isMember);
+  const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
   const [pendingVoucher, setPendingVoucher] = useState<PendingVoucherData | null>(null);
 
   // Check for an unredeemed voucher preserved across guest signup
   useEffect(() => {
-    if (isMember) {
+    if (hasMemberAccount) {
       const stored = getPendingVoucher();
       if (stored && stored.code) {
         setPendingVoucher(stored);
       }
     }
-  }, [isMember]);
+  }, [hasMemberAccount]);
 
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for

@@ -633,6 +633,28 @@ export function createEconomyRouter(service: EconomyService): Router {
     }
   });
 
+  /**
+   * POST /admin/vouchers/issue — operational test endpoint to issue test vouchers for verification.
+   */
+  router.post("/admin/vouchers/issue", async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const amount = typeof body.coinAmount === "string" && /^\d+$/.test(body.coinAmount.trim())
+      ? body.coinAmount.trim()
+      : "250";
+    const customCode = typeof body.code === "string" && body.code.trim().length > 0
+      ? body.code.trim()
+      : undefined;
+    try {
+      const voucher = await service.issueTestVoucher(amount, customCode);
+      res.json(voucher);
+      logOutcome(req, res, "POST /admin/vouchers/issue", "issueTestVoucher", null, startedAt, "ok");
+    } catch (err) {
+      console.error("[TEST_VOUCHER_ERROR]", err);
+      res.status(500).json({ error: "Failed", detail: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   /** GET /world-bank — platform treasury figures; admin/audit surface, not player data. */
   router.get("/world-bank", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
