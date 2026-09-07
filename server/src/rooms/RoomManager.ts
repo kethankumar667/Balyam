@@ -2470,7 +2470,7 @@ export class RoomManager {
         room.activeStartAttempt = null;
       }
       logger.warn({
-        message: `commitMatchEntry failed for room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
+        message: `commitMatchEntry failed for room ${room.code}: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
         module: "ECONOMY_ROOM",
         roomCode: room.code,
       });
@@ -5532,7 +5532,7 @@ export class RoomManager {
     } catch (err) {
       this.io.to(room.code).emit("room:error", this.economyErrorMessage(err, room));
       logger.warn({
-        message: `commitMatchEntry failed for rematch in room ${room.code}: ${err instanceof Error ? err.name : String(err)}`,
+        message: `commitMatchEntry failed for rematch in room ${room.code}: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
         module: "ECONOMY_ROOM",
         roomCode: room.code,
       });
