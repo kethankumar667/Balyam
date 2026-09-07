@@ -100,6 +100,39 @@ describe("Economy V1 UI Integration Suite", () => {
       });
     });
 
+    it("renders player identity footer under the wallet popup for support and audit lookup", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_0333360bb1b9febd4f0df7b2f5e49286");
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          wallet: {
+            identityId: "guest_0333360bb1b9febd4f0df7b2f5e49286",
+            identityKind: "guest",
+            balance: "5000",
+            version: 1,
+            lifetimeGranted: "5000",
+            lifetimeEarned: "0",
+            lifetimeSpent: "0",
+            lifetimeRefunded: "0",
+            starterGranted: true,
+            isFrozen: false,
+            updatedAt: 1787700000000,
+          },
+        }),
+      });
+
+      render(
+        <MemoryRouter>
+          <WalletDrawer isOpen={true} onClose={() => {}} />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /copy your player id for support/i })).toBeDefined();
+        expect(screen.getByText(/guest_033336…e49286/)).toBeDefined();
+      });
+    });
+
     it("conforms to WCAG 2.1 AA dialog accessibility (labelledby, describedby, escape, and modal semantics)", async () => {
       const onClose = vi.fn();
       global.fetch = vi.fn().mockResolvedValue({

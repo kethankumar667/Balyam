@@ -22,7 +22,15 @@ import { getGuestIdSnapshot, subscribeGuestId } from "../../lib/playerIdentity";
  * carries none of the third-party PII concerns other player-data surfaces
  * in this app have to guard against.
  */
-export default function PlayerIdentityFooter() {
+export interface PlayerIdentityFooterProps {
+  className?: string;
+  borderTop?: boolean;
+}
+
+export default function PlayerIdentityFooter({
+  className = "",
+  borderTop = true,
+}: PlayerIdentityFooterProps = {}) {
   const memberId = useAuthStore((s) => s.userId);
   const guestId = useSyncExternalStore(subscribeGuestId, getGuestIdSnapshot, getGuestIdSnapshot);
   const identityId = memberId ?? guestId;
@@ -46,7 +54,9 @@ export default function PlayerIdentityFooter() {
   }
 
   return (
-    <div className="pt-2.5 mt-1 border-t border-[var(--chrome-hairline)]">
+    <div
+      className={`${borderTop ? "pt-2.5 mt-1 border-t border-[var(--chrome-hairline)]" : ""} ${className}`.trim()}
+    >
       <button
         type="button"
         onClick={copyId}

@@ -21,6 +21,7 @@ import { useWallet, useLedger } from "../../hooks/useEconomy";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
+import PlayerIdentityFooter from "../layout/PlayerIdentityFooter";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import type { GameKind } from "@shared/types";
 
@@ -430,6 +431,11 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Drawer Footer - Player ID for support & wallet auditing */}
+              <div className="px-5 py-2.5 border-t border-black/10 dark:border-white/10 bg-white/70 dark:bg-[#0D121F]/90 backdrop-blur-sm flex-shrink-0">
+                <PlayerIdentityFooter borderTop={false} />
               </div>
 
               {/* Detail Modal for Selected Entry */}

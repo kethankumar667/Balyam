@@ -796,6 +796,45 @@ export default function Room() {
   const [showMatchCountdown, setShowMatchCountdown] = useState(false);
   const [showAllReadyBanner, setShowAllReadyBanner] = useState(false);
 
+  // Synchronous transition detection during render to prevent any 1-frame paint of the game board
+  // before the match start countdown completes (e.g. Hand Cricket team selection page, Ludo board, etc.)
+  const [prevRenderedPhase, setPrevRenderedPhase] = useState<string | undefined>(roomState?.phase);
+  const [matchStartCeremonyActive, setMatchStartCeremonyActive] = useState<boolean>(false);
+
+  if (roomState?.phase !== prevRenderedPhase) {
+    setPrevRenderedPhase(roomState?.phase);
+    if (isMatchStartTransition(prevRenderedPhase, roomState?.phase)) {
+      setMatchStartCeremonyActive(true);
+    } else if (roomState?.phase !== "playing") {
+      setMatchStartCeremonyActive(false);
+    }
+  }
+
+  const isEconomyGameStarting =
+    economyMotion.phase === "commitment_confirmed" ||
+    economyMotion.phase === "coins_departing" ||
+    economyMotion.phase === "seats_funded" ||
+    economyMotion.phase === "pot_formed" ||
+    economyMotion.phase === "game_starting";
+
+  const isGameStartingCeremony = matchStartCeremonyActive || showMatchCountdown || isEconomyGameStarting;
+
+  // Resilience safety timer: countdown must never block game board indefinitely if animations fail or cancel
+  useEffect(() => {
+    if (!matchStartCeremonyActive) return;
+    const safetyTimer = window.setTimeout(() => {
+      setMatchStartCeremonyActive(false);
+      setShowMatchCountdown(false);
+    }, 5000);
+    return () => window.clearTimeout(safetyTimer);
+  }, [matchStartCeremonyActive]);
+
+  useEffect(() => {
+    if (roomState?.phase !== "playing" && matchStartCeremonyActive) {
+      setMatchStartCeremonyActive(false);
+    }
+  }, [roomState?.phase, matchStartCeremonyActive]);
+
   // Phase 7F: Lobby coin particles and seat transition tracking
   const [lobbyParticles, setLobbyParticles] = useState<CoinParticle[]>([]);
   const prevPlayerIdsRef = useRef<Set<string>>(new Set());
@@ -1333,7 +1372,7 @@ export default function Room() {
 
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
-  const ludoInPlay = roomState?.game === "ludo" && roomState?.phase !== "lobby";
+  const ludoInPlay = roomState?.game === "ludo" && roomState?.phase !== "lobby" && !isGameStartingCeremony;
   const [ludoSettings] = useLudoSettings();
 
   useEffect(() => {
@@ -1439,14 +1478,14 @@ export default function Room() {
           backgroundColor: ludoInPlay ? "var(--ludo-screen-bg)" : undefined,
         }}
       >
-      {roomState.phase === "lobby" && <FallingPetals />}
+      {(roomState.phase === "lobby" || isGameStartingCeremony) && <FallingPetals />}
       <div
         className={
-          (FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
+          (FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby" && !isGameStartingCeremony
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
-            : roomState.game === "ludo" && roomState.phase !== "lobby"
+            : roomState.game === "ludo" && roomState.phase !== "lobby" && !isGameStartingCeremony
               ? // Ludo in play wants the full desktop width so the board can
                 // be large between its side rails (max-w-6xl squeezed it).
                 "mx-auto space-y-3 sm:space-y-4 max-w-[110rem]"
@@ -1454,10 +1493,10 @@ export default function Room() {
           // FallingPetals is a fixed, z-0 background layer during the lobby —
           // give the lobby content explicit stacking so it paints above the
           // petals instead of losing to CSS's positioned-over-static default.
-          (roomState.phase === "lobby" ? " relative z-10" : "")
+          (roomState.phase === "lobby" || isGameStartingCeremony ? " relative z-10" : "")
         }
       >
-        {roomState.phase === "lobby" ? (
+        {roomState.phase === "lobby" || isGameStartingCeremony ? (
           <RoomHeader
             roomState={roomState}
             isHost={selfIsHost}
@@ -1499,7 +1538,7 @@ export default function Room() {
           <Toast message={lastError} onClose={() => setError(null)} />
         )}
 
-        {roomState.phase === "lobby" || (roomState.phase === "finished" && scorecardDismissed) ? (
+        {roomState.phase === "lobby" || isGameStartingCeremony || (roomState.phase === "finished" && scorecardDismissed) ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-40 sm:pb-44 lg:pb-0">
@@ -1860,7 +1899,7 @@ export default function Room() {
           moved without them needs to be told what is happening and given an
           unmistakable way out — not left to guess that clicking somewhere will
           fix it. Everyone else sees the robot on that seat instead. */}
-      {selfIsAutoPlaying && roomState?.phase === "playing" && (
+      {selfIsAutoPlaying && roomState?.phase === "playing" && !isGameStartingCeremony && (
         <div className="fixed inset-x-0 bottom-4 z-[70] flex justify-center px-4 pointer-events-none">
           <button
             type="button"
@@ -1886,7 +1925,12 @@ export default function Room() {
 
       {/* Universal BHALYAM Match Countdown */}
       {showMatchCountdown && (
-        <BhalyamMatchCountdown onComplete={() => setShowMatchCountdown(false)} />
+        <BhalyamMatchCountdown
+          onComplete={() => {
+            setShowMatchCountdown(false);
+            setMatchStartCeremonyActive(false);
+          }}
+        />
       )}
 
       {/* Everyone Ready Banner in Lobby */}
@@ -1895,7 +1939,7 @@ export default function Room() {
       )}
 
       {/* Phase 7F: Lobby Coin Flight Particles & Debit Animation */}
-      {roomState?.phase === "lobby" && (
+      {(roomState?.phase === "lobby" || isGameStartingCeremony) && (
         <>
           <LobbyCoinFlight
             particles={lobbyParticles}
@@ -1916,7 +1960,10 @@ export default function Room() {
         refund={economyMotion.activeRefund}
         escrow={economyMotion.activeEscrow}
         errorMessage={economyMotion.errorMessage}
-        onGameStartComplete={resetMotion}
+        onGameStartComplete={() => {
+          resetMotion();
+          setMatchStartCeremonyActive(false);
+        }}
       />
 
       {/* Match result & settlement modal — displays ranked outcomes and authoritative settlement */}
