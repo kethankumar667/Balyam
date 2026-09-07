@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, X, Check, AlertCircle, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
+import { Ticket, X, Check, AlertCircle, ShieldAlert, Sparkles, Loader2, UserPlus } from "lucide-react";
 import { CoinAmount } from "./CoinAmount";
 import { EconomyActionButton, type EconomyActionButtonState } from "./EconomyActionButton";
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
@@ -27,6 +28,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const navigate = useNavigate();
   const isMember = useAuthStore((s) => s.isMember);
   const [voucherCode, setVoucherCode] = useState<string>("");
   const [buttonState, setButtonState] = useState<EconomyActionButtonState>("idle");
@@ -75,8 +77,8 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
     if (!cleanCode) return;
 
     if (!isMember) {
-      setErrorMessage("Only registered member accounts can redeem reward vouchers.");
-      setButtonState("error");
+      handleClose();
+      navigate("/signup");
       return;
     }
 
@@ -145,7 +147,15 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-900 dark:text-amber-300">
                   <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Member Account Required:</span> Guest players must register or sign in to deposit unsealed voucher coins into their permanent wallet.
+                    <span className="font-bold">Member Account Required:</span> Guest players must{" "}
+                    <Link
+                      to="/signup"
+                      onClick={handleClose}
+                      className="font-bold underline decoration-amber-600 dark:decoration-amber-400 hover:text-amber-600 dark:hover:text-amber-200 transition"
+                    >
+                      register or sign in
+                    </Link>{" "}
+                    to deposit unsealed voucher coins into their permanent wallet.
                   </div>
                 </div>
               )}
@@ -240,7 +250,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
                         size="md"
                         state={buttonState}
                         onClick={handleRedeem}
-                        disabled={!isMember || verifiedVoucher.status !== "ACTIVE"}
+                        disabled={verifiedVoucher.status !== "ACTIVE"}
                         className="flex-1"
                       >
                         Claim Coins

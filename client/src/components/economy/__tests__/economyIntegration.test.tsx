@@ -382,10 +382,12 @@ describe("Economy V1 UI Integration Suite", () => {
       } as Response);
 
       render(
-        <VoucherRedemptionModal
-          isOpen={true}
-          onClose={() => {}}
-        />,
+        <MemoryRouter>
+          <VoucherRedemptionModal
+            isOpen={true}
+            onClose={() => {}}
+          />
+        </MemoryRouter>,
       );
 
       expect(screen.getByText("Redeem Reward Voucher")).toBeDefined();
@@ -402,6 +404,11 @@ describe("Economy V1 UI Integration Suite", () => {
         expect(screen.getByText("Verified Voucher")).toBeDefined();
         expect(screen.getByText("175")).toBeDefined();
       });
+
+      // Clicking Claim Coins as a guest should navigate to /signup
+      const claimButton = screen.getByText("Claim Coins");
+      expect(claimButton).toBeDefined();
+      fireEvent.click(claimButton);
     });
   });
 
