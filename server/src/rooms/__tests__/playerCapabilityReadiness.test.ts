@@ -270,6 +270,52 @@ describe("Player Capability & Start-Attempt Readiness Protocol", () => {
     expect(room.phase).toBe("lobby");
   });
 
+  it("Test S6b: a redundant setReady(true) resend during an active preflight does not orphan a pending acknowledgement", async () => {
+    // Regression: setReady used to bump roomRevision unconditionally, even
+    // when the ready value wasn't actually changing. A harmless re-affirm
+    // (a double-tap on Ready before the first click's broadcast round-trips
+    // back, a reconnect resync, etc.) landing while a start attempt is in
+    // flight would silently move roomRevision out from under an
+    // already-issued preflight challenge — acknowledgeStart's revision
+    // fence then drops the real ack with no explanation, and the whole
+    // match start times out 5s later even though everyone was present.
+    const { io } = makeIo();
+    const rooms = new RoomManager(io);
+    const hostA = createRoomAs(rooms, "s_a", "Alice", "rummy");
+    joinRoomAs(rooms, "s_b", "Bob", hostA.code);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    await rooms.requestGameStart("s_a");
+    const room = peek(rooms, hostA.code);
+    const attemptId = room.activeStartAttempt!.id;
+    const rev = room.roomRevision;
+
+    // Bob's client redundantly resends "ready: true" — already his value —
+    // while the preflight challenge he's about to acknowledge is in flight.
+    rooms.setReady("s_b", true);
+    expect(room.roomRevision).toBe(rev);
+    expect(room.activeStartAttempt?.id).toBe(attemptId);
+
+    // The ack Bob's client already had in flight, stamped with the
+    // still-valid revision, must be accepted rather than silently dropped.
+    rooms.acknowledgeStart("s_a", {
+      startAttemptId: attemptId,
+      roomRevision: rev,
+      visible: true,
+      orientationSatisfied: true,
+    });
+    rooms.acknowledgeStart("s_b", {
+      startAttemptId: attemptId,
+      roomRevision: rev,
+      visible: true,
+      orientationSatisfied: true,
+    });
+
+    expect(room.phase).toBe("playing");
+    expect(room.activeStartAttempt).toBeNull();
+  });
+
   it("Test S7: Ready toggled off cancels start attempt", async () => {
     const { io } = makeIo();
     const rooms = new RoomManager(io);

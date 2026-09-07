@@ -1917,6 +1917,20 @@ export class RoomManager {
   setReady(socketId: string, ready: boolean): void {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
+    // A no-op re-affirmation (already this value) must change nothing —
+    // in particular it must NOT bump `roomRevision`. A harmless resend
+    // (double-tap on the Ready button before the first click's broadcast
+    // round-trips back, a reconnect resync, etc.) landing while a
+    // `room:startPreflight` is in flight would otherwise silently orphan
+    // the OTHER player's in-flight acknowledgement: `acknowledgeStart`
+    // fences on `room.roomRevision === payload.roomRevision`, so a revision
+    // bump here — with no corresponding cancel, since `ready === true`
+    // skips the `cancelActiveStartAttempt` call just below — makes a
+    // perfectly valid ack get silently dropped, and the whole match start
+    // times out 5s later with no server log and no client-visible reason.
+    // `setOrientation` right below already guards the same way for exactly
+    // this reason.
+    if (player.isReady === ready) return;
     player.isReady = ready;
     room.roomRevision++;
     if (!ready) {
@@ -2290,6 +2304,14 @@ export class RoomManager {
 
     room.startAttemptTimer = setTimeout(() => {
       if (room.activeStartAttempt?.id === startAttemptId && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
+        const missing = [...room.activeStartAttempt.requiredHumanPlayerIds].filter(
+          (id) => !room.activeStartAttempt!.acknowledgements.has(id),
+        );
+        logger.warn({
+          message: `Preflight timed out for room ${room.code}: ${missing.length} of ${room.activeStartAttempt.requiredHumanPlayerIds.size} required player(s) never acknowledged (missing: ${missing.join(", ") || "none — see stale-revision warnings above"})`,
+          module: "ROOM_MANAGER",
+          roomCode: room.code,
+        });
         this.cancelActiveStartAttempt(room, "preflight_timeout");
         this.io.sockets.sockets.get(socketId)?.emit("room:error", "Start timed out waiting for players to confirm readiness");
       }
@@ -2310,8 +2332,19 @@ export class RoomManager {
     const attempt = room.activeStartAttempt;
     if (!attempt || attempt.status !== "COLLECTING_PREFLIGHT") return;
     if (attempt.id !== payload.startAttemptId) return;
-    if (attempt.roomRevision !== payload.roomRevision) return;
-    if (room.roomRevision !== payload.roomRevision) return;
+    if (attempt.roomRevision !== payload.roomRevision || room.roomRevision !== payload.roomRevision) {
+      // A genuine ack silently dropped for a stale roomRevision is exactly
+      // what makes a match start time out with no explanation (see
+      // `setReady`'s own doc comment on the bug this used to cause). Logged
+      // so a recurrence from some OTHER revision-bumping path is diagnosable
+      // immediately instead of just another unexplained "Start timed out".
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: stale roomRevision (attempt=${attempt.roomRevision}, room=${room.roomRevision}, payload=${payload.roomRevision})`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+      return;
+    }
     if (!attempt.requiredHumanPlayerIds.has(player.id)) return;
     if (!player.isConnected) return;
     if (Date.now() > attempt.expiresAt) {
