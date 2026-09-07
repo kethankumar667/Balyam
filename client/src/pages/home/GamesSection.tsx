@@ -73,10 +73,13 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
         className="mb-3 sm:mb-4 flex items-end justify-between gap-2 sm:gap-3 flex-wrap"
       >
         <div className="min-w-0">
-          <h2 className="bhalyam-display text-[#1D2C4A] leading-tight"
+          <h2 className="bhalyam-display text-[#1D2C4A] dark:text-white leading-tight"
               style={{ fontSize: "clamp(24px, 6.5vw, 44px)" }}>
             <span className="bhalyam-underline">Pick a game</span>
           </h2>
+          <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-400 mt-1 font-medium">
+            Tap any game card below to host a room, invite friends, or challenge bots.
+          </p>
         </div>
         {!filtered && (
           <motion.span

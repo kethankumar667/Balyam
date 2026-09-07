@@ -182,18 +182,20 @@ export default function GameCard({
         </div>
       </div>
 
-      {/* Hero illustration */}
+      {/* Hero illustration with consistent safe area (Issue 12) */}
       <div className="relative my-3 h-28 sm:h-32 flex items-center justify-center w-full min-w-0">
         <div
-          className="absolute w-28 h-28 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:scale-115 transition-transform duration-300"
+          className="absolute w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-30 group-hover:scale-115 transition-transform duration-300"
           style={{ background: btnFrom }}
           aria-hidden="true"
         />
-        <GameArtwork src={TILE_ART[game.slug]} title={game.title}>
-          <span className="relative inline-flex w-16 h-16 rounded-2xl items-center justify-center bg-surface-1 text-ink-hi shadow-inner">
-            <Glyph className="w-9 h-9" />
-          </span>
-        </GameArtwork>
+        <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-1.5">
+          <GameArtwork src={TILE_ART[game.slug]} title={game.title}>
+            <span className="relative inline-flex w-16 h-16 rounded-2xl items-center justify-center bg-surface-1 text-ink-hi shadow-inner">
+              <Glyph className="w-9 h-9" />
+            </span>
+          </GameArtwork>
+        </div>
       </div>
 
       {/* Game info */}
@@ -281,7 +283,7 @@ function GameArtwork({
         alt={`${title} artwork`}
         width={320}
         height={320}
-        className="relative h-24 sm:h-28 w-auto max-w-[85%] object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+        className="relative max-h-full max-w-full w-auto h-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}

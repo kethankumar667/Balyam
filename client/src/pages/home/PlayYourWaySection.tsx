@@ -12,10 +12,10 @@ export function PlayYourWaySection({
   const isDark = theme === "dark";
 
   return (
-    <section className="mb-5 sm:mb-6">
+    <section className="mb-8 sm:mb-10">
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-[#7B2F0E] dark:text-amber-400">
-          ✦ PLAY YOUR WAY ✦
+        <h2 className="text-xs sm:text-sm font-bold tracking-wide text-amber-800 dark:text-amber-400">
+          ✦ Play Your Way ✦
         </h2>
       </div>
 

@@ -10,6 +10,7 @@ import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import { useTheme } from "../../lib/useTheme";
 import { bhalyamSpring } from "../../lib/motion";
+import { useRecentlyPlayed } from "../../hooks/useRecentlyPlayed";
 
 
 interface AppSidebarProps {
@@ -59,6 +60,7 @@ export default function AppSidebar({
     openGameSheet: onOpenGameSheet,
   });
 
+  const { recentItems } = useRecentlyPlayed();
   const { playerName, avatarId } = useRoomStore();
   const identity = useIdentityPresentation();
   const currentDisplayName = playerName.trim() || identity.label;
@@ -68,6 +70,10 @@ export default function AppSidebar({
   const renderItem = (item: ResolvedNavigationItem) => {
     const Icon = item.icon;
     const isDisabled = Boolean(item.disabled);
+    const isRecentItem = item.fullHref === "/recently-played";
+    const badge = isRecentItem && recentItems.length > 0
+      ? { text: String(recentItems.length), variant: "amber" as const }
+      : item.badge;
 
     const content = (
       <motion.div
@@ -118,14 +124,14 @@ export default function AppSidebar({
           )}
         </div>
 
-        {/* Badge Indicator */}
-        {item.badge && (
+        {/* Badge Indicator (Issue 15) */}
+        {badge && (
           <span
-            className={`px-2.5 py-0.5 text-[8.5px] font-mono font-bold uppercase tracking-wider rounded-full border shrink-0 ${getBadgeStyles(
-              item.badge.variant,
+            className={`px-2 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider rounded-full border shrink-0 ${getBadgeStyles(
+              badge.variant,
             )}`}
           >
-            {item.badge.text}
+            {badge.text}
           </span>
         )}
       </motion.div>

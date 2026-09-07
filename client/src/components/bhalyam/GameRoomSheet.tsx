@@ -118,6 +118,16 @@ const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
   breakout: "/breakout",
 };
 
+const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
+  "snake",
+  "roadrash",
+  "brickblocks",
+  "tetris",
+  "breakout",
+  "spacewar",
+  "nokiacricket",
+]);
+
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
     throw new Error(`Cannot create room for non-playable slug: ${slug}`);
@@ -396,7 +406,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     };
   }, []);
 
-  const isSolo = game ? ["snake", "roadrash", "spacewar"].includes(game) : false;
+  const meta = game ? BHALYAM_GAMES.find((g) => g.slug === game) ?? null : null;
+  const isSolo = game
+    ? SOLO_GAME_SLUGS.has(game) || Boolean(meta?.tags.includes("solo") && !meta?.tags.includes("multiplayer"))
+    : false;
 
   const caps = useCapabilities();
   /**
@@ -608,7 +621,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           if (res.code && res.playerId && res.seatToken) {
             rememberSeat(res.code, res.playerId, res.seatToken);
           }
-          if (game && ["snake", "roadrash", "spacewar"].includes(game)) {
+          if (game && (SOLO_GAME_SLUGS.has(game) || isSolo)) {
             const socket = getSocket();
             socket.emit("room:setReady", true);
             socket.emit("room:startGame");
@@ -853,7 +866,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     );
   }
 
-  const meta = BHALYAM_GAMES.find((g) => g.slug === game)!;
+  if (!meta) return null;
   const Glyph = GAME_GLYPHS[game];
 
   return (
@@ -863,8 +876,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       mobileSheet
       ariaLabelledBy="game-room-sheet-title"
       className="animate-fade-in"
-      panelClassName="bhalyam-font custom-scrollbar relative w-full max-w-lg md:max-w-3xl lg:max-w-4xl
-                 max-h-[92dvh] overflow-y-auto
+      panelClassName="bhalyam-font custom-scrollbar relative mx-auto w-full max-w-lg md:max-w-3xl lg:max-w-4xl
+                 max-h-[92dvh] overflow-y-auto overflow-x-hidden
                  bg-[#FFFDF9] dark:bg-[#111622] text-[#2B3550] dark:text-slate-100
                  border-2 border-[#EEDBCA] dark:border-slate-800
                  rounded-t-3xl md:rounded-3xl
@@ -1439,91 +1452,84 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 )}
               </div>
 
-              {/* Join divider — desktop only (md:flex), hidden in mobile tab flow */}
+              {/* Join divider & Join Section — hidden in Pass & Play or Solo mode (Issue 13, 17) */}
               {!passPlay && !isSolo && (
-                <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
-                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
-                  <span>{caps.joinByCode ? "Or join room" : "Playing with friends"}</span>
-                  <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
-                </div>
-              )}
+                <>
+                  <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
+                    <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
+                    <span>{caps.joinByCode ? "Or join room" : "Playing with friends"}</span>
+                    <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
+                  </div>
 
-              {/* Join Section Block — on mobile only visible if mobileTab === 'join', on desktop always visible */}
-              <div className={!passPlay && !isSolo && mobileTab === "create" ? "hidden md:block md:space-y-3" : "space-y-3"}>
-                {/* The wall stands exactly where the code box would be, so the
-                    answer to "where do I type a code?" is in the place the eye
-                    already went looking for it. */}
-                {!passPlay && !isSolo && !caps.joinByCode && (
-                  <SignInWall
-                    compact
-                    from={`game:${game}`}
-                    reason="Room codes are for playing with friends"
-                  />
-                )}
-
-                {/* Join by code — hidden in Pass & Play or Solo mode */}
-                {!passPlay && !isSolo && caps.joinByCode && (
-                  <div className="space-y-2.5">
-                    <Field label="Room code" htmlFor="grs-code" error={codeError}>
-                      <input
-                        id="grs-code"
-                        type="text"
-                        value={joinCode}
-                        disabled={busy}
-                        onChange={(e) => {
-                          setJoinCode(e.target.value.toUpperCase());
-                          if (codeError) setCodeError(null);
-                        }}
-                        placeholder="ROOM CODE"
-                        maxLength={6}
-                        aria-invalid={codeError ? true : undefined}
-                        aria-describedby={codeError ? "grs-code-error" : undefined}
-                        className={`w-full min-h-[44px] px-3.5 rounded-2xl
-                                   bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
-                                   text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                                   font-mono font-black tracking-[0.35em] text-center text-base
-                                   disabled:opacity-60 disabled:cursor-not-allowed
-                                   focus:outline-none focus:ring-4
-                                   transition-all duration-200
-                                   ${codeError
-                                     ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                                     : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                  <div className={mobileTab === "create" ? "hidden md:block md:space-y-3" : "space-y-3"}>
+                    {!caps.joinByCode ? (
+                      <SignInWall
+                        compact
+                        from={`game:${game}`}
+                        reason="Room codes are for playing with friends"
                       />
-                    </Field>
-                    <button
-                      type="button"
-                      onClick={joinRoom}
-                      disabled={busy}
-                      className="w-full inline-flex items-center justify-center gap-2
-                                 min-h-[44px] rounded-2xl
-                                 bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
-                                 border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
-                                 disabled:opacity-50 disabled:cursor-wait
-                                 active:scale-[0.98] transition-all duration-150 cursor-pointer
-                                 shadow-md"
-                    >
-                      {busy ? "Working…" : (
-                        <>
-                          Join Room <ArrowRightIcon className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+                    ) : (
+                      <div className="space-y-2.5">
+                        <Field label="Room code" htmlFor="grs-code" error={codeError}>
+                          <input
+                            id="grs-code"
+                            type="text"
+                            value={joinCode}
+                            disabled={busy}
+                            onChange={(e) => {
+                              setJoinCode(e.target.value.toUpperCase());
+                              if (codeError) setCodeError(null);
+                            }}
+                            placeholder="ROOM CODE"
+                            maxLength={6}
+                            aria-invalid={codeError ? true : undefined}
+                            aria-describedby={codeError ? "grs-code-error" : undefined}
+                            className={`w-full min-h-[44px] px-3.5 rounded-2xl
+                                       bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
+                                       text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
+                                       font-mono font-black tracking-[0.35em] text-center text-base
+                                       disabled:opacity-60 disabled:cursor-not-allowed
+                                       focus:outline-none focus:ring-4
+                                       transition-all duration-200
+                                       ${codeError
+                                         ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                                         : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                          />
+                        </Field>
+                        <button
+                          type="button"
+                          onClick={joinRoom}
+                          disabled={busy}
+                          className="w-full inline-flex items-center justify-center gap-2
+                                     min-h-[44px] rounded-2xl
+                                     bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
+                                     border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
+                                     disabled:opacity-50 disabled:cursor-wait
+                                     active:scale-[0.98] transition-all duration-150 cursor-pointer
+                                     shadow-md"
+                        >
+                          {busy ? "Working…" : (
+                            <>
+                              Join Room <ArrowRightIcon className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
 
-                {/* Mobile switch hint */}
-                {!passPlay && !isSolo && (
-                  <div className="md:hidden text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setMobileTab("create")}
-                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>← Want to host your own table? Setup table</span>
-                    </button>
+                    {/* Mobile switch hint */}
+                    <div className="md:hidden text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setMobileTab("create")}
+                        className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>← Want to host your own table? Setup table</span>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Form-level error fallback */}
               {formError && (

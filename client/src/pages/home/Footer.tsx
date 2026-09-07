@@ -57,8 +57,8 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full border-t border-amber-500/20 dark:border-slate-800/80 bg-[#FAF7F2]/95 dark:bg-[#07090E]/95 backdrop-blur-xl mt-20 pt-14 pb-10 text-slate-700 dark:text-slate-300 transition-colors">
-      <RevealOnScroll as="div" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 text-left">
+    <footer className="w-full border-t border-amber-500/20 dark:border-slate-800/80 bg-[#FAF7F2]/95 dark:bg-[#07090E]/95 backdrop-blur-xl mt-12 sm:mt-16 pt-8 sm:pt-10 pb-8 text-slate-700 dark:text-slate-300 transition-colors">
+      <RevealOnScroll as="div" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 text-left">
         {/* ── Section 1: Main Brand & 4-Column Directory Grid ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-8 items-start">
           {/* Brand & Mission Column (4 Cols) */}
@@ -407,7 +407,7 @@ export function Footer() {
             </div>
             <div>
               <h5 className="text-xs font-bold text-slate-900 dark:text-white">Server Authoritative</h5>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Zero client cheat vectors</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Zero client cheat vectors</p>
             </div>
           </div>
 
@@ -417,7 +417,7 @@ export function Footer() {
             </div>
             <div>
               <h5 className="text-xs font-bold text-slate-900 dark:text-white">Zero-Install SPA</h5>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Instant play on any device</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Instant play on any device</p>
             </div>
           </div>
 
@@ -427,7 +427,7 @@ export function Footer() {
             </div>
             <div>
               <h5 className="text-xs font-bold text-slate-900 dark:text-white">100% Free &amp; No Ads</h5>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Zero real-money gambling</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Zero real-money gambling</p>
             </div>
           </div>
 
@@ -437,7 +437,7 @@ export function Footer() {
             </div>
             <div>
               <h5 className="text-xs font-bold text-slate-900 dark:text-white">WebRTC Mesh Audio</h5>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Encrypted low-latency voice</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Encrypted low-latency voice</p>
             </div>
           </div>
         </div>
@@ -447,7 +447,7 @@ export function Footer() {
           {/* Copyright & Slogan */}
           <div className="text-center md:text-left space-y-0.5">
             <div className="font-medium">© 2026 BHALYAM. All rights reserved.</div>
-            <div className="text-[11px] text-[#EA580C] font-bold">
+            <div className="text-xs text-[#EA580C] font-bold">
               Relive childhood. Make new memories. 🧡
             </div>
           </div>
@@ -471,23 +471,8 @@ export function Footer() {
             </Link>
           </div>
 
-          {/* Right Controls: Theme Toggle + Language + Socials */}
+          {/* Right Controls: Language + Socials (Theme toggle removed per Issue 16 as it is in AppHeader) */}
           <div className="flex items-center gap-3 flex-wrap justify-center">
-            {/* Theme Toggle Button */}
-            <button
-              type="button"
-              onClick={handleThemeToggle}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-amber-500"
-              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            >
-              {theme === "dark" ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-slate-600" />
-              )}
-            </button>
-
             {/* Language Selector Chip */}
             <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs min-h-[38px]">
               <Globe className="w-3.5 h-3.5 text-slate-400" />

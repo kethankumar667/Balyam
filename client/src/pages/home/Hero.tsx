@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DoorOpen } from "lucide-react";
+import { DoorOpen, Gamepad2 } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { useTheme } from "../../lib/useTheme";
 
@@ -79,13 +79,13 @@ export function Hero({
           />
 
           <div className="relative z-10 px-5 sm:px-10 py-7 sm:py-9 max-w-xl">
-            {/* Top Label */}
+            {/* Top Label (Issue 5) */}
             <span
-              className={`text-xs sm:text-[13px] font-black uppercase tracking-[0.22em] block mb-2 sm:mb-2.5 ${
-                isDark ? "text-amber-400" : "text-[#7B2F0E]"
+              className={`text-xs sm:text-sm font-bold tracking-wide block mb-2 sm:mb-2.5 ${
+                isDark ? "text-amber-400" : "text-amber-800"
               }`}
             >
-              ✦ WELCOME TO BHALYAM ✦
+              ✦ Welcome to BHALYAM ✦
             </span>
 
             {/* Headline with 4 lines & color coding */}
@@ -118,18 +118,31 @@ export function Hero({
               Bring your school gang back together!
             </p>
 
-            {/* Primary Action Button inside Hero Card */}
-            <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {/* Action Buttons: Dual balanced hosting and joining CTAs (Issue 10, 11) */}
+            <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("games-section");
+                  el?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="py-3.5 px-6 sm:px-7 rounded-full flex items-center justify-center gap-2.5 font-bold text-sm sm:text-base bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md active:scale-98 transition-all cursor-pointer min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <Gamepad2 className="w-5 h-5 text-stone-950 shrink-0" aria-hidden="true" />
+                <span>Pick a Game to Host</span>
+              </button>
+
               <button
                 type="button"
                 onClick={onOpenJoin}
-                className="w-full sm:w-auto py-3.5 px-6 sm:px-8 rounded-full flex items-center justify-center gap-2.5 font-black text-[15px] sm:text-[16px] bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-lg shadow-amber-950/20 active:scale-98 hover:shadow-xl transition-all cursor-pointer flex-shrink-0 min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0F1D]"
+                className="py-3.5 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-bold text-sm sm:text-base border border-stone-400/40 dark:border-white/20 bg-stone-900/5 hover:bg-stone-900/10 dark:bg-white/5 dark:hover:bg-white/10 text-stone-900 dark:text-white transition-all cursor-pointer min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
               >
-                <DoorOpen className="w-5 h-5 text-stone-950 shrink-0" aria-hidden="true" />
-                <span>Join Room with a code</span>
+                <DoorOpen className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
+                <span>Join with Code</span>
               </button>
-              <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-[#6E5D4E]"}`}>
-                Have a 6-letter code or invite link? Tap to enter.
+
+              <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-stone-600"} flex items-center gap-1.5 self-center sm:self-auto`}>
+                <span>⚡</span> Instant play · Free multiplayer
               </span>
             </div>
           </div>

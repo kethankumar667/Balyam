@@ -246,22 +246,16 @@ export default function AppHeader({
                   )}
                 </AnimatePresence>
                 <div className="hidden md:flex items-center gap-1.5 min-w-0">
-                  <span className="text-[13px] font-black tracking-tight max-w-[130px] truncate">
+                  <span className="text-[13px] font-bold tracking-tight max-w-[130px] truncate">
                     {displayName}
                   </span>
-                  {isSuperAdmin ? (
-                    <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 shadow-xs">
-                      Super Admin
-                    </span>
-                  ) : identity.isLocalFallback ? (
-                    <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
-                      Offline Demo Mode
-                    </span>
-                  ) : identity.mode === "guest" ? (
-                    <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-lamp-800 dark:text-lamp-300">
-                      Guest
-                    </span>
-                  ) : null}
+                  {isSuperAdmin && (
+                    <span
+                      title="Super Admin"
+                      className="w-2 h-2 rounded-full bg-amber-400 shrink-0 shadow-xs"
+                      aria-label="Super Admin"
+                    />
+                  )}
                 </div>
                 <ChevronDown className="hidden md:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
               </motion.button>
