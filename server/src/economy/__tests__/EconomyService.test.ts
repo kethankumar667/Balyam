@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import {
   type ClaimTerminalIntentResult,
+  type CoinLedgerEntryRecord,
   type CoinWalletRecord,
   type CommitMatchEntryInput,
   type CreateTerminalIntentInput,
@@ -138,6 +139,15 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]> {
     return this.invoke("listSettlementEvents", () => this.inner.listSettlementEvents(matchId));
+  }
+  listRecentSettlementEvents(opts?: { limit?: number; offset?: number }): Promise<SettlementEventRecord[]> {
+    return this.invoke("listRecentSettlementEvents", () => this.inner.listRecentSettlementEvents(opts));
+  }
+  listLedgerEntriesByType(
+    entryType: Parameters<EconomyRepository["listLedgerEntriesByType"]>[0],
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]> {
+    return this.invoke("listLedgerEntriesByType", () => this.inner.listLedgerEntriesByType(entryType, opts));
   }
   ensureWallet(identityId: string): Promise<CoinWalletRecord> {
     return this.invoke("ensureWallet", () => this.inner.ensureWallet(identityId));

@@ -164,6 +164,10 @@ class FailNTimesRepository implements EconomyRepository {
   reconcileSettlement(id: string) { return this.inner.reconcileSettlement(id); }
   listStaleCommittedSettlements(ms: number) { return this.inner.listStaleCommittedSettlements(ms); }
   listSettlementEvents(id: string) { return this.inner.listSettlementEvents(id); }
+  listRecentSettlementEvents(o?: { limit?: number; offset?: number }) { return this.inner.listRecentSettlementEvents(o); }
+  listLedgerEntriesByType(t: Parameters<EconomyRepository["listLedgerEntriesByType"]>[0], o?: { limit?: number; offset?: number }) {
+    return this.inner.listLedgerEntriesByType(t, o);
+  }
   ensureWallet(id: string) { return this.inner.ensureWallet(id); }
   grantStarterCoins(id: string) { return this.inner.grantStarterCoins(id); }
   commitMatchEntry(i: Parameters<EconomyRepository["commitMatchEntry"]>[0]) { return this.inner.commitMatchEntry(i); }

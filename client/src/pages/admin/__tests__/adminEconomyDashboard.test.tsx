@@ -100,6 +100,10 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
       throw new economyApi.EconomyClientError(404, "SettlementNotFound", "No settlement found for this match ID.");
     });
 
+    // StaleMonitorTab's own Terminal Intent Queue section (Blocker 06) — see
+    // staleQueueIntentActions.test.tsx for its dedicated retry/requeue coverage.
+    vi.spyOn(economyApi, "listTerminalIntents").mockResolvedValue({ intents: [] });
+
     vi.spyOn(economyApi, "reconcileMatchSettlement").mockImplementation(async (matchId: string) => {
       const match = mockRecentSettlements.find((s) => s.matchId === matchId);
       if (!match) {

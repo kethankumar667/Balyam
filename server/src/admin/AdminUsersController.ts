@@ -3,6 +3,10 @@ import { requireOperationalAuth, getUserRole, setUserRole, type PlatformRole } f
 import { progressionRepository } from "../persistence/index.js";
 import { readPostgrestConfig, PostgrestClient } from "../persistence/postgrest.js";
 import { logger } from "../lib/logger.js";
+import { profileService } from "../profile/ProfileService.js";
+import { calculateCompetitiveRating } from "@shared/ranking/RankingRules.js";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog.js";
+import type { GameKind } from "@shared/types.js";
 
 export interface AdminUserDto {
   id: string;
@@ -10,14 +14,36 @@ export interface AdminUserDto {
   email: string;
   avatar?: string;
   role: PlatformRole;
-  status: "active" | "warning" | "inactive" | "critical";
   matchesPlayed: number;
   winRate: string;
-  eloRating: number;
-  joinedDate: string;
-  lastActive: string;
+  rating: number;
+  joinedAt: number | null;
+  /** Unix ms this process has seen the player active — `null` if never observed this process lifetime (a real gap of the in-process `ProfileService` store, not a fabricated value). */
+  lastActiveAt: number | null;
   favoriteGame: string;
   isReal: true;
+}
+
+/**
+ * Real per-player gameplay stats — the same `ProfileService`/
+ * `calculateCompetitiveRating` source the public Leaderboard already reads
+ * (see `LeaderboardService.getLeaderboard`). Previously this endpoint
+ * hardcoded `matchesPlayed: 0`, `winRate: "0%"`/`"50%"`, `eloRating: 1200`
+ * (or a made-up XP-derived formula), and `favoriteGame: "Ludo"` for every
+ * single user — this replaces every one of those with the real number,
+ * falling back to an honest zero/none for a player who has not completed a
+ * match this process has seen, never to a plausible-looking placeholder.
+ */
+function realStatsFor(playerId: string): { matchesPlayed: number; winRate: string; rating: number; favoriteGame: string; lastActiveAt: number | null } {
+  const stats = profileService.getStats(playerId);
+  const profile = profileService.getProfile(playerId);
+  return {
+    matchesPlayed: stats.totalMatches,
+    winRate: `${Math.round(stats.winRate)}%`,
+    rating: calculateCompetitiveRating(stats),
+    favoriteGame: stats.favoriteGame === "none" ? "—" : GAME_DISPLAY_NAMES[stats.favoriteGame as GameKind] ?? stats.favoriteGame,
+    lastActiveAt: profile ? profile.lastSeenAt : null,
+  };
 }
 
 interface ProfileDbRow {
@@ -76,16 +102,10 @@ export function createAdminUsersRouter(): Router {
             const email = row.email || `${row.id.substring(0, 8)}@bhalyam.io`;
             const role = getUserRole(row.id, email);
 
-            let joinedDate = "Recently";
+            let joinedAt: number | null = null;
             if (row.created_at) {
               const d = new Date(row.created_at);
-              if (!isNaN(d.getTime())) {
-                joinedDate = d.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "2-digit",
-                  year: "numeric",
-                });
-              }
+              if (!isNaN(d.getTime())) joinedAt = d.getTime();
             }
 
             users.push({
@@ -94,14 +114,9 @@ export function createAdminUsersRouter(): Router {
               email: email,
               avatar: row.avatar_id || undefined,
               role,
-              status: "active",
-              matchesPlayed: 0,
-              winRate: "0%",
-              eloRating: 1200,
-              joinedDate,
-              lastActive: "Active today",
-              favoriteGame: "Ludo",
+              joinedAt,
               isReal: true,
+              ...realStatsFor(row.id),
             });
           }
         } catch (dbErr) {
@@ -121,12 +136,7 @@ export function createAdminUsersRouter(): Router {
           seenIds.add(p.playerId);
 
           const role = getUserRole(p.playerId);
-          const d = new Date(p.joinedAt || Date.now());
-          const joinedDate = d.toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-            year: "numeric",
-          });
+          const stats = realStatsFor(p.playerId);
 
           users.push({
             id: p.playerId,
@@ -134,14 +144,14 @@ export function createAdminUsersRouter(): Router {
             email: `${p.playerId.substring(0, 10)}@bhalyam.player`,
             avatar: p.avatar || undefined,
             role,
-            status: "active",
-            matchesPlayed: Math.floor((p.experiencePoints || 0) / 100),
-            winRate: "50%",
-            eloRating: 1200 + Math.min(600, Math.floor((p.experiencePoints || 0) / 10)),
-            joinedDate,
-            lastActive: "Recently",
-            favoriteGame: "Ludo",
+            joinedAt: p.joinedAt || null,
             isReal: true,
+            ...stats,
+            // ProgressionRepository's own `lastSeenAt` is durable (survives a
+            // restart) — prefer it over the in-process ProfileService value
+            // only when that one is unavailable, never the other way, since
+            // ProfileService is the more current of the two when both exist.
+            lastActiveAt: stats.lastActiveAt ?? p.lastSeenAt ?? null,
           });
         }
       } catch (repoErr) {

@@ -151,6 +151,87 @@ export interface SettlementReconciliation {
   detail: string;
 }
 
+export type TerminalIntentOperationKind = "SETTLEMENT" | "REFUND" | "FORFEITURE";
+export type TerminalIntentStatus = "PENDING" | "PROCESSING" | "RETRYABLE" | "COMPLETED" | "FAILED";
+export type TerminalIntentErrorCategory = "BUSINESS" | "INFRASTRUCTURE" | "UNKNOWN";
+
+/**
+ * Mirrors `TerminalIntentRecord` in `server/src/persistence/EconomyRepository.ts`
+ * (the durable async settlement/refund/forfeiture job queue — Blocker 06),
+ * minus its full replay `payload`, which the operator console never needs
+ * to render.
+ */
+export interface TerminalIntentRecord {
+  id: string;
+  matchId: string;
+  operationKind: TerminalIntentOperationKind;
+  status: TerminalIntentStatus;
+  attemptCount: number;
+  nextAttemptAt: number;
+  claimOwner: string | null;
+  claimedAt: number | null;
+  leaseExpiresAt: number | null;
+  lastErrorCode: string | null;
+  lastErrorCategory: TerminalIntentErrorCategory | null;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+}
+
+/**
+ * GET /api/economy/terminal-intents — operator triage list, newest first.
+ */
+export async function listTerminalIntents(
+  status?: TerminalIntentStatus,
+  limit = 50,
+  offset = 0,
+): Promise<{ intents: TerminalIntentRecord[] }> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set("status", status);
+  return operationalFetch<{ intents: TerminalIntentRecord[] }>(
+    `/api/economy/terminal-intents?${params.toString()}`,
+  );
+}
+
+/**
+ * GET /api/economy/terminal-intents/:intentId/reconcile — the intent plus
+ * the settlement reconciliation for its underlying match, in one call.
+ */
+export async function reconcileTerminalIntent(
+  intentId: string,
+): Promise<{ intent: TerminalIntentRecord; reconciliation: SettlementReconciliation }> {
+  return operationalFetch<{ intent: TerminalIntentRecord; reconciliation: SettlementReconciliation }>(
+    `/api/economy/terminal-intents/${encodeURIComponent(intentId)}/reconcile`,
+  );
+}
+
+/**
+ * POST /api/economy/terminal-intents/:intentId/retry — FAILED -> PENDING only, audited.
+ */
+export async function retryTerminalIntent(
+  intentId: string,
+  reason?: string,
+): Promise<{ updated: boolean; intent: TerminalIntentRecord }> {
+  return operationalPost<{ updated: boolean; intent: TerminalIntentRecord }>(
+    `/api/economy/terminal-intents/${encodeURIComponent(intentId)}/retry`,
+    { reason },
+  );
+}
+
+/**
+ * POST /api/economy/terminal-intents/:intentId/requeue — reclaims a
+ * PROCESSING intent whose lease expired (or, with `force`, one that hasn't).
+ */
+export async function requeueTerminalIntent(
+  intentId: string,
+  force?: boolean,
+): Promise<{ updated: boolean; intent: TerminalIntentRecord }> {
+  return operationalPost<{ updated: boolean; intent: TerminalIntentRecord }>(
+    `/api/economy/terminal-intents/${encodeURIComponent(intentId)}/requeue`,
+    { force },
+  );
+}
+
 export interface EconomyApiError {
   status: number;
   error: string;

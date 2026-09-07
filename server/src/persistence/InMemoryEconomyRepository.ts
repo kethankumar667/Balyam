@@ -563,6 +563,29 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       .map(clone);
   }
 
+  async listRecentSettlementEvents(opts?: { limit?: number; offset?: number }): Promise<SettlementEventRecord[]> {
+    const limit = Math.min(Math.max(opts?.limit ?? 50, 0), 200);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+    return this.settlementEvents
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt || b.id - a.id)
+      .slice(offset, offset + limit)
+      .map(clone);
+  }
+
+  async listLedgerEntriesByType(
+    entryType: WalletLedgerEntryType,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]> {
+    const limit = Math.min(Math.max(opts?.limit ?? 50, 0), 200);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+    return this.walletLedger
+      .filter((entry) => entry.entryType === entryType)
+      .sort((a, b) => b.createdAt - a.createdAt || b.id - a.id)
+      .slice(offset, offset + limit)
+      .map(clone);
+  }
+
   /* ═══════════════════════════ mutations ═══════════════════════════════ */
 
   async ensureWallet(identityId: string): Promise<CoinWalletRecord> {

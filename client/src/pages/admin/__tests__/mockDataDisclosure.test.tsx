@@ -71,14 +71,9 @@ function expectNoBannedClaims(container: HTMLElement) {
 
 describe("Admin console — mock-data disclosure banner (ADMIN-DATA-001)", () => {
   const mockRoutes: Array<[string, React.ComponentType]> = [
-    ["Users", AdminUsersPage],
-    ["Matches", AdminMatchesPage],
     ["Feature Flags", AdminFeatureFlagsPage],
     ["Announcements", AdminAnnouncementsPage],
-    ["Leaderboards", AdminLeaderboardsPage],
     ["Analytics", AdminAnalyticsPage],
-    ["System Health", AdminSystemHealthPage],
-    ["Audit Logs", AdminAuditLogsPage],
     ["Settings", AdminSettingsPage],
   ];
 
@@ -92,31 +87,53 @@ describe("Admin console — mock-data disclosure banner (ADMIN-DATA-001)", () =>
 });
 
 describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
-  it("Leaderboards: Recalculate ELO reports a local demonstration, not a queued server job", async () => {
+  it("Leaderboards no longer claims to be a demonstration — it reads real ranking standings", async () => {
     const { container } = renderRoute(<AdminLeaderboardsPage />);
-    fireEvent.click(screen.getByRole("button", { name: /recalculate elo/i }));
 
-    expect(await screen.findByText(/local demonstration only/i)).toBeDefined();
+    // Graduated out of `mockRoutes` above: this page now queries
+    // /api/ranking/leaderboard. The fabricated "Recalculate ELO" action had
+    // no server behind it and is gone rather than kept as a fake button.
+    await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
+    expect(screen.queryByText(/local demonstration only/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /recalculate elo/i })).toBeNull();
     expectNoBannedClaims(container);
   });
 
-  it("System Health: Run Health Sweep reports a local demonstration, not a live diagnostic result", async () => {
+  it("System Health no longer claims to be a demonstration — it reads real operational telemetry", async () => {
     const { container } = renderRoute(<AdminSystemHealthPage />);
-    fireEvent.click(screen.getByRole("button", { name: /run health sweep/i }));
 
-    await waitFor(
-      () => expect(screen.getByText(/local demonstration only/i)).toBeDefined(),
-      { timeout: 3000 },
-    );
+    // Graduated out of `mockRoutes` above: this page now fetches
+    // /api/operational/health and /metrics (see its own doc comment), so it
+    // must carry neither the mock banner nor the local-demo language.
+    await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
+    expect(screen.queryByText(/local demonstration only/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /run health sweep/i })).toBeNull();
     expectNoBannedClaims(container);
   });
 
-  it("Audit Logs: Export CSV states no file was downloaded", async () => {
+  it("Audit Logs no longer claims to be a demonstration — it reads real settlement and wallet-adjustment events", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/audit")) return { status: 200, ok: true, json: async () => ({ entries: [] }) };
+        return { status: 200, ok: true, json: async () => ({}) };
+      }),
+    );
     const { container } = renderRoute(<AdminAuditLogsPage />);
-    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
 
+    // Graduated out of `mockRoutes` above: this page now fetches
+    // /api/admin/audit (settlement_events + ADMIN_ADJUSTMENT ledger rows).
+    await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
+    expect(screen.queryByText(/local demonstration only/i)).toBeNull();
+    expectNoBannedClaims(container);
+
+    // Export CSV is still genuinely unimplemented — that disclosure is
+    // still true, just no longer paired with "demonstration data only".
+    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
     expect(await screen.findByText(/no file was downloaded/i)).toBeDefined();
     expectNoBannedClaims(container);
+    vi.unstubAllGlobals();
   });
 
   it("Settings: Save All Settings states nothing was persisted", async () => {
@@ -169,28 +186,86 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("Users: banning a player from the detail drawer reports a local preview, not a real ban", async () => {
-    const { container } = renderRoute(<AdminUsersPage />);
-    const firstRow = container.querySelectorAll("tbody tr")[0];
-    fireEvent.click(firstRow);
+  it("Users no longer claims to be a demonstration — it reads real accounts, and banning still reports a local preview (no real moderation endpoint exists)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/users")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              users: [
+                {
+                  id: "usr-1",
+                  name: "Kethan Kumar",
+                  email: "kethan@bhalyam.io",
+                  role: "super_admin",
+                  matchesPlayed: 0,
+                  winRate: "0%",
+                  rating: 400,
+                  joinedAt: Date.now(),
+                  lastActiveAt: null,
+                  favoriteGame: "—",
+                },
+              ],
+              total: 1,
+            }),
+          };
+        }
+        return { status: 200, ok: true, json: async () => ({}) };
+      }),
+    );
 
+    const { container } = renderRoute(<AdminUsersPage />);
+    // Graduated out of `mockRoutes` above: this page now fetches
+    // /api/admin/users, and the old MOCK_25_USERS padding cohort is gone.
+    await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
+    expect(screen.queryByText(/local demonstration only/i)).toBeNull();
+
+    await waitFor(() => expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0));
+    fireEvent.click(container.querySelectorAll("tbody tr")[0]);
     fireEvent.click(await screen.findByRole("button", { name: /ban account/i }));
 
     expect(await screen.findByText(/no changes were sent to the server/i)).toBeDefined();
     expectNoBannedClaims(container);
+    vi.unstubAllGlobals();
   });
 
-  it("Matches: force-terminating a live match reports a local preview, not a real termination", async () => {
+  it("Matches no longer claims to be a demonstration — it reads real rooms and match records", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/operational/rooms")) {
+          return { status: 200, ok: true, json: async () => ({ rooms: [] }) };
+        }
+        if (url.includes("/api/admin/dashboard/summary")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              kpis: { matchesCompletedToday: 0 },
+              matchTrend: [],
+              recentMatches: [],
+            }),
+          };
+        }
+        return { status: 200, ok: true, json: async () => ({}) };
+      }),
+    );
     const { container } = renderRoute(<AdminMatchesPage />);
-    const rows = container.querySelectorAll("tbody tr");
-    // LU7890 (first row) is seeded with status "playing", which is the only
-    // status that renders the Force Terminate Match footer action.
-    fireEvent.click(rows[0]);
 
-    fireEvent.click(await screen.findByRole("button", { name: /force terminate match/i }));
-
-    expect(await screen.findByText(/no changes were sent to the server/i)).toBeDefined();
+    // Graduated out of `mockRoutes` above: this page now fetches
+    // /api/operational/rooms and /api/admin/dashboard/summary, and the
+    // fabricated "Force Terminate Match" action (no server behind it) is
+    // gone rather than kept as a fake button.
+    await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
+    expect(screen.queryByText(/local demonstration only/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /force terminate match/i })).toBeNull();
     expectNoBannedClaims(container);
+    vi.unstubAllGlobals();
   });
 
   it("Announcements: publishing a new announcement reports a local preview, not a real broadcast", async () => {

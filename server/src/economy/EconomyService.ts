@@ -17,10 +17,12 @@ import {
   type ParticipantDebitSpec,
   type ParticipantIdentityKind,
   type RewardVoucherRecord,
+  type SettlementEventRecord,
   type SettlementParticipantInput as RepoSettlementParticipantInput,
   type SettlementReconciliation,
   type TerminalIntentRecord,
   type VoucherStatusView,
+  type WalletLedgerEntryType,
   type WorldBankSnapshot,
   EconomyRepositoryError,
   EconomyInfrastructureError,
@@ -1013,6 +1015,29 @@ export class EconomyService {
     const startedAt = this.now();
     const rows = await this.withRetry("listTerminalIntents", null, () => this.repository.listTerminalIntents(opts));
     this.logOutcome("listTerminalIntents", null, startedAt, "read");
+    return rows;
+  }
+
+  /** Platform-wide settlement audit trail — the admin Audit Logs console. */
+  async listRecentSettlementEvents(opts?: { limit?: number; offset?: number }): Promise<SettlementEventRecord[]> {
+    const startedAt = this.now();
+    const rows = await this.withRetry("listRecentSettlementEvents", null, () =>
+      this.repository.listRecentSettlementEvents(opts),
+    );
+    this.logOutcome("listRecentSettlementEvents", null, startedAt, "read");
+    return rows;
+  }
+
+  /** Platform-wide ledger entries of one type — the admin Audit Logs console's `ADMIN_ADJUSTMENT` feed. */
+  async listLedgerEntriesByType(
+    entryType: WalletLedgerEntryType,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]> {
+    const startedAt = this.now();
+    const rows = await this.withRetry("listLedgerEntriesByType", null, () =>
+      this.repository.listLedgerEntriesByType(entryType, opts),
+    );
+    this.logOutcome("listLedgerEntriesByType", null, startedAt, "read");
     return rows;
   }
 

@@ -1,204 +1,120 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Shield,
   Download,
-  AlertTriangle,
-  Info,
-  ShieldAlert,
   Search,
-  CheckCircle2,
-  FileCode,
-  Calendar,
   Filter,
+  FileCode,
+  Landmark,
+  RefreshCw,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
 import DataTable, { type Column } from "../../../components/admin/data-table";
-import StatusBadge from "../../../components/admin/status-badge";
 import SearchBar from "../../../components/admin/search-bar";
 import FilterBar, { type FilterOption } from "../../../components/admin/filter-bar";
 import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
-import MockDataBanner from "../../../components/admin/mock-data-banner";
+import LoadingState from "../../../components/admin/loading-state";
+import { operationalFetch, OperationalAuthError } from "../../../lib/operationalApi";
+
+/**
+ * Real audit trail: `GET /api/admin/audit` merges `settlement_events` (every
+ * match settlement/refund/forfeiture state transition) with
+ * `coin_ledger_entries` where `entry_type = 'ADMIN_ADJUSTMENT'` (manual
+ * operator wallet top-ups) — see `server/src/admin/AuditController.ts`.
+ *
+ * Dropped rather than faked: feature-flag changes, moderation actions
+ * (mutes/bans), and security/HMAC events have no backing table, so unlike
+ * the previous `MOCK_AUDIT_LOGS` this never shows a row for them. Likewise
+ * `actorName`/`actorRole`/`ipAddress` are gone — nothing upstream records a
+ * human name or an IP against these writes, only an identity id (a Supabase
+ * `userId`, or the literal `"ops-key"`), so that id is what renders instead
+ * of a name that would have to be guessed.
+ */
+
+type AuditLogKind = "SETTLEMENT" | "WALLET_ADJUSTMENT";
 
 interface AuditLogEntry {
   id: string;
-  timestamp: string;
-  actorName: string;
-  actorRole: string;
+  timestamp: number;
+  kind: AuditLogKind;
   actionCode: string;
-  resourceType: string;
+  initiatorKind: string;
+  initiatorId: string | null;
   resourceId: string;
-  ipAddress: string;
-  severity: "info" | "warning" | "critical";
-  details: string;
-  rawPayload: Record<string, unknown>;
+  detail: string;
+  payload: Record<string, unknown>;
 }
 
-const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: "aud-901",
-    timestamp: "2026-08-24 22:15:30",
-    actorName: "Kethan Kumar",
-    actorRole: "SuperAdmin",
-    actionCode: "FEATURE_FLAG.UPDATE",
-    resourceType: "FeatureFlag",
-    resourceId: "bhalyam.voice.webrtc_mesh",
-    ipAddress: "192.168.1.10",
-    severity: "info",
-    details: "Toggled rollout percentage from 80% to 100% in production tier across all active socket namespaces.",
-    rawPayload: {
-      flagKey: "bhalyam.voice.webrtc_mesh",
-      previousState: { enabled: true, percentage: 80, env: "production", canaryCohort: ["u-101", "u-102"] },
-      updatedState: { enabled: true, percentage: 100, env: "production", canaryCohort: "all" },
-      clusterTarget: "worker-node-sg-01",
-      initiatedBy: "kethan@bhalyam.io",
-      sessionAuditId: "sess-prod-992144-h8a2",
-    },
-  },
-  {
-    id: "aud-902",
-    timestamp: "2026-08-24 22:10:14",
-    actorName: "Teacher Padma",
-    actorRole: "Moderator",
-    actionCode: "USER.MUTE",
-    resourceType: "PlayerAccount",
-    resourceId: "u-116 (Rohan Kapoor)",
-    ipAddress: "103.21.244.18",
-    severity: "warning",
-    details: "Enforced 24h voice and chat mute due to repeated spam and abusive chat report violation in Lobby #4.",
-    rawPayload: {
-      targetUserId: "u-116",
-      targetHandle: "rohan.k@delhi.in",
-      reason: "spam_chat_and_voice_abuse",
-      reportTicketId: "REP-40912",
-      durationHours: 24,
-      channel: "Lobby",
-      evidence: [
-        { messageId: "msg-881", content: "SPAM_FLOOD_DETECTED", timestamp: "2026-08-24T22:08:12Z" },
-        { messageId: "msg-882", content: "SPAM_FLOOD_DETECTED", timestamp: "2026-08-24T22:08:14Z" },
-      ],
-    },
-  },
-  {
-    id: "aud-903",
-    timestamp: "2026-08-24 21:58:45",
-    actorName: "SecurityEngine",
-    actorRole: "AutomatedBot",
-    actionCode: "AUTH.HMAC_FAIL",
-    resourceType: "SeatToken",
-    resourceId: "seat-rm-402",
-    ipAddress: "45.12.89.201",
-    severity: "critical",
-    details: "Seat HMAC signature mismatch rejected during room reconnection. Potential token replay or forgery attack intercepted.",
-    rawPayload: {
-      roomCode: "RM4521",
-      providedHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      expectedSignature: "a18f29bf4c8996fb92427ae41e4649b934ca495991b7852b855e3b0c44298fc1",
-      handshakePayload: {
-        socketId: "sock_h8f3_attacker",
-        claimedPlayerId: "p_victim_01",
-        issuedAt: "2026-08-24T21:40:00Z",
-        tokenAgeSeconds: 1125,
-      },
-      actionTaken: "DISCONNECT_AND_QUARANTINE_IP",
-      ipReputationScore: "0.04 (HIGH_RISK_PROXY)",
-    },
-  },
-  {
-    id: "aud-904",
-    timestamp: "2026-08-24 21:40:00",
-    actorName: "Master Ravi",
-    actorRole: "Moderator",
-    actionCode: "MATCH.TERMINATE",
-    resourceType: "GameRoom",
-    resourceId: "room-SL2201",
-    ipAddress: "115.110.20.9",
-    severity: "warning",
-    details: "Force terminated idle room after 15 minutes of host and player inactivity. Reclaimed in-memory timers.",
-    rawPayload: {
-      roomCode: "SL2201",
-      gameKind: "snakes_and_ladders",
-      idleSeconds: 920,
-      turnTimerExpired: true,
-      seatsRefunded: 4,
-      memoryBytesReclaimed: 40960,
-    },
-  },
-  {
-    id: "aud-905",
-    timestamp: "2026-08-24 21:15:22",
-    actorName: "SuperAdmin",
-    actorRole: "SuperAdmin",
-    actionCode: "SETTINGS.UPDATE",
-    resourceType: "SystemConfig",
-    resourceId: "turn_timer_pacing",
-    ipAddress: "192.168.1.10",
-    severity: "info",
-    details: "Set global player turn grace period to 15,000 milliseconds for all casual multiplayer boards.",
-    rawPayload: { setting: "turn_timer_pacing", oldValue: 20000, newValue: 15000, environment: "production" },
-  },
-  {
-    id: "aud-906",
-    timestamp: "2026-08-24 21:00:10",
-    actorName: "Anonymous / System",
-    actorRole: "Unauthenticated",
-    actionCode: "SECURITY.RATE_LIMIT_BURST",
-    resourceType: "HttpGateway",
-    resourceId: "POST /room/create",
-    ipAddress: "185.220.101.4",
-    severity: "critical",
-    details: "Rate limit exceeded (120 req/sec from single TOR exit node). Automated IP throttling active for 600s.",
-    rawPayload: {
-      ip: "185.220.101.4",
-      requestsPerSecond: 120,
-      limitMax: 10,
-      geoCountry: "UNKNOWN_ROUTED",
-      firewallAction: "HTTP_429_DROP",
-      packetCaptureSummary: "TCP SYN flood on Socket.IO handshake endpoint",
-    },
-  },
-  {
-    id: "aud-907",
-    timestamp: "2026-08-24 20:45:00",
-    actorName: "RoomManager",
-    actorRole: "SystemDaemon",
-    actionCode: "ENGINE.DESYNC_CORRUPT",
-    resourceType: "GameStateEngine",
-    resourceId: "ST4091",
-    ipAddress: "127.0.0.1",
-    severity: "critical",
-    details: "Detected out-of-order move sequence in StarGame engine. Rollback attempted, room quarantined to prevent corrupted rematch states.",
-    rawPayload: {
-      roomCode: "ST4091",
-      expectedMoveSeq: 30,
-      receivedMoveSeq: 31,
-      stackTrace: "Error: DesynchronizedState at StarGameEngine.processMove (StarGameEngine.ts:142)\n    at RoomManager.handleMove (RoomManager.ts:412)",
-      recoveryStatus: "ROOM_SEALED",
-    },
-  },
-];
+function errorMessage(err: unknown): string {
+  if (err instanceof OperationalAuthError) return "Not authorized for the operational API.";
+  if (err instanceof Error) return err.message;
+  return "Request failed.";
+}
+
+function kindLabel(kind: AuditLogKind): string {
+  return kind === "SETTLEMENT" ? "Settlement" : "Wallet Adjustment";
+}
+
+function kindBadgeClass(kind: AuditLogKind): string {
+  return kind === "SETTLEMENT"
+    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+}
 
 export default function AdminAuditLogsPage() {
+  const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [search, setSearch] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [selectedLog, setSelectedLog] = useState<AuditLogEntry[] | null>(null);
-  const [activeLog, setActiveLog] = useState<AuditLogEntry | null>(null);
+  const [kindFilter, setKindFilter] = useState<"all" | AuditLogKind>("all");
+  const [activeEntry, setActiveEntry] = useState<AuditLogEntry | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
-  const filteredLogs = MOCK_AUDIT_LOGS.filter((l) => {
-    const matchesSearch =
-      l.actorName.toLowerCase().includes(search.toLowerCase()) ||
-      l.actionCode.toLowerCase().includes(search.toLowerCase()) ||
-      l.resourceId.toLowerCase().includes(search.toLowerCase()) ||
-      l.ipAddress.includes(search);
-    const matchesSeverity = severityFilter === "all" || l.severity === severityFilter;
-    return matchesSearch && matchesSeverity;
-  });
+  const load = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setIsRefreshing(true);
+    try {
+      const res = await operationalFetch<{ entries: AuditLogEntry[] }>("/api/admin/audit?limit=100");
+      setEntries(res.entries);
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const allEntries = entries ?? [];
+  const settlementCount = allEntries.filter((e) => e.kind === "SETTLEMENT").length;
+  const adjustmentCount = allEntries.filter((e) => e.kind === "WALLET_ADJUSTMENT").length;
+
+  const term = search.trim().toLowerCase();
+  const filteredEntries = useMemo(
+    () =>
+      allEntries.filter((e) => {
+        const matchesSearch =
+          !term ||
+          e.actionCode.toLowerCase().includes(term) ||
+          e.resourceId.toLowerCase().includes(term) ||
+          (e.initiatorId ?? "").toLowerCase().includes(term);
+        const matchesKind = kindFilter === "all" || e.kind === kindFilter;
+        return matchesSearch && matchesKind;
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allEntries, term, kindFilter],
+  );
 
   const handleExportCSV = () => {
-    setExportNotice("Not available in this preview — no file was downloaded. This page shows local demonstration data only.");
+    setExportNotice("Not available yet — no file was downloaded.");
     setTimeout(() => setExportNotice(null), 3000);
   };
 
@@ -207,95 +123,96 @@ export default function AdminAuditLogsPage() {
       kind: "property",
       key: "timestamp",
       header: "Timestamp",
-      render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.timestamp}</span>,
-    },
-    {
-      kind: "property",
-      key: "actorName",
-      header: "Actor",
       render: (row) => (
-        <div className="flex flex-col">
-          <span className="font-bold text-[var(--chrome-ink)]">{row.actorName}</span>
-          <span className="text-[10px] text-[var(--chrome-ink-soft)] font-mono">{row.actorRole}</span>
-        </div>
-      ),
-    },
-    {
-      kind: "property",
-      key: "actionCode",
-      header: "Action Event",
-      render: (row) => (
-        <span className="font-mono font-bold text-xs text-amber-500 dark:text-amber-400">
-          {row.actionCode}
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">
+          {new Date(row.timestamp).toLocaleString()}
         </span>
       ),
     },
     {
       kind: "property",
-      key: "severity",
-      header: "Severity",
+      key: "kind",
+      header: "Type",
       render: (row) => (
-        <StatusBadge
-          status={
-            row.severity === "critical"
-              ? "critical"
-              : row.severity === "warning"
-              ? "warning"
-              : "active"
-          }
-          label={row.severity}
-          size="sm"
-        />
+        <span
+          className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${kindBadgeClass(row.kind)}`}
+        >
+          {kindLabel(row.kind)}
+        </span>
+      ),
+    },
+    {
+      kind: "property",
+      key: "actionCode",
+      header: "Action",
+      render: (row) => (
+        <span className="font-mono font-bold text-xs text-[var(--chrome-ink)]">{row.actionCode}</span>
+      ),
+    },
+    {
+      kind: "property",
+      key: "initiatorId",
+      header: "Initiator",
+      render: (row) => (
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-bold uppercase text-[var(--chrome-ink-soft)]">{row.initiatorKind}</span>
+          <span className="text-xs font-mono text-[var(--chrome-ink)] truncate max-w-[160px]">
+            {row.initiatorId ?? "—"}
+          </span>
+        </div>
       ),
     },
     {
       kind: "property",
       key: "resourceId",
-      header: "Resource Target",
+      header: "Resource",
       render: (row) => <span className="text-xs font-mono text-[var(--chrome-ink-soft)]">{row.resourceId}</span>,
     },
     {
       kind: "property",
-      key: "ipAddress",
-      header: "IP Address",
-      align: "right",
-      render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.ipAddress}</span>,
+      key: "detail",
+      header: "Detail",
+      render: (row) => (
+        <span className="text-xs text-[var(--chrome-ink-soft)] truncate block max-w-[240px]" title={row.detail}>
+          {row.detail}
+        </span>
+      ),
     },
   ];
 
   const filters: FilterOption[] = [
     {
-      id: "severity",
-      label: "Severity",
-      value: severityFilter,
+      id: "kind",
+      label: "Type",
+      value: kindFilter,
       options: [
-        { label: "All Severities", value: "all" },
-        { label: "Info", value: "info" },
-        { label: "Warning", value: "warning" },
-        { label: "Critical", value: "critical" },
+        { label: "All Types", value: "all" },
+        { label: "Settlement", value: "SETTLEMENT" },
+        { label: "Wallet Adjustment", value: "WALLET_ADJUSTMENT" },
       ],
-      onChange: setSeverityFilter,
+      onChange: (val) => setKindFilter(val as "all" | AuditLogKind),
     },
   ];
 
-  const isSearchActive = search.trim() !== "";
-  const isFilterActive = severityFilter !== "all";
+  const isSearchActive = term !== "";
+  const isFilterActive = kindFilter !== "all";
+  const resetFilters = () => setKindFilter("all");
 
-  const emptyTitle = MOCK_AUDIT_LOGS.length === 0
-    ? "No audit logs recorded"
+  const emptyTitle = error
+    ? "Audit data unavailable"
     : isSearchActive
-    ? "No audit logs found"
-    : isFilterActive
-    ? "No logs match selected severity"
-    : "No records found";
+      ? "No audit logs found"
+      : isFilterActive
+        ? "No logs match selected type"
+        : "No audit events recorded yet";
 
-  const emptyDesc = MOCK_AUDIT_LOGS.length === 0
-    ? "There are currently no security or administrative actions logged in the cluster."
+  const emptyDesc = error
+    ? error
     : isSearchActive
-    ? `No audit logs match "${search}". Try searching by a different actor, action code, or IP.`
-    : isFilterActive
-    ? "No audit events match the active severity filter criteria."
-    : "There are currently no items matching your criteria.";
+      ? `No audit logs match "${search}". Try a different action code, resource id, or initiator id.`
+      : isFilterActive
+        ? "No audit events match the active type filter."
+        : "Settlement events and wallet adjustments will appear here as they happen.";
 
   const emptyIcon = isSearchActive ? (
     <Search className="w-6 h-6" />
@@ -316,7 +233,7 @@ export default function AdminAuditLogsPage() {
   ) : isFilterActive ? (
     <button
       type="button"
-      onClick={() => setSeverityFilter("all")}
+      onClick={resetFilters}
       className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] active:scale-95 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
     >
       Reset Filters
@@ -327,129 +244,132 @@ export default function AdminAuditLogsPage() {
     <AdminLayout>
       <PageHeader
         title="Security & System Audit Logs"
-        description="Immutable record of administrative actions, moderation events, HMAC cryptographic verifications, and feature flag changes."
+        description="Real settlement lifecycle events and manual operator wallet adjustments — the two write paths the platform already audits."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Audit Logs" }]}
         actions={
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--chrome-panel)] text-[var(--chrome-ink)] font-bold text-xs border border-[var(--chrome-border)] hover:bg-[var(--chrome-control)] transition-all cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-amber-500" />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--chrome-panel)] text-[var(--chrome-ink)] font-bold text-xs border border-[var(--chrome-border)] hover:bg-[var(--chrome-control)] transition-all cursor-pointer shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void load(true)}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-black text-xs shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+            </button>
+          </div>
         }
       />
 
-      <MockDataBanner kind="mock" />
-
-      {exportNotice && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
-          <span>✓ {exportNotice}</span>
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+          Audit data unavailable: {error}
         </div>
       )}
 
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+      {exportNotice && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <span>{exportNotice}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
-          title="Total Audit Events (24h)"
-          value="1,420 Events"
+          title="Events Loaded"
+          value={entries ? String(allEntries.length) : "—"}
           icon={<Shield className="w-5 h-5 text-amber-500" />}
-          subtitle="100% audit log retention"
+          subtitle="Most recent, this view"
         />
         <StatCard
-          title="Security Interceptions"
-          value="1 Blocked"
-          icon={<ShieldAlert className="w-5 h-5 text-rose-500" />}
-          subtitle="Invalid HMAC token dropped"
+          title="Settlement Events"
+          value={entries ? String(settlementCount) : "—"}
+          icon={<Shield className="w-5 h-5 text-amber-500" />}
+          subtitle="Match lifecycle writes"
         />
         <StatCard
-          title="Admin Actions Recorded"
-          value="14 Changes"
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-          subtitle="Zero unauthenticated attempts"
+          title="Wallet Adjustments"
+          value={entries ? String(adjustmentCount) : "—"}
+          icon={<Landmark className="w-5 h-5 text-emerald-500" />}
+          subtitle="Manual operator top-ups"
         />
       </div>
 
-      {/* Search & Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by actor, action code, IP, or resource..."
+          placeholder="Search by action code, resource id, or initiator..."
           ariaLabel="Search audit logs"
         />
-        <FilterBar
-          filters={filters}
-          onReset={() => setSeverityFilter("all")}
-        />
+        <FilterBar filters={filters} onReset={resetFilters} />
       </div>
 
-      {/* Audit Table */}
-      <DataTable
-        columns={columns}
-        data={filteredLogs}
-        onRowClick={(row) => setActiveLog(row)}
-        getRowAriaLabel={(row) => `Open details for audit log entry by ${row.actorName}`}
-        emptyMessage={emptyTitle}
-        emptyDescription={emptyDesc}
-        emptyIcon={emptyIcon}
-        emptyAction={emptyAction}
-      />
+      {isLoading ? (
+        <LoadingState variant="table" label="Loading audit data" />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredEntries}
+          onRowClick={(row) => setActiveEntry(row)}
+          getRowAriaLabel={(row) => `Open details for audit event ${row.actionCode}`}
+          emptyMessage={emptyTitle}
+          emptyDescription={emptyDesc}
+          emptyIcon={emptyIcon}
+          emptyAction={emptyAction}
+        />
+      )}
 
-      {/* Event Detail Drawer */}
       <DetailDrawer
-        isOpen={Boolean(activeLog)}
-        onClose={() => setActiveLog(null)}
-        title={activeLog?.actionCode ?? "Audit Event"}
-        subtitle={`Logged on ${activeLog?.timestamp} by ${activeLog?.actorName}`}
+        isOpen={Boolean(activeEntry)}
+        onClose={() => setActiveEntry(null)}
+        title={activeEntry?.actionCode ?? "Audit Event"}
+        subtitle={activeEntry ? `Logged ${new Date(activeEntry.timestamp).toLocaleString()}` : undefined}
         badge={
-          activeLog && (
-            <StatusBadge
-              status={
-                activeLog.severity === "critical"
-                  ? "critical"
-                  : activeLog.severity === "warning"
-                  ? "warning"
-                  : "active"
-              }
-              label={activeLog.severity}
-              size="sm"
-            />
+          activeEntry && (
+            <span
+              className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${kindBadgeClass(activeEntry.kind)}`}
+            >
+              {kindLabel(activeEntry.kind)}
+            </span>
           )
         }
       >
-        {activeLog && (
+        {activeEntry && (
           <div className="space-y-6">
             <InfoCard
               title="Event Metadata"
               fields={[
-                { label: "Log ID", value: activeLog.id, isMono: true },
-                { label: "Resource Type", value: activeLog.resourceType },
-                { label: "Resource Target", value: activeLog.resourceId, isMono: true },
-                { label: "Origin IP", value: activeLog.ipAddress, isMono: true },
+                { label: "Log ID", value: activeEntry.id, isMono: true },
+                { label: "Resource ID", value: activeEntry.resourceId, isMono: true },
+                { label: "Initiator Kind", value: activeEntry.initiatorKind },
+                { label: "Initiator ID", value: activeEntry.initiatorId ?? "—", isMono: true },
               ]}
             />
 
             <div className="p-4 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] space-y-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
-                Action Summary
+                Detail
               </h4>
-              <p className="text-xs text-[var(--chrome-ink)] leading-relaxed">
-                {activeLog.details}
-              </p>
+              <p className="text-xs text-[var(--chrome-ink)] leading-relaxed">{activeEntry.detail}</p>
             </div>
 
-            {/* Raw JSON Payload Box */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <FileCode className="w-4 h-4 text-amber-500" />
+                <FileCode className="w-4 h-4 text-amber-500" aria-hidden="true" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)]">
                   Raw JSON Event Payload
                 </h4>
               </div>
               <pre className="p-4 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] text-xs font-mono overflow-x-auto border border-[var(--chrome-border)]">
-                {JSON.stringify(activeLog.rawPayload, null, 2)}
+                {JSON.stringify(activeEntry.payload, null, 2)}
               </pre>
             </div>
           </div>

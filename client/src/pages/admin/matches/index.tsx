@@ -1,18 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Gamepad2,
-  Play,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Users,
-  Wifi,
-  Trash2,
-  RefreshCw,
-  Zap,
+  CheckCircle2,
+  PlugZap,
   Search,
   Filter,
-  AlertTriangle,
+  RefreshCw,
+  Trophy,
+  History,
 } from "lucide-react";
 import {
   AreaChart,
@@ -26,310 +22,324 @@ import {
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
+import StatusBadge from "../../../components/admin/status-badge";
 import ChartCard from "../../../components/admin/chart-card";
 import DataTable, { type Column } from "../../../components/admin/data-table";
-import StatusBadge from "../../../components/admin/status-badge";
 import SearchBar from "../../../components/admin/search-bar";
 import FilterBar, { type FilterOption } from "../../../components/admin/filter-bar";
 import DetailDrawer from "../../../components/admin/detail-drawer";
 import InfoCard from "../../../components/admin/info-card";
-import MockDataBanner from "../../../components/admin/mock-data-banner";
+import LoadingState from "../../../components/admin/loading-state";
+import RoomTimelineDrawer from "../../../components/admin/RoomTimelineDrawer";
+import { operationalFetch, OperationalAuthError } from "../../../lib/operationalApi";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog";
+import type { OperationalRoomSummary, OperationalPlayerSummary } from "@shared/operational";
+import type { GameKind } from "@shared/types";
 
-interface MatchItem {
-  id: string;
-  code: string;
-  game: string;
-  hostName: string;
-  playersCount: number;
-  maxPlayers: number;
-  spectatorsCount?: number;
-  status: "playing" | "lobby" | "finished" | "abandoned";
-  duration: string;
-  turnCount: number;
-  startedAt: string;
-  avgLatencyMs: number;
-  hasDesyncWarning?: boolean;
-  stateAnomalyNote?: string;
-  seats: Array<{
-    seatIndex: number;
-    name: string;
-    score: number;
-    isBot: boolean;
-    ping: number;
-    isDisconnected?: boolean;
-    reconnectSecondsLeft?: number;
-  }>;
+/**
+ * Real match management.
+ *
+ * Two genuine sources, deliberately kept apart rather than merged into one
+ * invented list:
+ *   - LIVE  ← `GET /api/operational/rooms` (`OperationalRoomSummary`), which
+ *     already carried richer truth than the old mock did — real seat status,
+ *     disconnect-grace countdowns, auto-play takeover state, bot/human split.
+ *   - COMPLETED ← `GET /api/admin/dashboard/summary`.`recentMatches`
+ *     (`MatchSummaryRecord`) plus its `matchTrend` buckets for the chart.
+ *
+ * Removed rather than faked: per-seat ping and score, a turn counter, an
+ * "avg mesh latency" KPI, desync/anomaly notes, and a "Force Terminate"
+ * button — none of these have any server behind them. The seat panel now
+ * shows what the server actually knows, which is more operationally useful
+ * anyway: who is in disconnect grace, for how long, and whether the server
+ * is auto-playing their seat.
+ */
+
+interface MatchTrendBucket {
+  date: string;
+  count: number;
 }
 
-const MOCK_MATCH_HISTORY_CHART = [
-  { time: "18:00", active: 22, completed: 48 },
-  { time: "19:00", active: 28, completed: 62 },
-  { time: "20:00", active: 34, completed: 85 },
-  { time: "21:00", active: 42, completed: 110 },
-  { time: "22:00", active: 38, completed: 95 },
-  { time: "Now", active: 18, completed: 44 },
-];
+interface MatchParticipant {
+  playerId: string;
+  displayName?: string | null;
+  isWinner: boolean;
+  isBot: boolean;
+}
 
-const MOCK_MATCHES: MatchItem[] = [
-  {
-    id: "m-001",
-    code: "LU7890",
-    game: "Ludo",
-    hostName: "Rahul Sharma",
-    playersCount: 4,
-    maxPlayers: 4,
-    spectatorsCount: 14,
-    status: "playing",
-    duration: "14m 20s",
-    turnCount: 48,
-    startedAt: "22:02:15",
-    avgLatencyMs: 34,
-    seats: [
-      { seatIndex: 0, name: "Rahul Sharma", score: 3, isBot: false, ping: 28 },
-      { seatIndex: 1, name: "Priya Patel", score: 2, isBot: false, ping: 0, isDisconnected: true, reconnectSecondsLeft: 22 },
-      { seatIndex: 2, name: "Bot Champ", score: 1, isBot: true, ping: 5 },
-      { seatIndex: 3, name: "Sir Krishna", score: 4, isBot: false, ping: 42 },
-    ],
-  },
-  {
-    id: "m-002",
-    code: "RM4521",
-    game: "Rummy",
-    hostName: "Master Ravi",
-    playersCount: 6,
-    maxPlayers: 6,
-    spectatorsCount: 8,
-    status: "playing",
-    duration: "09m 45s",
-    turnCount: 22,
-    startedAt: "22:06:50",
-    avgLatencyMs: 28,
-    seats: [
-      { seatIndex: 0, name: "Master Ravi", score: 0, isBot: false, ping: 24 },
-      { seatIndex: 1, name: "Teacher Padma", score: 12, isBot: false, ping: 30 },
-      { seatIndex: 2, name: "Bot Alpha", score: 45, isBot: true, ping: 5 },
-      { seatIndex: 3, name: "Bot Beta", score: 80, isBot: true, ping: 5 },
-      { seatIndex: 4, name: "Aditi Sen", score: 18, isBot: false, ping: 35 },
-      { seatIndex: 5, name: "Kavita Rao", score: 24, isBot: false, ping: 26 },
-    ],
-  },
-  {
-    id: "m-003",
-    code: "WB1092",
-    game: "Word Building",
-    hostName: "Kethan Kumar",
-    playersCount: 2,
-    maxPlayers: 4,
-    spectatorsCount: 1420,
-    status: "playing",
-    duration: "05m 12s",
-    turnCount: 16,
-    startedAt: "22:11:23",
-    avgLatencyMs: 19,
-    seats: [
-      { seatIndex: 0, name: "Kethan Kumar", score: 18, isBot: false, ping: 18 },
-      { seatIndex: 1, name: "Miss Lakshmi", score: 15, isBot: false, ping: 21 },
-    ],
-  },
-  {
-    id: "m-004",
-    code: "DB3311",
-    game: "Dots & Boxes",
-    hostName: "Arjun Das",
-    playersCount: 3,
-    maxPlayers: 4,
-    spectatorsCount: 2,
-    status: "lobby",
-    duration: "01m 40s",
-    turnCount: 0,
-    startedAt: "22:14:55",
-    avgLatencyMs: 22,
-    seats: [
-      { seatIndex: 0, name: "Arjun Das", score: 0, isBot: false, ping: 20 },
-      { seatIndex: 1, name: "Vikram Malhotra", score: 0, isBot: false, ping: 24 },
-      { seatIndex: 2, name: "Sneha Reddy", score: 0, isBot: false, ping: 22 },
-    ],
-  },
-  {
-    id: "m-005",
-    code: "UN9902",
-    game: "UNO",
-    hostName: "Tanmay Joshi",
-    playersCount: 5,
-    maxPlayers: 6,
-    spectatorsCount: 19,
-    status: "playing",
-    duration: "21m 10s",
-    turnCount: 65,
-    startedAt: "21:55:25",
-    avgLatencyMs: 41,
-    seats: [
-      { seatIndex: 0, name: "Tanmay Joshi", score: 2, isBot: false, ping: 38 },
-      { seatIndex: 1, name: "Swathi Pillai", score: 4, isBot: false, ping: 44 },
-      { seatIndex: 2, name: "Deepak Choudhury", score: 1, isBot: false, ping: 40 },
-      { seatIndex: 3, name: "Meera Nair", score: 3, isBot: false, ping: 39 },
-      { seatIndex: 4, name: "Bot Charlie", score: 5, isBot: true, ping: 5 },
-    ],
-  },
-  {
-    id: "m-006",
-    code: "SL2201",
-    game: "Snakes & Ladders",
-    hostName: "Harish Gupta",
-    playersCount: 4,
-    maxPlayers: 4,
-    spectatorsCount: 0,
-    status: "finished",
-    duration: "16m 30s",
-    turnCount: 52,
-    startedAt: "21:40:00",
-    avgLatencyMs: 30,
-    seats: [
-      { seatIndex: 0, name: "Harish Gupta", score: 100, isBot: false, ping: 28 },
-      { seatIndex: 1, name: "Divya Balan", score: 84, isBot: false, ping: 31 },
-      { seatIndex: 2, name: "Suresh Menon", score: 62, isBot: false, ping: 33 },
-      { seatIndex: 3, name: "Rohan Kapoor", score: 45, isBot: false, ping: 29 },
-    ],
-  },
-  {
-    id: "m-007",
-    code: "HC9012",
-    game: "Hand Cricket",
-    hostName: "Vikram Malhotra",
-    playersCount: 2,
-    maxPlayers: 2,
-    spectatorsCount: 5,
-    status: "abandoned",
-    duration: "03m 15s",
-    turnCount: 4,
-    startedAt: "21:20:10",
-    avgLatencyMs: 140,
-    stateAnomalyNote: "Match abandoned: Host disconnected unexpectedly during Over #1",
-    seats: [
-      { seatIndex: 0, name: "Vikram Malhotra", score: 6, isBot: false, ping: 0, isDisconnected: true },
-      { seatIndex: 1, name: "Suresh Menon", score: 0, isBot: false, ping: 34 },
-    ],
-  },
-  {
-    id: "m-008",
-    code: "ST4091",
-    game: "Star Game",
-    hostName: "Sir Krishna",
-    playersCount: 2,
-    maxPlayers: 2,
-    spectatorsCount: 0,
-    status: "abandoned",
-    duration: "08m 42s",
-    turnCount: 31,
-    startedAt: "21:05:00",
-    avgLatencyMs: 380,
-    hasDesyncWarning: true,
-    stateAnomalyNote: "Engine desynchronization: Client move #31 arrived before move #30 ACK. In-memory state machine quarantined.",
-    seats: [
-      { seatIndex: 0, name: "Sir Krishna", score: 14, isBot: false, ping: 320, isDisconnected: true },
-      { seatIndex: 1, name: "Manish Tiwari", score: 12, isBot: false, ping: 440, isDisconnected: true },
-    ],
-  },
-];
+interface RecentMatch {
+  id: string;
+  roomCode: string;
+  game: string;
+  finishedAt: number;
+  durationMs: number;
+  winnerId?: string | null;
+  participants: MatchParticipant[];
+}
+
+interface DashboardSummary {
+  kpis: { matchesCompletedToday: number };
+  matchTrend: MatchTrendBucket[];
+  recentMatches: RecentMatch[];
+}
+
+type ViewMode = "live" | "completed";
+
+const LIVE_PHASES = ["all", "lobby", "playing", "finished"] as const;
+
+function errorMessage(err: unknown): string {
+  if (err instanceof OperationalAuthError) return "Not authorized for the operational API.";
+  if (err instanceof Error) return err.message;
+  return "Request failed.";
+}
+
+function gameLabel(game: string): string {
+  return GAME_DISPLAY_NAMES[game as GameKind] ?? game;
+}
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function formatClock(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Live room phase → the StatusBadge vocabulary. */
+function phaseBadge(room: OperationalRoomSummary): string {
+  if (room.phase === "playing") return "active";
+  if (room.phase === "lobby") return "pending";
+  return "completed";
+}
+
+function seatBadge(status: OperationalPlayerSummary["seatStatus"]): string {
+  switch (status) {
+    case "active":
+      return "active";
+    case "disconnected_grace":
+      return "warning";
+    case "auto_playing":
+      return "pending";
+    case "quit":
+      return "failed";
+    default:
+      return "inactive";
+  }
+}
 
 export default function AdminMatchesPage() {
+  const [view, setView] = useState<ViewMode>("live");
   const [search, setSearch] = useState("");
   const [gameFilter, setGameFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [matchesList, setMatchesList] = useState<MatchItem[]>(MOCK_MATCHES);
-  const [selectedMatch, setSelectedMatch] = useState<MatchItem | null>(null);
-  const [alertNotice, setAlertNotice] = useState<string | null>(null);
+  const [phaseFilter, setPhaseFilter] = useState<string>("all");
 
-  const filteredMatches = matchesList.filter((m) => {
+  const [rooms, setRooms] = useState<OperationalRoomSummary[] | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [selectedRoom, setSelectedRoom] = useState<OperationalRoomSummary | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<RecentMatch | null>(null);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineCode, setTimelineCode] = useState<string | undefined>(undefined);
+
+  const load = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setIsRefreshing(true);
+    try {
+      const [roomsResult, summaryResult] = await Promise.allSettled([
+        operationalFetch<{ rooms: OperationalRoomSummary[] }>("/api/operational/rooms"),
+        operationalFetch<DashboardSummary>("/api/admin/dashboard/summary"),
+      ]);
+
+      if (roomsResult.status === "fulfilled") setRooms(roomsResult.value.rooms ?? []);
+      if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
+
+      if (roomsResult.status === "rejected" && summaryResult.status === "rejected") {
+        setError(errorMessage(roomsResult.reason));
+      } else {
+        setError(null);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const allRooms = rooms ?? [];
+  const recentMatches = summary?.recentMatches ?? [];
+
+  const term = search.trim().toLowerCase();
+  const filteredRooms = allRooms.filter((room) => {
     const matchesSearch =
-      m.code.toLowerCase().includes(search.toLowerCase()) ||
-      m.game.toLowerCase().includes(search.toLowerCase()) ||
-      m.hostName.toLowerCase().includes(search.toLowerCase());
-    const matchesGame = gameFilter === "all" || m.game === gameFilter;
-    const matchesStatus = statusFilter === "all" || m.status === statusFilter;
-    return matchesSearch && matchesGame && matchesStatus;
+      !term ||
+      room.code.toLowerCase().includes(term) ||
+      room.game.toLowerCase().includes(term) ||
+      room.host.name.toLowerCase().includes(term);
+    const matchesGame = gameFilter === "all" || room.game === gameFilter;
+    const matchesPhase = phaseFilter === "all" || room.phase === phaseFilter;
+    return matchesSearch && matchesGame && matchesPhase;
   });
 
-  const handleTerminateMatch = (match: MatchItem) => {
-    setMatchesList((prev) =>
-      prev.map((m) => (m.id === match.id ? { ...m, status: "abandoned" } : m))
-    );
-    setSelectedMatch(null);
-    setAlertNotice(
-      `Preview updated locally — Match #${match.code} would be force-terminated. No changes were sent to the server.`,
-    );
-    setTimeout(() => setAlertNotice(null), 3000);
-  };
+  const filteredMatches = recentMatches.filter((match) => {
+    const matchesSearch =
+      !term ||
+      match.roomCode.toLowerCase().includes(term) ||
+      match.game.toLowerCase().includes(term);
+    const matchesGame = gameFilter === "all" || match.game === gameFilter;
+    return matchesSearch && matchesGame;
+  });
 
-  const columns: Column<MatchItem>[] = [
+  const playingCount = allRooms.filter((r) => r.phase === "playing").length;
+  const lobbyCount = allRooms.filter((r) => r.phase === "lobby").length;
+  const disconnectedSeats = allRooms.reduce((sum, r) => sum + r.disconnectedCount, 0);
+
+  const liveColumns: Column<OperationalRoomSummary>[] = [
     {
       kind: "property",
       key: "code",
-      header: "Room Code",
+      header: "Room",
       render: (row) => (
-        <span className="font-mono font-bold text-amber-500 dark:text-amber-400">
-          {row.code}
-        </span>
+        <span className="font-mono font-bold text-[var(--chrome-ink)]">{row.code}</span>
       ),
     },
     {
       kind: "property",
       key: "game",
-      header: "Game Title",
-      render: (row) => <span className="font-bold text-[var(--chrome-ink)]">{row.game}</span>,
+      header: "Game",
+      render: (row) => (
+        <span className="font-semibold text-[var(--chrome-ink-soft)]">{gameLabel(row.game)}</span>
+      ),
     },
     {
       kind: "property",
-      key: "hostName",
-      header: "Room Host",
-      render: (row) => <span className="text-[var(--chrome-ink-soft)]">{row.hostName}</span>,
+      key: "lifecycleState",
+      header: "State",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <StatusBadge status={phaseBadge(row)} label={row.phase} size="sm" />
+          <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)]">
+            {row.lifecycleState}
+          </span>
+        </div>
+      ),
     },
     {
       kind: "property",
-      key: "playersCount",
-      header: "Occupancy",
+      key: "host",
+      header: "Host",
+      render: (row) => (
+        <div className="min-w-0">
+          <span className="text-xs font-bold text-[var(--chrome-ink)] block truncate">
+            {row.host.name}
+          </span>
+          <span className="text-[10px] text-[var(--chrome-ink-soft)]">
+            {row.host.isGuest ? "Guest" : "Member"}
+            {row.host.isConnected ? "" : row.host.inGrace ? " • in grace" : " • disconnected"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      kind: "property",
+      key: "playerCount",
+      header: "Seats",
       align: "center",
       render: (row) => (
-        <span className="px-2 py-0.5 rounded-md bg-[var(--chrome-control)] text-[var(--chrome-ink)] font-mono text-xs font-bold border border-[var(--chrome-border)]">
-          {row.playersCount} / {row.maxPlayers}
+        <span className="font-mono text-xs text-[var(--chrome-ink)]">
+          {row.humanCount}H
+          {row.botCount > 0 ? ` + ${row.botCount}B` : ""}
+          {row.disconnectedCount > 0 ? (
+            <span className="text-rose-500 font-bold"> • {row.disconnectedCount} down</span>
+          ) : null}
         </span>
       ),
     },
     {
       kind: "property",
-      key: "status",
-      header: "Match Status",
+      key: "matchDurationMs",
+      header: "Elapsed",
+      align: "right",
       render: (row) => (
-        <StatusBadge
-          status={
-            row.status === "playing"
-              ? "active"
-              : row.status === "lobby"
-              ? "pending"
-              : row.status === "finished"
-              ? "completed"
-              : "critical"
-          }
-          label={row.status}
-          size="sm"
-        />
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">
+          {row.matchStartedAt ? formatDuration(row.matchDurationMs) : "—"}
+        </span>
+      ),
+    },
+  ];
+
+  const completedColumns: Column<RecentMatch>[] = [
+    {
+      kind: "property",
+      key: "roomCode",
+      header: "Room",
+      render: (row) => (
+        <span className="font-mono font-bold text-[var(--chrome-ink)]">{row.roomCode}</span>
       ),
     },
     {
       kind: "property",
-      key: "duration",
-      header: "Duration",
-      align: "right",
-      render: (row) => <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">{row.duration}</span>,
+      key: "game",
+      header: "Game",
+      render: (row) => (
+        <span className="font-semibold text-[var(--chrome-ink-soft)]">{gameLabel(row.game)}</span>
+      ),
     },
     {
       kind: "property",
-      key: "avgLatencyMs",
-      header: "Mesh Ping",
+      key: "participants",
+      header: "Players",
+      align: "center",
+      render: (row) => (
+        <span className="font-mono text-xs text-[var(--chrome-ink)]">{row.participants.length}</span>
+      ),
+    },
+    {
+      kind: "property",
+      key: "winnerId",
+      header: "Winner",
+      render: (row) => {
+        const winner = row.participants.find((p) => p.isWinner);
+        return (
+          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+            {winner ? (
+              <>
+                <Trophy className="w-3 h-3" />
+                {winner.displayName ?? winner.playerId}
+              </>
+            ) : (
+              <span className="text-[var(--chrome-ink-soft)] font-normal">No winner recorded</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      kind: "property",
+      key: "durationMs",
+      header: "Duration",
       align: "right",
       render: (row) => (
-        <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-          {row.avgLatencyMs} ms
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">
+          {formatDuration(row.durationMs)}
+        </span>
+      ),
+    },
+    {
+      kind: "property",
+      key: "finishedAt",
+      header: "Finished",
+      align: "right",
+      render: (row) => (
+        <span className="font-mono text-xs text-[var(--chrome-ink-soft)]">
+          {formatClock(row.finishedAt)}
         </span>
       ),
     },
@@ -342,48 +352,55 @@ export default function AdminMatchesPage() {
       value: gameFilter,
       options: [
         { label: "All Games", value: "all" },
-        { label: "Ludo", value: "Ludo" },
-        { label: "Rummy", value: "Rummy" },
-        { label: "Word Building", value: "Word Building" },
-        { label: "Dots & Boxes", value: "Dots & Boxes" },
-        { label: "UNO", value: "UNO" },
-        { label: "Snakes & Ladders", value: "Snakes & Ladders" },
+        ...(Object.keys(GAME_DISPLAY_NAMES) as GameKind[]).map((g) => ({
+          label: GAME_DISPLAY_NAMES[g],
+          value: g,
+        })),
       ],
       onChange: setGameFilter,
     },
-    {
-      id: "status",
-      label: "Status",
-      value: statusFilter,
-      options: [
-        { label: "All Statuses", value: "all" },
-        { label: "Playing", value: "playing" },
-        { label: "Lobby", value: "lobby" },
-        { label: "Finished", value: "finished" },
-        { label: "Abandoned", value: "abandoned" },
-      ],
-      onChange: setStatusFilter,
-    },
+    ...(view === "live"
+      ? [
+          {
+            id: "phase",
+            label: "Phase",
+            value: phaseFilter,
+            options: LIVE_PHASES.map((p) => ({
+              label: p === "all" ? "All Phases" : p.charAt(0).toUpperCase() + p.slice(1),
+              value: p,
+            })),
+            onChange: setPhaseFilter,
+          } satisfies FilterOption,
+        ]
+      : []),
   ];
 
-  const isSearchActive = search.trim() !== "";
-  const isFilterActive = gameFilter !== "all" || statusFilter !== "all";
+  const isSearchActive = term !== "";
+  const isFilterActive = gameFilter !== "all" || phaseFilter !== "all";
+  const resetFilters = () => {
+    setGameFilter("all");
+    setPhaseFilter("all");
+  };
 
-  const emptyTitle = matchesList.length === 0
-    ? "No match rooms recorded"
+  const emptyTitle = error
+    ? "Match data unavailable"
     : isSearchActive
-    ? "No matching rooms found"
-    : isFilterActive
-    ? "No matches meet selected filters"
-    : "No matches found";
+      ? "No matches found"
+      : isFilterActive
+        ? "No matches match selected filters"
+        : view === "live"
+          ? "No live rooms right now"
+          : "No completed matches recorded yet";
 
-  const emptyDesc = matchesList.length === 0
-    ? "There are currently no active or recent multiplayer game rooms in the engine."
+  const emptyDesc = error
+    ? error
     : isSearchActive
-    ? `No matches match "${search}". Try searching with a different room code, host, or game.`
-    : isFilterActive
-    ? "No rooms meet the active game and status filter criteria."
-    : "There are currently no items matching your criteria.";
+      ? `Nothing matches "${search}". Try a room code, host name, or game.`
+      : isFilterActive
+        ? "No rooms meet the active filter criteria."
+        : view === "live"
+          ? "No rooms are currently open on this server process."
+          : "Completed matches appear here once players finish a game.";
 
   const emptyIcon = isSearchActive ? (
     <Search className="w-6 h-6" />
@@ -404,221 +421,328 @@ export default function AdminMatchesPage() {
   ) : isFilterActive ? (
     <button
       type="button"
-      onClick={() => {
-        setGameFilter("all");
-        setStatusFilter("all");
-      }}
+      onClick={resetFilters}
       className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[var(--chrome-control)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] text-xs font-bold hover:bg-[var(--chrome-control-hi)] active:scale-95 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
     >
       Reset Filters
     </button>
   ) : undefined;
 
+  const trendData = (summary?.matchTrend ?? []).map((bucket) => ({
+    date: bucket.date.slice(5),
+    count: bucket.count,
+  }));
+
   return (
     <AdminLayout>
       <PageHeader
-        title="Live Match Management"
-        description="Monitor active multiplayer sessions, inspect in-memory seat states, and arbitrate game engine state machines."
+        title="Match Management"
+        description="Live rooms from the in-memory RoomManager, and completed matches from the match record."
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Matches" }]}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTimelineCode(undefined);
+                setTimelineOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] font-bold text-xs transition-all cursor-pointer active:scale-95"
+            >
+              <History className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Room Timeline</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void load(true)}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-black text-xs shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+            </button>
+          </div>
+        }
       />
 
-      <MockDataBanner kind="mock" />
-
-      {alertNotice && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
-          <span>✓ {alertNotice}</span>
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+          Match data unavailable: {error}
         </div>
       )}
 
-      {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard
-          title="Active Match Rooms"
-          value="18"
+          title="Rooms In Play"
+          value={rooms ? String(playingCount) : "—"}
           icon={<Gamepad2 className="w-5 h-5 text-amber-500" />}
-          subtitle="In-memory RoomManager"
+          subtitle={rooms ? `${allRooms.length} room(s) open` : "Rooms unavailable"}
         />
         <StatCard
-          title="Lobby Gatherings"
-          value="4"
+          title="Lobbies Waiting"
+          value={rooms ? String(lobbyCount) : "—"}
           icon={<Users className="w-5 h-5 text-amber-500" />}
           subtitle="Awaiting match start"
         />
         <StatCard
           title="Completed Today"
-          value="444"
+          value={summary ? String(summary.kpis.matchesCompletedToday) : "—"}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-          trend={{ value: 18.4, direction: "up", label: "vs yesterday" }}
+          subtitle="Since 00:00 UTC"
         />
         <StatCard
-          title="Avg Latency (Mesh)"
-          value="26 ms"
-          icon={<Wifi className="w-5 h-5 text-orange-500" />}
-          subtitle="STUN relay verified"
+          title="Seats In Disconnect Grace"
+          value={rooms ? String(disconnectedSeats) : "—"}
+          icon={<PlugZap className="w-5 h-5 text-orange-500" />}
+          subtitle={disconnectedSeats > 0 ? "Awaiting reconnect" : "All seats connected"}
         />
       </div>
 
-      {/* Chart: Match Throughput */}
       <div className="mb-6">
         <ChartCard
-          title="Hourly Match Completion Throughput"
-          subtitle="Finished vs active match volume over the last 6 hours"
+          title="Daily Match Completions"
+          subtitle="Completed matches per UTC day, from the match record"
         >
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MOCK_MATCH_HISTORY_CHART}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
-              <XAxis dataKey="time" stroke="#7A5E45" fontSize={11} />
-              <YAxis stroke="#7A5E45" fontSize={11} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#131926",
-                  borderColor: "#66799A",
-                  borderRadius: 12,
-                  fontSize: 12,
-                  color: "#F1F5F9",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="completed"
-                name="Completed Matches"
-                stroke="#10b981"
-                fill="#10b981"
-                fillOpacity={0.15}
-              />
-              <Area
-                type="monotone"
-                dataKey="active"
-                name="Active Concurrency"
-                stroke="#F59E0B"
-                fill="#F59E0B"
-                fillOpacity={0.2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {trendData.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[var(--chrome-ink-soft)]">
+              No completion history available yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#A17C4E" opacity={0.15} />
+                <XAxis dataKey="date" stroke="#7A5E45" fontSize={11} />
+                <YAxis stroke="#7A5E45" fontSize={11} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#131926",
+                    borderColor: "#66799A",
+                    borderRadius: 12,
+                    fontSize: 12,
+                    color: "#F1F5F9",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  name="Completed Matches"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.15}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
       </div>
 
-      {/* Search & Filter Toolbar */}
+      {/* Live vs completed are different record types from different sources —
+          switching view rather than blending them into one invented row shape. */}
+      <div
+        role="group"
+        aria-label="Choose match view"
+        className="inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] mb-4"
+      >
+        {(["live", "completed"] as ViewMode[]).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setView(mode)}
+            aria-pressed={view === mode}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              view === mode
+                ? "bg-amber-500 text-zinc-950 shadow-xs"
+                : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)]"
+            }`}
+          >
+            {mode === "live" ? `Live Rooms (${allRooms.length})` : `Recently Completed (${recentMatches.length})`}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by room code, host, or game title..."
+          placeholder="Search by room code, host, or game..."
           ariaLabel="Search matches"
         />
-        <FilterBar
-          filters={filters}
-          onReset={() => {
-            setGameFilter("all");
-            setStatusFilter("all");
-          }}
-        />
+        <FilterBar filters={filters} onReset={resetFilters} />
       </div>
 
-      {/* Matches Data Table */}
-      <DataTable
-        columns={columns}
-        data={filteredMatches}
-        onRowClick={(row) => setSelectedMatch(row)}
-        getRowAriaLabel={(row) => `Open details for match ${row.code}`}
-        emptyMessage={emptyTitle}
-        emptyDescription={emptyDesc}
-        emptyIcon={emptyIcon}
-        emptyAction={emptyAction}
-      />
+      {isLoading ? (
+        <LoadingState variant="table" label="Loading match data" />
+      ) : view === "live" ? (
+        <DataTable
+          columns={liveColumns}
+          data={filteredRooms}
+          onRowClick={(row) => setSelectedRoom(row)}
+          getRowAriaLabel={(row) => `Open details for room ${row.code}`}
+          emptyMessage={emptyTitle}
+          emptyDescription={emptyDesc}
+          emptyIcon={emptyIcon}
+          emptyAction={emptyAction}
+        />
+      ) : (
+        <DataTable
+          columns={completedColumns}
+          data={filteredMatches}
+          onRowClick={(row) => setSelectedMatch(row)}
+          getRowAriaLabel={(row) => `Open details for match ${row.roomCode}`}
+          emptyMessage={emptyTitle}
+          emptyDescription={emptyDesc}
+          emptyIcon={emptyIcon}
+          emptyAction={emptyAction}
+        />
+      )}
 
-      {/* Match Details Slide-Over Drawer */}
+      {/* Live room drawer — real seat state, including grace and takeover */}
       <DetailDrawer
-        isOpen={Boolean(selectedMatch)}
-        onClose={() => setSelectedMatch(null)}
-        title={`Room #${selectedMatch?.code} (${selectedMatch?.game})`}
-        subtitle={`Hosted by ${selectedMatch?.hostName} • Started at ${selectedMatch?.startedAt}`}
+        isOpen={Boolean(selectedRoom)}
+        onClose={() => setSelectedRoom(null)}
+        title={selectedRoom ? `Room ${selectedRoom.code} (${gameLabel(selectedRoom.game)})` : "Room"}
+        subtitle={
+          selectedRoom
+            ? `Hosted by ${selectedRoom.host.name} • opened ${formatClock(selectedRoom.createdAt)}`
+            : undefined
+        }
         badge={
-          selectedMatch && (
-            <StatusBadge
-              status={selectedMatch.status === "playing" ? "active" : "pending"}
-              label={selectedMatch.status}
-              size="sm"
-            />
+          selectedRoom && (
+            <StatusBadge status={phaseBadge(selectedRoom)} label={selectedRoom.lifecycleState} size="sm" />
           )
         }
         footer={
-          selectedMatch && selectedMatch.status === "playing" && (
+          selectedRoom && (
             <button
               type="button"
-              onClick={() => handleTerminateMatch(selectedMatch)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+              onClick={() => {
+                setTimelineCode(selectedRoom.code);
+                setTimelineOpen(true);
+              }}
+              className="w-full h-10 rounded-xl bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5"
             >
-              <Trash2 className="w-4 h-4" />
-              <span>Force Terminate Match</span>
+              <History className="w-3.5 h-3.5" aria-hidden="true" />
+              View Full Event Timeline
             </button>
           )
         }
       >
-        {selectedMatch && (
+        {selectedRoom && (
           <div className="space-y-6">
-            {selectedMatch.stateAnomalyNote && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-600 dark:text-amber-400 space-y-1">
-                <div className="font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" /> State Machine Diagnostic Anomaly
-                </div>
-                <p className="text-[11px] leading-relaxed">{selectedMatch.stateAnomalyNote}</p>
-              </div>
-            )}
-
             <InfoCard
-              title="Game Engine Telemetry"
+              title="Room State"
               fields={[
-                { label: "Room ID", value: selectedMatch.id, isMono: true },
-                { label: "Turn Counter", value: `${selectedMatch.turnCount} turns` },
-                { label: "Elapsed Time", value: selectedMatch.duration },
-                { label: "Average Ping", value: `${selectedMatch.avgLatencyMs} ms`, isMono: true },
-                { label: "Live Spectators", value: `${selectedMatch.spectatorsCount ?? 0} spectators` },
-                { label: "Engine Status", value: selectedMatch.hasDesyncWarning ? "DESYNC_QUARANTINE" : "SYNCHRONIZED", isMono: true },
+                { label: "Room Code", value: selectedRoom.code, isMono: true },
+                { label: "Lifecycle", value: selectedRoom.lifecycleState, isMono: true },
+                { label: "Phase", value: selectedRoom.phase },
+                {
+                  label: "Elapsed",
+                  value: selectedRoom.matchStartedAt ? formatDuration(selectedRoom.matchDurationMs) : "Not started",
+                },
+                { label: "Humans / Bots", value: `${selectedRoom.humanCount} / ${selectedRoom.botCount}` },
+                { label: "Spectators", value: selectedRoom.spectatorCount },
+                { label: "Disconnected Seats", value: selectedRoom.disconnectedCount },
+                { label: "Server Takeover Active", value: selectedRoom.hasTakeover ? "Yes" : "No" },
+                { label: "Sealed", value: selectedRoom.sealed ? "Yes" : "No" },
               ]}
             />
 
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-3">
-                Occupied Seat Allocation ({selectedMatch.seats.length} Seats)
+                Seats ({selectedRoom.players.length})
               </h4>
               <div className="space-y-2">
-                {selectedMatch.seats.map((seat) => (
+                {selectedRoom.players.map((seat, index) => (
                   <div
-                    key={seat.seatIndex}
-                    className="p-3 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] flex items-center justify-between"
+                    key={seat.id}
+                    className="p-3 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] flex items-start justify-between gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono text-xs font-bold flex items-center justify-center border border-amber-500/30">
-                        #{seat.seatIndex + 1}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono text-xs font-bold flex items-center justify-center border border-amber-500/30 shrink-0">
+                        #{index + 1}
                       </span>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-bold text-[var(--chrome-ink)]">
-                            {seat.name}
-                          </span>
-                          {seat.isBot && (
-                            <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 rounded">
-                              AI BOT
+                          <span className="text-xs font-bold text-[var(--chrome-ink)]">{seat.name}</span>
+                          {seat.isHost && (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold px-1.5 rounded">
+                              HOST
                             </span>
                           )}
-                          {seat.isDisconnected && (
-                            <span className="text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold px-1.5 rounded">
-                              DISCONNECTED {seat.reconnectSecondsLeft ? `(${seat.reconnectSecondsLeft}s)` : ""}
+                          {seat.playerType === "bot" && (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold px-1.5 rounded">
+                              BOT
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono">
-                          Ping: {seat.ping}ms
+                        <span className="text-[11px] text-[var(--chrome-ink-soft)] font-mono block">
+                          {seat.accountType}
+                          {seat.isAutoPlaying
+                            ? ` • auto-playing (${seat.autoPlayReason ?? "unknown"}), ${seat.autoTurnsPlayed}${seat.autoTurnCap ? `/${seat.autoTurnCap}` : ""} turns`
+                            : ""}
+                          {seat.remainingGraceMs != null
+                            ? ` • ${Math.ceil(seat.remainingGraceMs / 1000)}s grace left`
+                            : ""}
                         </span>
                       </div>
                     </div>
+                    <StatusBadge status={seatBadge(seat.seatStatus)} label={seat.seatStatus} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
 
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-amber-500 dark:text-amber-400 font-mono">
-                        {seat.score} pts
+      {/* Completed match drawer */}
+      <DetailDrawer
+        isOpen={Boolean(selectedMatch)}
+        onClose={() => setSelectedMatch(null)}
+        title={selectedMatch ? `Match ${selectedMatch.roomCode} (${gameLabel(selectedMatch.game)})` : "Match"}
+        subtitle={selectedMatch ? `Finished ${new Date(selectedMatch.finishedAt).toLocaleString()}` : undefined}
+      >
+        {selectedMatch && (
+          <div className="space-y-6">
+            <InfoCard
+              title="Match Record"
+              fields={[
+                { label: "Match ID", value: selectedMatch.id, isMono: true },
+                { label: "Room Code", value: selectedMatch.roomCode, isMono: true },
+                { label: "Duration", value: formatDuration(selectedMatch.durationMs) },
+                { label: "Participants", value: selectedMatch.participants.length },
+              ]}
+            />
+
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--chrome-ink)] mb-3">
+                Participants ({selectedMatch.participants.length})
+              </h4>
+              <div className="space-y-2">
+                {selectedMatch.participants.map((participant) => (
+                  <div
+                    key={participant.playerId}
+                    className="p-3 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-[var(--chrome-ink)] block truncate">
+                        {participant.displayName ?? participant.playerId}
                       </span>
+                      <span className="text-[10px] font-mono text-[var(--chrome-ink-soft)] truncate block">
+                        {participant.playerId}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {participant.isBot && (
+                        <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold px-1.5 rounded">
+                          BOT
+                        </span>
+                      )}
+                      {participant.isWinner && (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold px-1.5 rounded inline-flex items-center gap-1">
+                          <Trophy className="w-3 h-3" /> WINNER
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -627,6 +751,12 @@ export default function AdminMatchesPage() {
           </div>
         )}
       </DetailDrawer>
+
+      <RoomTimelineDrawer
+        isOpen={timelineOpen}
+        onClose={() => setTimelineOpen(false)}
+        initialCode={timelineCode}
+      />
     </AdminLayout>
   );
 }

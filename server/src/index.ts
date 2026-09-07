@@ -20,6 +20,7 @@ import {
 } from "./security/operationalAuth.js";
 import { createOperationalRouter } from "./observability/OperationalController.js";
 import { createDashboardRouter } from "./admin/DashboardController.js";
+import { createAuditRouter } from "./admin/AuditController.js";
 import { createAdminUsersRouter } from "./admin/AdminUsersController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
@@ -311,6 +312,17 @@ app.get("/api/rooms/:code/alive", (req, res) => {
  */
 app.use("/api/admin/dashboard", createDashboardRouter());
 app.use("/api/admin/users", createAdminUsersRouter());
+
+/**
+ * Audit Logs console — settlement events + admin wallet adjustments merged
+ * into one feed (see admin/AuditController.ts). Guarded the same way
+ * `/api/economy` is: a deployment with no economy store configured still
+ * boots, just without this surface, since both sources live in the economy
+ * repository.
+ */
+if (economyService) {
+  app.use("/api/admin/audit", createAuditRouter(economyService));
+}
 
 /**
  * Last stop for anything a handler threw.

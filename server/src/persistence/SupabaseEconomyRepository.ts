@@ -685,6 +685,29 @@ export class SupabaseEconomyRepository implements EconomyRepository {
     return rows.map(toSettlementEvent);
   }
 
+  async listRecentSettlementEvents(opts?: { limit?: number; offset?: number }): Promise<SettlementEventRecord[]> {
+    const limit = Math.min(Math.max(opts?.limit ?? 50, 0), 200);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+    const rows = await this.select<SettlementEventRow>(
+      "settlement_events_safe",
+      `order=created_at.desc,id.desc&limit=${limit}&offset=${offset}`,
+    );
+    return rows.map(toSettlementEvent);
+  }
+
+  async listLedgerEntriesByType(
+    entryType: WalletLedgerEntryType,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]> {
+    const limit = Math.min(Math.max(opts?.limit ?? 50, 0), 200);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+    const rows = await this.select<LedgerRow>(
+      "coin_ledger_entries_safe",
+      `entry_type=eq.${encodeURIComponent(entryType)}&order=created_at.desc,id.desc&limit=${limit}&offset=${offset}`,
+    );
+    return rows.map(toLedgerEntry);
+  }
+
   /* ═══════════════════════════ mutations ═══════════════════════════════ */
 
   async ensureWallet(identityId: string): Promise<CoinWalletRecord> {

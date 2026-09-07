@@ -7,13 +7,9 @@ import LoadingState from "../../../components/admin/loading-state";
 
 import AdminDashboardPage from "../dashboard";
 import AdminUsersPage from "../users";
-import AdminMatchesPage from "../matches";
 import AdminFeatureFlagsPage from "../feature-flags";
 import AdminAnnouncementsPage from "../announcements";
-import AdminLeaderboardsPage from "../leaderboards";
 import AdminAnalyticsPage from "../analytics";
-import AdminSystemHealthPage from "../system-health";
-import AdminAuditLogsPage from "../audit-logs";
 import AdminSettingsPage from "../settings";
 
 function renderRoute(ui: React.ReactElement) {
@@ -62,8 +58,43 @@ describe("Admin Console — LoadingState Component Integration", () => {
 });
 
 describe("Admin Users Page — Search & Filter Empty States", () => {
+  function stubOneRealUser() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/users")) {
+          return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+              users: [
+                {
+                  id: "usr-1",
+                  name: "Kethan Kumar",
+                  email: "kethan@bhalyam.io",
+                  role: "member",
+                  matchesPlayed: 0,
+                  winRate: "0%",
+                  rating: 400,
+                  joinedAt: Date.now(),
+                  lastActiveAt: null,
+                  favoriteGame: "—",
+                },
+              ],
+              total: 1,
+            }),
+          };
+        }
+        return { status: 200, ok: true, json: async () => ({}) };
+      }),
+    );
+  }
+
   it("displays 'No search results found' and clears search when clicking Clear Search", async () => {
+    stubOneRealUser();
     renderRoute(<AdminUsersPage />);
+    await waitFor(() => expect(screen.getByText("Kethan Kumar")).toBeDefined());
     const searchInput = screen.getByPlaceholderText(/Search by name, email/i);
     fireEvent.change(searchInput, { target: { value: "nonexistent_user_query_12345" } });
 
@@ -78,16 +109,17 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
     await waitFor(() => {
       expect(screen.queryByText("No search results found")).toBeNull();
     });
+    vi.unstubAllGlobals();
   });
 
   it("displays 'No users match selected filters' and resets filters on Reset Filters click", async () => {
+    stubOneRealUser();
     renderRoute(<AdminUsersPage />);
+    await waitFor(() => expect(screen.getByText("Kethan Kumar")).toBeDefined());
     const roleSelect = screen.getByLabelText("Filter by Role");
-    const statusSelect = screen.getByLabelText("Filter by Status");
 
-    // Guest + Warning combination has 0 entries in mock data
-    fireEvent.change(roleSelect, { target: { value: "guest" } });
-    fireEvent.change(statusSelect, { target: { value: "warning" } });
+    // The only seeded user is role "member" — filtering to "admin" yields zero.
+    fireEvent.change(roleSelect, { target: { value: "admin" } });
 
     await waitFor(() => {
       expect(screen.getByText("No users match selected filters")).toBeDefined();
@@ -99,48 +131,13 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
     await waitFor(() => {
       expect(screen.queryByText("No users match selected filters")).toBeNull();
     });
+    vi.unstubAllGlobals();
   });
 });
 
-describe("Admin Matches Page — Search & Filter Empty States", () => {
-  it("displays 'No matching rooms found' on empty search and clears it", async () => {
-    renderRoute(<AdminMatchesPage />);
-    const searchInput = screen.getByPlaceholderText(/Search by room code, host/i);
-    fireEvent.change(searchInput, { target: { value: "ZZ99999" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("No matching rooms found")).toBeDefined();
-    });
-
-    const clearBtn = screen.getByText("Clear Search");
-    fireEvent.click(clearBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("No matching rooms found")).toBeNull();
-    });
-  });
-
-  it("displays 'No matches meet selected filters' on zero-result filter combination", async () => {
-    renderRoute(<AdminMatchesPage />);
-    const gameSelect = screen.getByLabelText("Filter by Game");
-    const statusSelect = screen.getByLabelText("Filter by Status");
-
-    // Ludo + Abandoned combination has 0 entries
-    fireEvent.change(gameSelect, { target: { value: "Ludo" } });
-    fireEvent.change(statusSelect, { target: { value: "abandoned" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("No matches meet selected filters")).toBeDefined();
-    });
-
-    const resetBtn = screen.getByText("Reset Filters");
-    fireEvent.click(resetBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("No matches meet selected filters")).toBeNull();
-    });
-  });
-});
+// Matches Page empty/filter-empty coverage moved to matchesIntegration.test.tsx —
+// that page now sources live rooms and completed matches from real
+// endpoints instead of a hardcoded array with seeded "zero-result" rows.
 
 describe("Admin Feature Flags Page — Search & Filter Empty States", () => {
   it("displays 'No feature flags found' on empty search and clears it", async () => {
@@ -198,61 +195,12 @@ describe("Admin Announcements Page — Search & Empty Tab States", () => {
   });
 });
 
-describe("Admin Leaderboards Page — Search & Filter Empty States", () => {
-  it("displays 'No ranked players found' on empty search and clears it", async () => {
-    renderRoute(<AdminLeaderboardsPage />);
-    const searchInput = screen.getByPlaceholderText(/Search by player name or game/i);
-    fireEvent.change(searchInput, { target: { value: "UnknownPlayer999" } });
+// Leaderboards Page empty/filter-empty coverage moved to
+// leaderboardsIntegration.test.tsx — that page queries /api/ranking/leaderboard
+// server-side and dropped the "season" filter (no real backing field).
 
-    await waitFor(() => {
-      expect(screen.getByText("No ranked players found")).toBeDefined();
-    });
-
-    const clearBtn = screen.getByText("Clear Search");
-    fireEvent.click(clearBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("No ranked players found")).toBeNull();
-    });
-  });
-
-  it("displays 'No standings match selected filters' when filter produces 0 rows", async () => {
-    renderRoute(<AdminLeaderboardsPage />);
-    const seasonSelect = screen.getByLabelText("Filter by Season");
-    // Season 1 (Archived) has 0 entries in mock data
-    fireEvent.change(seasonSelect, { target: { value: "Season 1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("No standings match selected filters")).toBeDefined();
-    });
-
-    const resetBtn = screen.getByText("Reset Filters");
-    fireEvent.click(resetBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("No standings match selected filters")).toBeNull();
-    });
-  });
-});
-
-describe("Admin Audit Logs Page — Search & Severity Filter Empty States", () => {
-  it("displays 'No audit logs found' on empty search and clears it", async () => {
-    renderRoute(<AdminAuditLogsPage />);
-    const searchInput = screen.getByPlaceholderText(/Search by actor, action code/i);
-    fireEvent.change(searchInput, { target: { value: "nonexistent_actor_ip_999" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("No audit logs found")).toBeDefined();
-    });
-
-    const clearBtn = screen.getByText("Clear Search");
-    fireEvent.click(clearBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText("No audit logs found")).toBeNull();
-    });
-  });
-});
+// Audit Logs Page empty-search coverage moved to auditLogsIntegration.test.tsx —
+// that page now queries /api/admin/audit rather than filtering a hardcoded array.
 
 describe("Admin Dashboard, Analytics & Settings Pages — State Transitions", () => {
   beforeEach(() => {

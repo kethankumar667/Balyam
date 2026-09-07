@@ -689,6 +689,26 @@ export interface EconomyRepository {
    */
   listSettlementEvents(matchId: string): Promise<SettlementEventRecord[]>;
 
+  /**
+   * The same `settlement_events` trail as `listSettlementEvents`, but across
+   * every match rather than one — the platform-wide feed the admin Audit
+   * Logs console reads. Newest first. `opts.limit` defaults to 50, clamped
+   * to a hard max of 200.
+   */
+  listRecentSettlementEvents(opts?: { limit?: number; offset?: number }): Promise<SettlementEventRecord[]>;
+
+  /**
+   * Ledger entries of one `entryType` across every wallet, newest first —
+   * used by the admin Audit Logs console to surface `ADMIN_ADJUSTMENT` rows
+   * (manual operator top-ups) platform-wide, the same way
+   * `listRecentSettlementEvents` surfaces settlement writes. `opts.limit`
+   * defaults to 50, clamped to a hard max of 200.
+   */
+  listLedgerEntriesByType(
+    entryType: WalletLedgerEntryType,
+    opts?: { limit?: number; offset?: number },
+  ): Promise<CoinLedgerEntryRecord[]>;
+
   /* ── mutations ── */
 
   /**
