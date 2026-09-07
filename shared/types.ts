@@ -2759,6 +2759,15 @@ export interface ServerToClientEvents {
   "room:startPreflight": (payload: StartPreflightPayload) => void;
   /** Broadcasted when an in-flight start attempt is cancelled or times out. */
   "room:startCancelled": (payload: { startAttemptId: string; reason: string }) => void;
+  /**
+   * Sent to exactly ONE socket — the connected seat belonging to the guest
+   * who just won a nonzero prize — never broadcast to a room. `rawCode` is
+   * the ONLY time this code ever leaves the server in plaintext: the
+   * database stores only its hash, so a client that misses this event (or
+   * discards it) cannot recover the code any other way. See
+   * `RoomManager.handleVouchersIssued`'s own doc comment.
+   */
+  "economy:voucherIssued": (payload: { matchId: string; coinAmount: string; rawCode: string }) => void;
 }
 
 export interface ClientToServerEvents {

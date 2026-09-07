@@ -1,4 +1,5 @@
 import { PostgrestClient, PostgrestError, type PostgrestConfig } from "./postgrest.js";
+import { logger } from "../lib/logger.js";
 import {
   EconomyInfrastructureError,
   IdentityNotFoundError,
@@ -722,6 +723,21 @@ export class SupabaseEconomyRepository implements EconomyRepository {
           msg.includes("PGRST202") ||
           msg.includes("p_participant_debits")
         ) {
+          // This is NOT a quiet compatibility shim — it means the production
+          // database is missing supabase/migrations/20260906000001_economy_
+          // participant_debits.sql, and every match from this point on will
+          // silently bill the host for every seat instead of debiting each
+          // participant's own wallet (the exact 2026-09-07 incident this log
+          // line exists to make impossible to miss a second time). Logged at
+          // error level, every single occurrence — this must be applied to
+          // the database immediately, not tolerated as a steady state.
+          logger.error({
+            message:
+              "commit_match_entry RPC does not accept p_participant_debits — falling back to legacy " +
+              "host-only billing. Apply supabase/migrations/20260906000001_economy_participant_debits.sql " +
+              `to this database now. Match ${input.matchId} will incorrectly bill the host for every seat. Underlying error: ${msg}`,
+            module: "ECONOMY",
+          });
           envelope = await this.rpc<RawEnvelope<SettlementRow>>("commit_match_entry", baseParams);
         } else {
           throw err;

@@ -543,4 +543,76 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     const completed = await service.listTerminalIntents({ status: "COMPLETED" });
     expect(completed.map((i) => i.matchId).sort()).toEqual([forfeitMatchId, refundMatchId, settleMatchId].sort());
   });
+
+  /**
+   * 2026-09-07 finding: a winning guest's raw voucher code was generated
+   * then discarded — `economySettlementQueue.ts` (the superseded queue) and
+   * this worker both only ever logged a COUNT of issued vouchers. Since the
+   * repository stores only a hash of the code, that meant the win was
+   * permanently unclaimable. `onVouchersIssued` is the fix: it must fire,
+   * with the real raw code, exactly once per genuinely-new settlement.
+   */
+  it("fires onVouchersIssued with the raw code when a guest wins a nonzero prize", async () => {
+    const repo = freshRepo();
+    seedHost(repo, MEMBER_A);
+    const matchId = "match_voucher_delivery";
+    const service = freshService(repo);
+    await commitTwoSeatMatch(service, matchId, MEMBER_A);
+
+    const received: { matchId: string; vouchers: { identityId: string; rawCode: string; coinAmount: string }[] }[] = [];
+    const worker = new DurableSettlementWorker(service, {
+      onVouchersIssued: (m, vouchers) => received.push({ matchId: m, vouchers }),
+    });
+
+    const GUEST_WINNER = "guest_voucher_delivery_test";
+    await worker.enqueueSettlement({
+      matchId,
+      isValidRanking: true,
+      participants: [
+        { identityId: GUEST_WINNER, identityKind: "guest", placement: 1 },
+        { identityId: MEMBER_A, identityKind: "member", placement: 2 },
+      ],
+    });
+    await worker.drain();
+
+    expect(received).toHaveLength(1);
+    expect(received[0].matchId).toBe(matchId);
+    expect(received[0].vouchers).toHaveLength(1);
+    expect(received[0].vouchers[0].identityId).toBe(GUEST_WINNER);
+    expect(received[0].vouchers[0].coinAmount).toBe("160"); // 2-seat 1st place
+    expect(received[0].vouchers[0].rawCode.length).toBeGreaterThan(0);
+  });
+
+  it("does not fire onVouchersIssued on an idempotent replay of an already-settled match", async () => {
+    const repo = freshRepo();
+    seedHost(repo, MEMBER_A);
+    const matchId = "match_voucher_replay";
+    const service = freshService(repo);
+    await commitTwoSeatMatch(service, matchId, MEMBER_A);
+
+    const received: unknown[] = [];
+    const request: SettleMatchEconomyRequest = {
+      matchId,
+      isValidRanking: true,
+      participants: [
+        { identityId: "guest_voucher_replay_test", identityKind: "guest", placement: 1 },
+        { identityId: MEMBER_A, identityKind: "member", placement: 2 },
+      ],
+    };
+    const worker = new DurableSettlementWorker(service, {
+      onVouchersIssued: (m, vouchers) => received.push({ m, vouchers }),
+    });
+    await worker.enqueueSettlement(request);
+    await worker.drain();
+    expect(received).toHaveLength(1);
+
+    // A second `enqueueSettlement` for the SAME matchId hits the terminal-
+    // intent table's own uniqueness (matchId is its idempotency key): it
+    // returns the existing COMPLETED intent rather than creating new work,
+    // so the worker has nothing left to claim/process — the callback must
+    // not fire a second time either way.
+    await worker.enqueueSettlement(request);
+    await worker.drain();
+    expect(received).toHaveLength(1);
+  });
 });

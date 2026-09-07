@@ -106,6 +106,15 @@ services:
         source: /contact
         destination: /contact/index.html
       - type: rewrite
+        source: /reviews/write
+        destination: /reviews/write/index.html
+      - type: rewrite
+        source: /feedback
+        destination: /feedback/index.html
+      - type: rewrite
+        source: /testimonials
+        destination: /testimonials/index.html
+      - type: rewrite
         source: /terms
         destination: /terms/index.html
       - type: rewrite

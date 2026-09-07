@@ -2314,6 +2314,63 @@ describe("P0 seat-capacity contract (2026-08-28 production incident regression)"
   });
 });
 
+/**
+ * 2026-09-07 finding: a winning guest's voucher was generated then
+ * discarded — nothing ever delivered the raw code (the only thing that can
+ * redeem it) anywhere the guest could see it. `RoomManager.
+ * handleVouchersIssued` (wired as `DurableSettlementWorker`'s
+ * `onVouchersIssued` callback) is the fix; these prove it end to end
+ * through the real `RoomManager`, not just the worker in isolation.
+ */
+describe("guest voucher delivery", () => {
+  it("delivers a winning guest's voucher code directly to their own socket, never broadcast to the room", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const guestWinner = "guest_voucher_room_test";
+    repo.testFixture.seedIdentity(guestWinner, "guest");
+    const { io, socketEmits, roomEmits } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Gary", host.code, "guest", guestWinner);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+    playRpsToCompletion(rooms, "s_b", "s_a"); // the guest (s_b) wins
+    await drainRoomEconomy(rooms);
+
+    const voucherEmit = socketEmits.find((e) => e.event === "economy:voucherIssued");
+    expect(voucherEmit).toBeDefined();
+    expect(voucherEmit?.socketId).toBe("s_b"); // the WINNER's own socket, not the host's or a broadcast
+    const payload = voucherEmit?.data as { matchId: string; coinAmount: string; rawCode: string };
+    expect(payload.rawCode.length).toBeGreaterThan(0);
+    expect(payload.coinAmount).toBe("160"); // 2-seat 1st place
+
+    expect(roomEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
+  });
+
+  it("logs loudly instead of silently dropping the code when the winning guest has no connected socket anywhere", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    const guestWinner = "guest_voucher_disconnected_test";
+    repo.testFixture.seedIdentity(guestWinner, "guest");
+    const { io, socketEmits } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Gary", host.code, "guest", guestWinner);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+    await rooms.requestGameStart("s_a");
+    playRpsToCompletion(rooms, "s_b", "s_a"); // the guest (s_b) wins
+
+    rooms.handleDisconnect("s_b"); // the winning guest is gone before settlement even runs
+    await drainRoomEconomy(rooms);
+
+    expect(socketEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
+  });
+});
+
 /** Waits for RoomManager's internal settlement/refund queue to finish. */
 async function drainRoomEconomy(rooms: RoomManager): Promise<void> {
   await rooms.drainEconomySettlementQueue();

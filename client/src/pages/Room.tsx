@@ -52,6 +52,7 @@ import type { MatchCheckoutQuote } from "../lib/economyApi";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
+import VoucherWonModal from "../components/economy/VoucherWonModal";
 import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
@@ -570,6 +571,9 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
+  /** The one moment a guest's raw voucher code exists in plaintext client-side — see `economy:voucherIssued`'s own doc comment. Never persisted. */
+  const [wonVoucher, setWonVoucher] = useState<{ coinAmount: string; rawCode: string } | null>(null);
+
   const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
     if (!code || !playerName || mustDeclare) return;
     if (joinInFlightRef.current) return;
@@ -675,6 +679,10 @@ export default function Room() {
       setError(startCancelledMessage(payload.reason));
     };
     socket.on("room:startCancelled", onStartCancelled);
+    const onVoucherIssued = (payload: { matchId: string; coinAmount: string; rawCode: string }) => {
+      setWonVoucher({ coinAmount: payload.coinAmount, rawCode: payload.rawCode });
+    };
+    socket.on("economy:voucherIssued", onVoucherIssued);
 
     return () => {
       socket.off("connect", onConnect);
@@ -686,6 +694,7 @@ export default function Room() {
       socket.off("game:error", setError);
       socket.off("rematch:state", setRematch);
       socket.off("room:startCancelled", onStartCancelled);
+      socket.off("economy:voucherIssued", onVoucherIssued);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
       // but the user can navigate away via browser back / tab close without
       // ever clicking Leave. Drop fullscreen here too so they don't end up
@@ -1778,6 +1787,14 @@ export default function Room() {
         onClose={() => setShowInGameLeaveModal(false)}
         onConfirm={leaveRoom}
       />
+
+      {wonVoucher && (
+        <VoucherWonModal
+          coinAmount={wonVoucher.coinAmount}
+          rawCode={wonVoucher.rawCode}
+          onClose={() => setWonVoucher(null)}
+        />
+      )}
         </div>
       </div>
     </AppLayout>

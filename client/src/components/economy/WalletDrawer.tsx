@@ -187,7 +187,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       Coin Wallet
                       {presentation.isVerifiedMember && (
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                          Member
+                          {presentation.label}
                         </span>
                       )}
                       {presentation.isLocalFallback && (
