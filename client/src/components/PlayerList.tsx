@@ -26,6 +26,8 @@ export default function PlayerList({
         {players.map((p) => (
           <li
             key={p.id}
+            id={`seat-${p.id}`}
+            data-seat-id={p.id}
             onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
             role={p.id !== selfId && onTapPlayer ? "button" : undefined}
             tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}

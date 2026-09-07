@@ -58,6 +58,7 @@ export default function LobbyActionBar({
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button
+              id="lobby-ready-btn-mobile"
               type="button"
               onClick={onToggleReady}
               aria-pressed={isReady}
@@ -114,6 +115,7 @@ export default function LobbyActionBar({
       {/* Action buttons */}
       <div className="flex flex-col gap-2.5">
         <button
+          id="lobby-ready-btn-desktop"
           type="button"
           onClick={onToggleReady}
           aria-pressed={isReady}
