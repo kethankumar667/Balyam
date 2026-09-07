@@ -8,7 +8,6 @@ import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import SeatAvatar from "../profile/SeatAvatar";
 import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
-import PlayerIdentityFooter from "./PlayerIdentityFooter";
 import { useTheme } from "../../lib/useTheme";
 import { bhalyamSpring } from "../../lib/motion";
 
@@ -303,9 +302,6 @@ export default function AppSidebar({
           </button>
         </div>
 
-        {/* Always visible (desktop and mobile alike) — unlike the theme
-            toggle above, a player's own id is equally useful in both. */}
-        <PlayerIdentityFooter />
       </div>
     </aside>
   );
