@@ -420,3 +420,47 @@ describe("GameRoomSheet — guest token failure prevents room creation & joining
     });
   });
 });
+
+describe("GameRoomSheet — solo play arcade games configuration", () => {
+  beforeEach(() => {
+    mockEmit.mockClear();
+    mockNavigate.mockClear();
+    useAuthStore.setState({ kind: "member", userId: "u_verified", capabilities: capabilitiesFor("member") });
+    useRoomStore.setState({ playerId: null, roomState: null, gameState: null, playerName: "Krishna" });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("hides entry stake and join by code for solo games (e.g. nokiacricket, snake)", () => {
+    render(React.createElement(GameRoomSheet, { game: "nokiacricket", onClose: () => {} }));
+
+    // Entry Stake must NOT be in the document
+    expect(screen.queryByText(/entry stake per seat/i)).toBeNull();
+    expect(screen.queryByText(/per seat wager/i)).toBeNull();
+
+    // Join by code must NOT be in the document
+    expect(screen.queryByPlaceholderText(/room code/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /join room/i })).toBeNull();
+    expect(screen.queryByText(/or join with ticket/i)).toBeNull();
+    expect(screen.queryByText(/have a code\? enter room code/i)).toBeNull();
+
+    // Summary ticket confirms Solo Arcade Mode
+    expect(screen.getByText(/solo arcade mode/i)).toBeTruthy();
+    expect(screen.getByText(/arcade ready/i)).toBeTruthy();
+  });
+
+  it("shows entry stake and join by code for multiplayer games (e.g. rps)", () => {
+    render(React.createElement(GameRoomSheet, { game: "rps", onClose: () => {} }));
+
+    // Entry Stake must be in the document
+    expect(screen.getByText(/entry stake per seat/i)).toBeTruthy();
+
+    // Join by code must be in the document
+    expect(screen.getByPlaceholderText(/room code/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /join room/i })).toBeTruthy();
+    expect(screen.getByText(/live table ready/i)).toBeTruthy();
+  });
+});
+

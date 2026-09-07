@@ -122,6 +122,16 @@ const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
   breakout: "/breakout",
 };
 
+const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
+  "snake",
+  "roadrash",
+  "brickblocks",
+  "tetris",
+  "breakout",
+  "spacewar",
+  "nokiacricket",
+]);
+
 function asGameKind(slug: BhalyamGameSlug): GameKind {
   if (!PLAYABLE_SLUGS.has(slug)) {
     throw new Error(`Cannot create room for non-playable slug: ${slug}`);
@@ -400,7 +410,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     };
   }, []);
 
-  const isSolo = game ? ["snake", "roadrash", "spacewar"].includes(game) : false;
+  const meta = game ? BHALYAM_GAMES.find((g) => g.slug === game) ?? null : null;
+  const isSolo = game
+    ? SOLO_GAME_SLUGS.has(game) || Boolean(meta?.tags.includes("solo") && !meta?.tags.includes("multiplayer"))
+    : false;
 
   const caps = useCapabilities();
   /**
@@ -612,7 +625,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           if (res.code && res.playerId && res.seatToken) {
             rememberSeat(res.code, res.playerId, res.seatToken);
           }
-          if (game && ["snake", "roadrash", "spacewar"].includes(game)) {
+          if (game && (SOLO_GAME_SLUGS.has(game) || isSolo)) {
             const socket = getSocket();
             socket.emit("room:setReady", true);
             socket.emit("room:startGame");
@@ -857,7 +870,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     );
   }
 
-  const meta = BHALYAM_GAMES.find((g) => g.slug === game)!;
+  if (!meta) return null;
   const Glyph = GAME_GLYPHS[game];
 
   return (
@@ -1072,47 +1085,51 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               />
             )}
 
-            {/* Entry stake — cross-game, applies to every mode */}
-            <Field label="🪙 Entry Stake Per Seat">
-              <OptionGrid
-                items={ENTRY_STAKE_OPTION_ITEMS}
-                value={entryStakeTier}
-                onChange={setEntryStakeTier}
-                cols={3}
-                disabledIds={isGuestHost ? ["200", "500", "1000", "custom"] : []}
-              />
-            </Field>
-            {isGuestHost && (
-              <p className="text-[11px] text-amber-300/80 font-semibold -mt-2 flex items-center gap-1.5">
-                <span>🔒</span> Guests can host at the 100-coin table only. Sign in to unlock higher stakes.
-              </p>
-            )}
-            {entryStakeTier === "custom" && (
-              <Field label="Custom Stake (Coins)">
-                <div className="rounded-2xl p-3.5 bg-slate-900/90 border-2 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-mono">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
-                      <span>🪙</span> Per seat wager
-                    </span>
-                    <span className="text-xl font-black tabular-nums text-amber-300">
-                      {customStake} <span className="text-xs font-normal text-slate-400">COINS</span>
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={ENTRY_STAKE_MIN_COINS}
-                    max={ENTRY_STAKE_MAX_COINS}
-                    step={ENTRY_STAKE_STEP_COINS}
-                    value={customStake}
-                    onChange={(e) => setCustomStake(Number(e.target.value))}
-                    className="w-full accent-amber-500 cursor-pointer"
+            {/* Entry stake — multiplayer table modes only, hidden for solo games */}
+            {!isSolo && (
+              <>
+                <Field label="🪙 Entry Stake Per Seat">
+                  <OptionGrid
+                    items={ENTRY_STAKE_OPTION_ITEMS}
+                    value={entryStakeTier}
+                    onChange={setEntryStakeTier}
+                    cols={3}
+                    disabledIds={isGuestHost ? ["200", "500", "1000", "custom"] : []}
                   />
-                  <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono font-bold">
-                    <span>MIN {ENTRY_STAKE_MIN_COINS}</span>
-                    <span>MAX {ENTRY_STAKE_MAX_COINS}</span>
-                  </div>
-                </div>
-              </Field>
+                </Field>
+                {isGuestHost && (
+                  <p className="text-[11px] text-amber-300/80 font-semibold -mt-2 flex items-center gap-1.5">
+                    <span>🔒</span> Guests can host at the 100-coin table only. Sign in to unlock higher stakes.
+                  </p>
+                )}
+                {entryStakeTier === "custom" && (
+                  <Field label="Custom Stake (Coins)">
+                    <div className="rounded-2xl p-3.5 bg-slate-900/90 border-2 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-mono">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest flex items-center gap-1">
+                          <span>🪙</span> Per seat wager
+                        </span>
+                        <span className="text-xl font-black tabular-nums text-amber-300">
+                          {customStake} <span className="text-xs font-normal text-slate-400">COINS</span>
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={ENTRY_STAKE_MIN_COINS}
+                        max={ENTRY_STAKE_MAX_COINS}
+                        step={ENTRY_STAKE_STEP_COINS}
+                        value={customStake}
+                        onChange={(e) => setCustomStake(Number(e.target.value))}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono font-bold">
+                        <span>MIN {ENTRY_STAKE_MIN_COINS}</span>
+                        <span>MAX {ENTRY_STAKE_MAX_COINS}</span>
+                      </div>
+                    </div>
+                  </Field>
+                )}
+              </>
             )}
 
 
@@ -1419,11 +1436,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                       </span>
                     </div>
                     <div className="text-[11px] text-amber-400 font-mono font-black mt-0.5 flex items-center gap-1.5">
-                      <span>🪙 STAKE: {entryStakeCoins} COINS</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-slate-400 font-medium">
-                        {isSolo ? "Arcade High Score" : sealedTable ? "Practice Table" : "Multiplayer Match"}
-                      </span>
+                      {isSolo ? (
+                        <span>🎮 SOLO ARCADE MODE</span>
+                      ) : (
+                        <>
+                          <span>🪙 STAKE: {entryStakeCoins} COINS</span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-slate-400 font-medium">
+                            {sealedTable ? "Practice Table" : "Multiplayer Match"}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1438,7 +1461,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <span className="text-slate-400 uppercase tracking-wider text-[10px] font-bold">Arena Status</span>
                   <span className="text-emerald-400 font-bold flex items-center gap-1.5 text-[11px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    Live Table Ready
+                    {isSolo ? "Arcade Ready" : "Live Table Ready"}
                   </span>
                 </div>
               </div>
@@ -1520,99 +1543,96 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 )}
               </div>
 
-              {/* Join divider — desktop only (md:flex), hidden in mobile tab flow */}
+              {/* Join divider & Join Section — hidden in Pass & Play or Solo mode */}
               {!passPlay && !isSolo && (
-                <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-black text-amber-400 font-mono py-1">
-                  <span className="flex-1 h-px bg-slate-800" />
-                  <span>{caps.joinByCode ? "Or join with ticket" : "Playing with friends"}</span>
-                  <span className="flex-1 h-px bg-slate-800" />
-                </div>
-              )}
+                <>
+                  <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-black text-amber-400 font-mono py-1">
+                    <span className="flex-1 h-px bg-slate-800" />
+                    <span>{caps.joinByCode ? "Or join with ticket" : "Playing with friends"}</span>
+                    <span className="flex-1 h-px bg-slate-800" />
+                  </div>
 
-              {/* Join Section Block — on mobile only visible if mobileTab === 'join', on desktop always visible */}
-              <div className={!passPlay && !isSolo && mobileTab === "create" ? "hidden md:block md:space-y-3" : "space-y-3"}>
-                {/* The wall stands exactly where the code box would be, so the
-                    answer to "where do I type a code?" is in the place the eye
-                    already went looking for it. */}
-                {!passPlay && !isSolo && !caps.joinByCode && (
-                  <SignInWall
-                    compact
-                    from={`game:${game}`}
-                    reason="Room codes are for playing with friends"
-                  />
-                )}
-
-                {/* Join by code — hidden in Pass & Play or Solo mode */}
-                {!passPlay && !isSolo && caps.joinByCode && (
-                  <div className="space-y-2.5">
-                    <Field label="🎟️ Enter 6-Char Room Code" htmlFor="grs-code" error={codeError}>
-                      <input
-                        id="grs-code"
-                        type="text"
-                        value={joinCode}
-                        disabled={busy}
-                        onChange={(e) => {
-                          setJoinCode(e.target.value.toUpperCase());
-                          if (codeError) setCodeError(null);
-                        }}
-                        placeholder="ROOM CODE"
-                        maxLength={6}
-                        aria-invalid={codeError ? true : undefined}
-                        aria-describedby={codeError ? "grs-code-error" : undefined}
-                        className={`w-full min-h-[48px] px-3.5 rounded-2xl
-                                   bg-slate-900/90 border-2 border-dashed
-                                   text-amber-300 placeholder:text-slate-600
-                                   font-mono font-black tracking-[0.35em] text-center text-lg
-                                   disabled:opacity-60 disabled:cursor-not-allowed
-                                   focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20
-                                   transition-all duration-200
-                                   ${codeError
-                                     ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                                     : "border-amber-500/40"}`}
+                  {/* Join Section Block — on mobile only visible if mobileTab === 'join', on desktop always visible */}
+                  <div className={mobileTab === "create" ? "hidden md:block md:space-y-3" : "space-y-3"}>
+                    {/* The wall stands exactly where the code box would be, so the
+                        answer to "where do I type a code?" is in the place the eye
+                        already went looking for it. */}
+                    {!caps.joinByCode ? (
+                      <SignInWall
+                        compact
+                        from={`game:${game}`}
+                        reason="Room codes are for playing with friends"
                       />
-                    </Field>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        AudioManager.getInstance().play(AUDIO.UI_CLICK);
-                        HapticsManager.getInstance().subtle();
-                        joinRoom();
-                      }}
-                      disabled={busy}
-                      className="w-full inline-flex items-center justify-center gap-2
-                                 min-h-[48px] rounded-2xl
-                                 bg-slate-800 hover:bg-slate-700 text-white font-black text-[14px] uppercase tracking-wider
-                                 border-2 border-slate-700 border-b-4 border-b-slate-950
-                                 active:border-b-2 active:translate-y-[2px]
-                                 disabled:opacity-50 disabled:cursor-wait
-                                 transition-all duration-150 cursor-pointer shadow-md"
-                    >
-                      {busy ? "Entering…" : (
-                        <>
-                          Join Room <ArrowRightIcon className="w-4 h-4 text-amber-400" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+                    ) : (
+                      <div className="space-y-2.5">
+                        <Field label="🎟️ Enter 6-Char Room Code" htmlFor="grs-code" error={codeError}>
+                          <input
+                            id="grs-code"
+                            type="text"
+                            value={joinCode}
+                            disabled={busy}
+                            onChange={(e) => {
+                              setJoinCode(e.target.value.toUpperCase());
+                              if (codeError) setCodeError(null);
+                            }}
+                            placeholder="ROOM CODE"
+                            maxLength={6}
+                            aria-invalid={codeError ? true : undefined}
+                            aria-describedby={codeError ? "grs-code-error" : undefined}
+                            className={`w-full min-h-[48px] px-3.5 rounded-2xl
+                                       bg-slate-900/90 border-2 border-dashed
+                                       text-amber-300 placeholder:text-slate-600
+                                       font-mono font-black tracking-[0.35em] text-center text-lg
+                                       disabled:opacity-60 disabled:cursor-not-allowed
+                                       focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20
+                                       transition-all duration-200
+                                       ${codeError
+                                         ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                                         : "border-amber-500/40"}`}
+                          />
+                        </Field>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                            HapticsManager.getInstance().subtle();
+                            joinRoom();
+                          }}
+                          disabled={busy}
+                          className="w-full inline-flex items-center justify-center gap-2
+                                     min-h-[48px] rounded-2xl
+                                     bg-slate-800 hover:bg-slate-700 text-white font-black text-[14px] uppercase tracking-wider
+                                     border-2 border-slate-700 border-b-4 border-b-slate-950
+                                     active:border-b-2 active:translate-y-[2px]
+                                     disabled:opacity-50 disabled:cursor-wait
+                                     transition-all duration-150 cursor-pointer shadow-md"
+                        >
+                          {busy ? "Entering…" : (
+                            <>
+                              Join Room <ArrowRightIcon className="w-4 h-4 text-amber-400" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
 
-                {/* Mobile switch hint */}
-                {!passPlay && !isSolo && (
-                  <div className="md:hidden text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        AudioManager.getInstance().play(AUDIO.UI_CLICK);
-                        HapticsManager.getInstance().subtle();
-                        setMobileTab("create");
-                      }}
-                      className="text-xs font-black text-amber-400 hover:text-amber-300 inline-flex items-center gap-1.5 cursor-pointer font-mono uppercase tracking-wider"
-                    >
-                      <span>← Setup your own table</span>
-                    </button>
+                    {/* Mobile switch hint */}
+                    <div className="md:hidden text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          AudioManager.getInstance().play(AUDIO.UI_CLICK);
+                          HapticsManager.getInstance().subtle();
+                          setMobileTab("create");
+                        }}
+                        className="text-xs font-black text-amber-400 hover:text-amber-300 inline-flex items-center gap-1.5 cursor-pointer font-mono uppercase tracking-wider"
+                      >
+                        <span>← Setup your own table</span>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Form-level error fallback */}
               {formError && (
