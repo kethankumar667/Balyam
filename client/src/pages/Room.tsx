@@ -1926,6 +1926,7 @@ export default function Room() {
       {/* Universal BHALYAM Match Countdown */}
       {showMatchCountdown && (
         <BhalyamMatchCountdown
+          game={roomState?.game}
           onComplete={() => {
             setShowMatchCountdown(false);
             setMatchStartCeremonyActive(false);
@@ -1960,6 +1961,7 @@ export default function Room() {
         refund={economyMotion.activeRefund}
         escrow={economyMotion.activeEscrow}
         errorMessage={economyMotion.errorMessage}
+        game={roomState?.game}
         onGameStartComplete={() => {
           resetMotion();
           setMatchStartCeremonyActive(false);

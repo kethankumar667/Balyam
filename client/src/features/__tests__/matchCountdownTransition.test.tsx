@@ -88,9 +88,13 @@ describe("Match Countdown Pre-Game Transition", () => {
       screen.getByTestId("start-match-btn").click();
     });
 
-    // Countdown is now active (showing 3..2..1..)
-    expect(screen.getByText("3")).toBeDefined();
-    expect(screen.getByText("Get Ready")).toBeDefined();
+    // Countdown is now active (showing 3..2..1..) — the funny slogan under
+    // it is randomly chosen per mount (see countdownSlogans.ts), so this
+    // asserts the numeral plus SOME real slogan rather than exact copy.
+    expect(screen.getByTestId("countdown-numeral").textContent).toBe("3");
+    expect(screen.getByTestId("countdown-slogan").textContent).toMatch(
+      /Get hyped!|Something big is coming…|Warming up the dice…/,
+    );
 
     // CRITICAL REQUIREMENT: Game-related pages (e.g. Hand Cricket team selection) must NOT be loaded yet!
     expect(screen.queryByTestId("game-board-container")).toBeNull();
@@ -98,7 +102,7 @@ describe("Match Countdown Pre-Game Transition", () => {
     // Lobby view remains behind the countdown overlay
     expect(screen.getByTestId("lobby-view")).toBeDefined();
 
-    // Advance timer mid-countdown (2000ms) � still within countdown
+    // Advance timer mid-countdown (2000ms) � still within countdown
     act(() => {
       vi.advanceTimersByTime(2000);
     });

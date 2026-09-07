@@ -14,6 +14,21 @@ import {
   CoinFlight,
 } from "../index";
 
+// GameStartSequence's countdown numeral (CountdownNumeral3D) plays real
+// audio/haptic/particle feedback per beat — same real hooks
+// BhalyamMatchCountdown already needed mocked in its own test file.
+// `useAudio()` throws outside an <AudioProvider>, which nothing here mounts.
+vi.mock("../../../hooks/useAudio", () => ({
+  useAudio: () => ({ play: vi.fn(), stop: vi.fn() }),
+}));
+vi.mock("../../../hooks/useHaptics", () => ({
+  useHaptics: () => ({ subtle: vi.fn(), turn: vi.fn(), win: vi.fn() }),
+}));
+vi.mock("../../../animations/particles/comicBursts", () => ({
+  fireComicDustBurst: vi.fn(),
+  fireStarSparkleBurst: vi.fn(),
+}));
+
 describe("Economy Motion System Suite", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -104,6 +119,26 @@ describe("Economy Motion System Suite", () => {
       });
 
       expect(onComplete).toHaveBeenCalled();
+    });
+
+    it("uses the real game's display name and UNO's own theme when `game` is provided", () => {
+      render(
+        <GameStartSequence game="uno" totalPotAmount="200" onComplete={vi.fn()} />,
+      );
+
+      expect(screen.getByText("UNO 🎴")).toBeDefined();
+      expect(screen.getByText("UNO SHOWDOWN INCOMING")).toBeDefined();
+      // A real per-beat slogan renders — never blank, never the old static "PLAY!" copy.
+      expect(screen.getByTestId("countdown-slogan").textContent!.length).toBeGreaterThan(0);
+    });
+
+    it("uses Rummy's own theme and title when `game` is provided", () => {
+      render(
+        <GameStartSequence game="rummy" totalPotAmount="200" onComplete={vi.fn()} />,
+      );
+
+      expect(screen.getByText("Indian Rummy 🃏")).toBeDefined();
+      expect(screen.getByText("RUMMY TABLE IS LIVE")).toBeDefined();
     });
   });
 

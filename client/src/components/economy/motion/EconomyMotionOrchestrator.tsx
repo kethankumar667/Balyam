@@ -12,6 +12,7 @@ import type {
   MatchRefundMotionPayload,
   GuestEscrowMotionPayload,
 } from "./types";
+import type { GameKind } from "@shared/types";
 
 export interface EconomyMotionOrchestratorProps {
   phase: EconomyMotionPhase;
@@ -20,6 +21,8 @@ export interface EconomyMotionOrchestratorProps {
   refund?: MatchRefundMotionPayload | null;
   escrow?: GuestEscrowMotionPayload | null;
   errorMessage?: string | null;
+  /** Selects the Chapter 2 game-start countdown's per-game theme/slogans (UNO card-color cycle, Rummy felt-and-gold). */
+  game?: GameKind;
   onGameStartComplete?: () => void;
   onClaimVoucher?: () => void;
   className?: string;
@@ -36,6 +39,7 @@ export const EconomyMotionOrchestrator: React.FC<EconomyMotionOrchestratorProps>
   refund,
   escrow,
   errorMessage,
+  game,
   onGameStartComplete,
   onClaimVoucher,
   className = "",
@@ -126,7 +130,7 @@ export const EconomyMotionOrchestrator: React.FC<EconomyMotionOrchestratorProps>
       <AnimatePresence>
         {phase === "game_starting" && (
           <GameStartSequence
-            gameTitle="BHALYAM Match"
+            game={game}
             totalPotAmount={commitment?.totalPotAmount || "---"}
             onComplete={onGameStartComplete || (() => {})}
           />

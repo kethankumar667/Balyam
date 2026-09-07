@@ -11,6 +11,20 @@ import * as economyApi from "../../../lib/economyApi";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../../../lib/economyMotionTriggers";
 import type { RoomPublicState, Player } from "@shared/types";
 
+// GameStartSequence's countdown numeral (CountdownNumeral3D) plays real
+// audio/haptic/particle feedback per beat. `useAudio()` throws outside an
+// <AudioProvider>, which nothing here mounts.
+vi.mock("../../../hooks/useAudio", () => ({
+  useAudio: () => ({ play: vi.fn(), stop: vi.fn() }),
+}));
+vi.mock("../../../hooks/useHaptics", () => ({
+  useHaptics: () => ({ subtle: vi.fn(), turn: vi.fn(), win: vi.fn() }),
+}));
+vi.mock("../../../animations/particles/comicBursts", () => ({
+  fireComicDustBurst: vi.fn(),
+  fireStarSparkleBurst: vi.fn(),
+}));
+
 vi.mock("../../../lib/economyApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../lib/economyApi")>();
   return {
