@@ -127,6 +127,19 @@ function asGameKind(slug: BhalyamGameSlug): GameKind {
 
 /* ── Option catalogs (copied verbatim from old Lobby so behaviour matches) ── */
 
+const NOSTALGIC_NICKNAMES = [
+  "GullyCricketer",
+  "LudoKing",
+  "GoldStriker",
+  "SuperSixer",
+  "MasterBlaster",
+  "CarromPro",
+  "SnakeCharmer",
+  "ArcadeHero",
+  "DesiGamer",
+  "SpeedyRunner",
+];
+
 const ENTRY_STAKE_OPTION_ITEMS: { id: string; label: string; blurb: string }[] = ENTRY_STAKE_PRESET_TIERS.map((tier) => ({
   id: String(tier),
   label: `${tier} coins`,
@@ -354,6 +367,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [snakeTheme, setSnakeTheme] = useState<"nokia-monochrome" | "nokia-color" | "neon-modern">("nokia-monochrome");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"create" | "join">("create");
   /**
    * Pass & Play: when the user toggles this on (Ludo + SnL only), we collect
    * 1-3 extra "local" player names and start the game immediately on one
@@ -904,37 +918,97 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           </button>
         </header>
 
-        {/* Body: Responsive 2-Column on Desktop (md:), Stack on Mobile */}
+        {/* Mobile Segmented Tab Switcher (<md only) */}
+        {!passPlay && !isSolo && (
+          <div className="md:hidden px-4 pt-3 pb-1">
+            <div
+              role="tablist"
+              aria-label="Room action modes"
+              className="grid grid-cols-2 p-1 bg-[#FFF4E0] dark:bg-[#1E2738] rounded-2xl border border-[#EEDBCA] dark:border-slate-700/60 shadow-sm"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileTab === "create"}
+                aria-label="Create room tab"
+                onClick={() => setMobileTab("create")}
+                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
+                  mobileTab === "create"
+                    ? "bg-white dark:bg-amber-500/20 text-[#2B3550] dark:text-amber-300 shadow-sm border border-[#EEDBCA]/60 dark:border-amber-400/30"
+                    : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
+                }`}
+              >
+                <SparkIcon className="w-3.5 h-3.5 text-amber-500" />
+                <span>Create Table</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileTab === "join"}
+                aria-label="Join by code tab"
+                onClick={() => setMobileTab("join")}
+                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
+                  mobileTab === "join"
+                    ? "bg-white dark:bg-amber-500/20 text-[#2B3550] dark:text-amber-300 shadow-sm border border-[#EEDBCA]/60 dark:border-amber-400/30"
+                    : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
+                }`}
+              >
+                <ArrowRightIcon className="w-3.5 h-3.5 text-amber-500" />
+                <span>Join by Code</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Body: Responsive 2-Column on Desktop (md:), Organized Flow on Mobile */}
         <div className="p-4 md:p-6 md:grid md:grid-cols-12 md:gap-6 space-y-4 md:space-y-0">
           
           {/* Left Column: Name, Pass & Play, Core Rules & Customization */}
           <div className="md:col-span-7 space-y-4">
             {/* Name input */}
             <Field label="Your name" htmlFor="grs-name" error={nameError}>
-              <input
-                id="grs-name"
-                type="text"
-                value={name}
-                disabled={busy}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (nameError) setNameError(null);
-                }}
-                placeholder="e.g. Sri Krishna"
-                maxLength={20}
-                aria-invalid={nameError ? true : undefined}
-                aria-describedby={nameError ? "grs-name-error" : undefined}
-                className={`w-full min-h-[46px] px-3.5 rounded-2xl
-                           bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
-                           text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                           font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed
-                           focus:outline-none focus:ring-4
-                           transition-all duration-200
-                           ${nameError
-                             ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                             : "border-[#EEDBCA] dark:border-slate-700/80 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
-              />
+              <div className="relative flex items-center">
+                <input
+                  id="grs-name"
+                  type="text"
+                  value={name}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
+                  placeholder="e.g. Sri Krishna"
+                  maxLength={20}
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? "grs-name-error" : undefined}
+                  className={`w-full min-h-[46px] pl-3.5 pr-11 rounded-2xl
+                             bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2
+                             text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
+                             font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed
+                             focus:outline-none focus:ring-4
+                             transition-all duration-200
+                             ${nameError
+                               ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                               : "border-[#EEDBCA] dark:border-slate-700/80 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                />
+                <button
+                  type="button"
+                  title="Roll random nostalgic nickname"
+                  aria-label="Roll random nostalgic nickname"
+                  onClick={() => {
+                    const picked = NOSTALGIC_NICKNAMES[Math.floor(Math.random() * NOSTALGIC_NICKNAMES.length)];
+                    setName(picked);
+                    if (nameError) setNameError(null);
+                  }}
+                  className="absolute right-2 w-7 h-7 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-700 dark:text-amber-300 flex items-center justify-center transition cursor-pointer text-sm"
+                >
+                  🎲
+                </button>
+              </div>
             </Field>
+
+            {/* Creation options — visible on mobile only when mobileTab === 'create', always visible on desktop */}
+            <div className={mobileTab === "join" ? "hidden md:block md:space-y-4" : "space-y-4"}>
 
             {/* Pass & Play toggle */}
             {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes") && (
@@ -1031,6 +1105,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     cols={2}
                   />
                 </Field>
+                <Field label="Turn timer">
+                  <OptionGrid
+                    items={UNO_TURN_TIMERS}
+                    value={unoTurnTimer}
+                    onChange={setUnoTurnTimer}
+                    cols={2}
+                  />
+                </Field>
                 <Field label="House rules (optional)">
                   <UnoHouseRuleGrid flags={unoHouseRules} onToggle={(id) =>
                     setUnoHouseRules((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -1041,6 +1123,15 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
             {game === "handcricket" && (
               <>
+                <Field label="Category">
+                  <OptionGrid
+                    items={HC_CATEGORIES}
+                    value={hcCategory}
+                    onChange={setHcCategory}
+                    cols={2}
+                  />
+                </Field>
+
                 <Field label="Mode">
                   <OptionGrid
                     items={HC_MODES}
@@ -1142,18 +1233,36 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     cols={2}
                   />
                 </Field>
+                <Field label="Pass speed">
+                  <OptionGrid
+                    items={STAR_PASS_SPEEDS}
+                    value={starPassSpeed}
+                    onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
+                    cols={2}
+                  />
+                </Field>
               </>
             )}
 
             {game === "bingo" && (
-              <Field label="Win condition">
-                <OptionGrid
-                  items={BINGO_WIN_MODES}
-                  value={bingoWinMode}
-                  onChange={setBingoWinMode}
-                  cols={2}
-                />
-              </Field>
+              <>
+                <Field label="Win condition">
+                  <OptionGrid
+                    items={BINGO_WIN_MODES}
+                    value={bingoWinMode}
+                    onChange={setBingoWinMode}
+                    cols={2}
+                  />
+                </Field>
+                <Field label="Call speed">
+                  <OptionGrid
+                    items={BINGO_CALL_SPEEDS}
+                    value={bingoCallSpeed}
+                    onChange={setBingoCallSpeed}
+                    cols={3}
+                  />
+                </Field>
+              </>
             )}
 
             {game === "tambola" && (
@@ -1185,9 +1294,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     cols={2}
                   />
                 </Field>
+                <Field label="Difficulty Level">
+                  <OptionGrid
+                    items={NPA_DIFFICULTIES}
+                    value={npaDifficulty}
+                    onChange={(v) => setNpaDifficulty(v as "easy" | "medium" | "hard")}
+                    cols={3}
+                  />
+                </Field>
               </>
             )}
-
 
             {game === "snake" && (
               <>
@@ -1215,77 +1331,6 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     cols={3}
                   />
                 </Field>
-              </>
-            )}
-          </div>
-
-          {/* Right Column: Secondary Timers, Feature Info Card & Action Buttons */}
-          <div className="md:col-span-5 flex flex-col justify-between space-y-4 md:border-l-2 md:border-[#EEDBCA]/60 md:dark:border-slate-800 md:pl-6">
-            
-            {/* Top section: Secondary Timers & Game Highlights */}
-            <div className="space-y-4">
-              {/* Turn timer for UNO */}
-              {game === "uno" && (
-                <Field label="Turn timer">
-                  <OptionGrid
-                    items={UNO_TURN_TIMERS}
-                    value={unoTurnTimer}
-                    onChange={setUnoTurnTimer}
-                    cols={2}
-                  />
-                </Field>
-              )}
-
-              {/* Category for Hand Cricket */}
-              {game === "handcricket" && (
-                <Field label="Category">
-                  <OptionGrid
-                    items={HC_CATEGORIES}
-                    value={hcCategory}
-                    onChange={setHcCategory}
-                    cols={2}
-                  />
-                </Field>
-              )}
-
-              {/* Pass Speed for Star Game */}
-              {game === "stargame" && (
-                <Field label="Pass speed">
-                  <OptionGrid
-                    items={STAR_PASS_SPEEDS}
-                    value={starPassSpeed}
-                    onChange={(v) => setStarPassSpeed(v as "normal" | "fast")}
-                    cols={2}
-                  />
-                </Field>
-              )}
-
-              {/* Call Speed for Bingo */}
-              {game === "bingo" && (
-                <Field label="Call speed">
-                  <OptionGrid
-                    items={BINGO_CALL_SPEEDS}
-                    value={bingoCallSpeed}
-                    onChange={setBingoCallSpeed}
-                    cols={3}
-                  />
-                </Field>
-              )}
-
-              {/* Difficulty for Name Place Animal */}
-              {game === "namesplaceanimal" && (
-                <Field label="Difficulty Level">
-                  <OptionGrid
-                    items={NPA_DIFFICULTIES}
-                    value={npaDifficulty}
-                    onChange={(v) => setNpaDifficulty(v as "easy" | "medium" | "hard")}
-                    cols={3}
-                  />
-                </Field>
-              )}
-
-              {/* Speed pace for Snake */}
-              {game === "snake" && (
                 <Field label="Speed Pace">
                   <OptionGrid
                     items={SNAKE_SPEEDS}
@@ -1294,9 +1339,16 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     cols={3}
                   />
                 </Field>
-              )}
+              </>
+            )}
+            </div>
+          </div>
 
-              {/* Mini Summary Card */}
+          {/* Right Column: Mini Summary Card, Primary CTA & Join by Code */}
+          <div className="md:col-span-5 flex flex-col justify-between space-y-4 md:border-l-2 md:border-[#EEDBCA]/60 md:dark:border-slate-800 md:pl-6">
+            
+            {/* Summary Card */}
+            <div className="space-y-4">
               <div className="rounded-2xl p-3 bg-[#FFF9EE] dark:bg-[#161D2B] border border-[#EEDBCA] dark:border-slate-700/60 flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
@@ -1326,119 +1378,152 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
 
             {/* Bottom Actions: CTA & Join by Code */}
             <div className="space-y-3 pt-2">
-              {/* Primary CTA — swaps label/handler in Pass & Play mode */}
-              <button
-                type="button"
-                onClick={passPlay ? startPassAndPlay : createRoom}
-                disabled={busy}
-                className="w-full inline-flex items-center justify-center gap-2
-                           min-h-[52px] rounded-2xl
-                           bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400
-                           text-slate-950 font-black text-[15px]
-                           border border-amber-300/60
-                           disabled:opacity-50 disabled:cursor-wait
-                           active:scale-[0.98] transition-all duration-150 cursor-pointer
-                           shadow-[0_6px_20px_-4px_rgba(245,158,11,0.55)] hover:shadow-[0_8px_24px_-4px_rgba(245,158,11,0.7)]"
-              >
-                {busy ? (
-                  "Working…"
-                ) : passPlay ? (
-                  <>
-                    <SparkIcon className="w-5 h-5" />
-                    Start Pass &amp; Play
-                  </>
-                ) : RETRO_ROUTES[game] ? (
-                  <>
-                    <SparkIcon className="w-5 h-5" />
-                    Launch Arcade Game
-                  </>
-                ) : isSolo ? (
-                  <>
-                    <SparkIcon className="w-5 h-5" />
-                    Start Game
-                  </>
-                ) : sealedTable ? (
-                  <>
-                    <SparkIcon className="w-5 h-5" />
-                    Play vs Bots
-                  </>
-                ) : (
-                  <>
-                    <SparkIcon className="w-5 h-5" />
-                    Create Room
-                  </>
-                )}
-              </button>
+              {/* Create / Play CTA Block — on mobile only visible if mobileTab === 'create' or passPlay/isSolo */}
+              <div className={!passPlay && !isSolo && mobileTab === "join" ? "hidden md:block md:space-y-3" : "space-y-3"}>
+                {/* Primary CTA — swaps label/handler in Pass & Play mode */}
+                <button
+                  type="button"
+                  onClick={passPlay ? startPassAndPlay : createRoom}
+                  disabled={busy}
+                  className="w-full inline-flex items-center justify-center gap-2
+                             min-h-[52px] rounded-2xl
+                             bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400
+                             text-slate-950 font-black text-[15px]
+                             border border-amber-300/60
+                             disabled:opacity-50 disabled:cursor-wait
+                             active:scale-[0.98] transition-all duration-150 cursor-pointer
+                             shadow-[0_6px_20px_-4px_rgba(245,158,11,0.55)] hover:shadow-[0_8px_24px_-4px_rgba(245,158,11,0.7)]"
+                >
+                  {busy ? (
+                    "Working…"
+                  ) : passPlay ? (
+                    <>
+                      <SparkIcon className="w-5 h-5" />
+                      Start Pass &amp; Play
+                    </>
+                  ) : RETRO_ROUTES[game] ? (
+                    <>
+                      <SparkIcon className="w-5 h-5" />
+                      Launch Arcade Game
+                    </>
+                  ) : isSolo ? (
+                    <>
+                      <SparkIcon className="w-5 h-5" />
+                      Start Game
+                    </>
+                  ) : sealedTable ? (
+                    <>
+                      <SparkIcon className="w-5 h-5" />
+                      Play vs Bots
+                    </>
+                  ) : (
+                    <>
+                      <SparkIcon className="w-5 h-5" />
+                      Create Room
+                    </>
+                  )}
+                </button>
 
-              {/* Join divider — hidden in Pass & Play or Solo mode */}
+                {/* Mobile switch hint */}
+                {!passPlay && !isSolo && (
+                  <div className="md:hidden text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab("join")}
+                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Have a code? Enter room code</span>
+                      <ArrowRightIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Join divider — desktop only (md:flex), hidden in mobile tab flow */}
               {!passPlay && !isSolo && (
-                <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
+                <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-widest font-extrabold text-[#8A6D4B] dark:text-slate-400 py-0.5">
                   <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
                   <span>{caps.joinByCode ? "Or join room" : "Playing with friends"}</span>
                   <span className="flex-1 h-px bg-[#EEDBCA] dark:bg-slate-800" />
                 </div>
               )}
 
-              {/* The wall stands exactly where the code box would be, so the
-                  answer to "where do I type a code?" is in the place the eye
-                  already went looking for it. */}
-              {!passPlay && !isSolo && !caps.joinByCode && (
-                <SignInWall
-                  compact
-                  from={`game:${game}`}
-                  reason="Room codes are for playing with friends"
-                />
-              )}
+              {/* Join Section Block — on mobile only visible if mobileTab === 'join', on desktop always visible */}
+              <div className={!passPlay && !isSolo && mobileTab === "create" ? "hidden md:block md:space-y-3" : "space-y-3"}>
+                {/* The wall stands exactly where the code box would be, so the
+                    answer to "where do I type a code?" is in the place the eye
+                    already went looking for it. */}
+                {!passPlay && !isSolo && !caps.joinByCode && (
+                  <SignInWall
+                    compact
+                    from={`game:${game}`}
+                    reason="Room codes are for playing with friends"
+                  />
+                )}
 
-              {/* Join by code — hidden in Pass & Play or Solo mode */}
-              {!passPlay && !isSolo && caps.joinByCode && (
-                <div className="space-y-2.5">
-                  <Field label="Room code" htmlFor="grs-code" error={codeError}>
-                    <input
-                      id="grs-code"
-                      type="text"
-                      value={joinCode}
+                {/* Join by code — hidden in Pass & Play or Solo mode */}
+                {!passPlay && !isSolo && caps.joinByCode && (
+                  <div className="space-y-2.5">
+                    <Field label="Room code" htmlFor="grs-code" error={codeError}>
+                      <input
+                        id="grs-code"
+                        type="text"
+                        value={joinCode}
+                        disabled={busy}
+                        onChange={(e) => {
+                          setJoinCode(e.target.value.toUpperCase());
+                          if (codeError) setCodeError(null);
+                        }}
+                        placeholder="ROOM CODE"
+                        maxLength={6}
+                        aria-invalid={codeError ? true : undefined}
+                        aria-describedby={codeError ? "grs-code-error" : undefined}
+                        className={`w-full min-h-[44px] px-3.5 rounded-2xl
+                                   bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
+                                   text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
+                                   font-mono font-black tracking-[0.35em] text-center text-base
+                                   disabled:opacity-60 disabled:cursor-not-allowed
+                                   focus:outline-none focus:ring-4
+                                   transition-all duration-200
+                                   ${codeError
+                                     ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
+                                     : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
+                      />
+                    </Field>
+                    <button
+                      type="button"
+                      onClick={joinRoom}
                       disabled={busy}
-                      onChange={(e) => {
-                        setJoinCode(e.target.value.toUpperCase());
-                        if (codeError) setCodeError(null);
-                      }}
-                      placeholder="ROOM CODE"
-                      maxLength={6}
-                      aria-invalid={codeError ? true : undefined}
-                      aria-describedby={codeError ? "grs-code-error" : undefined}
-                      className={`w-full min-h-[44px] px-3.5 rounded-2xl
-                                 bg-[#FFF9EE] dark:bg-[var(--surface-0)] border-2 border-dashed
-                                 text-[#2B3550] dark:text-slate-100 placeholder-[#B0A090] dark:placeholder:text-slate-500
-                                 font-mono font-black tracking-[0.35em] text-center text-base
-                                 disabled:opacity-60 disabled:cursor-not-allowed
-                                 focus:outline-none focus:ring-4
-                                 transition-all duration-200
-                                 ${codeError
-                                   ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20"
-                                   : "border-[#EEDBCA] dark:border-amber-500/40 focus:border-amber-500 dark:focus:border-amber-400 focus:ring-amber-400/20 dark:focus:ring-amber-500/20"}`}
-                    />
-                  </Field>
-                  <button
-                    type="button"
-                    onClick={joinRoom}
-                    disabled={busy}
-                    className="w-full inline-flex items-center justify-center gap-2
-                               min-h-[44px] rounded-2xl
-                               bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
-                               border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
-                               disabled:opacity-50 disabled:cursor-wait
-                               active:scale-[0.98] transition-all duration-150 cursor-pointer
-                               shadow-md"
-                  >
-                    {busy ? "Working…" : (
-                      <>
-                        Join Room <ArrowRightIcon className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
+                      className="w-full inline-flex items-center justify-center gap-2
+                                 min-h-[44px] rounded-2xl
+                                 bg-[#2B3550] hover:bg-[#1E2738] dark:bg-slate-800 hover:dark:bg-slate-700 text-white font-bold text-[13px]
+                                 border border-transparent dark:border-slate-700/80 hover:dark:border-amber-400/40
+                                 disabled:opacity-50 disabled:cursor-wait
+                                 active:scale-[0.98] transition-all duration-150 cursor-pointer
+                                 shadow-md"
+                    >
+                      {busy ? "Working…" : (
+                        <>
+                          Join Room <ArrowRightIcon className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Mobile switch hint */}
+                {!passPlay && !isSolo && (
+                  <div className="md:hidden text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab("create")}
+                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>← Want to host your own table? Setup table</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Form-level error fallback */}
               {formError && (
@@ -1600,12 +1685,12 @@ function OptionGrid<T extends string>({
 }) {
   const gridCls =
     cols === 1
-      ? "grid-cols-1"
+      ? "grid-cols-1 gap-2"
       : cols === 2
-      ? "grid-cols-2"
-      : "grid-cols-1 sm:grid-cols-3";
+      ? "grid-cols-2 gap-2"
+      : "grid-cols-3 gap-1.5 sm:gap-2";
   return (
-    <div className={`grid ${gridCls} gap-2`}>
+    <div className={`grid ${gridCls}`}>
       {items.map((item) => {
         const isActive = item.id === value;
         const isDisabled = disabledIds.includes(item.id);
@@ -1615,17 +1700,17 @@ function OptionGrid<T extends string>({
             type="button"
             disabled={isDisabled}
             onClick={() => onChange(item.id)}
-            className={`text-left rounded-2xl p-3 border-2 min-h-[64px]
+            className={`text-left rounded-2xl p-2 sm:p-3 border-2 min-h-[52px] sm:min-h-[64px]
                         active:scale-[0.98] transition-all duration-150 cursor-pointer
                         disabled:opacity-50 disabled:cursor-not-allowed
                         ${isActive
                           ? "bg-amber-50 dark:bg-amber-500/15 border-amber-500 dark:border-amber-400 text-slate-950 dark:text-amber-300 shadow-[0_4px_14px_rgba(245,158,11,0.25)] dark:shadow-[0_0_18px_rgba(245,158,11,0.25)]"
                           : "bg-[#FFF9EE] dark:bg-[#161D2B] border-[#EEDBCA] dark:border-slate-700/70 text-[#2B3550] dark:text-slate-200 hover:border-amber-400/60 dark:hover:border-slate-600 dark:hover:bg-[#1C2536]"}`}
           >
-            <div className={`font-bold text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
+            <div className={`font-bold text-xs sm:text-[13px] leading-tight ${isActive ? "text-slate-950 dark:text-amber-300" : "text-[#2B3550] dark:text-slate-200"}`}>
               {item.label}
             </div>
-            <div className={`text-[10px] mt-1 leading-snug ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
+            <div className={`text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 leading-snug line-clamp-2 ${isActive ? "text-amber-900/90 dark:text-amber-200/90" : "text-[#8A6D4B] dark:text-slate-400"}`}>
               {item.blurb}
             </div>
           </button>
