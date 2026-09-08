@@ -16,7 +16,15 @@ export const GAME_LIMITS: Record<GameKind, GameLimitSpec> = {
   rps: { min: 2, max: 2 },
   rummy: { min: 2, max: 6 },
   ludo: { min: 2, max: 8 },
-  snl: { min: 2, max: 6 },
+  // SnlEngine.maxPlayers is 10, and shared/types.ts's COIN_COLORS defines
+  // exactly 10 distinct coin colors — both built specifically for this.
+  // This catalog cap was stuck at 6 (found 2026-09-09 auditing every
+  // engine's own min/max against this file for exactly this class of
+  // mismatch): a 7-10 player SnL room the engine and board fully support
+  // was being rejected here before ever reaching the engine, with a clean
+  // "Max 6 players" error — never a crash, but a real, unnecessary block
+  // on starting a match the game was already built to handle.
+  snl: { min: 2, max: 10 },
   handcricket: { min: 2, max: 2 },
   uno: { min: 2, max: 10 },
   wordbuilding: { min: 2, max: 8 },

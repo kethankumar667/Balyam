@@ -56,9 +56,9 @@ describe("economyCapacityContract — verified 1-12 seat matrix", () => {
     expect(APPROVED.has(6)).toBe(true);
   });
 
-  it("every catalog game whose max is exactly 6 seats is supported at 6 (SNL, Dots & Boxes, Rummy)", () => {
+  it("every catalog game whose max is exactly 6 seats is supported at 6 (Dots & Boxes, Rummy)", () => {
     const sixSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 6).map(([g]) => g);
-    expect(sixSeatGames.sort()).toEqual(["dotsboxes", "rummy", "snl"].sort());
+    expect(sixSeatGames.sort()).toEqual(["dotsboxes", "rummy"].sort());
     for (const game of sixSeatGames) {
       expect(isStructurallyValidSeatConfiguration(6, 6, 0)).toBe(true);
       expect(APPROVED.has(6)).toBe(true);
@@ -74,10 +74,18 @@ describe("economyCapacityContract — verified 1-12 seat matrix", () => {
     }
   });
 
-  it("UNO at ten seats: structurally valid, economy-approved", () => {
-    expect(GAME_LIMITS.uno.max).toBe(10);
-    expect(isStructurallyValidSeatConfiguration(10, 10, 0)).toBe(true);
-    expect(APPROVED.has(10)).toBe(true);
+  it("every catalog game whose max is exactly 10 seats is supported at 10 (UNO, SnL)", () => {
+    // SnL raised from a stale catalog max of 6 to 10 (2026-09-09) —
+    // SnlEngine.maxPlayers was already 10, and shared/types.ts's
+    // COIN_COLORS already defines exactly 10 distinct coin colors built
+    // for this; only the catalog cap itself had never been updated,
+    // rejecting a valid 7-10 player room before it ever reached the engine.
+    const tenSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 10).map(([g]) => g);
+    expect(tenSeatGames.sort()).toEqual(["snl", "uno"].sort());
+    for (const game of tenSeatGames) {
+      expect(isStructurallyValidSeatConfiguration(10, 10, 0)).toBe(true);
+      expect(APPROVED.has(10)).toBe(true);
+    }
   });
 
   it("Tambola at twelve seats: structurally valid, economy-approved — also the platform's overall sanity ceiling", () => {
