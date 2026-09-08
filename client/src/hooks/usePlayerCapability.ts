@@ -143,14 +143,19 @@ export function usePlayerCapability({
 
     const socket = getSocket();
 
+    // Temporary diagnostic (2026-09-08) — console.warn specifically, not
+    // console.debug: Chrome DevTools' "Default levels" filter (visible in
+    // the console toolbar) hides Verbose/debug-level logs by default, so a
+    // console.debug here could go unseen even if this line runs, producing
+    // a false "nothing happened" read. warn is never filtered by default.
+    // Confirms the listener is actually attached for this session/socket at
+    // all — separate from handleStartPreflight's own marker below, which
+    // confirms a specific challenge was received once one arrives.
+    console.warn("[preflight] usePlayerCapability effect mounted, listening on socket", getSocket().id);
+
     const handleStartPreflight = (payload: StartPreflightPayload): void => {
-      // Temporary diagnostic (2026-09-08) — proves whether this handler runs
-      // at all for a report where the server sees a challenge sent but the
-      // required player's ack never arrives, with none of the server-side
-      // drop paths logged either. Safe to remove once that's confirmed one
-      // way or the other; check the browser console at the moment of a
-      // repro to see if this line appears.
-      console.debug("[preflight] room:startPreflight received", payload);
+      // See the mount-time marker above for why this is warn, not debug.
+      console.warn("[preflight] room:startPreflight received", payload, "socket:", getSocket().id, getSocket().connected);
       cancelPendingRetryRef.current?.();
       cancelPendingRetryRef.current = null;
 
