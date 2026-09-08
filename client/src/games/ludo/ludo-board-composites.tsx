@@ -82,36 +82,110 @@ function FeedGlyph({ emoji, size = 12 }: { emoji: string; size?: number }) {
  * ludo-board-shared.tsx, never from this file).
  */
 
-/** Crayon "LUDO" wordmark on a taped sticky-note — the reference header
- *  motif. Purely decorative; each letter tinted a play-color with a wax-
- *  crayon outline and a hand-drawn tilt. */
+/** Line-art die (outline square + 5 pips), for background decoration only —
+ *  not a UI control, so it doesn't belong in ludo-icons.tsx. `currentColor`,
+ *  no fill on the body, so it reads as a soft silhouette at any size/opacity. */
+function DecorDie({ style }: { style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 100 100" style={style} aria-hidden focusable="false">
+      <rect x="6" y="6" width="88" height="88" rx="20" fill="none" stroke="currentColor" strokeWidth="6" />
+      <circle cx="30" cy="30" r="7" fill="currentColor" />
+      <circle cx="70" cy="30" r="7" fill="currentColor" />
+      <circle cx="50" cy="50" r="7" fill="currentColor" />
+      <circle cx="30" cy="70" r="7" fill="currentColor" />
+      <circle cx="70" cy="70" r="7" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Line-art Ludo pawn silhouette (ball head + flared skirt), for background
+ *  decoration only. */
+function DecorPawn({ style }: { style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 100 140" style={style} aria-hidden focusable="false">
+      <circle cx="50" cy="32" r="24" fill="none" stroke="currentColor" strokeWidth="6" />
+      <path d="M34 58 Q50 52 66 58 L80 124 Q50 138 20 124 Z" fill="none" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Small 4-point sparkle accent, for background decoration only. */
+function DecorSpark({ style }: { style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 24 24" style={style} aria-hidden focusable="false">
+      <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
+ * Purely decorative Ludo motifs (dice, pawns, sparkles) scattered behind the
+ * board/rails to fill the wide bare margin a landscape desktop viewport
+ * leaves around a board that's capped by height, not width. `currentColor`
+ * is `--ludo-label` — the one variable every theme already tunes to read
+ * clearly-but-quietly against its own screen background, so this needs no
+ * new per-theme colors and never clashes light-on-light or dark-on-dark.
+ * `-z-10` on a `relative` parent keeps it behind every real child
+ * regardless of DOM order; `pointer-events-none` keeps it inert.
+ */
+export function LudoDecorBackdrop() {
+  return (
+    <div
+      className="absolute inset-0 -z-10 overflow-hidden pointer-events-none select-none"
+      style={{ color: "var(--ludo-label)" }}
+      aria-hidden
+    >
+      <DecorDie style={{ position: "absolute", top: "3%", left: "1%", width: 100, height: 100, opacity: 0.16, transform: "rotate(-14deg)" }} />
+      <DecorPawn style={{ position: "absolute", top: "6%", right: "1%", width: 84, height: 118, opacity: 0.16, transform: "rotate(11deg)" }} />
+      <DecorPawn style={{ position: "absolute", bottom: "5%", left: "1.5%", width: 92, height: 130, opacity: 0.14, transform: "rotate(-9deg)" }} />
+      <DecorDie style={{ position: "absolute", bottom: "4%", right: "1%", width: 88, height: 88, opacity: 0.15, transform: "rotate(19deg)" }} />
+      <DecorSpark style={{ position: "absolute", top: "24%", right: "16%", width: 26, height: 26, opacity: 0.5 }} />
+      <DecorSpark style={{ position: "absolute", bottom: "22%", left: "17%", width: 20, height: 20, opacity: 0.4 }} />
+    </div>
+  );
+}
+
+/** Bubble-candy "LUDO" wordmark with a gold crown, matching the reference
+ *  brand mark — each letter a distinct bright color with a white bubble
+ *  outline and a soft drop shadow, independent of the active theme so the
+ *  mark reads the same "flag" whether the chrome around it is Classic's
+ *  gold or Neon's violet. The script tagline only shows where there's
+ *  room to breathe (desktop's header has it; mobile's compact bar doesn't). */
 function LudoLogo() {
   const letters: ReadonlyArray<[string, string]> = [
-    ["L", "#E4572E"], ["U", "#F2A900"], ["D", "#2E86DE"], ["O", "#3FA34D"],
+    ["L", "#FF4D6D"], ["U", "#3B82F6"], ["D", "#F97316"], ["O", "#22C55E"],
   ];
   return (
-    <div className="relative select-none flex-shrink-0" style={{ transform: "rotate(-3deg)" }} aria-label="Ludo">
-      <span
-        aria-hidden
-        className="absolute -top-2 left-1/2 -translate-x-1/2 w-9 h-3.5 rounded-sm"
-        style={{ background: "rgba(228,177,40,0.35)", border: "1px solid rgba(154,110,26,0.4)", transform: "rotate(4deg)" }}
-      />
-      <div className="flex items-end leading-none font-display" style={{ fontSize: "1.7rem" }}>
+    <div className="relative select-none flex-shrink-0 flex items-end gap-2" aria-label="Ludo">
+      <div className="relative flex items-end leading-none font-display" style={{ fontSize: "2rem" }}>
+        <span
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2"
+          style={{ color: "#FBBF24", filter: "drop-shadow(0 1px 1px rgba(120,53,15,0.5))", transform: "rotate(-6deg)" }}
+        >
+          <CrownIcon size={16} />
+        </span>
         {letters.map(([ch, col], i) => (
           <span
             key={i}
             className="font-black"
             style={{
               color: col,
-              WebkitTextStroke: "1.4px rgba(63,36,18,0.55)",
-              textShadow: "0 2px 0 rgba(63,36,18,0.22)",
-              transform: `rotate(${(i % 2 ? 1 : -1) * 4}deg)`,
+              WebkitTextStroke: "2.5px white",
+              paintOrder: "stroke fill",
+              filter: "drop-shadow(0 2px 0 rgba(0,0,0,0.28))",
+              transform: `rotate(${(i % 2 ? 1 : -1) * 3}deg)`,
             }}
           >
             {ch}
           </span>
         ))}
       </div>
+      <span className="hidden lg:flex flex-col leading-tight pb-0.5 font-script text-[13px] -rotate-2" style={{ color: "var(--ludo-card-subtext, #8C7355)" }}>
+        <span>Good Friends</span>
+        <span className="inline-flex items-center gap-1">
+          Greater Games <span aria-hidden style={{ color: "#EF4444" }}>♥</span>
+        </span>
+      </span>
     </div>
   );
 }

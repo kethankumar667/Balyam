@@ -8,6 +8,7 @@ import {
   LudoOverlays,
   LudoPlayerCards,
   LudoTurnTower,
+  LudoDecorBackdrop,
   useLudoTableImpact,
 } from "./ludo-board-composites";
 
@@ -86,7 +87,13 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
           columns instead of leaving it blank. The ResizeObserver below still
           has the final say, so on a narrow or short window the board simply
           takes what it needs and the rails give way. */}
-      <div className="flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
+      {/* `z-0` (not just `relative`) matters: a positioned element with no
+          explicit z-index creates no stacking context, so the backdrop's
+          `-z-10` would escape to the nearest ancestor that DOES have one —
+          which could be far above this row — instead of just sitting
+          behind these three columns. */}
+      <div className="relative z-0 flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
+        <LudoDecorBackdrop />
         <div className="w-[clamp(10rem,17vw,17rem)] flex-shrink-0 overflow-y-auto pt-1">
           <LudoPlayerCards state={state} players={players} row="all" orientation="col" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
         </div>
