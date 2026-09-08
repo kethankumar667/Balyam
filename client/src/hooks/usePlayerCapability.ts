@@ -144,6 +144,13 @@ export function usePlayerCapability({
     const socket = getSocket();
 
     const handleStartPreflight = (payload: StartPreflightPayload): void => {
+      // Temporary diagnostic (2026-09-08) — proves whether this handler runs
+      // at all for a report where the server sees a challenge sent but the
+      // required player's ack never arrives, with none of the server-side
+      // drop paths logged either. Safe to remove once that's confirmed one
+      // way or the other; check the browser console at the moment of a
+      // repro to see if this line appears.
+      console.debug("[preflight] room:startPreflight received", payload);
       cancelPendingRetryRef.current?.();
       cancelPendingRetryRef.current = null;
 
