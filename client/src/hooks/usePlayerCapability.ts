@@ -10,6 +10,21 @@ import { getSocket } from "../lib/socket";
 const MONITORED_PHASES: ReadonlySet<string> = new Set(["lobby", "starting"]);
 
 /**
+ * Minimum time the "not satisfied yet" retry window is allowed to run before
+ * declining, regardless of what `payload.expiresAt - Date.now()` computes to.
+ *
+ * That subtraction mixes a server clock (`expiresAt`) with the client's own
+ * (`Date.now()`) — under real client/server clock skew it can go negative,
+ * which would otherwise decline almost instantly instead of giving the
+ * visibility/orientation listeners above a fair chance to catch a transient
+ * blip resolving on its own (the whole reason this retry loop exists). The
+ * server's own `attempt.expiresAt` check remains the authoritative deadline
+ * either way — this floor only protects how patient the CLIENT is before
+ * giving up and telling the server it's blocked.
+ */
+const RETRY_DEADLINE_FLOOR_MS = 2000;
+
+/**
  * Evaluates whether the current viewport is in portrait mode for a mobile
  * breakpoint (width < 768 px and height > width). Matches the same guard used
  * by the existing Rummy `rotation-sync.tsx` so the two sources of truth stay
@@ -136,11 +151,23 @@ export function usePlayerCapability({
       // compare against it when deciding whether to emit reportUnavailable.
       activePreflightRef.current = payload;
 
-      // Guard: the preflight deadline has already passed (clock drift or very
-      // slow handler). Emit nothing — the server will time out independently.
-      if (Date.now() >= payload.expiresAt) {
-        return;
-      }
+      // There used to be an early-return here — "if Date.now() >=
+      // payload.expiresAt, emit nothing, the server will time out
+      // independently" — reasoning that only considered a slow HANDLER
+      // (a few hundred ms). It compared `payload.expiresAt` (computed on
+      // the SERVER's clock) against `Date.now()` on the CLIENT's own clock.
+      // Any real-world clock skew — a Windows machine with a wrong system
+      // clock or disabled time sync is common, not exotic — larger than the
+      // preflight window makes this condition true INSTANTLY, every single
+      // time, for that one client: it would never emit an ack OR a decline,
+      // leaving zero trace anywhere (confirmed against a real "Start timed
+      // out" report: the required player's ack simply never arrived, no
+      // drop logged on any server-side guard, because nothing was ever
+      // sent). The server already independently and correctly enforces
+      // this exact deadline, on its OWN clock, inside `acknowledgeStart`
+      // (`Date.now() > attempt.expiresAt` -> `attempt_expired`) — that is
+      // the authoritative check; this was a redundant, clock-skew-fragile
+      // client-side guess ahead of it, worse than not checking at all.
 
       /** True (and acked) iff both conditions hold right now. */
       const tryAcknowledge = (): boolean => {
@@ -202,7 +229,7 @@ export function usePlayerCapability({
           ? "PAGE_NOT_VISIBLE"
           : "ORIENTATION_REQUIRED";
         socket.emit("room:declineStart", { startAttemptId: payload.startAttemptId, reason });
-      }, Math.max(0, payload.expiresAt - Date.now()));
+      }, Math.max(RETRY_DEADLINE_FLOOR_MS, payload.expiresAt - Date.now()));
       cancelPendingRetryRef.current = cleanup;
     };
 
