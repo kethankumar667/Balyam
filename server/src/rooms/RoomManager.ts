@@ -268,7 +268,24 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender"],
 };
 
-export const PREFLIGHT_TIMEOUT_MS = 5000;
+/**
+ * How long every required human has to acknowledge a `room:startPreflight`
+ * challenge before the whole match start times out (2026-09-08 — raised
+ * from 5000).
+ *
+ * 5s was too tight against ordinary, non-broken conditions this exact file
+ * has already been hardened against elsewhere (see `setReady`'s and
+ * `setOrientation`'s own doc comments on not punishing a transient blip):
+ * a backgrounded browser window/tab throttles its own timers under normal
+ * OS power management, which can delay the CLIENT's own ack — or its own
+ * `expiresAt`-driven decline — well past a 5s budget even when nothing is
+ * actually wrong. Two windows on one machine for local testing (the exact
+ * scenario `usePlayerCapability`'s retry-until-deadline logic already
+ * names) is the single most common way to hit this. 10s keeps the same
+ * fail-closed guarantee while giving a throttled tab realistic room to
+ * still respond honestly instead of timing out the whole table.
+ */
+export const PREFLIGHT_TIMEOUT_MS = 10_000;
 
 function pickBotName(game: GameKind, idx: number): string {
   const pool = BOT_NAMES_BY_GAME[game];
@@ -2401,7 +2418,19 @@ export class RoomManager {
       return;
     }
     if (!attempt.requiredHumanPlayerIds.has(player.id)) return;
-    if (!player.isConnected) return;
+    if (!player.isConnected) {
+      // Same failure shape as the roomRevision mismatch above: a real ack
+      // arrived, but got silently dropped — here because the server still
+      // has this seat marked disconnected (a brief reconnect blip racing
+      // the preflight window). Logged for the same reason: without this,
+      // the only visible symptom is another unexplained "Start timed out".
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: seat marked disconnected`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+      return;
+    }
     if (Date.now() > attempt.expiresAt) {
       this.cancelActiveStartAttempt(room, "attempt_expired");
       return;
