@@ -87,42 +87,54 @@ export default function RoomShareCard({
 
   return (
     <>
-      <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs relative overflow-hidden">
+      <div className="w-full bg-gradient-to-r from-amber-500/[0.09] via-[#FFFDF8] to-orange-500/[0.07] dark:from-amber-950/40 dark:via-[#141C2A] dark:to-orange-950/30 border-2 border-amber-300/90 dark:border-amber-500/60 border-l-4 border-l-[#EA5A1F] dark:border-l-amber-400 rounded-2xl p-2.5 sm:p-3 shadow-md shadow-amber-500/5 ring-1 ring-amber-400/20 relative overflow-hidden">
         <div className="flex items-center justify-between gap-3">
-          {/* Left: Prominent Room Code Block */}
-          <div
-            onClick={copyCode}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                copyCode();
-              }
-            }}
-            aria-label={`Room code: ${code}. Click to copy`}
-            title="Click to copy room code"
-            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none min-w-0"
-          >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs group-hover:bg-amber-500/20 group-hover:border-amber-500/40 transition">
-              <Ticket className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+          {/* Left: Prominently Highlighted Room Code Block */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            {/* Ticket Icon Badge */}
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-[#EA5A1F] text-white flex items-center justify-center font-black shadow-xs shrink-0 ring-2 ring-amber-400/30">
+              <Ticket className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" aria-hidden />
             </div>
 
             <div className="min-w-0">
-              <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5 leading-none mb-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5 leading-none mb-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span>Room Code</span>
-                {copied && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 animate-in fade-in">
-                    <Check size={11} /> Copied!
-                  </span>
-                )}
               </div>
 
+              {/* Highlighted Code Plate */}
               <div
-                id="room-share-code-text"
-                className="font-mono text-xl sm:text-2xl font-black tracking-[0.22em] sm:tracking-[0.25em] text-[#2B3550] dark:text-amber-200 leading-none select-all truncate group-hover:text-[#EA5A1F] dark:group-hover:text-amber-300 transition-colors"
+                onClick={copyCode}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    copyCode();
+                  }
+                }}
+                aria-label={`Room code: ${code}. Click to copy`}
+                title="Click to copy room code"
+                className="inline-flex items-center gap-2 px-3 py-1 sm:py-1.5 rounded-xl bg-white/95 dark:bg-[#0E1522] border-2 border-amber-400/90 dark:border-amber-500/80 shadow-[0_0_12px_rgba(245,158,11,0.18)] hover:shadow-[0_0_16px_rgba(245,158,11,0.3)] hover:border-[#EA5A1F] dark:hover:border-amber-400 transition-all cursor-pointer active:scale-95 group"
               >
-                {code}
+                <span
+                  id="room-share-code-text"
+                  className="font-mono text-xl sm:text-2xl font-black tracking-[0.25em] text-[#EA5A1F] dark:text-amber-200 leading-none select-all pl-1"
+                >
+                  {code}
+                </span>
+                <span className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                  {copied ? (
+                    <Check size={14} className="text-emerald-600 dark:text-emerald-400 stroke-[3]" />
+                  ) : (
+                    <Copy size={14} className="stroke-[2.5]" />
+                  )}
+                </span>
+                {copied && (
+                  <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 rounded px-1.5 py-0.5 animate-in fade-in">
+                    Copied!
+                  </span>
+                )}
               </div>
             </div>
           </div>
