@@ -48,11 +48,12 @@ export default function PreflightRotatePrompt({ deadline }: PreflightRotatePromp
           📱↻
         </div>
         <div className="text-lg font-extrabold uppercase tracking-wider text-amber-200">
-          Rotate your device
+          Rotate Your Device
         </div>
         <div className="text-sm text-amber-100/80">
-          The match is starting — turn your phone sideways to landscape so
-          you're ready.
+          This game requires landscape mode.
+          <br />
+          Please rotate your device to continue.
         </div>
         <div
           className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-1.5"

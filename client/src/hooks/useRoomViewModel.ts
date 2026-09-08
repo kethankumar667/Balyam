@@ -13,6 +13,92 @@ export const MAX_PLAYERS_BY_GAME: Record<GameKind, number> = Object.fromEntries(
 
 export { NO_BOT_GAMES, ECONOMY_MAX_APPROVED_SEAT_COUNT, isEconomySupportedSeatCount };
 
+/**
+ * Most severe → least severe. Shared by the host's single aggregate
+ * `startGameDisabledReason` below and by `dominantBlockerFor`/
+ * `describeStartBlocker` (used per-player in `ParticipantRow`) so the two
+ * surfaces can never silently drift into naming different blockers as "the"
+ * reason for the same underlying `RoomStartReadiness` snapshot.
+ */
+export const BLOCKER_PRIORITY: readonly StartBlockReason[] = [
+  "DISCONNECTED",
+  "RECOVERING",
+  "PAGE_NOT_VISIBLE",
+  "ORIENTATION_REQUIRED",
+  "ACKNOWLEDGEMENT_MISSING",
+  "ACKNOWLEDGEMENT_EXPIRED",
+  "NOT_READY",
+  "REVISION_OUTDATED",
+];
+
+/** The single most-severe blocker in a player's own list, or null if they have none. */
+export function dominantBlockerFor(
+  blockers: readonly StartBlockReason[] | undefined
+): StartBlockReason | null {
+  if (!blockers || blockers.length === 0) return null;
+  return BLOCKER_PRIORITY.find((b) => blockers.includes(b)) ?? blockers[0] ?? null;
+}
+
+/**
+ * Player-specific, full-sentence description of a single blocker — the
+ * per-row counterpart to the host-only aggregate reason below. Root-caused
+ * 2026-09-09: the aggregate string was the ONLY readiness information any
+ * client ever saw, and even that was host-only — a guest whose own teammate
+ * needed to rotate their phone had no visibility into why the match hadn't
+ * started. This is what `ParticipantRow` shows every player, for every
+ * seat, in place of a plain "Waiting" badge once a start attempt is active.
+ */
+export function describeStartBlocker(
+  reason: StartBlockReason,
+  ctx: { playerName: string; requiredOrientation: "landscape" | "portrait" | null }
+): string {
+  const { playerName: name, requiredOrientation } = ctx;
+  switch (reason) {
+    case "DISCONNECTED":
+      return `${name} disconnected — waiting for reconnection`;
+    case "RECOVERING":
+      return `${name} is reconnecting — please wait`;
+    case "PAGE_NOT_VISIBLE":
+      return `${name}'s app isn't in the foreground right now`;
+    case "ORIENTATION_REQUIRED":
+      return requiredOrientation
+        ? `This game requires ${requiredOrientation} mode. ${name} needs to rotate their device to continue.`
+        : `${name} needs to rotate their device to continue.`;
+    case "ACKNOWLEDGEMENT_MISSING":
+      return `${name} is confirming they're ready to start…`;
+    case "ACKNOWLEDGEMENT_EXPIRED":
+      return `${name} didn't confirm in time — retrying`;
+    case "REVISION_OUTDATED":
+      return `${name}'s app is syncing to the latest room state`;
+    case "NOT_READY":
+    default:
+      return `${name} hasn't marked themselves ready yet`;
+  }
+}
+
+/** Short pill label for the same blocker — paired with `describeStartBlocker`'s
+ *  full sentence, which goes in the badge's `title` tooltip instead. */
+export function shortStartBlockerLabel(reason: StartBlockReason): string {
+  switch (reason) {
+    case "DISCONNECTED":
+      return "Disconnected";
+    case "RECOVERING":
+      return "Reconnecting";
+    case "PAGE_NOT_VISIBLE":
+      return "Away";
+    case "ORIENTATION_REQUIRED":
+      return "Rotate device";
+    case "ACKNOWLEDGEMENT_MISSING":
+    case "ACKNOWLEDGEMENT_EXPIRED":
+      return "Confirming";
+    case "REVISION_OUTDATED":
+      return "Syncing";
+    case "NOT_READY":
+    default:
+      return "Not ready";
+  }
+}
+
 export interface RoomViewModel {
   maxPlayers: number;
   availableSeats: number;
@@ -116,19 +202,13 @@ export function computeRoomViewModel(
     // informative blocker reason across all participants so the host can act.
     // Priority (most severe → least): disconnected, recovering, not visible,
     // orientation required, ack missing/expired, revision outdated.
+    // BLOCKER_PRIORITY is exported above and shared with `dominantBlockerFor`
+    // (the per-player counterpart used in `ParticipantRow`) so the two
+    // surfaces can never name different blockers as "the" reason for the
+    // same `RoomStartReadiness` snapshot.
     const allBlockers = roomState.startReadiness.participants.flatMap(
       (p) => p.blockers as StartBlockReason[],
     );
-    const BLOCKER_PRIORITY: readonly StartBlockReason[] = [
-      "DISCONNECTED",
-      "RECOVERING",
-      "PAGE_NOT_VISIBLE",
-      "ORIENTATION_REQUIRED",
-      "ACKNOWLEDGEMENT_MISSING",
-      "ACKNOWLEDGEMENT_EXPIRED",
-      "NOT_READY",
-      "REVISION_OUTDATED",
-    ];
     const dominantBlocker = BLOCKER_PRIORITY.find((b) => allBlockers.includes(b));
     if (dominantBlocker === "DISCONNECTED") {
       startGameDisabledReason = "A player has disconnected — waiting for them to reconnect";

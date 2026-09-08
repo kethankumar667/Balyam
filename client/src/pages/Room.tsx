@@ -1642,6 +1642,7 @@ export default function Room() {
                 onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
                 onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
                 onRenameBot={(id, newName) => { getSocket().emit("room:renameBot", id, newName); }}
+                startReadiness={roomState.startReadiness}
               />
 
               {viewModel.colorPickerKind && (

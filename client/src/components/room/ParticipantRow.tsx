@@ -1,4 +1,4 @@
-import type { Player } from "@shared/types";
+import type { Player, StartBlockReason } from "@shared/types";
 import { Crown, Bot } from "lucide-react";
 import { motion } from "framer-motion";
 import SeatAvatar from "../profile/SeatAvatar";
@@ -7,6 +7,7 @@ import { ReadyCheckmarkPencil } from "../../animations/app/ReadyCheckmarkDraw";
 import { COLOR_HEX } from "../../games/ludo/board-layout";
 import { COIN_COLOR_HEX } from "../CoinColorPicker";
 import { getPlayerThemeByColor } from "../../games/dotsboxes/dotsboxes-theme";
+import { dominantBlockerFor, describeStartBlocker, shortStartBlockerLabel } from "../../hooks/useRoomViewModel";
 
 export default function ParticipantRow({
   player,
@@ -15,6 +16,8 @@ export default function ParticipantRow({
   onRemoveBot,
   onRemoveLocalPlayer,
   onRenameBot,
+  blockers,
+  requiredOrientation = null,
 }: {
   player: Player;
   selfId: string | null;
@@ -22,8 +25,18 @@ export default function ParticipantRow({
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
   onRenameBot?: (botId: string, newName: string) => void;
+  /**
+   * This seat's own blockers from the active `RoomStartReadiness` snapshot,
+   * if a start attempt is currently collecting. `DISCONNECTED` is
+   * deliberately excluded by the caller (`ParticipantPanel`) — that state
+   * already has its own distinct "Reconnecting..." subtext treatment below,
+   * and showing it twice would be redundant, not clearer.
+   */
+  blockers?: readonly StartBlockReason[];
+  requiredOrientation?: "landscape" | "portrait" | null;
 }) {
   const isMe = player.id === selfId;
+  const dominantBlocker = dominantBlockerFor(blockers);
 
   // Derive color swatch if set
   let colorBadgeHex: string | null = null;
@@ -154,7 +167,21 @@ export default function ParticipantRow({
 
       {/* Right: Readiness Badge & Host Action Menu */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {player.isReady ? (
+        {dominantBlocker ? (
+          // A start attempt is actively collecting and THIS seat is why it
+          // can't proceed yet — root-caused 2026-09-09: this used to be a
+          // plain "Waiting" badge no matter the reason, which is exactly
+          // why a player whose teammate needed to rotate their phone had no
+          // way to know that from their own screen.
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/50 border border-amber-300/80 dark:border-amber-700/50 rounded-full px-2.5 py-1 whitespace-nowrap"
+            aria-label={describeStartBlocker(dominantBlocker, { playerName: player.name, requiredOrientation })}
+            title={describeStartBlocker(dominantBlocker, { playerName: player.name, requiredOrientation })}
+          >
+            <span className="animate-pulse font-bold">⏳</span>
+            <span>{shortStartBlockerLabel(dominantBlocker)}</span>
+          </span>
+        ) : player.isReady ? (
           <span
             className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2.5 py-1 whitespace-nowrap shadow-2xs"
             aria-label="Ready"

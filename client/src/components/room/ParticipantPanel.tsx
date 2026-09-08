@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { BotDifficulty, GameKind, Player } from "@shared/types";
+import type { BotDifficulty, GameKind, Player, RoomStartReadiness } from "@shared/types";
 import ParticipantRow from "./ParticipantRow";
 import BotManagementDialog from "./BotManagementDialog";
 import { NO_BOT_GAMES } from "../../hooks/useRoomViewModel";
@@ -14,6 +14,7 @@ export default function ParticipantPanel({
   onRemoveBot,
   onRemoveLocalPlayer,
   onRenameBot,
+  startReadiness,
 }: {
   players: Player[];
   maxPlayers: number;
@@ -24,6 +25,9 @@ export default function ParticipantPanel({
   onRemoveBot?: (botId: string) => void;
   onRemoveLocalPlayer?: (localId: string) => void;
   onRenameBot?: (botId: string, newName: string) => void;
+  /** The room's live match-start readiness — present once a host has
+   *  requested a start and a preflight attempt is collecting acks. */
+  startReadiness?: RoomStartReadiness;
 }) {
   const [showAddBotDialog, setShowAddBotDialog] = useState(false);
   const [isAddingQuickBot, setIsAddingQuickBot] = useState(false);
@@ -33,6 +37,23 @@ export default function ParticipantPanel({
   const readyCount = players.filter((p) => p.isReady).length;
   const supportsBots = !NO_BOT_GAMES.has(game);
   const canAddBot = isHost && !isRoomFull && supportsBots;
+
+  // A start attempt is actively collecting acks — the exact window the
+  // requirement doc's "Preparing Match..." lobby is about. Outside this
+  // window the panel is the ordinary "Participants" list; nothing changes
+  // for a table that hasn't tried to start yet.
+  const isPreparingMatch = !!startReadiness?.startAttemptId && !startReadiness.canStart;
+
+  // `DISCONNECTED` is excluded here, not in `ParticipantRow` — the row
+  // already renders a distinct "Reconnecting..." subtext straight off
+  // `player.isConnected`, so passing it through as a blocker too would show
+  // the same fact twice in two different words on the same row.
+  const blockersForPlayer = (playerId: string) =>
+    isPreparingMatch
+      ? startReadiness!.participants
+          .find((p) => p.playerId === playerId)
+          ?.blockers.filter((b) => b !== "DISCONNECTED")
+      : undefined;
 
   async function handleQuickAddBot() {
     if (!canAddBot || isAddingQuickBot) return;
@@ -53,9 +74,13 @@ export default function ParticipantPanel({
         {/* Panel Header */}
         <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <span aria-hidden className="text-base">👥</span>
+            <span aria-hidden className="text-base">
+              {isPreparingMatch ? "⏳" : "👥"}
+            </span>
             <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
-              Participants ({players.length}/{maxPlayers})
+              {isPreparingMatch
+                ? "Preparing Match…"
+                : `Participants (${players.length}/${maxPlayers})`}
             </h2>
 
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/70 dark:bg-slate-800 text-[#5C4328] dark:text-slate-200">
@@ -102,6 +127,12 @@ export default function ParticipantPanel({
           </div>
         </div>
 
+        {isPreparingMatch && (
+          <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium -mt-1">
+            Waiting for all players to get ready before starting the game.
+          </p>
+        )}
+
         {/* Unified Player List Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[170px] sm:max-h-[200px] overflow-y-auto pr-0.5">
           {players.map((player) => (
@@ -113,6 +144,8 @@ export default function ParticipantPanel({
               onRemoveBot={onRemoveBot}
               onRemoveLocalPlayer={onRemoveLocalPlayer}
               onRenameBot={onRenameBot}
+              blockers={blockersForPlayer(player.id)}
+              requiredOrientation={startReadiness?.requiredOrientation ?? null}
             />
           ))}
         </div>
