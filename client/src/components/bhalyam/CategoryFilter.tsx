@@ -9,6 +9,8 @@ import {
   type GameTag,
 } from "./data";
 import { useTheme } from "../../lib/useTheme";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 
 /**
  * Game filter — a segmented control.
@@ -95,6 +97,7 @@ export default function CategoryFilter({
   className?: string;
 }) {
   const reduceMotion = useReducedMotion();
+  const { play } = useAudio();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
@@ -270,7 +273,10 @@ export default function CategoryFilter({
                    inside it. Without this, tabbing through the page would
                    stop six times on one control. */
                 tabIndex={active ? 0 : -1}
-                onClick={() => onChange({ category: seg.id })}
+                onClick={() => {
+                  if (!active) play(AUDIO.UI_TOGGLE);
+                  onChange({ category: seg.id });
+                }}
                 onKeyDown={(e) => onKeyDown(e, i)}
                 /* Below sm the six labels cannot fit, so segments keep their
                    natural width and the track scrolls. From sm up they grow

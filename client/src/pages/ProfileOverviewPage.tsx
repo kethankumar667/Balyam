@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { Heart, Award, ChevronDown, Trophy, Flame } from "lucide-react";
+import DeleteAccountModal from "../components/auth/DeleteAccountModal";
 
 const MemberLockedGate = lazy(() => import("../components/auth/MemberLockedGate"));
 
@@ -28,6 +29,8 @@ export default function ProfileOverviewPage() {
     openEditModal,
     openAvatarModal,
   } = useOutletContext<ProfileFamilyOutletContext>();
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   if (!isMember) {
     return (
@@ -90,6 +93,7 @@ export default function ProfileOverviewPage() {
           <ProfileQuickActions
             onExportData={handleExportData}
             onOpenAvatarPicker={openAvatarModal}
+            onDeleteAccount={() => setIsDeleteModalOpen(true)}
           />
         </div>
       </div>
@@ -211,6 +215,11 @@ export default function ProfileOverviewPage() {
           </div>
         </div>
       </div>
+
+      <DeleteAccountModal
+        open={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 }

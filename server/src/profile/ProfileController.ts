@@ -63,6 +63,19 @@ profileRouter.put("/:playerId", requireSelfParam(), (req, res) => {
   res.json({ profile: updated });
 });
 
+/**
+ * PRIVATE — DELETE /api/profile/:playerId
+ *
+ * Permanently removes a player's profile, career metrics, and achievement
+ * progress from the server. Protected by requireSelfParam() so callers can
+ * only delete their own profile record.
+ */
+profileRouter.delete("/:playerId", requireSelfParam(), (req, res) => {
+  const targetPlayerId = callerId(req);
+  profileService.deleteProfile(targetPlayerId);
+  res.json({ ok: true, deletedPlayerId: targetPlayerId });
+});
+
 /** PUBLIC — career totals. These are what a leaderboard row is made of. */
 profileRouter.get("/:playerId/stats", (req, res) => {
   res.json({ stats: profileService.getStats(req.params.playerId) });

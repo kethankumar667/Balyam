@@ -9,6 +9,8 @@ import {
   type FieldError,
 } from "../../lib/authValidation";
 import { GoogleMark } from "../../components/auth/authIcons";
+import { TEST_ACCOUNTS } from "../../constants/testAccounts";
+import { useRoomStore } from "../../store/roomStore";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showTestAccounts, setShowTestAccounts] = useState(false);
 
   const [emailError, setEmailError] = useState<FieldError>(null);
   const [passwordError, setPasswordError] = useState<FieldError>(null);
@@ -32,6 +35,16 @@ export default function LoginPage() {
       return;
     }
     submit(email, password);
+  }
+
+  function handleSelectTestAccount(acc: (typeof TEST_ACCOUNTS)[number]) {
+    setEmail(acc.email);
+    setPassword(acc.password);
+    setEmailError(null);
+    setPasswordError(null);
+    useRoomStore.getState().setPlayerName(acc.name);
+    useRoomStore.getState().setAvatarId(acc.avatarFile);
+    submit(acc.email, acc.password);
   }
 
   return (
@@ -340,6 +353,64 @@ export default function LoginPage() {
                 >
                   <span>🎮 Guest</span>
                 </button>
+              </div>
+
+              {/* 10 Real-Time Testing Accounts (1-Tap Fast Login) */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTestAccounts((v) => !v)}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 hover:from-amber-500/20 hover:to-orange-500/20 border border-amber-500/30 text-amber-950 font-black text-xs flex items-center justify-between transition cursor-pointer shadow-xs"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm">🧪</span>
+                    <span>10 Real-Time Testing Accounts</span>
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-900 border border-amber-500/30">
+                    {showTestAccounts ? "Hide ▲" : "Fast Login ▼"}
+                  </span>
+                </button>
+
+                {showTestAccounts && (
+                  <div className="mt-2.5 p-3 rounded-2xl bg-[#FFF9EE] border-2 border-amber-300/60 shadow-inner space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[11px] text-[#8C6D4F] font-bold">
+                        1-Tap Fast Login:
+                      </p>
+                      <span className="text-[10px] text-amber-800 font-semibold">
+                        Password: {TEST_ACCOUNTS[0]?.password}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                      {TEST_ACCOUNTS.map((acc) => (
+                        <button
+                          key={acc.id}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => handleSelectTestAccount(acc)}
+                          className="flex items-center gap-2 p-2 rounded-xl bg-white hover:bg-amber-100/70 border border-[#E0CCAC] hover:border-amber-400 text-left transition active:scale-95 cursor-pointer disabled:opacity-50 shadow-2xs group"
+                        >
+                          <img
+                            src={`/Avatars/${acc.avatarFile}`}
+                            alt={acc.name}
+                            className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0 group-hover:scale-105 transition"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-[#1E293B] truncate leading-tight group-hover:text-amber-900">
+                              {acc.name}
+                            </div>
+                            <div className="text-[10px] text-[#7A5B3E] truncate font-medium">
+                              {acc.role}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
           </div>

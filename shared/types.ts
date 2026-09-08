@@ -278,7 +278,7 @@ export interface RoomPublicState {
    */
   committedCostPerSeat?: string | null;
   committedTotalPot?: string | null;
-  /** The room's chosen per-seat entry stake, in coins — set once at creation, unchanged for the room's whole lifetime. See `ENTRY_STAKE_*`/`isValidEntryStakeCoins` above. */
+  /** The room's chosen per-seat entry stake, in coins — set at creation and modifiable by the host in lobby before any other human player readies up. See `ENTRY_STAKE_*`/`isValidEntryStakeCoins` above. */
   entryStakeCoins: number;
 }
 
@@ -864,7 +864,42 @@ export const HC_GALLI_MAX_OVERS = 20;
 export const ENTRY_STAKE_PRESET_TIERS = [100, 200, 500, 1000] as const;
 export const ENTRY_STAKE_MIN_COINS = 100;
 export const ENTRY_STAKE_MAX_COINS = 5000;
-export const ENTRY_STAKE_STEP_COINS = 100;
+export const ENTRY_STAKE_STEP_LOW = 50;
+export const ENTRY_STAKE_STEP_HIGH = 100;
+export const ENTRY_STAKE_STEP_THRESHOLD = 1000;
+export const ENTRY_STAKE_STEP_COINS = 50;
+
+/** Step amount for a given stake: 50 below 1000, 100 at or above 1000. */
+export function getEntryStakeStep(value: number): number {
+  return value < ENTRY_STAKE_STEP_THRESHOLD ? ENTRY_STAKE_STEP_LOW : ENTRY_STAKE_STEP_HIGH;
+}
+
+/** Next valid entry stake when incrementing (+). */
+export function getNextEntryStake(current: number): number {
+  if (current >= ENTRY_STAKE_MAX_COINS) return ENTRY_STAKE_MAX_COINS;
+  if (current < ENTRY_STAKE_STEP_THRESHOLD) {
+    return Math.min(ENTRY_STAKE_MAX_COINS, current + ENTRY_STAKE_STEP_LOW);
+  }
+  return Math.min(ENTRY_STAKE_MAX_COINS, current + ENTRY_STAKE_STEP_HIGH);
+}
+
+/** Previous valid entry stake when decrementing (-). */
+export function getPrevEntryStake(current: number): number {
+  if (current <= ENTRY_STAKE_MIN_COINS) return ENTRY_STAKE_MIN_COINS;
+  if (current <= ENTRY_STAKE_STEP_THRESHOLD) {
+    return Math.max(ENTRY_STAKE_MIN_COINS, current - ENTRY_STAKE_STEP_LOW);
+  }
+  return Math.max(ENTRY_STAKE_MIN_COINS, current - ENTRY_STAKE_STEP_HIGH);
+}
+
+/** Snap a raw numeric stake to the nearest valid stepped value (50 below 1000, 100 at or above 1000). */
+export function snapEntryStake(raw: number): number {
+  const clamped = Math.max(ENTRY_STAKE_MIN_COINS, Math.min(ENTRY_STAKE_MAX_COINS, raw));
+  if (clamped < ENTRY_STAKE_STEP_THRESHOLD) {
+    return Math.round(clamped / ENTRY_STAKE_STEP_LOW) * ENTRY_STAKE_STEP_LOW;
+  }
+  return Math.round(clamped / ENTRY_STAKE_STEP_HIGH) * ENTRY_STAKE_STEP_HIGH;
+}
 /**
  * Guests may host a multiplayer match ONLY at exactly this stake — never a
  * preset above it, never a custom amount. Enforced server-side in
@@ -876,14 +911,15 @@ export const ENTRY_STAKE_STEP_COINS = 100;
  */
 export const GUEST_HOST_ENTRY_STAKE_COINS = 100;
 
-/** A positive multiple of `ENTRY_STAKE_STEP_COINS`, within [MIN, MAX] — shared by the client picker and the server's authoritative check. */
+/** A positive stake within [MIN, MAX] — multiples of 50 below 1000, and multiples of 100 at or above 1000. */
 export function isValidEntryStakeCoins(value: number): boolean {
-  return (
-    Number.isInteger(value) &&
-    value >= ENTRY_STAKE_MIN_COINS &&
-    value <= ENTRY_STAKE_MAX_COINS &&
-    value % ENTRY_STAKE_STEP_COINS === 0
-  );
+  if (!Number.isInteger(value) || value < ENTRY_STAKE_MIN_COINS || value > ENTRY_STAKE_MAX_COINS) {
+    return false;
+  }
+  if (value < ENTRY_STAKE_STEP_THRESHOLD) {
+    return value % ENTRY_STAKE_STEP_LOW === 0;
+  }
+  return value % ENTRY_STAKE_STEP_HIGH === 0;
 }
 
 /** Wickets allowed per innings (standard cricket: 10 — losing the 11th = all out). */
@@ -2877,6 +2913,11 @@ export interface ClientToServerEvents {
   "room:setOrientation": (needsRotation: boolean) => void;
   /** Host-only. Names (or renames) the room — "Friday Rummy Nights" etc. Trimmed/capped server-side. */
   "room:setName": (name: string) => void;
+  /** Host-only. Changes the room's per-seat entry stake in the lobby before any other human player has readied up. */
+  "room:setEntryStake": (
+    stakeCoins: number,
+    ack?: (response: { ok: boolean; error?: string; entryStakeCoins?: number }) => void
+  ) => void;
   /**
    * "I'm here" — sent when a player interacts while the server is auto-playing
    * their seat, to hand control straight back.

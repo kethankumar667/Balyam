@@ -73,6 +73,16 @@ export class ProfileService {
   }
 
   /**
+   * Deletes a player profile, career statistics, and achievement progress.
+   */
+  public deleteProfile(playerId: string): boolean {
+    const hadProfile = this.profiles.delete(playerId);
+    this.stats.delete(playerId);
+    this.unlockedAchievements.delete(playerId);
+    return hadProfile;
+  }
+
+  /**
    * Records match outcome for all participants in a finished match.
    */
   public recordMatchFinished(params: {

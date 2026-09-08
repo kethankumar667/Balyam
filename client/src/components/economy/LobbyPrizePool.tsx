@@ -27,6 +27,10 @@ export interface LobbyPrizePoolProps {
    */
   lockPhase?: LobbyLockPhase;
   isHost?: boolean;
+  entryStakeCoins?: number;
+  canChangeStake?: boolean;
+  onChangeStake?: () => void;
+  stakeLockedReason?: string | null;
   className?: string;
 }
 
@@ -52,6 +56,10 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
   isQuoteLoading = false,
   lockPhase = "idle",
   isHost = false,
+  entryStakeCoins,
+  canChangeStake = false,
+  onChangeStake,
+  stakeLockedReason = null,
   className = "",
 }) => {
   const reduceMotion = useReducedMotion();
@@ -219,6 +227,49 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           )}
         </div>
       </div>
+
+      {/* Entry Stake Per Seat Bar */}
+      {!isFreePractice && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
+            <span className="text-[11px] uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-semibold">
+              Entry Stake:
+            </span>
+            <span className="text-amber-700 dark:text-amber-300 font-black">
+              🪙 {entryStakeCoins ?? quote?.costPerSeat ?? 100}
+            </span>
+            <span className="text-[10px] text-[#8A6D4B] dark:text-slate-400 font-medium">/ seat</span>
+          </div>
+
+          {isHost && !isLocked && !isSecuring && (
+            canChangeStake ? (
+              <button
+                type="button"
+                onClick={onChangeStake}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/70 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 border border-amber-400/40 rounded-lg px-2.5 py-1 transition cursor-pointer active:scale-95 shadow-xs"
+                title="Change table entry stake"
+              >
+                <span>✏️ Change Bet</span>
+              </button>
+            ) : (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/60 dark:border-slate-700/60 rounded-lg px-2 py-0.5"
+                title={stakeLockedReason ?? "Bet cannot be changed right now"}
+              >
+                <Lock className="w-2.5 h-2.5" />
+                <span>Bet Locked</span>
+              </span>
+            )
+          )}
+        </div>
+      )}
+
+      {isHost && !canChangeStake && stakeLockedReason && !isLocked && !isSecuring && !isFreePractice && (
+        <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium -mt-1.5 mb-2.5 px-1 flex items-center gap-1">
+          <span>🔒</span>
+          <span>{stakeLockedReason}</span>
+        </p>
+      )}
 
       {/* Main Prize Pool Number Plate */}
       <div className="flex items-baseline justify-between p-3.5 rounded-2xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner mb-3">
