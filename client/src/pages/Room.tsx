@@ -59,6 +59,7 @@ import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import BhalyamResultModal from "../components/BhalyamResultModal";
 import VoucherWonModal from "../components/economy/VoucherWonModal";
+import { ChangeStakeModal } from "../components/room/ChangeStakeModal";
 import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
@@ -1140,6 +1141,25 @@ export default function Room() {
 
   const viewModel = useRoomViewModel(roomState, playerId);
 
+  const [showChangeStakeModal, setShowChangeStakeModal] = useState(false);
+
+  const otherHumanPlayers = useMemo(() => {
+    return roomState?.players.filter((p) => p.id !== playerId && !p.isBot && !p.isLocal) ?? [];
+  }, [roomState?.players, playerId]);
+
+  const otherHumansReady = useMemo(() => {
+    return otherHumanPlayers.some((p) => p.isReady);
+  }, [otherHumanPlayers]);
+
+  const canChangeStake = selfIsHost && roomState?.phase === "lobby" && !otherHumansReady;
+
+  const stakeLockedReason = useMemo(() => {
+    if (!selfIsHost) return null;
+    if (roomState?.phase !== "lobby") return "Match is already active";
+    if (otherHumansReady) return "Locked: Another player is already marked ready";
+    return null;
+  }, [selfIsHost, roomState?.phase, otherHumansReady]);
+
   /**
    * Client-side preflight responder for the server-authoritative match-start
    * safety protocol. Listens for `room:startPreflight`, checks visibility and
@@ -1598,6 +1618,10 @@ export default function Room() {
                   isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
                   lockPhase={lobbyLockPhase}
                   isHost={selfIsHost}
+                  entryStakeCoins={roomState.entryStakeCoins}
+                  canChangeStake={canChangeStake}
+                  onChangeStake={() => setShowChangeStakeModal(true)}
+                  stakeLockedReason={stakeLockedReason}
                 />
               ) : (
                 <UnsupportedSeatCountCard
@@ -1994,6 +2018,16 @@ export default function Room() {
           coinAmount={wonVoucher.coinAmount}
           rawCode={wonVoucher.rawCode}
           onClose={() => setWonVoucher(null)}
+        />
+      )}
+
+      {selfIsHost && (
+        <ChangeStakeModal
+          open={showChangeStakeModal}
+          onClose={() => setShowChangeStakeModal(false)}
+          currentStake={roomState.entryStakeCoins ?? 100}
+          isGuestHost={Boolean(selfPlayer?.isGuest || currentAccountKind() === "guest")}
+          playerCount={viewModel.totalPlayersCount}
         />
       )}
         </div>

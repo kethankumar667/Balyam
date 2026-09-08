@@ -67,7 +67,13 @@ import {
   PlayerStartReadiness,
   RoomStartReadiness,
 } from "@shared/types.js";
-import { ENTRY_STAKE_MIN_COINS, GUEST_HOST_ENTRY_STAKE_COINS, isValidEntryStakeCoins } from "@shared/types.js";
+import {
+  ENTRY_STAKE_MIN_COINS,
+  ENTRY_STAKE_MAX_COINS,
+  ENTRY_STAKE_STEP_COINS,
+  GUEST_HOST_ENTRY_STAKE_COINS,
+  isValidEntryStakeCoins,
+} from "@shared/types.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
@@ -1983,6 +1989,55 @@ export class RoomManager {
     const cleaned = name.trim().slice(0, 40);
     room.name = cleaned.length > 0 ? cleaned : null;
     this.broadcastRoomState(room);
+  }
+
+  /**
+   * Host-only. Changes the room's per-seat entry stake in the lobby before any other human player has readied up.
+   */
+  setEntryStake(
+    socketId: string,
+    stakeCoins: number
+  ): { ok: boolean; error?: string; entryStakeCoins?: number } {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) {
+      return { ok: false, error: "Room or player not found" };
+    }
+    if (player.id !== room.hostId) {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only the host can change the entry stake");
+      return { ok: false, error: "Only the host can change the entry stake" };
+    }
+    if (room.phase !== "lobby") {
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change entry stake while a game is in progress");
+      return { ok: false, error: "Cannot change entry stake while a game is in progress" };
+    }
+    // Check if any other human player has readied up
+    const otherHumanReady = Array.from(room.players.values()).some(
+      (p) => !p.isBot && p.id !== room.hostId && p.isReady
+    );
+    if (otherHumanReady) {
+      const msg = "Cannot change the bet after another player has readied up. Ask them to unready first.";
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
+      return { ok: false, error: msg };
+    }
+    if (player.isGuest && stakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
+      const msg = `Guest hosts can only host matches at the ${GUEST_HOST_ENTRY_STAKE_COINS}-coin table. Sign in to host higher stakes.`;
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
+      return { ok: false, error: msg };
+    }
+    if (!isValidEntryStakeCoins(stakeCoins)) {
+      const msg = `Invalid entry stake: must be a multiple of ${ENTRY_STAKE_STEP_COINS} between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins.`;
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
+      return { ok: false, error: msg };
+    }
+
+    room.entryStakeCoins = stakeCoins;
+    // Host is unreadied so they explicitly confirm readiness at the updated stake
+    player.isReady = false;
+
+    this.broadcastRoomState(room);
+    this.systemMessage(room, `Host updated the table bet to 🪙 ${stakeCoins} coins per seat.`);
+
+    return { ok: true, entryStakeCoins: stakeCoins };
   }
 
   chooseColor(socketId: string, color: string): void {

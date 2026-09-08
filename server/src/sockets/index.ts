@@ -163,6 +163,13 @@ export function registerSocketHandlers(
     rooms.setRoomName(socket.id, name);
   });
 
+  socket.on("room:setEntryStake", (stakeCoins, ack) => {
+    const result = rooms.setEntryStake(socket.id, stakeCoins);
+    if (typeof ack === "function") {
+      ack(result);
+    }
+  });
+
   socket.on("room:addBot", (botName, difficulty) => {
     rooms.addBot(socket.id, botName, difficulty);
   });

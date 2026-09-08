@@ -1387,6 +1387,20 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Entry Stake Summary Pill */}
+              <div className="flex items-center justify-between text-xs font-bold px-1 text-[#5C4328] dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span>Entry Stake</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 font-semibold">
+                    per seat
+                  </span>
+                </span>
+                <span className="text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1">
+                  <span>🪙</span>
+                  <span>{entryStakeCoins.toLocaleString()}</span>
+                </span>
+              </div>
             </div>
 
             {/* Bottom Actions: CTA & Join by Code */}
@@ -1427,12 +1441,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   ) : sealedTable ? (
                     <>
                       <SparkIcon className="w-5 h-5" />
-                      Play vs Bots
+                      Play vs Bots (🪙 {entryStakeCoins}/seat)
                     </>
                   ) : (
                     <>
                       <SparkIcon className="w-5 h-5" />
-                      Create Room
+                      Create Room (🪙 {entryStakeCoins}/seat)
                     </>
                   )}
                 </button>
