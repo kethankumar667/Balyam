@@ -19,6 +19,9 @@ import {
   ENTRY_STAKE_MAX_COINS,
   ENTRY_STAKE_STEP_COINS,
   isValidEntryStakeCoins,
+  getNextEntryStake,
+  getPrevEntryStake,
+  snapEntryStake,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
@@ -1184,7 +1187,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   </button>
 
                   {entryStakeTier === "custom" && (
-                    <div className="mt-2 rounded-2xl p-3.5 bg-amber-500/10 dark:bg-amber-500/15 border-2 border-amber-500/30 space-y-2">
+                    <div className="mt-2 rounded-2xl p-3.5 bg-amber-500/10 dark:bg-amber-500/15 border-2 border-amber-500/30 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
                           Custom per-seat cost
@@ -1193,18 +1196,53 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                           🪙 {customStake} coins
                         </span>
                       </div>
-                      <input
-                        type="range"
-                        min={ENTRY_STAKE_MIN_COINS}
-                        max={ENTRY_STAKE_MAX_COINS}
-                        step={ENTRY_STAKE_STEP_COINS}
-                        value={customStake}
-                        onChange={(e) => setCustomStake(Number(e.target.value))}
-                        className="w-full accent-amber-500 cursor-pointer"
-                      />
-                      <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 font-semibold">
+
+                      {/* Slider with - and + at initial and ending points */}
+                      <div className="flex items-center gap-2.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setCustomStake((prev) => getPrevEntryStake(prev))}
+                          disabled={customStake <= ENTRY_STAKE_MIN_COINS}
+                          aria-label="Decrease stake"
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
+                                     bg-[#FFF9EE] dark:bg-[#161D2B] border-2 border-[#EEDBCA] dark:border-slate-700
+                                     text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
+                                     active:scale-95 transition-all font-black text-base select-none cursor-pointer
+                                     disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
+                        >
+                          −
+                        </button>
+
+                        <div className="flex-1 flex items-center">
+                          <input
+                            type="range"
+                            min={ENTRY_STAKE_MIN_COINS}
+                            max={ENTRY_STAKE_MAX_COINS}
+                            step={50}
+                            value={customStake}
+                            onChange={(e) => setCustomStake(snapEntryStake(Number(e.target.value)))}
+                            className="w-full accent-amber-500 cursor-pointer h-2 bg-amber-200/50 dark:bg-slate-700 rounded-lg appearance-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setCustomStake((prev) => getNextEntryStake(prev))}
+                          disabled={customStake >= ENTRY_STAKE_MAX_COINS}
+                          aria-label="Increase stake"
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
+                                     bg-[#FFF9EE] dark:bg-[#161D2B] border-2 border-[#EEDBCA] dark:border-slate-700
+                                     text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
+                                     active:scale-95 transition-all font-black text-base select-none cursor-pointer
+                                     disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 font-semibold px-0.5">
                         <span>Min: {ENTRY_STAKE_MIN_COINS}</span>
-                        <span>Step: {ENTRY_STAKE_STEP_COINS}</span>
+                        <span>Step: {customStake < 1000 ? "50" : "100"} ({customStake < 1000 ? "50 below 1000" : "100 after 1000"})</span>
                         <span>Max: {ENTRY_STAKE_MAX_COINS}</span>
                       </div>
                     </div>

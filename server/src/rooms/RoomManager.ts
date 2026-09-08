@@ -2025,7 +2025,7 @@ export class RoomManager {
       return { ok: false, error: msg };
     }
     if (!isValidEntryStakeCoins(stakeCoins)) {
-      const msg = `Invalid entry stake: must be a multiple of ${ENTRY_STAKE_STEP_COINS} between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins.`;
+      const msg = `Invalid entry stake: must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins (steps of 50 below 1000, 100 above 1000).`;
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }

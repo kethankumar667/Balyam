@@ -163,8 +163,12 @@ describe("RoomManager — setEntryStake (lobby bet adjustment)", () => {
 
     const host = createRoomAs(rooms, "s_host", "Alice", "rps", "member", MEMBER_HOST, 100);
 
-    expect(rooms.setEntryStake("s_host", 250).ok).toBe(false);
+    expect(rooms.setEntryStake("s_host", 225).ok).toBe(false);
+    expect(rooms.setEntryStake("s_host", 1050).ok).toBe(false);
     expect(rooms.setEntryStake("s_host", 50).ok).toBe(false);
     expect(rooms.setEntryStake("s_host", 6000).ok).toBe(false);
+
+    expect(rooms.setEntryStake("s_host", 250).ok).toBe(true);
+    expect(rooms.setEntryStake("s_host", 1200).ok).toBe(true);
   });
 });

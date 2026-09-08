@@ -7,6 +7,9 @@ import {
   ENTRY_STAKE_MAX_COINS,
   ENTRY_STAKE_STEP_COINS,
   isValidEntryStakeCoins,
+  getNextEntryStake,
+  getPrevEntryStake,
+  snapEntryStake,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { AudioManager } from "../../services/AudioManager";
@@ -63,7 +66,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
     }
 
     if (!isValidEntryStakeCoins(targetStake)) {
-      setError(`Stake must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} in steps of ${ENTRY_STAKE_STEP_COINS}.`);
+      setError(`Stake must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} (steps of 50 below 1000, 100 above 1000).`);
       return;
     }
 
@@ -210,8 +213,8 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
               </button>
 
               {selectedTier === "custom" && (
-                <div className="mt-3 p-3.5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="mt-3 p-3.5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
                       Per seat
                     </span>
@@ -219,18 +222,54 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
                       🪙 {customStake}
                     </span>
                   </div>
-                  <input
-                    type="range"
-                    min={ENTRY_STAKE_MIN_COINS}
-                    max={ENTRY_STAKE_MAX_COINS}
-                    step={ENTRY_STAKE_STEP_COINS}
-                    value={customStake}
-                    onChange={(e) => setCustomStake(Number(e.target.value))}
-                    className="w-full accent-amber-500 cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 mt-1 font-semibold">
-                    <span>{ENTRY_STAKE_MIN_COINS} coins</span>
-                    <span>{ENTRY_STAKE_MAX_COINS} coins</span>
+
+                  {/* Slider with - and + at initial and ending points */}
+                  <div className="flex items-center gap-2.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setCustomStake((prev) => getPrevEntryStake(prev))}
+                      disabled={customStake <= ENTRY_STAKE_MIN_COINS}
+                      aria-label="Decrease stake"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
+                                 bg-[#FFF9EE] dark:bg-slate-800 border-2 border-[#EEDBCA] dark:border-slate-700
+                                 text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
+                                 active:scale-95 transition-all font-black text-base select-none cursor-pointer
+                                 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
+                    >
+                      −
+                    </button>
+
+                    <div className="flex-1 flex items-center">
+                      <input
+                        type="range"
+                        min={ENTRY_STAKE_MIN_COINS}
+                        max={ENTRY_STAKE_MAX_COINS}
+                        step={50}
+                        value={customStake}
+                        onChange={(e) => setCustomStake(snapEntryStake(Number(e.target.value)))}
+                        className="w-full accent-amber-500 cursor-pointer h-2 bg-amber-200/50 dark:bg-slate-700 rounded-lg appearance-none"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCustomStake((prev) => getNextEntryStake(prev))}
+                      disabled={customStake >= ENTRY_STAKE_MAX_COINS}
+                      aria-label="Increase stake"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
+                                 bg-[#FFF9EE] dark:bg-slate-800 border-2 border-[#EEDBCA] dark:border-slate-700
+                                 text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
+                                 active:scale-95 transition-all font-black text-base select-none cursor-pointer
+                                 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between text-[10px] text-[#8A6D4B] dark:text-slate-400 font-semibold px-0.5">
+                    <span>Min: {ENTRY_STAKE_MIN_COINS}</span>
+                    <span>Step: {customStake < 1000 ? "50" : "100"} ({customStake < 1000 ? "50 below 1000" : "100 after 1000"})</span>
+                    <span>Max: {ENTRY_STAKE_MAX_COINS}</span>
                   </div>
                 </div>
               )}

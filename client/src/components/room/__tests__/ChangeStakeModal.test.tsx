@@ -100,4 +100,39 @@ describe("ChangeStakeModal Component", () => {
 
     expect(screen.getByText("Cannot change entry stake once another human player is ready")).toBeDefined();
   });
+
+  it("supports - and + buttons with 50-step below 1000 and 100-step after 1000", () => {
+    render(
+      <ChangeStakeModal
+        open={true}
+        onClose={vi.fn()}
+        currentStake={950}
+        playerCount={2}
+      />
+    );
+
+    // Initial stake is 950
+    expect(screen.getAllByText(/950/).length).toBeGreaterThan(0);
+
+    const increaseBtn = screen.getByLabelText("Increase stake");
+    const decreaseBtn = screen.getByLabelText("Decrease stake");
+    expect(increaseBtn).toBeDefined();
+    expect(decreaseBtn).toBeDefined();
+
+    // 950 + 50 = 1000
+    fireEvent.click(increaseBtn);
+    expect(screen.getAllByText(/1000|1,000/).length).toBeGreaterThan(0);
+
+    // 1000 + 100 = 1100 (step is 100 after 1000)
+    fireEvent.click(increaseBtn);
+    expect(screen.getAllByText(/1100|1,100/).length).toBeGreaterThan(0);
+
+    // 1100 - 100 = 1000
+    fireEvent.click(decreaseBtn);
+    expect(screen.getAllByText(/1000|1,000/).length).toBeGreaterThan(0);
+
+    // 1000 - 50 = 950 (step is 50 below 1000)
+    fireEvent.click(decreaseBtn);
+    expect(screen.getAllByText(/950/).length).toBeGreaterThan(0);
+  });
 });
