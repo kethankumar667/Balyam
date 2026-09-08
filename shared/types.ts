@@ -2054,6 +2054,7 @@ export interface TambolaPublicState {
   players: TambolaPlayerPublic[];
   winners: TambolaClaimWin[];
   isOver: boolean;
+  winnerId: string | null;
 }
 
 export interface TambolaPlayerState extends TambolaPublicState {

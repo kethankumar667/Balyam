@@ -343,6 +343,7 @@ export class TambolaEngine implements GameEngine {
       players: playersPub,
       winners: [...this.winners],
       isOver: this.isOverFlag,
+      winnerId: this.winnerId,
     };
   }
 
@@ -377,10 +378,11 @@ export class TambolaEngine implements GameEngine {
       }
     }
 
-    if (this.seatOrder.length < this.minPlayers) {
-      if (!this.isOverFlag && this.seatOrder.length > 0) {
-        this.finalizeGame();
+    if (!this.isOverFlag && this.phase === "playing" && this.seatOrder.length <= 1) {
+      if (this.seatOrder.length === 1 && !this.winnerId) {
+        this.winnerId = this.seatOrder[0]!;
       }
+      this.finalizeGame();
     }
   }
 

@@ -479,7 +479,10 @@ export class SnakeEngine implements GameEngine {
   removePlayer(playerId: string): void {
     this.snakes.delete(playerId);
     this.seatOrder = this.seatOrder.filter((id) => id !== playerId);
-    if (this.seatOrder.length === 0) this.isOverFlag = true;
+    if (!this.isOverFlag && this.seatOrder.length <= 1) {
+      if (this.seatOrder.length === 1) this.winnerId = this.seatOrder[0]!;
+      this.isOverFlag = true;
+    }
   }
 
   getPhaseTimerSeconds(): number {

@@ -518,7 +518,13 @@ export class BingoEngine implements GameEngine {
   removePlayer(playerId: string): void {
     this.players.delete(playerId);
     this.seatOrder = this.seatOrder.filter((id) => id !== playerId);
-    if (this.seatOrder.length === 0) {
+    if (!this.isOverFlag && this.phase === "playing" && this.seatOrder.length <= 1) {
+      if (this.seatOrder.length === 1 && !this.winnerId) {
+        this.winnerId = this.seatOrder[0]!;
+      }
+      this.phase = "finished";
+      this.isOverFlag = true;
+    } else if (this.seatOrder.length === 0) {
       this.phase = "finished";
       this.isOverFlag = true;
     }

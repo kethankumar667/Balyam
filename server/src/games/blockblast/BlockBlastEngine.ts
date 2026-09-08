@@ -77,6 +77,10 @@ export class BlockBlastEngine implements GameEngine {
   private isOverFlag = false;
   private winnerId: string | null = null;
   private result: BlockBlastResultRow[] | null = null;
+  /** True once anyone has left mid-race — distinguishes a forfeit-shrunk race
+   *  (the survivor should still be paid as the winner) from a race that only
+   *  ever had one seat (nobody to beat, no winner — see `finish()`). */
+  private hadDeparture = false;
 
   private rng: () => number = Math.random;
   private now: () => number = Date.now;
@@ -269,7 +273,12 @@ export class BlockBlastEngine implements GameEngine {
 
     // Solo has no winner — you are not beating anybody, and declaring the
     // only player the winner of a game they just lost reads as mockery.
-    const contested = rows.length > 1 && rows.filter((r) => r.rank === 1).length === 1;
+    // But a lone row caused by an opponent's forfeit is different: there WAS
+    // an opponent, they quit, and the player who stayed earned the win.
+    const contested =
+      rows.length > 1
+        ? rows.filter((r) => r.rank === 1).length === 1
+        : rows.length === 1 && this.hadDeparture;
     this.winnerId = contested ? rows[0].playerId : null;
   }
 
@@ -339,6 +348,7 @@ export class BlockBlastEngine implements GameEngine {
   removePlayer(playerId: string): void {
     this.seats.delete(playerId);
     this.seatOrder = this.seatOrder.filter((id) => id !== playerId);
+    if (!this.isOverFlag) this.hadDeparture = true;
     if (this.seatOrder.length === 0) {
       this.isOverFlag = true;
     }
