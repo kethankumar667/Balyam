@@ -90,8 +90,8 @@ export default function RpsBroadcastMobile(props: RpsBoardProps) {
           mySide={MY_SIDE}
           oppSide={OPP_SIDE}
           compact
+          clock={<ProRoundClock deadline={m.roundDeadline} active={m.iNeedToChoose} />}
         />
-        <ProRoundClock deadline={m.roundDeadline} active={m.iNeedToChoose} />
       </div>
 
       {!showResult && (

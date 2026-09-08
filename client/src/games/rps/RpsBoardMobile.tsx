@@ -7,7 +7,7 @@ import { RpsScorecardModal, RpsOverlays } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
 import { useSkin } from "../skin";
-import { RpsClashOverlay, RpsWinnerCelebration } from "./RpsAnimations";
+import { RpsWinnerCelebration } from "./RpsAnimations";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
 import {
   NotebookPage,
@@ -113,6 +113,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           color={P1_C}
           tapeColor="green"
           side="left"
+          locked={!!m.myChoice}
           cardRef={m.registerCardRef(m.myId)}
         />
         <NotebookPlayerCard
@@ -126,6 +127,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           color={P2_C}
           tapeColor="red-dots"
           side="right"
+          locked={!!m.oppChoice}
           cardRef={m.registerCardRef(m.opponent?.id ?? null)}
           targetPlayerId={m.opponent?.id}
           onTarget={(id) => setActiveTargetId(id)}
@@ -200,13 +202,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
         />
       )}
 
-      {/* GAL Animations */}
-      {m.activeClash && (
-        <RpsClashOverlay
-          kind={m.activeClash.kind}
-          message={m.activeClash.message}
-        />
-      )}
+
       {m.state.isOver && m.state.winnerId && (
         <RpsWinnerCelebration
           winnerName={m.players.find((p) => p.id === m.state.winnerId)?.name ?? "Winner"}

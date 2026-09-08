@@ -268,6 +268,7 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "stargame",
   "carrom",
   "chess",
+  "rps",
 ]);
 
 /**
@@ -1523,7 +1524,7 @@ export default function Room() {
             onLeave={leaveRoom}
           />
         ) : (
-          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && (
+          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && roomState.game !== "rps" && (
             <header
               className={
                 roomState.game === "stargame"

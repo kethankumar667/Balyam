@@ -48,22 +48,22 @@ import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReacti
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
 
 /* ─────────────────────── Palette constants ─────────────────────── */
-const PAPER   = "#F5E9C4";
-const PAPER_L = "#FBF5E0";
-const LINE    = "rgba(100,115,180,0.18)";
-const MARGIN  = "rgba(200,80,80,0.35)";
-const INK     = "#1a2952";
-const INK_LT  = "#4a5a82";
-const P1_C    = "#2e7d32";   // player-1 green
-const P2_C    = "#8B1A1A";   // player-2 dark-red
-const WOOD    = "#4a2c12";
-const BORDER  = "rgba(46,40,25,0.55)";
+export const PAPER   = "#F5E9C4";
+export const PAPER_L = "#FBF5E0";
+export const LINE    = "rgba(100,115,180,0.18)";
+export const MARGIN  = "rgba(200,80,80,0.35)";
+export const INK     = "#1a2952";
+export const INK_LT  = "#4a5a82";
+export const P1_C    = "#2e7d32";   // player-1 green
+export const P2_C    = "#8B1A1A";   // player-2 dark-red
+export const WOOD    = "#4a2c12";
+export const BORDER  = "rgba(46,40,25,0.55)";
 
 /* ─────────────────────── Notebook page shell ─────────────────────── */
 
 /**
- * Outer wrapper: dark-wood frame → parchment paper with CSS ruled lines,
- * red vertical margin line, and spiral binding holes on the left edge.
+ * Outer wrapper: full-bleed parchment paper with CSS ruled lines
+ * and red vertical margin line.
  */
 export function NotebookPage({
   children,
@@ -74,65 +74,24 @@ export function NotebookPage({
 }) {
   return (
     <div
-      className={`relative w-full ${className}`}
+      className={`relative w-full min-h-full overflow-hidden ${className}`}
       style={{
-        background: WOOD,
-        borderRadius: 14,
-        padding: "10px 10px 10px 52px", // extra left for holes
-        minHeight: "100%",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.55)",
+        background: PAPER,
+        // Ruled lines + red margin via CSS
+        backgroundImage: [
+          `repeating-linear-gradient(
+            to bottom,
+            transparent,
+            transparent 27px,
+            ${LINE} 27px,
+            ${LINE} 28px
+          )`,
+          `linear-gradient(to right, ${MARGIN} 0px, ${MARGIN} 1.5px, transparent 1.5px)`,
+        ].join(", "),
+        backgroundPosition: "0 12px, 38px 0",
       }}
     >
-      {/* Spiral binding holes */}
-      <BindingHoles />
-
-      {/* Paper surface */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          background: PAPER,
-          borderRadius: 6,
-          // Ruled lines + red margin via CSS
-          backgroundImage: [
-            `repeating-linear-gradient(
-              to bottom,
-              transparent,
-              transparent 27px,
-              ${LINE} 27px,
-              ${LINE} 28px
-            )`,
-            `linear-gradient(to right, ${MARGIN} 0px, ${MARGIN} 1.5px, transparent 1.5px)`,
-          ].join(", "),
-          backgroundPosition: "0 12px, 38px 0",
-          minHeight: "calc(100vh - 40px)",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function BindingHoles() {
-  const holes = Array.from({ length: 14 });
-  return (
-    <div
-      className="absolute left-0 top-0 bottom-0 flex flex-col justify-evenly items-center pointer-events-none"
-      style={{ width: 52, paddingTop: 20, paddingBottom: 20 }}
-    >
-      {holes.map((_, i) => (
-        <div
-          key={i}
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: "50%",
-            background: WOOD,
-            border: "2px solid rgba(255,255,255,0.12)",
-            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.55)",
-          }}
-        />
-      ))}
+      {children}
     </div>
   );
 }
@@ -261,6 +220,27 @@ export function NotebookTopBar({
   );
 }
 
+function SvgPaperclip({ color }: { color: string }) {
+  return (
+    <svg
+      width="20"
+      height="36"
+      viewBox="0 0 20 36"
+      fill="none"
+      aria-hidden
+      style={{ filter: "drop-shadow(1px 2px 2px rgba(0,0,0,0.22))" }}
+    >
+      <path
+        d="M6 10 V26 C6 30 14 30 14 26 V7 C14 3 3 3 3 8 V27 C3 33 17 33 17 26 V11"
+        stroke={color}
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /* ─────────────────────── Player score card ─────────────────────── */
 
 export function NotebookPlayerCard({
@@ -280,6 +260,8 @@ export function NotebookPlayerCard({
   onTarget,
   activeTargetId,
   onCloseTarget,
+  locked = false,
+  className = "",
 }: {
   name: string;
   avatar?: string;
@@ -297,6 +279,8 @@ export function NotebookPlayerCard({
   onTarget?: (playerId: string) => void;
   activeTargetId?: string | null;
   onCloseTarget?: () => void;
+  locked?: boolean;
+  className?: string;
 }) {
   const STARS = 7;
   const isTargetActive = targetPlayerId && activeTargetId === targetPlayerId;
@@ -304,16 +288,16 @@ export function NotebookPlayerCard({
   return (
     <div
       ref={cardRef}
-      className={`relative ${canTarget ? "cursor-pointer hover:brightness-105 active:scale-[0.99]" : ""}`}
+      className={`relative rounded-xl transition-all duration-200 ${canTarget ? "cursor-pointer hover:brightness-105 active:scale-[0.99]" : ""} ${className}`}
       onClick={canTarget ? () => onTarget?.(targetPlayerId) : undefined}
       title={canTarget ? `Tap to react at ${name}` : undefined}
       style={{
         background: PAPER_L,
         border: `1.5px solid ${BORDER}`,
-        borderRadius: 8,
-        padding: "10px 12px 12px 14px",
-        boxShadow: "2px 4px 12px rgba(0,0,0,0.18)",
-        minWidth: 160,
+        padding: "12px 14px 14px 14px",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.16)",
+        minWidth: 170,
+        transform: `rotate(${side === "left" ? "-0.8deg" : "0.8deg"})`,
       }}
     >
       {isTargetActive && onCloseTarget && targetPlayerId && (
@@ -327,92 +311,107 @@ export function NotebookPlayerCard({
       )}
       {/* Washi tape strip */}
       <div
-        className="absolute -top-3 left-1/2 -translate-x-1/2"
+        className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
         style={{
-          width: 60,
+          width: 68,
           height: 18,
           borderRadius: 2,
           ...(tapeColor === "green"
-            ? { background: "#5cad6e", opacity: 0.85 }
+            ? { background: "#5cad6e", opacity: 0.9 }
             : {
                 background: "#d44",
-                opacity: 0.80,
+                opacity: 0.85,
                 backgroundImage:
                   "radial-gradient(circle, rgba(255,255,255,0.6) 2px, transparent 2px)",
                 backgroundSize: "8px 8px",
               }),
           transform: `rotate(${side === "left" ? "-2deg" : "2deg"})`,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.22)",
         }}
       />
 
       {/* Paperclip */}
       <div
-        className="absolute -top-1"
+        className="absolute -top-4 z-20 pointer-events-none"
         style={{
-          [side === "left" ? "right" : "left"]: 16,
-          fontSize: 28,
-          transform: "rotate(-10deg)",
-          color: side === "left" ? "#c0392b" : "#1a50a0",
-          lineHeight: 1,
-          userSelect: "none",
+          [side === "left" ? "right" : "left"]: 14,
+          transform: `rotate(${side === "left" ? "-10deg" : "10deg"})`,
         }}
         aria-hidden
       >
-        🖇
+        <SvgPaperclip color={side === "left" ? "#c0392b" : "#1a50a0"} />
       </div>
 
-      {/* Avatar + name row */}
-      <div className="flex items-center gap-2.5 mt-2">
-        <CartoonAvatar color={color} avatar={avatar} />
+      <div className="flex-1 flex flex-col justify-between">
         <div>
-          <div className="font-black leading-tight" style={{ color, fontSize: 15 }}>
-            {name}
-            {isSelf && (
-              <span className="font-normal ml-1" style={{ color: INK_LT, fontSize: 12 }}>
-                (you)
+          {/* Avatar + name row */}
+          <div className="flex items-center gap-2.5 mt-2">
+            <CartoonAvatar color={color} avatar={avatar} />
+            <div className="min-w-0 flex-1">
+              <div className="font-black leading-tight truncate" style={{ color, fontSize: 15 }}>
+                {name}
+                {isSelf && (
+                  <span className="font-normal ml-1" style={{ color: INK_LT, fontSize: 12 }}>
+                    (you)
+                  </span>
+                )}
+              </div>
+              <div style={{ color: INK_LT, fontSize: 11 }}>Best streak {best}</div>
+            </div>
+          </div>
+
+          {/* Score */}
+          <div className="flex items-baseline gap-1 mt-2.5 ml-1">
+            <span
+              className="font-black tabular-nums"
+              style={{
+                fontSize: 34,
+                color: matchPoint ? "#f97316" : color,
+                lineHeight: 1,
+              }}
+            >
+              {score}
+            </span>
+            <span style={{ color: INK_LT, fontSize: 15, fontWeight: 700 }}>
+              / {target}
+            </span>
+            {matchPoint && (
+              <span
+                className="ml-1.5 font-bold uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300"
+              >
+                MATCH PT
               </span>
             )}
           </div>
-          <div style={{ color: INK_LT, fontSize: 11 }}>Best streak {best}</div>
         </div>
-      </div>
 
-      {/* Score */}
-      <div className="flex items-baseline gap-1 mt-2 ml-1">
-        <span
-          className="font-black tabular-nums"
-          style={{
-            fontSize: 32,
-            color: matchPoint ? "#f97316" : color,
-            lineHeight: 1,
-          }}
-        >
-          {score}
-        </span>
-        <span style={{ color: INK_LT, fontSize: 15, fontWeight: 700 }}>
-          / {target}
-        </span>
-        {matchPoint && (
-          <span
-            className="ml-1 font-bold uppercase text-[10px] tracking-wider"
-            style={{ color: "#f97316" }}
-          >
-            MATCH PT
-          </span>
-        )}
-      </div>
+        {/* Bottom row: Streak stars & ready stamp */}
+        <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1">
+            {Array.from({ length: STARS }).map((_, i) => (
+              <StarIcon
+                key={i}
+                filled={i < streak}
+                color={color}
+                size={16}
+              />
+            ))}
+          </div>
 
-      {/* Streak stars */}
-      <div className="flex gap-1 mt-2 ml-0.5">
-        {Array.from({ length: STARS }).map((_, i) => (
-          <StarIcon
-            key={i}
-            filled={i < streak}
-            color={color}
-            size={16}
-          />
-        ))}
+          {locked && (
+            <div
+              className="px-2 py-0.5 rounded font-black text-[10px] uppercase tracking-wider select-none"
+              style={{
+                border: "1.5px dashed #15803D",
+                color: "#15803D",
+                background: "rgba(21,128,61,0.12)",
+                transform: "rotate(-3deg)",
+              }}
+            >
+              ✓ Locked In
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -443,20 +442,19 @@ export function NotebookArena({
 }) {
   return (
     <div
-      className="relative flex flex-col items-center"
-      style={{ flex: 1 }}
+      className="relative flex flex-col items-center justify-center w-full h-full"
     >
-      {/* Pencil-drawn double border */}
+      {/* Pencil-drawn notebook board */}
       <div
-        className="relative w-full flex items-center justify-between gap-2 px-5 py-4 rounded"
+        className="relative w-full h-full flex items-center justify-between gap-3 px-6 py-5 rounded-xl transition-all duration-200"
         style={{
-          border: `2.5px dashed rgba(60,90,180,0.50)`,
-          background: "rgba(200,210,255,0.05)",
-          boxShadow: "inset 0 0 0 5px rgba(200,210,255,0.08)",
-          minHeight: 140,
+          border: `2px dashed rgba(74, 44, 18, 0.45)`,
+          background: "rgba(251, 245, 224, 0.82)",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.10)",
+          minHeight: 160,
         }}
       >
-        {/* Outcome banner overlay */}
+        {/* Outcome banner overlay (rubber stamp) */}
         {bannerOutcome && (
           <OutcomeBanner outcome={bannerOutcome} key={revealKey} />
         )}
@@ -488,36 +486,39 @@ function ChoiceCell({
   flip?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5" style={{ flex: "0 0 auto" }}>
+    <div className="flex flex-col items-center gap-2" style={{ flex: "0 0 auto" }}>
       <div
-        className="flex items-center justify-center rounded"
+        className="flex items-center justify-center rounded-xl transition-all duration-300"
         style={{
-          width: 96,
-          height: 96,
-          border: `2px dashed ${borderColor}60`,
-          background: PAPER,
-          boxShadow: "1px 2px 6px rgba(0,0,0,0.12)",
+          width: 104,
+          height: 104,
+          border: `2px dashed ${choice ? borderColor : "rgba(46,40,25,0.35)"}`,
+          background: choice ? "#FFFDF6" : "rgba(255,255,255,0.5)",
+          boxShadow: choice
+            ? `0 0 0 2px ${borderColor}25, 0 4px 12px rgba(0,0,0,0.12)`
+            : "inset 0 2px 4px rgba(0,0,0,0.06)",
           position: "relative",
           overflow: "hidden",
         }}
       >
         {choice ? (
-          <ChoiceSketch choice={choice} size={70} />
+          <div className="animate-in zoom-in-75 duration-200">
+            <ChoiceSketch choice={choice} size={76} />
+          </div>
+        ) : chosen ? (
+          <div className="flex flex-col items-center gap-1 text-[#2e7d32]">
+            <span className="text-2xl font-black">✓</span>
+            <span className="font-script text-[11px] font-bold tracking-tight">Ready!</span>
+          </div>
         ) : (
-          <span
-            className="font-black"
-            style={{
-              fontSize: chosen ? 22 : 32,
-              color: chosen ? "#888" : INK_LT,
-              opacity: 0.6,
-            }}
-          >
-            {chosen ? "✓" : flip ? "?" : "—"}
-          </span>
+          <div className="flex flex-col items-center gap-0.5 text-[#8c7b6a]">
+            <span className="text-2xl font-black opacity-60">?</span>
+            <span className="font-script text-[10px] font-semibold opacity-75">{flip ? "Thinking" : "Waiting"}</span>
+          </div>
         )}
       </div>
       <span
-        className="font-bold text-center"
+        className="font-bold text-center truncate max-w-[104px]"
         style={{ color: INK, fontSize: 13 }}
       >
         {label}
@@ -530,25 +531,27 @@ function VSBurst() {
   return (
     <div
       className="relative flex-shrink-0 flex items-center justify-center"
-      style={{ width: 56, height: 56 }}
+      style={{ width: 62, height: 62 }}
     >
-      {/* Jagged burst background */}
+      {/* Hand-drawn comic starburst */}
       <svg
-        viewBox="0 0 56 56"
-        width={56}
-        height={56}
-        className="absolute inset-0"
+        viewBox="0 0 64 64"
+        width={62}
+        height={62}
+        className="absolute inset-0 drop-shadow-sm"
         aria-hidden
       >
         <path
-          d="M28 2 L32 18 L46 10 L38 24 L54 22 L42 32 L54 38 L38 38 L46 52 L30 44 L28 56 L26 44 L10 52 L18 38 L2 38 L14 32 L2 22 L18 24 L10 10 L24 18 Z"
-          fill="#f59e0b"
-          opacity={0.90}
+          d="M32 2 L37 20 L54 11 L44 27 L62 25 L48 37 L62 44 L44 44 L53 60 L35 50 L32 64 L30 50 L12 60 L21 44 L3 44 L17 37 L3 25 L21 27 L11 11 L28 20 Z"
+          fill="#FDE68A"
+          stroke="#D97706"
+          strokeWidth={2.4}
+          strokeLinejoin="round"
         />
       </svg>
       <span
-        className="relative font-black uppercase tracking-tighter"
-        style={{ color: "#7c2d12", fontSize: 13, lineHeight: 1 }}
+        className="relative font-display font-black tracking-tight"
+        style={{ color: "#92400E", fontSize: 15, lineHeight: 1 }}
       >
         VS
       </span>
@@ -557,22 +560,26 @@ function VSBurst() {
 }
 
 function OutcomeBanner({ outcome }: { outcome: RoundOutcome }) {
-  const text =
-    outcome === "you-win" ? "🎉 You Win!" : outcome === "you-lose" ? "😬 They Win" : "🤝 Tie!";
-  const bg =
-    outcome === "you-win"
-      ? "rgba(16,185,129,0.92)"
-      : outcome === "you-lose"
-      ? "rgba(239,68,68,0.88)"
-      : "rgba(245,158,11,0.90)";
+  const win = outcome === "you-win";
+  const tie = outcome === "tie";
+  const text = win ? "★ YOU WIN! ★" : tie ? "DRAW — TIE!" : "THEY WIN";
+  const color = win ? "#15803D" : tie ? "#B45309" : "#B91C1C";
+  const bg = win ? "rgba(220, 252, 231, 0.96)" : tie ? "rgba(254, 243, 199, 0.96)" : "rgba(254, 226, 226, 0.96)";
+
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+      className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
       style={{ animation: "rummy-win-burst 1.3s ease-out forwards" }}
     >
       <div
-        className="px-5 py-2 rounded-full font-black text-white text-lg shadow-lg"
-        style={{ background: bg }}
+        className="px-6 py-2.5 rounded-lg font-display font-black text-xl tracking-wider uppercase"
+        style={{
+          color,
+          background: bg,
+          border: `2.5px dashed ${color}`,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+          transform: "rotate(-3deg)",
+        }}
       >
         {text}
       </div>
@@ -614,7 +621,7 @@ export function NotebookChoiceRow({
       </div>
 
       {/* Three choice cards */}
-      <div className="flex gap-3 justify-center flex-wrap">
+      <div className="flex gap-4 justify-center flex-wrap">
         {choices.map(({ c, kbd, label, sub }) => {
           const chosen = myChoice === c;
           const locked = !!myChoice && !chosen;
@@ -625,41 +632,57 @@ export function NotebookChoiceRow({
               disabled={!!myChoice || bothChose}
               aria-pressed={chosen}
               aria-label={label}
-              className="relative flex flex-col items-center rounded transition-all duration-150"
+              className="group relative flex flex-col items-center rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2e7d32]"
               style={{
-                width: 120,
-                background: chosen ? "#e8f5e9" : PAPER_L,
-                border: `2px dashed ${chosen ? P1_C : BORDER}`,
+                width: 136,
+                background: chosen ? "#ECFDF5" : PAPER_L,
+                border: `2px ${chosen ? "solid #15803D" : "dashed " + BORDER}`,
                 boxShadow: chosen
-                  ? `0 0 0 2px ${P1_C}50, 2px 4px 10px rgba(0,0,0,0.18)`
-                  : "2px 4px 8px rgba(0,0,0,0.14)",
-                padding: "10px 8px 8px 8px",
-                opacity: locked ? 0.45 : 1,
+                  ? "0 0 0 2px rgba(21,128,61,0.25), 0 8px 18px rgba(0,0,0,0.18)"
+                  : "0 3px 8px rgba(0,0,0,0.12)",
+                padding: "14px 10px 10px 10px",
+                opacity: locked ? 0.4 : 1,
                 cursor: myChoice || bothChose ? "not-allowed" : "pointer",
-                transform: chosen ? "translateY(-4px) scale(1.04)" : "none",
+                transform: chosen ? "translateY(-5px) scale(1.04)" : "none",
               }}
             >
-              {/* Keyboard hint corner */}
+              {/* Keyboard hint corner stamp */}
               <span
-                className="absolute top-1.5 left-2 font-black"
-                style={{ color: INK_LT, fontSize: 12 }}
+                className="absolute top-1.5 left-2 px-1.5 py-0.5 rounded font-black text-[10px]"
+                style={{
+                  background: chosen ? "rgba(21,128,61,0.15)" : "rgba(0,0,0,0.06)",
+                  color: chosen ? "#15803D" : INK_LT,
+                  border: `1px solid ${chosen ? "rgba(21,128,61,0.3)" : "rgba(0,0,0,0.12)"}`,
+                }}
               >
                 {kbd}
               </span>
 
+              {/* Check indicator if chosen */}
+              {chosen && (
+                <span
+                  className="absolute top-1.5 right-2 font-black text-xs text-[#15803D]"
+                  title="Selected"
+                >
+                  ✓
+                </span>
+              )}
+
               {/* Sketch icon */}
-              <ChoiceSketch choice={c} size={68} />
+              <div className="transition-transform duration-200 group-hover:scale-105">
+                <ChoiceSketch choice={c} size={72} />
+              </div>
 
               {/* Label */}
               <span
-                className="font-display font-black mt-1.5 leading-tight"
-                style={{ color: INK, fontSize: 15 }}
+                className="font-display font-black mt-2 leading-tight tracking-wide"
+                style={{ color: chosen ? "#15803D" : INK, fontSize: 15 }}
               >
                 {label}
               </span>
               <span
-                className="font-script"
-                style={{ color: INK_LT, fontSize: 11, marginTop: 1 }}
+                className="font-script font-semibold"
+                style={{ color: chosen ? "#166534" : INK_LT, fontSize: 11, marginTop: 2 }}
               >
                 {sub}
               </span>
@@ -750,19 +773,20 @@ export function NotebookHistoryStrip({
           return (
             <div
               key={i}
-              className="w-7 h-7 rounded-md flex items-center justify-center font-black text-sm"
+              className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs transition-transform hover:scale-110"
               title={`Round ${h.round}: ${tie ? "tie" : win ? "won" : "lost"}`}
               style={{
                 background: win
-                  ? "rgba(46,125,50,0.20)"
+                  ? "rgba(21,128,61,0.16)"
                   : tie
-                  ? "rgba(245,158,11,0.20)"
-                  : "rgba(139,26,26,0.18)",
-                border: `1.5px solid ${win ? P1_C + "55" : tie ? "#f59e0b55" : P2_C + "55"}`,
-                color: win ? P1_C : tie ? "#b45309" : P2_C,
+                  ? "rgba(245,158,11,0.18)"
+                  : "rgba(185,28,28,0.16)",
+                border: `1.5px ${tie ? "dashed" : "solid"} ${win ? "#15803D" : tie ? "#B45309" : "#B91C1C"}`,
+                color: win ? "#15803D" : tie ? "#B45309" : "#B91C1C",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
               }}
             >
-              {tie ? "=" : win ? "W" : "L"}
+              {tie ? "D" : win ? "W" : "L"}
             </div>
           );
         })}
@@ -943,19 +967,40 @@ export function ChoiceSketch({
 function RockSketch({ scale: _ }: { scale: number }) {
   return (
     <g>
-      {/* Main stone blob */}
+      <defs>
+        <linearGradient id="nb-rock-skin-grad" x1="20" y1="15" x2="75" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#D4D9DF" />
+          <stop offset="45%" stopColor="#9AA5B1" />
+          <stop offset="100%" stopColor="#5B6875" />
+        </linearGradient>
+      </defs>
+      {/* Soft drop shadow under rock */}
+      <ellipse cx={50} cy={82} rx={32} ry={6} fill="rgba(0,0,0,0.14)" />
+      {/* Main chiseled boulder body */}
       <path
-        d="M18 68 Q12 55 14 42 Q16 26 28 18 Q42 10 56 14 Q70 18 78 30 Q86 44 82 58 Q78 72 66 78 Q52 84 38 80 Q24 76 18 68Z"
-        fill="#9e9e9e"
-        stroke="#6b6b6b"
-        strokeWidth={2}
+        d="M26 28 L46 16 L72 20 L84 40 L80 68 L58 80 L30 78 L16 60 L18 38 Z"
+        fill="url(#nb-rock-skin-grad)"
+        stroke="#273238"
+        strokeWidth={2.6}
+        strokeLinejoin="round"
       />
-      {/* Highlight */}
-      <ellipse cx={36} cy={32} rx={10} ry={7} fill="rgba(255,255,255,0.25)" transform="rotate(-20,36,32)" />
-      {/* Texture lines */}
-      <path d="M28 55 Q36 62 32 70" stroke="#7a7a7a" strokeWidth={1.8} fill="none" strokeLinecap="round" />
-      <path d="M50 42 Q58 50 54 60" stroke="#7a7a7a" strokeWidth={1.5} fill="none" strokeLinecap="round" />
-      <path d="M38 38 Q44 44 40 52" stroke="#7a7a7a" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      {/* Facet lines */}
+      <path
+        d="M46 16 L48 42 L26 28 M48 42 L72 20 M48 42 L84 40 M48 42 L64 64 L80 68 M64 64 L58 80 M48 42 L34 62 L30 78 M34 62 L16 60"
+        stroke="#273238"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Light highlight facet on top left */}
+      <polygon points="26,28 46,16 48,42" fill="rgba(255,255,255,0.4)" />
+      {/* Shadow facets on bottom right */}
+      <polygon points="48,42 64,64 80,68 84,40" fill="rgba(0,0,0,0.24)" />
+      <polygon points="48,42 34,62 58,80 64,64" fill="rgba(0,0,0,0.14)" />
+      {/* Hand cross-hatching texture in shadow area */}
+      <path d="M68 48 L80 58 M70 54 L78 62 M62 54 L74 64" stroke="#273238" strokeWidth={1.4} strokeLinecap="round" />
+      {/* Little sparkle glint on top peak */}
+      <path d="M46 10 V14 M44 12 H48" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" />
     </g>
   );
 }
@@ -963,16 +1008,38 @@ function RockSketch({ scale: _ }: { scale: number }) {
 function PaperSketch({ scale: _ }: { scale: number }) {
   return (
     <g>
-      {/* Page rectangle */}
-      <rect x={18} y={10} width={64} height={80} rx={3} fill={PAPER} stroke="#9c8970" strokeWidth={2} />
-      {/* Ruled lines */}
-      {[28, 40, 52, 64, 76].map((y) => (
-        <line key={y} x1={26} y1={y} x2={74} y2={y} stroke="#b0a085" strokeWidth={1.5} />
-      ))}
-      {/* Left margin line */}
-      <line x1={34} y1={18} x2={34} y2={86} stroke="#e09090" strokeWidth={1.2} opacity={0.7} />
-      {/* Dog-ear corner */}
-      <path d="M64 10 L82 28 L64 28 Z" fill="#c8b89a" stroke="#9c8970" strokeWidth={1.2} />
+      {/* Cast shadow under paper */}
+      <path d="M22 84 L76 84 L80 28 L24 28 Z" fill="rgba(0,0,0,0.12)" />
+      {/* Main parchment sheet */}
+      <path
+        d="M22 14 L62 14 L78 30 L78 82 C78 84 76 86 74 86 L24 86 C22 86 20 84 20 82 L20 16 C20 14 22 14 22 14 Z"
+        fill="#FCF9EE"
+        stroke="#273238"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+      />
+      {/* Folded corner flap */}
+      <path
+        d="M62 14 L62 30 L78 30 Z"
+        fill="#E8DFCA"
+        stroke="#273238"
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      {/* Red margin line */}
+      <line x1={32} y1={18} x2={32} y2={82} stroke="#DC2626" strokeWidth={1.6} strokeOpacity={0.65} />
+      {/* Ruled blue ink notebook lines */}
+      <line x1={36} y1={36} x2={70} y2={36} stroke="#3B82F6" strokeWidth={1.6} strokeOpacity={0.5} strokeLinecap="round" />
+      <line x1={36} y1={46} x2={72} y2={46} stroke="#3B82F6" strokeWidth={1.6} strokeOpacity={0.5} strokeLinecap="round" />
+      <line x1={36} y1={56} x2={68} y2={56} stroke="#3B82F6" strokeWidth={1.6} strokeOpacity={0.5} strokeLinecap="round" />
+      <line x1={36} y1={66} x2={72} y2={66} stroke="#3B82F6" strokeWidth={1.6} strokeOpacity={0.5} strokeLinecap="round" />
+      <line x1={36} y1={76} x2={60} y2={76} stroke="#3B82F6" strokeWidth={1.6} strokeOpacity={0.5} strokeLinecap="round" />
+      {/* Cute ink stamp star */}
+      <path
+        d="M26 24 L27.2 27.5 L31 27.5 L28 29.5 L29.2 33 L26 31 L22.8 33 L24 29.5 L21 27.5 L24.8 27.5 Z"
+        fill="#F59E0B"
+        opacity={0.85}
+      />
     </g>
   );
 }
@@ -980,40 +1047,46 @@ function PaperSketch({ scale: _ }: { scale: number }) {
 function ScissorsSketch({ scale: _ }: { scale: number }) {
   return (
     <g>
-      {/* Left blade */}
+      <defs>
+        <linearGradient id="nb-blade-metal" x1="30" y1="20" x2="60" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#F8FAFC" />
+          <stop offset="50%" stopColor="#CBD5E1" />
+          <stop offset="100%" stopColor="#94A3B8" />
+        </linearGradient>
+      </defs>
+      {/* Left steel blade */}
       <path
-        d="M50 50 L26 18 Q22 12 30 10 Q38 8 42 16 L50 50"
-        fill="#cc2222"
-        stroke="#991111"
-        strokeWidth={1.5}
+        d="M50 48 L28 14 C26 10 32 8 35 11 L53 45 Z"
+        fill="url(#nb-blade-metal)"
+        stroke="#273238"
+        strokeWidth={2.4}
         strokeLinejoin="round"
       />
-      {/* Right blade */}
+      {/* Right steel blade */}
       <path
-        d="M50 50 L74 18 Q78 12 70 10 Q62 8 58 16 L50 50"
-        fill="#cc2222"
-        stroke="#991111"
-        strokeWidth={1.5}
+        d="M50 48 L72 14 C74 10 68 8 65 11 L47 45 Z"
+        fill="url(#nb-blade-metal)"
+        stroke="#273238"
+        strokeWidth={2.4}
         strokeLinejoin="round"
       />
-      {/* Left handle loop */}
-      <ellipse
-        cx={34} cy={70} rx={14} ry={10}
-        fill="none" stroke="#cc2222" strokeWidth={3}
-      />
-      {/* Right handle loop */}
-      <ellipse
-        cx={66} cy={70} rx={14} ry={10}
-        fill="none" stroke="#cc2222" strokeWidth={3}
-      />
-      {/* Shank lines to handles */}
-      <line x1={34} y1={60} x2={50} y2={50} stroke="#cc2222" strokeWidth={3} strokeLinecap="round" />
-      <line x1={66} y1={60} x2={50} y2={50} stroke="#cc2222" strokeWidth={3} strokeLinecap="round" />
-      {/* Pivot screw */}
-      <circle cx={50} cy={50} r={4} fill="#cc2222" stroke="#fff" strokeWidth={1.5} />
-      {/* Shine on blades */}
-      <path d="M38 18 L32 32" stroke="rgba(255,255,255,0.40)" strokeWidth={2} strokeLinecap="round" />
-      <path d="M62 18 L68 32" stroke="rgba(255,255,255,0.40)" strokeWidth={2} strokeLinecap="round" />
+      {/* Blade bevel edge shine */}
+      <line x1={32} y1={14} x2={49} y2={44} stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1={68} y1={14} x2={51} y2={44} stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" />
+      {/* Left crimson handle */}
+      <circle cx={34} cy={72} r={13} fill="none" stroke="#DC2626" strokeWidth={5.5} />
+      <circle cx={34} cy={72} r={13} fill="none" stroke="#273238" strokeWidth={1.5} />
+      {/* Right crimson handle */}
+      <circle cx={66} cy={72} r={13} fill="none" stroke="#DC2626" strokeWidth={5.5} />
+      <circle cx={66} cy={72} r={13} fill="none" stroke="#273238" strokeWidth={1.5} />
+      {/* Shank connectors */}
+      <path d="M47 48 L34 60" stroke="#DC2626" strokeWidth={5.5} strokeLinecap="round" />
+      <path d="M53 48 L66 60" stroke="#DC2626" strokeWidth={5.5} strokeLinecap="round" />
+      <path d="M47 48 L34 60" stroke="#273238" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+      <path d="M53 48 L66 60" stroke="#273238" strokeWidth={1.5} strokeLinecap="round" fill="none" />
+      {/* Pivot screw (brass/gold) */}
+      <circle cx={50} cy={48} r={4.5} fill="#F59E0B" stroke="#273238" strokeWidth={1.8} />
+      <circle cx={50} cy={48} r={1.5} fill="#273238" />
     </g>
   );
 }

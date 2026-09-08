@@ -59,7 +59,7 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
       <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-4">
         <div className="w-full" style={{ maxWidth: 1180 }}>
           <div
-            className="grid items-center gap-6"
+            className="grid items-stretch gap-6"
             style={{ gridTemplateColumns: "minmax(220px,1fr) minmax(0,1.55fr) minmax(220px,1fr)" }}
           >
             <ProPlayerCard
@@ -76,20 +76,18 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
               cardRef={m.registerCardRef(m.myId)}
             />
 
-            <div className="flex flex-col items-center gap-3">
-              <ProArena
-                myName={m.me?.name ?? "You"}
-                oppName={m.opponent?.name ?? "Opponent"}
-                myChoice={m.arenaMyChoice}
-                oppChoice={m.arenaOppChoice}
-                bothChose={m.arenaBothChose}
-                revealKey={m.revealKey}
-                bannerOutcome={m.bannerOutcome}
-                mySide={MY_SIDE}
-                oppSide={OPP_SIDE}
-              />
-              <ProRoundClock deadline={m.roundDeadline} active={m.iNeedToChoose} />
-            </div>
+            <ProArena
+              myName={m.me?.name ?? "You"}
+              oppName={m.opponent?.name ?? "Opponent"}
+              myChoice={m.arenaMyChoice}
+              oppChoice={m.arenaOppChoice}
+              bothChose={m.arenaBothChose}
+              revealKey={m.revealKey}
+              bannerOutcome={m.bannerOutcome}
+              mySide={MY_SIDE}
+              oppSide={OPP_SIDE}
+              clock={<ProRoundClock deadline={m.roundDeadline} active={m.iNeedToChoose} />}
+            />
 
             <ProPlayerCard
               name={m.opponent?.name ?? "Opponent"}
@@ -110,9 +108,9 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
               share one optical column rather than drifting apart. */}
           <div
             className="mt-5 grid gap-5"
-            style={{ gridTemplateColumns: "minmax(0,1.55fr) minmax(300px,1fr)", alignItems: "start" }}
+            style={{ gridTemplateColumns: "minmax(0,1.55fr) minmax(300px,1fr)", alignItems: "stretch" }}
           >
-            <ProPanel>
+            <ProPanel className="h-full flex flex-col justify-between">
               {!showResult ? (
                 <ProChoiceRow myChoice={m.myChoice} bothChose={m.bothChose} onPick={m.pick} />
               ) : (
@@ -122,9 +120,11 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
               )}
             </ProPanel>
 
-            <ProPanel>
-              <ProLabel className="mb-2">Round log</ProLabel>
-              <ProHistoryStrip state={m.state} myId={m.myId} />
+            <ProPanel className="h-full flex flex-col justify-between">
+              <div>
+                <ProLabel className="mb-2">Round log</ProLabel>
+                <ProHistoryStrip state={m.state} myId={m.myId} />
+              </div>
               <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${PRO.line}` }}>
                 <InlineRoomRail
                   code={m.roomCode}

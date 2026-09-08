@@ -8,7 +8,7 @@ import { RpsOverlays } from "./rps-shared";
 import { useRpsBoard } from "./useRpsBoard";
 import type { RpsBoardProps } from "./useRpsBoard";
 import { useSkin } from "../skin";
-import { RpsClashOverlay, RpsWinnerCelebration } from "./RpsAnimations";
+import { RpsWinnerCelebration } from "./RpsAnimations";
 import {
   NotebookPage,
   NotebookTopBar,
@@ -18,6 +18,8 @@ import {
   NotebookHistoryPanel,
   NotebookHistoryStrip,
   NotebookDoodles,
+  PAPER_L,
+  BORDER,
 } from "./rps-notebook";
 
 const P1_C = "#2e7d32";
@@ -53,103 +55,115 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         onSkin={() => setSkin("broadcast")}
       />
 
-      {/* ── Main 3-column layout ───────────────────────────────────── */}
-      <div
-        className="relative grid gap-5 px-6 pt-3 pb-4"
-        style={{
-          gridTemplateColumns:
-            "minmax(180px,0.85fr) minmax(0,2.4fr) minmax(180px,0.85fr)",
-          alignItems: "center",
-        }}
-      >
-        {/* ── Player 1 card (left) ── */}
-        <NotebookPlayerCard
-          name={m.me?.name ?? "You"}
-          avatar={m.me?.avatar}
-          isSelf
-          score={m.myScore}
-          target={m.target}
-          streak={m.myStreak}
-          best={m.state.bestStreak[m.myId] ?? 0}
-          matchPoint={m.myMatchPoint && !m.state.isOver}
-          color={P1_C}
-          tapeColor="green"
-          side="left"
-          cardRef={m.registerCardRef(m.myId)}
-        />
-
-        {/* ── Arena ── */}
-        <NotebookArena
-          myName={m.me?.name ?? "You"}
-          oppName={m.opponent?.name ?? "Opponent"}
-          myChoice={m.arenaMyChoice}
-          oppChoice={m.arenaOppChoice}
-          bothChose={m.arenaBothChose}
-          revealKey={m.revealKey}
-          bannerOutcome={m.bannerOutcome}
-          myColor={P1_C}
-          oppColor={P2_C}
-        />
-
-        {/* ── Player 2 card (right) ── */}
-        <NotebookPlayerCard
-          name={m.opponent?.name ?? "Opponent"}
-          avatar={m.opponent?.avatar}
-          score={m.oppScore}
-          target={m.target}
-          streak={m.oppStreak}
-          best={m.opponent ? m.state.bestStreak[m.opponent.id] ?? 0 : 0}
-          matchPoint={m.oppMatchPoint && !m.state.isOver}
-          color={P2_C}
-          tapeColor="red-dots"
-          side="right"
-          cardRef={m.registerCardRef(m.opponent?.id ?? null)}
-          targetPlayerId={m.opponent?.id}
-          onTarget={(id) => setActiveTargetId(id)}
-          activeTargetId={activeTargetId}
-          onCloseTarget={() => setActiveTargetId(null)}
-        />
-      </div>
-
-      {/* ── Turn time warning */}
-      <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
-
-      {/* ── Bottom section: choice row left + history panel right ──── */}
-      <div
-        className="grid gap-5 px-6 pb-5"
-        style={{
-          gridTemplateColumns: "minmax(0,1.55fr) minmax(260px,1fr)",
-          alignItems: "start",
-        }}
-      >
-        {/* Choice row — hidden once scorecard is visible */}
-        {!showScorecard ? (
-          <NotebookChoiceRow
-            myChoice={m.myChoice}
-            bothChose={m.bothChose}
-            onPick={m.pick}
+      {/* Centred, width-capped optical column matching broadcast theme */}
+      <div className="mx-auto w-full px-6 py-3 flex flex-col gap-5" style={{ maxWidth: 1180 }}>
+        {/* ── Main 3-column layout (Upper deck) ───────────────────────── */}
+        <div
+          className="relative grid gap-6 items-stretch"
+          style={{
+            gridTemplateColumns:
+              "minmax(220px,1fr) minmax(0,1.55fr) minmax(220px,1fr)",
+          }}
+        >
+          {/* ── Player 1 card (left) ── */}
+          <NotebookPlayerCard
+            name={m.me?.name ?? "You"}
+            avatar={m.me?.avatar}
+            isSelf
+            score={m.myScore}
+            target={m.target}
+            streak={m.myStreak}
+            best={m.state.bestStreak[m.myId] ?? 0}
+            matchPoint={m.myMatchPoint && !m.state.isOver}
+            color={P1_C}
+            tapeColor="green"
+            side="left"
+            locked={!!m.myChoice}
+            cardRef={m.registerCardRef(m.myId)}
           />
-        ) : (
-          <div className="h-12" />
-        )}
 
-        {/* History + room rail */}
-        <NotebookHistoryPanel>
-          <NotebookHistoryStrip
-            history={m.state.history}
-            myId={m.myId}
+          {/* ── Arena ── */}
+          <NotebookArena
+            myName={m.me?.name ?? "You"}
+            oppName={m.opponent?.name ?? "Opponent"}
+            myChoice={m.arenaMyChoice}
+            oppChoice={m.arenaOppChoice}
+            bothChose={m.arenaBothChose}
+            revealKey={m.revealKey}
+            bannerOutcome={m.bannerOutcome}
+            myColor={P1_C}
+            oppColor={P2_C}
           />
-          <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(100,115,180,0.20)" }}>
-            <InlineRoomRail
-              code={m.roomCode}
-              game="rps"
-              phase={m.roomPhase}
-              players={m.players}
-              selfId={m.selfId}
-              messages={m.messages}
+
+          {/* ── Player 2 card (right) ── */}
+          <NotebookPlayerCard
+            name={m.opponent?.name ?? "Opponent"}
+            avatar={m.opponent?.avatar}
+            score={m.oppScore}
+            target={m.target}
+            streak={m.oppStreak}
+            best={m.opponent ? m.state.bestStreak[m.opponent.id] ?? 0 : 0}
+            matchPoint={m.oppMatchPoint && !m.state.isOver}
+            color={P2_C}
+            tapeColor="red-dots"
+            side="right"
+            locked={!!m.oppChoice}
+            cardRef={m.registerCardRef(m.opponent?.id ?? null)}
+            targetPlayerId={m.opponent?.id}
+            onTarget={(id) => setActiveTargetId(id)}
+            activeTargetId={activeTargetId}
+            onCloseTarget={() => setActiveTargetId(null)}
+          />
+        </div>
+
+        {/* ── Turn time warning */}
+        <TurnTimeWarning deadline={m.roundDeadline} active={m.iNeedToChoose} />
+
+        {/* ── Bottom section: choice row left + history panel right ──── */}
+        <div
+          className="grid gap-6 items-stretch"
+          style={{
+            gridTemplateColumns: "minmax(0,1.55fr) minmax(300px,1fr)",
+          }}
+        >
+          {/* Choice row panel — hidden once scorecard is visible */}
+          {!showScorecard ? (
+            <div
+              className="rounded-xl p-5 flex flex-col justify-center h-full"
+              style={{
+                background: PAPER_L,
+                border: `1.5px solid ${BORDER}`,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+              }}
+            >
+              <NotebookChoiceRow
+                myChoice={m.myChoice}
+                bothChose={m.bothChose}
+                onPick={m.pick}
+              />
+            </div>
+          ) : (
+            <div className="h-12" />
+          )}
+
+          {/* History + room rail */}
+          <NotebookHistoryPanel>
+            <NotebookHistoryStrip
+              history={m.state.history}
+              myId={m.myId}
             />
-          </div>
-        </NotebookHistoryPanel>
+            <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(100,115,180,0.20)" }}>
+              <InlineRoomRail
+                code={m.roomCode}
+                game="rps"
+                phase={m.roomPhase}
+                players={m.players}
+                selfId={m.selfId}
+                messages={m.messages}
+              />
+            </div>
+          </NotebookHistoryPanel>
+        </div>
       </div>
 
       {/* Overlays: reactions, emoji rain, confetti */}
@@ -170,13 +184,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         />
       )}
 
-      {/* GAL Animations */}
-      {m.activeClash && (
-        <RpsClashOverlay
-          kind={m.activeClash.kind}
-          message={m.activeClash.message}
-        />
-      )}
+
       {m.state.isOver && m.state.winnerId && (
         <RpsWinnerCelebration
           winnerName={m.players.find((p) => p.id === m.state.winnerId)?.name ?? "Winner"}

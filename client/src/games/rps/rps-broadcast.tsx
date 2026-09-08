@@ -60,32 +60,141 @@ export function ProThrow({ choice, size = 64 }: { choice: RpsChoice; size?: numb
   const common = {
     fill: "none",
     stroke: a,
-    strokeWidth: 2.4,
+    strokeWidth: 2.2,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
+
   if (choice === "rock") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-        <circle cx="24" cy="24" r="13" fill={`${a}1F`} stroke={a} strokeWidth="2.4" />
-        <path d="M17 20c1.6-3 4-4.5 7-4.5M31 26c-1.2 3.4-3.8 5.4-7.2 5.6" {...common} />
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden>
+        <defs>
+          <linearGradient id={`rock-grad-${size}`} x1="12" y1="10" x2="36" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#C5D7E8" stopOpacity="0.45" />
+            <stop offset="50%" stopColor={a} stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#4A657D" stopOpacity="0.12" />
+          </linearGradient>
+          <linearGradient id={`rock-facet-${size}`} x1="16" y1="12" x2="30" y2="28" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+        {/* Outer faceted boulder silhouette */}
+        <polygon
+          points="20,9 33,12 39,22 36,34 24,39 13,33 10,21 14,13"
+          fill={`url(#rock-grad-${size})`}
+          stroke={a}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
+        {/* Highlight facet */}
+        <polygon
+          points="20,9 27,19 20,27 10,21 14,13"
+          fill={`url(#rock-facet-${size})`}
+          stroke={a}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeOpacity="0.85"
+        />
+        {/* Top-right facet */}
+        <polygon
+          points="20,9 33,12 39,22 28,24 27,19"
+          fill="rgba(255,255,255,0.12)"
+          stroke={a}
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+          strokeOpacity="0.65"
+        />
+        {/* Bottom shadow facets */}
+        <polygon
+          points="27,19 28,24 36,34 24,39 20,27"
+          fill="rgba(0,0,0,0.3)"
+          stroke={a}
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+          strokeOpacity="0.75"
+        />
+        <polygon
+          points="10,21 20,27 24,39 13,33"
+          fill="rgba(0,0,0,0.2)"
+          stroke={a}
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+          strokeOpacity="0.65"
+        />
       </svg>
     );
   }
+
   if (choice === "paper") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-        <path d="M15 11h13l6 6v20H15V11Z" fill={`${a}1F`} stroke={a} strokeWidth="2.4" strokeLinejoin="round" />
-        <path d="M28 11v6h6" {...common} />
-        <path d="M20 24h9M20 30h7" {...common} />
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden>
+        <defs>
+          <linearGradient id={`paper-grad-${size}`} x1="13" y1="9" x2="35" y2="39" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#8AC6FF" stopOpacity="0.38" />
+            <stop offset="60%" stopColor={a} stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#1E40AF" stopOpacity="0.1" />
+          </linearGradient>
+        </defs>
+        {/* Main tactical scroll sheet with angled fold */}
+        <path
+          d="M14 9 H28 L36 17 V37 C36 38.6569 34.6569 40 33 40 H14 C12.3431 40 11 38.6569 11 37 V12 C11 10.3431 12.3431 9 14 9 Z"
+          fill={`url(#paper-grad-${size})`}
+          stroke={a}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
+        {/* Folded corner triangle with metallic highlight */}
+        <path
+          d="M28 9 V17 H36 Z"
+          fill="rgba(255,255,255,0.28)"
+          stroke={a}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        {/* Tactical neon trace lines */}
+        <line x1="16" y1="23" x2="31" y2="23" stroke={a} strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.9" />
+        <line x1="16" y1="29" x2="27" y2="29" stroke={a} strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.7" />
+        <line x1="16" y1="35" x2="23" y2="35" stroke={a} strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.5" />
+        {/* Small corner tech accent */}
+        <circle cx="31" cy="35" r="1.5" fill={a} />
       </svg>
     );
   }
+
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-      <circle cx="17" cy="34" r="5" fill={`${a}1F`} stroke={a} strokeWidth="2.4" />
-      <circle cx="31" cy="34" r="5" fill={`${a}1F`} stroke={a} strokeWidth="2.4" />
-      <path d="M20.5 30 33 12M27.5 30 15 12" {...common} />
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id={`scis-grad-${size}`} x1="12" y1="12" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FDE68A" stopOpacity="0.45" />
+          <stop offset="100%" stopColor={a} stopOpacity="0.18" />
+        </linearGradient>
+      </defs>
+      {/* Left sharp blade */}
+      <path
+        d="M24 24 L34 10 C34.5 9.2 35.5 9 36.2 9.5 C36.8 10 37 11 36.5 11.8 L25.5 25.5"
+        fill={`url(#scis-grad-${size})`}
+        stroke={a}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      {/* Right sharp blade */}
+      <path
+        d="M24 24 L14 10 C13.5 9.2 12.5 9 11.8 9.5 C11.2 10 11 11 11.5 11.8 L22.5 25.5"
+        fill={`url(#scis-grad-${size})`}
+        stroke={a}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      {/* Left handle loop */}
+      <circle cx="16" cy="34" r="6" stroke={a} strokeWidth="2.4" fill="rgba(245,196,81,0.14)" />
+      {/* Right handle loop */}
+      <circle cx="32" cy="34" r="6" stroke={a} strokeWidth="2.4" fill="rgba(245,196,81,0.14)" />
+      {/* Connecting shank rods */}
+      <line x1="22.5" y1="25.5" x2="19" y2="29.5" stroke={a} strokeWidth="2.4" strokeLinecap="round" />
+      <line x1="25.5" y1="25.5" x2="29" y2="29.5" stroke={a} strokeWidth="2.4" strokeLinecap="round" />
+      {/* Centre pivot core rivet */}
+      <circle cx="24" cy="24.5" r="2.8" fill="#FFF" stroke={a} strokeWidth="1.6" />
     </svg>
   );
 }
@@ -188,6 +297,7 @@ export function ProPlayerCard({
   locked,
   cardRef,
   compact = false,
+  className = "",
 }: {
   name: string;
   avatar?: string;
@@ -203,38 +313,44 @@ export function ProPlayerCard({
   locked: boolean;
   cardRef?: (el: HTMLDivElement | null) => void;
   compact?: boolean;
+  className?: string;
 }) {
   const right = align === "right";
   return (
-    <ProPanel glow={matchPoint} className={compact ? "p-3" : ""}>
-      <div ref={cardRef}>
-        <div className={`flex items-center gap-3 ${right ? "flex-row-reverse text-right" : ""}`}>
-          <ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5" style={{ justifyContent: right ? "flex-end" : "flex-start" }}>
-              <span className="truncate text-[13px] font-extrabold" style={{ color: PRO.ink }}>
-                {name}
-              </span>
-              {isSelf && <ProChip>You</ProChip>}
-            </div>
-            <div
-              className={`mt-1.5 flex items-center gap-2 ${right ? "justify-end" : ""}`}
-            >
-              <span
-                className={`${compact ? "text-[26px]" : "text-[34px]"} font-black leading-none tabular-nums`}
-                style={{ color: matchPoint ? PRO.gold : PRO.ink }}
+    <ProPanel
+      glow={matchPoint}
+      className={`${compact ? "p-3" : "h-full flex flex-col justify-between"} ${className}`}
+    >
+      <div ref={cardRef} className="flex-1 flex flex-col justify-between">
+        <div>
+          <div className={`flex items-center gap-3 ${right ? "flex-row-reverse text-right" : ""}`}>
+            <ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5" style={{ justifyContent: right ? "flex-end" : "flex-start" }}>
+                <span className="truncate text-[13px] font-extrabold" style={{ color: PRO.ink }}>
+                  {name}
+                </span>
+                {isSelf && <ProChip>You</ProChip>}
+              </div>
+              <div
+                className={`mt-1.5 flex items-center gap-2 ${right ? "justify-end" : ""}`}
               >
-                {score}
-              </span>
-              <span className="text-[11px] font-bold" style={{ color: PRO.inkLo }}>
-                / {target}
-              </span>
+                <span
+                  className={`${compact ? "text-[26px]" : "text-[34px]"} font-black leading-none tabular-nums`}
+                  style={{ color: matchPoint ? PRO.gold : PRO.ink }}
+                >
+                  {score}
+                </span>
+                <span className="text-[11px] font-bold" style={{ color: PRO.inkLo }}>
+                  / {target}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={`mt-3 flex items-center gap-2 ${right ? "justify-end" : ""}`}>
-          <ProPips total={target} filled={score} accent={matchPoint ? PRO.gold : side.base} size={compact ? 6 : 7} />
+          <div className={`mt-3 flex items-center gap-2 ${right ? "justify-end" : ""}`}>
+            <ProPips total={target} filled={score} accent={matchPoint ? PRO.gold : side.base} size={compact ? 6 : 7} />
+          </div>
         </div>
 
         <div className={`mt-3 flex flex-wrap items-center gap-1.5 ${right ? "justify-end" : ""}`}>
@@ -311,6 +427,7 @@ export function ProArena({
   mySide,
   oppSide,
   compact = false,
+  clock,
 }: {
   myName: string;
   oppName: string;
@@ -322,6 +439,7 @@ export function ProArena({
   mySide: ProSide;
   oppSide: ProSide;
   compact?: boolean;
+  clock?: ReactNode;
 }) {
   // The arena is the hero of the desktop composition — undersized glyphs left
   // it reading as a small plate adrift in the middle of a wide screen.
@@ -386,13 +504,13 @@ export function ProArena({
         </div>
       </div>
 
-      {/* Result banner — fixed-height slot so the arena never jumps as it
+      {/* Result banner or clock — fixed-height slot so the arena never jumps as it
           appears and clears between rounds. */}
       <div className="mt-3 flex h-7 items-center justify-center">
-        {banner && (
+        {banner ? (
           <div
             key={revealKey}
-            className="rounded-full px-4 py-1.5 text-[11px] font-black uppercase"
+            className="rounded-full px-4 py-1.5 text-[11px] font-black uppercase tracking-wider"
             style={{
               letterSpacing: "0.16em",
               color: banner.tone,
@@ -402,6 +520,8 @@ export function ProArena({
           >
             {banner.text}
           </div>
+        ) : (
+          clock ?? null
         )}
       </div>
     </ProPanel>
@@ -613,8 +733,19 @@ export function ProRoundClock({ deadline, active }: { deadline: number | null; a
   if (left == null) return null;
   const urgent = left <= 5;
   return (
-    <ProChip tone={urgent ? "live" : "neutral"}>
-      <span className="tabular-nums">{left}s</span>
-    </ProChip>
+    <div
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider"
+      style={{
+        background: urgent ? "rgba(239, 68, 68, 0.18)" : "rgba(255, 255, 255, 0.06)",
+        border: `1px solid ${urgent ? "rgba(239, 68, 68, 0.55)" : PRO.lineStrong}`,
+        color: urgent ? "#FCA5A5" : PRO.inkMid,
+      }}
+    >
+      <span
+        className={`inline-block w-1.5 h-1.5 rounded-full ${urgent ? "bg-red-400 animate-ping" : "bg-blue-400"}`}
+      />
+      <span>Time:</span>
+      <span className="tabular-nums font-black">{left}s</span>
+    </div>
   );
 }
