@@ -1664,8 +1664,34 @@ export default function Room() {
                 />
               </div>
 
-              {/* Mobile / Tablet sticky bottom action bar */}
-              <div className="block lg:hidden">
+              {/* Mobile / Tablet sticky bottom action bar. Hidden while a
+                  rematch negotiation is active — RematchPanel already owns
+                  "get everyone ready and start" messaging at that point, and
+                  showing both together put a live countdown ("Next match
+                  starts in Xs") next to a stale "Waiting for players to be
+                  ready" bar on screen at the same time. */}
+              {rematch.status === "idle" && (
+                <div className="block lg:hidden">
+                  <LobbyActionBar
+                    isHost={selfIsHost}
+                    isReady={viewModel.selfIsReady}
+                    canStart={viewModel.canStartGame}
+                    startGameDisabledReason={viewModel.startGameDisabledReason}
+                    readyCount={viewModel.readyPlayersCount}
+                    totalCount={viewModel.totalPlayersCount}
+                    commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
+                    onToggleReady={toggleReady}
+                    onStartGame={startGame}
+                    variant="sticky-mobile"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
+            <div className="hidden lg:flex flex-col gap-2.5 sm:gap-3 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
+              {/* Same rematch-active suppression as the mobile bar above. */}
+              {rematch.status === "idle" && (
                 <LobbyActionBar
                   isHost={selfIsHost}
                   isReady={viewModel.selfIsReady}
@@ -1676,25 +1702,9 @@ export default function Room() {
                   commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
                   onToggleReady={toggleReady}
                   onStartGame={startGame}
-                  variant="sticky-mobile"
+                  variant="desktop-panel"
                 />
-              </div>
-            </div>
-
-            {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
-            <div className="hidden lg:flex flex-col gap-2.5 sm:gap-3 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
-              <LobbyActionBar
-                isHost={selfIsHost}
-                isReady={viewModel.selfIsReady}
-                canStart={viewModel.canStartGame}
-                startGameDisabledReason={viewModel.startGameDisabledReason}
-                readyCount={viewModel.readyPlayersCount}
-                totalCount={viewModel.totalPlayersCount}
-                commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
-                onToggleReady={toggleReady}
-                onStartGame={startGame}
-                variant="desktop-panel"
-              />
+              )}
 
               <CommunicationPanel
                 messages={messages}

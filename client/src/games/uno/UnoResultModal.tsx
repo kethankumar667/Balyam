@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import type { Player, UnoPlayerState } from "@shared/types";
-import { getSocket } from "../../lib/socket";
-import { useRoomStore } from "../../store/roomStore";
+import RematchPanel from "../../components/RematchPanel";
 import { findAvatar } from "../../lib/avatars";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
@@ -33,11 +32,6 @@ export default function UnoResultModal({
   const isSelfWinner = winnerId != null && winnerId === selfId;
   const animConfig = useAnimationConfig();
 
-  const rematch = useRoomStore((s) => s.rematch);
-  const roomState = useRoomStore((s) => s.roomState);
-  const isHost = roomState?.hostId === selfId;
-  const myResponse = selfId ? rematch.responses[selfId] : undefined;
-
   useEffect(() => {
     if (isSelfWinner) fireUnoWinConfetti();
   }, [isSelfWinner]);
@@ -47,16 +41,6 @@ export default function UnoResultModal({
   );
 
   const winnerScore = winnerId ? (state.scores[winnerId] ?? 0) : 0;
-
-  function requestRematch() {
-    getSocket().emit("rematch:request");
-  }
-  function acceptRematch() {
-    getSocket().emit("rematch:respond", "accept");
-  }
-  function declineRematch() {
-    getSocket().emit("rematch:respond", "decline");
-  }
 
   return (
     <div
@@ -272,69 +256,10 @@ export default function UnoResultModal({
 
           {/* BOTTOM ACTION BUTTONS */}
           <div className="pt-2 sm:pt-3 space-y-2 sm:space-y-2.5">
-            {/* Rematch States & Primary Action Button */}
-            {rematch.status === "accepted" && rematch.startsAt ? (
-              <CountdownBox startsAt={rematch.startsAt} />
-            ) : rematch.status === "declined" ? (
-              <div className="rounded-xl border-2 border-rose-300 bg-rose-50 text-rose-800 px-4 py-2.5 text-xs sm:text-sm font-bold text-center">
-                {players.find((p) => p.id === rematch.declinedBy)?.name ?? "Player"} declined the
-                rematch.
-              </div>
-            ) : rematch.status === "pending" ? (
-              isHost || myResponse === "accept" ? (
-                <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 px-4 py-2.5 text-center space-y-2">
-                  <div className="text-amber-900 font-bold text-xs sm:text-sm">
-                    Waiting for players… (
-                    {Object.values(rematch.responses).filter((r) => r === "accept").length} /{" "}
-                    {Object.values(rematch.responses).length})
-                  </div>
-                  <button
-                    type="button"
-                    onClick={declineRematch}
-                    className="text-xs font-bold text-rose-700 hover:underline cursor-pointer"
-                  >
-                    Cancel Rematch
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-2.5 space-y-2">
-                  <div className="text-amber-900 font-bold text-xs sm:text-sm text-center">
-                    Host wants a rematch. Are you in?
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={acceptRematch}
-                      className="flex-1 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm cursor-pointer shadow"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      onClick={declineRematch}
-                      className="flex-1 py-2 sm:py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm cursor-pointer shadow"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : (
-              /* Play Again Button: Navy Blue with Stitched Border */
-              <button
-                type="button"
-                onClick={requestRematch}
-                className="w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base text-white bg-[#204987] hover:bg-[#1A3E75] active:scale-[0.98] border-2 border-[#3F6FB3] border-dashed shadow-[0_4px_14px_rgba(32,73,135,0.4)] flex items-center justify-center gap-2.5 transition cursor-pointer"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-4 h-4 sm:w-5 sm:h-5 fill-none stroke-current stroke-2 stroke-linecap-round stroke-linejoin-round"
-                >
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                </svg>
-                <span>Play Again</span>
-              </button>
-            )}
+            {/* Rematch — the shared panel every game uses, instead of a
+                UNO-specific reimplementation of the same pending/accepted/
+                declined states. Same protocol, same look everywhere now. */}
+            <RematchPanel players={players} selfId={selfId} />
 
             {/* Secondary Action Row: Continue & Leave Table */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 pt-0.5">
@@ -789,24 +714,3 @@ function CelebrationIllustration({ winnerName }: { winnerName: string }) {
   );
 }
 
-function CountdownBox({ startsAt }: { startsAt: number }) {
-  const [remainingMs, setRemainingMs] = useState(() => Math.max(0, startsAt - Date.now()));
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setRemainingMs(Math.max(0, startsAt - Date.now()));
-    }, 100);
-    return () => window.clearInterval(id);
-  }, [startsAt]);
-  const seconds = Math.ceil(remainingMs / 1000);
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900 font-bold text-center text-sm shadow-xs"
-    >
-      Next game starting in{" "}
-      <span className="text-emerald-700 font-mono tabular-nums text-base">{seconds}s</span>…
-    </div>
-  );
-}
