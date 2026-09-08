@@ -1,5 +1,7 @@
 import { Users as UsersLucideIcon, Gamepad2 } from "lucide-react";
 import { useTheme } from "../../lib/useTheme";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 
 export function PlayYourWaySection({
   onPlayFriends,
@@ -8,6 +10,7 @@ export function PlayYourWaySection({
   onPlayFriends: () => void;
   onPlayBots: () => void;
 }) {
+  const { play } = useAudio();
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -23,7 +26,10 @@ export function PlayYourWaySection({
         {/* 1. Play with Friends */}
         <button
           type="button"
-          onClick={onPlayFriends}
+          onClick={() => {
+            play(AUDIO.UI_CLICK);
+            onPlayFriends();
+          }}
           className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926] motion-reduce:hover:transform-none ${
             isDark
               ? "bg-[#131926] border-white/10 hover:border-amber-500/40"
@@ -51,7 +57,10 @@ export function PlayYourWaySection({
         {/* 2. Play with Bots */}
         <button
           type="button"
-          onClick={onPlayBots}
+          onClick={() => {
+            play(AUDIO.UI_CLICK);
+            onPlayBots();
+          }}
           className={`p-4 rounded-2xl sm:rounded-3xl border text-left flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition active:scale-[0.99] cursor-pointer group min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926] motion-reduce:hover:transform-none ${
             isDark
               ? "bg-[#131926] border-white/10 hover:border-emerald-500/40"

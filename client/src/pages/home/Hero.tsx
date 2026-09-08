@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { DoorOpen, Gamepad2 } from "lucide-react";
+import { DoorOpen } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { useTheme } from "../../lib/useTheme";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 
 export function Hero({
   onPlayFeatured,
@@ -10,6 +12,7 @@ export function Hero({
   onPlayFeatured?: () => void;
   onOpenJoin: () => void;
 }) {
+  const { play } = useAudio();
   const [theme] = useTheme();
   const isDark = theme === "dark";
   const [failed, setFailed] = useState(false);
@@ -118,26 +121,17 @@ export function Hero({
               Bring your school gang back together!
             </p>
 
-            {/* Action Buttons: Dual balanced hosting and joining CTAs (Issue 10, 11) */}
+            {/* Action Buttons */}
             <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
-                  const el = document.getElementById("games-section");
-                  el?.scrollIntoView({ behavior: "smooth" });
+                  play(AUDIO.UI_POPUP_OPEN);
+                  onOpenJoin();
                 }}
-                className="py-3.5 px-6 sm:px-7 rounded-full flex items-center justify-center gap-2.5 font-bold text-sm sm:text-base bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md active:scale-98 transition-all cursor-pointer min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="py-3.5 px-6 sm:px-7 rounded-full flex items-center justify-center gap-2.5 font-bold text-sm sm:text-base bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 shadow-lg shadow-amber-500/30 active:scale-98 transition-all cursor-pointer min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
               >
-                <Gamepad2 className="w-5 h-5 text-stone-950 shrink-0" aria-hidden="true" />
-                <span>Pick a Game to Host</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenJoin}
-                className="py-3.5 px-5 sm:px-6 rounded-full flex items-center justify-center gap-2 font-bold text-sm sm:text-base border border-stone-400/40 dark:border-white/20 bg-stone-900/5 hover:bg-stone-900/10 dark:bg-white/5 dark:hover:bg-white/10 text-stone-900 dark:text-white transition-all cursor-pointer min-h-[48px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
-              >
-                <DoorOpen className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
+                <DoorOpen className="w-5 h-5 text-stone-950 shrink-0" aria-hidden="true" />
                 <span>Join with Code</span>
               </button>
 

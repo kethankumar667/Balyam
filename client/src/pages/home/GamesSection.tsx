@@ -6,6 +6,8 @@ import { RevealOnScroll, RevealItem } from "../../components/RevealOnScroll";
 import { bhalyamSpring, tileHover } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 import CategoryFilter, {
   filterGames,
   type GameFilter,
@@ -185,6 +187,7 @@ export function GameTile({
 }) {
   const Glyph = GAME_GLYPHS[game.slug];
   const tileArtByGame = TILE_ART_BY_GAME;
+  const { play } = useAudio();
 
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -272,7 +275,14 @@ export function GameTile({
       {/* Glossy 3D Play Now Action Button */}
       <button
         type="button"
-        onClick={underMaintenance ? undefined : onSelect}
+        onClick={
+          underMaintenance
+            ? undefined
+            : () => {
+                play(AUDIO.UI_CLICK);
+                onSelect();
+              }
+        }
         disabled={underMaintenance}
         className={`w-full py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-[14px] font-black uppercase tracking-wider text-white active:scale-98 transition-all duration-200 cursor-pointer shadow-md ${
           underMaintenance

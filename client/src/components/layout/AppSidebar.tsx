@@ -11,6 +11,8 @@ import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import { useTheme } from "../../lib/useTheme";
 import { bhalyamSpring } from "../../lib/motion";
 import { useRecentlyPlayed } from "../../hooks/useRecentlyPlayed";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 
 
 interface AppSidebarProps {
@@ -60,6 +62,7 @@ export default function AppSidebar({
     openGameSheet: onOpenGameSheet,
   });
 
+  const { play } = useAudio();
   const { recentItems } = useRecentlyPlayed();
   const { playerName, avatarId } = useRoomStore();
   const identity = useIdentityPresentation();
@@ -150,7 +153,10 @@ export default function AppSidebar({
         <Tooltip content={item.label} side="right" align="center">
           <Link
             to={item.fullHref}
-            onClick={onCloseMobile}
+            onClick={() => {
+              if (!item.active) play(AUDIO.UI_CLICK);
+              onCloseMobile?.();
+            }}
             aria-current={item.active ? "page" : undefined}
             className="block rounded-2xl focus:outline-none focus:ring-2 focus:ring-[var(--chrome-accent)]/50"
           >
@@ -164,6 +170,7 @@ export default function AppSidebar({
           <button
             type="button"
             onClick={() => {
+              play(AUDIO.UI_CLICK);
               handleAction(item.action, item.actionParam);
               onCloseMobile?.();
             }}
@@ -293,7 +300,10 @@ export default function AppSidebar({
         <div className="lg:hidden">
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={() => {
+              play(AUDIO.UI_TOGGLE);
+              toggleTheme();
+            }}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             className="relative w-full flex items-center gap-3 px-3.5 min-h-[44px] rounded-2xl
                        font-bold text-sm transition-all cursor-pointer select-none
