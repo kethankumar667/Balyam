@@ -139,6 +139,49 @@ describe("RoomManager — mid-game departure", () => {
     expect(r.engine.getPublicState().turnPlayerId).not.toBe(bobId);
   });
 
+  /**
+   * A LEAVE that ENDS the match outright — a 1v1 forfeit (Hand Cricket,
+   * Chess, Carrom, RPS) rather than the multi-seat "table plays on" case
+   * above. Root-caused 2026-09-09 from a live report: two signed-in players
+   * on a paid Hand Cricket match, one clicks Leave mid-game, and the
+   * opponent's screen shows nothing — no winner banner, no scorecard —
+   * until they refresh the page, at which point it correctly says they won.
+   *
+   * The cause was a code path, not a game: `leaveRoom` reaching the
+   * `isOver()` branch calls `finalizeMatch` directly (the match is over, so
+   * there is no `resumeTable` to fall back on), and `finalizeMatch` only
+   * ever broadcasts `room:state`. Every OTHER way a match ends (a losing
+   * move, a bot auto-move, a resolved deadline) broadcasts `game:state`
+   * itself before checking `isOver()` — this was the one path that didn't,
+   * so the opponent's board — which reads its OWN `phase`/`winnerId` off
+   * `game:state`, not off the room's phase — never learned the match had
+   * ended. A refresh's fresh join re-sent a full `game:state` snapshot,
+   * which is why reloading "fixed" it.
+   */
+  it("a LEAVE that ends the match (1v1 forfeit) still pushes the terminal game state to the opponent", () => {
+    const { io, emits } = makeIo();
+    const rooms = new RoomManager(io);
+    const { code } = rooms.createRoom("sA", "Alice", "handcricket");
+    rooms.joinRoom("sB", "Bob", code);
+    rooms.setReady("sA", true);
+    rooms.setReady("sB", true);
+    rooms.startGame("sA");
+    const bobId = [...peek(rooms, code).players.values()].find((p) => p.name === "Bob")!.id;
+
+    const statesBefore = gameStates(emits);
+    rooms.leaveRoom("sB"); // Bob leaves — Alice should be declared the winner
+
+    // The opponent's board must be told the match ended over game:state,
+    // not just room:state — this is the exact broadcast that was missing.
+    expect(gameStates(emits)).toBeGreaterThan(statesBefore);
+
+    const room = peek(rooms, code) as unknown as {
+      engine: { getPublicState(): { phase: string; winnerId: string | null } };
+    };
+    expect(room.engine.getPublicState().phase).toBe("finished");
+    expect(room.engine.getPublicState().winnerId).not.toBe(bobId);
+  });
+
   it("a departed seat leaves no per-seat timers or counters behind", () => {
     const { rooms, code, bobId } = seatThree();
     const r = peek(rooms, code);

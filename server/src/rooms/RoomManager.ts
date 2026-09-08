@@ -1748,7 +1748,25 @@ export class RoomManager {
       if (p) await p;
     }
     if (!this.rooms.has(code)) return;
-    if (room.engine) room.engine.removePlayer(playerId);
+    if (room.engine) {
+      room.engine.removePlayer(playerId);
+      // `removePlayer` mutates the ENGINE's own state (whose turn it is, a
+      // forfeit's `winnerId`/`phase: "finished"` for a 1v1 like Hand
+      // Cricket/Chess/RPS) — a completely different object from
+      // `RoomPublicState`, delivered over its own `game:state` event. Every
+      // other place this file ends a match — a losing move, a bot
+      // auto-move, a real-time simulation tick, a resolved deadline —
+      // broadcasts `game:state` before checking `isOver()`. This path
+      // (a player clicking Leave mid-match) was the one exception: it went
+      // straight to `broadcastRoomState` below, which carries the ROOM's
+      // phase/lifecycle but never the game board's own terminal state. The
+      // opponent's screen kept rendering the live board — no winner banner,
+      // no scorecard — until something else (a reconnect, a refresh) forced
+      // a fresh `game:state` snapshot down the wire. Root-caused 2026-09-09
+      // from a live Hand Cricket report: exactly this — "nothing happened"
+      // on the remaining player's screen until they refreshed the page.
+      this.broadcastGameState(room);
+    }
     // If the leaver was part of a pending rematch vote, cancel it —
     // proceeding would either deadlock (waiting on someone who's gone) or
     // start a game with a smaller table than the host requested.
@@ -4583,6 +4601,10 @@ export class RoomManager {
       engine.removePlayer(playerId);
     }
 
+    // Same gap, same fix as `leaveRoom` — `quitPlayer`/`removePlayer` both
+    // mutate the engine's own state (a forfeit result, whose turn it now
+    // is), which only reaches clients over `game:state`, not `room:state`.
+    this.broadcastGameState(room);
     this.broadcastRoomState(room);
 
     if (engine.isOver()) {
