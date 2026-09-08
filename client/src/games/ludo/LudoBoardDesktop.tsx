@@ -11,6 +11,7 @@ import {
   LudoDecorBackdrop,
   useLudoTableImpact,
 } from "./ludo-board-composites";
+import LudoThemeWeather from "./LudoThemeWeather";
 
 /**
  * Ludo — desktop shell (BHALYAM notebook theme).
@@ -94,6 +95,7 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
           behind these three columns. */}
       <div className="relative z-0 flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
         <LudoDecorBackdrop />
+        <LudoThemeWeather theme={m.settings.theme} />
         <div className="w-[clamp(10rem,17vw,17rem)] flex-shrink-0 overflow-y-auto pt-1">
           <LudoPlayerCards state={state} players={players} row="all" orientation="col" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
         </div>

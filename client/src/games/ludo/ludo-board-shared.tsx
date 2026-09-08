@@ -380,7 +380,7 @@ export function BoardSVG({
       {/* Outer wood frame trim — sits at the very edge so the rest of the
           drawing reads as the felt inside the box. */}
       <rect x={RIM_STROKE / 2} y={RIM_STROKE / 2} width={GRID - RIM_STROKE} height={GRID - RIM_STROKE} rx={0.3}
-            fill="none" stroke={INK} strokeWidth={RIM_STROKE} />
+            fill="none" stroke={INK} strokeWidth={RIM_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
 
       {/* 4 yard quadrants */}
       {ORDERED_COLORS.map((color) => {
@@ -407,9 +407,9 @@ export function BoardSVG({
         return (
           <g key={color} opacity={inactive ? 0.45 : 1}>
             {/* Outer colored frame with rounded corner */}
-            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.25} fill={`url(#ludo-yard-${color})`} stroke={INK} strokeWidth={LANE_STROKE} />
+            <rect x={c0 + 0.2} y={r0 + 0.2} width={6 - 0.4} height={6 - 0.4} rx={0.25} fill={`url(#ludo-yard-${color})`} stroke={INK} strokeWidth={LANE_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
             {/* Inner cream pad where tokens park */}
-            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.2} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} />
+            <rect x={c0 + 1} y={r0 + 1} width={4} height={4} rx={0.2} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} style={{ fill: "var(--ludo-cell, " + PRINT_CELL + ")", stroke: "var(--ludo-ink, " + INK + ")" }} />
 
             {/* FINISHING PLACE, stamped across the emptied yard.
                 Only appears once all four of this player's tokens are home,
@@ -455,8 +455,8 @@ export function BoardSVG({
               opacity={0.14}
               style={{ pointerEvents: "none" }}
             >
-              <polygon points={rosettePts(4, 1.15)} fill="none" stroke={INK} strokeWidth={LANE_STROKE} />
-              <polygon points={starPts(0.5)} fill={INK} />
+              <polygon points={rosettePts(4, 1.15)} fill="none" stroke={INK} strokeWidth={LANE_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
+              <polygon points={starPts(0.5)} fill={INK} style={{ fill: "var(--ludo-ink, " + INK + ")" }} />
             </g>
             {/* Token slot circles — slightly darker so they read as a
                 landing pad rather than a faint ghost. */}
@@ -562,7 +562,12 @@ export function BoardSVG({
       {/* Track cells — warm off-white with hairline gold-tan border */}
       {TRACK_CELLS.map((cell, idx) => (
         <g key={idx}>
-          <rect x={cell.col} y={cell.row} width={1} height={1} fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE} />
+          <rect
+            className="track-cell"
+            x={cell.col} y={cell.row} width={1} height={1}
+            fill={PRINT_CELL} stroke={INK} strokeWidth={GRID_STROKE}
+            style={{ fill: "var(--ludo-cell, " + PRINT_CELL + ")", stroke: "var(--ludo-ink, " + INK + ")" }}
+          />
         </g>
       ))}
 
@@ -573,12 +578,15 @@ export function BoardSVG({
         const cell = TRACK_CELLS[startIdx];
         return (
           <g key={color + "-start"} opacity={armOpacity(color)}>
-            <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={LANE_STROKE} />
+            <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={LANE_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
           </g>
         );
       })}
 
-      {/* Safe-square stars — gold with deep-gold halo for premium feel */}
+      {/* Safe-square stars — gold with deep-gold halo for premium feel.
+          Fill is left untouched: it's a game signal (seat color vs. print
+          cell, per the comment below), not decoration — only the outline
+          ink is themed. */}
       {[...SAFE_SQUARES].map((pos) => {
         const cell = TRACK_CELLS[pos];
         const safeColor = ORDERED_COLORS.find((c) => START_MAP[c] === pos || ((START_MAP[c] + 8) % 52) === pos) ?? "yellow";
@@ -593,6 +601,7 @@ export function BoardSVG({
               fill={START_MAP[safeColor] === pos ? PRINT_CELL : CH(safeColor)}
               stroke={INK}
               strokeWidth={GRID_STROKE}
+              style={{ stroke: "var(--ludo-ink, " + INK + ")" }}
             />
           </g>
         );
@@ -604,7 +613,7 @@ export function BoardSVG({
         <g key={color + "-stretch"} opacity={armOpacity(color)}>
           {STRETCH_CELLS[color].map((cell, i) => (
             <g key={i}>
-              <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={GRID_STROKE} />
+              <rect x={cell.col} y={cell.row} width={1} height={1} fill={CH(color)} stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
             </g>
           ))}
         </g>
@@ -612,20 +621,21 @@ export function BoardSVG({
 
       {/* Center: 4 deeper-toned triangles + gold star crest */}
       <g filter="url(#ludo-drop)">
-        <polygon points="6,6 6,9 7.5,7.5" fill={YF("red")} fillOpacity={armOpacity("red")} stroke={INK} strokeWidth={GRID_STROKE} />
-        <polygon points="6,6 9,6 7.5,7.5" fill={YF("green")} fillOpacity={armOpacity("green")} stroke={INK} strokeWidth={GRID_STROKE} />
-        <polygon points="9,6 9,9 7.5,7.5" fill={YF("yellow")} fillOpacity={armOpacity("yellow")} stroke={INK} strokeWidth={GRID_STROKE} />
-        <polygon points="6,9 9,9 7.5,7.5" fill={YF("blue")} fillOpacity={armOpacity("blue")} stroke={INK} strokeWidth={GRID_STROKE} />
+        <polygon points="6,6 6,9 7.5,7.5" fill={YF("red")} fillOpacity={armOpacity("red")} stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
+        <polygon points="6,6 9,6 7.5,7.5" fill={YF("green")} fillOpacity={armOpacity("green")} stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
+        <polygon points="9,6 9,9 7.5,7.5" fill={YF("yellow")} fillOpacity={armOpacity("yellow")} stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
+        <polygon points="6,9 9,9 7.5,7.5" fill={YF("blue")} fillOpacity={armOpacity("blue")} stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
         {/* Frame */}
-        <rect x={6} y={6} width={3} height={3} fill="none" stroke={INK} strokeWidth={LANE_STROKE} />
+        <rect x={6} y={6} width={3} height={3} fill="none" stroke={INK} strokeWidth={LANE_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
         {/* Rosette medallion — the same hub motif the 5-8 print boards use,
             one point per arm. Replaces the gold disc and the 👑 emoji, which
             was the last non-vector mark on the board and rendered differently
-            on every OS. */}
+            on every OS. The clearing circle is themed off `--ludo-hub` (not
+            `--ludo-cell`) to match the 5-8 print board's own hub treatment. */}
         <g transform={`translate(7.5 7.5)`}>
-          <circle r={0.8} fill={PRINT_CELL} stroke={INK} strokeWidth={LANE_STROKE} />
-          <polygon points={rosettePts(4, 0.6)} fill="none" stroke={INK} strokeWidth={GRID_STROKE} />
-          <polygon points={starPts(0.32)} fill={INK} />
+          <circle r={0.8} fill={PRINT_CELL} stroke={INK} strokeWidth={LANE_STROKE} style={{ fill: "var(--ludo-hub, " + PRINT_CELL + ")", stroke: "var(--ludo-ink, " + INK + ")" }} />
+          <polygon points={rosettePts(4, 0.6)} fill="none" stroke={INK} strokeWidth={GRID_STROKE} style={{ stroke: "var(--ludo-ink, " + INK + ")" }} />
+          <polygon points={starPts(0.32)} fill={INK} style={{ fill: "var(--ludo-ink, " + INK + ")" }} />
         </g>
       </g>
 
@@ -635,7 +645,7 @@ export function BoardSVG({
         if (!d) return null;
         return (
           <g key={color + "-arrow"} opacity={armOpacity(color)} transform={`rotate(${d.rot}, ${d.x}, ${d.y})`}>
-            <polygon points={`${d.x - 0.24},${d.y - 0.16} ${d.x + 0.18},${d.y} ${d.x - 0.24},${d.y + 0.16}`} fill={INK} />
+            <polygon points={`${d.x - 0.24},${d.y - 0.16} ${d.x + 0.18},${d.y} ${d.x - 0.24},${d.y + 0.16}`} fill={INK} style={{ fill: "var(--ludo-ink, " + INK + ")" }} />
           </g>
         );
       })}

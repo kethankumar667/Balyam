@@ -1342,10 +1342,10 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         }
         // Outline (not ring): this button sets an inline box-shadow, which
         // would beat the global `*:focus-visible` box-shadow ring.
-        className="relative rounded-full flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+        className="relative rounded-2xl flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400"
         style={{
-          width: 96,
-          height: 96,
+          width: 116,
+          height: 116,
           background: `radial-gradient(circle at 50% 35%, ${cupTint}ee 0%, ${cupDark} 75%, #051408 100%)`,
           border: `4.5px solid ${cupDark}`,
           boxShadow: canRoll
@@ -1353,7 +1353,9 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
             : "inset 0 6px 14px rgba(0,0,0,0.5), inset 0 -3px 6px rgba(255,255,255,0.15), 0 6px 16px rgba(0,0,0,0.24)",
         }}
       >
-        {/* Felt textured arena inner rim */}
+        {/* Felt textured arena inner rim — deliberately much smaller than
+            the square background now, so the background reads as a frame
+            behind the die rather than a tight-fitting cup around it. */}
         <div
           key={settleKey}
           style={{ width: 62, height: 62 }}
@@ -1520,6 +1522,7 @@ export function LudoBoardArea({
           playerColors={m.arms}
           activeColors={m.activeColors}
           hasCaptured={state.hasCaptured ?? {}}
+          finishOrder={state.finishOrder ?? []}
           rotationDeg={m.boardRotation}
         />
       ) : (

@@ -135,6 +135,7 @@ function BoardPreview({ N, small = false }: { N: number; small?: boolean }) {
         playerColors={playerColors}
         activeColors={activeColors}
         hasCaptured={hasCaptured}
+        finishOrder={[]}
       />
       <div className="absolute inset-0">
         {activeColors.flatMap((color, armIdx) =>

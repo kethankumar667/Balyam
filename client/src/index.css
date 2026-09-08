@@ -1323,6 +1323,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #FFF3DC; --ludo-paper: #FFFBF0; --ludo-cell: #FFF8E8;
   --ludo-ink: #6B3F1D; --ludo-star: #FFFDF6; --ludo-hub: #FFE9B8;
   --ludo-label: #6B3F1D;
+  --ludo-font: 'Poppins', 'Nunito', sans-serif;
 
   --ludo-screen-bg: linear-gradient(160deg, #FFE8B8 0%, #F6B93B 45%, #E8720C 100%);
   --ludo-screen-border: #C2540A;
@@ -1352,6 +1353,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #EFE4CF; --ludo-paper: #F6EFE0; --ludo-cell: #FBF6EA;
   --ludo-ink: #6B563C; --ludo-star: #FFFDF6; --ludo-hub: #F6EFE0;
   --ludo-label: #5A462F;
+  --ludo-font: 'Kalam', 'Patrick Hand', 'Poppins', sans-serif;
 
   --ludo-screen-bg: linear-gradient(160deg, #F8F1E1 0%, #EFE0BE 45%, #D8BD87 100%);
   --ludo-screen-border: #6D4323;
@@ -1380,6 +1382,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #0B0824; --ludo-paper: #14103A; --ludo-cell: #1B1650;
   --ludo-ink: #6D28D9; --ludo-star: #F0ABFC; --ludo-hub: #241C6B;
   --ludo-label: #C4B5FD;
+  --ludo-font: 'JetBrains Mono', 'Poppins', monospace;
 
   --ludo-screen-bg: linear-gradient(160deg, #180E42 0%, #3B1670 45%, #6D28D9 100%);
   --ludo-screen-border: #A78BFA;
@@ -1406,6 +1409,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #072B20; --ludo-paper: #0E4534; --ludo-cell: #14624A;
   --ludo-ink: #08301F; --ludo-star: #ECFDF5; --ludo-hub: #0E4534;
   --ludo-label: #A7F3D0;
+  --ludo-font: 'Playfair Display', 'Poppins', serif;
 
   --ludo-screen-bg: linear-gradient(160deg, #0A3B2C 0%, #0E4534 45%, #065F46 100%);
   --ludo-screen-border: #34D399;
@@ -1434,6 +1438,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #10141F; --ludo-paper: #1B2130; --ludo-cell: #253044;
   --ludo-ink: #0B0F18; --ludo-star: #E2E8F0; --ludo-hub: #1B2130;
   --ludo-label: #94A3B8;
+  --ludo-font: 'Nunito', 'Poppins', sans-serif;
 
   --ludo-screen-bg: linear-gradient(160deg, #0D111C 0%, #131A29 45%, #1E293B 100%);
   --ludo-screen-border: #64748B;
@@ -1461,6 +1466,7 @@ body, #root, .bhalyam-paper {
   --ludo-bg: #F6D9B8; --ludo-paper: #FFF1E0; --ludo-cell: #FFE3C4;
   --ludo-ink: #9A4B23; --ludo-star: #FFFFFF; --ludo-hub: #FFF1E0;
   --ludo-label: #7C3A18;
+  --ludo-font: 'Fredoka', 'Poppins', sans-serif;
 
   --ludo-screen-bg: linear-gradient(160deg, #FFE9C7 0%, #F8B48A 50%, #E37B6B 100%);
   --ludo-screen-border: #C2603A;
@@ -1481,6 +1487,28 @@ body, #root, .bhalyam-paper {
   --ludo-nav-border: #9A4B23;
   --ludo-nav-text: #5A2A10;
 }
+
+/* Per-theme UI font, sourced from each theme's own `--ludo-font` (defined
+   alongside its other variables above) so the board's own player-name/HOME
+   `<text>` labels — which read the same variable directly, since SVG text
+   needs `var()` at the point of use rather than a cascaded class rule — and
+   this chrome rule never drift out of sync with each other.
+
+   Requires BOTH classes: the shell root carries `theme-<id> bhalyam-font`
+   together, while `.ludo-board` (the SVG wrapper) only ever carries
+   `theme-<id>` alone — so this reaches the chrome text (status bar, cards,
+   buttons, turn banner, feed) without touching the logo/tagline, which use
+   `.font-display`/`.font-script` — a class selector always beats an
+   inherited value, so the brand mark stays the same "flag" on every theme,
+   same as its colors. Classic keeps the base `.bhalyam-font` stack
+   (Poppins) — no override needed, `--ludo-font` matches it anyway. All
+   fonts here are already loaded by the page for other UI, so this adds no
+   new network requests. */
+.theme-paper.bhalyam-font,
+.theme-neon.bhalyam-font,
+.theme-emerald.bhalyam-font,
+.theme-midnight.bhalyam-font,
+.theme-sunset.bhalyam-font { font-family: var(--ludo-font); }
 
 /* Color-blind: shape patterns layered on top of token bodies */
 .cb-pattern-red    { background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.45) 5px 7px); }

@@ -13,6 +13,7 @@ import { useId } from "react";
 import type { LudoColor, Player } from "@shared/types";
 import { PLAYER_COLORS_ORDER } from "./board-layout";
 import { seatColor, seatColorDark, type PrintBoardGeometry } from "./print-board";
+import { ordinal } from "@shared/ludo-rules";
 
 /**
  * Flat-vector renderer for the N-player (5..8) print-design Ludo boards,
@@ -75,6 +76,7 @@ export default function PrintBoardSVG({
   playerOrder,
   playerColors,
   hasCaptured,
+  finishOrder,
   rotationDeg = 0,
 }: {
   geo: PrintBoardGeometry;
@@ -83,6 +85,11 @@ export default function PrintBoardSVG({
   playerColors: Record<string, LudoColor>;
   activeColors: LudoColor[];
   hasCaptured: Record<string, boolean>;
+  /** Player ids in the order they finished — same prop `BoardSVG` (2-4
+   *  players) already takes, used to stamp a big rank numeral across a
+   *  finished player's emptied yard. The 5-8 print board never had this;
+   *  a finished player's yard just went blank. */
+  finishOrder: string[];
   /** How far the whole board is spun on screen (egocentric orientation). The
    *  label helpers below flip text that would land upside-down, and that
    *  decision depends on the FINAL on-screen angle — so they have to be told
@@ -118,6 +125,13 @@ export default function PrintBoardSVG({
   const armCaptured = (i: number): boolean => {
     const pid = pidByArm[i];
     return pid ? !!hasCaptured[pid] : true;
+  };
+  /** 1-based finishing place, or 0 while still playing — same rule as
+   *  `BoardSVG`'s yard numeral: this is >0 exactly when the yard is empty
+   *  (all 4 tokens home), so no separate empty-yard check is needed. */
+  const armPlace = (i: number): number => {
+    const pid = pidByArm[i];
+    return pid ? finishOrder.indexOf(pid) + 1 : 0;
   };
 
   // Outer silhouette: all yard-baseline corners scaled to the border's outer
@@ -157,16 +171,21 @@ export default function PrintBoardSVG({
           <feDropShadow dx="0" dy="0.7" stdDeviation="0.9" floodColor="#000000" floodOpacity="0.32" />
         </filter>
         {/* Very light centre-out vignette over the white field — enough to
-            stop the play area reading as dead paper, not enough to grey it. */}
+            stop the play area reading as dead paper, not enough to grey it.
+            Tinted from `--ludo-ink` (not a hardcoded brown) so a dark theme's
+            vignette reads as "its own shadow", not classic's leftover tint. */}
         <radialGradient id={`${gid}-vig`} cx="50%" cy="46%" r="62%">
           <stop offset="55%" stopColor="#000000" stopOpacity={0} />
-          <stop offset="100%" stopColor="#241C12" stopOpacity={0.09} />
+          <stop offset="100%" stopColor="#241C12" stopOpacity={0.09} style={{ stopColor: "var(--ludo-ink)" }} />
         </radialGradient>
-        {/* Centre boss — lit from the same direction as every other panel. */}
+        {/* Centre boss — lit from the same direction as every other panel.
+            Derived from `--ludo-hub` via the same `color-mix` glass technique
+            `.ludo-chip` uses globally, instead of a hardcoded red — this was
+            the one board element that stayed a fixed color on every theme. */}
         <radialGradient id={`${gid}-hub`} cx="38%" cy="30%" r="78%">
-          <stop offset="0%" stopColor="#F2564F" />
-          <stop offset="52%" stopColor="#D8232A" />
-          <stop offset="100%" stopColor="#8E1116" />
+          <stop offset="0%" stopColor="#F2564F" style={{ stopColor: "color-mix(in srgb, var(--ludo-hub) 75%, white)" }} />
+          <stop offset="52%" stopColor="#D8232A" style={{ stopColor: "var(--ludo-hub)" }} />
+          <stop offset="100%" stopColor="#8E1116" style={{ stopColor: "color-mix(in srgb, var(--ludo-hub) 60%, black)" }} />
         </radialGradient>
       </defs>
 
@@ -228,7 +247,7 @@ export default function PrintBoardSVG({
               className="ludo-arm-label"
               fill="#23201E"
               fillOpacity={0.82}
-              style={{ fontFamily: "'Poppins','Nunito',sans-serif", letterSpacing: "0.12em" }}
+              style={{ fontFamily: "var(--ludo-font, 'Poppins','Nunito',sans-serif)", letterSpacing: "0.12em" }}
             >
               {armLabel(i)}
             </text>
@@ -278,6 +297,54 @@ export default function PrintBoardSVG({
           />
         )),
       )}
+
+      {/* Finishing place, stamped across the emptied yard — the same
+          scoreboard trick `BoardSVG` (2-4 players) already does. `armPlace`
+          is >0 exactly when all 4 tokens are home, which is exactly when
+          this yard has nothing else in it, so a big numeral costs nothing.
+          This board never had it: a finished player's yard just went blank. */}
+      {art.yards.map(({ wells }, i) => {
+        const place = armPlace(i);
+        if (place <= 0) return null;
+        const cx = wells.reduce((s, w) => s + w.x, 0) / wells.length;
+        const cy = wells.reduce((s, w) => s + w.y, 0) / wells.length;
+        const pid = pidByArm[i];
+        const name = pid ? (players.find((p) => p.id === pid)?.name ?? null) : null;
+        return (
+          <g
+            key={`place-${i}`}
+            transform={`translate(${cx} ${cy}) rotate(${-rotationDeg})`}
+            style={{ pointerEvents: "none" }}
+          >
+            <title>{name ?? `Player ${i + 1}`} finished {ordinal(place)}</title>
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              y={-cell * 0.32}
+              fontSize={cell * 1.7}
+              fontWeight={900}
+              fill={seatColor(i)}
+              stroke={seatColorDark(i)}
+              strokeWidth={cell * 0.05}
+              paintOrder="stroke"
+              opacity={0.94}
+            >
+              {place}
+            </text>
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              y={cell * 0.62}
+              fontSize={cell * 0.62}
+              fontWeight={800}
+              fill={seatColorDark(i)}
+              style={{ textTransform: "uppercase", letterSpacing: "0.1em" }}
+            >
+              {ordinal(place).slice(String(place).length)}
+            </text>
+          </g>
+        );
+      })}
 
       {/* Loop cells (side columns) — plain white, thin outline */}
       {art.whiteCells.map(({ pt, angle }, i) => (
@@ -436,7 +503,7 @@ export default function PrintBoardSVG({
             fontSize={Math.max(1.1, cell * 0.34)}
             fontWeight={800}
             fill="#ffffff"
-            style={{ fontFamily: "'Poppins','Nunito',sans-serif", letterSpacing: "0.04em" }}
+            style={{ fontFamily: "var(--ludo-font, 'Poppins','Nunito',sans-serif)", letterSpacing: "0.04em" }}
           >
             HOME
           </text>
@@ -470,7 +537,7 @@ export default function PrintBoardSVG({
               transform="rotate(-125)"
             />
             <polygon points={rosettePts(geo.N, med * 0.6)} fill="#ffffff" fillOpacity={0.94} />
-            <circle r={med * 0.17} fill="#B3161C" />
+            <circle r={med * 0.17} fill="#B3161C" style={{ fill: "color-mix(in srgb, var(--ludo-hub) 55%, black)" }} />
           </g>
         );
       })()}
