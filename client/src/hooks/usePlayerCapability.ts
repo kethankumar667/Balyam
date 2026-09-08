@@ -103,19 +103,33 @@ function isPageVisible(): boolean {
  *    This allows other players to see an accurate "player not ready" state
  *    rather than waiting for the 5-second preflight timeout to fire.
  *
- * ## Why fail-closed
+ * ## This hook is an optimisation, not a gate (changed 2026-09-09)
  *
- * Missing acknowledgements are treated server-side as `ACKNOWLEDGEMENT_MISSING`
- * blockers. This hook's job is to emit a *positive* ack as quickly as possible
- * when everything is fine — not to paper over edge-cases with silence.
+ * A missing acknowledgement still shows as an `ACKNOWLEDGEMENT_MISSING`
+ * blocker in the live readiness view, but it NO LONGER fails the match
+ * start on its own: when the preflight window expires the server checks
+ * whether each silent seat is still connected and ready on its own
+ * evidence, and starts the match if so. See
+ * `RoomManager.resolveExpiredPreflight` for why that inversion was
+ * necessary — in short, four separate real bugs in this file and its
+ * server counterpart had each produced the identical user-visible symptom
+ * ("Start timed out waiting for players to confirm readiness"), because
+ * the protocol treated silence as refusal and so had no floor.
  *
- * ## Non-host players only
+ * What this hook still buys, and why it is worth keeping: when the ack DOES
+ * arrive, the match starts immediately instead of after the full preflight
+ * window, and an explicit decline (below) reports a specific, actionable
+ * reason instead of a generic timeout.
  *
- * The server only dispatches `room:startPreflight` to non-host human participants
- * that have remote seats. Bots and local (pass-and-play) seats are resolved
- * immediately server-side (Rule 15). This hook emits on the socket for the
- * current connection, which means it is only wired to the authenticated seat;
- * there is no risk of a bot seat accidentally emitting from the client.
+ * ## Every remote seat, host included
+ *
+ * The server challenges every non-bot, non-local participant — the host is
+ * NOT exempt (an older version of this comment claimed otherwise, which was
+ * never true; `requiredHumanPlayerIds` filters only bots and local seats).
+ * Bots and local (pass-and-play) seats are resolved server-side. This hook
+ * emits on the socket for the current connection, so it is only ever wired
+ * to the authenticated seat; there is no risk of a bot seat accidentally
+ * emitting from the client.
  *
  * ## The gap this used to have (root-caused 2026-09-09)
  *
@@ -245,7 +259,18 @@ export function usePlayerCapability({
           },
           (err: Error | null, response?: { accepted: boolean }) => {
             if (!err && response?.accepted) return;
-            if (attemptNum >= MAX_ACK_RETRIES) return;
+            if (attemptNum >= MAX_ACK_RETRIES) {
+              // `console.warn`, not `console.debug` — Chrome hides Verbose
+              // under its default level filter, which has already once
+              // produced a false "nothing in the console" reading while
+              // diagnosing this exact failure.
+              console.warn(
+                `[BHALYAM] Start acknowledgement gave up after ${MAX_ACK_RETRIES + 1} attempts ` +
+                  `(attempt=${payload.startAttemptId}, lastError=${err ? err.message : `server replied accepted=${response?.accepted}`}). ` +
+                  `The server now starts the match anyway when this seat is still connected and ready.`,
+              );
+              return;
+            }
             if (Date.now() >= payload.expiresAt) return;
             // A newer preflight or a cancellation superseded this one while
             // the timeout was in flight — nothing left to retry for.

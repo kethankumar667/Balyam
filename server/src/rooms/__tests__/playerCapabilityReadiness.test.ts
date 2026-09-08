@@ -388,7 +388,14 @@ describe("Player Capability & Start-Attempt Readiness Protocol", () => {
     expect(room.phase).toBe("lobby");
   });
 
-  it("Test S11: Preflight timeout cleanly cancels attempt", async () => {
+  it("Test S11: Preflight expiry with everyone still connected and ready STARTS the match", async () => {
+    // The behaviour this test asserts was deliberately inverted 2026-09-09.
+    // It previously required that silence cancel the start. See
+    // `RoomManager.resolveExpiredPreflight`'s doc comment for the full
+    // reasoning: silence from a seat the server can independently see is
+    // connected and ready is not evidence that anyone is unable to play,
+    // and treating it as fatal made the single most important action in the
+    // product hostage to a best-effort message arriving.
     const { io, socketEmits } = makeIo();
     const rooms = new RoomManager(io);
     const hostA = createRoomAs(rooms, "s_a", "Alice", "rummy");
@@ -400,13 +407,96 @@ describe("Player Capability & Start-Attempt Readiness Protocol", () => {
     const room = peek(rooms, hostA.code);
     expect(room.activeStartAttempt).not.toBeNull();
 
-    // Fast-forward past timeout
+    // Nobody acknowledges at all — the exact live failure this fixes.
+    vi.advanceTimersByTime(PREFLIGHT_TIMEOUT_MS + 100);
+
+    expect(room.phase).toBe("playing");
+    expect(room.engine).not.toBeNull();
+    const errorEmit = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
+    expect(errorEmit).toBeUndefined();
+  });
+
+  it("Test S11b: Preflight expiry still CANCELS when a silent player is actually disconnected", async () => {
+    const { io, socketEmits } = makeIo();
+    const rooms = new RoomManager(io);
+    const hostA = createRoomAs(rooms, "s_a", "Alice", "rummy");
+    const joinB = joinRoomAs(rooms, "s_b", "Bob", hostA.code) as { ok: true; playerId: string };
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    await rooms.requestGameStart("s_a");
+    const room = peek(rooms, hostA.code);
+    expect(room.activeStartAttempt).not.toBeNull();
+
+    // Mark Bob's seat disconnected WITHOUT going through handleDisconnect
+    // (which cancels the attempt outright via its own path) — this isolates
+    // the expiry handler's own server-observed connectivity check.
+    room.players.get(joinB.playerId)!.isConnected = false;
+
     vi.advanceTimersByTime(PREFLIGHT_TIMEOUT_MS + 100);
 
     expect(room.activeStartAttempt).toBeNull();
     expect(room.phase).toBe("lobby");
     const errorEmit = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
     expect(errorEmit).toBeDefined();
+  });
+
+  it("Test S11c: Preflight expiry still CANCELS when a silent player reported needing rotation", async () => {
+    const { io, socketEmits } = makeIo();
+    const rooms = new RoomManager(io);
+    // Rummy requires landscape, so an explicit rotation report is a real,
+    // player-signalled blocker rather than mere silence.
+    const hostA = createRoomAs(rooms, "s_a", "Alice", "rummy");
+    const joinB = joinRoomAs(rooms, "s_b", "Bob", hostA.code) as { ok: true; playerId: string };
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    await rooms.requestGameStart("s_a");
+    const room = peek(rooms, hostA.code);
+    // Set the flag directly: `setOrientation` cancels the attempt on the spot,
+    // which is a different (already-tested) path — this checks the expiry
+    // handler's own reading of a report that landed before the attempt began.
+    room.players.get(joinB.playerId)!.needsRotation = true;
+
+    vi.advanceTimersByTime(PREFLIGHT_TIMEOUT_MS + 100);
+
+    expect(room.activeStartAttempt).toBeNull();
+    expect(room.phase).toBe("lobby");
+    const errorEmit = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
+    expect(errorEmit).toBeDefined();
+  });
+
+  it("Test S11d: a partially-acknowledged expiry starts, and the silent seat stops reading as blocked", async () => {
+    const { io } = makeIo();
+    const rooms = new RoomManager(io);
+    // Ludo — no orientation requirement, the game from the live report.
+    const hostA = createRoomAs(rooms, "s_a", "Alice", "ludo");
+    const joinB = joinRoomAs(rooms, "s_b", "Bob", hostA.code) as { ok: true; playerId: string };
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    await rooms.requestGameStart("s_a");
+    const room = peek(rooms, hostA.code);
+    const attempt = room.activeStartAttempt!;
+
+    // Only the host's ack lands; the second player's is lost in transit.
+    await rooms.acknowledgeStart("s_a", {
+      startAttemptId: attempt.id,
+      roomRevision: room.roomRevision,
+      visible: true,
+      orientationSatisfied: true,
+    });
+    expect(room.phase).toBe("lobby");
+    expect(
+      rooms
+        .getRoomStartReadiness(room)
+        .participants.find((p) => p.playerId === joinB.playerId)?.blockers,
+    ).toContain("ACKNOWLEDGEMENT_MISSING");
+
+    vi.advanceTimersByTime(PREFLIGHT_TIMEOUT_MS + 100);
+
+    expect(room.phase).toBe("playing");
+    expect(attempt.acknowledgements.has(joinB.playerId)).toBe(true);
   });
 
   it("Test S12: Host migration cancels active start attempt", async () => {

@@ -2387,24 +2387,7 @@ export class RoomManager {
     });
 
     room.startAttemptTimer = setTimeout(() => {
-      if (room.activeStartAttempt?.id === startAttemptId && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
-        const missing = [...room.activeStartAttempt.requiredHumanPlayerIds].filter(
-          (id) => !room.activeStartAttempt!.acknowledgements.has(id),
-        );
-        const missingDescribed = missing
-          .map((id) => {
-            const p = room.players.get(id);
-            return p ? `${p.name}(${id}, connected=${p.isConnected})` : `${id}(seat gone)`;
-          })
-          .join(", ");
-        logger.warn({
-          message: `Preflight timed out for room ${room.code}: attempt=${startAttemptId} — ${missing.length} of ${room.activeStartAttempt.requiredHumanPlayerIds.size} required player(s) never acknowledged (missing: ${missingDescribed || "none — see stale-revision/disconnected-seat warnings above"})`,
-          module: "ROOM_MANAGER",
-          roomCode: room.code,
-        });
-        this.cancelActiveStartAttempt(room, "preflight_timeout");
-        this.io.sockets.sockets.get(socketId)?.emit("room:error", "Start timed out waiting for players to confirm readiness");
-      }
+      this.resolveExpiredPreflight(room, startAttemptId, socketId);
     }, PREFLIGHT_TIMEOUT_MS);
 
     this.io.to(room.code).emit("room:startPreflight", {
@@ -2414,6 +2397,139 @@ export class RoomManager {
       expiresAt,
     });
     this.broadcastRoomState(room);
+  }
+
+  /**
+   * Decides what a preflight window that ran out of time actually MEANS.
+   *
+   * ## Why this is no longer just "cancel"
+   *
+   * Root-caused 2026-09-09, after this exact symptom ("Start timed out
+   * waiting for players to confirm readiness") had been chased and
+   * partially fixed four separate times: a client-clock-skew early return
+   * that emitted nothing, a missing rotate prompt during the lobby window,
+   * a fire-and-forget ack with no delivery confirmation, and a stale
+   * `roomRevision` bump from a redundant `setReady`. Every one of those was
+   * a real bug and every one is fixed — and the symptom kept coming back,
+   * because none of them was the actual root cause.
+   *
+   * The root cause is the shape of this protocol, not any single defect in
+   * it: starting a match — the single most important action in the product,
+   * and a PAID one — was made conditional on a best-effort, self-reported
+   * client acknowledgement, with a hard fail as the only fallback. Silence
+   * was treated as identical to refusal. So EVERY possible way for one ack
+   * not to arrive (a phone that slept for a second, a WebSocket upgrade
+   * racing the emit, a proxy buffering a frame, a React effect that had not
+   * mounted yet, a future bug nobody has hit yet) destroys the whole match
+   * start for everyone in the room. Fixing those one at a time cannot
+   * converge, because the list is open-ended.
+   *
+   * So silence stops being fatal. A required seat that simply did not
+   * answer, but that the SERVER can independently see is still connected
+   * and still ready, is now assumed good and the match starts. What the ack
+   * was actually protecting is preserved in full, because every real
+   * blocker is signalled through a channel that does NOT depend on a
+   * message arriving:
+   *
+   *   - `isConnected` is server-observed, never self-reported — a genuinely
+   *     absent player is still caught here, and still cancels.
+   *   - An explicit `declineStart` / `reportUnavailable` / `setOrientation`
+   *     report cancels the attempt the moment it lands, long before this
+   *     timer fires — those paths are untouched.
+   *   - `isReady` going false cancels via `setReady`.
+   *
+   * What is genuinely given up is the "your tab was backgrounded at the
+   * exact instant the host pressed Start" case. That was never worth
+   * failing a match over: a backgrounded tab is still connected, still
+   * receiving state, and every game already handles a player who is not
+   * looking at the screen — turn timers, seat auto-play, and reconnect
+   * grace all exist precisely for that. And for the only two games where
+   * orientation genuinely matters (Rummy and UNO), the first turn's clock
+   * is ALREADY held by `dealGateWaitTimer`/`armInitialTurnTimer` until
+   * every connected player's `needsRotation` has cleared — a stronger
+   * guarantee than this handshake ever gave, and one that survives the
+   * player rotating their phone a second after the match starts.
+   */
+  private resolveExpiredPreflight(room: Room, startAttemptId: string, hostSocketId: string): void {
+    const attempt = room.activeStartAttempt;
+    if (attempt?.id !== startAttemptId || attempt.status !== "COLLECTING_PREFLIGHT") return;
+
+    room.startAttemptTimer = null;
+
+    const silent = [...attempt.requiredHumanPlayerIds].filter((id) => !attempt.acknowledgements.has(id));
+    const requiredOrientation = getGameOrientationRequirement(room.game);
+
+    /**
+     * A silent seat only blocks the start when the server can see, on its
+     * OWN evidence, that the player is not actually able to play — never
+     * merely because a message did not arrive.
+     */
+    const blockedDescribed: string[] = [];
+    for (const id of silent) {
+      const p = room.players.get(id);
+      if (!p) {
+        blockedDescribed.push(`${id}(seat gone)`);
+      } else if (!p.isConnected) {
+        blockedDescribed.push(`${p.name}(${id}, disconnected)`);
+      } else if (!p.isReady) {
+        blockedDescribed.push(`${p.name}(${id}, not ready)`);
+      } else if (requiredOrientation !== null && p.needsRotation) {
+        // Only counts because the player's client explicitly REPORTED being
+        // in the wrong orientation. Never having reported at all is silence,
+        // and silence is handled by the deal gate, not by refusing to start.
+        blockedDescribed.push(`${p.name}(${id}, needs rotation)`);
+      }
+    }
+
+    if (blockedDescribed.length > 0) {
+      logger.warn({
+        message: `Preflight expired for room ${room.code}: attempt=${startAttemptId} — cancelling, ${blockedDescribed.length} required player(s) genuinely unable to start (${blockedDescribed.join(", ")})`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+      this.cancelActiveStartAttempt(room, "preflight_timeout");
+      this.io.sockets.sockets
+        .get(hostSocketId)
+        ?.emit("room:error", "Start timed out waiting for players to confirm readiness");
+      return;
+    }
+
+    if (silent.length > 0) {
+      const socketForPlayer = new Map<string, string>();
+      for (const [sid, pid] of room.socketToPlayer) socketForPlayer.set(pid, sid);
+
+      logger.warn({
+        message: `Preflight expired for room ${room.code}: attempt=${startAttemptId} — ${silent.length} of ${attempt.requiredHumanPlayerIds.size} required player(s) never acknowledged, but all are still connected and ready. Proceeding with the start (see resolveExpiredPreflight). Silent: [${silent
+          .map((id) => `${room.players.get(id)?.name ?? "?"}(${id})`)
+          .join(", ")}]`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+
+      for (const id of silent) {
+        const p = room.players.get(id)!;
+        attempt.acknowledgements.set(id, {
+          playerId: id,
+          socketId: socketForPlayer.get(id) ?? "",
+          connectionGeneration: p.connectionGeneration ?? 1,
+          roomRevision: attempt.roomRevision,
+          startAttemptId: attempt.id,
+          visible: true,
+          orientationSatisfied: true,
+          acknowledgedAt: Date.now(),
+        });
+      }
+    }
+
+    attempt.status = "READY_TO_COMMIT";
+    this.broadcastRoomState(room);
+    void this.proceedFromReadyAttempt(room, attempt).catch((err) => {
+      logger.error({
+        message: `proceedFromReadyAttempt failed after preflight expiry for room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+    });
   }
 
   /**
@@ -2428,17 +2544,38 @@ export class RoomManager {
     payload: StartAcknowledgementPayload,
     ack?: (result: { accepted: boolean }) => void,
   ): Promise<void> {
+    // Every guard below logs. The three at the top of this method used to be
+    // the only silent ones, and that gap actively misled a diagnosis: a real
+    // "Start timed out" report was read as "the ack never reached the server
+    // at all, on any instrumented drop path" — and therefore as a
+    // transport-level loss — when an ack landing in one of these three
+    // returns would have produced exactly the same evidence. Never add a
+    // silent drop here.
     const { room, player } = this.lookup(socketId);
     if (!room || !player) {
+      logger.warn({
+        message: `Dropped acknowledgeStart from socket ${socketId}: no room/player mapping for this socket (attempt=${payload.startAttemptId})`,
+        module: "ROOM_MANAGER",
+      });
       ack?.({ accepted: false });
       return;
     }
     const attempt = room.activeStartAttempt;
     if (!attempt || attempt.status !== "COLLECTING_PREFLIGHT") {
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: no attempt is collecting preflight (status=${attempt?.status ?? "no active attempt"}, payload attempt=${payload.startAttemptId})`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
       ack?.({ accepted: false });
       return;
     }
     if (attempt.id !== payload.startAttemptId) {
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: acknowledged a different attempt (active=${attempt.id}, payload=${payload.startAttemptId})`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
       ack?.({ accepted: false });
       return;
     }
