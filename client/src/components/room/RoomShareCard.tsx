@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
-import { Ticket, QrCode, Copy, Link2, Check } from "lucide-react";
+import { Ticket, QrCode, Copy, Share2, Check } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
+import { useHaptics } from "../../hooks/useHaptics";
 
 const FRIENDLY_GAME_NAMES: Partial<Record<GameKind, string>> = {
   handcricket: "Hand Cricket",
@@ -35,6 +36,7 @@ export default function RoomShareCard({
 }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const haptics = useHaptics();
 
   const roomUrl = `${window.location.origin}/room/${code}`;
   const gameName = FRIENDLY_GAME_NAMES[game] ?? game;
@@ -46,6 +48,7 @@ export default function RoomShareCard({
     `Join here:`;
 
   async function copyCode() {
+    haptics.subtle();
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
@@ -63,6 +66,7 @@ export default function RoomShareCard({
   }
 
   async function shareRoom() {
+    haptics.subtle();
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({
@@ -83,46 +87,53 @@ export default function RoomShareCard({
 
   return (
     <>
-      <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs relative overflow-hidden">
+      <div className="w-full bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2 sm:p-2.5 shadow-xs relative overflow-hidden">
         <div className="flex items-center justify-between gap-2.5 flex-wrap sm:flex-nowrap">
-          {/* Code Chip with Copy */}
+          {/* Left: Code Chip with Badge */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="hidden xs:inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 shrink-0">
-              <Ticket size={13} aria-hidden />
-              <span>Code:</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 text-[#7C5A32] dark:text-amber-300 shrink-0">
+              <Ticket size={13} className="text-amber-600 dark:text-amber-400" aria-hidden />
+              <span className="text-[10px] font-black uppercase tracking-wider">Room Code</span>
             </div>
 
             <button
               type="button"
               onClick={copyCode}
               aria-label={`Room code: ${code}. Tap to copy`}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-b from-[#FFFDF8] to-[#FFF4E0] dark:from-[#161E2E] dark:to-[#0F1420] border-2 border-dashed border-[var(--rim-gold)] dark:border-amber-500/50 hover:border-[#EA5A1F] dark:hover:border-amber-400 transition active:scale-95 cursor-pointer shadow-inner group"
+              title="Tap to copy room code"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white dark:bg-[#121927] border border-[#EEDBCA] dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-400/80 transition-all duration-200 active:scale-95 cursor-pointer shadow-2xs group"
             >
               <span
                 id="room-share-code-text"
-                className="font-mono text-lg sm:text-xl font-black tracking-[0.25em] text-[#2B3550] dark:text-slate-100 select-all pl-[0.15em]"
+                className="font-mono text-base sm:text-lg font-black tracking-[0.25em] text-[#2B3550] dark:text-slate-100 select-all pl-1"
               >
                 {code}
               </span>
-              <span className="text-[10px] font-bold text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1 group-hover:text-[#EA5A1F]">
+              <span className="text-[10px] font-bold text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1">
                 {copied ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-0.5">
-                    <Check size={12} aria-hidden /> Copied
+                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 animate-in fade-in">
+                    <Check size={12} aria-hidden /> Copied!
                   </span>
                 ) : (
-                  <Copy size={12} aria-hidden />
+                  <Copy size={12} className="group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors" aria-hidden />
                 )}
               </span>
             </button>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* Center: Context helper (bridges the empty void on desktop) */}
+          <div className="hidden lg:flex items-center gap-2 text-xs text-[#8A6D4B] dark:text-slate-400 font-medium px-3 py-1 rounded-full bg-[#FFF9EE] dark:bg-slate-800/60 border border-[#EEDBCA]/60 dark:border-slate-700/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="truncate">Share code or link with friends to play</span>
+          </div>
+
+          {/* Right: Cohesive Action buttons */}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
             <button
               type="button"
               onClick={copyCode}
               aria-label="Copy Room Code"
-              className="inline-flex items-center justify-center gap-1 min-h-[38px] px-3 py-1.5 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold text-xs bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <Copy size={13} aria-hidden />
               <span>{copied ? "Copied!" : "Copy Code"}</span>
@@ -132,9 +143,9 @@ export default function RoomShareCard({
               type="button"
               onClick={shareRoom}
               aria-label="Share Room Link"
-              className="inline-flex items-center justify-center gap-1 min-h-[38px] px-3 py-1.5 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700/80 text-[#352C24] dark:text-slate-100 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700/80 text-[#352C24] dark:text-slate-100 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-2xs"
             >
-              <Link2 size={13} aria-hidden />
+              <Share2 size={13} aria-hidden />
               <span>Share</span>
             </button>
 
@@ -143,7 +154,7 @@ export default function RoomShareCard({
               onClick={() => setQrOpen(true)}
               title="Show QR Code"
               aria-label="Show QR Code for this room"
-              className="inline-flex items-center justify-center min-h-[38px] min-w-[38px] p-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] p-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-[#FFF4E0] dark:hover:bg-slate-700 text-[#6E5E4D] dark:text-slate-200 border border-[#EEDBCA] dark:border-slate-700 transition active:scale-95 cursor-pointer shadow-2xs"
             >
               <QrCode size={14} aria-hidden />
               <span className="sr-only">QR</span>
