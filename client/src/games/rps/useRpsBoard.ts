@@ -82,7 +82,6 @@ export interface RpsBoardModel {
   confettiUntil: number;
   // Actions + helpers.
   pick: (c: RpsChoice) => void;
-  rematch: () => void;
   nameOf: (id: string) => string;
   reactionAnchor: (playerId: string) => { left: number; top: number } | null;
   /** Ref-setter for a player score card; feeds the reaction anchor lookup. */
@@ -110,10 +109,6 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
   function pick(c: RpsChoice) {
     if (myChoice || state.isOver) return;
     getSocket().emit("game:move", { type: "choose", data: { choice: c } });
-  }
-
-  function rematch() {
-    getSocket().emit("game:move", { type: "rematch" });
   }
 
   function nameOf(id: string): string {
@@ -303,7 +298,6 @@ export function useRpsBoard(props: RpsBoardProps): RpsBoardModel {
     rains,
     confettiUntil,
     pick,
-    rematch,
     nameOf,
     reactionAnchor,
     registerCardRef,

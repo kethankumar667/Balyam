@@ -66,9 +66,6 @@ export class RpsEngine implements GameEngine {
   }
 
   applyMove(move: MoveContext): MoveResult {
-    if (move.type === "rematch") {
-      return this.handleRematch(move);
-    }
     if (this.state.isOver) {
       return { ok: false, error: "Match over — request a rematch to keep playing" };
     }
@@ -92,18 +89,6 @@ export class RpsEngine implements GameEngine {
       this.resolveRound();
     }
     return { ok: true, isOver: this.state.isOver, winnerId: this.state.winnerId };
-  }
-
-  private handleRematch(move: MoveContext): MoveResult {
-    if (!this.state.isOver) {
-      return { ok: false, error: "Match is still in progress" };
-    }
-    if (!this.playerIds.includes(move.playerId)) {
-      return { ok: false, error: "Not a player in this game" };
-    }
-    this.state = this.freshState(this.state.matchNumber + 1);
-    this.currentChoices = {};
-    return { ok: true };
   }
 
   private resolveRound(): void {
