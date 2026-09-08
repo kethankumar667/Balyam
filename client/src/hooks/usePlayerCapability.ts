@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameKind, StartPreflightPayload, StartBlockReason } from "@shared/types";
 import { getSocket } from "../lib/socket";
 
@@ -23,6 +23,27 @@ const MONITORED_PHASES: ReadonlySet<string> = new Set(["lobby", "starting"]);
  * giving up and telling the server it's blocked.
  */
 const RETRY_DEADLINE_FLOOR_MS = 2000;
+
+/**
+ * How long a single `room:acknowledgeStart` emit waits for the server's
+ * delivery-confirmation callback before being treated as lost and retried.
+ *
+ * Root-caused 2026-09-09 against a real "Start timed out" report: a
+ * fire-and-forget emit can silently never reach the server even on a
+ * genuinely connected socket — confirmed live (this exact handler ran,
+ * `getSocket().connected` was true, the socket stayed connected for
+ * minutes afterward, yet the server logged zero trace of the ack ever
+ * arriving, on every server-side drop path already instrumented). A
+ * transport-level loss (a WebSocket-upgrade race, a restrictive proxy)
+ * that a fire-and-forget emit has no way to detect, let alone recover
+ * from. `socket.timeout(ms).emit(...)` turns that into a fact the client
+ * can act on instead of quietly trusting a single send.
+ */
+const ACK_CONFIRM_TIMEOUT_MS = 2000;
+
+/** Cap on retries within one preflight window — bounded by the server's own
+ *  deadline either way, this just stops a pathological retry loop. */
+const MAX_ACK_RETRIES = 4;
 
 /**
  * Evaluates whether the current viewport is in portrait mode for a mobile
@@ -96,6 +117,27 @@ function isPageVisible(): boolean {
  * current connection, which means it is only wired to the authenticated seat;
  * there is no risk of a bot seat accidentally emitting from the client.
  *
+ * ## The gap this used to have (root-caused 2026-09-09)
+ *
+ * A landscape-only game (Rummy, UNO) challenges a mobile player who is
+ * sitting in the lobby holding their phone in its natural, resting portrait
+ * orientation. `tryAcknowledge()` correctly withholds the ack and arms the
+ * retry-until-deadline loop below — but NOTHING in the UI ever told the
+ * player they needed to rotate. Every existing "rotate your device" prompt
+ * in this codebase (Rummy's and UNO's own `rotation-sync.tsx`) only renders
+ * once `phase === "playing"` — the in-round deal-gate, a completely
+ * different moment. During the lobby/preflight window the player just sees
+ * an ordinary lobby screen, has no idea anything is expected of them, and
+ * the window quietly expires. The eventual server-side "Start timed out"
+ * message they DO see never explains why, because the client's own
+ * deadline-triggered decline (which DOES carry the specific
+ * "ORIENTATION_REQUIRED" reason) has to cross the network, while the
+ * server's own independent timeout timer does not — it almost always wins
+ * that race and the specific reason is discarded. `blockedByOrientation`
+ * (and `orientationDeadline`, for a countdown) below exist so a mounted
+ * `Room.tsx` can show that prompt during the ONE window it was actually
+ * needed, instead of only after the round has already started.
+ *
  * @param roomCode     - The 6-char room code. Hook is a no-op when falsy.
  * @param playerId     - The authenticated player's id. Hook is a no-op when falsy.
  * @param game         - Current game kind. Used to re-evaluate orientation on resize.
@@ -114,7 +156,18 @@ export function usePlayerCapability({
   game: GameKind | undefined;
   phase: string | undefined;
   roomRevision: number | undefined;
-}): void {
+}): {
+  /** True exactly while a real, in-flight preflight challenge is blocked
+   *  on THIS device's orientation (page is visible, orientation is not).
+   *  Never true for a visibility block — a hidden/backgrounded tab can't
+   *  show a prompt to itself anyway; Effect 2's reportUnavailable already
+   *  handles that case by cancelling the attempt early instead. */
+  blockedByOrientation: boolean;
+  /** The active preflight's own deadline (ms epoch), while blocked — for a
+   *  countdown in the prompt. `null` whenever `blockedByOrientation` is
+   *  false. */
+  orientationDeadline: number | null;
+} {
   /**
    * Stable ref to the current roomRevision so the event handlers that close
    * over it via `useRef` never capture a stale value without needing the
@@ -137,25 +190,16 @@ export function usePlayerCapability({
    */
   const cancelPendingRetryRef = useRef<(() => void) | null>(null);
 
+  const [blockedByOrientation, setBlockedByOrientation] = useState(false);
+  const [orientationDeadline, setOrientationDeadline] = useState<number | null>(null);
+
   // ── Effect 1: preflight challenge responder ────────────────────────────
   useEffect(() => {
     if (!roomCode || !playerId || !game) return;
 
     const socket = getSocket();
 
-    // Temporary diagnostic (2026-09-08) — console.warn specifically, not
-    // console.debug: Chrome DevTools' "Default levels" filter (visible in
-    // the console toolbar) hides Verbose/debug-level logs by default, so a
-    // console.debug here could go unseen even if this line runs, producing
-    // a false "nothing happened" read. warn is never filtered by default.
-    // Confirms the listener is actually attached for this session/socket at
-    // all — separate from handleStartPreflight's own marker below, which
-    // confirms a specific challenge was received once one arrives.
-    console.warn("[preflight] usePlayerCapability effect mounted, listening on socket", getSocket().id);
-
     const handleStartPreflight = (payload: StartPreflightPayload): void => {
-      // See the mount-time marker above for why this is warn, not debug.
-      console.warn("[preflight] room:startPreflight received", payload, "socket:", getSocket().id, getSocket().connected);
       cancelPendingRetryRef.current?.();
       cancelPendingRetryRef.current = null;
 
@@ -181,21 +225,50 @@ export function usePlayerCapability({
       // the authoritative check; this was a redundant, clock-skew-fragile
       // client-side guess ahead of it, worse than not checking at all.
 
-      /** True (and acked) iff both conditions hold right now. */
+      /**
+       * Sends the ack with real delivery confirmation, retrying on a timeout
+       * or an explicit `accepted: false` — see `ACK_CONFIRM_TIMEOUT_MS`'s own
+       * doc comment for why a bare `socket.emit` was not good enough here.
+       * Fires and forgets from the CALLER's perspective (matching the old
+       * synchronous emit's contract) — `tryAcknowledge()` below still
+       * returns immediately, optimistically; this just keeps working in the
+       * background to make that optimism actually true.
+       */
+      const sendAcknowledgementWithRetry = (attemptNum: number): void => {
+        socket.timeout(ACK_CONFIRM_TIMEOUT_MS).emit(
+          "room:acknowledgeStart",
+          {
+            startAttemptId: payload.startAttemptId,
+            roomRevision: payload.roomRevision,
+            visible: true,
+            orientationSatisfied: true,
+          },
+          (err: Error | null, response?: { accepted: boolean }) => {
+            if (!err && response?.accepted) return;
+            if (attemptNum >= MAX_ACK_RETRIES) return;
+            if (Date.now() >= payload.expiresAt) return;
+            // A newer preflight or a cancellation superseded this one while
+            // the timeout was in flight — nothing left to retry for.
+            if (activePreflightRef.current?.startAttemptId !== payload.startAttemptId) return;
+            sendAcknowledgementWithRetry(attemptNum + 1);
+          },
+        );
+      };
+
+      /** True (and acked, pending delivery confirmation) iff both conditions hold right now. */
       const tryAcknowledge = (): boolean => {
         if (!isPageVisible() || !isOrientationSatisfied(payload.requiredOrientation)) {
           return false;
         }
-        socket.emit("room:acknowledgeStart", {
-          startAttemptId: payload.startAttemptId,
-          roomRevision: payload.roomRevision,
-          visible: true,
-          orientationSatisfied: true,
-        });
+        sendAcknowledgementWithRetry(0);
         return true;
       };
 
-      if (tryAcknowledge()) return;
+      if (tryAcknowledge()) {
+        setBlockedByOrientation(false);
+        setOrientationDeadline(null);
+        return;
+      }
 
       /**
        * Not satisfied at this exact instant — which is routinely a one-frame
@@ -212,11 +285,33 @@ export function usePlayerCapability({
        * if the deadline actually passes still unsatisfied — a real,
        * sustained backgrounded tab or wrong orientation still fails
        * exactly as before, just no longer punished for a transient blip.
+       *
+       * A visibility block gets no UI treatment here — a hidden/backgrounded
+       * tab can't show a prompt to itself. An orientation block genuinely
+       * can (and, root-caused 2026-09-09, previously didn't): surface it so
+       * `Room.tsx` can render a "rotate your device" prompt for the rest of
+       * this window instead of the player seeing nothing at all.
        */
+      if (isPageVisible() && !isOrientationSatisfied(payload.requiredOrientation)) {
+        setBlockedByOrientation(true);
+        setOrientationDeadline(payload.expiresAt);
+      }
+
       let settled = false;
       const recheck = (): void => {
-        if (settled || tryAcknowledge() === false) return;
+        if (settled) return;
+        if (tryAcknowledge() === false) {
+          // Still blocked — keep the flag in sync with which specific
+          // condition is failing right now (a portrait->hidden transition,
+          // e.g. locking the phone mid-rotate, should drop the prompt since
+          // Effect 2 owns cancelling on a hidden tab, not this one).
+          const stillOrientationOnly = isPageVisible() && !isOrientationSatisfied(payload.requiredOrientation);
+          setBlockedByOrientation(stillOrientationOnly);
+          return;
+        }
         settled = true;
+        setBlockedByOrientation(false);
+        setOrientationDeadline(null);
         cleanup();
       };
       const cleanup = (): void => {
@@ -233,6 +328,8 @@ export function usePlayerCapability({
         if (settled) return;
         settled = true;
         cleanup();
+        setBlockedByOrientation(false);
+        setOrientationDeadline(null);
         // Still unsatisfied when the server's own deadline arrived — a
         // genuine, sustained block, not a blip. Determine the most specific
         // decline reason (visibility takes priority over orientation since a
@@ -252,6 +349,8 @@ export function usePlayerCapability({
       activePreflightRef.current = null;
       cancelPendingRetryRef.current?.();
       cancelPendingRetryRef.current = null;
+      setBlockedByOrientation(false);
+      setOrientationDeadline(null);
     };
 
     socket.on("room:startPreflight", handleStartPreflight);
@@ -262,6 +361,8 @@ export function usePlayerCapability({
       socket.off("room:startCancelled", handleStartCancelled);
       cancelPendingRetryRef.current?.();
       cancelPendingRetryRef.current = null;
+      setBlockedByOrientation(false);
+      setOrientationDeadline(null);
       // Don't clear activePreflightRef here — the continuous monitor (Effect 2)
       // has its own independent lifecycle and shares the ref across both effects.
     };
@@ -361,4 +462,6 @@ export function usePlayerCapability({
       }
     };
   }, [roomCode, playerId, game, phase]);
+
+  return { blockedByOrientation, orientationDeadline };
 }

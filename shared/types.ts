@@ -2931,8 +2931,20 @@ export interface ClientToServerEvents {
    */
   "room:awake": () => void;
   "room:startGame": () => void;
-  /** Client acknowledgement for an active start preflight challenge. */
-  "room:acknowledgeStart": (payload: StartAcknowledgementPayload) => void;
+  /**
+   * Client acknowledgement for an active start preflight challenge.
+   *
+   * `ack` is a real Socket.IO delivery-confirmation callback, not just a
+   * type annotation — root-caused 2026-09-09: a fire-and-forget emit here
+   * could silently never reach the server (confirmed live: the client's
+   * own console proved the handler ran, on a genuinely connected socket,
+   * with zero server-side trace of the emit ever arriving — a transport-
+   * level loss, not an application bug). The client pairs this with
+   * `socket.timeout(ms).emit(...)` and retries when `ack` never fires or
+   * reports `accepted: false`, instead of silently trusting a single
+   * fire-and-forget send.
+   */
+  "room:acknowledgeStart": (payload: StartAcknowledgementPayload, ack: (result: { accepted: boolean }) => void) => void;
   /** Client decline or block for an active start preflight challenge. */
   "room:declineStart": (payload: { startAttemptId: string; reason: StartBlockReason }) => void;
   /** Sent when visibility or orientation becomes invalid while in lobby or starting. */

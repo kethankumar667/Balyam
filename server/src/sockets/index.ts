@@ -226,13 +226,14 @@ export function registerSocketHandlers(
     });
   });
 
-  socket.on("room:acknowledgeStart", (payload) => {
-    void rooms.acknowledgeStart(socket.id, payload).catch((err) => {
+  socket.on("room:acknowledgeStart", (payload, ack) => {
+    void rooms.acknowledgeStart(socket.id, payload, typeof ack === "function" ? ack : undefined).catch((err) => {
       logger.error({
         message: `room:acknowledgeStart handler failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
         module: "SOCKET",
         socketId: socket.id,
       });
+      if (typeof ack === "function") ack({ accepted: false });
     });
   });
 

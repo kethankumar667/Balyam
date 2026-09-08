@@ -2416,12 +2416,32 @@ export class RoomManager {
     this.broadcastRoomState(room);
   }
 
-  async acknowledgeStart(socketId: string, payload: StartAcknowledgementPayload): Promise<void> {
+  /**
+   * `ack`, when provided, is a real Socket.IO delivery-confirmation
+   * callback — see this method's own event-type doc comment in
+   * `shared/types.ts` for why fire-and-forget was not good enough here.
+   * Optional so every existing direct test call (constructing this without
+   * a third argument) keeps working unchanged.
+   */
+  async acknowledgeStart(
+    socketId: string,
+    payload: StartAcknowledgementPayload,
+    ack?: (result: { accepted: boolean }) => void,
+  ): Promise<void> {
     const { room, player } = this.lookup(socketId);
-    if (!room || !player) return;
+    if (!room || !player) {
+      ack?.({ accepted: false });
+      return;
+    }
     const attempt = room.activeStartAttempt;
-    if (!attempt || attempt.status !== "COLLECTING_PREFLIGHT") return;
-    if (attempt.id !== payload.startAttemptId) return;
+    if (!attempt || attempt.status !== "COLLECTING_PREFLIGHT") {
+      ack?.({ accepted: false });
+      return;
+    }
+    if (attempt.id !== payload.startAttemptId) {
+      ack?.({ accepted: false });
+      return;
+    }
     if (attempt.roomRevision !== payload.roomRevision || room.roomRevision !== payload.roomRevision) {
       // A genuine ack silently dropped for a stale roomRevision is exactly
       // what makes a match start time out with no explanation (see
@@ -2433,6 +2453,7 @@ export class RoomManager {
         module: "ROOM_MANAGER",
         roomCode: room.code,
       });
+      ack?.({ accepted: false });
       return;
     }
     if (!attempt.requiredHumanPlayerIds.has(player.id)) {
@@ -2446,6 +2467,7 @@ export class RoomManager {
         module: "ROOM_MANAGER",
         roomCode: room.code,
       });
+      ack?.({ accepted: false });
       return;
     }
     if (!player.isConnected) {
@@ -2459,6 +2481,7 @@ export class RoomManager {
         module: "ROOM_MANAGER",
         roomCode: room.code,
       });
+      ack?.({ accepted: false });
       return;
     }
     if (Date.now() > attempt.expiresAt) {
@@ -2468,6 +2491,7 @@ export class RoomManager {
         roomCode: room.code,
       });
       this.cancelActiveStartAttempt(room, "attempt_expired");
+      ack?.({ accepted: false });
       return;
     }
     // Fail-closed verification
@@ -2478,6 +2502,7 @@ export class RoomManager {
         roomCode: room.code,
       });
       this.cancelActiveStartAttempt(room, "capability_unsatisfied");
+      ack?.({ accepted: false });
       return;
     }
 
@@ -2491,6 +2516,11 @@ export class RoomManager {
       orientationSatisfied: true,
       acknowledgedAt: Date.now(),
     });
+
+    // Confirm delivery BEFORE any further async work below (proceedFromReadyAttempt
+    // can take a while) — the client is only waiting to know this specific
+    // emit landed, not for the whole match-start sequence to resolve.
+    ack?.({ accepted: true });
 
     logger.info({
       message: `Preflight ack accepted for room ${room.code}: player ${player.name}(${player.id}) — ${attempt.acknowledgements.size}/${attempt.requiredHumanPlayerIds.size} required`,
