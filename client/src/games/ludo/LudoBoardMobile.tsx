@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import InlineRoomRail from "../../components/InlineRoomRail";
+import { useTableCamera } from "../../animations/camera/useTableCamera";
 import { useLudoBoard, type LudoBoardProps } from "./useLudoBoard";
 import {
   LudoStatusBar,
@@ -8,6 +9,7 @@ import {
   LudoPlayerCards,
   LudoBottomBar,
   LudoRollTray,
+  useLudoTableImpact,
 } from "./ludo-board-composites";
 
 /** The board is never allowed past this, matching the desktop shell. */
@@ -34,6 +36,8 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   const { state, players, selfId, messages, roomCode, roomPhase } = props;
   const m = useLudoBoard(props);
   const [unread, setUnread] = useState(0);
+  const camera = useTableCamera();
+  useLudoTableImpact(state.lastEvent, camera);
 
   /**
    * The board is measured against the WHOLE play column, minus what sits
@@ -59,6 +63,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
 
   return (
     <div
+      ref={camera.cameraRef}
       className={`theme-${m.settings.theme} bhalyam-font rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden`}
       style={{
         background: "var(--ludo-screen-bg)",

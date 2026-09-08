@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { LudoColor, LudoState, Player } from "@shared/types";
 import { enterFullscreen, exitFullscreen, isFullscreenActive, onFullscreenChange } from "../../lib/fullscreen";
+import type { CameraShakeOptions, CameraPunchOptions } from "../../animations/camera/useTableCamera";
 
 /** CSS custom-prop pair the global `.ludo-chip` glossy treatment reads. */
 function chipVars(tint: string, dark: string): CSSProperties {
@@ -26,6 +27,49 @@ import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
+import { LUDO_THEMES, LUDO_THEME_LABELS, type LudoTheme } from "./settings";
+import {
+  MenuIcon,
+  SpeakerIcon,
+  SpeakerMutedIcon,
+  ExpandIcon,
+  CompressIcon,
+  HelpIcon,
+  LeaveDoorIcon,
+  CrownIcon,
+  BotIcon,
+  QuitIcon,
+  WarningIcon,
+  HomeIcon,
+  ChatIcon,
+  SmileyIcon,
+  MicIcon,
+  MoreIcon,
+  DiceIcon,
+  ImpactIcon,
+  BlockedIcon,
+  SkipIcon,
+} from "./ludo-icons";
+
+/** Maps the `LudoFeedItem.emoji` values `useLudoBoard`'s event recorder
+ *  produces to the stroke-icon set, so the match feed reads as chrome
+ *  rather than OS emoji. Falls back to the raw emoji for anything new. */
+function FeedGlyph({ emoji, size = 12 }: { emoji: string; size?: number }) {
+  switch (emoji) {
+    case "💥":
+      return <ImpactIcon size={size} />;
+    case "🏠":
+      return <HomeIcon size={size} />;
+    case "🏆":
+      return <CrownIcon size={size} />;
+    case "⛔":
+      return <BlockedIcon size={size} />;
+    case "↪":
+      return <SkipIcon size={size} />;
+    default:
+      return <span aria-hidden>{emoji}</span>;
+  }
+}
 
 /**
  * Ludo — shared composite layout pieces.
@@ -74,18 +118,45 @@ function LudoLogo() {
 
 /** Paper header: menu · LUDO logo · turn banner · sound · Rules · Leave.
  *  `rightSlot` lets the desktop shell dock the room rail inline. */
+/** Theme accent shown as a small swatch dot on the theme-toggle chip — one
+ *  representative hue per theme, reusing colors the theme blocks already
+ *  define instead of new ones. Cycles through all of `LUDO_THEMES` (the same
+ *  order the Display Settings picker shows), not just a subset — this used
+ *  to hardcode a 3-way classic/neon/paper flip that silently stranded
+ *  players on whichever of neon/paper they last picked, since emerald,
+ *  midnight and sunset were never reachable from the header at all. */
+const THEME_SWATCH: Record<LudoTheme, string> = {
+  classic: "#E8720C",
+  paper: "#6D4323",
+  neon: "#A78BFA",
+  emerald: "#34D399",
+  midnight: "#64748B",
+  sunset: "#C2603A",
+};
+
+function nextLudoTheme(current: LudoTheme): LudoTheme {
+  const i = LUDO_THEMES.indexOf(current);
+  return LUDO_THEMES[(i + 1) % LUDO_THEMES.length];
+}
+
 export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
   const finished = state.phase === "finished";
+  // Glass-chip chrome: a tinted, blurred, glowing-border chip rather than a
+  // flat fill — the same "real depth" material UNO's stadium chrome uses,
+  // tuned to this game's own warm palette via the theme's own CSS vars.
   const chipStyle = {
-    background: "var(--ludo-chip-bg, #F7E8C4)",
-    border: "2px solid var(--ludo-chip-border, #C8A66B)",
-    color: "var(--ludo-chip-text, #6D4323)",
+    background: "var(--ludo-chip-bg, rgba(255,251,240,0.85))",
+    border: "2px solid var(--ludo-chip-border, #E8A23A)",
+    color: "var(--ludo-chip-text, #6B3F1D)",
+    backdropFilter: "blur(8px)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
   } as const;
   const iconChip =
-    "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-lg active:scale-95 transition";
+    "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition";
   // Icon chip that grows to hold a text label from sm+ (phones stay compact).
   const labelChip =
     "flex-shrink-0 h-9 px-3 rounded-full flex items-center gap-1.5 justify-center text-sm font-bold active:scale-95 transition";
+  const themeLabel = LUDO_THEME_LABELS[m.settings.theme];
   // Fullscreen toggle — self-contained (no other game state needs it).
   const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
   useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
@@ -108,7 +179,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
         className={iconChip}
         style={chipStyle}
       >
-        ☰
+        <MenuIcon size={17} />
       </button>
       <LudoLogo />
       <div className="flex-1 min-w-0 text-center px-1">
@@ -119,30 +190,29 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
             style={{ color: "var(--paper-ink-hi)" }}
             title="View Game Recap & Scorecard"
           >
-            🏆 {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
+            <CrownIcon size={16} className="inline-block align-[-2px] mr-0.5" />
+            {state.winnerId ? `${m.nameOf(state.winnerId)} wins!` : "Game over"}
             <span className="text-xs bg-[#6D4323]/10 text-[#6D4323] px-2 py-0.5 rounded-full border border-[#6D4323]/20 font-sans font-bold">Recap</span>
           </button>
         )}
       </div>
       <button
         type="button"
-        onClick={() =>
-          m.updateSettings({
-            theme: m.settings.theme === "neon" ? "paper" : "neon",
-          })
-        }
+        onClick={() => m.updateSettings({ theme: nextLudoTheme(m.settings.theme) })}
         className={labelChip}
         style={chipStyle}
         title={`Current theme: ${m.settings.theme}. Click to switch theme.`}
         aria-label="Toggle board theme"
       >
-        <span aria-hidden>{m.settings.theme === "neon" ? "⚡" : "📓"}</span>
-        <span className="hidden sm:inline">
-          {m.settings.theme === "neon" ? "Neon" : "Paper"}
-        </span>
+        <span
+          aria-hidden
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          style={{ background: THEME_SWATCH[m.settings.theme], boxShadow: "0 0 4px currentColor" }}
+        />
+        <span className="hidden sm:inline">{themeLabel}</span>
       </button>
       <button onClick={m.toggleSound} className={iconChip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
-        {m.soundOn ? "🔊" : "🔈"}
+        {m.soundOn ? <SpeakerIcon size={16} /> : <SpeakerMutedIcon size={16} />}
       </button>
       <button
         onClick={toggleFullscreen}
@@ -151,10 +221,10 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
         title={isFs ? "Exit fullscreen" : "Fullscreen"}
         aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}
       >
-        {isFs ? "🗗" : "⛶"}
+        {isFs ? <CompressIcon size={16} /> : <ExpandIcon size={16} />}
       </button>
       <button onClick={() => m.setShowInstructions(true)} className={labelChip} style={chipStyle} title="How to play" aria-label="How to play">
-        <span aria-hidden>❔</span>
+        <HelpIcon size={16} />
         <span className="hidden sm:inline">Rules</span>
       </button>
       {m.onLeave && (
@@ -166,7 +236,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           aria-label="Leave room"
         >
           <span className="hidden sm:inline">Leave</span>
-          <span aria-hidden>⇥</span>
+          <LeaveDoorIcon size={15} />
         </button>
       )}
       {rightSlot}
@@ -273,12 +343,11 @@ function orderedSeats(state: LudoState, players: Player[] = [], selfId?: string 
   });
 }
 
-/** Compact seat card. Progressive disclosure per the AAA critique: one
- *  progress indicator only (4 pips — the redundant "x/4 home" caption is
- *  dropped; exact count lives in the title tooltip), slimmer padding, and
-/** Compact, beautiful player seat card.
- *  Features clean typography, crisp avatar ring, token progress dots,
- *  and a clear active turn timer pill without visual clipping.
+/** Compact, beautiful player seat card. Progressive disclosure per the AAA
+ *  critique: one progress indicator only (4 pips — the redundant "x/4 home"
+ *  caption is dropped; exact count lives in the title tooltip), slimmer
+ *  padding, clean typography, crisp avatar ring, and a clear active turn
+ *  timer pill without visual clipping.
  */
 function LudoPlayerCard({
   seat,
@@ -354,17 +423,21 @@ function LudoPlayerCard({
           animationDelay: `${Math.min(index, 8) * 40}ms`,
         }}
       >
+        {seat.active && !offline && (
+          <span className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none" aria-hidden>
+            <span
+              className="ludo-turn-sweep absolute inset-y-0 left-0 w-1/3"
+              style={{ background: `linear-gradient(100deg, transparent, ${tint}55, transparent)` }}
+            />
+          </span>
+        )}
         {/* Top: Avatar + Tokens Badge or Active Timer */}
         <div className="relative flex items-center justify-center w-full">
           <div
             className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
-              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs" : ""
+              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
             }`}
-            style={{
-              background: seat.active
-                ? `linear-gradient(135deg, ${tint}, ${rim})`
-                : `${tint}35`,
-            }}
+            style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
           >
             <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
               <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
@@ -393,8 +466,8 @@ function LudoPlayerCard({
 
           {/* Winner Crown */}
           {seat.isWinner && (
-            <span className="absolute -top-2.5 -left-1 text-[11px] leading-none" aria-hidden>
-              👑
+            <span className="absolute -top-2.5 -left-1 leading-none text-amber-500" aria-hidden>
+              <CrownIcon size={11} />
             </span>
           )}
         </div>
@@ -418,13 +491,14 @@ function LudoPlayerCard({
 
           {/* Tokens home notation */}
           <span
-            className="font-mono font-black text-[9px] tabular-nums px-1 rounded leading-none text-stone-600"
+            className="inline-flex items-center gap-0.5 font-mono font-black text-[9px] tabular-nums px-1 rounded leading-none text-stone-600"
             style={{
               background: seat.tokensHome > 0 ? `${tint}20` : "rgba(109,67,35,0.06)",
               color: seat.tokensHome > 0 ? rim : "#6D4C3D",
             }}
           >
-            🏠 {seat.tokensHome}/4
+            <HomeIcon size={9} />
+            {seat.tokensHome}/4
           </span>
         </div>
       </div>
@@ -480,18 +554,22 @@ function LudoPlayerCard({
         animationDelay: `${Math.min(index, 8) * 45}ms`,
       }}
     >
+      {seat.active && !offline && (
+        <span className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none" aria-hidden>
+          <span
+            className="ludo-turn-sweep absolute inset-y-0 left-0 w-1/3"
+            style={{ background: `linear-gradient(100deg, transparent, ${tint}45, transparent)` }}
+          />
+        </span>
+      )}
       {/* Left: Avatar Hub */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="relative flex-shrink-0 flex items-center justify-center">
           <div
             className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
-              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs" : ""
+              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
             }`}
-            style={{
-              background: seat.active
-                ? `linear-gradient(135deg, ${tint}, ${rim})`
-                : `${tint}35`,
-            }}
+            style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
           >
             <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
               <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
@@ -516,7 +594,11 @@ function LudoPlayerCard({
         <div className="min-w-0 flex-1 flex flex-col justify-center gap-0.5">
           {/* Row 1: Name + Role Badges */}
           <div className="flex items-center gap-1 min-w-0 leading-tight">
-            {seat.isWinner && <span className="flex-shrink-0 text-xs leading-none" aria-hidden>👑</span>}
+            {seat.isWinner && (
+              <span className="flex-shrink-0 leading-none text-amber-500" aria-hidden>
+                <CrownIcon size={12} />
+              </span>
+            )}
             {!seat.isWinner && seat.rank != null && (
               <span
                 className="flex-shrink-0 rounded px-1 text-[8px] font-black leading-none bg-[#6D4323] text-[#FFF7E0] py-0.5"
@@ -540,7 +622,11 @@ function LudoPlayerCard({
                 You
               </span>
             )}
-            {seat.isBot && <span className="flex-shrink-0 text-[10px] opacity-70" title="Bot">🤖</span>}
+            {seat.isBot && (
+              <span className="flex-shrink-0 opacity-70" title="Bot">
+                <BotIcon size={11} />
+              </span>
+            )}
           </div>
 
           {/* Row 2: Tokens Home Progress, Away Status, or Quit */}
@@ -549,14 +635,14 @@ function LudoPlayerCard({
               className="text-[9.5px] font-extrabold truncate leading-none flex items-center gap-1 text-stone-500"
               title="Quit — the table played their turns for too long and moved on without them"
             >
-              <span>⏏</span>
+              <QuitIcon size={11} />
               <span>Quit</span>
             </div>
           ) : offline || seat.autoPlaying ? (
             <div
               className="text-[9.5px] font-extrabold truncate leading-none flex items-center gap-1 text-amber-700"
             >
-              <span>⚠️</span>
+              <WarningIcon size={11} />
               <span>
                 {seat.autoReason === "idle"
                   ? "Away · auto"
@@ -580,7 +666,7 @@ function LudoPlayerCard({
                     border: `1px solid ${seat.tokensHome > 0 ? `${tint}40` : "rgba(109,67,35,0.15)"}`,
                   }}
                 >
-                  <span className="text-[8.5px]">🏠</span>
+                  <HomeIcon size={9} />
                   <span>{seat.tokensHome}/4</span>
                 </span>
               ) : (
@@ -592,16 +678,13 @@ function LudoPlayerCard({
                       <span
                         key={i}
                         className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all ${
-                          isHome ? "scale-110 shadow-xs" : "opacity-40"
+                          isHome ? "scale-110 shadow-xs ludo-chip" : "opacity-40"
                         }`}
                         style={{
-                          background: isHome
-                            ? `linear-gradient(135deg, ${tint}, ${rim})`
-                            : "#CBD5E1",
+                          ...(isHome ? chipVars(tint, rim) : { background: "#CBD5E1" }),
                           border: isHome
                             ? "1px solid rgba(255,255,255,0.9)"
                             : "1px solid rgba(148,163,184,0.4)",
-                          boxShadow: isHome ? `0 0 6px ${tint}80` : undefined,
                         }}
                       />
                     );
@@ -621,7 +704,7 @@ function LudoPlayerCard({
               className="text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 text-amber-950 border border-amber-300"
               style={{ background: "linear-gradient(135deg, #FDE047, #F59E0B)" }}
             >
-              <span>🏆</span>
+              <CrownIcon size={11} />
               <span>Won</span>
             </span>
           ) : seat.active && !offline ? (
@@ -639,7 +722,7 @@ function LudoPlayerCard({
               }}
               title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
             >
-              <span className="text-[10px] leading-none" aria-hidden>🎲</span>
+              <DiceIcon size={10} />
               <span className="tabular-nums font-mono font-black">
                 {showTimer ? `${secondsLeft}s` : "Turn"}
               </span>
@@ -842,6 +925,27 @@ function useSettleKey(rolling: boolean): number {
 }
 
 /**
+ * Table-level impact-feel for capture/home events — a shake for a hit, a
+ * lighter punch for a token reaching home. Reads `state.lastEvent` (already
+ * on the wire for the toast/feed) rather than needing new model state, so
+ * either shell can wire it to its own `useTableCamera()` instance with one
+ * line, matching how UNO fires `shake`/`punch` from its own impact beats.
+ */
+export function useLudoTableImpact(
+  lastEvent: LudoState["lastEvent"],
+  camera: { shake: (opts?: CameraShakeOptions) => void; punch: (opts?: CameraPunchOptions) => void },
+) {
+  const seenTs = useRef(0);
+  useEffect(() => {
+    if (!lastEvent || lastEvent.ts <= seenTs.current) return;
+    seenTs.current = lastEvent.ts;
+    if (lastEvent.kind === "capture") camera.shake({ intensity: 8 });
+    else if (lastEvent.kind === "home") camera.punch({ scale: 1.05 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEvent]);
+}
+
+/**
  * Turn callout — the "whose move is it" ticket that sits directly under the
  * board on mobile.
  *
@@ -983,7 +1087,7 @@ export function LudoMatchFeed({
             className="flex items-center gap-1.5 truncate text-[11px] font-bold leading-tight"
             style={{ color: "var(--ludo-feed-text, #6D4323)", opacity: i === 0 ? 1 : 0.6 }}
           >
-            <span aria-hidden>{f.emoji}</span>
+            <FeedGlyph emoji={f.emoji} />
             <span className="truncate">{f.text}</span>
           </div>
         ))}
@@ -1016,7 +1120,7 @@ export function LudoMatchFeed({
               opacity: 1 - i * 0.13,
             }}
           >
-            <span aria-hidden>{f.emoji}</span>
+            <FeedGlyph emoji={f.emoji} />
             <span className="min-w-0 flex-1">{f.text}</span>
           </li>
         ))}
@@ -1187,10 +1291,11 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         </div>
         {streak && (
           <span
-            className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-black flex items-center justify-center z-20 shadow-md"
-            style={{ background: "#DC2626", color: "#fff", border: "2px solid #FFFBF0" }}
+            className="ludo-chip absolute -top-1 -right-1 min-w-[26px] h-[22px] px-1.5 rounded-full text-[11px] font-black flex items-center justify-center gap-0.5 z-20 text-white"
+            style={{ ...chipVars("#EF4444", "#7F1D1D"), border: "2px solid #FFFBF0" }}
             title={`${state.consecutiveSixes} sixes in a row — a third forfeits the turn`}
           >
+            <DiceIcon size={10} />
             {state.consecutiveSixes}
           </span>
         )}
@@ -1244,10 +1349,10 @@ export function LudoBottomBar({
 }) {
   const openPanel = (panel: string) =>
     window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel } }));
-  const NavBtn = ({ label, glyph, panel, badge }: { label: string; glyph: string; panel: string; badge?: number }) => (
+  const NavBtn = ({ label, icon, panel, badge }: { label: string; icon: ReactNode; panel: string; badge?: number }) => (
     <button type="button" onClick={() => openPanel(panel)} className="flex flex-col items-center gap-1 active:scale-95 transition cursor-pointer" aria-label={label}>
       <span
-        className="relative w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-md"
+        className="relative w-11 h-11 rounded-full flex items-center justify-center shadow-md"
         style={{
           background: "var(--ludo-nav-bg, linear-gradient(135deg, #FFFDF8 0%, #F5E5C0 100%))",
           border: "2.5px solid var(--ludo-nav-border, #6D4323)",
@@ -1255,7 +1360,7 @@ export function LudoBottomBar({
           color: "var(--ludo-nav-text, #4A2E18)",
         }}
       >
-        {glyph}
+        {icon}
         {badge != null && badge > 0 && (
           <span
             className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center shadow"
@@ -1274,11 +1379,11 @@ export function LudoBottomBar({
      * margin — you invite once, before the match — and it was carrying the
      * same weight as Chat, which is used constantly. */
     <div className={`flex items-end justify-center ${withTray ? "gap-2 sm:gap-4" : "gap-6"}`}>
-      <NavBtn label="Chat" glyph="💬" panel="chat" badge={unread} />
-      <NavBtn label="Emoji" glyph="😊" panel="emoji" />
+      <NavBtn label="Chat" icon={<ChatIcon size={19} />} panel="chat" badge={unread} />
+      <NavBtn label="Emoji" icon={<SmileyIcon size={19} />} panel="emoji" />
       {withTray && <LudoRollTray m={m} state={state} />}
-      <NavBtn label="Voice" glyph="🎙️" panel="voice" />
-      <NavBtn label="More" glyph="⋯" panel="room" />
+      <NavBtn label="Voice" icon={<MicIcon size={19} />} panel="voice" />
+      <NavBtn label="More" icon={<MoreIcon size={19} />} panel="room" />
     </div>
   );
 }
