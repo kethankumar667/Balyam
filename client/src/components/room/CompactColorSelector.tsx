@@ -91,28 +91,28 @@ export default function CompactColorSelector({
     const penList = skin === "notebook" ? DOTSBOXES_NOTEBOOK_THEMES : DOTSBOXES_NEON_THEMES;
 
     return (
-      <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2.5">
         {/* Theme Switcher Banner */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🎨</span>
+        <div className="flex items-center justify-between p-2 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">🎨</span>
             <div>
-              <div className="text-xs font-black uppercase tracking-wider text-stone-800 dark:text-stone-200">
-                Board Game Theme
+              <div className="text-[11px] font-black uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                Board Theme
               </div>
-              <div className="text-[11px] text-stone-500">
+              <div className="text-[10px] text-stone-500 hidden sm:block">
                 {skin === "notebook" ? "Realistic School Notebook Paper" : "Dark Neon Arcade"}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-stone-900/10 dark:bg-black/40 p-1 rounded-2xl">
+          <div className="flex items-center gap-1 bg-stone-900/10 dark:bg-black/40 p-0.5 rounded-xl">
             <button
               type="button"
               onClick={() => handleSetSkin("notebook")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                 skin === "notebook"
-                  ? "bg-amber-500 text-stone-950 shadow-md scale-102 font-['Patrick_Hand',cursive] text-sm"
+                  ? "bg-amber-500 text-stone-950 shadow-xs scale-102 font-['Patrick_Hand',cursive] text-xs"
                   : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
               }`}
             >
@@ -121,9 +121,9 @@ export default function CompactColorSelector({
             <button
               type="button"
               onClick={() => handleSetSkin("neon")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                 skin === "neon"
-                  ? "bg-sky-500 text-white shadow-md scale-102"
+                  ? "bg-sky-500 text-white shadow-xs scale-102"
                   : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
               }`}
             >
@@ -133,8 +133,8 @@ export default function CompactColorSelector({
         </div>
 
         {/* Header */}
-        <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+        <div className="flex items-baseline justify-between pb-0.5 border-b border-[#EEDBCA]/60 dark:border-slate-800">
+          <div className="flex items-center gap-1.5">
             <span aria-hidden>✏️</span>
             <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
               Pick Your Pen Color
@@ -212,9 +212,9 @@ export default function CompactColorSelector({
     const selectedColor = self?.chosenColor;
 
     return (
-      <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+      <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2">
+        <div className="flex items-baseline justify-between pb-0.5 border-b border-[#EEDBCA]/60 dark:border-slate-800">
+          <div className="flex items-center gap-1.5">
             <span aria-hidden>🎨</span>
             <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
               Pick Your Color
@@ -226,7 +226,7 @@ export default function CompactColorSelector({
         </div>
 
         {/* Responsive color chips */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
           {LUDO_COLORS.map((c) => {
             const owner = players.find((p) => p.chosenColor === c.id);
             const isMe = owner?.id === selfId;
@@ -250,17 +250,17 @@ export default function CompactColorSelector({
                 aria-label={`Color ${c.label}${
                   isMe ? " (Selected by you)" : isOther ? ` (Occupied by ${owner.name})` : ""
                 }`}
-                className={`min-h-[44px] relative rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
+                className={`min-h-[44px] relative rounded-xl p-1.5 flex flex-col items-center justify-center gap-0.5 transition-all border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
                   isMe
-                    ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-105"
+                    ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-102"
                     : isOther
                     ? "border-transparent opacity-40 !cursor-not-allowed"
                     : "border-transparent hover:border-[#EEDBCA] dark:hover:border-slate-700 hover:scale-102"
                 }`}
                 style={{ background: c.hex }}
               >
-                <div className={`w-5 h-5 rounded-full ${isBright ? "bg-black/20 border-black/30" : "bg-white/30 border-white/60"} border shadow-inner flex items-center justify-center`}>
-                  {isMe && <span className={`text-[10px] ${isBright ? "text-slate-950" : "text-white"} font-black`}>✓</span>}
+                <div className={`w-4 h-4 rounded-full ${isBright ? "bg-black/20 border-black/30" : "bg-white/30 border-white/60"} border shadow-inner flex items-center justify-center`}>
+                  {isMe && <span className={`text-[9px] ${isBright ? "text-slate-950" : "text-white"} font-black`}>✓</span>}
                 </div>
                 <span className={`text-[10px] font-black truncate max-w-full ${isBright ? "text-slate-950" : "text-white drop-shadow-sm"}`}>
                   {c.label}
@@ -289,9 +289,9 @@ export default function CompactColorSelector({
   const selectedCoin = self?.coinColor;
 
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
-      <div className="flex items-baseline justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
-        <div className="flex items-center gap-2">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--chrome-panel)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2">
+      <div className="flex items-baseline justify-between pb-0.5 border-b border-[#EEDBCA]/60 dark:border-slate-800">
+        <div className="flex items-center gap-1.5">
           <span aria-hidden>🪙</span>
           <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
             Pick Your Coin Color
@@ -302,7 +302,7 @@ export default function CompactColorSelector({
         </span>
       </div>
 
-      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+      <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
         {SNL_ORDER.map((c) => {
           const palette = COIN_COLOR_HEX[c];
           const owner = players.find((p) => p.coinColor === c);
@@ -327,9 +327,9 @@ export default function CompactColorSelector({
               aria-label={`Coin ${palette.label}${
                 isMe ? " (Selected by you)" : isOther ? ` (Occupied by ${owner.name})` : ""
               }`}
-              className={`min-h-[44px] relative rounded-xl p-1.5 flex flex-col items-center justify-center gap-1 transition-all border-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
+              className={`min-h-[44px] relative rounded-xl p-1 flex flex-col items-center justify-center gap-0.5 transition-all border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] ${
                 isMe
-                  ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-105"
+                  ? "border-[#EA5A1F] dark:border-amber-400 shadow-md scale-102"
                   : isOther
                   ? "border-transparent opacity-40 !cursor-not-allowed"
                   : "border-transparent hover:border-[#EEDBCA] dark:hover:border-slate-700 hover:scale-102"
@@ -337,7 +337,7 @@ export default function CompactColorSelector({
               style={{ background: palette.fill }}
             >
               <div
-                className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold"
+                className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold"
                 style={{
                   background: "rgba(255,255,255,0.9)",
                   color: palette.dark,

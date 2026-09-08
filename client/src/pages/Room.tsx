@@ -1559,9 +1559,9 @@ export default function Room() {
         )}
 
         {roomState.phase === "lobby" || isGameStartingCeremony || (roomState.phase === "finished" && scorecardDismissed) ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-4 pb-40 sm:pb-44 lg:pb-0">
+            <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3 pb-40 sm:pb-44 lg:pb-0">
               {roomState.lifecycleState === "FINALIZING" && (
                 <div
                   role="status"
@@ -1681,7 +1681,7 @@ export default function Room() {
             </div>
 
             {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
-            <div className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
+            <div className="hidden lg:flex flex-col gap-2.5 sm:gap-3 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
               <LobbyActionBar
                 isHost={selfIsHost}
                 isReady={viewModel.selfIsReady}

@@ -48,7 +48,7 @@ export default function ParticipantPanel({
     <>
       <section
         aria-label="Table Participants"
-        className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5"
+        className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3.5 shadow-xs space-y-2.5"
       >
         {/* Panel Header */}
         <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
@@ -58,7 +58,7 @@ export default function ParticipantPanel({
               Participants ({players.length}/{maxPlayers})
             </h2>
 
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/70 dark:bg-slate-800 text-[#5C4328] dark:text-slate-200">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EEDBCA]/70 dark:bg-slate-800 text-[#5C4328] dark:text-slate-200">
               {readyCount}/{players.length} Ready
             </span>
           </div>
@@ -72,7 +72,7 @@ export default function ParticipantPanel({
                   type="button"
                   onClick={handleQuickAddBot}
                   disabled={isAddingQuickBot}
-                  className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1 min-h-[30px] px-2.5 py-0.5 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer disabled:opacity-50"
                   title="Quick add a bot with auto-generated name"
                 >
                   <span className="text-sm font-black">+</span>
@@ -87,15 +87,15 @@ export default function ParticipantPanel({
                   type="button"
                   onClick={() => setShowAddBotDialog(true)}
                   disabled={isAddingQuickBot}
-                  className="inline-flex items-center justify-center min-h-[34px] px-2.5 py-1 border-l border-emerald-300/70 dark:border-emerald-700/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer"
+                  className="inline-flex items-center justify-center min-h-[30px] px-2 py-0.5 border-l border-emerald-300/70 dark:border-emerald-700/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 transition active:scale-95 cursor-pointer"
                   title="Customise bot nickname or difficulty (optional)"
                   aria-label="Customise bot nickname or difficulty"
                 >
-                  <span className="text-[11px]" aria-hidden>⚙️</span>
+                  <span className="text-[10px]" aria-hidden>⚙️</span>
                 </button>
               </div>
             ) : isRoomFull ? (
-              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full">
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full">
                 Table Full
               </span>
             ) : null}
@@ -103,7 +103,7 @@ export default function ParticipantPanel({
         </div>
 
         {/* Unified Player List Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[170px] sm:max-h-[200px] overflow-y-auto pr-0.5">
           {players.map((player) => (
             <ParticipantRow
               key={player.id}

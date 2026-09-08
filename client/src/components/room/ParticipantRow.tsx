@@ -50,7 +50,7 @@ export default function ParticipantRow({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.28, ease: "backOut" }}
-      className={`flex items-center justify-between gap-2.5 p-3 rounded-2xl border transition-all ${
+      className={`flex items-center justify-between gap-2 p-2 sm:p-2.5 rounded-xl border transition-all ${
         player.isReady
           ? isMe
             ? "bg-[#FFFDF8] dark:bg-[#161F2E] border-emerald-400 dark:border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30"
@@ -61,16 +61,16 @@ export default function ParticipantRow({
       }`}
     >
       {/* Left: Avatar + Details */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         {/* Avatar with live presence indicator */}
         <div className="relative shrink-0">
           <SeatAvatar
             avatar={player.avatar}
             name={player.name}
-            className="w-9 h-9 rounded-xl shadow-xs"
+            className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl shadow-xs"
           />
           <span
-            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-[#121927] ${
+            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#121927] ${
               player.isConnected
                 ? "bg-emerald-500"
                 : "bg-amber-500 animate-pulse"

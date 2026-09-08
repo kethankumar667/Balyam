@@ -97,35 +97,35 @@ export default function LobbyActionBar({
 
   // Desktop panel variant
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[#131926] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
+    <div className="bg-[#FFFDF8] dark:bg-[#131926] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2">
       {/* Header with Readiness meter */}
       <div className="flex items-center justify-between pb-1 border-b border-[#EEDBCA]/60 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span aria-hidden className="text-base">🏁</span>
+        <div className="flex items-center gap-1.5">
+          <span aria-hidden className="text-sm">🏁</span>
           <h2 className="text-xs uppercase tracking-wider text-[#5C4328] dark:text-slate-300 font-extrabold">
             Table Status
           </h2>
         </div>
 
-        <span role="status" aria-live="polite" className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+        <span role="status" aria-live="polite" className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
           {readyRatioText}
         </span>
       </div>
 
       {/* Action buttons */}
-      <div className="flex flex-col gap-2.5">
+      <div className={isHost ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
         <button
           id="lobby-ready-btn-desktop"
           type="button"
           onClick={onToggleReady}
           aria-pressed={isReady}
-          className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+          className={`w-full min-h-[44px] px-3 py-2 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
             isReady
-              ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-4 ring-amber-400/20"
-              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-900/20 ring-4 ring-emerald-500/20"
+              ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 ring-2 ring-amber-400/20"
+              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-900/20 ring-2 ring-emerald-500/20"
           }`}
         >
-          <span className="text-base">{isReady ? "✓" : "⚡"}</span>
+          <span className="text-sm">{isReady ? "✓" : "⚡"}</span>
           <span>{isReady ? "Ready (Cancel)" : "I'm Ready"}</span>
         </button>
 
@@ -136,14 +136,14 @@ export default function LobbyActionBar({
             disabled={!canStart}
             aria-disabled={!canStart}
             aria-label={canStart ? startLabel : "Start Game disabled"}
-            className={`w-full min-h-[48px] px-6 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+            className={`w-full min-h-[44px] px-3 py-2 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
               canStart
-                ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-4 ring-orange-500/20 animate-pulse"
+                ? "bg-gradient-to-r from-[#EA5A1F] to-[#D84F17] hover:from-[#F06A32] hover:to-[#EA5A1F] text-white shadow-orange-900/30 cursor-pointer ring-2 ring-orange-500/20 animate-pulse"
                 : "bg-[#EFE4D2] dark:bg-slate-800 text-[#8C7A67] dark:text-slate-500 cursor-not-allowed border border-[#E1CFB1] dark:border-slate-700"
             }`}
           >
             <span className="text-xs">▶</span>
-            <span>{startLabel}</span>
+            <span className="truncate">{startLabel}</span>
           </button>
         )}
       </div>
@@ -153,7 +153,7 @@ export default function LobbyActionBar({
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-xl p-2"
+          className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium text-center bg-[#FFF4E0]/50 dark:bg-slate-800/40 border border-[#EEDBCA]/60 dark:border-slate-700/60 rounded-lg py-1 px-2"
         >
           {startGameDisabledReason}
         </p>

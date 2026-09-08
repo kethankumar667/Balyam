@@ -202,7 +202,7 @@ export default function CommunicationPanel({
 
   // Desktop Panel
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col h-[380px] sm:h-[420px] max-h-[500px] overflow-hidden w-full">
+    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-col h-[280px] sm:h-[300px] max-h-[340px] overflow-hidden w-full">
       {renderTabContent()}
     </div>
   );
