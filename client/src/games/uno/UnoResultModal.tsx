@@ -1,13 +1,18 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import type { Player, UnoPlayerState } from "@shared/types";
+import Modal from "../../components/Modal";
 import RematchPanel from "../../components/RematchPanel";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import { findAvatar } from "../../lib/avatars";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
 import { WinnerCelebration } from "../../animations/card/WinnerCelebration";
 import { VictoryDance } from "../../animations/card/VictoryDance";
 import type { FeltAnchor } from "../../animations/helpers/types";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 
 const VICTORY_DANCE_ANCHOR: FeltAnchor = { left: "50%", top: "32%" };
 
@@ -42,24 +47,33 @@ export default function UnoResultModal({
 
   const winnerScore = winnerId ? (state.scores[winnerId] ?? 0) : 0;
 
+  // Real-money prize per placement, for a paid match only — see the hook's
+  // own doc comment for why this is a re-derivation of a real, authoritative
+  // amount (EconomyService's own math, shared verbatim) rather than a guess.
+  const roomState = useRoomStore((s) => s.roomState);
+  const matchId = deriveTerminalMatchId(roomState);
+  const { settlement } = useMatchSettlement(matchId);
+  const winnerPrizes = winnerPrizesFor(settlement);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/65 backdrop-blur-xs select-none overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Match results"
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Match results"
+      mobileSheet={false}
+      panelClassName="w-full max-w-lg md:max-w-2xl max-h-[92dvh] flex flex-col rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
     >
       {isSelfWinner && <WinnerCelebration config={animConfig} />}
       {isSelfWinner && <VictoryDance anchor={VICTORY_DANCE_ANCHOR} config={animConfig} />}
 
       <motion.div
-        className="relative w-full max-w-lg md:max-w-2xl max-h-[94vh] flex flex-col rounded-[24px] sm:rounded-[32px] bg-[#F7F0E3] border-2 border-[#D8C7AA] shadow-[0_25px_60px_rgba(0,0,0,0.55)] overflow-hidden my-auto"
+        className="relative flex flex-col h-full min-h-0 bg-[#F7F0E3] border-2 border-[#D8C7AA]"
         style={{
           backgroundImage:
             "radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, #F5ECDD 100%)",
         }}
-        initial={animConfig.reducedMotion ? false : { scale: 0.88, opacity: 0, y: 16 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
+        initial={animConfig.reducedMotion ? false : { scale: 0.94, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
       >
         {/* Left Spiral Binder Ring Holes */}
@@ -80,7 +94,7 @@ export default function UnoResultModal({
         {/* Background Hand-Drawn Doodles */}
         <DoodleBackground />
 
-        {/* Top Close '✕' Button */}
+        {/* Top Close '✕' Button — sits above the scroll area so it's always reachable */}
         <button
           onClick={onClose}
           type="button"
@@ -90,8 +104,8 @@ export default function UnoResultModal({
           ✕
         </button>
 
-        {/* Modal Inner Scroll Area (offset to the right to clear binder holes) */}
-        <div className="overflow-y-auto flex-1 pl-8 sm:pl-12 pr-4 sm:pr-8 pt-4 sm:pt-6 pb-4 sm:pb-6 overscroll-contain space-y-2 sm:space-y-4 relative z-10">
+        {/* Header (fixed at top, never scrolls) */}
+        <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pt-4 sm:pt-6 relative z-10">
           {/* Top Trophy & Header */}
           <div className="flex flex-col items-center text-center">
             {/* Hand-Drawn Golden Trophy Icon */}
@@ -129,7 +143,13 @@ export default function UnoResultModal({
               <span className="text-amber-500 font-serif">☆</span>
             </div>
           </div>
+        </div>
 
+        {/* Scrollable body — the only region that scrolls, so the header and
+            action dock below stay reachable no matter how tall the content
+            gets (short phones, a full 4th-place row, the settlement panel,
+            or all three at once). */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pl-8 sm:pl-12 pr-4 sm:pr-8 pb-2 relative z-10 space-y-2 sm:space-y-4">
           {/* 2-Column Main Content Body */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5 items-center my-1 sm:my-2">
             {/* LEFT: Polaroid Photo Card */}
@@ -247,15 +267,19 @@ export default function UnoResultModal({
                       >
                         {state.scores[id] ?? 0}
                       </span>
+
+                      {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
+                      {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
                     </div>
                   );
                 })}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* BOTTOM ACTION BUTTONS */}
-          <div className="pt-2 sm:pt-3 space-y-2 sm:space-y-2.5">
+        {/* Action dock (fixed at bottom, never scrolls out of reach) */}
+        <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pb-4 sm:pb-6 pt-2 sm:pt-3 relative z-10 space-y-2 sm:space-y-2.5">
             {/* Rematch — the shared panel every game uses, instead of a
                 UNO-specific reimplementation of the same pending/accepted/
                 declined states. Same protocol, same look everywhere now. */}
@@ -290,9 +314,8 @@ export default function UnoResultModal({
               </button>
             </div>
           </div>
-        </div>
       </motion.div>
-    </div>
+    </Modal>
   );
 }
 

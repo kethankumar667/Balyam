@@ -414,6 +414,10 @@ export function ClaimButton({
 
 import { useState } from "react";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 
 export function BingoResultOverlay({
   winners,
@@ -437,6 +441,11 @@ export function BingoResultOverlay({
   const winnerName = winner ? nameOf(winner.playerId) : "Player";
   const iWon = winner?.playerId === selfId;
 
+  // Real-money prize for the winner, for a paid, settled match only.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+
   if (previewMode) {
     return (
       <BoardPreviewPill
@@ -453,9 +462,14 @@ export function BingoResultOverlay({
         <h2 className="text-3xl font-black text-bhalyam-wood-dark mb-1">
           {iWon ? "YOU WON BINGO!" : `${winnerName} WON BINGO!`}
         </h2>
-        <p className="text-sm font-medium text-bhalyam-wood-dark/70 mb-4">
+        <p className={`text-sm font-medium text-bhalyam-wood-dark/70 ${winnerPrize ? "mb-1" : "mb-4"}`}>
           Completed 5 lines in {calledCount} number callouts!
         </p>
+        {winnerPrize && (
+          <div className="flex justify-center mb-3">
+            <PrizeWonChip amount={winnerPrize} size="md" />
+          </div>
+        )}
 
         <RematchPanel players={players} selfId={selfId} className="mb-4" />
 

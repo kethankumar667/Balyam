@@ -35,6 +35,10 @@ import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
 import { RUMMY_COPY } from "./copy";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
@@ -3377,6 +3381,19 @@ function MatchOverCard({
   state: RummyPlayerState;
   nameOf: (id: string) => string;
 }) {
+  // Real-money prize per placement, for a paid, settled match only. Pool
+  // modes currently always settle as a refund (a pool's real ranking is
+  // elimination order across many rounds, not reconstructed yet — see
+  // economyPlacements.ts), so this renders nothing today without being
+  // wrong — it will start showing real amounts the day that ranking ships.
+  const roomState = useRoomStore((s) => s.roomState);
+  const matchId = deriveTerminalMatchId(roomState);
+  const { settlement } = useMatchSettlement(matchId);
+  const winnerPrizes = winnerPrizesFor(settlement);
+  const rankedIds = [...state.playerOrder].sort(
+    (a, b) => (state.cumulativeScores[a] ?? 0) - (state.cumulativeScores[b] ?? 0),
+  );
+
   return (
     <div
       className="rounded-xl p-4 text-center space-y-2"
@@ -3398,11 +3415,10 @@ function MatchOverCard({
           </tr>
         </thead>
         <tbody>
-          {[...state.playerOrder]
-            .sort((a, b) => (state.cumulativeScores[a] ?? 0) - (state.cumulativeScores[b] ?? 0))
-            .map((id) => {
+          {rankedIds.map((id, idx) => {
               const cum = state.cumulativeScores[id] ?? 0;
               const isWinner = id === state.matchWinnerId;
+              const prize = winnerPrizes?.[idx];
               return (
                 <tr
                   key={id}
@@ -3410,6 +3426,11 @@ function MatchOverCard({
                 >
                   <td className="py-0.5">
                     {isWinner && "🏆 "}{nameOf(id)}
+                    {prize && (
+                      <span className="ml-1.5 align-middle">
+                        <PrizeWonChip amount={prize} />
+                      </span>
+                    )}
                   </td>
                   <td className="text-right tabular-nums">{cum}</td>
                 </tr>

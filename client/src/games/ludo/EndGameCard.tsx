@@ -5,6 +5,9 @@ import { ordinal, standingsFor } from "@shared/ludo-rules";
 import { svgToPngBlob } from "../../lib/svgExport";
 
 import BoardPreviewPill from "../../components/BoardPreviewPill";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 
 export default function EndGameCard({
   winnerId,
@@ -65,6 +68,12 @@ export default function EndGameCard({
   const byId = new Map(players.map((p) => [p.id, p]));
   const orderedPlayers = order.map((id) => byId.get(id)).filter((p): p is Player => !!p);
   const placedCount = finishOrder.length;
+
+  // Real-money prize per placement, for a paid, settled match only.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrizes = winnerPrizesFor(settlement);
+  const winnerPrize = winnerId ? winnerPrizes?.[order.indexOf(winnerId)] : undefined;
 
   async function downloadPNG() {
     const svg = svgRef.current;
@@ -183,7 +192,7 @@ export default function EndGameCard({
                   {nameOf(winnerId)} wins
                 </text>
                 <text x="120" y="172" fontSize="16" fill="#cbd5e1">
-                  All 4 tokens home
+                  All 4 tokens home{winnerPrize ? ` · won ${winnerPrize} coins` : ""}
                 </text>
               </g>
             )}
@@ -213,6 +222,7 @@ export default function EndGameCard({
                   </text>
                   <text x="120" y={y + 52} fontSize="14" fill="#94a3b8">
                     {color?.toUpperCase()}
+                    {winnerPrizes?.[i] ? ` · won ${winnerPrizes[i]} coins` : ""}
                   </text>
 
                   {/* Stat cells */}

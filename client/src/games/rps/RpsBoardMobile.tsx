@@ -9,6 +9,9 @@ import type { RpsBoardProps } from "./useRpsBoard";
 import { useSkin } from "../skin";
 import { RpsWinnerCelebration } from "./RpsAnimations";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import {
   NotebookPage,
   NotebookPlayerCard,
@@ -36,6 +39,9 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
   const [, setSkin] = useSkin();
   const showScorecard = m.state.isOver;
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
 
   return (
     <NotebookPage className="min-h-screen">
@@ -219,6 +225,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           myScore={m.myScore}
           oppScore={m.oppScore}
           onClose={() => props.onScorecardClose?.()}
+          winnerPrize={winnerPrize}
         />
       )}
     </NotebookPage>

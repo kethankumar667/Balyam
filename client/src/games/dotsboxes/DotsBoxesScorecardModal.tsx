@@ -4,6 +4,10 @@ import { Eye, LogOut } from "lucide-react";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import RematchPanel from "../../components/RematchPanel";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import {
   getPlayerInitials,
   type DotsBoxesSkin,
@@ -94,6 +98,11 @@ export default function DotsBoxesScorecardModal({
   const winnerPercentage = Math.round(
     ((winner?.score ?? 0) / Math.max(1, totalBoxes)) * 100
   );
+
+  // Real-money prize per placement, for a paid, settled match only.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrizes = winnerPrizesFor(settlement);
 
   return (
     <Modal
@@ -207,6 +216,11 @@ export default function DotsBoxesScorecardModal({
               <div className={`text-xs font-bold mb-2 ${isNotebook ? "text-amber-800" : "text-amber-400"}`}>
                 1st Place Champion
               </div>
+              {winnerPrizes?.[0] && (
+                <div className="mb-2">
+                  <PrizeWonChip amount={winnerPrizes[0]} size="md" />
+                </div>
+              )}
 
               {/* Box Score Badge */}
               <div
@@ -341,6 +355,7 @@ export default function DotsBoxesScorecardModal({
                             You
                           </span>
                         )}
+                        {winnerPrizes?.[p.rank - 1] && <PrizeWonChip amount={winnerPrizes[p.rank - 1]} />}
                       </div>
                     </div>
 

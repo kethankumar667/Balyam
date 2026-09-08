@@ -4,6 +4,10 @@ import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor, type HcPlayerProfile } from 
 import { getSocket } from "../../lib/socket";
 import { computeManOfTheMatch, summarizeMatch } from "./hc-shared";
 import { useHcSquad } from "./useHcSquad";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import {
   currentPartnership,
   economy,
@@ -1642,6 +1646,11 @@ export function HcProSummary({
   const margin = summarizeMatch(state);
   const motm = computeManOfTheMatch(state, players);
 
+  // Real-money prize for the winner, for a paid, settled match only.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+
   return (
     /*
      * RESULT AS A BAND, NOT A TOWER.
@@ -1682,6 +1691,11 @@ export function HcProSummary({
               {margin && (
                 <div className="mt-1.5 text-[13px] font-bold" style={{ color: PRO.inkMid }}>
                   {margin}
+                </div>
+              )}
+              {winnerPrize && (
+                <div className="mt-1.5">
+                  <PrizeWonChip amount={winnerPrize} size="md" />
                 </div>
               )}
             </div>

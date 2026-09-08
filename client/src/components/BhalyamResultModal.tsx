@@ -6,9 +6,12 @@ import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { findAvatar } from "../lib/avatars";
 import CountUp from "./CountUp";
+import Modal from "./Modal";
 import { SettlementView } from "./economy/SettlementView";
+import PrizeWonChip from "./economy/PrizeWonChip";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
 import RateThisGameCTA from "./reviews/RateThisGameCTA";
+import { useMatchSettlement, winnerPrizesFor } from "../hooks/useMatchSettlement";
 
 export interface RankedPlayerResult {
   id: string;
@@ -59,6 +62,12 @@ export default function BhalyamResultModal({
   const isHost = roomState?.hostId === selfId;
   const myResponse = selfId ? rematch.responses[selfId] : undefined;
 
+  // Real-money prize per placement, for a paid match only — re-derived via
+  // the same authoritative math EconomyService itself used (see the hook's
+  // own doc comment), never a guess.
+  const { settlement } = useMatchSettlement(matchId);
+  const winnerPrizes = winnerPrizesFor(settlement);
+
   function requestRematch() {
     getSocket().emit("rematch:request");
   }
@@ -70,22 +79,23 @@ export default function BhalyamResultModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs select-none"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Match results"
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Match results"
+      mobileSheet={false}
+      panelClassName="w-full max-w-xl md:max-w-2xl max-h-[92dvh] flex flex-col rounded-[32px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.5)]"
     >
       <motion.div
-        className="relative w-full max-w-xl md:max-w-2xl rounded-[32px] bg-[#FFFDF6] border-2 border-[#EADFC7] shadow-[0_25px_60px_rgba(0,0,0,0.5)] overflow-hidden p-5 sm:p-7 md:p-8"
-        initial={{ scale: 0.88, opacity: 0, y: 16 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
+        className="relative flex flex-col h-full min-h-0 bg-[#FFFDF6] border-2 border-[#EADFC7]"
+        initial={{ scale: 0.94, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 360, damping: 26 }}
       >
         {/* Background decorative doodles */}
         <DoodleBackground />
 
-        {/* Top Close '✕' Button */}
+        {/* Top Close '✕' Button — sits above the scroll area so it's always reachable */}
         <button
           onClick={onClose}
           type="button"
@@ -95,6 +105,8 @@ export default function BhalyamResultModal({
           ✕
         </button>
 
+        {/* Header (fixed at top, never scrolls) */}
+        <div className="flex-shrink-0 px-5 sm:px-7 md:px-8 pt-5 sm:pt-7 md:pt-8">
         {/* Top Trophy Header */}
         <div className="relative z-10 flex flex-col items-center text-center pt-1 pb-2">
           {/* 3D Golden Trophy Cup with Celebration Sprinkles */}
@@ -162,11 +174,15 @@ export default function BhalyamResultModal({
             </div>
           )}
         </div>
+        </div>
 
+        {/* Scrollable body — the only region that scrolls, so the header and
+            action dock below stay reachable regardless of content height. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-7 md:px-8 pb-2">
         {/* 2-Column Main Content Body */}
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-5 items-center my-4 sm:my-5">
-          {/* LEFT: Polaroid Memory Card */}
-          <div className="md:col-span-5 flex justify-center">
+          {/* LEFT: Polaroid Memory Card (hidden on mobile — saves scroll height for what matters) */}
+          <div className="hidden md:flex md:col-span-5 justify-center">
             <div className="relative w-full max-w-[210px] sm:max-w-[230px] bg-white p-3 pb-4 rounded-xl shadow-[0_6px_20px_rgba(0,0,0,0.12)] border border-[#E9DFCB] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
               <div className="absolute -top-2.5 left-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 -rotate-12 rounded-[2px] shadow-xs pointer-events-none" aria-hidden />
               <div className="absolute -top-2.5 right-2.5 w-9 h-4 bg-[#F2E8D3]/90 border border-[#DECDB2]/70 rotate-12 rounded-[2px] shadow-xs pointer-events-none" aria-hidden />
@@ -262,6 +278,9 @@ export default function BhalyamResultModal({
                     <span className={`tabular-nums shrink-0 font-black ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
                       <CountUp end={p.score} duration={1.2} />
                     </span>
+
+                    {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
+                    {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
                   </div>
                 );
               })}
@@ -280,9 +299,10 @@ export default function BhalyamResultModal({
             <SettlementView matchId={matchId} />
           </div>
         )}
+        </div>
 
-        {/* BOTTOM ACTION BUTTONS */}
-        <div className="relative z-10 mt-5 pt-1 space-y-2.5">
+        {/* BOTTOM ACTION BUTTONS (fixed at bottom, never scrolls out of reach) */}
+        <div className="flex-shrink-0 relative z-10 px-5 sm:px-7 md:px-8 pb-5 sm:pb-7 md:pb-8 pt-3 space-y-2.5">
           {rematch.status === "accepted" && rematch.startsAt ? (
             <CountdownBox startsAt={rematch.startsAt} />
           ) : rematch.status === "declined" ? (
@@ -357,7 +377,7 @@ export default function BhalyamResultModal({
           {roomState?.game && <RateThisGameCTA gameId={roomState.game} />}
         </div>
       </motion.div>
-    </div>
+    </Modal>
   );
 }
 

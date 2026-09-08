@@ -5,6 +5,7 @@ import FloatingReactionsLayer from "../../components/reactions/FloatingReactions
 import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import {
   CheckIcon,
   ChoiceIcon,
@@ -721,6 +722,10 @@ export function RpsScorecardModal({
   myScore,
   oppScore,
   onClose,
+  /** Real-money prize the winner was paid, for a paid/settled match only —
+   *  the caller computes this (see RpsBoardMobile/RpsBoardDesktop) since
+   *  this file holds no state of its own. */
+  winnerPrize,
 }: {
   state: ClientRpsState;
   myId: string;
@@ -729,6 +734,7 @@ export function RpsScorecardModal({
   myScore: number;
   oppScore: number;
   onClose: () => void;
+  winnerPrize?: string | null;
 }) {
   const winner = state.winnerId;
   const iWon = winner === myId;
@@ -796,6 +802,12 @@ export function RpsScorecardModal({
           >
             {iWon ? "You Won!" : isDraw ? "It's a Draw" : `${oppName} Wins`}
           </div>
+
+          {winnerPrize && (
+            <div className="flex justify-center mt-1.5">
+              <PrizeWonChip amount={winnerPrize} size="md" />
+            </div>
+          )}
 
           {state.matchNumber > 1 && (
             <div

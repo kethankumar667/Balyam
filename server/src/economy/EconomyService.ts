@@ -35,6 +35,9 @@ import {
 } from "../persistence/EconomyRepository.js";
 import { generateRawVoucherCode, hashVoucherCode } from "./voucherCrypto.js";
 import { isStructurallyValidSeatConfiguration } from "./economyCapacityContract.js";
+import { computePrizePool as computePrizePoolShared, winnersForSeatCount } from "@shared/economy-prizes.js";
+
+export { winnersForSeatCount };
 
 /**
  * BHALYAM Economy V1 Phase 5 — the server-authoritative orchestration layer
@@ -186,49 +189,15 @@ function fromBig(value: bigint): string {
  */
 
 /**
- * How many placements are paid for a given seat count. Verified against
- * every existing `economy_prize_schedules` row (2026-09 payout
- * standardization): winners = min(seatCount - 1, 3), capped at 3
- * regardless of table size. A solo match (seatCount <= 1) pays 0 winners —
- * see `computePrizePool`'s own special case for why that means 100% World
- * Bank, not "0% platform cut."
- */
-export function winnersForSeatCount(seatCount: number): number {
-  if (seatCount <= 1) return 0;
-  return Math.min(seatCount - 1, 3);
-}
-
-/** Exact bigint fractions of the 80% "winner pool" — never floats, never rounded. */
-const RANK_WEIGHTS_BY_WINNER_COUNT: Readonly<Record<number, ReadonlyArray<readonly [bigint, bigint]>>> = {
-  1: [[1n, 1n]],
-  2: [[5n, 8n], [3n, 8n]],
-  3: [[1n, 2n], [3n, 10n], [1n, 5n]],
-};
-
-/**
- * Platform always takes exactly 20% of `totalCollected`; the remaining 80%
- * ("winner pool") splits among winners by `RANK_WEIGHTS_BY_WINNER_COUNT`.
- *
- * Because every entry stake is validated elsewhere to be a positive
- * multiple of 100 coins, `totalCollected` (stake × seatCount) is always a
- * multiple of 100, so the 80% winner pool is always a multiple of 80 —
- * which divides evenly by every denominator used above (2, 5, 8, 10) for
- * any seat count 2-12. The result is always an exact integer split with
- * zero rounding remainder; the conservation check below is a defensive
- * proof of that claim, not a case expected to ever actually fire.
+ * `winnersForSeatCount` and the pure percentage-of-pool math are shared with
+ * the client (`@shared/economy-prizes.ts`) so a result screen can show a
+ * player's actual winnings without duplicating or guessing the formula. This
+ * wrapper adds the one thing that stays server-only: the conservation check,
+ * which a client display helper has no useful way to react to beyond "don't
+ * trust this," which simply not throwing already achieves.
  */
 export function computePrizePool(totalCollected: bigint, seatCount: number): { worldBankCut: bigint; winnerPrizes: bigint[] } {
-  const winnerCount = winnersForSeatCount(seatCount);
-  if (winnerCount === 0) {
-    // Solo: the entire pool is the platform's — there is no second party to
-    // split a "winner pool" with, so applying the generic 20% split here
-    // would leave 80% of the pool credited to nobody.
-    return { worldBankCut: totalCollected, winnerPrizes: [] };
-  }
-  const worldBankCut = (totalCollected * 20n) / 100n;
-  const winnerPool = totalCollected - worldBankCut;
-  const weights = RANK_WEIGHTS_BY_WINNER_COUNT[winnerCount] ?? [];
-  const winnerPrizes = weights.map(([num, den]) => (winnerPool * num) / den);
+  const { worldBankCut, winnerPrizes } = computePrizePoolShared(totalCollected, seatCount);
   const sum = winnerPrizes.reduce((a, b) => a + b, 0n) + worldBankCut;
   if (sum !== totalCollected) {
     throw new PrizeMathConservationError(

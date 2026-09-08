@@ -7,6 +7,10 @@ import { suggestArrangement } from "./autoArrange";
 import RematchPanel from "../../components/RematchPanel";
 import { svgToPngBlob } from "../../lib/svgExport";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 
 /**
  * End-of-round result for single-mode Rummy — drawn as a notebook page in
@@ -86,6 +90,14 @@ export default function RummyResultModal({
   });
   const selfRank = selfId ? ranked.indexOf(selfId) + 1 : null;
 
+  // Real-money prize per placement, for a paid, settled match only — never
+  // shown for pool mode's interim per-round display, since only the pool's
+  // final elimination is a settled match (see the hook's own doc comment).
+  const roomState = useRoomStore((s) => s.roomState);
+  const matchId = deriveTerminalMatchId(roomState);
+  const { settlement } = useMatchSettlement(matchId);
+  const winnerPrizes = winnerPrizesFor(settlement);
+
   const disconnectedId = state.endedByDisconnect ?? null;
   const headerText = disconnectedId
     ? disconnectedId === selfId
@@ -122,6 +134,7 @@ export default function RummyResultModal({
     points: lossOf(id),
     chips: chipsOf(id),
     hand: state.finalHands?.[id] ?? [],
+    prize: winnerPrizes?.[idx] ?? null,
   }));
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -231,7 +244,7 @@ export default function RummyResultModal({
                    flex flex-col overflow-hidden bg-gradient-to-b from-[#18261e] via-[#101b15] to-[#0a110d] text-white"
         style={{
           width: "min(96vw, 1080px)",
-          maxHeight: "94vh",
+          maxHeight: "94dvh",
         }}
       >
         {/* Ambient Top Glow */}
@@ -307,7 +320,7 @@ export default function RummyResultModal({
           {/* Mobile Layout: Responsive Player Scorecards (< 640px) */}
           <div className="block sm:hidden space-y-2">
             {rows.map((row) => {
-              const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
+              const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand, prize } = row;
               return (
                 <div
                   key={id}
@@ -347,6 +360,7 @@ export default function RummyResultModal({
                             DROPPED
                           </span>
                         )}
+                        {prize && <PrizeWonChip amount={prize} />}
                       </div>
                     </div>
 
@@ -405,7 +419,7 @@ export default function RummyResultModal({
             {/* Table Rows */}
             <div className="divide-y divide-white/5 mt-1">
               {rows.map((row) => {
-                const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand } = row;
+                const { id, rank, isWin, isWrongShower, isDropped, isMe, name, points, chips, hand, prize } = row;
                 return (
                   <div
                     key={id}
@@ -447,6 +461,7 @@ export default function RummyResultModal({
                           DROPPED
                         </span>
                       )}
+                      {prize && <PrizeWonChip amount={prize} />}
                     </div>
 
                     {/* Cards / Melds */}

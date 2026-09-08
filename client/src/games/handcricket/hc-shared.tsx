@@ -28,6 +28,10 @@ import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
 import { cn } from "../../lib/cn";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import {
   RoughBorder,
   HcSketchHeading,
@@ -2452,6 +2456,11 @@ export function MatchSummary({
 
   const mom = useMemo(() => computeManOfTheMatch(state, players), [state, players]);
 
+  // Real-money prize for the winner, for a paid, settled match only.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+  const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+
   // 90 s auto-advance to the Game Over screen — only when this is the
   // end-of-match "page" (onContinue provided). Closable early via the button.
   const [secondsLeft, setSecondsLeft] = useState(SCORECARD_HOLD_SECONDS);
@@ -2506,6 +2515,11 @@ export function MatchSummary({
         <div className="text-sm text-hc-ink-lt mt-1 font-bold">
           {summarizeMatch(state)}
         </div>
+        {winnerPrize && (
+          <div className="flex justify-center mt-2">
+            <PrizeWonChip amount={winnerPrize} size="md" />
+          </div>
+        )}
       </div>
 
       {/* Man of the Match */}
