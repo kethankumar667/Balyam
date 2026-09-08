@@ -3,6 +3,7 @@ import type { Server } from "socket.io";
 import { RoomManager, type Room, PREFLIGHT_TIMEOUT_MS } from "../RoomManager.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+import { RummyEngine } from "../../games/rummy/RummyEngine.js";
 import type { AccountKind, ClientToServerEvents, GameKind, ServerToClientEvents } from "@shared/types.js";
 
 function makeIo() {
@@ -522,5 +523,46 @@ describe("Player Capability & Start-Attempt Readiness Protocol", () => {
 
     expect(room.phase).toBe("playing");
     expect(room.engine).not.toBeNull();
+  });
+
+  it("Test S17: engine.init() throwing after a landed commit refunds the debit and unsticks the lobby", async () => {
+    const { io } = makeIo();
+    const { repo, service } = freshEconomy();
+    seedMember(repo, MEMBER_A);
+    seedMember(repo, MEMBER_B);
+
+    const rooms = new RoomManager(io, service);
+    const hostA = createRoomAs(rooms, "s_a", "Alice", "rummy", "member", MEMBER_A);
+    joinRoomAs(rooms, "s_b", "Bob", hostA.code, "member", MEMBER_B);
+    rooms.setReady("s_a", true);
+    rooms.setReady("s_b", true);
+
+    // The commit itself must succeed — this simulates a bug reachable only
+    // AFTER the money already moved (a bad engine option, a validation gap
+    // between getGameLimits and an engine's own init() check, a genuine
+    // coding bug), not a checkout-time rejection.
+    const initSpy = vi.spyOn(RummyEngine.prototype, "init").mockImplementationOnce(() => {
+      throw new Error("Simulated engine.init() failure");
+    });
+
+    await rooms.requestGameStart("s_a");
+    const room = peek(rooms, hostA.code);
+    const attempt = room.activeStartAttempt!;
+    const rev = room.roomRevision;
+
+    rooms.acknowledgeStart("s_a", { startAttemptId: attempt.id, roomRevision: rev, visible: true, orientationSatisfied: true });
+    rooms.acknowledgeStart("s_b", { startAttemptId: attempt.id, roomRevision: rev, visible: true, orientationSatisfied: true });
+    await rooms.drainEconomySettlementQueue();
+
+    // The match never actually started — no engine, no stuck "STARTING".
+    expect(room.phase).toBe("lobby");
+    expect(room.engine).toBeNull();
+    expect(room.lifecycleState).toBe("READY_CHECK");
+    expect(room.currentMatchId).toBeNull();
+
+    // The debit that landed before init() threw must not stay stuck.
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("5000");
+
+    initSpy.mockRestore();
   });
 });

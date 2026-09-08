@@ -2374,13 +2374,31 @@ export class RoomManager {
     };
     room.activeStartAttempt = attempt;
 
+    // Full context at the moment the challenge goes out — the single most
+    // useful line for diagnosing a "still timing out" report after the
+    // window was already widened once: it settles, from this log alone,
+    // whether the set of players actually being challenged (host included —
+    // `requiredHumans` filters only bots/local seats, NOT the host) matches
+    // what was expected, before even looking at what came back.
+    logger.info({
+      message: `Preflight challenge sent for room ${room.code}: attempt=${startAttemptId} requiring ${requiredHumans.length} ack(s) from [${requiredHumans.map((p) => `${p.name}(${p.id}${p.id === room.hostId ? ",host" : ""})`).join(", ")}], expiresAt=+${PREFLIGHT_TIMEOUT_MS}ms`,
+      module: "ROOM_MANAGER",
+      roomCode: room.code,
+    });
+
     room.startAttemptTimer = setTimeout(() => {
       if (room.activeStartAttempt?.id === startAttemptId && room.activeStartAttempt.status === "COLLECTING_PREFLIGHT") {
         const missing = [...room.activeStartAttempt.requiredHumanPlayerIds].filter(
           (id) => !room.activeStartAttempt!.acknowledgements.has(id),
         );
+        const missingDescribed = missing
+          .map((id) => {
+            const p = room.players.get(id);
+            return p ? `${p.name}(${id}, connected=${p.isConnected})` : `${id}(seat gone)`;
+          })
+          .join(", ");
         logger.warn({
-          message: `Preflight timed out for room ${room.code}: ${missing.length} of ${room.activeStartAttempt.requiredHumanPlayerIds.size} required player(s) never acknowledged (missing: ${missing.join(", ") || "none — see stale-revision warnings above"})`,
+          message: `Preflight timed out for room ${room.code}: attempt=${startAttemptId} — ${missing.length} of ${room.activeStartAttempt.requiredHumanPlayerIds.size} required player(s) never acknowledged (missing: ${missingDescribed || "none — see stale-revision/disconnected-seat warnings above"})`,
           module: "ROOM_MANAGER",
           roomCode: room.code,
         });
@@ -2417,7 +2435,19 @@ export class RoomManager {
       });
       return;
     }
-    if (!attempt.requiredHumanPlayerIds.has(player.id)) return;
+    if (!attempt.requiredHumanPlayerIds.has(player.id)) {
+      // A real ack arrived from a real seat in this room, but for a player
+      // id the attempt never listed as required — a reclaim/reconnect that
+      // minted a different id than the one the challenge was addressed to
+      // would look exactly like this. Logged for the same "don't let this
+      // be another unexplained timeout" reason as the guards below.
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: not in this attempt's required set [${[...attempt.requiredHumanPlayerIds].join(", ")}]`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
+      return;
+    }
     if (!player.isConnected) {
       // Same failure shape as the roomRevision mismatch above: a real ack
       // arrived, but got silently dropped — here because the server still
@@ -2432,11 +2462,21 @@ export class RoomManager {
       return;
     }
     if (Date.now() > attempt.expiresAt) {
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: arrived ${Date.now() - attempt.expiresAt}ms after this attempt's own expiresAt`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
       this.cancelActiveStartAttempt(room, "attempt_expired");
       return;
     }
     // Fail-closed verification
     if (payload.visible !== true || payload.orientationSatisfied !== true) {
+      logger.warn({
+        message: `Dropped acknowledgeStart for room ${room.code}, player ${player.id}: reported visible=${payload.visible}, orientationSatisfied=${payload.orientationSatisfied}`,
+        module: "ROOM_MANAGER",
+        roomCode: room.code,
+      });
       this.cancelActiveStartAttempt(room, "capability_unsatisfied");
       return;
     }
@@ -2450,6 +2490,12 @@ export class RoomManager {
       visible: true,
       orientationSatisfied: true,
       acknowledgedAt: Date.now(),
+    });
+
+    logger.info({
+      message: `Preflight ack accepted for room ${room.code}: player ${player.name}(${player.id}) — ${attempt.acknowledgements.size}/${attempt.requiredHumanPlayerIds.size} required`,
+      module: "ROOM_MANAGER",
+      roomCode: room.code,
     });
 
     this.broadcastRoomState(room);
@@ -2732,6 +2778,41 @@ export class RoomManager {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start";
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
+
+      // `engine.init()` can throw AFTER a real economy commit already
+      // landed — `requestGameStart`'s `proceedFromReadyAttempt` sets
+      // `room.currentMatchId` before ever calling this method. Left
+      // unhandled, that strands a real debit with no refund and leaves
+      // `lifecycleState` stuck at "STARTING" (a lobby that can never start
+      // or be told apart from one mid-commit). Mirrors the exact
+      // compensating-refund pattern `proceedFromReadyAttempt`'s own
+      // post-commit re-validation already uses for the same underlying
+      // problem: a commit that landed but the match never actually started.
+      // Fire-and-forget with its own error handling — `startGame` must stay
+      // synchronous (see this method's own doc comment: every caller,
+      // production and test, depends on that).
+      const orphanedMatchId = room.currentMatchId;
+      if (orphanedMatchId) {
+        room.currentMatchId = null;
+        room.committedCostPerSeat = null;
+        room.committedTotalPot = null;
+        if (room.lifecycleState === "STARTING") {
+          this.transitionLifecycle(room, "READY_CHECK", "Engine init failed after commit");
+        }
+        void this.queueCompensatingRefundForOrphanedCommit(
+          orphanedMatchId,
+          room.code,
+          "requestGameStart",
+          "engine_init_failed",
+        ).catch((refundErr) => {
+          logger.error({
+            message: `Compensating refund for match ${orphanedMatchId} (room ${room.code}) failed after engine.init() threw: ${refundErr instanceof Error ? refundErr.message : String(refundErr)}`,
+            module: "ECONOMY_ROOM",
+            roomCode: room.code,
+            matchId: orphanedMatchId,
+          });
+        });
+      }
     }
   }
 
