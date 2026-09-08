@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useRoomStore } from "../store/roomStore";
 import { useAuthStore } from "../store/authStore";
 import { loadAccountDetails } from "../lib/accountGenerator";
 import { downloadPlayerExport } from "../lib/privacy/exportData";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
+import DeleteAccountModal from "../components/auth/DeleteAccountModal";
 
 // Profile Features
 import PersonalInformationCard from "../features/profile/PersonalInformationCard";
@@ -22,6 +24,7 @@ export default function PersonalInformationPage() {
   const bio = useRoomStore((s) => s.bio);
   const region = useRoomStore((s) => s.region);
   const authEmail = useAuthStore((s) => s.email);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const { profile, stats, isMember, openEditModal, openAvatarModal } =
     useOutletContext<ProfileFamilyOutletContext>();
@@ -63,9 +66,15 @@ export default function PersonalInformationPage() {
           <ProfileQuickActions
             onExportData={handleExportData}
             onOpenAvatarPicker={openAvatarModal}
+            onDeleteAccount={() => setIsDeleteModalOpen(true)}
           />
         </div>
       </div>
+
+      <DeleteAccountModal
+        open={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 }

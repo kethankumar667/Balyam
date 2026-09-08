@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Zap, Smile, Shield, Download, Check, ChevronRight } from "lucide-react";
+import { Zap, Smile, Shield, Download, Check, ChevronRight, Trash2 } from "lucide-react";
 
 interface ProfileQuickActionsProps {
   onOpenAvatarPicker: () => void;
   onExportData: () => void;
+  onDeleteAccount?: () => void;
 }
 
 export default function ProfileQuickActions({
   onOpenAvatarPicker,
   onExportData,
+  onDeleteAccount,
 }: ProfileQuickActionsProps) {
   const [downloaded, setDownloaded] = useState(false);
 
@@ -110,6 +112,30 @@ export default function ProfileQuickActions({
             <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
+
+        {/* Delete Account (Optional direct trigger or fallback to security settings) */}
+        {onDeleteAccount ? (
+          <button
+            type="button"
+            onClick={onDeleteAccount}
+            className="w-full p-2.5 rounded-2xl bg-white hover:bg-rose-50/80 dark:bg-[#131728] dark:hover:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/40 flex items-center justify-between transition group min-h-[44px] cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200/60 flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block">
+                  Delete Account
+                </span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-400 font-normal">
+                  Permanently erase your profile
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        ) : null}
       </div>
     </div>
   );

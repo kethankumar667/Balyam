@@ -15,6 +15,7 @@ import {
   Pencil,
   LogOut,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
@@ -25,6 +26,7 @@ import { bhalyamSpring } from "../../../lib/motion";
 import { type BhalyamGameSlug } from "../../../components/bhalyam/data";
 import { SheetShell } from "./SheetShell";
 import { GuestProfileModal } from "./GuestProfileModal";
+import DeleteAccountModal from "../../../components/auth/DeleteAccountModal";
 
 export interface NotificationItem {
   id: string;
@@ -130,6 +132,7 @@ export function ProfileSheet({
   const isDark = theme === "dark";
 
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [view, setView] = useState<"profile" | "notifications">(initialView);
 
   // Land on whichever view opened the sheet, every time it opens — the
@@ -377,6 +380,15 @@ export function ProfileSheet({
             <LogOut className="w-4 h-4 text-red-600" />
             <span>Sign out / Log out</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:underline transition cursor-pointer text-center inline-flex items-center justify-center gap-1.5 min-h-[44px]"
+          >
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Delete Account</span>
+          </button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -411,6 +423,12 @@ export function ProfileSheet({
         </div>
       )}
     </SheetShell>
+
+    <DeleteAccountModal
+      open={showDeleteModal}
+      onClose={() => setShowDeleteModal(false)}
+      onSuccess={onClose}
+    />
     </>
   );
 }

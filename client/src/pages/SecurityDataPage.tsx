@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ArrowRight,
   UserCheck,
+  Trash2,
 } from "lucide-react";
 import SettingsLayout from "../components/layout/SettingsLayout";
 import { useAuthStore } from "../store/authStore";
@@ -19,6 +20,7 @@ import { usePlayerId } from "../lib/playerIdentity";
 import { downloadPlayerExport } from "../lib/privacy/exportData";
 import { loadAccountDetails } from "../lib/accountGenerator";
 import YourDataPanel from "../components/privacy/YourDataPanel";
+import DeleteAccountModal from "../components/auth/DeleteAccountModal";
 
 function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return email;
@@ -35,6 +37,7 @@ export default function SecurityDataPage() {
   const { playerId: effectivePlayerId } = usePlayerId();
 
   const [visibility, setVisibility] = useState<"public" | "friends">("public");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   return (
     <SettingsLayout>
@@ -226,6 +229,55 @@ export default function SecurityDataPage() {
             <YourDataPanel hideHeading={true} />
           </div>
         </div>
+
+        {/* ── Section 4: Danger Zone — Permanent Account Deletion ── */}
+        <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-rose-300/80 via-rose-200/40 to-rose-300/80 dark:from-rose-500/20 dark:via-transparent dark:to-rose-500/10 shadow-xs">
+          <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 sm:p-6 space-y-4 border border-rose-200/60 dark:border-rose-900/30">
+            <div className="flex items-center justify-between border-b border-rose-200/60 dark:border-rose-900/30 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/40 flex items-center justify-center shadow-xs">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-rose-950 dark:text-rose-200">
+                    Danger Zone: Permanent Account Deletion
+                  </h2>
+                  <p className="text-[11px] text-rose-600/80 dark:text-rose-400/80 font-medium">
+                    Irreversibly delete your account, saved match histories, coin balance, and statistics
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold uppercase text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800/40">
+                Irreversible
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-900/30">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                  Delete your BHALYAM account and all associated data
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium block">
+                  Once deleted, your email is released, and all your records are permanently purged. This action cannot be undone.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 shadow-sm shadow-rose-600/20 transition cursor-pointer self-start sm:self-auto min-h-[44px] shrink-0 inline-flex items-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <DeleteAccountModal
+          open={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+        />
       </div>
     </SettingsLayout>
   );
