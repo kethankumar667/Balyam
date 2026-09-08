@@ -119,7 +119,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           : allReady
           ? "bg-gradient-to-b from-emerald-500/10 via-[#FFFDF8] to-[#FFF8EE] dark:from-emerald-950/40 dark:via-[#131926] dark:to-[#0F1420] border-emerald-500/70 dark:border-emerald-500/50 ring-2 ring-emerald-500/20"
           : "bg-gradient-to-b from-amber-500/10 via-[#FFFDF8] to-[#FFF8EE] dark:from-amber-950/30 dark:via-[#131926] dark:to-[#0F1420] border-[#EEDBCA] dark:border-slate-800"
-      } p-4 sm:p-5 ${className}`}
+      } p-2.5 sm:p-3.5 ${className}`}
       role="region"
       aria-label={regionLabel}
     >
@@ -130,7 +130,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
 
       {/* Ambient background aura */}
       <div
-        className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-opacity duration-500 ${
+        className={`absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl pointer-events-none transition-opacity duration-500 ${
           isLocked
             ? "bg-amber-400/30 opacity-100"
             : isSecuring
@@ -143,10 +143,10 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       />
 
       {/* Header Row */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div
-            className={`w-7 h-7 rounded-xl flex items-center justify-center shadow-xs ${
+            className={`w-6 h-6 rounded-lg flex items-center justify-center shadow-xs shrink-0 ${
               isFreePractice
                 ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                 : isLocked
@@ -159,20 +159,20 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             }`}
           >
             {isFreePractice ? (
-              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             ) : isLocked ? (
-              <Lock className="w-4 h-4" aria-hidden="true" />
+              <Lock className="w-3.5 h-3.5" aria-hidden="true" />
             ) : isSecuring ? (
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
             ) : isUnavailable ? (
-              <HelpCircle className="w-4 h-4" aria-hidden="true" />
+              <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
             ) : allReady ? (
-              <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
             ) : (
-              <Trophy className="w-4 h-4" aria-hidden="true" />
+              <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200/90 flex items-center gap-1.5">
               <span>{isFreePractice ? "Bot Practice Table" : "Match Prize Pool"}</span>
               {!isLocked && !isSecuring && (
@@ -198,58 +198,95 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
         </div>
 
         {/* Status Badge */}
-        <div>
+        <div className="shrink-0">
           {isFreePractice ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-700/50 rounded-full px-2.5 py-0.5">
-              <Sparkles className="w-3 h-3 text-emerald-500" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-700/50 rounded-full px-2 py-0.5">
+              <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
               <span>Free Play · {readyCount}/{seatCount} Ready</span>
             </span>
           ) : isLocked ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-900 dark:text-amber-200 bg-amber-400/20 dark:bg-amber-400/15 border border-amber-400/50 rounded-full px-2.5 py-0.5 uppercase tracking-wider">
-              <Lock className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-900 dark:text-amber-200 bg-amber-400/20 dark:bg-amber-400/15 border border-amber-400/50 rounded-full px-2 py-0.5 uppercase tracking-wider">
+              <Lock className="w-2.5 h-2.5" />
               <span>Locked In Play</span>
             </span>
           ) : isSecuring ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-amber-400/15 dark:bg-amber-400/10 border border-amber-400/40 rounded-full px-2.5 py-0.5 uppercase tracking-wider">
-              <Loader2 className="w-3 h-3 animate-spin" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-amber-400/15 dark:bg-amber-400/10 border border-amber-400/40 rounded-full px-2 py-0.5 uppercase tracking-wider">
+              <Loader2 className="w-2.5 h-2.5 animate-spin" />
               <span>Securing Table</span>
             </span>
           ) : allReady ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2.5 py-0.5 uppercase tracking-wider animate-pulse">
-              <CheckCircle2 className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 rounded-full px-2 py-0.5 uppercase tracking-wider animate-pulse">
+              <CheckCircle2 className="w-2.5 h-2.5" />
               <span>All Ready</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-700/50 rounded-full px-2.5 py-0.5">
-              <Sparkles className="w-3 h-3 text-amber-500" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-700/50 rounded-full px-2 py-0.5">
+              <Sparkles className="w-2.5 h-2.5 text-amber-500" />
               <span>{readyCount}/{seatCount} Ready</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* Entry Stake Per Seat Bar */}
-      {!isFreePractice && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
-            <span className="text-[11px] uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-semibold">
-              Entry Stake:
-            </span>
-            <span className="text-amber-700 dark:text-amber-300 font-black">
-              🪙 {entryStakeCoins ?? quote?.costPerSeat ?? 100}
-            </span>
-            <span className="text-[10px] text-[#8A6D4B] dark:text-slate-400 font-medium">/ seat</span>
+      {/* Unified Economy Plate: Total Pot & Entry Stake */}
+      <div className="flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner">
+        {/* Left: Total Prize Pool */}
+        <div className="flex items-center gap-2 min-w-0">
+          <AshthaKonaCoinIcon size={24} className="text-amber-500 drop-shadow-xs shrink-0" />
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            {isFreePractice ? (
+              <span className="text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">
+                Free (0 Coins)
+              </span>
+            ) : isUnavailable ? (
+              <span className="text-sm font-black text-ink-lo dark:text-text-lo tracking-tight uppercase">
+                Unavailable
+              </span>
+            ) : preview.totalPot !== null ? (
+              <motion.span
+                key={`pool-amt-${preview.totalPot}`}
+                initial={reduceMotion ? false : { scale: 0.85, opacity: 0.8 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                className="text-xl sm:text-2xl font-black text-ink-hi dark:text-text-hi tabular-nums tracking-tight"
+              >
+                {preview.totalPot}
+              </motion.span>
+            ) : (
+              <span
+                className="h-6 w-16 rounded-md bg-[#EEDBCA]/60 dark:bg-slate-700/50 animate-pulse"
+                aria-hidden="true"
+              />
+            )}
+            {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">Pot</span>
+            )}
           </div>
+        </div>
 
-          {isHost && !isLocked && !isSecuring && (
+        {/* Right: Entry Stake & Payouts button */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {!isFreePractice && (
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-200">
+              <span className="text-[10px] uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 font-semibold hidden xs:inline">
+                Stake:
+              </span>
+              <span className="text-amber-700 dark:text-amber-300 font-black">
+                🪙 {entryStakeCoins ?? quote?.costPerSeat ?? 100}
+              </span>
+              <span className="text-[10px] text-[#8A6D4B] dark:text-slate-400 font-medium">/ seat</span>
+            </div>
+          )}
+
+          {isHost && !isLocked && !isSecuring && !isFreePractice && (
             canChangeStake ? (
               <button
                 type="button"
                 onClick={onChangeStake}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/70 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 border border-amber-400/40 rounded-lg px-2.5 py-1 transition cursor-pointer active:scale-95 shadow-xs"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 bg-amber-200/80 dark:bg-amber-900/40 hover:bg-amber-300/80 dark:hover:bg-amber-900/60 border border-amber-400/50 rounded-lg px-2.5 py-1 transition cursor-pointer active:scale-95 shadow-xs"
                 title="Change table entry stake"
               >
-                <span>✏️ Change Bet</span>
+                <span>✏️ Change</span>
               </button>
             ) : (
               <span
@@ -257,82 +294,48 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
                 title={stakeLockedReason ?? "Bet cannot be changed right now"}
               >
                 <Lock className="w-2.5 h-2.5" />
-                <span>Bet Locked</span>
+                <span>Locked</span>
               </span>
             )
           )}
+
+          {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
+            <button
+              type="button"
+              onClick={() => setShowDetails((prev) => !prev)}
+              disabled={preview.totalPot === null}
+              aria-label="Toggle prize schedule breakdown"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 bg-amber-100/70 dark:bg-amber-900/30 hover:bg-amber-200/70 dark:hover:bg-amber-900/50 border border-amber-300/50 dark:border-amber-700/40 rounded-lg px-2 py-1 transition active:scale-95 cursor-pointer min-h-[30px] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-expanded={showDetails}
+              aria-controls="prize-schedule-breakdown"
+              title="Toggle prize schedule breakdown"
+            >
+              <span>Payouts</span>
+              {showDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {isHost && !canChangeStake && stakeLockedReason && !isLocked && !isSecuring && !isFreePractice && (
-        <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium -mt-1.5 mb-2.5 px-1 flex items-center gap-1">
+        <p className="text-[10px] text-amber-800 dark:text-amber-300 font-medium mt-1 px-1 flex items-center gap-1">
           <span>🔒</span>
           <span>{stakeLockedReason}</span>
         </p>
       )}
 
-      {/* Main Prize Pool Number Plate */}
-      <div className="flex items-baseline justify-between p-3.5 rounded-2xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner mb-3">
-        <div className="flex items-center gap-2">
-          <AshthaKonaCoinIcon size={26} className="text-amber-500 drop-shadow-xs shrink-0" />
-          {isFreePractice ? (
-            <span className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">
-              Free (0 Coins)
-            </span>
-          ) : isUnavailable ? (
-            <span className="text-base sm:text-lg font-black text-ink-lo dark:text-text-lo tracking-tight uppercase">
-              Unavailable
-            </span>
-          ) : preview.totalPot !== null ? (
-            <motion.span
-              key={`pool-amt-${preview.totalPot}`}
-              initial={reduceMotion ? false : { scale: 0.85, opacity: 0.8 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 350, damping: 20 }}
-              className="text-2xl sm:text-3xl font-black text-ink-hi dark:text-text-hi tabular-nums tracking-tight"
-            >
-              {preview.totalPot}
-            </motion.span>
-          ) : (
-            <span
-              className="h-7 w-20 rounded-lg bg-[#EEDBCA]/60 dark:bg-slate-700/50 animate-pulse"
-              aria-hidden="true"
-            />
-          )}
-          {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
-            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Coins</span>
-          )}
-        </div>
-
-        {!isUnavailable && !isFreePractice && (
-          <button
-            type="button"
-            onClick={() => setShowDetails((prev) => !prev)}
-            disabled={preview.totalPot === null}
-            aria-label="Toggle prize schedule breakdown"
-            className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-300/50 dark:border-amber-700/40 rounded-xl px-2.5 py-1.5 transition active:scale-95 cursor-pointer min-h-[36px] disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-expanded={showDetails}
-            aria-controls="prize-schedule-breakdown"
-            title="Toggle prize schedule breakdown"
-          >
-            <span>Payouts</span>
-            {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-        )}
-      </div>
-
-      {/* Payout Schedule Breakdown Grid — only ever rendered from a real quote */}
+      {/* Payout Schedule Breakdown Grid — only expanded when toggled */}
       {!isUnavailable && !isFreePractice && preview.totalPot !== null && (
         <div
           id="prize-schedule-breakdown"
-          className={`grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs transition-all duration-200 ${
-            showDetails ? "block" : "hidden sm:grid"
+          className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs transition-all duration-200 mt-2 ${
+            showDetails ? "block" : "hidden"
           }`}
         >
           {/* 1st Place */}
           <div className="flex items-center justify-between p-2 rounded-xl bg-amber-500/10 border border-amber-500/25">
             <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center font-extrabold text-[10px]">
+              <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center font-extrabold text-[9px]">
                 1st
               </span>
               <span className="font-semibold text-ink-hi dark:text-text-hi">1st Place</span>
@@ -344,7 +347,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           {hasSecond && (
             <div className="flex items-center justify-between p-2 rounded-xl bg-slate-500/10 border border-slate-500/20">
               <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-slate-500/20 text-slate-700 dark:text-slate-300 flex items-center justify-center font-extrabold text-[10px]">
+                <span className="w-4 h-4 rounded-full bg-slate-500/20 text-slate-700 dark:text-slate-300 flex items-center justify-center font-extrabold text-[9px]">
                   2nd
                 </span>
                 <span className="font-medium text-ink-hi dark:text-text-hi">2nd Place</span>
@@ -357,7 +360,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           {hasThird && (
             <div className="flex items-center justify-between p-2 rounded-xl bg-orange-500/10 border border-orange-500/20">
               <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-orange-500/20 text-orange-700 dark:text-orange-300 flex items-center justify-center font-extrabold text-[10px]">
+                <span className="w-4 h-4 rounded-full bg-orange-500/20 text-orange-700 dark:text-orange-300 flex items-center justify-center font-extrabold text-[9px]">
                   3rd
                 </span>
                 <span className="font-medium text-ink-hi dark:text-text-hi">3rd Place</span>
@@ -369,7 +372,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
           {/* World Bank Reserve Cut */}
           <div className="flex items-center justify-between p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
             <div className="flex items-center gap-1.5">
-              <Landmark className="w-4 h-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+              <Landmark className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
               <span className="font-medium text-ink-hi dark:text-text-hi">Platform Reserve</span>
             </div>
             <CoinAmount amount={preview.worldBankCut ?? "0"} size="sm" ariaLabel={`Platform reserve cut: ${preview.worldBankCut} coins`} />
@@ -378,18 +381,18 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       )}
 
       {isUnavailable && (
-        <p className="text-[11px] text-ink-lo dark:text-text-lo">
+        <p className="text-[10px] text-ink-lo dark:text-text-lo mt-1">
           This table size doesn't have an approved prize schedule yet. Reduce the seat count to see live stakes.
         </p>
       )}
 
       {/* Footer Host Note */}
       {isHost && !isLocked && !isSecuring && (!isUnavailable || isFreePractice) && (preview.totalPot !== null || isFreePractice) && (
-        <div className="mt-3 pt-2.5 border-t border-[#EEDBCA]/60 dark:border-slate-800 flex items-center gap-1.5 text-[11px] text-[#8A6D4B] dark:text-slate-400">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+        <div className="mt-2 pt-1.5 border-t border-[#EEDBCA]/60 dark:border-slate-800 flex items-center gap-1 text-[10px] text-[#8A6D4B] dark:text-slate-400">
+          <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
           {isFreePractice ? (
             <span className="text-emerald-800 dark:text-emerald-300 font-semibold">
-              Playing with bots is free — no coins will be deducted from your wallet.
+              Playing with bots is free — no coins will be deducted.
             </span>
           ) : (
             <span>
