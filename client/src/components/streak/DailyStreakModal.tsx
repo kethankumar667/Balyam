@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStreakStore } from "../../store/streakStore";
 import { useViewport } from "../../lib/useViewport";
+import { useStreakAutoOpen } from "../../hooks/useStreakAutoOpen";
 import DailyStreakModalMobile from "./DailyStreakModalMobile";
 import DailyStreakModalDesktop from "./DailyStreakModalDesktop";
 import DailyStreakRewardScreen from "./DailyStreakRewardScreen";
@@ -10,8 +11,14 @@ import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 
 export function DailyStreakModal() {
+  // Wire auto-open and identity boundary orchestration
+  useStreakAutoOpen();
+
   const {
+    state,
     isOpen,
+    viewMode,
+    setViewMode,
     closeModal,
     showCelebration,
     latestClaimResult,
@@ -21,15 +28,13 @@ export function DailyStreakModal() {
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
 
-  // Two-Screen Model: Screen 1 (reward moment) by default, Screen 2 (30-day journey) on user demand
-  const [viewMode, setViewMode] = useState<"reward" | "journey">("reward");
-
-  // Reset to reward moment whenever modal is opened
+  // Play popup open audio only on open transition without forcing viewMode
+  const wasOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (isOpen) {
-      setViewMode("reward");
+    if (isOpen && !wasOpenRef.current) {
       AudioManager.play(AUDIO.UI_POPUP_OPEN);
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen]);
 
   const handleClose = () => {
@@ -37,14 +42,14 @@ export function DailyStreakModal() {
     closeModal();
   };
 
-  // Handle Escape key
+  // Handle Escape key with hierarchical dismissal
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (showCelebration) {
           clearCelebration();
-        } else if (viewMode === "journey") {
+        } else if (viewMode === "journey" && state?.isClaimableToday) {
           setViewMode("reward");
         } else {
           handleClose();
@@ -53,7 +58,7 @@ export function DailyStreakModal() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, showCelebration, clearCelebration, viewMode]);
+  }, [isOpen, showCelebration, clearCelebration, viewMode, state?.isClaimableToday]);
 
   return (
     <>

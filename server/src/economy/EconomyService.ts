@@ -1173,6 +1173,7 @@ export class EconomyService {
         adminPrincipalId: input.adminPrincipalId.trim(),
         reason: input.reason?.trim() || "Admin manual top-up",
         idempotencyKey: input.idempotencyKey.trim(),
+        entryType: input.entryType,
       }),
     );
     this.logOutcome("adminAdjustWallet", null, startedAt, outcome.applied);

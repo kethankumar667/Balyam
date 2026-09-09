@@ -54,6 +54,8 @@ function mapEntryToDeltaType(entryType: string): { type: CoinDeltaType; label: s
       return { type: "DEBIT", label: "Bot Entry" };
     case "ADMIN_ADJUSTMENT":
       return { type: "CREDIT", label: "Adjustment" };
+    case "DAILY_REWARD_CREDIT":
+      return { type: "CREDIT", label: "Daily Reward" };
     default:
       return { type: "CREDIT", label: entryType };
   }

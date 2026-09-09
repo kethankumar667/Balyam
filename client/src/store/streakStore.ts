@@ -11,6 +11,7 @@ import {
   type DailyStreakClaimResult,
 } from "@shared/streak-types";
 import { apiJson } from "../lib/playerIdentity";
+import { refreshCurrentWallet } from "../hooks/useEconomy";
 
 export function formatTimeRemaining(nextResetAt: number): string {
   const diffMs = Math.max(0, nextResetAt - Date.now());
@@ -26,31 +27,42 @@ export function formatTimeRemaining(nextResetAt: number): string {
   return `${hh}:${mm}:${ss}`;
 }
 
+export type StreakModalView = "reward" | "journey";
+
 export interface StreakStore {
   state: DailyStreakState | null;
   isOpen: boolean;
+  viewMode: StreakModalView;
   isLoading: boolean;
   isClaiming: boolean;
   latestClaimResult: DailyStreakClaimResult | null;
   showCelebration: boolean;
   timeUntilReset: string;
+  hasAutoOpenedInSession: boolean;
 
   fetchStreak: () => Promise<void>;
   claimToday: () => Promise<DailyStreakClaimResult | null>;
-  openModal: () => void;
+  openModal: (targetView?: StreakModalView) => void;
+  openClaimModal: () => void;
+  openExpeditionModal: () => void;
   closeModal: () => void;
+  setViewMode: (viewMode: StreakModalView) => void;
   clearCelebration: () => void;
   updateTimeRemaining: () => void;
+  setDismissed: () => void;
+  resetTransientState: () => void;
 }
 
 export const useStreakStore = create<StreakStore>((set, get) => ({
   state: null,
   isOpen: false,
+  viewMode: "reward",
   isLoading: false,
   isClaiming: false,
   latestClaimResult: null,
   showCelebration: false,
   timeUntilReset: "24:00:00",
+  hasAutoOpenedInSession: false,
 
   updateTimeRemaining: () => {
     const current = get().state;
@@ -93,8 +105,10 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
           state: result.updatedState,
           latestClaimResult: result,
           showCelebration: true,
+          hasAutoOpenedInSession: true,
           timeUntilReset: formatTimeRemaining(result.updatedState.nextResetAt),
         });
+        void refreshCurrentWallet();
         return result;
       }
 
@@ -112,16 +126,47 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
     }
   },
 
-  openModal: () => {
-    set({ isOpen: true });
+  openModal: (targetView?: StreakModalView) => {
+    const isClaimable = get().state?.isClaimableToday ?? false;
+    const resolvedView = targetView ?? (isClaimable ? "reward" : "journey");
+    set({ isOpen: true, viewMode: resolvedView });
     void get().fetchStreak();
   },
 
+  openClaimModal: () => {
+    get().openModal("reward");
+  },
+
+  openExpeditionModal: () => {
+    get().openModal("journey");
+  },
+
   closeModal: () => {
-    set({ isOpen: false });
+    set({ isOpen: false, hasAutoOpenedInSession: true });
+  },
+
+  setViewMode: (viewMode: StreakModalView) => {
+    set({ viewMode });
   },
 
   clearCelebration: () => {
     set({ showCelebration: false, latestClaimResult: null });
+  },
+
+  setDismissed: () => {
+    set({ hasAutoOpenedInSession: true });
+  },
+
+  resetTransientState: () => {
+    set({
+      state: null,
+      isOpen: false,
+      viewMode: "reward",
+      isLoading: false,
+      isClaiming: false,
+      latestClaimResult: null,
+      showCelebration: false,
+      hasAutoOpenedInSession: false,
+    });
   },
 }));

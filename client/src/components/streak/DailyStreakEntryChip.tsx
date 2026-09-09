@@ -9,7 +9,7 @@ import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 
 export function DailyStreakEntryChip() {
-  const { state, openModal, fetchStreak } = useStreakStore();
+  const { state, openClaimModal, openExpeditionModal, fetchStreak } = useStreakStore();
 
   useEffect(() => {
     void fetchStreak();
@@ -25,7 +25,11 @@ export function DailyStreakEntryChip() {
   const handleClick = () => {
     HapticsManager.trigger("subtle");
     AudioManager.play(AUDIO.UI_CLICK);
-    openModal();
+    if (state?.isClaimableToday) {
+      openClaimModal();
+    } else {
+      openExpeditionModal();
+    }
   };
 
   return (
