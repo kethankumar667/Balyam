@@ -16,8 +16,6 @@ export * from "./SettlementView";
 export * from "./VoucherRedemptionModal";
 export * from "./LobbyPrizePool";
 export * from "./UnsupportedSeatCountCard";
-export * from "./LobbyCoinFlight";
-export * from "./LobbyDebitAnimation";
 export * from "./fixtures";
 export * from "./motion";
 export * from "./pendingVoucher";

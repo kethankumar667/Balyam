@@ -13,8 +13,6 @@ import {
   isFullscreenSupported,
 } from "../lib/fullscreen";
 import { HapticsManager } from "../services/HapticsManager";
-import { AudioManager } from "../services/AudioManager";
-import { AUDIO } from "../constants/audio";
 import PlayerList from "../components/PlayerList";
 import SeatAvatar from "../components/profile/SeatAvatar";
 import Chat from "../components/Chat";
@@ -52,8 +50,6 @@ import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
-import { LobbyCoinFlight, type CoinParticle } from "../components/economy/LobbyCoinFlight";
-import { LobbyDebitAnimation, type DebitAnimationItem } from "../components/economy/LobbyDebitAnimation";
 import { useCheckoutQuote } from "../hooks/useEconomy";
 import type { MatchCheckoutQuote } from "../lib/economyApi";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
@@ -858,172 +854,39 @@ export default function Room() {
     }
   }, [roomState?.phase, matchStartCeremonyActive]);
 
-  // Phase 7F: Lobby coin particles and seat transition tracking
-  const [lobbyParticles, setLobbyParticles] = useState<CoinParticle[]>([]);
-  const prevPlayerIdsRef = useRef<Set<string>>(new Set());
+  /**
+   * REMOVED 2026-09-09 — same root cause as the debit animation removed
+   * just above: a player JOINING the lobby has moved no money either (they
+   * haven't even marked Ready yet, let alone triggered a commit), so
+   * flying a coin from their seat into the prize pool the instant they sit
+   * down was the identical false signal, just on an earlier trigger.
+   * `triggerCommitmentSequence` remains the one truthful place this exact
+   * visual belongs — fired for every seat at once, only once the server's
+   * own commit has actually succeeded.
+   */
 
-  useEffect(() => {
-    if (roomState?.phase !== "lobby") {
-      prevPlayerIdsRef.current = new Set(roomState?.players.map((p) => p.id) ?? []);
-      return;
-    }
-    const currentIds = new Set(roomState.players.map((p) => p.id));
-    const prevIds = prevPlayerIdsRef.current;
-
-    // Detect newly joined players / bots
-    const joinedPlayers = roomState.players.filter((p) => !prevIds.has(p.id));
-    if (joinedPlayers.length > 0 && prevIds.size > 0) {
-      const potElement = typeof document !== "undefined" ? document.getElementById("lobby-prize-pool-card") : null;
-      const potRect = potElement?.getBoundingClientRect();
-      const targetX = potRect ? potRect.left + potRect.width / 2 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
-      const targetY = potRect ? potRect.top + potRect.height / 2 : 120;
-
-      const newParticles: CoinParticle[] = joinedPlayers.slice(0, 4).map((p) => {
-        const seatEl = typeof document !== "undefined" ? document.getElementById(`seat-${p.id}`) : null;
-        const seatRect = seatEl?.getBoundingClientRect();
-        const startX = seatRect ? seatRect.left + 30 : (typeof window !== "undefined" ? window.innerWidth / 2 : 200);
-        const startY = seatRect ? seatRect.top + 30 : (typeof window !== "undefined" ? window.innerHeight / 2 : 200);
-
-        return {
-          id: `particle-${p.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          startX,
-          startY,
-          targetX,
-          targetY,
-          createdAt: Date.now(),
-        };
-      });
-
-      if (newParticles.length > 0) {
-        setLobbyParticles((prev) => [...prev.slice(-3), ...newParticles]);
-      }
-    }
-
-    prevPlayerIdsRef.current = currentIds;
-  }, [roomState?.players, roomState?.phase]);
-
-  const handleCompleteLobbyParticle = useCallback((id: string) => {
-    setLobbyParticles((prev) => prev.filter((p) => p.id !== id));
-  }, []);
-
-  // Coins debit animation items for player "I'm Ready" transitions
-  const [debitItems, setDebitItems] = useState<DebitAnimationItem[]>([]);
-  const prevReadyMapRef = useRef<Map<string, boolean>>(new Map());
-  const recentlyDebitedRef = useRef<Set<string>>(new Set());
-
-  const handleCompleteDebitItem = useCallback((id: string) => {
-    setDebitItems((prev) => prev.filter((item) => item.id !== id));
-  }, []);
-
-  const triggerDebitAnimationForPlayer = useCallback(
-    (pid: string, pname?: string) => {
-      if (typeof window === "undefined") return;
-
-      // Deduplicate rapid repeat triggers within 1.5s
-      if (recentlyDebitedRef.current.has(pid)) return;
-      recentlyDebitedRef.current.add(pid);
-      setTimeout(() => {
-        recentlyDebitedRef.current.delete(pid);
-      }, 1500);
-
-      // Play authentic coin debit audio & haptic bump
-      try {
-        AudioManager.getInstance().play(AUDIO.REWARD_COIN);
-        HapticsManager.getInstance().subtle();
-      } catch {
-        // audio/haptics not supported or muted
-      }
-
-      // Pot / Prize pool target coordinates
-      const potElement = document.getElementById("lobby-prize-pool-card");
-      const potRect = potElement?.getBoundingClientRect();
-      const targetX = potRect
-        ? potRect.left + potRect.width / 2
-        : window.innerWidth / 2;
-      const targetY = potRect ? potRect.top + potRect.height / 2 : 120;
-
-      // Source coordinates: find ready button or seat element
-      let startX = window.innerWidth / 2;
-      let startY = window.innerHeight / 2;
-
-      const isSelf = pid === playerId;
-      const mobileBtn = isSelf ? document.getElementById("lobby-ready-btn-mobile") : null;
-      const desktopBtn = isSelf ? document.getElementById("lobby-ready-btn-desktop") : null;
-      const seatEl = document.getElementById(`seat-${pid}`);
-
-      const sourceEl =
-        isSelf && mobileBtn && mobileBtn.offsetParent !== null
-          ? mobileBtn
-          : isSelf && desktopBtn && desktopBtn.offsetParent !== null
-          ? desktopBtn
-          : seatEl;
-
-      if (sourceEl) {
-        const rect = sourceEl.getBoundingClientRect();
-        startX = rect.left + rect.width / 2;
-        startY = rect.top + rect.height / 2;
-      } else {
-        startX = window.innerWidth / 2;
-        startY = isSelf ? window.innerHeight - 80 : 260;
-      }
-
-      const stakeAmount =
-        roomState?.entryStakeCoins && roomState.entryStakeCoins > 0
-          ? roomState.entryStakeCoins
-          : 100;
-
-      const newItem: DebitAnimationItem = {
-        id: `debit-${pid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        playerId: pid,
-        playerName: pname,
-        amount: stakeAmount,
-        startX,
-        startY,
-        targetX,
-        targetY,
-        createdAt: Date.now(),
-      };
-
-      setDebitItems((prev) => [...prev.slice(-3), newItem]);
-
-      // Trigger visual impact pulse on prize pool card
-      setTimeout(() => {
-        if (potElement) {
-          potElement.classList.add("ring-4", "ring-amber-400/50");
-          setTimeout(() => {
-            potElement.classList.remove("ring-4", "ring-amber-400/50");
-          }, 400);
-        }
-      }, 480);
-    },
-    [playerId, roomState?.entryStakeCoins]
-  );
-
-  // Track readiness changes in the room lobby for all players
-  useEffect(() => {
-    if (roomState?.phase !== "lobby") {
-      prevReadyMapRef.current = new Map(
-        roomState?.players.map((p) => [p.id, p.isReady]) ?? []
-      );
-      return;
-    }
-
-    const currentMap = new Map(roomState.players.map((p) => [p.id, p.isReady]));
-    const prevMap = prevReadyMapRef.current;
-
-    // Only inspect transitions once the initial state has hydrated
-    if (prevMap.size > 0) {
-      for (const player of roomState.players) {
-        const wasReady = prevMap.get(player.id) ?? false;
-        if (!wasReady && player.isReady) {
-          // Player just clicked "I'm Ready"!
-          triggerDebitAnimationForPlayer(player.id, player.name);
-        }
-      }
-    }
-
-    prevReadyMapRef.current = currentMap;
-  }, [roomState?.players, roomState?.phase, triggerDebitAnimationForPlayer]);
+  /**
+   * REMOVED 2026-09-09 — root-caused from a live report: clicking "I'm
+   * Ready" used to fire a full coin-flight debit animation (sound, haptic,
+   * a coin flying from the Ready button into the prize pool) implying
+   * money had just left the player's wallet. It hadn't — marking yourself
+   * ready is a pure lobby flag with no economy effect at all; the ACTUAL
+   * debit only happens once the host starts the match and
+   * `commitMatchEntry` succeeds, which can be seconds or minutes later, or
+   * never (toggling ready back off, or the match never starting, moves no
+   * money whatsoever). A player who checked their real balance right after
+   * seeing "their coins leave" would find it unchanged — exactly backwards
+   * from what a debit animation is supposed to confirm.
+   *
+   * The truthful version of this exact visual already exists and is kept:
+   * `triggerCommitmentSequence` (wired below, on the real lobby→playing
+   * transition) fires the same coin-departure-flight metaphor from the
+   * real wallet chip, built from `roomState` only once the server's own
+   * commit has actually succeeded — see its own comment: "never fired
+   * ahead of the server's own commit." This block was a second, earlier,
+   * unauthoritative copy of that ceremony; deleted rather than reworked,
+   * since the real one already covers the moment money truly moves.
+   */
 
   // Phase 7F: authoritative lobby checkout quote — the ONLY source for seat
   // cost and prize distribution shown pre-commit. Never computed locally;
@@ -1353,11 +1216,11 @@ export default function Room() {
 
   function toggleReady() {
     // No fullscreen on Ready — the trigger lives on the phase transition.
+    // No debit animation here either, for the same reason — see the doc
+    // comment where triggerDebitAnimationForPlayer used to live: marking
+    // ready moves no money, so nothing here should look like it did.
     const willBeReady = !selfPlayer?.isReady;
     getSocket().emit("room:setReady", willBeReady);
-    if (willBeReady && selfPlayer) {
-      triggerDebitAnimationForPlayer(selfPlayer.id, selfPlayer.name);
-    }
   }
 
   function startGame() {
@@ -2021,20 +1884,6 @@ export default function Room() {
       {/* Everyone Ready Banner in Lobby */}
       {showAllReadyBanner && (
         <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
-      )}
-
-      {/* Phase 7F: Lobby Coin Flight Particles & Debit Animation */}
-      {(roomState?.phase === "lobby" || isGameStartingCeremony) && (
-        <>
-          <LobbyCoinFlight
-            particles={lobbyParticles}
-            onCompleteParticle={handleCompleteLobbyParticle}
-          />
-          <LobbyDebitAnimation
-            items={debitItems}
-            onCompleteItem={handleCompleteDebitItem}
-          />
-        </>
       )}
 
       {/* Authoritative Economy Motion Orchestrator */}
