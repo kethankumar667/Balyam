@@ -8,6 +8,7 @@ import {
   enterFullscreen,
   exitFullscreen,
   isFullscreenActive,
+  isFullscreenSupported,
   onFullscreenChange,
 } from "../../lib/fullscreen";
 import { getSocket } from "../../lib/socket";
@@ -40,6 +41,8 @@ import {
   SpeakerMutedIcon,
   LeaveDoorIcon,
   GearIcon,
+  ExpandIcon,
+  CompressIcon,
 } from "./uno-icons";
 import { UnoDealOverlay } from "./uno-deal";
 import {
@@ -200,6 +203,18 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   useEffect(() => {
     return onFullscreenChange(() => setIsFs(isFullscreenActive()));
   }, []);
+  /**
+   * Room.tsx already tries to enter fullscreen automatically on the
+   * lobby→playing transition, but that attempt can silently fail on a real
+   * device: iOS Safari has no Fullscreen API at all (`isFullscreenSupported`
+   * returns false there), and even on Android a request fired from a
+   * `useEffect` reacting to a socket update — rather than the literal click
+   * that started it — can lose its "real user gesture" standing and get
+   * rejected. Root-caused 2026-09-09 from a live report that UNO wasn't
+   * going fullscreen on mobile, with no way to trigger it by hand. This
+   * button (wired below, next to mute/help) was already half-built — the
+   * state and handler existed but were never rendered anywhere.
+   */
   const toggleFullscreen = () => {
     if (isFullscreenActive()) exitFullscreen();
     else enterFullscreen();
@@ -357,6 +372,15 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
               >
                 <GearIcon size={15} />
               </StadiumIconButton>
+              {isFullscreenSupported() && (
+                <StadiumIconButton
+                  onClick={toggleFullscreen}
+                  ariaLabel={isFs ? "Exit fullscreen" : "Enter fullscreen"}
+                  title="Fullscreen"
+                >
+                  {isFs ? <CompressIcon size={15} /> : <ExpandIcon size={15} />}
+                </StadiumIconButton>
+              )}
               <ReactionButton dark />
             </div>
           </div>

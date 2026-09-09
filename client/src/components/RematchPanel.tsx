@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import type { Player } from "@shared/types";
+import { getGameLimits } from "@shared/catalog";
 import { HapticsManager } from "../services/HapticsManager";
 
 export interface RematchPanelProps {
@@ -20,6 +21,16 @@ export default function RematchPanel({
 
   const isHost = roomState?.hostId === selfId;
   const myResponse = selfId ? rematch.responses[selfId] : undefined;
+
+  // Root-caused 2026-09-09: A hosts a 1v1, B wins and leaves, and A — now
+  // alone — could still click Play Rematch, which the server would (before
+  // this fix) accept as trivially "everyone agreed" and try to start. The
+  // server now refuses this outright (see `requestRematch`'s own doc
+  // comment), but the button itself should never invite the click in the
+  // first place — same reasoning as every other "explain why, don't just
+  // gray it out" disabled control already in this app (LobbyPrizePool's
+  // UNAVAILABLE state, LobbyActionBar's disabled reason).
+  const notEnoughPlayers = !!roomState && players.length < getGameLimits(roomState.game).min;
 
   function requestRematch() {
     HapticsManager.getInstance().subtle();
@@ -123,6 +134,17 @@ export default function RematchPanel({
 
   // ─── Idle: host can kick off; non-host sees subtle waiting ───
   if (isHost) {
+    if (notEnoughPlayers) {
+      const min = roomState ? getGameLimits(roomState.game).min : 2;
+      return (
+        <div
+          role="status"
+          className={`rounded-xl border border-dashed border-[#D8C6A8] dark:border-slate-700 bg-[#F7F0E2] dark:bg-slate-800/40 px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[#8A6D4B] dark:text-slate-400 ${className}`}
+        >
+          Not enough players left for a rematch — need at least {min}.
+        </div>
+      );
+    }
     return (
       <button
         type="button"

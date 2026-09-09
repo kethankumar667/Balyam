@@ -1507,7 +1507,17 @@ export default function Room() {
     <AppLayout chrome={false} onSelectGame={() => navigate("/")}>
       <div
         className={
-          FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby"
+          // `!isLobbyLike`, not `phase !== "lobby"` — this used to disagree
+          // with the ternary just below that decides WHAT renders inside
+          // this wrapper (RoomHeader/lobby content vs. the live board),
+          // which is reused verbatim here. Root-caused 2026-09-09: for a
+          // FULL_BLEED game (UNO's own case in the live report), the
+          // post-match rematch-negotiation view (phase "finished", scorecard
+          // dismissed) was still getting the board's `overflow-hidden h-full
+          // p-0` treatment meant only for active gameplay — clipping the
+          // RoomHeader (and its Leave button) and the rematch/room-share
+          // content that ternary put inside it.
+          FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike
             ? "bhalyam-font bhalyam-paper h-full min-h-screen overflow-hidden p-0"
             : ludoInPlay
               ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
@@ -1517,14 +1527,14 @@ export default function Room() {
           backgroundColor: ludoInPlay ? "var(--ludo-screen-bg)" : undefined,
         }}
       >
-      {(roomState.phase === "lobby" || isGameStartingCeremony) && <FallingPetals />}
+      {(isLobbyLike || isGameStartingCeremony) && <FallingPetals />}
       <div
         className={
-          (FULL_BLEED_GAMES.has(roomState.game) && roomState.phase !== "lobby" && !isGameStartingCeremony
+          (FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike && !isGameStartingCeremony
             ? // No space-y here — the board fills the whole inner area
               // and any lastError banner overlays it via fixed positioning.
               "mx-auto h-full max-w-none"
-            : roomState.game === "ludo" && roomState.phase !== "lobby" && !isGameStartingCeremony
+            : roomState.game === "ludo" && !isLobbyLike && !isGameStartingCeremony
               ? // Ludo in play wants the full desktop width so the board can
                 // be large between its side rails (max-w-6xl squeezed it).
                 "mx-auto space-y-3 sm:space-y-4 max-w-[110rem]"
@@ -1532,10 +1542,10 @@ export default function Room() {
           // FallingPetals is a fixed, z-0 background layer during the lobby —
           // give the lobby content explicit stacking so it paints above the
           // petals instead of losing to CSS's positioned-over-static default.
-          (roomState.phase === "lobby" || isGameStartingCeremony ? " relative z-10" : "")
+          (isLobbyLike || isGameStartingCeremony ? " relative z-10" : "")
         }
       >
-        {roomState.phase === "lobby" || isGameStartingCeremony ? (
+        {isLobbyLike || isGameStartingCeremony ? (
           <RoomHeader
             roomState={roomState}
             isHost={selfIsHost}

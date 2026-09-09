@@ -5851,6 +5851,25 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Can only rematch after a game ends");
       return;
     }
+    // Root-caused 2026-09-09 from a live report: A hosts a 1v1, B wins and
+    // leaves, and A — now alone in the room — could still click Play Again.
+    // Nothing here ever checked the game's own minimum seat count for a
+    // rematch the way `requestGameStart` already does for a fresh match.
+    // Without this, `maybeSettleRematch` sees a 1-entry "everyone accepted"
+    // response map (there's no one else to wait on) and proceeds straight
+    // to `requestRematchStart`, which — for a real-money room — commits an
+    // entry debit for a match no engine can actually play. See the matching
+    // guard in `requestRematchStart` for the authoritative, unbypassable
+    // half of this fix; this one exists to fail fast with a clear reason
+    // instead of only after the rematch countdown runs out.
+    const { min } = getGameLimits(room.game);
+    if (room.players.size < min) {
+      this.io.sockets.sockets.get(socketId)?.emit(
+        "room:error",
+        `Need at least ${min} player${min > 1 ? "s" : ""} for a rematch`,
+      );
+      return;
+    }
     if (room.rematch.status === "pending" || room.rematch.status === "accepted") {
       // Already pending — re-broadcast so the host's UI catches up if needed.
       this.broadcastRematch(room);
@@ -5978,6 +5997,27 @@ export class RoomManager {
    */
   private async requestRematchStart(room: Room): Promise<void> {
     if (room.rematch.status !== "accepted") return;
+
+    // The authoritative half of the fix in `requestRematch` — this one
+    // cannot be bypassed by anything, including the case that check can't
+    // see: a non-host leaving DURING the accepted countdown. (A departing
+    // HOST already cancels the rematch outright via `leaveRoom`, but a
+    // non-host's departure while `status === "accepted"` was, by explicit
+    // prior design, allowed to let the start proceed with "current
+    // players" — which is exactly how a two-seat game could end up
+    // starting, or committing a real debit for, a single remaining player.)
+    // Placed before every branch below — free, bot-practice, and paid all
+    // funnel through `startRematch`, and none of them get to attempt one
+    // for an unplayable seat count.
+    const { min } = getGameLimits(room.game);
+    if (room.players.size < min) {
+      this.io.to(room.code).emit(
+        "room:error",
+        `Need at least ${min} player${min > 1 ? "s" : ""} for a rematch`,
+      );
+      this.cancelRematch(room, null);
+      return;
+    }
 
     if (!this.economyService) {
       this.startRematch(room);

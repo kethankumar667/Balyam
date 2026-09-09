@@ -560,19 +560,65 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // debited once, never refunded
       expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // 1000 - 100 commitment + 160 forfeit win
 
-      // A later rematch charges the NEW host (Bob), never Alice again — a
-      // reassigned host funds only a NEW match's entry going forward. Bob
-      // is alone in the room at this point (Alice was dropped, and
+      // Bob is alone in the room at this point (Alice was dropped, and
       // `addBot` refuses once `room.phase` is "finished" — bots can only
-      // be added in the lobby), so this rematch is necessarily solo — that
-      // doesn't weaken the claim: it's still a FRESH commitment, charged
-      // to the CURRENT host, independent of the original match.
-      rooms.requestRematch("s_b"); // sole human requester auto-accepts -> settles and arms REMATCH_COUNTDOWN_MS immediately
+      // be added in the lobby). Requesting a rematch for a 2-player game
+      // with no opponent left is refused outright — root-caused
+      // 2026-09-09 from a live report of exactly this: a solo player was
+      // able to click Play Again after their opponent left, which used to
+      // charge them for a "rematch" no engine could ever actually play.
+      // See `requestRematch`'s own min-seat-count guard.
+      rooms.requestRematch("s_b");
       await vi.advanceTimersByTimeAsync(3_000);
-      expect(commitSpy).toHaveBeenCalledTimes(2);
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("960"); // 1060 - 100 (1-seat solo commitment)
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched by the rematch
+      expect(commitSpy).toHaveBeenCalledTimes(1); // still just the original match — no solo commit
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // unchanged — never charged for a solo rematch
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched
     }, 30_000);
+
+    /**
+     * The exact live report, at the socket layer: "A and B play, B wins and
+     * leaves the room, A clicks Play Again — that shouldn't be allowed."
+     * Distinct from the test above: there A was the one dropped and Bob
+     * inherited an ALREADY-COMMITTED match; here the match has already
+     * SETTLED (nobody owes anything), and the host tries to open a BRAND
+     * NEW one with no opponent left. Both paths funnel through the same
+     * `requestRematch` guard, so both need their own pin.
+     */
+    it("live repro — B wins and leaves, A (host) cannot rematch alone: refused with a clear reason, no commit attempted", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      seedMember(repo, MEMBER_B, "1000");
+      const { io, socketEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+      const commitSpy = vi.spyOn(service, "commitMatchEntry");
+
+      const host = createRoomAs(rooms, "s_a", "A", "rps", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_b", "B", host.code, "member", MEMBER_B);
+      rooms.setReady("s_a", true);
+      rooms.setReady("s_b", true);
+      await rooms.requestGameStart("s_a");
+      expect(commitSpy).toHaveBeenCalledTimes(1);
+
+      // Simulate B winning outright and force the match to a finished state
+      // the same way other tests in this file do, then B leaves the room.
+      const room = peek(rooms, host.code);
+      room.phase = "finished";
+      await rooms.leaveRoom("s_b");
+      await drainRoomEconomy(rooms);
+
+      expect(room.players.size).toBe(1); // only A remains
+      expect(room.hostId).toBe(host.playerId); // A is still host — nobody to promote
+
+      // A clicks "Play Again" — must be refused before any commit.
+      rooms.requestRematch("s_a");
+      await drainRoomEconomy(rooms);
+
+      expect(commitSpy).toHaveBeenCalledTimes(1); // still just the original match
+      expect(room.rematch.status).toBe("idle"); // never entered "pending"
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched by the refused attempt
+      const errorToA = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
+      expect(errorToA?.data).toMatch(/at least 2 players/i);
+    });
   });
 
   describe("host succession — economic eligibility gate (guest/bot succession exploit fix)", () => {

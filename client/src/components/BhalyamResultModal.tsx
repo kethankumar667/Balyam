@@ -5,6 +5,7 @@ import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { findAvatar } from "../lib/avatars";
+import { getGameLimits } from "@shared/catalog";
 import CountUp from "./CountUp";
 import Modal from "./Modal";
 import { SettlementView } from "./economy/SettlementView";
@@ -70,6 +71,12 @@ export default function BhalyamResultModal({
   const winnerPrizes = winnerPrizesFor(settlement);
   const myRankIndex = rankedPlayers.findIndex((p) => p.id === selfId);
   const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
+
+  // Root-caused 2026-09-09: the fallback "Play Again" button below had no
+  // idea whether an opponent was even still in the room — see
+  // `RematchPanel.tsx`'s matching fix (the game-agnostic sibling of this
+  // modal) for the full report and the server-side guard this backs up.
+  const notEnoughPlayers = !!roomState && players.length < getGameLimits(roomState.game).min;
 
   function requestRematch() {
     getSocket().emit("rematch:request");
@@ -354,6 +361,13 @@ export default function BhalyamResultModal({
                 </div>
               </div>
             )
+          ) : notEnoughPlayers ? (
+            <div
+              role="status"
+              className="rounded-2xl border border-dashed border-[#DFCDB5] bg-[#F7F0E2] px-4 py-3 text-center text-sm font-semibold text-[#8A6D4B]"
+            >
+              Not enough players left for a rematch — need at least {getGameLimits(roomState!.game).min}.
+            </div>
           ) : (
             <button
               type="button"
