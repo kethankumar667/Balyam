@@ -265,8 +265,14 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+    // Ludo with a bot, so the table survives the host's departure. Since
+    // 2026-09-09 a departure that leaves a paying human behind SETTLES in
+    // their favour rather than forfeiting (see economyIntegration.test.ts
+    // Example 3), so a genuine forfeiture — which is what this test is
+    // actually about gating — now requires every human to be gone.
+    const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
     joinRoomAs(rooms, "s_b", "Casey", host.code, "guest", guestB);
+    rooms.addBot("s_a", "Botty");
     rooms.setReady("s_a", true);
     rooms.setReady("s_b", true);
     await rooms.requestGameStart("s_a");
@@ -275,11 +281,14 @@ describe("Phase 06.1B: Durability-Gated Terminal Intent Persistence", () => {
     const matchId = room.currentMatchId!;
     expect(room.phase).toBe("playing");
 
+    await rooms.leaveRoom("s_a"); // Casey + Botty play on; nothing terminal yet
+    expect(room.terminalStatus).toBe("IDLE");
+
     const gate = defer<void>();
     repo.gate = gate;
 
-    // Host departs active playing match with no eligible signed-in successor -> forfeiture
-    const leavePromise = rooms.leaveRoom("s_a");
+    // Last human departs an active playing match -> forfeiture
+    const leavePromise = rooms.leaveRoom("s_b");
     await new Promise((r) => setTimeout(r, 20));
 
     // Room MUST NOT be deleted while persistence is pending!

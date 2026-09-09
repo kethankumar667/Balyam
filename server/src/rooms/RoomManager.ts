@@ -480,6 +480,26 @@ export interface Room {
    */
   currentMatchId: string | null;
   /**
+   * Every seat that has LEFT since the current match was committed, keyed by
+   * player id — a snapshot of the Player as they were when they departed.
+   *
+   * The settlement roster has to add up to the seat count the match was
+   * actually committed for: `commitMatchEntry` charged N seats, so the
+   * ranked participant list handed to `settleMatchEconomy` must describe
+   * those same N. `finalizeMatch` used to rebuild that roster from
+   * `room.players` plus the ONE departing player it was handed, which is
+   * exactly right for a single departure and silently wrong for a second
+   * one — a 3-seat match that lost two players produced a 2-participant
+   * ranking, which the economy layer rejects as INVALID_RANKING_SHAPE.
+   * That failure is terminal ("operator review required"), so the pool was
+   * left stranded in COMMITTED with nobody paid and nothing refunded.
+   *
+   * Keeping every departure here means the roster is always complete, so
+   * the match either settles on a real ranking or cleanly refunds — it can
+   * never strand the money. Cleared whenever a new match commits.
+   */
+  departedThisMatch: Map<string, Player>;
+  /**
    * The most recently concluded match's id — see RoomPublicState.lastMatchId
    * for the full contract. Set (from `currentMatchId`) in the same
    * synchronous step that clears it, in `attemptSettlementPersistence`/
@@ -1483,6 +1503,7 @@ export class RoomManager {
       rematchStartTimer: null,
       processedActionIds: new Map(),
       currentMatchId: null,
+      departedThisMatch: new Map(),
       lastMatchId: null,
       committedCostPerSeat: null,
       committedTotalPot: null,
@@ -1724,6 +1745,7 @@ export class RoomManager {
     // itself is untouched, and this snapshot is how the settlement roster
     // still adds up to the committed seat count without them.
     const departingPlayer = room.players.get(playerId);
+    this.noteDepartureForSettlement(room, departingPlayer);
     // Captured before any mutation below — a departure from the LOBBY or
     // from a post-match rematch-negotiation window (`phase: "finished"`)
     // is ordinary roster churn and already visible from the participant
@@ -2823,6 +2845,9 @@ export class RoomManager {
       }
 
       room.currentMatchId = result.settlement.matchId;
+      // A new committed match starts with a clean departure ledger — the
+      // previous match's leavers are not part of THIS match's roster.
+      room.departedThisMatch.clear();
       room.lastMatchId = null;
       room.committedCostPerSeat = result.settlement.costPerSeat;
       room.committedTotalPot = result.settlement.totalCollected;
@@ -3232,7 +3257,19 @@ export class RoomManager {
     // Broadcast immediately so clients exit gameplay into finalization / scorecard
     this.broadcastRoomState(room);
 
-    const rosterForSettlement = departedPlayer ? new Map(room.players).set(departedPlayer.id, departedPlayer) : room.players;
+    // Every seat the committed match was charged for: whoever is still
+    // here, plus EVERY departure since the commit (not just the one that
+    // triggered this call — see `Room.departedThisMatch`). An incomplete
+    // roster produces a ranking whose length no longer matches the
+    // committed seat count, which the economy layer rejects outright and
+    // permanently, stranding the pool.
+    const rosterForSettlement = new Map(room.players);
+    for (const [id, p] of room.departedThisMatch) {
+      if (!rosterForSettlement.has(id)) rosterForSettlement.set(id, p);
+    }
+    if (departedPlayer && !rosterForSettlement.has(departedPlayer.id)) {
+      rosterForSettlement.set(departedPlayer.id, departedPlayer);
+    }
     const { isValidRanking, participants, reason } = extractRankedParticipants({
       game: room.game,
       players: rosterForSettlement,
@@ -3335,10 +3372,16 @@ export class RoomManager {
    *
    * For an ECONOMICALLY ACTIVE match, only an eligible signed-in human
    * (`isEligibleSignedInSuccessor`) may become host — a guest or bot must
-   * never inherit a match funded by the departed host's wallet. If no
-   * such candidate remains, this is player-fault abandonment and routes
-   * through `abandonRoom`, which forfeits the committed pool instead of
-   * continuing the match under an ineligible host.
+   * never inherit a match funded by the departed host's wallet. That rule
+   * is unchanged.
+   *
+   * What that rule does NOT decide is how an already-committed match
+   * SETTLES. If no eligible successor remains but a human still does, this
+   * no longer abandons (and forfeits) the pool — it returns and lets the
+   * caller finish the match through `finalizeMatch` like any other forfeit,
+   * so the remaining player is actually paid. See the long comment on that
+   * branch for the live bug this fixes. Only a room with no humans left at
+   * all still routes to `abandonRoom`.
    */
   private reassignHost(room: Room, departingPlayerId: string): Promise<void> | void {
     if (room.hostId !== departingPlayerId) return;
@@ -3358,14 +3401,62 @@ export class RoomManager {
         remainingSeats[0];
 
     if (!nextHost) {
-      // Economically active with no eligible signed-in successor is
-      // always player-fault abandonment, regardless of what non-eligible
-      // seats (guests, bots) remain — Examples 2/3/6. Pre-commitment,
-      // preserve the exact existing behavior: abandon only when literally
-      // no human (bot-only-blind `hasHumanPlayer`) seat remains at all.
-      if (economicallyActive || !this.hasHumanPlayer(room)) {
+      if (!economicallyActive) {
+        // Pre-commitment behaviour is deliberately untouched: abandon only
+        // when literally no human (bot-blind) seat remains at all.
+        if (!this.hasHumanPlayer(room)) {
+          return this.abandonRoom(room);
+        }
+        return;
+      }
+
+      // `remainingSeats`, not `hasHumanPlayer`: the seats that could
+      // actually survive this departure are the REMOTE humans, which is
+      // exactly what `remainingSeats` already filters for (`!isBot &&
+      // !isLocal`). `hasHumanPlayer` is bot-blind but NOT local-blind, and
+      // a pass-and-play seat was being played on the departing host's own
+      // device — it cannot be a real surviving winner, so a room left with
+      // nothing but local seats still forfeits rather than paying out to a
+      // phantom.
+      if (remainingSeats.length === 0) {
         return this.abandonRoom(room);
       }
+
+      // A human IS still here; they just aren't allowed to HOST a funded
+      // room (a guest, or a seat with no resolved identity). That stays
+      // true — nobody is promoted below, so a guest still can never inherit
+      // host, and `requestGameStart`'s own `checkHostEconomyEligibility`
+      // still refuses to let one fund a NEW paid match.
+      //
+      // What changed (2026-09-09): this case used to `abandonRoom` too,
+      // which FORFEITS the whole committed pool to the platform. Root-caused
+      // from a live report — a member hosted a paid match, a guest joined
+      // and was debited their own 100 coins from their own guest wallet
+      // (see `buildParticipantDebits`: every participant with a resolved
+      // identityId pays their own seat), the host then left mid-match, and
+      // the guest — the innocent remaining player, and the de-facto winner
+      // by forfeit — was given nothing while their OWN stake was
+      // confiscated along with the departed host's.
+      //
+      // The tell that this was a bug and not a policy: had the remaining
+      // player been a MEMBER, the identical departure would have promoted
+      // them, ended the match on `removePlayer`'s forfeit, and paid them
+      // normally through `finalizeMatch`. Same forfeit, same money, opposite
+      // outcome, decided purely by the survivor's account type.
+      //
+      // Two separate questions were conflated here: "who may operationally
+      // host a funded room going forward" (the real anti-exploit rule, kept)
+      // and "how does an already-committed match settle" (not a hosting
+      // question at all). Returning without abandoning hands the settlement
+      // back to the caller's normal path — every one of the three callers
+      // (`leaveRoom`, `forceQuitAutoPlayedSeat`, and the grace-expiry reap)
+      // removes the departed seat from the engine and calls `finalizeMatch`
+      // the moment `isOver()` goes true, so the pool settles through the
+      // exact same ranked-payout path as any other forfeit, and the guest's
+      // prize is escrowed as a redeemable voucher. If the match does NOT end
+      // on this departure (a larger table plays on), the pool stays
+      // committed and settles normally when the game actually finishes —
+      // money is never left stranded either way.
       return;
     }
 
@@ -3929,11 +4020,42 @@ export class RoomManager {
     this.transitionLifecycle(room, "ABANDONED", "All humans departed");
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
     metricsCollector.onRoomAbandoned(room.game);
+    this.announceAbandonment(room);
     this.transitionLifecycle(room, "CLOSED", "Room destroyed");
     serverLifecycleRegistry.cleanupRoom(room.code);
     metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
     room.terminalStatus = "COMPLETED";
+  }
+
+  /**
+   * Last word to anyone still attached to a room that is about to be
+   * deleted — seated players, and screens/spectators watching.
+   *
+   * Root-caused 2026-09-09 from a live report: the host left a paid match,
+   * and the remaining player's board just kept running as if the game were
+   * live. They only found out anything had happened by refreshing, which
+   * bounced them to the home page because the room was already gone.
+   *
+   * The cause was that `abandonRoom`'s SUCCESS path tore the room down in
+   * complete silence — `room.phase = "finished"` then straight to
+   * `this.rooms.delete(...)`, with no `room:state`, no `game:state`, and no
+   * message. (Its failure path did broadcast, which is what makes the
+   * omission on the success path so easy to miss.) The broadcasts have to
+   * happen HERE, before the delete, because once the room is out of
+   * `this.rooms` there is nothing left to broadcast from.
+   */
+  private announceAbandonment(room: Room): void {
+    this.systemMessage(
+      room,
+      "This match was closed because no eligible player remained at the table.",
+    );
+    // Both, deliberately: `room:state` carries the room's own
+    // finished/ABANDONED phase, while a game board reads its OWN terminal
+    // state off `game:state` — the exact split that let a departed 1v1
+    // forfeit leave the opponent's board running until a refresh.
+    this.broadcastGameState(room);
+    this.broadcastRoomState(room);
   }
 
   /**
@@ -3966,6 +4088,11 @@ export class RoomManager {
       this.transitionLifecycle(room, "ABANDONED", "All humans departed");
       serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_abandoned");
       metricsCollector.onRoomAbandoned(room.game);
+
+      // Tell anyone still attached BEFORE the room is deleted — see
+      // `announceAbandonment`. Only the failure path below used to
+      // broadcast; the success path tore the room down in silence.
+      this.announceAbandonment(room);
 
       // Now proceed to destructive teardown:
       this.transitionLifecycle(room, "CLOSED", "Room destroyed");
@@ -4203,6 +4330,23 @@ export class RoomManager {
   }
 
   /** True while at least one seated player is a real human (not a bot). */
+  /**
+   * Remember a seat that is leaving an economically-active match, so
+   * `finalizeMatch` can still describe the full committed roster — see
+   * `Room.departedThisMatch` for why an incomplete one strands the pool.
+   * A no-op when no match is committed (an ordinary lobby departure has
+   * nothing to settle).
+   */
+  private noteDepartureForSettlement(room: Room, player: Player | undefined): void {
+    if (!player || !room.currentMatchId) return;
+    // Snapshot, not the live object: the caller is about to delete this seat
+    // and its fields keep being read long after (identity, name, bot/guest
+    // flags) when the ranking is built.
+    if (!room.departedThisMatch.has(player.id)) {
+      room.departedThisMatch.set(player.id, { ...player });
+    }
+  }
+
   private hasHumanPlayer(room: Room): boolean {
     return [...room.players.values()].some((p) => !p.isBot);
   }
@@ -4612,6 +4756,7 @@ export class RoomManager {
       quittable.quitPlayer(playerId);
     } else {
       departedSnapshot = { ...player };
+      this.noteDepartureForSettlement(room, departedSnapshot);
       room.players.delete(playerId);
       if (!this.hasHumanPlayer(room)) {
         await this.abandonRoom(room);
@@ -5379,6 +5524,7 @@ export class RoomManager {
           // Captured before deletion — same reasoning as leaveRoom's own
           // departingPlayer snapshot, for the same economy settlement reason.
           const droppedPlayer = stillRoom.players.get(playerId);
+          this.noteDepartureForSettlement(stillRoom, droppedPlayer);
           // The seat is going away entirely, so everything tracking it goes too.
           this.forgetSeatTimers(stillRoom, playerId);
           stillRoom.players.delete(playerId);
@@ -5925,6 +6071,8 @@ export class RoomManager {
         return;
       }
       room.currentMatchId = result.settlement.matchId;
+      // Same clean slate as the first-start commit path above.
+      room.departedThisMatch.clear();
       // A fresh commit means any previous match's terminal id is now stale
       // — the results modal for THAT match should already be closed, and a
       // reconnect from here on should recover THIS match once it concludes,

@@ -352,7 +352,22 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
     });
 
-    it("multiplayer signed-in participants abandoning an active match forfeits the pool — never refunded (Example 3)", async () => {
+    /**
+     * Behaviour deliberately inverted 2026-09-09, on the user's explicit
+     * call, after a live report: this used to forfeit the ENTIRE pool to
+     * the platform, which confiscated the surviving GUEST's own stake too
+     * (`buildParticipantDebits` debits every participant with a resolved
+     * identityId, so Casey really paid 100 of her own coins here).
+     *
+     * The tell that it was a bug rather than a policy: swap Casey for a
+     * signed-in member and the identical departure promotes her, ends the
+     * match on `removePlayer`'s forfeit, and pays her normally. Same
+     * forfeit, same money, opposite outcome, decided only by the
+     * survivor's account type. The host-eligibility rule still stands —
+     * Casey does NOT inherit host below — it just no longer decides how an
+     * already-committed match settles. See `reassignHost`.
+     */
+    it("host abandons an active match with a guest still seated: the guest WINS by forfeit and is paid — the pool is not confiscated (Example 3)", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const guestB = "guest_ex3_b";
@@ -368,16 +383,26 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const matchId = peek(rooms, host.code).currentMatchId!;
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900");
 
-      rooms.leaveRoom("s_a"); // host leaves with no eligible signed-in successor -> abandonRoom -> forfeiture, not refund
+      rooms.leaveRoom("s_a"); // host walks out of a live 1v1 — Casey wins by forfeit
       await drainRoomEconomy(rooms);
 
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // NEVER refunded — player fault after commitment
+      // The abandoning host still loses their own stake — leaving mid-match
+      // is player fault and was never refundable.
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900");
+
       const settlement = await service.getSettlement(matchId);
-      expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("200");
+      expect(settlement?.status).toBe("SETTLED");
+      expect(settlement?.totalForfeited).toBe("0"); // nothing confiscated
       expect(settlement?.totalRefunded).toBe("0");
+      // 200 collected → 20% platform cut, 160 to the sole winner. Casey is a
+      // guest, so her prize is escrowed as a redeemable voucher rather than
+      // credited to a wallet she doesn't have.
+      expect(settlement?.totalWorldBankCut).toBe("40");
+      expect(settlement?.totalGuestEscrow).toBe("160");
+
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.abandonmentForfeitureRevenue).toBe("200"); // the FULL committed pool, to World Bank
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
+      expect(worldBank.guestEscrowLiability).toBe("160");
     });
 
     it("duplicate forfeiture attempt: a second abandonment of an already-forfeited match is a safe no-op", async () => {
@@ -387,28 +412,38 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       repo.testFixture.seedIdentity(guestB, "guest");
       const { io } = makeIo();
       const rooms = new RoomManager(io, service);
-      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
+      // Ludo with a bot, so the table survives the host's departure and a
+      // real forfeiture is still reachable: since 2026-09-09 a departure
+      // that leaves a REMOTE human behind settles instead of forfeiting
+      // (see Example 3), so the only way a pool is still confiscated is
+      // when every human walks out and nothing but a bot is left.
+      const host = createRoomAs(rooms, "s_a", "Alice", "ludo", "member", MEMBER_A);
       joinRoomAs(rooms, "s_b", "Casey", host.code, "guest", guestB);
+      rooms.addBot("s_a", "Botty");
       rooms.setReady("s_a", true);
       rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
       const room = peek(rooms, host.code);
       const matchId = room.currentMatchId!;
 
-      rooms.leaveRoom("s_a");
+      rooms.leaveRoom("s_a"); // Casey + Botty remain — match plays on, nothing settled yet
       await drainRoomEconomy(rooms);
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // never refunded
+      expect((await service.getSettlement(matchId))?.status).toBe("COMMITTED");
+
+      rooms.leaveRoom("s_b"); // last human gone, only a bot left → genuine forfeiture
+      await drainRoomEconomy(rooms);
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBankAfterFirst = await service.getWorldBankSnapshot();
-      expect(worldBankAfterFirst.abandonmentForfeitureRevenue).toBe("200");
+      expect(worldBankAfterFirst.abandonmentForfeitureRevenue).toBe("300");
 
       // Directly replay the same forfeiture the queue already issued — the
       // service/repository idempotency key (`match-forfeit:<matchId>`) makes
       // this safe regardless of what triggered it a second time.
       const replay = await service.forfeitMatchEntry(matchId, "duplicate attempt");
       expect(replay.applied).toBe(false);
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // unchanged
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // unchanged
       const worldBankAfterReplay = await service.getWorldBankSnapshot();
-      expect(worldBankAfterReplay.abandonmentForfeitureRevenue).toBe("200"); // unchanged — no double-credit
+      expect(worldBankAfterReplay.abandonmentForfeitureRevenue).toBe("300"); // unchanged — no double-credit
 
       // A refund attempt against the same, now-forfeited match must fail
       // loudly, never silently double-move the same pool.
@@ -575,7 +610,15 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.hostIdentityId).toBe(MEMBER_A); // economic ownership untouched by host migration
     });
 
-    it("active host leaves with only guests and a bot remaining: no guest inherits host, the match forfeits — not a refund (Example 2)", async () => {
+    /**
+     * Updated 2026-09-09 alongside Example 3. The rule this test exists to
+     * protect — a guest may never INHERIT HOST of a funded room — is
+     * unchanged and still asserted below. What changed is that failing to
+     * find an eligible host no longer confiscates the pool: two paying
+     * guests are still sitting at this table, so the match simply plays on
+     * (hostless) and settles normally when it ends.
+     */
+    it("active host leaves with only guests and a bot remaining: no guest inherits host, and the match plays on instead of being confiscated (Example 2)", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const guestC = "guest_example2_c";
@@ -602,23 +645,75 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.leaveRoom("s_a");
       await drainRoomEconomy(rooms);
 
-      expect(roomRef.currentMatchId).toBeNull();
-      // Guest cannot inherit an economically active match: hostId was never
-      // reassigned to Casey (it stays whatever it was at the moment of
-      // abandonment — abandonRoom tears the room down instead of promoting
-      // an ineligible seat).
+      // The match is NOT torn down — Casey and Deepa are still playing it.
+      expect(roomRef.currentMatchId).toBe(matchId);
+
+      // The rule this test guards, unchanged: a guest never inherits host of
+      // a funded room. Nobody was promoted, so the seat stays where it was.
       expect(roomRef.hostId).not.toBe(caseyJoin.ok ? caseyJoin.playerId : "unreachable");
       expect(roomRef.hostId).toBe(originalHostId);
 
+      // Nothing has moved economically yet — the pool is still committed and
+      // will settle through the normal ranked payout when the game ends.
       const settlement = await service.getSettlement(matchId);
-      expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("400"); // 4 seats @ 100 (3 humans + the bot, now correctly billed to the host)
+      expect(settlement?.status).toBe("COMMITTED");
+      expect(settlement?.totalForfeited).toBe("0"); // no longer confiscated
       expect(settlement?.totalRefunded).toBe("0");
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.abandonmentForfeitureRevenue).toBe("400");
-      expect(worldBank.guestEscrowLiability).toBe("0"); // no guest voucher ever created
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
       expect(worldBank.botPrizeRevenue).toBe("0"); // no bot winnings ever created
+    });
+
+    /**
+     * The exact live report, end to end: "I hosted a game on mobile, a
+     * guest joined from my laptop. I left from mobile but the guest could
+     * still see the game running. Coins were deducted from both, and the
+     * guest never got the winnings."
+     *
+     * All three halves of that are asserted here — the guest is PAID, the
+     * guest's client is TOLD the match ended (rather than being left
+     * rendering a live board until a refresh), and nothing is confiscated.
+     */
+    it("live repro — host abandons, guest is paid AND told: settlement lands and the departure reaches the guest's client", async () => {
+      const { repo, service } = freshEconomy();
+      seedMember(repo, MEMBER_A);
+      const guestB = "guest_live_repro";
+      repo.testFixture.seedIdentity(guestB, "guest");
+      const { io, roomEmits, socketEmits } = makeIo();
+      const rooms = new RoomManager(io, service);
+
+      const host = createRoomAs(rooms, "s_host", "Kethan", "handcricket", "member", MEMBER_A);
+      joinRoomAs(rooms, "s_guest", "Guest", host.code, "guest", guestB);
+      rooms.setReady("s_host", true);
+      rooms.setReady("s_guest", true);
+      await rooms.requestGameStart("s_host");
+      const matchId = peek(rooms, host.code).currentMatchId!;
+
+      await rooms.leaveRoom("s_host"); // host walks out mid-match
+      await drainRoomEconomy(rooms);
+
+      // 1. The guest is actually paid — 200 collected, 20% cut, 160 escrowed
+      //    as a redeemable voucher because a guest has no wallet to credit.
+      const settlement = await service.getSettlement(matchId);
+      expect(settlement?.status).toBe("SETTLED");
+      expect(settlement?.totalGuestEscrow).toBe("160");
+      expect(settlement?.totalForfeited).toBe("0");
+      expect((await service.getWorldBankSnapshot()).guestEscrowLiability).toBe("160");
+
+      // 2. The guest's client is told, over BOTH channels — `game:state`
+      //    carries the board's own terminal state (the half that used to be
+      //    missing, which is why the board kept running until a refresh) and
+      //    `room:state` carries the room's finished phase.
+      // `game:state` is delivered per-socket (each seat gets its own
+      // private view), so it lands in socketEmits rather than the
+      // room-wide bucket.
+      expect(socketEmits.some((e) => e.socketId === "s_guest" && e.event === "game:state")).toBe(true);
+      expect(roomEmits.some((e) => e.event === "room:state")).toBe(true);
+      const chat = roomEmits
+        .filter((e) => e.event === "chat:message")
+        .map((e) => (e.data as { text: string }).text);
+      expect(chat.some((t) => t.includes("left the match"))).toBe(true);
     });
 
     it("active host leaves with an away-but-eligible signed-in successor: still preferred over a connected guest (existing away-successor policy preserved)", async () => {
@@ -650,7 +745,13 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.hostIdentityId).toBe(MEMBER_A);
     });
 
-    it("disconnect-grace expiry with no eligible signed-in successor remaining forfeits — no refund, no guest voucher, no bot prize (Example 6)", async () => {
+    /**
+     * Updated 2026-09-09 alongside Example 3: a grace-expiry reap that
+     * leaves a paying guest still sitting at the table no longer
+     * confiscates the pool either. Basil keeps playing (against the bot)
+     * and the match settles normally when it actually ends.
+     */
+    it("disconnect-grace expiry with no eligible signed-in successor: the remaining guest keeps playing, pool stays committed (Example 6)", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const guestB = "guest_example6_b";
@@ -672,16 +773,30 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await drainRoomEconomy(rooms);
 
       const settlement = await service.getSettlement(matchId);
-      expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("300"); // 3 seats @ 100 (2 humans + the bot, now correctly billed to the host)
+      expect(settlement?.status).toBe("COMMITTED"); // still live — Basil is still at the table
+      expect(settlement?.totalForfeited).toBe("0"); // no longer confiscated out from under him
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4800"); // never refunded
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.abandonmentForfeitureRevenue).toBe("300");
-      expect(worldBank.guestEscrowLiability).toBe("0");
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
       expect(worldBank.botPrizeRevenue).toBe("0");
     });
 
-    it("chain: after a signed-in successor takes over, that successor later leaving with no further eligible successor forfeits too — the ORIGINAL economic owner stays the same throughout", async () => {
+    /**
+     * The multi-departure case, and the reason `Room.departedThisMatch`
+     * exists. Two of three players walk out of one committed match. The
+     * settlement roster must still describe all THREE seats the match was
+     * charged for — rebuilt from only the last departure it came to two,
+     * which the economy layer rejects as INVALID_RANKING_SHAPE, a terminal
+     * "operator review required" failure that left the pool stranded in
+     * COMMITTED with nobody paid and nothing returned.
+     *
+     * With the full roster there is no deterministic 3-seat Ludo finish
+     * order left to rank (the engine only still knows about Casey), so
+     * `extractRankedParticipants` correctly declines to invent one and the
+     * match REFUNDS. That is the honest outcome here: nobody is
+     * confiscated, nobody is stranded, every stake goes home.
+     */
+    it("chain: two departures from one committed match refund every stake — the pool is never stranded or confiscated, and the ORIGINAL economic owner stays the same throughout", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B, "1000");
@@ -704,15 +819,20 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(roomRef.hostId).toBe(bobJoin.ok ? bobJoin.playerId : null);
       expect(roomRef.currentMatchId).toBe(matchId); // still committed, continuing
 
-      rooms.leaveRoom("s_b"); // Bob (the new host) ALSO leaves -> only Casey (guest) remains -> forfeits
+      // Awaited (unlike the first departure, which completes synchronously):
+      // this one ends the match, so its `finalizeMatch` must be given the
+      // chance to enqueue the settlement before the queue is drained.
+      await rooms.leaveRoom("s_b"); // Bob (the new host) ALSO leaves -> Casey is the last one standing
       await drainRoomEconomy(rooms);
 
-      expect(roomRef.currentMatchId).toBeNull();
       const settlement = await service.getSettlement(matchId);
-      expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
+      expect(settlement?.status).toBe("REFUNDED"); // resolved, not stranded in COMMITTED
+      expect(settlement?.totalForfeited).toBe("0"); // and not confiscated either
       expect(settlement?.hostIdentityId).toBe(MEMBER_A); // ORIGINAL economic owner — never changes across handoffs
-      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100, never refunded
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("900"); // 1000 - 100 commitment, never refunded
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5000"); // stake returned
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("1000"); // stake returned
+      const worldBank = await service.getWorldBankSnapshot();
+      expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
     });
 
     it("a local pass-and-play seat cannot inherit an economically active match — forfeits rather than continuing under a phantom host", async () => {
@@ -1437,7 +1557,15 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.status).toBe("SETTLED");
     });
 
-    it("abandonment: the room object carries the forfeited match's terminal id up until the room is deleted (no live broadcast recipient exists by the time abandonment fires — see the fix's own report)", async () => {
+    /**
+     * The subject here is the terminal-id contract (`currentMatchId`
+     * cleared, `lastMatchId` set), which is identical on the settlement and
+     * abandonment paths. Only the OUTCOME changed 2026-09-09: a host
+     * walking out on a seated guest now settles in the guest's favour
+     * instead of forfeiting (see Example 3), so this exercises the same
+     * contract through the settlement path.
+     */
+    it("host departure: the room object carries the concluded match's terminal id after settlement", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const guestB = "guest_last_match_b";
@@ -1451,21 +1579,18 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       rooms.setReady("s_b", true);
       await rooms.requestGameStart("s_a");
 
-      // Captured by reference BEFORE the host leaves — abandonRoom
-      // deletes the room from RoomManager's own map, but does not destroy
-      // this object; its fields are still readable after deletion.
       const roomRef = peek(rooms, host.code);
       const committedMatchId = roomRef.currentMatchId!;
 
-      rooms.leaveRoom("s_a"); // host leaves with only guest remaining -> abandonRoom -> forfeiture
+      rooms.leaveRoom("s_a"); // host leaves; Casey wins the 1v1 by forfeit
       await drainRoomEconomy(rooms);
 
       expect(roomRef.currentMatchId).toBeNull();
       expect(roomRef.lastMatchId).toBe(committedMatchId);
 
       const settlement = await service.getSettlement(committedMatchId);
-      expect(settlement?.status).toBe("ABANDONMENT_FORFEITED");
-      expect(settlement?.totalForfeited).toBe("200");
+      expect(settlement?.status).toBe("SETTLED");
+      expect(settlement?.totalForfeited).toBe("0");
       expect(settlement?.totalRefunded).toBe("0");
     });
 
