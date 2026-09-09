@@ -13,6 +13,7 @@ import {
   Lock,
   Zap,
   Trophy,
+  Star,
 } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
@@ -23,49 +24,15 @@ import {
   STREAK_REWARDS_SCHEDULE,
   type StreakScheduledDay,
 } from "@shared/streak-types";
+import {
+  getRewardRarity,
+  getStreakRank,
+  MILESTONES_CATALOG,
+} from "./DailyStreakModalDesktop";
 
 interface DailyStreakModalMobileProps {
   onClose: () => void;
 }
-
-interface MilestoneMeta {
-  day: number;
-  title: string;
-  badge: string;
-  coins: number;
-  perk: string;
-}
-
-const MILESTONES: MilestoneMeta[] = [
-  {
-    day: 7,
-    title: "Bronze Chest",
-    badge: "Bronze Tier",
-    coins: 1000,
-    perk: "'Early Bird' Title",
-  },
-  {
-    day: 14,
-    title: "Silver Chest",
-    badge: "Silver Tier",
-    coins: 2500,
-    perk: "Exclusive Emojis",
-  },
-  {
-    day: 21,
-    title: "Gold Chest",
-    badge: "Gold Tier",
-    coins: 5000,
-    perk: "Solar Flare Frame",
-  },
-  {
-    day: 30,
-    title: "Diamond Crown",
-    badge: "Diamond Tier",
-    coins: 10000,
-    perk: "Champion + Shield",
-  },
-];
 
 export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps) {
   const { state, isClaiming, claimToday, timeUntilReset, updateTimeRemaining } =
@@ -103,10 +70,23 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
   const completedDays = isClaimable ? Math.max(0, todayDay - 1) : todayDay;
   const progressPercent = Math.min(100, Math.round((completedDays / 30) * 100));
 
-  // Next milestone
+  // Next milestone calculation with Near-Miss psychology
   const nextMilestone =
-    MILESTONES.find((m) => m.day > completedDays) ?? MILESTONES[3];
+    MILESTONES_CATALOG.find((m) => m.day > completedDays) ?? MILESTONES_CATALOG[3];
   const daysToNextMilestone = Math.max(0, nextMilestone.day - completedDays);
+  const percentCloser = Math.round(
+    ((completedDays) / (nextMilestone.day)) * 100
+  );
+
+  // Total rewards remaining
+  const totalCycleCoins = 35800;
+  const claimedCoins = schedule
+    .filter((s) => s.status === "CLAIMED")
+    .reduce((sum, s) => sum + s.coins, 0);
+  const remainingCoins = Math.max(0, totalCycleCoins - claimedCoins);
+
+  // Status rank & dynamic companion mascot
+  const streakRank = getStreakRank(currentStreak);
 
   // Determine which week the user is currently in (0..3)
   const currentWeekIndex = Math.min(Math.floor((todayDay - 1) / 7), 3);
@@ -145,7 +125,7 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
     return schedule.filter((s) => s.day >= start && s.day <= end);
   };
 
-  const weekMilestone = MILESTONES[selectedWeek];
+  const weekMilestone = MILESTONES_CATALOG[selectedWeek];
   const displayedDays = viewAll ? schedule : getWeekDays(selectedWeek);
 
   return (
@@ -175,30 +155,32 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
         <div className="w-12 h-1.5 rounded-full bg-white/50 hover:bg-white/70 transition-colors" />
       </div>
 
-      {/* 2. Header Bar — High Energy Hook */}
+      {/* 2. Header Bar — High Energy Hook with Rank Title & Mascot */}
       <div className="relative px-4 pt-1.5 pb-3 flex items-center justify-between bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 overflow-hidden">
         <div
-          className="absolute inset-0 opacity-30 pointer-events-none"
+          className="absolute inset-0 opacity-25 pointer-events-none"
           style={{
             backgroundImage:
               "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.4), transparent 35%)",
           }}
         />
         <div className="relative flex items-center gap-2.5">
+          {/* Dynamic Mascot */}
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/20 border-2 border-white/50 shadow-inner">
-            <Flame className="w-5 h-5 fill-white text-white" />
+            <span className="text-xl select-none">{streakRank.mascot.emoji}</span>
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-black text-white tracking-tight">
                 LOGIN STREAK CHALLENGE
               </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-black/25 text-amber-200 border border-amber-300/40 font-mono font-black">
-                🔥 {currentStreak} Days
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border flex items-center gap-1 ${streakRank.badgeClass}`}>
+                <span>{streakRank.icon}</span>
+                <span>{streakRank.title}</span>
               </span>
             </div>
             <p className="text-[11px] text-white/90 font-medium">
-              Claim daily rewards to unlock Grand Chests
+              🔥 {currentStreak} Days · Earn 35,800+ Coins across 30 Days
             </p>
           </div>
         </div>
@@ -218,27 +200,39 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
         </button>
       </div>
 
-      {/* 3. Cycle Journey Progress Bar */}
-      <div className="px-4 py-2 bg-[var(--chrome-control)] border-b border-[var(--chrome-hairline)]">
+      {/* 3. Cycle Summary & Near-Miss Bar */}
+      <div className="px-4 py-1.5 bg-[var(--chrome-control)] border-b border-[var(--chrome-hairline)] flex items-center justify-between text-[11px] font-bold text-[var(--chrome-ink-soft)]">
+        <span className="text-amber-800 dark:text-amber-300">
+          Remaining: <span className="font-mono font-black">{remainingCoins.toLocaleString()} Coins</span>
+        </span>
+        <span className="text-[var(--chrome-ink)]">
+          {daysToNextMilestone === 0
+            ? "Milestones Completed!"
+            : `Only ${daysToNextMilestone}d to ${nextMilestone.title} (${percentCloser}%)`}
+        </span>
+      </div>
+
+      {/* 4. Epic Milestone Progress Track */}
+      <div className="px-4 py-2 bg-[var(--chrome-panel)] border-b border-[var(--chrome-hairline)]">
         <div className="flex items-center justify-between text-[11px] font-bold text-[var(--chrome-ink-soft)] mb-1">
           <span className="flex items-center gap-1 text-[var(--chrome-ink)] font-black">
             <Trophy className="w-3.5 h-3.5 text-amber-500" />
             Day {completedDays} of 30 ({progressPercent}%)
           </span>
           <span className="text-amber-800 dark:text-amber-300 font-bold">
-            {nextMilestone.title} in {daysToNextMilestone}d
+            Next: {nextMilestone.title} ({daysToNextMilestone}d left)
           </span>
         </div>
 
-        <div className="relative w-full h-2 bg-[var(--chrome-panel)] rounded-full border border-[var(--chrome-border)] overflow-visible">
+        <div className="relative w-full h-2.5 bg-[var(--chrome-control)] rounded-full border border-[var(--chrome-border)] overflow-visible">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-emerald-500 shadow-sm"
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 shadow-sm"
           />
 
-          {MILESTONES.map((m) => {
+          {MILESTONES_CATALOG.map((m) => {
             const pinPercent = (m.day / 30) * 100;
             const isPassed = completedDays >= m.day;
             const isNext = nextMilestone.day === m.day && !isPassed;
@@ -250,18 +244,20 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                 style={{ left: `${pinPercent}%` }}
               >
                 <div
-                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                     isPassed
                       ? "bg-emerald-500 border-white text-white shadow-xs"
                       : isNext
-                      ? "bg-amber-500 border-white text-white scale-125 ring-1 ring-amber-400 animate-pulse"
+                      ? "bg-amber-500 border-white text-white scale-125 ring-2 ring-amber-400 animate-pulse"
                       : "bg-[var(--chrome-control)] border-[var(--chrome-border)]"
                   }`}
                 >
                   {isPassed ? (
-                    <Check className="w-2 h-2 stroke-[3]" />
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                  ) : m.day === 30 ? (
+                    <Crown className="w-2.5 h-2.5 text-amber-400" />
                   ) : (
-                    <div className="w-1 h-1 rounded-full bg-current" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-current" />
                   )}
                 </div>
               </div>
@@ -270,7 +266,7 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
         </div>
       </div>
 
-      {/* 4. Scrollable Body */}
+      {/* 5. Scrollable Body */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {/* DOMINANT HERO REWARD CARD */}
         {isClaimable ? (
@@ -320,11 +316,12 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
           </div>
         ) : (
           /* CLAIMED REWARD + MOTIVATION */
-          <div className="space-y-2.5">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-amber-500/10 to-emerald-500/20 border-2 border-emerald-500/40 text-[var(--chrome-ink)] shadow-xs">
+          <div className="space-y-2">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/20 border-2 border-emerald-500/40 text-[var(--chrome-ink)] shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 shrink-0">
+                <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 shrink-0">
                   <Check className="w-6 h-6 stroke-[3]" />
+                  <span className="absolute -inset-1 rounded-2xl border-2 border-emerald-400 animate-ping opacity-40" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -344,7 +341,32 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
           </div>
         )}
 
-        {/* 5. Split Teaser Strip: Tomorrow Preview & Next Chest */}
+        {/* D30 ULTIMATE REWARD HERO BEACON */}
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-cyan-500/15 via-sky-500/10 to-violet-600/20 border-2 border-cyan-400/50 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-white shadow-md shadow-amber-500/30 shrink-0">
+              <Crown className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-400/40">
+                  Legendary Finale
+                </span>
+                <span className="text-[10px] text-[var(--chrome-ink-soft)] font-bold">
+                  Day 30
+                </span>
+              </div>
+              <span className="text-xs font-black text-[var(--chrome-ink)] block mt-0.5">
+                +10,000 Coins + Monthly Champion Crown
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-black text-cyan-800 dark:text-cyan-300">
+            {Math.max(0, 30 - completedDays)}d away
+          </span>
+        </div>
+
+        {/* Split Teaser Strip: Tomorrow Preview & Next Chest */}
         <div className="grid grid-cols-2 gap-2">
           {/* Tomorrow Preview */}
           <div className="p-2.5 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex flex-col justify-between">
@@ -375,13 +397,13 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             <div className="text-xs font-black text-[var(--chrome-ink)] truncate">
               {nextMilestone.title}
             </div>
-            <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+            <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 mt-1">
               +{nextMilestone.coins.toLocaleString()} ({daysToNextMilestone}d left)
             </div>
           </div>
         </div>
 
-        {/* 6. Week Selector Tabs */}
+        {/* Week Selector Tabs */}
         <div className="pt-1 pb-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {["Week 1", "Week 2", "Week 3", "Week 4+"].map((label, idx) => {
             const isSelected = !viewAll && selectedWeek === idx;
@@ -420,7 +442,7 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
           </button>
         </div>
 
-        {/* 7. Milestone Highlight Banner (for active/selected week) */}
+        {/* Milestone Highlight Banner with "Contains" breakdown */}
         {!viewAll && weekMilestone && (
           <div className="p-2.5 rounded-2xl border-2 border-violet-400/50 bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-between text-xs text-white">
             <div className="flex items-center gap-2">
@@ -433,20 +455,20 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
               </div>
               <div>
                 <span className="text-[9px] font-black uppercase tracking-wider text-white/80 block">
-                  Week {selectedWeek + 1} Grand Chest
+                  Week {selectedWeek + 1} Chest: {weekMilestone.title}
                 </span>
-                <span className="font-black text-xs">
-                  Day {weekMilestone.day}: {weekMilestone.title}
+                <span className="font-bold text-[11px] text-amber-200">
+                  Contains: {weekMilestone.contains[1]}
                 </span>
               </div>
             </div>
             <span className="font-mono font-black text-xs text-amber-200">
-              +{weekMilestone.coins.toLocaleString()} Coins
+              +{weekMilestone.coins.toLocaleString()}
             </span>
           </div>
         )}
 
-        {/* 8. Day Grid — Nodes with EXPLICIT COINS (NO "?") */}
+        {/* Day Grid — Nodes with Rarity Colors & Explicit Coin Amounts */}
         <div
           className={`grid ${
             viewAll ? "grid-cols-5 gap-x-1.5 gap-y-3" : "grid-cols-4 sm:grid-cols-7 gap-x-2 gap-y-3"
@@ -459,8 +481,10 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             const isLocked = item.status === "LOCKED";
             const isCrown = item.day === 30;
 
+            const rarity = getRewardRarity(item.day, item.coins);
+
             let nodeStyle =
-              "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]";
+              `bg-[var(--chrome-control)] ${rarity.borderColor} text-[var(--chrome-ink-soft)]`;
             if (isClaimed) {
               nodeStyle =
                 "bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 text-white shadow-xs";
@@ -469,10 +493,10 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                 "bg-gradient-to-br from-amber-400 to-orange-500 border-amber-200 text-white shadow-sm scale-110";
             } else if (isCrown) {
               nodeStyle =
-                "bg-gradient-to-br from-cyan-400 to-violet-600 border-cyan-200 text-white shadow-xs";
+                `bg-gradient-to-br ${rarity.gradient} ${rarity.borderColor} text-white ${rarity.glowShadow} scale-105`;
             } else if (isMilestone) {
               nodeStyle =
-                "bg-gradient-to-br from-violet-400 to-violet-600 border-violet-200 text-white shadow-xs";
+                `bg-gradient-to-br ${rarity.gradient} ${rarity.borderColor} text-white ${rarity.glowShadow}`;
             }
 
             return (
@@ -508,16 +532,14 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                   )}
                 </span>
 
-                {/* REWARD AMOUNT — ALWAYS VISIBLE (NO MYSTERY ?) */}
+                {/* REWARD AMOUNT WITH RARITY TIER COLOR */}
                 <span
                   className={`text-[10px] font-black font-mono tracking-tight ${
                     isClaimed
                       ? "text-emerald-700 dark:text-emerald-400"
                       : isToday
                       ? "text-amber-800 dark:text-amber-300 font-bold"
-                      : isLocked
-                      ? "text-[var(--chrome-ink-soft)] opacity-85"
-                      : "text-[var(--chrome-ink)]"
+                      : rarity.textColor
                   }`}
                 >
                   +{item.coins >= 1000 ? `${item.coins / 1000}k` : item.coins}
@@ -533,11 +555,14 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             <Shield className="w-3.5 h-3.5 fill-sky-500/20" />
             <span>{shieldsRemaining} Streak Shield{shieldsRemaining !== 1 ? "s" : ""} Active</span>
           </div>
-          <span>Cycle {cycleCount + 1}</span>
+          <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+            Perfect Month: 35.8k Coins
+          </span>
         </div>
       </div>
 
-      {/* 9. Bottom Sticky Action Footer */}
+      {/* 6. Bottom Sticky Action Footer */}
       <div className="p-4 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
         {isClaimable ? (
           <motion.button
@@ -584,4 +609,5 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
 }
 
 export default DailyStreakModalMobile;
+
 
