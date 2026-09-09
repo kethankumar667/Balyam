@@ -11,29 +11,105 @@ import {
   Sparkles,
   Crown,
   Lock,
+  Zap,
+  Trophy,
 } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
+import {
+  STREAK_REWARDS_SCHEDULE,
+  type StreakScheduledDay,
+} from "@shared/streak-types";
 
 interface DailyStreakModalMobileProps {
   onClose: () => void;
 }
+
+interface MilestoneMeta {
+  day: number;
+  title: string;
+  badge: string;
+  coins: number;
+  perk: string;
+}
+
+const MILESTONES: MilestoneMeta[] = [
+  {
+    day: 7,
+    title: "Bronze Chest",
+    badge: "Bronze Tier",
+    coins: 1000,
+    perk: "'Early Bird' Title",
+  },
+  {
+    day: 14,
+    title: "Silver Chest",
+    badge: "Silver Tier",
+    coins: 2500,
+    perk: "Exclusive Emojis",
+  },
+  {
+    day: 21,
+    title: "Gold Chest",
+    badge: "Gold Tier",
+    coins: 5000,
+    perk: "Solar Flare Frame",
+  },
+  {
+    day: 30,
+    title: "Diamond Crown",
+    badge: "Diamond Tier",
+    coins: 10000,
+    perk: "Champion + Shield",
+  },
+];
 
 export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps) {
   const { state, isClaiming, claimToday, timeUntilReset, updateTimeRemaining } =
     useStreakStore();
 
   const currentStreak = state?.currentStreak ?? 0;
+  const cycleCount = state?.cycleCount ?? 0;
   const isClaimable = state?.isClaimableToday ?? false;
   const shieldsRemaining = state?.shieldsRemaining ?? 0;
   const activeDay = state?.activeDayInCycle ?? 1;
   const schedule = state?.schedule ?? [];
 
-  // Determine which week the user is currently in (1..4)
-  const currentWeekIndex = Math.min(Math.floor((activeDay - 1) / 7), 3);
+  // Today and Tomorrow indices & rewards
+  const todayDay = isClaimable ? activeDay : Math.min(activeDay, 30);
+  const todayReward =
+    schedule.find((s) => s.day === todayDay) ??
+    (STREAK_REWARDS_SCHEDULE[todayDay - 1] as StreakScheduledDay) ?? {
+      day: 1,
+      coins: 100,
+      description: "Day 1 Welcome Reward",
+      status: "CLAIMABLE",
+    };
+
+  const tomorrowDay = todayDay < 30 ? todayDay + 1 : 1;
+  const tomorrowReward =
+    schedule.find((s) => s.day === tomorrowDay) ??
+    (STREAK_REWARDS_SCHEDULE[tomorrowDay - 1] as StreakScheduledDay) ?? {
+      day: 2,
+      coins: 120,
+      description: "Day 2 Momentum Bonus",
+      status: "LOCKED",
+    };
+
+  // Progression calculation
+  const completedDays = isClaimable ? Math.max(0, todayDay - 1) : todayDay;
+  const progressPercent = Math.min(100, Math.round((completedDays / 30) * 100));
+
+  // Next milestone
+  const nextMilestone =
+    MILESTONES.find((m) => m.day > completedDays) ?? MILESTONES[3];
+  const daysToNextMilestone = Math.max(0, nextMilestone.day - completedDays);
+
+  // Determine which week the user is currently in (0..3)
+  const currentWeekIndex = Math.min(Math.floor((todayDay - 1) / 7), 3);
   const [selectedWeek, setSelectedWeek] = useState<number>(currentWeekIndex);
   const [viewAll, setViewAll] = useState<boolean>(false);
 
@@ -69,20 +145,14 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
     return schedule.filter((s) => s.day >= start && s.day <= end);
   };
 
-  const weekMilestones = [
-    { week: 0, day: 7, name: "Bronze Chest", icon: Gift },
-    { week: 1, day: 14, name: "Silver Chest", icon: Gift },
-    { week: 2, day: 21, name: "Gold Chest", icon: Gift },
-    { week: 3, day: 30, name: "Diamond Crown", icon: Crown },
-  ];
-
-  const currentMilestone = weekMilestones[selectedWeek];
-  const currentMilestoneDay = schedule.find((s) => s.day === currentMilestone?.day);
-  const currentMilestoneLocked = currentMilestoneDay?.status === "LOCKED";
+  const weekMilestone = MILESTONES[selectedWeek];
   const displayedDays = viewAll ? schedule : getWeekDays(selectedWeek);
 
   return (
     <motion.div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Daily Login Streak Challenge & Rewards"
       drag="y"
       dragConstraints={{ top: 0 }}
       dragElastic={{ top: 0, bottom: 0.6 }}
@@ -100,34 +170,34 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                  bg-[var(--chrome-panel)] border-t-2 border-[var(--chrome-border)]
                  shadow-[0_-12px_40px_rgba(0,0,0,0.3)] overflow-hidden pb-safe"
     >
-      {/* Top Tactile Grab Handle */}
-      <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500">
+      {/* 1. Top Tactile Grab Handle */}
+      <div className="flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600">
         <div className="w-12 h-1.5 rounded-full bg-white/50 hover:bg-white/70 transition-colors" />
       </div>
 
-      {/* Hero Header Bar — bold flame gradient */}
-      <div className="relative px-5 pt-2 pb-3 flex items-center justify-between bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 overflow-hidden">
+      {/* 2. Header Bar — High Energy Hook */}
+      <div className="relative px-4 pt-1.5 pb-3 flex items-center justify-between bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 overflow-hidden">
         <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.3), transparent 35%)",
+              "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.4), transparent 35%)",
           }}
         />
         <div className="relative flex items-center gap-2.5">
-          <div className="relative w-10 h-10 rounded-full flex items-center justify-center bg-white/25 border-2 border-white/50">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/20 border-2 border-white/50 shadow-inner">
             <Flame className="w-5 h-5 fill-white text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-white tracking-tight">
-                Daily Streak
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-black text-white tracking-tight">
+                LOGIN STREAK CHALLENGE
               </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/40 font-mono font-black">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-black/25 text-amber-200 border border-amber-300/40 font-mono font-black">
                 🔥 {currentStreak} Days
               </span>
             </div>
-            <p className="text-xs text-white/90 font-semibold">
+            <p className="text-[11px] text-white/90 font-medium">
               Claim daily rewards to unlock Grand Chests
             </p>
           </div>
@@ -148,97 +218,240 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
         </button>
       </div>
 
-      {/* Status Bar */}
-      <div className="px-5 py-2.5 bg-[var(--chrome-control)] flex items-center justify-between text-xs font-semibold">
-        {/* Next Reset Countdown */}
-        <div className="flex items-center gap-1.5 text-[var(--chrome-ink-soft)]">
-          <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <span>Reset in:</span>
-          <span className="font-mono font-bold text-[var(--chrome-ink)]">
-            {timeUntilReset}
+      {/* 3. Cycle Journey Progress Bar */}
+      <div className="px-4 py-2 bg-[var(--chrome-control)] border-b border-[var(--chrome-hairline)]">
+        <div className="flex items-center justify-between text-[11px] font-bold text-[var(--chrome-ink-soft)] mb-1">
+          <span className="flex items-center gap-1 text-[var(--chrome-ink)] font-black">
+            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            Day {completedDays} of 30 ({progressPercent}%)
+          </span>
+          <span className="text-amber-800 dark:text-amber-300 font-bold">
+            {nextMilestone.title} in {daysToNextMilestone}d
           </span>
         </div>
 
-        {/* Protection Shields */}
-        <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold">
-          <Shield className="w-4 h-4 fill-sky-500/20" />
-          <span>{shieldsRemaining} Shield{shieldsRemaining !== 1 ? "s" : ""}</span>
+        <div className="relative w-full h-2 bg-[var(--chrome-panel)] rounded-full border border-[var(--chrome-border)] overflow-visible">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-emerald-500 shadow-sm"
+          />
+
+          {MILESTONES.map((m) => {
+            const pinPercent = (m.day / 30) * 100;
+            const isPassed = completedDays >= m.day;
+            const isNext = nextMilestone.day === m.day && !isPassed;
+
+            return (
+              <div
+                key={m.day}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
+                style={{ left: `${pinPercent}%` }}
+              >
+                <div
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                    isPassed
+                      ? "bg-emerald-500 border-white text-white shadow-xs"
+                      : isNext
+                      ? "bg-amber-500 border-white text-white scale-125 ring-1 ring-amber-400 animate-pulse"
+                      : "bg-[var(--chrome-control)] border-[var(--chrome-border)]"
+                  }`}
+                >
+                  {isPassed ? (
+                    <Check className="w-2 h-2 stroke-[3]" />
+                  ) : (
+                    <div className="w-1 h-1 rounded-full bg-current" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Week Selector Tab Bar */}
-      <div className="px-4 pt-3 pb-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {["Week 1", "Week 2", "Week 3", "Week 4+"].map((label, idx) => {
-          const isSelected = !viewAll && selectedWeek === idx;
-          const isWeekActive = Math.min(Math.floor((activeDay - 1) / 7), 3) === idx;
+      {/* 4. Scrollable Body */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {/* DOMINANT HERO REWARD CARD */}
+        {isClaimable ? (
+          /* READY TO CLAIM HERO */
+          <div className="relative p-4.5 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white shadow-[0_8px_24px_-4px_rgba(245,158,11,0.5)] overflow-hidden border-2 border-amber-300/40 text-center">
+            <div
+              className="absolute inset-0 opacity-25 pointer-events-none"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle at 75% 25%, rgba(255,255,255,0.4), transparent 45%)",
+              }}
+            />
 
-          return (
-            <button
-              type="button"
-              key={label}
-              onClick={() => handleTabChange(idx)}
-              className={`relative flex-1 min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none text-center border-2
-                         focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                           isSelected
-                             ? "bg-gradient-to-r from-amber-500 to-orange-500 border-amber-500 text-white shadow-md shadow-amber-500/25"
-                             : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)]"
-                         }`}
-            >
-              <span>{label}</span>
-              {isWeekActive && !isSelected && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <div className="relative flex items-center justify-between mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white border border-white/40 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-yellow-200" />
+                Today's Reward · Day {activeDay}
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/25 text-amber-200">
+                Ready to Claim
+              </span>
+            </div>
+
+            <div className="relative my-1 flex flex-col items-center">
+              <motion.div
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                className="w-12 h-12 rounded-2xl bg-white/20 border-2 border-white/60 flex items-center justify-center shadow-md mb-1.5"
+              >
+                <Coins className="w-7 h-7 text-amber-200 fill-amber-300" />
+              </motion.div>
+
+              <span className="text-3xl font-black font-mono tracking-tight drop-shadow-md">
+                +{todayReward.coins.toLocaleString()}
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-100 mt-0.5">
+                Coins Ready To Claim
+              </span>
+
+              {todayReward.specialRewardTitle && (
+                <div className="mt-2 px-2.5 py-1 rounded-xl bg-black/20 border border-white/30 text-[11px] font-bold flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>Includes: {todayReward.specialRewardTitle}</span>
+                </div>
               )}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={handleToggleViewAll}
-          className={`min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none border-2
-                     focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                       viewAll
-                         ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-600/25"
-                         : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)]"
-                     }`}
-        >
-          All 30
-        </button>
-      </div>
+            </div>
+          </div>
+        ) : (
+          /* CLAIMED REWARD + MOTIVATION */
+          <div className="space-y-2.5">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-amber-500/10 to-emerald-500/20 border-2 border-emerald-500/40 text-[var(--chrome-ink)] shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 shrink-0">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                      +{todayReward.coins.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      COINS CLAIMED TODAY ✓
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--chrome-ink-soft)] font-medium">
+                    Day {activeDay} secured! Your streak is burning hot.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Milestone Peek Banner (for selected week) — amount hidden until reached */}
-      {!viewAll && currentMilestone && (
-        <div className="px-4 pt-2">
-          <div className="p-3 rounded-2xl border-2 border-violet-400 dark:border-violet-500/50 bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-between text-xs text-white">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-white/20 border border-white/30">
-                <currentMilestone.icon className="w-4 h-4" />
+        {/* 5. Split Teaser Strip: Tomorrow Preview & Next Chest */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Tomorrow Preview */}
+          <div className="p-2.5 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase text-[var(--chrome-ink-soft)] mb-1">
+              <span className="flex items-center gap-1 text-amber-800 dark:text-amber-300">
+                <Zap className="w-3 h-3 text-amber-500" />
+                Tomorrow (D{tomorrowDay})
+              </span>
+            </div>
+            <div className="text-sm font-black font-mono text-[var(--chrome-ink)] flex items-center gap-1">
+              <Coins className="w-4 h-4 text-amber-500 fill-amber-500" />
+              +{tomorrowReward.coins.toLocaleString()} Coins
+            </div>
+            <div className="text-[10px] text-[var(--chrome-ink-soft)] flex items-center gap-1 mt-1">
+              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              In {timeUntilReset}
+            </div>
+          </div>
+
+          {/* Next Grand Chest */}
+          <div className="p-2.5 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase text-[var(--chrome-ink-soft)] mb-1">
+              <span className="flex items-center gap-1 text-violet-700 dark:text-violet-300">
+                <Gift className="w-3 h-3 text-violet-500" />
+                Next Chest
+              </span>
+            </div>
+            <div className="text-xs font-black text-[var(--chrome-ink)] truncate">
+              {nextMilestone.title}
+            </div>
+            <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+              +{nextMilestone.coins.toLocaleString()} ({daysToNextMilestone}d left)
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Week Selector Tabs */}
+        <div className="pt-1 pb-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {["Week 1", "Week 2", "Week 3", "Week 4+"].map((label, idx) => {
+            const isSelected = !viewAll && selectedWeek === idx;
+            const isWeekActive = Math.min(Math.floor((todayDay - 1) / 7), 3) === idx;
+
+            return (
+              <button
+                type="button"
+                key={label}
+                onClick={() => handleTabChange(idx)}
+                className={`relative flex-1 min-h-[44px] px-2 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none text-center border-2
+                           focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                             isSelected
+                               ? "bg-gradient-to-r from-amber-500 to-orange-500 border-amber-500 text-white shadow-sm"
+                               : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]"
+                           }`}
+              >
+                <span>{label}</span>
+                {isWeekActive && !isSelected && (
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                )}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={handleToggleViewAll}
+            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none border-2
+                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                         viewAll
+                           ? "bg-violet-600 border-violet-600 text-white shadow-sm"
+                           : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]"
+                       }`}
+          >
+            All 30
+          </button>
+        </div>
+
+        {/* 7. Milestone Highlight Banner (for active/selected week) */}
+        {!viewAll && weekMilestone && (
+          <div className="p-2.5 rounded-2xl border-2 border-violet-400/50 bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-between text-xs text-white">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-white/20 border border-white/30">
+                {weekMilestone.day === 30 ? (
+                  <Crown className="w-4 h-4 text-cyan-200" />
+                ) : (
+                  <Gift className="w-4 h-4 text-yellow-200" />
+                )}
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-white/75 block">
-                  Week {selectedWeek + 1} Grand Reward
+                <span className="text-[9px] font-black uppercase tracking-wider text-white/80 block">
+                  Week {selectedWeek + 1} Grand Chest
                 </span>
-                <span className="font-black text-sm">
-                  Day {currentMilestone.day}: {currentMilestoneLocked ? "???" : currentMilestone.name}
+                <span className="font-black text-xs">
+                  Day {weekMilestone.day}: {weekMilestone.title}
                 </span>
               </div>
             </div>
-            {currentMilestoneLocked ? (
-              <span className="flex items-center gap-1 font-mono font-black text-sm text-white/85">
-                <Lock className="w-3.5 h-3.5" />
-                Locked
-              </span>
-            ) : (
-              <span className="font-mono font-black text-sm">
-                +{schedule[currentMilestone.day - 1]?.coins.toLocaleString()} Coins
-              </span>
-            )}
+            <span className="font-mono font-black text-xs text-amber-200">
+              +{weekMilestone.coins.toLocaleString()} Coins
+            </span>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Scrollable Day Grid — circular gamified nodes */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        <div className={`grid ${viewAll ? "grid-cols-5 sm:grid-cols-6 gap-x-2 gap-y-4" : "grid-cols-4 sm:grid-cols-7 gap-x-2 gap-y-4"}`}>
+        {/* 8. Day Grid — Nodes with EXPLICIT COINS (NO "?") */}
+        <div
+          className={`grid ${
+            viewAll ? "grid-cols-5 gap-x-1.5 gap-y-3" : "grid-cols-4 sm:grid-cols-7 gap-x-2 gap-y-3"
+          }`}
+        >
           {displayedDays.map((item) => {
             const isToday = isClaimable && item.day === activeDay;
             const isMilestone = Boolean(item.milestoneChest);
@@ -247,15 +460,19 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             const isCrown = item.day === 30;
 
             let nodeStyle =
-              "bg-[var(--chrome-panel)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]";
+              "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]";
             if (isClaimed) {
-              nodeStyle = "bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 text-white shadow-[0_4px_12px_rgba(16,185,129,0.4)]";
+              nodeStyle =
+                "bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 text-white shadow-xs";
             } else if (isToday) {
-              nodeStyle = "bg-gradient-to-br from-amber-400 to-orange-500 border-amber-200 text-white shadow-[0_4px_16px_rgba(245,158,11,0.55)] scale-110";
+              nodeStyle =
+                "bg-gradient-to-br from-amber-400 to-orange-500 border-amber-200 text-white shadow-sm scale-110";
             } else if (isCrown) {
-              nodeStyle = "bg-gradient-to-br from-cyan-400 to-violet-600 border-cyan-200 text-white shadow-[0_4px_14px_rgba(56,189,248,0.4)]";
+              nodeStyle =
+                "bg-gradient-to-br from-cyan-400 to-violet-600 border-cyan-200 text-white shadow-xs";
             } else if (isMilestone) {
-              nodeStyle = "bg-gradient-to-br from-violet-400 to-violet-600 border-violet-200 text-white shadow-[0_4px_14px_rgba(139,92,246,0.4)]";
+              nodeStyle =
+                "bg-gradient-to-br from-violet-400 to-violet-600 border-violet-200 text-white shadow-xs";
             }
 
             return (
@@ -263,12 +480,16 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                 key={item.day}
                 className="relative flex flex-col items-center gap-1 select-none"
               >
-                <span className={`text-[9px] font-black uppercase tracking-wider ${isToday ? "text-amber-800 dark:text-amber-300" : "text-[var(--chrome-ink-soft)]"}`}>
+                <span
+                  className={`text-[9px] font-black uppercase tracking-wider ${
+                    isToday ? "text-amber-800 dark:text-amber-300" : "text-[var(--chrome-ink-soft)]"
+                  }`}
+                >
                   D{item.day}
                 </span>
 
                 <span
-                  className={`relative w-11 h-11 rounded-full border-2 flex items-center justify-center transition-transform ${nodeStyle}`}
+                  className={`relative w-11 h-11 rounded-2xl border-2 flex items-center justify-center transition-transform ${nodeStyle}`}
                 >
                   {isClaimed ? (
                     <Check className="w-5 h-5 stroke-[3]" />
@@ -277,26 +498,46 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
                   ) : isMilestone ? (
                     <Gift className="w-5 h-5" />
                   ) : isLocked ? (
-                    <Lock className="w-4 h-4 opacity-70" />
+                    <Lock className="w-3.5 h-3.5 opacity-60" />
                   ) : (
                     <Coins className="w-4 h-4" />
                   )}
 
                   {isToday && (
-                    <span className="absolute -inset-1 rounded-full border-2 border-amber-400 animate-ping opacity-60" />
+                    <span className="absolute -inset-1 rounded-2xl border-2 border-amber-400 animate-ping opacity-60" />
                   )}
                 </span>
 
-                <span className="text-[10px] font-black font-mono tracking-tight text-[var(--chrome-ink)]">
-                  {isLocked ? "?" : item.coins >= 1000 ? `${item.coins / 1000}k` : item.coins}
+                {/* REWARD AMOUNT — ALWAYS VISIBLE (NO MYSTERY ?) */}
+                <span
+                  className={`text-[10px] font-black font-mono tracking-tight ${
+                    isClaimed
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : isToday
+                      ? "text-amber-800 dark:text-amber-300 font-bold"
+                      : isLocked
+                      ? "text-[var(--chrome-ink-soft)] opacity-85"
+                      : "text-[var(--chrome-ink)]"
+                  }`}
+                >
+                  +{item.coins >= 1000 ? `${item.coins / 1000}k` : item.coins}
                 </span>
               </div>
             );
           })}
         </div>
+
+        {/* Protection Shield Indicator */}
+        <div className="pt-2 flex items-center justify-between text-[11px] text-[var(--chrome-ink-soft)]">
+          <div className="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-bold">
+            <Shield className="w-3.5 h-3.5 fill-sky-500/20" />
+            <span>{shieldsRemaining} Streak Shield{shieldsRemaining !== 1 ? "s" : ""} Active</span>
+          </div>
+          <span>Cycle {cycleCount + 1}</span>
+        </div>
       </div>
 
-      {/* Bottom Sticky Action Footer (Thumb reachable, >= 44x44px) */}
+      {/* 9. Bottom Sticky Action Footer */}
       <div className="p-4 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
         {isClaimable ? (
           <motion.button
@@ -320,15 +561,21 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
               </span>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 text-yellow-200" />
-                <span>Claim Day {activeDay} Reward (+{schedule[activeDay - 1]?.coins ?? 100} Coins)</span>
+                <Sparkles className="w-5 h-5 text-yellow-200 animate-spin" />
+                <span>CLAIM +{todayReward.coins.toLocaleString()} COINS NOW</span>
               </>
             )}
           </motion.button>
         ) : (
-          <div className="min-h-[52px] py-3 px-4 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] text-center text-xs font-bold text-[var(--chrome-ink-soft)] flex items-center justify-center gap-2">
-            <Check className="w-4 h-4 stroke-[3] text-emerald-600 dark:text-emerald-400" />
-            <span>Today's reward claimed! Next unlock in {timeUntilReset}</span>
+          <div className="min-h-[52px] py-2.5 px-4 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] text-center flex flex-col items-center justify-center">
+            <span className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-500" />
+              COME BACK TOMORROW FOR +{tomorrowReward.coins.toLocaleString()} COINS
+            </span>
+            <span className="text-[10px] text-[var(--chrome-ink-soft)] font-mono font-medium mt-0.5 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              Unlocks at 00:00 UTC (in {timeUntilReset})
+            </span>
           </div>
         )}
       </div>
@@ -337,3 +584,4 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
 }
 
 export default DailyStreakModalMobile;
+
