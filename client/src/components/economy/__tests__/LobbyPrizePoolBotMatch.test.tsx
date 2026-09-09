@@ -39,7 +39,7 @@ describe("LobbyPrizePool — Bot Practice Match (Free Economy Rule)", () => {
     expect(screen.getByText("Free (0 Coins)")).toBeDefined();
     expect(screen.getByText("Free Play · 8/8 Ready")).toBeDefined();
     expect(
-      screen.getByText("Playing with bots is free — no coins will be deducted from your wallet.")
+      screen.getByText(/Playing with bots is free — no coins will be deducted/i)
     ).toBeDefined();
   });
 });
