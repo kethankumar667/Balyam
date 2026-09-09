@@ -102,7 +102,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     });
   });
 
-  it("FINALIZING: displays polite finalization message and does not falsely claim reward complete", () => {
+  it("FINALIZING: displays polite finalization message and does not falsely claim reward complete", async () => {
     useRoomStore.setState({
       roomState: { ...baseRoomState, lifecycleState: "FINALIZING" },
       playerId: "p_host",
@@ -120,7 +120,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Scorecard modal is open initially
-    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(await screen.findByRole("dialog", {}, { timeout: 5000 })).toBeDefined();
     const continueBtn = screen.getByRole("button", { name: /Continue/i });
     fireEvent.click(continueBtn);
 
@@ -136,7 +136,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByText(/rewards awarded/i)).toBeNull();
   });
 
-  it("FINALIZATION_FAILED: shows retry sync button for host, hides it for non-host, and hides raw exceptions", () => {
+  it("FINALIZATION_FAILED: shows retry sync button for host, hides it for non-host, and hides raw exceptions", async () => {
     // 1. As Host (p_host)
     useRoomStore.setState({
       roomState: { ...baseRoomState, lifecycleState: "FINALIZATION_FAILED" },
@@ -155,7 +155,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Dismiss scorecard
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
 
     // Alert message is visible
     const alertMsg = screen.getByText(/Settlement synchronization is pending/i);
@@ -193,7 +193,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Dismiss scorecard
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
 
     // Non-host still sees honest explanation
     expect(screen.getByText(/Settlement synchronization is pending/i)).toBeDefined();
@@ -202,7 +202,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByRole("button", { name: /Retry Settlement Sync/i })).toBeNull();
   });
 
-  it("Continue Flow: dismisses scorecard, exposes table, does not re-open immediately, and COMPLETED clears failure state", () => {
+  it("Continue Flow: dismisses scorecard, exposes table, does not re-open immediately, and COMPLETED clears failure state", async () => {
     useRoomStore.setState({
       roomState: { ...baseRoomState, lifecycleState: "FINALIZATION_FAILED" },
       playerId: "p_host",
@@ -220,7 +220,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Modal is initially open
-    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(await screen.findByRole("dialog", {}, { timeout: 5000 })).toBeDefined();
 
     // Click Continue
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
@@ -229,7 +229,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByRole("dialog")).toBeNull();
 
     // Table view with rematch controls is reached and visible
-    expect(screen.getByRole("button", { name: /Play Again/i })).toBeDefined();
+    expect(await screen.findByRole("button", { name: /Play (Rematch|Again)/i }, { timeout: 5000 })).toBeDefined();
 
     // FINALIZATION_FAILED banner remains visible after dismissal
     expect(screen.getByText(/Settlement synchronization is pending/i)).toBeDefined();
@@ -258,7 +258,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByRole("button", { name: /Retry Settlement Sync/i })).toBeNull();
 
     // Play Again button remains available for rematch
-    expect(screen.getByRole("button", { name: /Play Again/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Play (Rematch|Again)/i })).toBeDefined();
   });
 
   /**
@@ -271,7 +271,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
    * same "is this functionally a lobby right now" condition Room.tsx
    * already used to decide whether to show this panel at all.
    */
-  it("Rematch-prep lobby (alone after opponent left): stake is NOT reported as locked by an active match", () => {
+  it("Rematch-prep lobby (alone after opponent left): stake is NOT reported as locked by an active match", async () => {
     useRoomStore.setState({
       roomState: {
         ...baseRoomState,
@@ -294,7 +294,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
       </AudioProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
 
     // The wrong, misleading tooltip must never appear here.
     expect(screen.queryByTitle(/Match is already active/i)).toBeNull();

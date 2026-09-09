@@ -88,7 +88,6 @@ export default defineConfig(({ mode, command }) => {
             // dependency's code somewhere once it isn't isolated.
             if (id.includes("@radix-ui")) return "vendor-radix";
             if (id.includes("@tanstack")) return "vendor-tanstack";
-            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
             if (id.includes("@dnd-kit")) return "vendor-dnd";
             if (
               id.includes("react-hook-form") ||

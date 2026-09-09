@@ -971,7 +971,7 @@ export default function SignUpPage() {
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-bold text-[#881337] hover:underline inline-flex items-center ml-0.5"
+                className="font-bold text-[#881337] hover:underline inline-flex items-center ml-0.5 min-h-[44px] py-2 px-1"
               >
                 Sign In
               </Link>

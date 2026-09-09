@@ -2,15 +2,20 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { AudioProvider } from "../../../context/AudioContext";
 import MemberLockedGate from "../MemberLockedGate";
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <AudioProvider>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </AudioProvider>
+  );
+}
 
 describe("MemberLockedGate", () => {
   it("renders locked state for Tournaments", () => {
-    render(
-      <MemoryRouter>
-        <MemberLockedGate feature="tournaments" />
-      </MemoryRouter>
-    );
+    renderWithProviders(<MemberLockedGate feature="tournaments" />);
 
     expect(screen.getByText(/Tournaments are Locked for Guests/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Create Free Account/i })).toBeTruthy();
@@ -18,41 +23,25 @@ describe("MemberLockedGate", () => {
   });
 
   it("renders locked state for Leaderboard", () => {
-    render(
-      <MemoryRouter>
-        <MemberLockedGate feature="leaderboard" />
-      </MemoryRouter>
-    );
+    renderWithProviders(<MemberLockedGate feature="leaderboard" />);
 
     expect(screen.getByText(/Leaderboards are Locked for Guests/i)).toBeTruthy();
   });
 
   it("renders locked state for Profile", () => {
-    render(
-      <MemoryRouter>
-        <MemberLockedGate feature="profile" />
-      </MemoryRouter>
-    );
+    renderWithProviders(<MemberLockedGate feature="profile" />);
 
     expect(screen.getByText(/Player Profile is Locked for Guests/i)).toBeTruthy();
   });
 
   it("renders locked state for Personal Information", () => {
-    render(
-      <MemoryRouter>
-        <MemberLockedGate feature="personal" />
-      </MemoryRouter>
-    );
+    renderWithProviders(<MemberLockedGate feature="personal" />);
 
     expect(screen.getByText(/Personal Information is Locked for Guests/i)).toBeTruthy();
   });
 
   it("renders locked state for Social Hub", () => {
-    render(
-      <MemoryRouter>
-        <MemberLockedGate feature="social" />
-      </MemoryRouter>
-    );
+    renderWithProviders(<MemberLockedGate feature="social" />);
 
     expect(screen.getByText(/Social Hub is Locked for Guests/i)).toBeTruthy();
     expect(screen.getByText(/Friends lists, party invites/i)).toBeTruthy();

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import AppLayout from "./AppLayout";
-import GameRoomSheet from "../bhalyam/GameRoomSheet";
 import { type BhalyamGameSlug } from "../bhalyam/data";
+
+const GameRoomSheet = lazy(() => import("../bhalyam/GameRoomSheet"));
 
 export interface GamesFamilyOutletContext {
   openGameSheet: (slug: BhalyamGameSlug) => void;
@@ -34,7 +35,9 @@ export default function GamesFamilyLayout() {
   return (
     <AppLayout onSelectGame={setSheetGame} showFallingPetals>
       <Outlet context={context} />
-      <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+      <Suspense fallback={null}>
+        <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+      </Suspense>
     </AppLayout>
   );
 }

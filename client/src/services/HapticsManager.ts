@@ -128,4 +128,27 @@ export class HapticsManager {
   gameStart(): void {
     this.fire([160, 90, 160]);
   }
+
+  /** Reward / streak claim celebratory cadence. */
+  reward(): void {
+    this.fire([100, 50, 150, 50, 220]);
+  }
+
+  /**
+   * Generic intent trigger matching the declarative API:
+   * 'turn' | 'win' | 'subtle' | 'reward' | 'gameStart'
+   */
+  trigger(intent: "turn" | "win" | "subtle" | "reward" | "gameStart"): void {
+    switch (intent) {
+      case "turn": return this.turn();
+      case "win": return this.win();
+      case "subtle": return this.subtle();
+      case "reward": return this.reward();
+      case "gameStart": return this.gameStart();
+    }
+  }
+
+  static trigger(intent: "turn" | "win" | "subtle" | "reward" | "gameStart"): void {
+    this.getInstance().trigger(intent);
+  }
 }

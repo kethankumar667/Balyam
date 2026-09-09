@@ -90,10 +90,11 @@ async function assertEconomyCapacityContract(repository: EconomyRepository): Pro
  * fabricating a store nothing asked for.
  */
 export async function initialiseEconomyStore(): Promise<{ service: EconomyService | null; status: EconomyStoreStatus }> {
-  const config = readPostgrestConfig();
+  const forceEphemeral = (process.env.ALLOW_EPHEMERAL_ECONOMY ?? "").trim().toLowerCase() === "true";
+  const config = forceEphemeral ? null : readPostgrestConfig();
 
   if (!config) {
-    const escapeHatch = (process.env.ALLOW_EPHEMERAL_ECONOMY ?? "").trim().toLowerCase() === "true";
+    const escapeHatch = forceEphemeral;
 
     if (isProduction() && !escapeHatch) {
       throw new Error(

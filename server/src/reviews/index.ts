@@ -45,10 +45,11 @@ function isProduction(): boolean {
 }
 
 export async function initialiseReviewsStore(): Promise<{ service: ReviewsService; status: ReviewsStoreStatus }> {
-  const config = readPostgrestConfig();
+  const forceEphemeral = (process.env.ALLOW_EPHEMERAL_REVIEWS ?? "").trim().toLowerCase() === "true";
+  const config = forceEphemeral ? null : readPostgrestConfig();
 
   if (!config) {
-    const escapeHatch = (process.env.ALLOW_EPHEMERAL_REVIEWS ?? "").trim().toLowerCase() === "true";
+    const escapeHatch = forceEphemeral;
 
     if (isProduction() && !escapeHatch) {
       throw new Error(

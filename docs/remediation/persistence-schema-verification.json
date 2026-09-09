@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-08-18T17:37:42.782Z",
+  "verifiedAt": "2026-09-09T10:48:30.190Z",
   "engine": "PostgreSQL 17.5 on x86_64-windows",
   "scope": "SCHEMA verification against a real PostgreSQL. Does NOT cover the PostgREST transport or application restart durability.",
   "authStub": "auth.users and auth.uid() are local stand-ins; Supabase's real auth schema is not covered.",
@@ -87,7 +87,7 @@
       "section": "crud",
       "name": "player_identities — CREATE",
       "passed": true,
-      "evidence": "guest_8045e131…, guest_beb2f57e…"
+      "evidence": "guest_313edae9…, guest_d2878033…"
     },
     {
       "section": "crud",
@@ -153,7 +153,7 @@
       "section": "crud",
       "name": "friends — CREATE / READ / UPDATE",
       "passed": true,
-      "evidence": "{\"friend_player_id\":\"guest_beb2f57e420d93ac2a0db486e9b37aa2\"}"
+      "evidence": "{\"friend_player_id\":\"guest_d28780333574d2c7d53b9bb5e3f28a66\"}"
     },
     {
       "section": "crud",

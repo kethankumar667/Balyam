@@ -174,8 +174,8 @@ describe("custom entry stake", () => {
     const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
-    // Not a multiple of 100 — clamps rather than throws.
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A, 250);
+    // Not a valid step (neither multiple of 50 below 1000 nor 100 above) — clamps rather than throws.
+    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A, 275);
     expect(peek(rooms, host.code)!.entryStakeCoins).toBe(100);
   });
 

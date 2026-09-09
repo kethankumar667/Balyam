@@ -1,19 +1,22 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import React, { useState, useEffect, createContext, useContext, ReactNode, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
-import FallingPetals from "../../animations/app/FallingPetals";
 import AppSidebar from "./AppSidebar";
-import JoinRoomModal from "../bhalyam/JoinRoomModal";
-import GameRoomSheet from "../bhalyam/GameRoomSheet";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
-import { ProfileSheet, type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
-import { MenuSheet } from "../../pages/home/sheets/MenuSheet";
+import { type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
-import { WalletDrawer } from "../economy/WalletDrawer";
+
+const FallingPetals = lazy(() => import("../../animations/app/FallingPetals"));
+const JoinRoomModal = lazy(() => import("../bhalyam/JoinRoomModal"));
+const GameRoomSheet = lazy(() => import("../bhalyam/GameRoomSheet"));
+const MenuSheet = lazy(() => import("../../pages/home/sheets/MenuSheet").then((m) => ({ default: m.MenuSheet })));
+const ProfileSheet = lazy(() => import("../../pages/home/sheets/ProfileSheet").then((m) => ({ default: m.ProfileSheet })));
+const WalletDrawer = lazy(() => import("../economy/WalletDrawer").then((m) => ({ default: m.WalletDrawer })));
+const DailyStreakModal = lazy(() => import("../streak/DailyStreakModal").then((m) => ({ default: m.DailyStreakModal })));
 
 interface AppLayoutContextType {
   openJoin: () => void;
@@ -293,7 +296,11 @@ export default function AppLayout({
             tabIndex={-1}
             className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
-            {showFallingPetals && <FallingPetals />}
+            {showFallingPetals && (
+              <Suspense fallback={null}>
+                <FallingPetals />
+              </Suspense>
+            )}
             <div className="relative z-10 flex-1 min-h-0 flex flex-col">
               {chrome && showBreadcrumbs && (
                 <div className="flex-shrink-0 z-20 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
@@ -311,31 +318,34 @@ export default function AppLayout({
         </div>
 
         {/* Global Modals & Sheets */}
-        <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-        <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
-        <MenuSheet
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          onOpenJoin={() => {
-            setSettingsOpen(false);
-            setJoinOpen(true);
-          }}
-        />
-        <ProfileSheet
-          open={profileOpen}
-          onClose={() => setProfileOpen(false)}
-          notifications={notifications}
-          onUpdateNotifications={setNotifications}
-          initialView={profileInitialView}
-          onOpenJoin={() => {
-            setProfileOpen(false);
-            setJoinOpen(true);
-          }}
-        />
-        <WalletDrawer
-          isOpen={walletOpen}
-          onClose={() => setWalletOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
+          <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+          <MenuSheet
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            onOpenJoin={() => {
+              setSettingsOpen(false);
+              setJoinOpen(true);
+            }}
+          />
+          <ProfileSheet
+            open={profileOpen}
+            onClose={() => setProfileOpen(false)}
+            notifications={notifications}
+            onUpdateNotifications={setNotifications}
+            initialView={profileInitialView}
+            onOpenJoin={() => {
+              setProfileOpen(false);
+              setJoinOpen(true);
+            }}
+          />
+          <WalletDrawer
+            isOpen={walletOpen}
+            onClose={() => setWalletOpen(false)}
+          />
+          <DailyStreakModal />
+        </Suspense>
       </div>
     </AppLayoutContext.Provider>
   );

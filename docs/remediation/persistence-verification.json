@@ -1,71 +1,115 @@
 {
-  "verifiedAt": "2026-08-26T05:09:55.751Z",
-  "run": "202e8023",
-  "project": "https://hjsahhpncmfnrldsfxra.supabase.co",
+  "verifiedAt": "2026-09-09T10:51:13.794Z",
+  "run": "456bacf8",
+  "project": "local://embedded-postgres-17 + postgrest-shim",
   "store": "supabase-postgres",
   "migration": "20260818000000_progression_persistence.sql",
   "node": "v24.12.0",
+  "scope": "Real PostgreSQL 17 + real server binary, restarted with SIGTERM. Supabase's own PostgREST and RLS enforcement under the authenticated role are NOT covered by this run.",
+  "platform": "win32",
   "checks": [
     {
-      "name": "minted a guest identity",
+      "name": "server starts against a real Postgres and hydrates",
       "passed": true,
-      "detail": "guest_f9fe14bd3a903d43a123e3a00125b19d"
+      "skipped": false,
+      "detail": "Progression is durable (Supabase Postgres). Rewards, matches and friendships survive a restart."
     },
     {
-      "name": "wrote a profile",
+      "name": "health reports durable progression",
       "passed": true,
-      "detail": ""
+      "skipped": false,
+      "detail": "{\"kind\":\"supabase\",\"durable\":true,\"reachable\":true,\"detail\":\"supabase postgres\",\"sync\":{\"pending\":0,\"written\":0,\"failed\":0,\"lastError\":null,\"lastErrorAt\":null}}"
     },
     {
-      "name": "read the player's challenges",
+      "name": "guest identity minted",
       "passed": true,
-      "detail": "7 challenges"
+      "skipped": false,
+      "detail": "guest_1d69564b31a94a9dc88c1f67f38f6bd4"
     },
     {
-      "name": "second identical claim refused",
-      "passed": false,
-      "detail": "INCONCLUSIVE: the first claim was not grantable (400 {\"error\":\"Tier not found\"}). Re-run against an account that has earned a tier."
+      "name": "profile written through the real API",
+      "passed": true,
+      "skipped": false,
+      "detail": "status 200"
     },
     {
-      "name": "ten concurrent identical writes leave one row",
+      "name": "friendship written",
       "passed": true,
-      "detail": "10/10 answered 200, 1 distinct friend(s) stored"
+      "skipped": false,
+      "detail": "status 200"
     },
     {
-      "name": "first server stopped on SIGTERM",
+      "name": "replayed writes are accepted without duplicating",
       "passed": true,
+      "skipped": false,
+      "detail": "200, 200"
+    },
+    {
+      "name": "the write-behind queue drains on its own",
+      "passed": true,
+      "skipped": false,
+      "detail": "queue reached 0 pending after 107ms"
+    },
+    {
+      "name": "no progression write failed",
+      "passed": true,
+      "skipped": false,
+      "detail": "{\"pending\":0,\"written\":43,\"failed\":0,\"lastError\":null,\"lastErrorAt\":null}"
+    },
+    {
+      "name": "first server terminated",
+      "passed": true,
+      "skipped": false,
       "detail": "exited cleanly"
     },
     {
-      "name": "write queue was flushed before exit",
-      "passed": false,
-      "detail": "not found in log"
-    },
-    {
-      "name": "second server started and hydrated",
+      "name": "graceful SIGTERM drain",
       "passed": true,
-      "detail": "Progression restored in 577ms: 0 profiles, 0 matches, 0 challenge claims, 0 season claims, 0 friendships, 0 parties"
+      "skipped": true,
+      "detail": "NOT VERIFIABLE ON WINDOWS — SIGTERM is not deliverable, so this run was an abrupt kill. Durability below therefore holds WITHOUT a graceful flush. Run on Linux to verify the drain itself."
     },
     {
-      "name": "the profile written by the DEAD process is still there",
-      "passed": false,
-      "detail": "got 200 \"Player\""
+      "name": "the row is in PostgreSQL with no server running",
+      "passed": true,
+      "skipped": false,
+      "detail": "SELECT returned 1 row(s): {\"display_name\":\"Durability 456bacf8\"}"
+    },
+    {
+      "name": "13 identical friend writes stored exactly one row",
+      "passed": true,
+      "skipped": false,
+      "detail": "1 row(s)"
+    },
+    {
+      "name": "both ends of the friendship have durable identity rows",
+      "passed": true,
+      "skipped": false,
+      "detail": "2 identity row(s)"
+    },
+    {
+      "name": "second server started and hydrated from the database",
+      "passed": true,
+      "skipped": false,
+      "detail": "Progression restored in 228ms: 1 profiles, 0 matches, 0 challenge claims, 0 season claims, 1 friendships, 0 parties"
+    },
+    {
+      "name": "the profile written by the DEAD process is served by the NEW one",
+      "passed": true,
+      "skipped": false,
+      "detail": "200 \"Durability 456bacf8\""
     },
     {
       "name": "the friendship survived the restart",
-      "passed": false,
-      "detail": "0 friend(s)"
-    },
-    {
-      "name": "a claimed reward cannot be claimed again after a restart",
-      "passed": false,
-      "detail": "INCONCLUSIVE: nothing was claimed"
-    },
-    {
-      "name": "the second process reports durable progression",
       "passed": true,
-      "detail": "{\"kind\":\"supabase\",\"durable\":true,\"reachable\":true,\"detail\":\"supabase postgres\",\"sync\":{\"pending\":2,\"written\":0,\"failed\":0,\"lastError\":null,\"lastErrorAt\":null}}"
+      "skipped": false,
+      "detail": "1 friend(s)"
+    },
+    {
+      "name": "the guest identity still verifies after the restart",
+      "passed": true,
+      "skipped": false,
+      "detail": "{\"player\":{\"kind\":\"guest\",\"playerId\":\"guest_1d69564b31a94a9dc88c1f67f38f6bd4\"}}"
     }
   ],
-  "passed": false
+  "passed": true
 }

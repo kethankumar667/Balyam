@@ -311,7 +311,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     description: "Originating as Moksha Patam, Snakes and Ladders is the quintessential race to 100. Every turn brings high tension: will you land at the foot of a tall ladder, or slide down from the dreaded 99th snake?",
     nostalgiaQuote: "\"Bitten at 99! The heartbreak was real.\" — Rainy evening battles.",
     minPlayers: 2,
-    maxPlayers: 6,
+    maxPlayers: 10,
     playTime: "10–20 min",
     playTimeCategory: "quick",
     difficulty: "easy",

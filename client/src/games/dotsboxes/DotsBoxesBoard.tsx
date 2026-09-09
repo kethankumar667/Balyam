@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import DotsBoxesBoardMobile from "./DotsBoxesBoardMobile";
-import DotsBoxesBoardDesktop from "./DotsBoxesBoardDesktop";
-import DotsBoxesNotebookMobile from "./DotsBoxesNotebookMobile";
-import DotsBoxesNotebookDesktop from "./DotsBoxesNotebookDesktop";
+import { useEffect, useState, lazy, Suspense } from "react";
 import type { DotsBoxesBoardProps } from "./useDotsBoxesBoard";
 import { useDotsBoxesBoard } from "./useDotsBoxesBoard";
+
+const DotsBoxesBoardMobile = lazy(() => import("./DotsBoxesBoardMobile"));
+const DotsBoxesBoardDesktop = lazy(() => import("./DotsBoxesBoardDesktop"));
+const DotsBoxesNotebookMobile = lazy(() => import("./DotsBoxesNotebookMobile"));
+const DotsBoxesNotebookDesktop = lazy(() => import("./DotsBoxesNotebookDesktop"));
 
 /** Desktop gate copied from RummyBoard: real desktop only (rules out phone
  *  landscape ≤1133px). Do NOT widen. Mobile shell handles every smaller tier
@@ -30,17 +31,19 @@ export default function DotsBoxesBoard(props: DotsBoxesBoardProps) {
     };
   }, []);
 
-  if (isDesktop) {
-    return skin === "notebook" ? (
-      <DotsBoxesNotebookDesktop {...props} />
-    ) : (
-      <DotsBoxesBoardDesktop {...props} />
-    );
-  }
-
-  return skin === "notebook" ? (
-    <DotsBoxesNotebookMobile {...props} />
-  ) : (
-    <DotsBoxesBoardMobile {...props} />
+  return (
+    <Suspense fallback={<div className="w-full h-full min-h-[300px] flex items-center justify-center text-amber-500 animate-pulse">Loading Dots & Boxes...</div>}>
+      {isDesktop ? (
+        skin === "notebook" ? (
+          <DotsBoxesNotebookDesktop {...props} />
+        ) : (
+          <DotsBoxesBoardDesktop {...props} />
+        )
+      ) : skin === "notebook" ? (
+        <DotsBoxesNotebookMobile {...props} />
+      ) : (
+        <DotsBoxesBoardMobile {...props} />
+      )}
+    </Suspense>
   );
 }

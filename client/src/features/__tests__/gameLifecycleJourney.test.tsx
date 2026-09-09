@@ -59,7 +59,7 @@ describe("Priority 4: Game Lifecycle & Rematch Negotiation User Journey", () => 
     it("renders 'Play Again' button for host in idle state and emits rematch:request", () => {
       render(<RematchPanel players={mockPlayers} selfId="p_host" />);
 
-      const playAgainBtn = screen.getByRole("button", { name: /Play Again/i });
+      const playAgainBtn = screen.getByRole("button", { name: /Play (Rematch|Again)/i });
       expect(playAgainBtn).toBeDefined();
 
       fireEvent.click(playAgainBtn);
@@ -80,7 +80,7 @@ describe("Priority 4: Game Lifecycle & Rematch Negotiation User Journey", () => 
 
       render(<RematchPanel players={mockPlayers} selfId="p_local_2" />);
 
-      expect(screen.getByText(/Host wants a rematch/i)).toBeDefined();
+      expect(screen.getByText(/Host (wants a rematch|requested a rematch)/i)).toBeDefined();
 
       const acceptBtn = screen.getByRole("button", { name: /Accept/i });
       const declineBtn = screen.getByRole("button", { name: /Decline/i });
@@ -105,7 +105,7 @@ describe("Priority 4: Game Lifecycle & Rematch Negotiation User Journey", () => 
       });
 
       render(<RematchPanel players={mockPlayers} selfId="p_host" />);
-      expect(screen.getByText(/New game starts in/i)).toBeDefined();
+      expect(screen.getByText(/(New game|Next match) starts in/i)).toBeDefined();
     });
 
     it("renders cancellation notice when a participant declines", () => {

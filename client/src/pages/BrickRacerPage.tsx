@@ -1,8 +1,19 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BrickRacerBoard from "../games/brickracer/BrickRacerBoard";
+import { useAudio } from "../hooks/useAudio";
 
 export default function BrickRacerPage() {
   const navigate = useNavigate();
+
+  // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)
+  // — this is one of them (catalog slug "roadrash"), so report presence on
+  // mount/unmount.
+  const { setActiveGame } = useAudio();
+  useEffect(() => {
+    setActiveGame("roadrash");
+    return () => setActiveGame(null);
+  }, [setActiveGame]);
 
   return (
     <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0F172A] flex flex-col justify-between overflow-hidden">

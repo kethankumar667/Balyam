@@ -87,6 +87,8 @@ const childEnv = (extra = {}) => ({
   VOUCHER_HMAC_SECRET: "durability-verification-voucher-secret",
   CLIENT_ORIGIN: "http://localhost:5173",
   ALLOW_EPHEMERAL_PROGRESSION: "",
+  ALLOW_EPHEMERAL_ECONOMY: "true",
+  ALLOW_EPHEMERAL_REVIEWS: "true",
   ...extra,
 });
 

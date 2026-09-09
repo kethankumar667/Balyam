@@ -13,39 +13,25 @@ import {
   isFullscreenSupported,
 } from "../lib/fullscreen";
 import { HapticsManager } from "../services/HapticsManager";
+import { useAudio } from "../hooks/useAudio";
+import type { BhalyamGameSlug } from "../components/bhalyam/data";
 import PlayerList from "../components/PlayerList";
 import SeatAvatar from "../components/profile/SeatAvatar";
 import Chat from "../components/Chat";
 import ChatMessageToast from "../components/ChatMessageToast";
-import RoomCode from "../components/RoomCode";
-import RoomCodeShare from "../components/RoomCodeShare";
 import AppLayout from "../components/layout/AppLayout";
-import RummyRoomHistory from "../components/nostalgia/RummyRoomHistory";
-import RematchPanel from "../components/RematchPanel";
 import BoardPreviewPill from "../components/BoardPreviewPill";
 import PassPhoneGate from "../components/PassPhoneGate";
-import VoicePanel from "../components/VoicePanel";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
-import SoundboardLayer from "../components/SoundboardLayer";
-import SignInWall from "../components/auth/SignInWall";
-import LudoColorPicker from "../components/LudoColorPicker";
-import CoinColorPicker from "../components/CoinColorPicker";
 import RoomHeader from "../components/room/RoomHeader";
-import LeaveRoomModal from "../components/room/LeaveRoomModal";
-import RoomShareCard from "../components/room/RoomShareCard";
 import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { usePlayerCapability } from "../hooks/usePlayerCapability";
-import PreflightRotatePrompt from "../components/room/PreflightRotatePrompt";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import RoomConnectingLoader from "../components/loading/RoomConnectingLoader";
-import RoomNameEntryChamber from "../components/room/RoomNameEntryChamber";
-import BhalyamMatchCountdown from "../animations/app/BhalyamMatchCountdown";
-import FallingPetals from "../animations/app/FallingPetals";
-import { EveryoneReadyBanner } from "../animations/app/ReadyCheckmarkDraw";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
 import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
@@ -54,9 +40,6 @@ import { useCheckoutQuote } from "../hooks/useEconomy";
 import type { MatchCheckoutQuote } from "../lib/economyApi";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
-import BhalyamResultModal from "../components/BhalyamResultModal";
-import VoucherWonModal from "../components/economy/VoucherWonModal";
-import { ChangeStakeModal } from "../components/room/ChangeStakeModal";
 import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
 import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPlayerState, LudoState, SnlState, HcState, UnoPlayerState, WordBuildingPublicState, DotsBoxesPublicState, BotDifficulty } from "@shared/types";
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
@@ -83,6 +66,44 @@ const SnakeBoard = lazy(() => import("../games/snake/SnakeBoard"));
 const CarromBoard = lazy(() => import("../games/carrom/CarromBoard"));
 const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
 const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
+
+// ── Lazy-loaded modals & conditional overlays (code-split) ──
+const BhalyamResultModal = lazy(() => import("../components/BhalyamResultModal"));
+const LeaveRoomModal = lazy(() => import("../components/room/LeaveRoomModal"));
+const VoucherWonModal = lazy(() => import("../components/economy/VoucherWonModal"));
+const ChangeStakeModal = lazy(() => import("../components/room/ChangeStakeModal").then((m) => ({ default: m.ChangeStakeModal })));
+const RoomNameEntryChamber = lazy(() => import("../components/room/RoomNameEntryChamber"));
+const PreflightRotatePrompt = lazy(() => import("../components/room/PreflightRotatePrompt"));
+const RematchPanel = lazy(() => import("../components/RematchPanel"));
+const SoundboardLayer = lazy(() => import("../components/SoundboardLayer"));
+const SignInWall = lazy(() => import("../components/auth/SignInWall"));
+const RoomShareCard = lazy(() => import("../components/room/RoomShareCard"));
+const BhalyamMatchCountdown = lazy(() => import("../animations/app/BhalyamMatchCountdown"));
+const FallingPetals = lazy(() => import("../animations/app/FallingPetals"));
+const EveryoneReadyBanner = lazy(() => import("../animations/app/ReadyCheckmarkDraw").then((m) => ({ default: m.EveryoneReadyBanner })));
+
+/**
+ * Fallback for the modal Suspense boundary below. Most of the lazy modals it
+ * covers (LeaveRoomModal, ChangeStakeModal) mount unconditionally and render
+ * nothing while closed, so their own chunk load is invisible either way —
+ * but BhalyamResultModal/VoucherWonModal/PreflightRotatePrompt only start
+ * loading the moment their trigger condition (match end, voucher win,
+ * orientation lock) flips true, which re-suspends the whole boundary. A
+ * `null` fallback there meant the scorecard/voucher/rotate-prompt appeared
+ * to just not show up for a beat right when the player most needs it.
+ */
+function ModalSuspenseFallback() {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading"
+    >
+      <div className="w-10 h-10 rounded-full border-4 border-amber-400/30 border-t-amber-500 animate-spin" />
+    </div>
+  );
+}
 
 /**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
@@ -1019,6 +1040,23 @@ export default function Room() {
     }
   }, [roomState?.phase, roomState?.game, selfIsHost]);
 
+  // Sound only plays for catalog "solo" games (see AudioManager.isSoloContext)
+  // — snake and spacewar are the two that run through this room/lobby flow,
+  // everything else here is a real multiplayer-capable game and stays
+  // silent even when every other seat happens to be a bot. Reported
+  // truthfully on every game change; AudioManager itself decides which
+  // slugs actually count as solo, so this never needs its own tag list.
+  const { setActiveGame } = useAudio();
+  useEffect(() => {
+    // The server's `GameKind` is a slightly different union than the
+    // client catalog's `BhalyamGameSlug` (e.g. "blockblast" has no catalog
+    // entry yet) — cast rather than widen `setActiveGame`'s own type, since
+    // an unrecognized slug is harmless here: it just never matches
+    // SOLO_GAME_SLUGS, which is the correct (muted) outcome anyway.
+    setActiveGame((roomState?.game as BhalyamGameSlug | undefined) ?? null);
+    return () => setActiveGame(null);
+  }, [roomState?.game, setActiveGame]);
+
   const selfPlayer = useMemo(
     () => roomState?.players.find((p) => p.id === playerId) ?? null,
     [roomState?.players, playerId]
@@ -1410,7 +1448,9 @@ export default function Room() {
           backgroundColor: ludoInPlay ? "var(--ludo-screen-bg)" : undefined,
         }}
       >
-      {(isLobbyLike || isGameStartingCeremony) && <FallingPetals />}
+      <Suspense fallback={null}>
+        {(isLobbyLike || isGameStartingCeremony) && <FallingPetals />}
+      </Suspense>
       <div
         className={
           (FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike && !isGameStartingCeremony
@@ -1504,21 +1544,23 @@ export default function Room() {
                   )}
                 </div>
               )}
-              {roomState.phase === "finished" && (
-                <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
-              )}
-              {roomState.sealed ? (
-                <SignInWall
-                  from="room"
-                  reason="This table is just you and the bots"
-                />
-              ) : (
-                <RoomShareCard
-                  code={roomState.code}
-                  game={roomState.game}
-                  name={roomState.name}
-                />
-              )}
+              <Suspense fallback={null}>
+                {roomState.phase === "finished" && (
+                  <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
+                )}
+                {roomState.sealed ? (
+                  <SignInWall
+                    from="room"
+                    reason="This table is just you and the bots"
+                  />
+                ) : (
+                  <RoomShareCard
+                    code={roomState.code}
+                    game={roomState.game}
+                    name={roomState.name}
+                  />
+                )}
+              </Suspense>
 
               {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count */}
               {viewModel.isSeatCountSupported ? (
@@ -1838,7 +1880,9 @@ export default function Room() {
 
       <ChatMessageToast messages={messages} selfId={playerId} />
 
-      <SoundboardLayer players={roomState.players} selfId={playerId} />
+      <Suspense fallback={null}>
+        <SoundboardLayer players={roomState.players} selfId={playerId} />
+      </Suspense>
 
       {/* "I'm back" — shown ONLY to the player whose seat is being auto-played.
           Any interaction already reclaims the seat silently (see the presence
@@ -1871,20 +1915,22 @@ export default function Room() {
       )}
 
       {/* Universal BHALYAM Match Countdown */}
-      {showMatchCountdown && (
-        <BhalyamMatchCountdown
-          game={roomState?.game}
-          onComplete={() => {
-            setShowMatchCountdown(false);
-            setMatchStartCeremonyActive(false);
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showMatchCountdown && (
+          <BhalyamMatchCountdown
+            game={roomState?.game}
+            onComplete={() => {
+              setShowMatchCountdown(false);
+              setMatchStartCeremonyActive(false);
+            }}
+          />
+        )}
 
-      {/* Everyone Ready Banner in Lobby */}
-      {showAllReadyBanner && (
-        <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
-      )}
+        {/* Everyone Ready Banner in Lobby */}
+        {showAllReadyBanner && (
+          <EveryoneReadyBanner onComplete={() => setShowAllReadyBanner(false)} />
+        )}
+      </Suspense>
 
       {/* Authoritative Economy Motion Orchestrator */}
       <EconomyMotionOrchestrator
@@ -1902,47 +1948,49 @@ export default function Room() {
       />
 
       {/* Match result & settlement modal — displays ranked outcomes and authoritative settlement */}
-      {showScorecard && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
-        <BhalyamResultModal
-          players={roomState.players}
-          rankedPlayers={rankedPlayers}
-          selfId={playerId}
-          winnerName={gameOverWinnerName ?? undefined}
-          winnerId={gameOverWinnerId}
-          matchId={deriveTerminalMatchId(roomState)}
-          title={gameOverGameName ? `${gameOverGameName} Results` : "Match Results"}
-          onClose={handleScorecardClose}
-          onLeave={leaveRoom}
+      <Suspense fallback={<ModalSuspenseFallback />}>
+        {showScorecard && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
+          <BhalyamResultModal
+            players={roomState.players}
+            rankedPlayers={rankedPlayers}
+            selfId={playerId}
+            winnerName={gameOverWinnerName ?? undefined}
+            winnerId={gameOverWinnerId}
+            matchId={deriveTerminalMatchId(roomState)}
+            title={gameOverGameName ? `${gameOverGameName} Results` : "Match Results"}
+            onClose={handleScorecardClose}
+            onLeave={leaveRoom}
+          />
+        )}
+
+        {blockedByOrientation && orientationDeadline !== null && (
+          <PreflightRotatePrompt deadline={orientationDeadline} />
+        )}
+
+        <LeaveRoomModal
+          isOpen={showInGameLeaveModal}
+          onClose={() => setShowInGameLeaveModal(false)}
+          onConfirm={leaveRoom}
         />
-      )}
 
-      {blockedByOrientation && orientationDeadline !== null && (
-        <PreflightRotatePrompt deadline={orientationDeadline} />
-      )}
+        {wonVoucher && (
+          <VoucherWonModal
+            coinAmount={wonVoucher.coinAmount}
+            rawCode={wonVoucher.rawCode}
+            onClose={() => setWonVoucher(null)}
+          />
+        )}
 
-      <LeaveRoomModal
-        isOpen={showInGameLeaveModal}
-        onClose={() => setShowInGameLeaveModal(false)}
-        onConfirm={leaveRoom}
-      />
-
-      {wonVoucher && (
-        <VoucherWonModal
-          coinAmount={wonVoucher.coinAmount}
-          rawCode={wonVoucher.rawCode}
-          onClose={() => setWonVoucher(null)}
-        />
-      )}
-
-      {selfIsHost && (
-        <ChangeStakeModal
-          open={showChangeStakeModal}
-          onClose={() => setShowChangeStakeModal(false)}
-          currentStake={roomState.entryStakeCoins ?? 100}
-          isGuestHost={Boolean(selfPlayer?.isGuest || currentAccountKind() === "guest")}
-          playerCount={viewModel.totalPlayersCount}
-        />
-      )}
+        {selfIsHost && (
+          <ChangeStakeModal
+            open={showChangeStakeModal}
+            onClose={() => setShowChangeStakeModal(false)}
+            currentStake={roomState.entryStakeCoins ?? 100}
+            isGuestHost={Boolean(selfPlayer?.isGuest || currentAccountKind() === "guest")}
+            playerCount={viewModel.totalPlayersCount}
+          />
+        )}
+      </Suspense>
         </div>
       </div>
     </AppLayout>
@@ -2007,12 +2055,14 @@ function NameEntryForRoom({
   guest?: boolean;
 }) {
   return (
-    <RoomNameEntryChamber
-      code={code}
-      onSubmit={onSubmit}
-      initialName={initialName}
-      guest={guest}
-    />
+    <Suspense fallback={null}>
+      <RoomNameEntryChamber
+        code={code}
+        onSubmit={onSubmit}
+        initialName={initialName}
+        guest={guest}
+      />
+    </Suspense>
   );
 }
 
