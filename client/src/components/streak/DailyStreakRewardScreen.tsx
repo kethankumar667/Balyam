@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { X, Flame, Gift, ArrowRight, Check, Clock, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { X, Flame, Gift, ArrowRight, Check, Clock, Shield, Sparkles } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
@@ -17,9 +17,12 @@ interface DailyStreakRewardScreenProps {
 export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakRewardScreenProps) {
   const { state, isClaiming, claimToday } = useStreakStore();
 
+  const reduce = useReducedMotion();
   const currentDay = state?.activeDayInCycle ?? 1;
   const isClaimable = Boolean(state?.isClaimableToday);
   const currentStreak = state?.currentStreak ?? 0;
+  const longestStreak = state?.longestStreak ?? 0;
+  const shieldsRemaining = state?.shieldsRemaining ?? 0;
 
   // Active today reward item
   const todayReward = useMemo(() => {
@@ -105,12 +108,24 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
       <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-gradient-to-b from-amber-500/25 via-orange-500/15 to-transparent blur-3xl pointer-events-none" />
 
       {/* Top Header Bar */}
-      <div className="relative flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300">
-          <Flame className="w-4 h-4 text-orange-400 fill-orange-400 animate-pulse" />
-          <span className="text-xs font-black tracking-wider uppercase">
-            {currentStreak > 0 ? `${currentStreak}-Day Streak` : "Login Streak"}
-          </span>
+      <div className="relative flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300">
+            <Flame className={`w-4 h-4 text-orange-400 fill-orange-400 ${reduce ? "" : "animate-pulse"}`} />
+            <span className="text-xs font-black tracking-wider uppercase">
+              {currentStreak > 0 ? `${currentStreak}-Day Streak` : "Login Streak"}
+            </span>
+          </div>
+
+          {/* Streak shield — makes the loss-protection mechanic visible so
+              missing a day feels safe instead of prompting an outright quit
+              the first time a streak would otherwise reset to zero. */}
+          {shieldsRemaining > 0 && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300">
+              <Shield className="w-3.5 h-3.5 fill-sky-400/20" />
+              <span className="text-xs font-black">{shieldsRemaining}</span>
+            </div>
+          )}
         </div>
 
         <button
@@ -171,11 +186,20 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${Math.min(100, (currentDay / 30) * 100)}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            transition={reduce ? { duration: 0 } : { duration: 0.8, ease: "easeOut" }}
             className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
           />
         </div>
       </div>
+
+      {/* Personal-best streak — self-competition ("beat your own record")
+          is a proven low-cost motivator that had no home anywhere in this
+          screen. */}
+      {longestStreak > 0 && (
+        <div className="mb-1 text-center text-[11px] font-bold text-slate-400">
+          🏆 Longest streak: <span className="text-amber-300 font-black">{longestStreak} days</span>
+        </div>
+      )}
 
       {/* Tomorrow & Next Chest Preview Card */}
       <div className="my-3 p-2.5 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-2 gap-2 text-left">
@@ -201,11 +225,15 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
         </div>
       </div>
 
-      {/* Unlocks In Countdown (Only shown when already claimed) */}
-      {!isClaimable && timeLeft && (
+      {/* Reset countdown — always visible now, not just post-claim. This is
+          the single strongest same-day-return signal in any daily-reward
+          system; hiding it until after the player has already claimed
+          meant it never actually created urgency for the decision that
+          mattered (claim today or not). */}
+      {timeLeft && (
         <div className="mb-3 flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-400">
           <Clock className="w-3.5 h-3.5 text-amber-400" />
-          <span>Next reward unlocks in:</span>
+          <span>{isClaimable ? "Claim before today resets in:" : "Next reward unlocks in:"}</span>
           <span className="text-amber-300 font-mono tracking-wider font-extrabold">{timeLeft}</span>
         </div>
       )}
