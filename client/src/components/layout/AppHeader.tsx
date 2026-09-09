@@ -24,6 +24,7 @@ import { useRecentlyPlayed } from "../../hooks/useRecentlyPlayed";
 import { bhalyamSpring } from "../../lib/motion";
 import { WalletBalanceChip } from "../economy/WalletBalanceChip";
 import { useWallet } from "../../hooks/useEconomy";
+import { DailyStreakEntryChip } from "../streak/DailyStreakEntryChip";
 
 /**
  * The global header.
@@ -113,8 +114,8 @@ export default function AppHeader({
           </Tooltip>
         </div>
 
-        {/* Center: Navigation Bar (Desktop & Tablet) */}
-        <div className="hidden md:flex flex-1 items-center justify-center px-2 lg:px-4">
+        {/* Center: Navigation Bar (Desktop) */}
+        <div className="hidden lg:flex flex-1 items-center justify-center px-2 lg:px-4">
           <nav
             className="flex items-center gap-1 lg:gap-1.5 p-1 rounded-full bg-[var(--chrome-control)] border border-[var(--chrome-border)] shadow-2xs"
             aria-label="Lounge Navigation"
@@ -185,6 +186,9 @@ export default function AppHeader({
         {/* Right: Actions */}
         <div className="flex-1 md:flex-none flex items-center justify-end px-3 sm:px-6">
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Daily Login Streak Entry Chip */}
+            <DailyStreakEntryChip />
+
             {/* Global Wallet Balance Chip */}
             <WalletBalanceChip
               balance={balance}
@@ -286,7 +290,7 @@ export default function AppHeader({
                 onClick={toggleTheme}
                 title={isDark ? "Switch to light mode" : "Switch to dark mode"}
                 aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                className="hidden md:inline-flex"
+                className="hidden lg:inline-flex"
                 leftIcon={isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               />
             </Tooltip>

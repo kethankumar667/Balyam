@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-08-18T20:08:41.249Z",
-  "gitCommit": "acb5764",
+  "timestamp": "2026-09-09T10:52:20.920Z",
+  "gitCommit": "d2482a7",
   "governanceVersion": "3.0.0-phase4b-capped",
   "certificationState": "CLOSED BETA READY",
   "stateCapped": true,
@@ -11,7 +11,7 @@
       "error": null
     },
     "testQuality": {
-      "totalFiles": 157,
+      "totalFiles": 301,
       "passed": true,
       "violations": [],
       "status": "PASS"
@@ -24,14 +24,14 @@
     "persistence": {
       "passed": true,
       "store": "supabase-postgres",
-      "verifiedAt": "2026-08-18T17:38:16.887Z",
+      "verifiedAt": "2026-09-09T10:51:13.794Z",
       "passedChecks": 0,
       "totalChecks": 17,
       "ageDays": 0
     },
     "accessibility": {
       "passed": true,
-      "staticFilesScanned": 334,
+      "staticFilesScanned": 516,
       "staticViolations": 0,
       "renderedRoutesAudited": 22,
       "renderedViolations": 0,
@@ -46,7 +46,7 @@
     },
     "bundleBudgets": {
       "passed": true,
-      "totalAssets": 91,
+      "totalAssets": 242,
       "violations": 0,
       "status": "PASS"
     },
@@ -93,5 +93,5 @@
   "advisoryWarnings": [
     "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
   ],
-  "executionTimeMs": 28020
+  "executionTimeMs": 41688
 }

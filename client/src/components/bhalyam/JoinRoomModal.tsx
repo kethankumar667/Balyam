@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
-import SignInWall from "../auth/SignInWall";
 import Modal from "../Modal";
 import { ArrowRightIcon } from "./icons";
-import QrScannerModal from "../QrScannerModal";
 import { isCompleteRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from "../../lib/roomCode";
+
+const QrScannerModal = lazy(() => import("../QrScannerModal"));
 import type { RoomPublicState } from "@shared/types";
 
 /** Shape of the `room:join` acknowledgement (see shared/types.ts). */
@@ -471,33 +471,37 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         </form>
     </Modal>
 
-      <QrScannerModal
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onScanSuccess={(scannedCode: string) => {
-          // The QR payload is the room URL, so it goes through the same
-          // normalizer as anything pasted — one definition of "what counts as
-          // a code" for every way one can arrive.
-          const scanned = normalizeRoomCode(scannedCode);
-          setCode(scanned);
-          setCodeError(null);
-          const n = trimmedName();
-          // A scan with no name yet used to leave the modal looking untouched.
-          // Now the code is held above and the missing half is named, which
-          // matters most for a guest: the scanner is their only way in, so
-          // silence here reads as the camera having failed.
-          if (!n) {
-            setNameError("Enter your name first");
-            window.setTimeout(() => nameInputRef.current?.focus(), 0);
-            return;
-          }
-          if (!isCompleteRoomCode(scanned)) {
-            setCodeError("That QR code isn't a BHALYAM room.");
-            return;
-          }
-          joinWithCode(scanned, n);
-        }}
-      />
+      {scannerOpen && (
+        <Suspense fallback={null}>
+          <QrScannerModal
+            open={scannerOpen}
+            onClose={() => setScannerOpen(false)}
+            onScanSuccess={(scannedCode: string) => {
+              // The QR payload is the room URL, so it goes through the same
+              // normalizer as anything pasted — one definition of "what counts as
+              // a code" for every way one can arrive.
+              const scanned = normalizeRoomCode(scannedCode);
+              setCode(scanned);
+              setCodeError(null);
+              const n = trimmedName();
+              // A scan with no name yet used to leave the modal looking untouched.
+              // Now the code is held above and the missing half is named, which
+              // matters most for a guest: the scanner is their only way in, so
+              // silence here reads as the camera having failed.
+              if (!n) {
+                setNameError("Enter your name first");
+                window.setTimeout(() => nameInputRef.current?.focus(), 0);
+                return;
+              }
+              if (!isCompleteRoomCode(scanned)) {
+                setCodeError("That QR code isn't a BHALYAM room.");
+                return;
+              }
+              joinWithCode(scanned, n);
+            }}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import BingoBoardMobile from "./BingoBoardMobile";
-import BingoBoardDesktop from "./BingoBoardDesktop";
+import { useEffect, useState, lazy, Suspense } from "react";
 import type { BingoBoardProps } from "./useBingoBoard";
+
+const BingoBoardMobile = lazy(() => import("./BingoBoardMobile"));
+const BingoBoardDesktop = lazy(() => import("./BingoBoardDesktop"));
 
 /** Desktop gate copied from RummyBoard/StarBoard/UnoBoard: real desktop
  * only (rules out phone landscape <=1133px). Do NOT widen. The mobile
@@ -24,5 +25,9 @@ export default function BingoBoard(props: BingoBoardProps) {
       window.removeEventListener("orientationchange", onResize);
     };
   }, []);
-  return isDesktop ? <BingoBoardDesktop {...props} /> : <BingoBoardMobile {...props} />;
+  return (
+    <Suspense fallback={<div className="w-full h-full min-h-[300px] flex items-center justify-center text-amber-500 animate-pulse">Loading Bingo...</div>}>
+      {isDesktop ? <BingoBoardDesktop {...props} /> : <BingoBoardMobile {...props} />}
+    </Suspense>
+  );
 }

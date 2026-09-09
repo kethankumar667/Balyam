@@ -73,7 +73,7 @@ export default function GamesPage() {
 
   return (
     <>
-      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-24 min-w-0">
+      <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 w-full max-w-[1440px] mx-auto pb-24 min-w-0 overflow-x-hidden">
         {/* Page Header */}
         <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
@@ -113,7 +113,7 @@ export default function GamesPage() {
         <section aria-labelledby="catalog-heading" className="w-full min-w-0">
           <h2 id="catalog-heading" className="sr-only">Available Games</h2>
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0">
               {Array.from({ length: 8 }).map((_, idx) => (
                 <GameCardSkeleton key={idx} />
               ))}
@@ -131,7 +131,7 @@ export default function GamesPage() {
           ) : (
             <ul
               role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full min-w-0"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 w-full min-w-0"
               style={{ perspective: 1200 }}
             >
               {displayedGames.map((game) => (

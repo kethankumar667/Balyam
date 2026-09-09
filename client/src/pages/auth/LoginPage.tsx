@@ -276,7 +276,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 text-[#64748B] hover:text-[#0F172A] cursor-pointer transition"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2.5 text-[#64748B] hover:text-[#0F172A] cursor-pointer transition touch-manipulation rounded-full"
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }
@@ -297,19 +297,19 @@ export default function LoginPage() {
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between pt-1 px-1">
-                <label className="flex items-center gap-2 text-[13px] font-semibold text-[#5C3E21] cursor-pointer select-none">
+                <label className="flex items-center gap-2.5 min-h-[44px] text-[13px] font-semibold text-[#5C3E21] cursor-pointer select-none touch-manipulation">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#CBD5E1] text-[#0F172A] focus:ring-[#0F172A] accent-[#0F172A] cursor-pointer"
+                    className="w-5 h-5 rounded border-[#CBD5E1] text-[#0F172A] focus:ring-[#0F172A] accent-[#0F172A] cursor-pointer"
                   />
                   <span>Remember me</span>
                 </label>
 
                 <Link
                   to="/forgot-password"
-                  className="font-script text-[15px] font-bold text-[#2563EB] hover:underline"
+                  className="font-script text-[15px] font-bold text-[#2563EB] hover:underline min-h-[44px] inline-flex items-center px-2 touch-manipulation"
                 >
                   Forgot Password?
                 </Link>
@@ -421,7 +421,7 @@ export default function LoginPage() {
               New to Bhalyam?{" "}
               <Link
                 to="/signup"
-                className="font-bold text-[#A82020] underline ml-0.5 inline-flex items-center gap-1"
+                className="font-bold text-[#A82020] underline ml-0.5 inline-flex items-center gap-1 min-h-[44px] py-2 px-1"
               >
                 <span>Create an account</span>
                 <span>→</span>

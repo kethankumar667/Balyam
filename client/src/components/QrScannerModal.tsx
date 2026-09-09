@@ -1,6 +1,25 @@
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { HapticsManager } from "../services/HapticsManager";
+
+interface DetectedBarcode {
+  rawValue: string;
+  format: string;
+}
+
+interface BarcodeDetectorInstance {
+  detect(image: ImageBitmapSource): Promise<DetectedBarcode[]>;
+}
+
+interface BarcodeDetectorConstructor {
+  new (options?: { formats: string[] }): BarcodeDetectorInstance;
+  getSupportedFormats?: () => Promise<string[]>;
+}
+
+declare global {
+  interface Window {
+    BarcodeDetector?: BarcodeDetectorConstructor;
+  }
+}
 
 export interface QrScannerModalProps {
   open: boolean;
@@ -10,7 +29,7 @@ export interface QrScannerModalProps {
 
 /**
  * Camera QR Scanner modal for guest players joining a BHALYAM room.
- * Uses html5-qrcode for fast, responsive in-browser camera stream decoding.
+ * Uses native browser BarcodeDetector API for fast, zero-bundle hardware decoding.
  */
 export default function QrScannerModal({
   open,
@@ -21,7 +40,10 @@ export default function QrScannerModal({
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [scanning, setScanning] = useState(false);
 
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const detectorRef = useRef<BarcodeDetectorInstance | null>(null);
+  const scanIntervalRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Extract 6-character room code from scanned string (URL or raw code)
@@ -45,46 +67,64 @@ export default function QrScannerModal({
     if (!open) return;
 
     setCameraError(null);
-    setScanning(true);
 
-    const elementId = "bhalyam-qr-reader";
-    const html5QrCode = new Html5Qrcode(elementId, {
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      verbose: false,
-    });
-    scannerRef.current = html5QrCode;
+    if (typeof window === "undefined" || !window.BarcodeDetector) {
+      setCameraError(
+        "Camera QR scanning requires a modern browser with BarcodeDetector. Please enter the 6-character room code directly."
+      );
+      setScanning(false);
+      return;
+    }
 
-    const config = {
-      fps: 10,
-      qrbox: { width: 220, height: 220 },
-      aspectRatio: 1.0,
-    };
+    try {
+      detectorRef.current = new window.BarcodeDetector({ formats: ["qr_code"] });
+    } catch {
+      detectorRef.current = null;
+    }
 
-    html5QrCode
-      .start(
-        { facingMode },
-        config,
-        (decodedText) => {
-          const roomCode = parseRoomCode(decodedText);
-          if (roomCode) {
-            HapticsManager.getInstance().subtle();
-            // Stop scanning before calling success callback
-            html5QrCode.stop().then(() => {
-              onScanSuccess(roomCode);
-              onClose();
-            }).catch(() => {
-              onScanSuccess(roomCode);
-              onClose();
-            });
-          } else {
-            setCameraError("Scanned QR is not a valid BHALYAM room code.");
-          }
-        },
-        () => {
-          // Frame scan error (normal during movement) - ignore
+    let isSubscribed = true;
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facingMode }, width: { ideal: 640 }, height: { ideal: 640 } },
+          audio: false,
+        });
+
+        if (!isSubscribed) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
         }
-      )
-      .catch((err) => {
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        setScanning(true);
+
+        // Continuous scanning loop
+        scanIntervalRef.current = window.setInterval(async () => {
+          if (!videoRef.current || !detectorRef.current || videoRef.current.readyState < 2) return;
+          try {
+            const barcodes = await detectorRef.current.detect(videoRef.current);
+            if (barcodes && barcodes.length > 0) {
+              const code = parseRoomCode(barcodes[0].rawValue);
+              if (code) {
+                HapticsManager.getInstance().subtle();
+                if (scanIntervalRef.current !== null) {
+                  window.clearInterval(scanIntervalRef.current);
+                  scanIntervalRef.current = null;
+                }
+                onScanSuccess(code);
+                onClose();
+              }
+            }
+          } catch {
+            // Frame decode error (normal between frames)
+          }
+        }, 200);
+      } catch (err) {
         setScanning(false);
         const msg = String(err);
         if (msg.includes("NotAllowedError") || msg.includes("Permission denied")) {
@@ -94,11 +134,20 @@ export default function QrScannerModal({
         } else {
           setCameraError("Unable to start camera. Make sure no other app is using it.");
         }
-      });
+      }
+    }
+
+    startCamera();
 
     return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
+      isSubscribed = false;
+      if (scanIntervalRef.current !== null) {
+        window.clearInterval(scanIntervalRef.current);
+        scanIntervalRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [open, facingMode]);
@@ -106,18 +155,28 @@ export default function QrScannerModal({
   // Handle file selection scan
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !scannerRef.current) return;
+    if (!file) return;
     try {
       setCameraError(null);
-      const decodedText = await scannerRef.current.scanFile(file, true);
-      const roomCode = parseRoomCode(decodedText);
-      if (roomCode) {
-        HapticsManager.getInstance().subtle();
-        onScanSuccess(roomCode);
-        onClose();
-      } else {
-        setCameraError("Image does not contain a valid BHALYAM room code.");
+      if (!detectorRef.current && typeof window !== "undefined" && window.BarcodeDetector) {
+        detectorRef.current = new window.BarcodeDetector({ formats: ["qr_code"] });
       }
+      if (!detectorRef.current) {
+        setCameraError("QR scanning from image is not supported in this browser.");
+        return;
+      }
+      const bitmap = await createImageBitmap(file);
+      const barcodes = await detectorRef.current.detect(bitmap);
+      if (barcodes && barcodes.length > 0) {
+        const roomCode = parseRoomCode(barcodes[0].rawValue);
+        if (roomCode) {
+          HapticsManager.getInstance().subtle();
+          onScanSuccess(roomCode);
+          onClose();
+          return;
+        }
+      }
+      setCameraError("Image does not contain a valid BHALYAM room code.");
     } catch {
       setCameraError("Could not detect a clear QR code in this image.");
     }
@@ -205,7 +264,7 @@ export default function QrScannerModal({
 
         {/* Viewfinder Container */}
         <div className="relative w-full max-w-[260px] aspect-square rounded-2xl overflow-hidden bg-black border-2 border-amber-500/80 shadow-md flex items-center justify-center">
-          <div id="bhalyam-qr-reader" className="w-full h-full object-cover" />
+          <video ref={videoRef} playsInline muted autoPlay className="w-full h-full object-cover" />
 
           {/* Animated Target Reticle overlay */}
           {scanning && !cameraError && (

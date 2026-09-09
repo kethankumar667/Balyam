@@ -336,6 +336,11 @@ export class AudioManager {
     }
   }
 
+  static play(key: AudioKey | "coins", opts?: { rate?: number }): void {
+    const resolvedKey = key === "coins" ? ("reward_coins_rain" as AudioKey) : key;
+    this.getInstance().play(resolvedKey, opts);
+  }
+
   stop(key: AudioKey): void {
     const file = this.resolveFile(key);
     if (!file) return;

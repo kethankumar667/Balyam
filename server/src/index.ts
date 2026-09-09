@@ -41,6 +41,8 @@ import { rankingRouter } from "./ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
 import socialRouter from "./social/SocialController.js";
 import partyRouter from "./party/PartyController.js";
+import { StreakService } from "./streak/StreakService.js";
+import { createStreakRouter } from "./streak/StreakController.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -285,6 +287,13 @@ roomManager.startEconomyRecovery();
 if (economyService) {
   app.use("/api/economy", createEconomyRouter(economyService));
 }
+
+/**
+ * 30-Day Daily Login Streak & Rewards API.
+ * Server-authoritative daily progression, protection shields, and milestone rewards.
+ */
+const streakService = new StreakService({ economyService });
+app.use("/api/streak", createStreakRouter(streakService));
 
 /**
  * Operational surface. The gate lives ON this router (see

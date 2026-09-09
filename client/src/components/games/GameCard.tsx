@@ -137,7 +137,7 @@ export default function GameCard({
       {/* Top row: Mode badge, Category & Favourite Toggle */}
       <div className="flex items-center justify-between gap-2 z-10 w-full min-w-0">
         <span
-          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 min-w-0 shrink ${
             isSolo
               ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
               : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
@@ -147,9 +147,9 @@ export default function GameCard({
           <span className="truncate">{isSolo ? "Single Player" : "Multiplayer"}</span>
         </span>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 min-w-0">
           {categoryTag && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute truncate max-w-[90px] sm:max-w-[120px]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-mute truncate max-w-[80px] hidden sm:inline-block md:hidden xl:inline-block">
               {categoryTag}
             </span>
           )}

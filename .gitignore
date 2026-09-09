@@ -15,3 +15,6 @@ coverage/
 # and automatically on `npm run dev`. Real recordings are committed as .mp3
 # at the same paths and take precedence over these.
 client/public/audio/themes/**/*.wav
+
+# AI agent harness & local state
+.agents/

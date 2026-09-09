@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import BhalyamHome from "./pages/BhalyamHome";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
@@ -12,6 +11,7 @@ import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 
 // ── Lazy-loaded pages & routes (code-split) ──
+const LazyBhalyamHome = lazy(() => import("./pages/BhalyamHome"));
 const LazyRoom = lazy(() => import("./pages/Room"));
 const LazyGamesPage = lazy(() => import("./pages/GamesPage"));
 const LazyFavoritesPage = lazy(() => import("./pages/FavoritesPage"));
@@ -69,6 +69,7 @@ const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
 
 export interface RouteComponents {
+  BhalyamHome?: React.ComponentType;
   Room?: React.ComponentType;
   GamesPage?: React.ComponentType;
   FavoritesPage?: React.ComponentType;
@@ -138,9 +139,7 @@ import {
   RoomSkeleton,
   SocialHubSkeleton,
   DashboardSkeleton,
-} from "./design-system/dls";
-import AppLayout from "./components/layout/AppLayout";
-import AdminLayout from "./components/admin/admin-layout";
+} from "./design-system/dls/Skeleton";
 import GamesFamilyLayout from "./components/layout/GamesFamilyLayout";
 import ProfileFamilyLayout from "./components/layout/ProfileFamilyLayout";
 
@@ -153,59 +152,49 @@ function RouteLoadingFallback() {
 
   if (pathname.startsWith("/admin")) {
     return (
-      <AdminLayout>
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-          <DashboardSkeleton />
-        </div>
-      </AdminLayout>
+      <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0B0F19] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <DashboardSkeleton />
+      </div>
     );
   }
 
   if (pathname.startsWith("/tournaments")) {
     return (
-      <AppLayout>
-        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <TournamentSkeleton />
-          </div>
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <TournamentSkeleton />
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (pathname.startsWith("/social")) {
     return (
-      <AppLayout>
-        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <SocialHubSkeleton />
-          </div>
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <SocialHubSkeleton />
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (pathname.startsWith("/profile")) {
     return (
-      <AppLayout>
-        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <ProfileSkeleton />
-          </div>
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <ProfileSkeleton />
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (pathname.startsWith("/leaderboard")) {
     return (
-      <AppLayout>
-        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <LeaderboardSkeleton />
-          </div>
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <LeaderboardSkeleton />
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -215,13 +204,11 @@ function RouteLoadingFallback() {
     pathname.startsWith("/recently-played")
   ) {
     return (
-      <AppLayout>
-        <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <GamesGridSkeleton />
-          </div>
+      <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <GamesGridSkeleton />
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -259,11 +246,12 @@ function ScrollToTopOnRouteChange() {
 
 import { RecoveryProvider } from "./core/recovery/RecoveryProvider";
 import ToastHost from "./components/ToastHost";
-import { TooltipProvider } from "./design-system/dls";
+import { TooltipProvider } from "./design-system/dls/Tooltip";
 import { useStructuredData } from "./seo/useStructuredData";
 import { useMetadata } from "./seo/useMetadata";
 
 export default function App({ components = {} }: AppProps) {
+  const BhalyamHome = components.BhalyamHome ?? LazyBhalyamHome;
   const Room = components.Room ?? LazyRoom;
   const GamesPage = components.GamesPage ?? LazyGamesPage;
   const FavoritesPage = components.FavoritesPage ?? LazyFavoritesPage;

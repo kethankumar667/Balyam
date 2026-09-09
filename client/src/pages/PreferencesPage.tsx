@@ -323,7 +323,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.masterVolume}
                   onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 py-2.5"
                 />
               </div>
 
@@ -345,7 +345,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.musicVolume}
                   onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 py-2.5"
                 />
               </div>
 
@@ -367,7 +367,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.effectsVolume}
                   onChange={(e) => setEffectsVolume(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 py-2.5"
                 />
               </div>
             </div>
