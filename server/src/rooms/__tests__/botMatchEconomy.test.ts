@@ -186,6 +186,65 @@ describe("Free Bot Matches Economy Rule", () => {
     expect(hostWallet.balance).toBe("5000");
   });
 
+  /**
+   * Product decision, 2026-09-09: a bot is scoped to the match it was
+   * added for, not a standing opponent. Before this, a bot added for one
+   * match stayed seated straight through a real match ending into the
+   * post-match rematch-negotiation view — visually indistinguishable from
+   * a real player still "Waiting" to ready up for a round it was never
+   * actually part of. This drives the real `finalizeMatch` path (unlike
+   * the test above, which forces `phase`/`rematch.status` directly and so
+   * never exercises the purge), and confirms the host has to re-add a bot
+   * — the ordinary Add Bot control, now also enabled in this window — to
+   * get one back for the next match.
+   */
+  it("clears bot seats once a real match concludes, and lets the host re-add one for the next match", async () => {
+    const { repo, service } = freshEconomy();
+    seedMember(repo, HOST_MEMBER, "5000");
+    const { io } = makeIo();
+    const rooms = new RoomManager(io, service);
+
+    const host = createRoomAs(rooms, "s_host", "Alice", "rps", "member", HOST_MEMBER);
+    rooms.addBot("s_host", "Bot1");
+    rooms.setReady("s_host", true);
+    await rooms.requestGameStart("s_host");
+
+    const room = peek(rooms, host.code);
+    expect(room.phase).toBe("playing");
+    expect([...room.players.values()].some((p) => p.isBot)).toBe(true);
+
+    // Drive the match to a real finish via the engine, not a forced phase
+    // flip, so `finalizeMatch`'s own purge actually runs.
+    const originalRandom = Math.random;
+    Math.random = () => 0.8; // bot auto-throw is scissors; host always plays rock
+    try {
+      for (let round = 0; round < 10 && room.phase === "playing"; round++) {
+        rooms.applyMove("s_host", "choose", { choice: "rock" });
+        vi.advanceTimersByTime(2100);
+      }
+    } finally {
+      Math.random = originalRandom;
+    }
+    expect(room.phase).toBe("finished");
+
+    // The bot is gone — not sitting there mid-"Waiting" for a round it was
+    // never committed to.
+    expect(room.players.size).toBe(1);
+    expect([...room.players.values()].some((p) => p.isBot)).toBe(false);
+
+    // Alone now, a bare rematch request is refused (below RPS's minimum) —
+    // re-adding a bot, now allowed during this "finished" window, is the
+    // intended path back to a free practice rematch.
+    rooms.requestRematch("s_host");
+    expect(room.rematch.status).toBe("idle");
+
+    rooms.addBot("s_host", "Bot2");
+    expect(room.players.size).toBe(2);
+    rooms.requestRematch("s_host");
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(room.phase).toBe("playing");
+  });
+
   it("returns zero-cost quote from quoteMatchCheckout for bot practice", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, HOST_MEMBER, "5000");

@@ -1858,7 +1858,11 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can add bots");
       return;
     }
-    if (room.phase !== "lobby") {
+    // Allowed in the lobby AND in the "finished, preparing a rematch" window
+    // (matches `isLobbyLike` on the client) — bots are scoped to one match
+    // (see `purgeMatchBots`), so re-adding them here is the ONLY way to get
+    // bots back for the next one. Still refused mid-round.
+    if (room.phase !== "lobby" && room.phase !== "finished") {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot add bots mid-game");
       return;
     }
@@ -1892,7 +1896,9 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) return;
-    if (room.phase !== "lobby") return;
+    // Same window as `addBot` — a bot re-added for a rematch can still be
+    // removed before that next match actually starts.
+    if (room.phase !== "lobby" && room.phase !== "finished") return;
     const target = room.players.get(botId);
     if (!target?.isBot) return;
     room.players.delete(botId);
@@ -1903,7 +1909,7 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) return;
-    if (room.phase !== "lobby") return;
+    if (room.phase !== "lobby" && room.phase !== "finished") return;
     const target = room.players.get(botId);
     if (!target?.isBot) return;
     const cleaned = newName?.trim().slice(0, 20);
@@ -3189,6 +3195,29 @@ export class RoomManager {
    * only two terminal-outcome entry points share one source of truth for
    * "has this room's match already resolved."
    */
+  /**
+   * Clears every bot seat once a match concludes — called AFTER
+   * `recordPostMatchStats` (which still needs to see them for match
+   * history/profile stats), never before.
+   *
+   * Root-caused 2026-09-09 from a live report + explicit product decision:
+   * a bot is a "fill the table for THIS match" convenience, not a
+   * standing opponent. Before this, a bot added for one match stayed
+   * seated straight through into the post-match rematch-negotiation view
+   * — the host would see it sitting there marked "Waiting" alongside real
+   * humans, as if it were a real participant who still needed to ready up
+   * for a NEXT round it was never actually committed to. If the host wants
+   * bots again, they add them again — the same one extra tap it always
+   * took the first time, via the ordinary Add Bot control (now also
+   * enabled during this "finished, preparing rematch" window — see
+   * `addBot`'s own updated phase check).
+   */
+  private purgeMatchBots(room: Room): void {
+    for (const [id, p] of room.players) {
+      if (p.isBot) room.players.delete(id);
+    }
+  }
+
   private recordPostMatchStats(room: Room): void {
     serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine ? getWinnerId(room.engine) : null) ?? null);
     metricsCollector.onMatchFinished(room.game, 0);
@@ -3243,6 +3272,7 @@ export class RoomManager {
       room.phase = "finished";
       this.transitionLifecycle(room, "COMPLETED", "Match finished");
       this.recordPostMatchStats(room);
+      this.purgeMatchBots(room);
       for (const p of room.players.values()) p.isReady = false;
       this.broadcastRoomState(room);
       room.terminalStatus = "COMPLETED";
@@ -3324,6 +3354,7 @@ export class RoomManager {
       room.committedTotalPot = null;
       this.transitionLifecycle(room, "COMPLETED", "Match finished");
       this.recordPostMatchStats(room);
+      this.purgeMatchBots(room);
       for (const p of room.players.values()) p.isReady = false;
       this.broadcastRoomState(room);
       room.terminalStatus = "COMPLETED";

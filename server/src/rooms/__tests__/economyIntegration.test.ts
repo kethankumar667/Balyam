@@ -1483,9 +1483,20 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
         Math.random = originalRandom;
       }
       await drainRoomEconomy(rooms);
-      expect(peek(rooms, host.code).phase).toBe("finished");
+      const finishedRoom = peek(rooms, host.code);
+      expect(finishedRoom.phase).toBe("finished");
 
-      // Now request rematch — sole human requester with bots auto-accepts and transitions to playing
+      // Bots are scoped to the match they were added for (2026-09-09
+      // product decision — see `purgeMatchBots`), so Botty is gone the
+      // instant the match concludes. Alone, the guest is below RPS's
+      // 2-player minimum and a bare rematch request is correctly refused.
+      expect([...finishedRoom.players.values()].some((p) => p.isBot)).toBe(false);
+      rooms.requestRematch("s_g");
+      expect(finishedRoom.rematch.status).toBe("idle"); // refused, never entered "pending"
+
+      // Re-adding a bot is the intended path back to a free practice
+      // rematch — exactly the one extra tap it took the first time.
+      rooms.addBot("s_g", "Botty2");
       rooms.requestRematch("s_g");
       await vi.advanceTimersByTimeAsync(3000);
 
