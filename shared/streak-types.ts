@@ -127,11 +127,6 @@ export type StreakClaimStatusCode =
   | "UNAUTHENTICATED"
   | "ERROR";
 
-export interface DailyStreakClaimRequest {
-  idempotencyKey?: string;
-  clientTimestamp?: number;
-}
-
 export interface DailyStreakClaimResult {
   success: boolean;
   code: StreakClaimStatusCode;

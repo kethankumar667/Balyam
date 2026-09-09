@@ -10,7 +10,6 @@ import { Router, type Request, type Response } from "express";
 import { callerId, requireIdentity } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
 import { StreakService } from "./StreakService.js";
-import type { DailyStreakClaimRequest } from "@shared/streak-types.js";
 
 export function createStreakRouter(streakService: StreakService): Router {
   const router = Router();
@@ -43,13 +42,11 @@ export function createStreakRouter(streakService: StreakService): Router {
   router.post("/claim", requireIdentity, async (req: Request, res: Response) => {
     try {
       const playerId = callerId(req);
-      const body = (req.body ?? {}) as DailyStreakClaimRequest;
 
-      const result = await streakService.claimStreak(
-        playerId,
-        body.clientTimestamp,
-        body.idempotencyKey,
-      );
+      // Deliberately ignores any client-supplied body (timestamp,
+      // idempotency key): the claim's day and dedup key are always the
+      // server's own — see StreakService.claimStreak for why.
+      const result = await streakService.claimStreak(playerId);
 
       // If already claimed today or clock issue, return 200 with success: false (not 500)
       res.json(result);

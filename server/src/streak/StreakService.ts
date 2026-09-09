@@ -161,12 +161,19 @@ export class StreakService {
 
   /**
    * Executes authoritative claim for the current UTC day.
+   *
+   * The idempotency key is always derived here from `playerId` + the
+   * server's own UTC date — never from client input. A caller-supplied key
+   * used to be honored as a fallback, which let a client defeat the "one
+   * claim per day" gate entirely: firing several concurrent requests, each
+   * with its own distinct key, raced past the day-based check (which reads
+   * stale, not-yet-persisted state) and each independently passed the
+   * wallet layer's per-key idempotency log, crediting coins multiple times
+   * for a single day. Keying deterministically on player+day lets that same
+   * wallet-layer log (see `adminAdjustWalletLocked`'s mutex + idempotency
+   * check) collapse every concurrent claim for the day into one credit.
    */
-  async claimStreak(
-    playerId: string,
-    clientTimestamp?: number,
-    idempotencyKey?: string,
-  ): Promise<DailyStreakClaimResult> {
+  async claimStreak(playerId: string): Promise<DailyStreakClaimResult> {
     const serverTimestamp = this.now();
     const currentUtcDate = getUtcDateString(serverTimestamp);
 
@@ -217,7 +224,7 @@ export class StreakService {
     // Award coins through EconomyService if available
     let updatedWalletBalance = "0";
     if (this.economyService && evalResult.coinsAwarded > 0) {
-      const claimIdempotencyKey = idempotencyKey || `streak:${playerId}:${currentUtcDate}`;
+      const claimIdempotencyKey = `streak:${playerId}:${currentUtcDate}`;
       try {
         const adjustment = await this.economyService.adminAdjustWallet({
           identityId: playerId,

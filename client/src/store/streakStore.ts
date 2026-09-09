@@ -80,13 +80,12 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
 
     set({ isClaiming: true });
     try {
-      const idempotencyKey = `streak_claim_${state.playerId}_${Date.now()}`;
+      // No body: the server derives its own day + dedup key from the
+      // authenticated caller. A client-supplied idempotency key used to be
+      // honored here, which let concurrent claims (each with a fresh key)
+      // race past the daily limit and get credited more than once.
       const result = await apiJson<DailyStreakClaimResult>("/api/streak/claim", {
         method: "POST",
-        body: JSON.stringify({
-          idempotencyKey,
-          clientTimestamp: Date.now(),
-        }),
       });
 
       if (result && result.success) {
