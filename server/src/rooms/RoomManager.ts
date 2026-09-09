@@ -1724,6 +1724,12 @@ export class RoomManager {
     // itself is untouched, and this snapshot is how the settlement roster
     // still adds up to the committed seat count without them.
     const departingPlayer = room.players.get(playerId);
+    // Captured before any mutation below — a departure from the LOBBY or
+    // from a post-match rematch-negotiation window (`phase: "finished"`)
+    // is ordinary roster churn and already visible from the participant
+    // list disappearing; announcing it in chat too would just be noise.
+    // Only a mid-MATCH departure gets the real-time notice below.
+    const wasPlaying = room.phase === "playing";
     room.players.delete(playerId);
     room.roomRevision++;
     this.cancelActiveStartAttempt(room, "roster_changed");
@@ -1789,8 +1795,25 @@ export class RoomManager {
       // unreachable (it's gated on phase === "finished"). Finalize it the
       // same way every other completion path does (see
       // MULTIPLAYER-RELIABILITY-BASELINE.md gap G14).
+      if (wasPlaying) {
+        // Sent BEFORE finalizeMatch's own broadcasts, matching the ordering
+        // `forceQuitAutoPlayedSeat` already uses for its own departure
+        // notice — remaining players see "why" arrive first, then the
+        // scorecard/settlement that follows makes sense in context instead
+        // of a settled match just silently appearing.
+        this.systemMessage(
+          room,
+          `${departingPlayer?.name ?? "A player"} left the match. Results have been finalized.`,
+        );
+      }
       await this.finalizeMatch(room, departingPlayer);
     } else {
+      if (wasPlaying) {
+        this.systemMessage(
+          room,
+          `${departingPlayer?.name ?? "A player"} left the match. The match will continue according to game rules.`,
+        );
+      }
       this.broadcastRoomState(room);
       // The engine has moved the turn off the departed seat — push that, and
       // give the clock and the auto-players a fresh start on it.

@@ -1735,6 +1735,7 @@ export function LudoOverlays({
           // rematch), which the generic scorecard used to own.
           onClose={m.closeScorecard}
           onRematch={m.rematch}
+          selfId={m.selfId}
         />
       )}
     </>

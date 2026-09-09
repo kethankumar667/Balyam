@@ -4,6 +4,7 @@ import type { Player, UnoPlayerState } from "@shared/types";
 import Modal from "../../components/Modal";
 import RematchPanel from "../../components/RematchPanel";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import { findAvatar } from "../../lib/avatars";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
@@ -54,6 +55,8 @@ export default function UnoResultModal({
   const matchId = deriveTerminalMatchId(roomState);
   const { settlement } = useMatchSettlement(matchId);
   const winnerPrizes = winnerPrizesFor(settlement);
+  const myRankIndex = selfId ? ranked.indexOf(selfId) : -1;
+  const selfIsGuest = selfId ? players.find((p) => p.id === selfId)?.isGuest ?? false : false;
 
   return (
     <Modal
@@ -280,6 +283,12 @@ export default function UnoResultModal({
 
         {/* Action dock (fixed at bottom, never scrolls out of reach) */}
         <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pb-4 sm:pb-6 pt-2 sm:pt-3 relative z-10 space-y-2 sm:space-y-2.5">
+            <PlayerSettlementSummary
+              settlement={settlement}
+              myRank={myRankIndex}
+              isGuest={selfIsGuest}
+            />
+
             {/* Rematch — the shared panel every game uses, instead of a
                 UNO-specific reimplementation of the same pending/accepted/
                 declined states. Same protocol, same look everywhere now. */}

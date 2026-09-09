@@ -415,6 +415,7 @@ export function ClaimButton({
 import { useState } from "react";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
@@ -445,6 +446,14 @@ export function BingoResultOverlay({
   const roomState = useRoomStore((s) => s.roomState);
   const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+  // Not every player who reaches this screen is IN `winners` — losers get
+  // no entry here at all, unlike `ranked`-style arrays in other games'
+  // scorecards. Map "not found" to an index past every paid placement, so
+  // `winnerPrizesFor(...)[myRank]` correctly resolves to "0" (Defeated)
+  // instead of accidentally reusing rank 0's prize for a non-winner.
+  const myWinnerIndex = winners.findIndex((w) => w.playerId === selfId);
+  const myRank = myWinnerIndex === -1 ? winners.length : myWinnerIndex;
+  const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
 
   if (previewMode) {
     return (
@@ -469,6 +478,15 @@ export function BingoResultOverlay({
           <div className="flex justify-center mb-3">
             <PrizeWonChip amount={winnerPrize} size="md" />
           </div>
+        )}
+
+        {winners.length > 0 && (
+          <PlayerSettlementSummary
+            settlement={settlement}
+            myRank={myRank}
+            isGuest={selfIsGuest}
+            className="mb-4 text-left"
+          />
         )}
 
         <RematchPanel players={players} selfId={selfId} className="mb-4" />

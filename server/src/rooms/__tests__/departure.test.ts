@@ -28,16 +28,19 @@ import type {
 
 function makeIo() {
   const emits: { event: string; socketId: string }[] = [];
+  const roomEmits: { room: string; event: string; data?: unknown }[] = [];
   const socketFor = (socketId: string) => ({
     join() {},
     leave() {},
     emit: (event: string) => emits.push({ event, socketId }),
   });
   const io = {
-    to: () => ({ emit: () => {} }),
+    to: (room: string) => ({
+      emit: (event: string, data?: unknown) => roomEmits.push({ room, event, data }),
+    }),
     sockets: { sockets: { get: (id: string) => socketFor(id) } },
   } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
-  return { io, emits };
+  return { io, emits, roomEmits };
 }
 
 interface PeekRoom {
@@ -61,7 +64,7 @@ const gameStates = (emits: { event: string }[]) =>
 
 /** Two humans + a bot on a Ludo table (20s turn timer), mid-game. */
 function seatThree() {
-  const { io, emits } = makeIo();
+  const { io, emits, roomEmits } = makeIo();
   const rooms = new RoomManager(io);
   const { code } = rooms.createRoom("sA", "Alice", "ludo");
   rooms.joinRoom("sB", "Bob", code);
@@ -70,8 +73,13 @@ function seatThree() {
   rooms.setReady("sB", true);
   rooms.startGame("sA");
   const bobId = [...peek(rooms, code).players.values()].find((p) => p.name === "Bob")!.id;
-  return { rooms, code, emits, bobId };
+  return { rooms, code, emits, roomEmits, bobId };
 }
+
+const chatMessages = (roomEmits: { event: string; data?: unknown }[]) =>
+  roomEmits
+    .filter((e) => e.event === "chat:message")
+    .map((e) => (e.data as { text: string }).text);
 
 /** Advance until it is `playerId`'s turn, so a departure is guaranteed to
  *  hand the turn onward rather than leaving it where it was. */
@@ -108,6 +116,25 @@ describe("RoomManager — mid-game departure", () => {
     // And the table picks up well inside one 20s turn timer.
     vi.advanceTimersByTime(4_000);
     expect(rolls(rooms, code)).toBeGreaterThan(rollsBefore);
+  });
+
+  /**
+   * Root-caused 2026-09-09 from a requirement doc asking that remaining
+   * players get a real-time notice when someone leaves mid-match — nothing
+   * announced a departure at all before this. Wording is contextual: the
+   * table survives Bob's departure here (a bot is still seated), so the
+   * message must say "the match will continue," never "results have been
+   * finalized" (that wording is reserved for a departure that actually
+   * ends the match — see the Hand Cricket case below).
+   */
+  it("a mid-match QUIT that leaves the table running announces itself with the correct wording", () => {
+    const { rooms, roomEmits } = seatThree();
+    rooms.leaveRoom("sB");
+
+    const messages = chatMessages(roomEmits);
+    expect(messages.some((t) => t.includes("Bob") && t.includes("left the match"))).toBe(true);
+    expect(messages.some((t) => t.includes("will continue according to game rules"))).toBe(true);
+    expect(messages.some((t) => t.includes("finalized"))).toBe(false);
   });
 
   /**
@@ -180,6 +207,30 @@ describe("RoomManager — mid-game departure", () => {
     };
     expect(room.engine.getPublicState().phase).toBe("finished");
     expect(room.engine.getPublicState().winnerId).not.toBe(bobId);
+  });
+
+  /**
+   * The other half of the contextual wording introduced alongside the fix
+   * above: a departure that ITSELF ends the match must say "results have
+   * been finalized," never the "will continue" wording reserved for a
+   * table that survives — telling the winner the match will "continue"
+   * when it just ended would be actively misleading.
+   */
+  it("a LEAVE that ends the match announces itself with the 'finalized' wording, never 'will continue'", () => {
+    const { io, roomEmits } = makeIo();
+    const rooms = new RoomManager(io);
+    const { code } = rooms.createRoom("sA", "Alice", "handcricket");
+    rooms.joinRoom("sB", "Bob", code);
+    rooms.setReady("sA", true);
+    rooms.setReady("sB", true);
+    rooms.startGame("sA");
+
+    rooms.leaveRoom("sB");
+
+    const messages = chatMessages(roomEmits);
+    expect(messages.some((t) => t.includes("Bob") && t.includes("left the match"))).toBe(true);
+    expect(messages.some((t) => t.includes("Results have been finalized"))).toBe(true);
+    expect(messages.some((t) => t.includes("will continue according to game rules"))).toBe(false);
   });
 
   it("a departed seat leaves no per-seat timers or counters behind", () => {

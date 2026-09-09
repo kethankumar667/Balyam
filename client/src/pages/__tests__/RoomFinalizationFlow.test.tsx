@@ -260,4 +260,46 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     // Play Again button remains available for rematch
     expect(screen.getByRole("button", { name: /Play Again/i })).toBeDefined();
   });
+
+  /**
+   * Root-caused 2026-09-09 from a live screenshot: a host left alone in this
+   * exact rematch-prep view (their opponent departed) saw the Prize Pool
+   * card's stake badge report "Locked — Match is already active" — flatly
+   * false, since nothing is running. `canChangeStake`/`stakeLockedReason`
+   * used to check `phase === "lobby"` alone, which this reused post-match
+   * view never satisfies (`phase` stays "finished" here); they needed the
+   * same "is this functionally a lobby right now" condition Room.tsx
+   * already used to decide whether to show this panel at all.
+   */
+  it("Rematch-prep lobby (alone after opponent left): stake is NOT reported as locked by an active match", () => {
+    useRoomStore.setState({
+      roomState: {
+        ...baseRoomState,
+        lifecycleState: "COMPLETED",
+        // Only the host remains — the opponent already left, same as the
+        // live report.
+        players: [hostPlayer],
+      },
+      playerId: "p_host",
+      playerName: "Alice (Host)",
+    });
+
+    render(
+      <AudioProvider>
+        <MemoryRouter initialEntries={["/room/TEST99"]}>
+          <Routes>
+            <Route path="/room/:code" element={<Room />} />
+          </Routes>
+        </MemoryRouter>
+      </AudioProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+
+    // The wrong, misleading tooltip must never appear here.
+    expect(screen.queryByTitle(/Match is already active/i)).toBeNull();
+    // With nobody else at the table, the host should be free to adjust the
+    // stake, not see a static "Locked" badge.
+    expect(screen.getByRole("button", { name: /Change/i })).toBeDefined();
+  });
 });

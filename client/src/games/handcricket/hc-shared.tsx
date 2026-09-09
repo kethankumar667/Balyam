@@ -32,6 +32,7 @@ import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import {
   RoughBorder,
   HcSketchHeading,
@@ -2460,6 +2461,8 @@ export function MatchSummary({
   const roomState = useRoomStore((s) => s.roomState);
   const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+  const myRank = state.winnerId ? (youWon ? 0 : 1) : undefined;
+  const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
 
   // 90 s auto-advance to the Game Over screen — only when this is the
   // end-of-match "page" (onContinue provided). Closable early via the button.
@@ -2521,6 +2524,10 @@ export function MatchSummary({
           </div>
         )}
       </div>
+
+      {typeof myRank === "number" && (
+        <PlayerSettlementSummary settlement={settlement} myRank={myRank} isGuest={selfIsGuest} />
+      )}
 
       {/* Man of the Match */}
       {mom && (

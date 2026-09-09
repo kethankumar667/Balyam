@@ -6,6 +6,8 @@ import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
+import type { MatchEconomySettlementRecord } from "../../lib/economyApi";
 import {
   CheckIcon,
   ChoiceIcon,
@@ -726,6 +728,13 @@ export function RpsScorecardModal({
    *  the caller computes this (see RpsBoardMobile/RpsBoardDesktop) since
    *  this file holds no state of its own. */
   winnerPrize,
+  /** Same settlement record `winnerPrize` was already derived from — passed
+   *  through so `PlayerSettlementSummary` doesn't need its own fetch. */
+  settlement,
+  /** This player's own placement, 0-based (0 = winner, 1 = the other seat) —
+   *  computed by the caller since this file holds no state of its own. */
+  myRank,
+  isGuest,
 }: {
   state: ClientRpsState;
   myId: string;
@@ -735,6 +744,9 @@ export function RpsScorecardModal({
   oppScore: number;
   onClose: () => void;
   winnerPrize?: string | null;
+  settlement?: MatchEconomySettlementRecord | null;
+  myRank?: number;
+  isGuest?: boolean;
 }) {
   const winner = state.winnerId;
   const iWon = winner === myId;
@@ -865,6 +877,12 @@ export function RpsScorecardModal({
             <div className="text-xl font-black" style={{ color: "rgba(255,255,255,0.60)" }}>{state.history.length}</div>
           </div>
         </div>
+
+        {typeof myRank === "number" && (
+          <div className="mt-4 mx-6">
+            <PlayerSettlementSummary settlement={settlement ?? null} myRank={myRank} isGuest={!!isGuest} />
+          </div>
+        )}
 
         {/* Round-by-round history */}
         {state.history.length > 0 && (

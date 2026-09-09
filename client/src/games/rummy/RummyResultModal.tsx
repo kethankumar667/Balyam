@@ -8,6 +8,7 @@ import RematchPanel from "../../components/RematchPanel";
 import { svgToPngBlob } from "../../lib/svgExport";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
@@ -97,6 +98,8 @@ export default function RummyResultModal({
   const matchId = deriveTerminalMatchId(roomState);
   const { settlement } = useMatchSettlement(matchId);
   const winnerPrizes = winnerPrizesFor(settlement);
+  const myRankIndex = selfId ? ranked.indexOf(selfId) : -1;
+  const selfIsGuest = selfId ? players.find((p) => p.id === selfId)?.isGuest ?? false : false;
 
   const disconnectedId = state.endedByDisconnect ?? null;
   const headerText = disconnectedId
@@ -495,7 +498,13 @@ export default function RummyResultModal({
         </div>
 
         {/* ── Footer Bar & Rematch Negotiation ── */}
-        <div className="flex-shrink-0 border-t border-white/10 bg-black/70 backdrop-blur-md p-2.5 sm:p-3.5">
+        <div className="flex-shrink-0 border-t border-white/10 bg-black/70 backdrop-blur-md p-2.5 sm:p-3.5 space-y-2.5">
+          <PlayerSettlementSummary
+            settlement={settlement}
+            myRank={myRankIndex}
+            isGuest={selfIsGuest}
+            className="max-w-md mx-auto"
+          />
           <RematchPanel players={players} selfId={selfId} className="max-w-md mx-auto" />
         </div>
       </div>

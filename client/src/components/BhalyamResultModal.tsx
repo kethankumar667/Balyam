@@ -9,6 +9,7 @@ import CountUp from "./CountUp";
 import Modal from "./Modal";
 import { SettlementView } from "./economy/SettlementView";
 import PrizeWonChip from "./economy/PrizeWonChip";
+import PlayerSettlementSummary from "./economy/PlayerSettlementSummary";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
 import RateThisGameCTA from "./reviews/RateThisGameCTA";
 import { useMatchSettlement, winnerPrizesFor } from "../hooks/useMatchSettlement";
@@ -67,6 +68,8 @@ export default function BhalyamResultModal({
   // own doc comment), never a guess.
   const { settlement } = useMatchSettlement(matchId);
   const winnerPrizes = winnerPrizesFor(settlement);
+  const myRankIndex = rankedPlayers.findIndex((p) => p.id === selfId);
+  const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
 
   function requestRematch() {
     getSocket().emit("rematch:request");
@@ -295,8 +298,13 @@ export default function BhalyamResultModal({
 
         {/* AUTHORITATIVE SETTLEMENT MOTION VIEW */}
         {matchId && (
-          <div className="relative z-10 my-3">
+          <div className="relative z-10 my-3 space-y-3">
             <SettlementView matchId={matchId} />
+            <PlayerSettlementSummary
+              settlement={settlement}
+              myRank={myRankIndex}
+              isGuest={selfIsGuest}
+            />
           </div>
         )}
         </div>

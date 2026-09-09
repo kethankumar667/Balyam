@@ -42,6 +42,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
   const roomState = useRoomStore((s) => s.roomState);
   const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
+  const myRank = m.state.winnerId ? (m.state.winnerId === m.myId ? 0 : 1) : undefined;
 
   return (
     <NotebookPage className="min-h-screen">
@@ -226,6 +227,9 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           oppScore={m.oppScore}
           onClose={() => props.onScorecardClose?.()}
           winnerPrize={winnerPrize}
+          settlement={settlement}
+          myRank={myRank}
+          isGuest={m.me?.isGuest ?? false}
         />
       )}
     </NotebookPage>

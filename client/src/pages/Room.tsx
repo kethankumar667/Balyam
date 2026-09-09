@@ -1153,15 +1153,6 @@ export default function Room() {
     return otherHumanPlayers.some((p) => p.isReady);
   }, [otherHumanPlayers]);
 
-  const canChangeStake = selfIsHost && roomState?.phase === "lobby" && !otherHumansReady;
-
-  const stakeLockedReason = useMemo(() => {
-    if (!selfIsHost) return null;
-    if (roomState?.phase !== "lobby") return "Match is already active";
-    if (otherHumansReady) return "Locked: Another player is already marked ready";
-    return null;
-  }, [selfIsHost, roomState?.phase, otherHumansReady]);
-
   /**
    * Client-side preflight responder for the server-authoritative match-start
    * safety protocol. Listens for `room:startPreflight`, checks visibility and
@@ -1272,6 +1263,32 @@ export default function Room() {
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
   const [scorecardDeadlineMs, setScorecardDeadlineMs] = useState<number>(0);
   const scorecardTimerRef = useRef<number | null>(null);
+
+  /**
+   * True whenever the room is showing the lobby-shaped panel — real
+   * `phase === "lobby"`, or the same panel reused for post-match rematch
+   * negotiation (`phase === "finished"` once the scorecard has been
+   * dismissed, matching the render gate a few hundred lines down at the
+   * `{isLobbyLike ? (...) : ...}` branch). Shared by that render gate AND
+   * `canChangeStake`/`stakeLockedReason` below — those two used to check
+   * `phase === "lobby"` alone, which is correct for the render gate's own
+   * OTHER branches but wrong here: it meant a host alone in a rematch-prep
+   * lobby (their opponent just left) saw the stake reported as
+   * unconditionally "Locked — Match is already active," when nothing was
+   * actually active. Root-caused 2026-09-09 from a live screenshot of
+   * exactly that contradictory state.
+   */
+  const isLobbyLike =
+    roomState?.phase === "lobby" || (roomState?.phase === "finished" && scorecardDismissed);
+
+  const canChangeStake = selfIsHost && isLobbyLike && !otherHumansReady;
+
+  const stakeLockedReason = useMemo(() => {
+    if (!selfIsHost) return null;
+    if (!isLobbyLike) return "Match is already active";
+    if (otherHumansReady) return "Locked: Another player is already marked ready";
+    return null;
+  }, [selfIsHost, isLobbyLike, otherHumansReady]);
 
   /** Dismiss the scorecard and return user cleanly to table/lobby. */
   function handleScorecardClose() {
@@ -1560,7 +1577,7 @@ export default function Room() {
           <Toast message={lastError} onClose={() => setError(null)} />
         )}
 
-        {roomState.phase === "lobby" || isGameStartingCeremony || (roomState.phase === "finished" && scorecardDismissed) ? (
+        {isLobbyLike || isGameStartingCeremony ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-start">
             {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3 pb-40 sm:pb-44 lg:pb-0">

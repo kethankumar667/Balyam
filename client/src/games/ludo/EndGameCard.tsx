@@ -8,6 +8,7 @@ import BoardPreviewPill from "../../components/BoardPreviewPill";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
+import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 
 export default function EndGameCard({
   winnerId,
@@ -19,6 +20,7 @@ export default function EndGameCard({
   finishedCount,
   onClose,
   onRematch,
+  selfId,
 }: {
   winnerId: string | null;
   players: Player[];
@@ -31,6 +33,7 @@ export default function EndGameCard({
   finishedCount: Record<string, number>;
   onClose: () => void;
   onRematch: () => void;
+  selfId?: string | null;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [previewMode, setPreviewMode] = useState(false);
@@ -74,6 +77,8 @@ export default function EndGameCard({
   const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrizes = winnerPrizesFor(settlement);
   const winnerPrize = winnerId ? winnerPrizes?.[order.indexOf(winnerId)] : undefined;
+  const myRank = selfId ? order.indexOf(selfId) : -1;
+  const selfIsGuest = selfId ? players.find((p) => p.id === selfId)?.isGuest ?? false : false;
 
   async function downloadPNG() {
     const svg = svgRef.current;
@@ -256,6 +261,10 @@ export default function EndGameCard({
             </text>
           </svg>
         </div>
+
+        {myRank >= 0 && (
+          <PlayerSettlementSummary settlement={settlement} myRank={myRank} isGuest={selfIsGuest} />
+        )}
 
         <div className="flex justify-end gap-2 flex-wrap">
           <button
