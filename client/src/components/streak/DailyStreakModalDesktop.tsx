@@ -325,57 +325,88 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
         </div>
       </div>
 
-      {/* 2. THE REWARDS ROAD MAP CANVAS */}
+      {/* 2. THE EXPEDITION QUEST STAGE (Open Panoramic Landscape, No Boxy Cards) */}
       <div className="relative px-6 py-6 flex flex-col justify-center z-10">
+        {/* Subtle Ambient Nebulae */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-72 h-44 bg-amber-500/10 blur-3xl rounded-full" />
+          <div className="absolute top-1/2 right-12 -translate-y-1/2 w-80 h-56 bg-cyan-500/10 blur-3xl rounded-full" />
+        </div>
+
         <div className="relative w-full">
-          {/* THE PROGRESS CONDUIT: Positioned beneath the stations with connecting energy */}
-          <div className="absolute top-[82px] left-[5%] right-[5%] h-3 rounded-full bg-slate-950/90 border border-white/15 shadow-inner pointer-events-none z-0 overflow-hidden p-0.5">
+          {/* THE EXPEDITION HIGHWAY: Positioned at the base across waypoint nodes */}
+          <div className="absolute top-[166px] left-[4%] right-[4%] h-2.5 rounded-full bg-slate-950 border border-white/10 shadow-inner z-0 overflow-hidden p-0.5">
+            {/* Luminous Animated Beam */}
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.9, ease: "easeOut" }}
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-cyan-400 shadow-[0_0_18px_rgba(245,158,11,0.85)]"
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-cyan-400 shadow-[0_0_16px_rgba(245,158,11,0.9)]"
             />
           </div>
 
-          {/* STATIONS GRID */}
+          {/* STATIONS ROW (Grid of 5 Expeditions: Start, Bronze, Silver, Gold, Diamond Finale) */}
           <div className="relative z-10 grid grid-cols-12 gap-3 items-stretch">
-            {/* STATION 0: START (Day 1) — 2 cols */}
-            <div className="col-span-2 relative p-3 rounded-2xl border flex flex-col items-center justify-between text-center bg-slate-900/90 border-white/15 shadow-lg backdrop-blur-md">
+            {/* 1. START CHECKPOINT (Day 1) — 2 cols */}
+            <div className="col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl transition-all">
+              {/* Top Tag */}
               <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-white/10 text-slate-300 border border-white/10">
                 START
               </span>
 
-              <div className="my-2">
+              {/* Start Artwork */}
+              <div className="h-[76px] flex items-center justify-center my-1">
                 <div
-                  className={`w-12 h-12 rounded-full border-2 flex items-center justify-center shadow-md transition-transform ${
+                  className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-lg transition-transform ${
                     completedDays >= 1
                       ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/40"
                       : "bg-amber-500 border-amber-300 text-white animate-pulse"
                   }`}
                 >
-                  <span className="text-xl">🏁</span>
+                  <span className="text-2xl">🏁</span>
                 </div>
               </div>
 
-              <div>
+              {/* Reward Labels */}
+              <div className="h-[38px] flex flex-col justify-center">
                 <span className="text-xs font-black text-white block">Day 1</span>
                 <span className="text-[11px] font-black text-emerald-400 font-mono">
                   +100 Coins
                 </span>
-                <div className="mt-1">
+              </div>
+
+              {/* Waypoint Node (Centered directly on the highway line) */}
+              <div className="my-1.5 flex items-center justify-center z-10 relative">
+                {/* Opaque backing disc — masks the highway line behind this station */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
+                </div>
+                <div
+                  className={`relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-md ${
+                    completedDays >= 1
+                      ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/50"
+                      : "bg-slate-900 border-white/20 text-slate-400"
+                  }`}
+                >
                   {completedDays >= 1 ? (
-                    <span className="text-[10px] font-black text-emerald-400 flex items-center justify-center gap-0.5">
-                      <Check className="w-3 h-3 stroke-[3]" /> Claimed
-                    </span>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
                   ) : (
-                    <span className="text-[10px] font-bold text-amber-300">Ready</span>
+                    <span className="text-[10px] font-bold font-mono">1</span>
                   )}
                 </div>
               </div>
+
+              {/* Status Pill */}
+              <div className="mt-1">
+                {completedDays >= 1 ? (
+                  <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-300">Ready</span>
+                )}
+              </div>
             </div>
 
-            {/* STATION 1: BRONZE CHEST (Day 7) — 2 cols */}
+            {/* 2. BRONZE CHEST (Day 7) — 2 cols */}
             {(() => {
               const chest = MILESTONES_CATALOG[0];
               const isPassed = completedDays >= chest.day;
@@ -389,54 +420,80 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     AudioManager.play(AUDIO.UI_CLICK);
                     setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
                   }}
-                  className={`col-span-2 relative p-3 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-105 backdrop-blur-md shadow-lg ${
-                    isPassed
-                      ? "bg-slate-900/90 border-emerald-500/50"
-                      : isNext
-                      ? "bg-gradient-to-b from-[#2a1708] to-slate-900/95 border-[#CD7F32] shadow-[0_0_24px_rgba(205,127,50,0.35)] ring-2 ring-[#CD7F32]/50 scale-102"
-                      : "bg-slate-900/85 border-white/15 opacity-80"
+                  className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
+                    isNext
+                      ? "bg-gradient-to-b from-amber-500/15 via-amber-950/20 to-transparent border border-amber-400/50 shadow-[0_0_28px_rgba(205,127,50,0.25)]"
+                      : isPassed
+                      ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "opacity-75 hover:opacity-100"
                   }`}
                 >
+                  {/* Top Tag */}
                   <span
                     className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
                       isNext
-                        ? "bg-[#CD7F32] text-white shadow-xs"
+                        ? "bg-[#CD7F32] text-white shadow-sm"
                         : "bg-white/10 text-slate-300 border border-white/10"
                     }`}
                   >
                     DAY 7
                   </span>
 
-                  <div className="my-1">
-                    <StreakHeroArtwork type="bronze" size={56} />
+                  {/* Chest Artwork (Floating completely unobstructed above the road) */}
+                  <div className="h-[76px] flex items-center justify-center my-1">
+                    <StreakHeroArtwork type="bronze" size={68} />
                   </div>
 
-                  <div>
-                    <div className="font-black text-xs text-white truncate w-full">
+                  {/* Reward Labels */}
+                  <div className="h-[38px] flex flex-col justify-center">
+                    <span className="text-xs font-black text-white truncate block">
                       {chest.title}
-                    </div>
-                    <div className="text-xs font-black font-mono text-[#f59e0b]">
+                    </span>
+                    <span className="text-xs font-black font-mono text-[#f59e0b]">
                       +{chest.coins.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Waypoint Node (Centered directly on the highway line) */}
+                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                    {/* Opaque backing disc — masks the highway line behind this station */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
                     </div>
-                    <div className="mt-1 text-[10px] font-bold">
+                    <div
+                      className={`relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-md ${
+                        isPassed
+                          ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/50"
+                          : isNext
+                          ? "bg-[#CD7F32] border-amber-300 text-white shadow-[0_0_12px_rgba(205,127,50,0.8)] animate-pulse"
+                          : "bg-slate-900 border-white/20 text-slate-400"
+                      }`}
+                    >
                       {isPassed ? (
-                        <span className="text-emerald-400 flex items-center justify-center gap-0.5 font-black">
-                          <Check className="w-3 h-3 stroke-[3]" /> Claimed
-                        </span>
-                      ) : isNext ? (
-                        <span className="text-amber-300 font-black">
-                          {daysToNextMilestone} {daysToNextMilestone === 1 ? "day" : "days"} away
-                        </span>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       ) : (
-                        <span className="text-slate-400">Locked</span>
+                        <span className="text-[10px] font-bold font-mono">7</span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Status Pill */}
+                  <div className="mt-1">
+                    {isPassed ? (
+                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                    ) : isNext ? (
+                      <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
+                        {daysToNextMilestone}d away
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">Locked</span>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
-            {/* STATION 2: SILVER CHEST (Day 14) — 2 cols */}
+            {/* 3. SILVER CHEST (Day 14) — 2 cols */}
             {(() => {
               const chest = MILESTONES_CATALOG[1];
               const isPassed = completedDays >= chest.day;
@@ -450,54 +507,80 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     AudioManager.play(AUDIO.UI_CLICK);
                     setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
                   }}
-                  className={`col-span-2 relative p-3 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-105 backdrop-blur-md shadow-lg ${
-                    isPassed
-                      ? "bg-slate-900/90 border-emerald-500/50"
-                      : isNext
-                      ? "bg-gradient-to-b from-slate-800 to-slate-900/95 border-slate-300 shadow-[0_0_24px_rgba(203,213,225,0.35)] ring-2 ring-slate-300/50 scale-102"
-                      : "bg-slate-900/85 border-white/15 opacity-75"
+                  className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
+                    isNext
+                      ? "bg-gradient-to-b from-slate-300/15 via-slate-800/20 to-transparent border border-slate-300/50 shadow-[0_0_28px_rgba(203,213,225,0.25)]"
+                      : isPassed
+                      ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "opacity-75 hover:opacity-100"
                   }`}
                 >
+                  {/* Top Tag */}
                   <span
                     className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
                       isNext
-                        ? "bg-slate-200 text-slate-950 font-black shadow-xs"
+                        ? "bg-slate-200 text-slate-950 font-black shadow-sm"
                         : "bg-white/10 text-slate-300 border border-white/10"
                     }`}
                   >
                     DAY 14
                   </span>
 
-                  <div className="my-1">
-                    <StreakHeroArtwork type="silver" size={56} />
+                  {/* Chest Artwork */}
+                  <div className="h-[76px] flex items-center justify-center my-1">
+                    <StreakHeroArtwork type="silver" size={68} />
                   </div>
 
-                  <div>
-                    <div className="font-black text-xs text-white truncate w-full">
+                  {/* Reward Labels */}
+                  <div className="h-[38px] flex flex-col justify-center">
+                    <span className="text-xs font-black text-white truncate block">
                       {chest.title}
-                    </div>
-                    <div className="text-xs font-black font-mono text-slate-200">
+                    </span>
+                    <span className="text-xs font-black font-mono text-slate-200">
                       +{chest.coins.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Waypoint Node */}
+                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                    {/* Opaque backing disc — masks the highway line behind this station */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
                     </div>
-                    <div className="mt-1 text-[10px] font-bold">
+                    <div
+                      className={`relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-md ${
+                        isPassed
+                          ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/50"
+                          : isNext
+                          ? "bg-slate-300 border-white text-slate-950 shadow-[0_0_12px_rgba(203,213,225,0.8)] animate-pulse"
+                          : "bg-slate-900 border-white/20 text-slate-400"
+                      }`}
+                    >
                       {isPassed ? (
-                        <span className="text-emerald-400 flex items-center justify-center gap-0.5 font-black">
-                          <Check className="w-3 h-3 stroke-[3]" /> Claimed
-                        </span>
-                      ) : isNext ? (
-                        <span className="text-amber-300 font-black">
-                          {daysToNextMilestone} {daysToNextMilestone === 1 ? "day" : "days"} away
-                        </span>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       ) : (
-                        <span className="text-slate-400">Locked</span>
+                        <span className="text-[10px] font-bold font-mono">14</span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Status Pill */}
+                  <div className="mt-1">
+                    {isPassed ? (
+                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                    ) : isNext ? (
+                      <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
+                        {daysToNextMilestone}d away
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">Locked</span>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
-            {/* STATION 3: GOLD CHEST (Day 21) — 2 cols */}
+            {/* 4. GOLD CHEST (Day 21) — 2 cols */}
             {(() => {
               const chest = MILESTONES_CATALOG[2];
               const isPassed = completedDays >= chest.day;
@@ -511,54 +594,80 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     AudioManager.play(AUDIO.UI_CLICK);
                     setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
                   }}
-                  className={`col-span-2 relative p-3 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-105 backdrop-blur-md shadow-lg ${
-                    isPassed
-                      ? "bg-slate-900/90 border-emerald-500/50"
-                      : isNext
-                      ? "bg-gradient-to-b from-[#2e2008] to-slate-900/95 border-yellow-400 shadow-[0_0_24px_rgba(250,204,21,0.4)] ring-2 ring-yellow-400/50 scale-102"
-                      : "bg-slate-900/85 border-white/15 opacity-75"
+                  className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
+                    isNext
+                      ? "bg-gradient-to-b from-yellow-500/15 via-yellow-950/20 to-transparent border border-yellow-400/50 shadow-[0_0_28px_rgba(250,204,21,0.25)]"
+                      : isPassed
+                      ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "opacity-75 hover:opacity-100"
                   }`}
                 >
+                  {/* Top Tag */}
                   <span
                     className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
                       isNext
-                        ? "bg-yellow-400 text-slate-950 font-black shadow-xs"
+                        ? "bg-yellow-400 text-slate-950 font-black shadow-sm"
                         : "bg-white/10 text-slate-300 border border-white/10"
                     }`}
                   >
                     DAY 21
                   </span>
 
-                  <div className="my-1">
-                    <StreakHeroArtwork type="gold" size={56} />
+                  {/* Chest Artwork */}
+                  <div className="h-[76px] flex items-center justify-center my-1">
+                    <StreakHeroArtwork type="gold" size={68} />
                   </div>
 
-                  <div>
-                    <div className="font-black text-xs text-white truncate w-full">
+                  {/* Reward Labels */}
+                  <div className="h-[38px] flex flex-col justify-center">
+                    <span className="text-xs font-black text-white truncate block">
                       {chest.title}
-                    </div>
-                    <div className="text-xs font-black font-mono text-yellow-300">
+                    </span>
+                    <span className="text-xs font-black font-mono text-yellow-300">
                       +{chest.coins.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Waypoint Node */}
+                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                    {/* Opaque backing disc — masks the highway line behind this station */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
                     </div>
-                    <div className="mt-1 text-[10px] font-bold">
+                    <div
+                      className={`relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-md ${
+                        isPassed
+                          ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/50"
+                          : isNext
+                          ? "bg-yellow-400 border-amber-200 text-slate-950 shadow-[0_0_14px_rgba(250,204,21,0.85)] animate-pulse"
+                          : "bg-slate-900 border-white/20 text-slate-400"
+                      }`}
+                    >
                       {isPassed ? (
-                        <span className="text-emerald-400 flex items-center justify-center gap-0.5 font-black">
-                          <Check className="w-3 h-3 stroke-[3]" /> Claimed
-                        </span>
-                      ) : isNext ? (
-                        <span className="text-amber-300 font-black">
-                          {daysToNextMilestone} {daysToNextMilestone === 1 ? "day" : "days"} away
-                        </span>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       ) : (
-                        <span className="text-slate-400">Locked</span>
+                        <span className="text-[10px] font-bold font-mono">21</span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Status Pill */}
+                  <div className="mt-1">
+                    {isPassed ? (
+                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                    ) : isNext ? (
+                      <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
+                        {daysToNextMilestone}d away
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">Locked</span>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
-            {/* STATION 4: THE GRAND CLIMAX — DIAMOND CROWN (Day 30) — 4 cols (~36-38% visual weight) */}
+            {/* 5. GRAND CLIMAX — DIAMOND CROWN VAULT (Day 30) — 4 cols */}
             {(() => {
               const chest = MILESTONES_CATALOG[3];
               const isPassed = completedDays >= chest.day;
@@ -571,9 +680,9 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     AudioManager.play(AUDIO.UI_CLICK);
                     setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
                   }}
-                  className={`col-span-4 relative p-3.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-103
+                  className="col-span-4 relative p-3.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-103
                              bg-gradient-to-b from-[#101935] via-[#131b38] to-[#0c1020]
-                             border-cyan-400/80 shadow-[0_0_32px_rgba(56,189,248,0.35)] ring-1 ring-cyan-300/40`}
+                             border-cyan-400/80 shadow-[0_0_32px_rgba(56,189,248,0.35)] ring-1 ring-cyan-300/40"
                 >
                   {/* Top Badge Ribbon */}
                   <span className="px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-sm flex items-center gap-1">
@@ -581,13 +690,13 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     GRAND FINALE · DAY 30
                   </span>
 
-                  {/* Grand Diamond Chest with Levitating Crown */}
-                  <div className="my-1 flex justify-center items-center">
+                  {/* Grand Diamond Chest */}
+                  <div className="h-[76px] flex items-center justify-center my-1">
                     <StreakHeroArtwork type="diamond" size={78} />
                   </div>
 
                   {/* High-Impact Reward Numbers */}
-                  <div className="w-full">
+                  <div className="h-[38px] flex flex-col justify-center w-full">
                     <div className="text-xl font-black font-mono bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 bg-clip-text text-transparent drop-shadow-md leading-tight">
                       10,000 COINS
                     </div>
