@@ -1543,7 +1543,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     }
 
     const updated = this.creditWallet(wallet, amountBn, {
-      entryType: "ADMIN_ADJUSTMENT",
+      entryType: input.entryType ?? "ADMIN_ADJUSTMENT",
       sourceKind: "admin",
       sourceId: input.adminPrincipalId,
       idempotencyKey: input.idempotencyKey,

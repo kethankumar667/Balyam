@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { AccountKind } from "@shared/types";
 import { capabilitiesFor, type Capabilities } from "@shared/permissions";
 import { useRoomStore } from "./roomStore";
+import { useStreakStore } from "./streakStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
 import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator";
@@ -453,6 +454,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (get().userId === null) {
       saveLocalAccount(GUEST);
       clearAccountDetails();
+      useStreakStore.getState().resetTransientState();
       set({
         ...GUEST,
         userId: null,
@@ -505,12 +507,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch {}
     RecentlyPlayedManager.clearRecentlyPlayed();
     FavouritesManager.clearFavourites();
-    // Covers playerId/playerName/avatarId/bio/region AND seats (room seat
+    // Cover playerId/playerName/avatarId/bio/region AND seats (room seat
     // credentials) and lastGangs (other players' names — flagged
     // separately as a real privacy concern on a shared device). All are
     // reactive roomStore state, which the earlier localStorage.clear()
     // cannot reach any more than it could RecentlyPlayedManager's cache.
     useRoomStore.getState().resetIdentity();
+    useStreakStore.getState().resetTransientState();
     set({
       ...GUEST,
       userId: null,
@@ -603,6 +606,7 @@ function applySession(session: Session | null): void {
 function applyGuest(): void {
   saveLocalAccount(GUEST);
   clearAccountDetails();
+  useStreakStore.getState().resetTransientState();
   /*
    * Used to also wipe `useRoomStore`'s playerName/avatarId here — but this
    * runs on EVERY resolved "no session" check, which for an actual guest is

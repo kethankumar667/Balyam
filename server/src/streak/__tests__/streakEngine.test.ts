@@ -396,6 +396,14 @@ describe("StreakService — real EconomyService wallet crediting (regression)", 
     const balanceAfterClaim1 = BigInt(claim1.walletBalance);
     expect(balanceAfterClaim1).toBeGreaterThan(100n);
 
+    // The ledger row must be tagged DAILY_REWARD_CREDIT, not the generic
+    // ADMIN_ADJUSTMENT — reusing that type made every streak claim render
+    // as "Adjustment" in the wallet drawer and pollute the Operational
+    // Audit Logs' "Wallet Adjustment" (manual-top-up) trail.
+    const ledger = await economyService.getLedger(playerId, { limit: 10 });
+    const streakEntry = ledger.find((e) => e.amount === "100");
+    expect(streakEntry?.entryType).toBe("DAILY_REWARD_CREDIT");
+
     // And a subsequent independent wallet read (mirrors the client's
     // post-claim `refreshCurrentWallet()`) must see the same balance —
     // proving the credit was actually persisted, not just echoed back.

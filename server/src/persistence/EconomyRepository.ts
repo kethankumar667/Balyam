@@ -44,10 +44,19 @@ export type VoucherStatus = "ACTIVE" | "REDEEMED" | "CANCELLED";
 export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED" | "ABANDONMENT_FORFEITED";
 
 /**
- * The eight wallet-ledger entry types Economy V1 actually writes.
+ * The nine wallet-ledger entry types Economy V1 actually writes.
  * `GUEST_PRIZE_ESCROW` does not exist and never will — a guest's wallet
  * never changes when they win, so nothing belongs on this ledger for that
  * event (see `world_bank_ledger`'s `GUEST_ESCROW_DEPOSIT` instead).
+ *
+ * `DAILY_REWARD_CREDIT` is deliberately its own type, not a reuse of
+ * `ADMIN_ADJUSTMENT` — the daily login streak's coin payout is a routine,
+ * automated, per-player-per-day event, not a human operator's manual
+ * intervention. Reusing `ADMIN_ADJUSTMENT` made every streak claim show up
+ * in the client wallet drawer as a generic "Adjustment", and also polluted
+ * the Operational Audit Logs' "Wallet Adjustment" trail (`AuditController.ts`
+ * filters `coin_ledger_entries` on `entry_type = 'ADMIN_ADJUSTMENT'`
+ * specifically to surface genuine manual top-ups).
  */
 export type WalletLedgerEntryType =
   | "STARTER_GRANT"
@@ -57,7 +66,8 @@ export type WalletLedgerEntryType =
   | "MATCH_PRIZE_CREDIT"
   | "VOUCHER_REDEMPTION"
   | "MATCH_REFUND"
-  | "ADMIN_ADJUSTMENT";
+  | "ADMIN_ADJUSTMENT"
+  | "DAILY_REWARD_CREDIT";
 
 /* ═══════════════════════════ Output DTOs (repository models) ════════════ */
 
@@ -344,6 +354,15 @@ export interface AdminAdjustWalletInput {
   adminPrincipalId: string;
   reason: string;
   idempotencyKey: string;
+  /**
+   * Defaults to `"ADMIN_ADJUSTMENT"` (a genuine manual operator top-up) when
+   * omitted — the only value the admin console's own caller ever needs.
+   * A system-initiated credit (e.g. `StreakService`) passes its own type so
+   * the ledger row, the wallet drawer's label, and the Operational Audit
+   * Logs' "Wallet Adjustment" filter all correctly distinguish it from a
+   * human operator's action.
+   */
+  entryType?: WalletLedgerEntryType;
 }
 
 /* ═══════════════════════ Durable terminal intents (Blocker 06) ════════════

@@ -914,21 +914,44 @@ export class SupabaseEconomyRepository implements EconomyRepository {
   async adminAdjustWallet(
     input: AdminAdjustWalletInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const basePayload = {
+      p_identity_id: input.identityId,
+      p_amount: input.amountCoins,
+      p_admin_id: input.adminPrincipalId,
+      p_reason: input.reason,
+      p_idempotency_key: input.idempotencyKey,
+    };
     try {
+      // p_entry_type is only recognized once migration
+      // 20260916000000_economy_daily_reward_ledger_type.sql has been applied
+      // (it adds the parameter, with a default, to admin_adjust_wallet).
+      // PostgREST resolves an RPC call by exact name+argument match, so a
+      // deployment that only has the OLDER 5-arg function rejects this call
+      // with PGRST202 even though the function genuinely exists — falling
+      // back to the plain 5-arg call below keeps every OTHER caller (the
+      // admin console's real manual top-ups) working unchanged on an
+      // unmigrated deployment; only the DAILY_REWARD_CREDIT distinction is
+      // unavailable until the operator runs the new migration.
       const envelope = await this.rpc<RawEnvelope<WalletRow>>("admin_adjust_wallet", {
-        p_identity_id: input.identityId,
-        p_amount: input.amountCoins,
-        p_admin_id: input.adminPrincipalId,
-        p_reason: input.reason,
-        p_idempotency_key: input.idempotencyKey,
+        ...basePayload,
+        p_entry_type: input.entryType ?? "ADMIN_ADJUSTMENT",
       });
       return { ...envelope, result: toWallet(envelope.result) };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("PGRST202") || msg.includes("admin_adjust_wallet")) {
-        throw new EconomyInfrastructureError(
-          "Database function admin_adjust_wallet is missing. Please run migration 20260906000000_admin_adjust_wallet.sql in Supabase SQL Editor.",
-        );
+      if (msg.includes("PGRST202")) {
+        try {
+          const envelope = await this.rpc<RawEnvelope<WalletRow>>("admin_adjust_wallet", basePayload);
+          return { ...envelope, result: toWallet(envelope.result) };
+        } catch (fallbackErr) {
+          const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+          if (fallbackMsg.includes("PGRST202") || fallbackMsg.includes("admin_adjust_wallet")) {
+            throw new EconomyInfrastructureError(
+              "Database function admin_adjust_wallet is missing. Please run migration 20260906000000_admin_adjust_wallet.sql in Supabase SQL Editor.",
+            );
+          }
+          throw fallbackErr;
+        }
       }
       throw err;
     }

@@ -242,6 +242,7 @@ export class StreakService {
           adminPrincipalId: "system:daily_streak",
           reason: `Daily login streak reward: Day ${evalResult.claimedDay}`,
           idempotencyKey: claimIdempotencyKey,
+          entryType: "DAILY_REWARD_CREDIT",
         });
         updatedWalletBalance = adjustment.result.balance;
       } catch (err) {

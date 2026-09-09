@@ -27,7 +27,7 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
   // Active today reward item
   const todayReward = useMemo(() => {
     return (
-      state?.schedule.find((s) => s.day === currentDay) ??
+      state?.schedule?.find((s) => s.day === currentDay) ??
       STREAK_REWARDS_SCHEDULE.find((s) => s.day === currentDay) ??
       STREAK_REWARDS_SCHEDULE[0]
     );
@@ -80,11 +80,17 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
     return () => clearInterval(interval);
   }, [state?.nextResetAt]);
 
+  const [claimError, setClaimError] = useState<string | null>(null);
+
   const handleClaim = async () => {
     if (!isClaimable || isClaiming) return;
+    setClaimError(null);
     HapticsManager.trigger("reward");
     AudioManager.play(AUDIO.REWARD_COIN);
-    await claimToday();
+    const result = await claimToday();
+    if (!result || !result.success) {
+      setClaimError(result?.message || "Failed to claim reward. Please try again.");
+    }
   };
 
   const isMilestone = Boolean(todayReward.milestoneChest);
@@ -240,24 +246,45 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
 
       {/* Primary Action Button (CLAIM or CONTINUE) */}
       <div className="mt-2">
+        {claimError && (
+          <div
+            role="alert"
+            className="mb-2.5 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold text-center"
+          >
+            {claimError}
+          </div>
+        )}
         {isClaimable ? (
           <motion.button
             type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={isClaiming ? {} : { scale: 1.02 }}
+            whileTap={isClaiming ? {} : { scale: 0.98 }}
             onClick={handleClaim}
             disabled={isClaiming}
-            className="group relative w-full min-h-[50px] py-3 px-6 rounded-2xl font-black text-base
+            aria-busy={isClaiming}
+            className={`group relative w-full min-h-[50px] py-3 px-6 rounded-2xl font-black text-base
                        bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400
                        hover:from-amber-300 hover:to-orange-400
                        text-slate-950 shadow-[0_8px_24px_-4px_rgba(245,158,11,0.5)]
-                       cursor-pointer flex items-center justify-center gap-2 overflow-hidden
-                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
+                       flex items-center justify-center gap-2 overflow-hidden
+                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300
+                       ${isClaiming ? "opacity-75 cursor-wait" : "cursor-pointer"}`}
           >
             {/* Shimmer sweep effect */}
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
-            <Sparkles className="w-5 h-5 fill-slate-950/20" />
-            <span>CLAIM +{todayReward.coins.toLocaleString()} COINS</span>
+            {!isClaiming && (
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
+            )}
+            {isClaiming ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                <span>CLAIMING...</span>
+              </span>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 fill-slate-950/20" />
+                <span>CLAIM +{todayReward.coins.toLocaleString()} COINS</span>
+              </>
+            )}
           </motion.button>
         ) : (
           <motion.button
