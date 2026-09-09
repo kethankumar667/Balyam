@@ -1014,6 +1014,7 @@ export class UnoEngine implements GameEngine {
       deckCount: this.state.deck.length,
       scores: { ...this.state.scores },
       turnDeadline: this.state.turnDeadline,
+      drewLastTurn: this.state.drewLastTurn,
       winnerId: this.state.winnerId,
       lastAction: this.state.lastAction,
       unoDeclaredBy: [...this.state.unoDeclaredBy],

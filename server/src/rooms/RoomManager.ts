@@ -1752,6 +1752,7 @@ export class RoomManager {
     // list disappearing; announcing it in chat too would just be noise.
     // Only a mid-MATCH departure gets the real-time notice below.
     const wasPlaying = room.phase === "playing";
+    const wasHostDeparting = room.hostId === playerId;
     room.players.delete(playerId);
     room.roomRevision++;
     this.cancelActiveStartAttempt(room, "roster_changed");
@@ -1762,6 +1763,27 @@ export class RoomManager {
     // `idleStrikes` would accumulate an entry per departed player for the
     // lifetime of a long-running room.
     this.forgetSeatTimers(room, playerId);
+
+    // Root-caused 2026-09-09 from a live report: a POST-match table (phase
+    // "finished" — a live match's own forfeit/succession rules below are
+    // untouched, this only fires once there's nothing left to settle) used
+    // to auto-promote a new host and stay open no matter who left, or shrink
+    // silently to a lone player with nobody to rematch against — either way
+    // leaving someone stuck on the rematch screen with no path forward.
+    // Close it outright instead, for two distinct reasons a departure can
+    // make it unable to continue:
+    if (room.phase === "finished") {
+      const { min } = getGameLimits(room.game);
+      if (wasHostDeparting) {
+        if (this.closeRoomForEveryone(room, "The host left after the match ended.")) return;
+      } else if (room.players.size < min) {
+        if (this.closeRoomForEveryone(room, "Not enough players remained to continue.")) return;
+      }
+      // Enough non-host players remain and the host is unaffected — fall
+      // through to the ordinary tail below, which already handles a
+      // finished-phase roster shrink correctly (no engine turn to move,
+      // `resumeTable` no-ops on a non-"playing" room).
+    }
 
     // No humans left (empty, or only bots remain) → abandon the room rather
     // than have the engine crown a leftover bot the winner. A remaining HUMAN
@@ -4275,6 +4297,54 @@ export class RoomManager {
    * because the room happens to already be finished rather than freshly
    * abandoned.
    */
+  /**
+   * Closes an already-finished room (a post-match rematch-negotiation
+   * table, never a live match) for every remaining client at once, and
+   * tells them BEFORE it disappears — see `room:closed`'s own doc comment
+   * in shared/types.ts for the silent-teardown bug this replaces.
+   *
+   * Called from `leaveRoom` under two conditions, both product decisions
+   * from a live report (2026-09-09): the HOST leaving after a match ends
+   * (no auto-promoted successor keeps a post-match table open — the room
+   * belongs to whoever was hosting it), or a departure that leaves fewer
+   * players than the game needs to ever field another match (the ordinary
+   * 2-player case: the only opponent left, nobody to rematch against).
+   */
+  /**
+   * Returns whether the room actually closed — false means the caller must
+   * fall through to its own normal departure handling instead of treating
+   * the room as gone.
+   */
+  private closeRoomForEveryone(room: Room, reason: string): boolean {
+    // The SAME precondition `closeConcludedRoom` itself enforces, checked
+    // BEFORE announcing anything — a room whose terminal persistence is
+    // still in flight or awaiting retry (a settlement PostgreSQL call that
+    // failed, say) must stay open and recoverable. Telling every client
+    // "this room is closed, go home" and detaching their sockets would be
+    // a lie the instant `closeConcludedRoom` then refuses to actually
+    // delete it. Returning false leaves the caller's own existing
+    // hasHumanPlayer/reassignHost path to run exactly as it did before
+    // this feature existed — untouched for the one case where the money
+    // isn't actually settled yet.
+    if (room.terminalStatus === "PERSISTING" || room.terminalStatus === "FAILED") {
+      return false;
+    }
+    if (room.terminalPromise && (room.terminalStatus as RoomTerminalStatus) !== "COMPLETED") {
+      return false;
+    }
+    this.io.to(room.code).emit("room:closed", { reason });
+    // Detach every remaining socket from server-side room bookkeeping so
+    // none of them are left half-tracked once the room object is gone —
+    // the departing player's OWN socket was already detached by the
+    // caller before this runs.
+    for (const socketId of room.socketToPlayer.keys()) {
+      this.io.sockets.sockets.get(socketId)?.leave(room.code);
+      this.socketToRoom.delete(socketId);
+    }
+    this.closeConcludedRoom(room);
+    return true;
+  }
+
   private closeConcludedRoom(room: Room): void {
     if (room.terminalStatus === "PERSISTING" || room.terminalStatus === "FAILED") {
       logger.warn({
@@ -5555,10 +5625,27 @@ export class RoomManager {
           // Captured before deletion — same reasoning as leaveRoom's own
           // departingPlayer snapshot, for the same economy settlement reason.
           const droppedPlayer = stillRoom.players.get(playerId);
+          const wasHostDropping = stillRoom.hostId === playerId;
           this.noteDepartureForSettlement(stillRoom, droppedPlayer);
           // The seat is going away entirely, so everything tracking it goes too.
           this.forgetSeatTimers(stillRoom, playerId);
           stillRoom.players.delete(playerId);
+
+          // Same post-match closure rule as `leaveRoom` — a grace-window
+          // expiry is just a departure that took the slow path (connection
+          // never came back instead of an explicit Leave click), so it
+          // needs the identical fix: a POST-match table (nothing left to
+          // settle) must not auto-promote a new host or shrink to nobody
+          // left to rematch against.
+          if (stillRoom.phase === "finished") {
+            const { min } = getGameLimits(stillRoom.game);
+            if (wasHostDropping) {
+              if (this.closeRoomForEveryone(stillRoom, "The host left after the match ended.")) return;
+            } else if (stillRoom.players.size < min) {
+              if (this.closeRoomForEveryone(stillRoom, "Not enough players remained to continue.")) return;
+            }
+          }
+
           // If the departing human was the last human in the room, abandon it —
           // never let the grace-timeout resolve into a bot being crowned winner.
           // Only a REMAINING human counts as a forfeit win, so removePlayer runs

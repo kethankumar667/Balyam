@@ -447,7 +447,15 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
       expect(stateRematch?.lifecycleState).toBe("IN_PROGRESS");
     });
 
-    it("cancels pending rematch if a player leaves during vote", () => {
+    /**
+     * Updated 2026-09-09 on an explicit product decision: RPS needs 2
+     * players, so Bob leaving mid-vote doesn't just cancel the pending
+     * rematch (the old `rematch:state declined` path this test used to
+     * check) — the whole POST-match table closes outright, since Alice
+     * alone has no one left to vote with in the first place. The closure
+     * notice replaces the separate "declined" signal as the explanation.
+     */
+    it("closes the room outright if the only other player leaves during a pending rematch vote", () => {
       harness.registerSocket("s_host");
       harness.registerSocket("s_p2");
 
@@ -472,11 +480,9 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
       // Bob leaves during vote
       harness.rooms.leaveRoom("s_p2");
 
-      // Rematch state was emitted as declined
-      const rematchEmits = harness.emitted.filter(
-        (e) => e.event === "rematch:state" && (e.payload as { status?: string })?.status === "declined"
-      );
-      expect(rematchEmits.length).toBeGreaterThan(0);
+      expect(harness.getInternalRoom(code)).toBeUndefined(); // torn down, not left open for Alice alone
+      const closedEmits = harness.emitted.filter((e) => e.event === "room:closed");
+      expect(closedEmits.length).toBeGreaterThan(0);
     });
   });
 

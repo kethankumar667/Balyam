@@ -67,11 +67,14 @@ import type { AccountKind, ClientToServerEvents, GameKind, Player, ServerToClien
  */
 
 function makeIo() {
+  const roomEmits: { room: string; event: string; data?: unknown }[] = [];
   const io = {
-    to: () => ({ emit: () => {} }),
+    to: (room: string) => ({
+      emit: (event: string, data?: unknown) => roomEmits.push({ room, event, data }),
+    }),
     sockets: { sockets: { get: () => ({ join() {}, leave() {}, emit: () => {} }) } },
   } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
-  return { io };
+  return { io, roomEmits };
 }
 
 function peek(rooms: RoomManager, code: string): Room {
@@ -367,19 +370,32 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
   });
 
   describe("Test G: host migration plus terminal completion race", () => {
-    it("reproduces the observed timeline exactly: reassignHost fires from the same stale grace-expiry callback that would have double-finalized", () => {
-      const { io } = makeIo();
+    /**
+     * Updated 2026-09-09 on an explicit product decision: the SPECIFIC race
+     * this test used to reproduce (reassignHost promoting Bob from inside
+     * the stale grace-expiry callback, immediately followed by a guarded
+     * finalizeMatch no-op) is no longer reachable for a POST-match host
+     * departure at all — the room now closes outright the moment Alice's
+     * stale-host seat is finally reaped, before reassignHost ever runs.
+     * What the test still needs to prove — no duplicate profile/stats call
+     * from the two overlapping completion signals — is proven differently
+     * now: closeConcludedRoom is a pure teardown that never calls
+     * recordMatchFinished, so profileSpy staying at 1 after the reap is the
+     * same "no double-finalize" guarantee, via the new mechanism.
+     */
+    it("closes the room outright once Alice's stale-host seat is finally reaped after a natural completion — no double-finalize, no reassignment", () => {
+      const { io, roomEmits } = makeIo();
       const rooms = new RoomManager(io);
       const profileSpy = vi.spyOn(profileService, "recordMatchFinished");
 
       const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A); // Alice is host
-      const bobJoin = joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
+      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
       rooms.setReady("s_a", true);
       rooms.setReady("s_b", true);
       rooms.startGame("s_a");
 
       // The HOST disconnects this time — matches the prompt's own "Observed
-      // timeline" exactly (reassignHost fires from inside the stale callback).
+      // timeline" exactly.
       rooms.handleDisconnect("s_a");
       vi.advanceTimersByTime(11_000); // past TAKEOVER_GRACE_MS -> Alice is now auto-driven
 
@@ -390,14 +406,15 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
       expect(room.hostId).toBe(host.playerId); // reassignHost has not run yet — only the departure timer does that
       expect(profileSpy).toHaveBeenCalledTimes(1);
 
-      // Alice's disconnect-grace REMOVAL timer fires ~10 minutes later,
-      // deletes her seat, and — because she was still nominally host — runs
-      // reassignHost before attempting finalizeMatch again. This is the
-      // literal reassignHost -> finalizeMatch shape from the observed race.
+      // Alice's disconnect-grace REMOVAL timer fires ~10 minutes later and
+      // finally reaps her seat — she was still nominally host of an
+      // already-finished table, so the room closes for Bob too instead of
+      // promoting him.
       vi.advanceTimersByTime(600_000);
 
-      expect(room.hostId).toBe(bobJoin.ok ? bobJoin.playerId : null); // reassigned once Alice's seat is finally reaped
-      expect(profileSpy).toHaveBeenCalledTimes(1); // still exactly 1 — the guarded finalizeMatch attempt is a no-op
+      expect(peek(rooms, host.code)).toBeUndefined(); // torn down, not reassigned
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
+      expect(profileSpy).toHaveBeenCalledTimes(1); // still exactly 1 — closing never re-invokes match stats
     });
   });
 

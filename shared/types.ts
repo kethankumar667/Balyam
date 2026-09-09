@@ -1455,6 +1455,22 @@ export interface UnoPublicState {
    *  currently participate in stacking; Wild Draw Four stacking is a
    *  deliberately deferred scope decision (see UnoEngine.handleActionCard). */
   pendingDrawCount: number;
+  /**
+   * True once the current-turn player has drawn and not yet played or
+   * passed — the exact condition `UnoEngine.handlePass` itself checks
+   * before accepting a "pass" move. Added 2026-09-09: this used to be
+   * server-internal only, so the client tracked its OWN optimistic copy
+   * (set true the instant Draw was clicked, before the server had even
+   * seen the request) to gate its Pass button and an auto-pass timer.
+   * Under any delay or dropped draw — a network hiccup, or literally any
+   * unrelated state update landing in between — that local copy could go
+   * stale and pass while the server still legitimately said "you haven't
+   * drawn," surfacing as a live "Can only pass after drawing" rejection
+   * the player never asked for. Exposing the server's own field removes
+   * the second, unreliable copy entirely instead of trying to keep two
+   * copies in sync.
+   */
+  drewLastTurn: boolean;
   /** Which house rules are active this match (Volume 4 §28-34), so the UI
    *  can show rule-specific affordances (jump-in hint, stack indicator)
    *  only when they actually do something. Mirrors UnoGameOptions minus
@@ -2843,6 +2859,19 @@ export interface ServerToClientEvents {
   "room:startPreflight": (payload: StartPreflightPayload) => void;
   /** Broadcasted when an in-flight start attempt is cancelled or times out. */
   "room:startCancelled": (payload: { startAttemptId: string; reason: string }) => void;
+  /**
+   * The room is gone — every remaining client must leave this screen NOW,
+   * not on some later reconnect attempt. Added 2026-09-09: a post-match
+   * room used to be torn down (`closeConcludedRoom`) in complete silence —
+   * the host leaving after the match ended, or the last opponent leaving a
+   * 2-player table, deleted the room with no signal to whoever was still
+   * looking at the rematch screen. They only found out by refreshing,
+   * which then failed to rejoin with a generic "Room not found." This is
+   * sent BEFORE the room is deleted, while its socket room still has
+   * everyone in it, specifically so a still-connected client can react
+   * immediately instead of discovering the closure secondhand.
+   */
+  "room:closed": (payload: { reason: string }) => void;
   /**
    * Sent to exactly ONE socket — the connected seat belonging to the guest
    * who just won a nonzero prize — never broadcast to a room. `rawCode` is

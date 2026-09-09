@@ -692,6 +692,25 @@ export default function Room() {
       setWonVoucher({ coinAmount: payload.coinAmount, rawCode: payload.rawCode });
     };
     socket.on("economy:voucherIssued", onVoucherIssued);
+    /**
+     * Root-caused 2026-09-09 from a live report: a post-match table used to
+     * close in complete silence (host leaves after the match ends, or a
+     * 2-player table's last opponent leaves) — whoever was still looking
+     * at the rematch screen had no idea the room was gone until they
+     * refreshed and got a generic "Room not found." This reacts to the
+     * live broadcast instead, the same way the reconnect-failure path
+     * below already does for a room discovered gone on rejoin — same
+     * cleanup, just triggered proactively rather than after a failed retry.
+     */
+    const onRoomClosed = (payload: { reason: string }) => {
+      setError(payload.reason);
+      reset();
+      clearActiveSession();
+      if (code) clearRoomSession(code);
+      if (code) useRoomStore.getState().forgetSeat(code);
+      setTimeout(() => navigate("/"), 2000);
+    };
+    socket.on("room:closed", onRoomClosed);
 
     return () => {
       socket.off("connect", onConnect);
@@ -704,6 +723,7 @@ export default function Room() {
       socket.off("rematch:state", setRematch);
       socket.off("room:startCancelled", onStartCancelled);
       socket.off("economy:voucherIssued", onVoucherIssued);
+      socket.off("room:closed", onRoomClosed);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
       // but the user can navigate away via browser back / tab close without
       // ever clicking Leave. Drop fullscreen here too so they don't end up

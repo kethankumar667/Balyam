@@ -138,7 +138,20 @@ export function useUnoBoard({
 
   // Game loop state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [drewThisTurn, setDrewThisTurn] = useState(false);
+  // NOT local state — root-caused 2026-09-09 from a live "Can only pass
+  // after drawing" rejection. This used to be its own optimistic useState,
+  // flipped true the instant Draw was clicked, before the server had even
+  // seen the request. Under any delay (or a request that never landed),
+  // that copy could go stale — true client-side while the server's own
+  // drewLastTurn was still false — and the auto-pass effect below would
+  // fire a real "pass" the server was bound to reject. state.drewLastTurn
+  // is the exact field the server itself checks; deriving straight from
+  // it means the client can never disagree with what the server is about
+  // to enforce. Losing the old optimism costs nothing real: `isSubmitting`
+  // already disables the Draw button synchronously on click, so nothing
+  // here previously prevented a double-draw that isSubmitting doesn't
+  // already cover on its own.
+  const drewThisTurn = state.drewLastTurn;
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
 
   // A rematch starts a fresh round (`phase` flips back to "playing") — reset
@@ -156,7 +169,6 @@ export function useUnoBoard({
   useEffect(() => {
     if (myTurn) {
       resetUIState();
-      setDrewThisTurn(false);
     }
   }, [state.turnPlayerId, myTurn, resetUIState]);
 
@@ -309,7 +321,6 @@ export function useUnoBoard({
       type: "draw",
       playerId: selfId ?? undefined,
     });
-    setDrewThisTurn(true);
   }
 
   function passTurn() {
@@ -319,7 +330,6 @@ export function useUnoBoard({
       type: "pass",
       playerId: selfId ?? undefined,
     });
-    setDrewThisTurn(false);
   }
 
   // Auto-pass — once a player has drawn and STILL has no legal move
