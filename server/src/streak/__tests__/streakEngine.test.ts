@@ -10,6 +10,8 @@ import {
 } from "../StreakEngine.js";
 import { StreakService } from "../StreakService.js";
 import { STREAK_REWARDS_SCHEDULE } from "@shared/streak-types.js";
+import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+import { EconomyService } from "../../economy/EconomyService.js";
 
 describe("StreakEngine — UTC Date & Calendar Math", () => {
   it("formats timestamps to UTC YYYY-MM-DD correctly", () => {
@@ -362,5 +364,68 @@ describe("StreakService — In-Memory Integration", () => {
     expect(claim2.claimedDay).toBe(2);
     expect(claim2.newStreak).toBe(2);
     expect(claim2.coinsAwarded).toBe(120);
+  });
+});
+
+describe("StreakService — real EconomyService wallet crediting (regression)", () => {
+  // Previously, a player whose identity had never touched the (dev,
+  // in-memory) economy store before — e.g. their very first daily-streak
+  // claim, before ever playing a paid match — got a claim response that
+  // said success:true and a specific coin count, while the wallet was
+  // NEVER actually credited: `adminAdjustWallet` threw IdentityNotFoundError,
+  // StreakService caught it silently and fell back to a stale "0" balance.
+  // Every earlier test in this file used `economyService: null`, so this
+  // path had zero coverage.
+  it("credits a brand-new, never-before-registered guest identity on their first claim", async () => {
+    const repo = new InMemoryEconomyRepository();
+    const economyService = new EconomyService(repo);
+    let mockTime = Date.UTC(2026, 8, 1, 10, 0, 0);
+    const service = new StreakService({ economyService, postgrestConfig: null, now: () => mockTime });
+
+    const playerId = "guest_never_seen_before";
+
+    // Sanity: this identity has genuinely never touched the economy store.
+    await expect(economyService.getWallet(playerId)).rejects.toThrow(/not registered/i);
+
+    const claim1 = await service.claimStreak(playerId, "guest");
+    expect(claim1.success).toBe(true);
+    expect(claim1.coinsAwarded).toBe(100);
+
+    // The response's own walletBalance must reflect a real credit, not the
+    // "0" fallback the bug used to silently return.
+    const balanceAfterClaim1 = BigInt(claim1.walletBalance);
+    expect(balanceAfterClaim1).toBeGreaterThan(100n);
+
+    // And a subsequent independent wallet read (mirrors the client's
+    // post-claim `refreshCurrentWallet()`) must see the same balance —
+    // proving the credit was actually persisted, not just echoed back.
+    const wallet = await economyService.getWallet(playerId);
+    expect(BigInt(wallet.balance)).toBe(balanceAfterClaim1);
+    expect(wallet.identityKind).toBe("guest");
+
+    // Claiming Day 2 must credit an ADDITIONAL 120 coins on top of Day 1's
+    // balance, proving this isn't a one-off fluke of wallet creation.
+    mockTime = Date.UTC(2026, 8, 2, 10, 0, 0);
+    const claim2 = await service.claimStreak(playerId, "guest");
+    expect(claim2.success).toBe(true);
+    expect(claim2.coinsAwarded).toBe(120);
+    expect(BigInt(claim2.walletBalance)).toBe(balanceAfterClaim1 + 120n);
+  });
+
+  it("registers a member identity's kind correctly (not defaulted to guest)", async () => {
+    const repo = new InMemoryEconomyRepository();
+    const economyService = new EconomyService(repo);
+    const service = new StreakService({
+      economyService,
+      postgrestConfig: null,
+      now: () => Date.UTC(2026, 8, 1, 10, 0, 0),
+    });
+
+    const playerId = "member_never_seen_before";
+    const claim = await service.claimStreak(playerId, "member");
+    expect(claim.success).toBe(true);
+
+    const wallet = await economyService.getWallet(playerId);
+    expect(wallet.identityKind).toBe("member");
   });
 });

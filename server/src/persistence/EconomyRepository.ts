@@ -816,6 +816,26 @@ export interface EconomyRepository {
    */
   resolveIdentityId?(query: string): Promise<string | null>;
 
+  /**
+   * Optional, idempotent hook to make `identityId` a known identity of
+   * `kind` BEFORE any wallet-touching call (`ensureWallet`,
+   * `adminAdjustWallet`, `commitMatchEntry`'s debits) is made for it.
+   *
+   * `SupabaseEconomyRepository` never needs this: its `ensure_wallet()` RPC
+   * already reads the same `player_identities` table that
+   * `ensureMemberIdentityProvisioned`/`ensureGuestIdentityProvisioned`
+   * (`auth/identity.ts`) populate on every authenticated request, so the row
+   * is already there by the time any economy call runs — hence it's
+   * optional, not required, on this interface. `InMemoryEconomyRepository`
+   * has no such shared table (its `identities` map is private to the
+   * instance and, outside of tests seeding it directly, was never written
+   * to by any real caller), so a caller crediting an identity it has never
+   * seen before — e.g. a first-time daily-streak claim — threw
+   * `IdentityNotFoundError`, which `StreakService` was catching and
+   * silently treating as "claim succeeded, coins just didn't land."
+   */
+  ensureIdentityRegistered?(identityId: string, kind: PlayerIdentityKind): Promise<void>;
+
   /* ── durable terminal intents (Blocker 06) ── */
 
   /**

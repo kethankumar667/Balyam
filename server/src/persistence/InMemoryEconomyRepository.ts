@@ -592,6 +592,24 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     return this.mutex.runExclusive(`wallet:${identityId}`, () => this.ensureWalletLocked(identityId));
   }
 
+  /**
+   * Registers `identityId` as a known `kind`, once, so a later
+   * `ensureWalletLocked` (via `ensureWallet`/`adminAdjustWallet`/
+   * `commitMatchEntry`) does not throw `IdentityNotFoundError` for an
+   * identity that has never touched this in-memory store before. A no-op
+   * if already registered — never overwrites an existing kind.
+   */
+  async ensureIdentityRegistered(identityId: string, kind: PlayerIdentityKind): Promise<void> {
+    if (!identityId || identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError("identity_id cannot be null or empty");
+    }
+    await this.mutex.runExclusive(`wallet:${identityId}`, () => {
+      if (!this.identities.has(identityId)) {
+        this.identities.set(identityId, kind);
+      }
+    });
+  }
+
   async grantStarterCoins(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
     return this.mutex.runExclusive(`wallet:${identityId}`, () =>
       this.withRollback(() => this.grantStarterCoinsLocked(identityId)),
