@@ -11,8 +11,10 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
   if (type === "diamond") {
     return (
       <div className="relative flex items-center justify-center select-none" style={{ width: size, height: size }}>
-        {/* Ambient Halo */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-500/30 via-violet-500/30 to-amber-400/30 blur-xl animate-pulse" />
+        {/* Ambient Halo — the biggest, richest glow of any tier; this is
+            the destination reward, it should out-shine every milestone
+            leading up to it, not just match them. */}
+        <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-cyan-500/40 via-violet-500/40 to-amber-400/40 blur-2xl animate-pulse" />
 
         {/* Rotating Sunburst Halo */}
         <motion.div
@@ -117,18 +119,51 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
       : ["#ffedd5", "#ea580c", "#831843"];
 
     const glowColor = isGold
-      ? "rgba(250,204,21,0.55)"
+      ? "rgba(250,204,21,0.6)"
       : isSilver
-      ? "rgba(203,213,225,0.45)"
-      : "rgba(205,127,50,0.55)";
+      ? "rgba(203,213,225,0.5)"
+      : "rgba(205,127,50,0.5)";
+
+    // Each rarity should read as a step up, not a recolor of the same box:
+    // Bronze stays a plain travel chest (no extra hardware). Silver adds
+    // riveted corner studs. Gold adds both the rivets AND a glowing center
+    // gem on the lid, plus a richer ambient aura — genuinely more going on
+    // visually the higher the tier, mirroring the actual reward jump
+    // (1,000 -> 2,500 -> 5,000 coins).
+    const hasRivets = isSilver || isGold;
+    const hasLidGem = isGold;
 
     return (
       <div className="relative flex items-center justify-center select-none" style={{ width: size, height: size }}>
-        {/* Soft Radial Ambient Aura */}
+        {/* Soft Radial Ambient Aura — richer for higher tiers */}
         <div
-          className="absolute inset-[-6px] rounded-full blur-xl animate-pulse pointer-events-none opacity-70"
+          className={`absolute rounded-full blur-xl animate-pulse pointer-events-none ${
+            isGold ? "inset-[-10px] opacity-90" : isSilver ? "inset-[-8px] opacity-80" : "inset-[-6px] opacity-65"
+          }`}
           style={{ backgroundColor: glowColor }}
         />
+
+        {/* Floating sparkle accents — absent on Bronze (the "starter" tier),
+            one on Silver, two on Gold, matching the escalating ceremony. */}
+        {(isSilver || isGold) && (
+          <motion.div
+            animate={{ scale: [0.8, 1.15, 0.8], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-1.5 -right-0.5 pointer-events-none"
+            style={{ color: isGold ? "#fde047" : "#e2e8f0" }}
+          >
+            <Sparkles className="w-4 h-4 fill-current drop-shadow-[0_0_6px_rgba(250,204,21,0.7)]" />
+          </motion.div>
+        )}
+        {isGold && (
+          <motion.div
+            animate={{ scale: [1, 0.7, 1], opacity: [0.8, 0.35, 0.8] }}
+            transition={{ duration: 2.3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+            className="absolute bottom-1 -left-1 text-amber-200 pointer-events-none"
+          >
+            <Sparkles className="w-3.5 h-3.5 fill-current drop-shadow-[0_0_5px_rgba(253,224,71,0.8)]" />
+          </motion.div>
+        )}
 
         <motion.div
           animate={{ y: [-2, 2, -2] }}
@@ -146,6 +181,13 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
                 <stop offset="50%" stopColor={trimGradient[1]} />
                 <stop offset="100%" stopColor={trimGradient[2]} />
               </linearGradient>
+              {hasLidGem && (
+                <radialGradient id="lidGem" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#fffbeb" />
+                  <stop offset="55%" stopColor="#fbbf24" />
+                  <stop offset="100%" stopColor="#b45309" />
+                </radialGradient>
+              )}
             </defs>
 
             {/* Shadow */}
@@ -174,6 +216,18 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
             {/* Metal Bands */}
             <path d="M42 58 L42 98 M78 58 L78 98" stroke={`url(#chestTrim_${type})`} strokeWidth="4" />
 
+            {/* Riveted corner studs — Silver and Gold only, the plainer
+                Bronze chest has none, so the step up in hardware is visible
+                at a glance. */}
+            {hasRivets && (
+              <>
+                <circle cx="30" cy="66" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
+                <circle cx="90" cy="66" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
+                <circle cx="30" cy="90" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
+                <circle cx="90" cy="90" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
+              </>
+            )}
+
             {/* Center Lock / Keyplate */}
             <rect
               x="54"
@@ -187,6 +241,15 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
             />
             <circle cx="60" cy="67" r="2" fill="#1e293b" />
             <path d="M60 69 L60 73" stroke="#1e293b" strokeWidth="1.5" strokeLinecap="round" />
+
+            {/* Glowing lid gem — Gold only, the one visual flourish neither
+                Bronze nor Silver has. */}
+            {hasLidGem && (
+              <>
+                <circle cx="60" cy="49" r="6" fill="url(#lidGem)" stroke="#fef3c7" strokeWidth="1" />
+                <circle cx="58" cy="47" r="1.6" fill="#ffffff" fillOpacity="0.85" />
+              </>
+            )}
           </svg>
         </motion.div>
       </div>
