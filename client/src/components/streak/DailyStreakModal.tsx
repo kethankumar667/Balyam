@@ -5,6 +5,8 @@ import { useViewport } from "../../lib/useViewport";
 import DailyStreakModalMobile from "./DailyStreakModalMobile";
 import DailyStreakModalDesktop from "./DailyStreakModalDesktop";
 import StreakClaimCelebration from "./StreakClaimCelebration";
+import { AudioManager } from "../../services/AudioManager";
+import { AUDIO } from "../../constants/audio";
 
 export function DailyStreakModal() {
   const {
@@ -18,6 +20,18 @@ export function DailyStreakModal() {
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
 
+  // Audio on open/close
+  useEffect(() => {
+    if (isOpen) {
+      AudioManager.play(AUDIO.UI_POPUP_OPEN);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    AudioManager.play(AUDIO.UI_POPUP_CLOSE);
+    closeModal();
+  };
+
   // Handle Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -26,13 +40,13 @@ export function DailyStreakModal() {
         if (showCelebration) {
           clearCelebration();
         } else {
-          closeModal();
+          handleClose();
         }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, showCelebration, clearCelebration, closeModal]);
+  }, [isOpen, showCelebration, clearCelebration]);
 
   return (
     <>
@@ -45,15 +59,15 @@ export function DailyStreakModal() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={closeModal}
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer"
+              onClick={handleClose}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
             />
 
             {/* Responsive Layout Content */}
             {isMobile ? (
-              <DailyStreakModalMobile onClose={closeModal} />
+              <DailyStreakModalMobile onClose={handleClose} />
             ) : (
-              <DailyStreakModalDesktop onClose={closeModal} />
+              <DailyStreakModalDesktop onClose={handleClose} />
             )}
           </div>
         )}

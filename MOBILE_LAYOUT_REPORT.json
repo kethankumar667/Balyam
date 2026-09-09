@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-09T10:48:11.787Z",
+  "generatedAt": "2026-09-09T13:01:36.359Z",
   "engine": "chromium (playwright)",
   "scope": "Layout measured in one engine at CSS viewport sizes. NOT device certification: no WebKit, no Gecko, no physical hardware, and nothing about iOS address-bar or Android keyboard insets.",
   "viewports": [

@@ -81,6 +81,29 @@ const FallingPetals = lazy(() => import("../animations/app/FallingPetals"));
 const EveryoneReadyBanner = lazy(() => import("../animations/app/ReadyCheckmarkDraw").then((m) => ({ default: m.EveryoneReadyBanner })));
 
 /**
+ * Fallback for the modal Suspense boundary below. Most of the lazy modals it
+ * covers (LeaveRoomModal, ChangeStakeModal) mount unconditionally and render
+ * nothing while closed, so their own chunk load is invisible either way —
+ * but BhalyamResultModal/VoucherWonModal/PreflightRotatePrompt only start
+ * loading the moment their trigger condition (match end, voucher win,
+ * orientation lock) flips true, which re-suspends the whole boundary. A
+ * `null` fallback there meant the scorecard/voucher/rotate-prompt appeared
+ * to just not show up for a beat right when the player most needs it.
+ */
+function ModalSuspenseFallback() {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading"
+    >
+      <div className="w-10 h-10 rounded-full border-4 border-amber-400/30 border-t-amber-500 animate-spin" />
+    </div>
+  );
+}
+
+/**
  * Bot-control max-seat lookup. Mirrors the server-side getGameLimits map so
  * the "X seats left" pill in BotControls knows when the table is full per
  * game type. Keep in sync with server/src/games/registry.ts
@@ -1906,7 +1929,7 @@ export default function Room() {
       />
 
       {/* Match result & settlement modal — displays ranked outcomes and authoritative settlement */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<ModalSuspenseFallback />}>
         {showScorecard && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
           <BhalyamResultModal
             players={roomState.players}
