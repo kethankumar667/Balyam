@@ -12,6 +12,7 @@ import {
   Trophy,
   Star,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
@@ -78,6 +79,16 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
       if (found) days.push(found);
     }
     return days;
+  }, [schedule, todayDay]);
+
+  // Tomorrow's immediate reward — retention loop trigger
+  const tomorrowReward = useMemo(() => {
+    const nextDay = todayDay + 1;
+    if (nextDay > 30) return null;
+    return (
+      schedule.find((s) => s.day === nextDay) ??
+      (STREAK_REWARDS_SCHEDULE[nextDay - 1] as StreakScheduledDay)
+    );
   }, [schedule, todayDay]);
 
   // Computed, not hand-typed, so it can never silently drift from the real
@@ -151,17 +162,20 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
           )}
 
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-black tracking-tight text-amber-200">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-base font-black tracking-tight bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-400 bg-clip-text text-transparent">
                 Rewards Expedition
               </h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono">
                 Day {completedDays} / 30
               </span>
+              {tomorrowReward && (
+                <span className="text-[9px] px-2 py-0.5 rounded-full font-black bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/40 font-mono flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.2)]">
+                  <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                  Tomorrow: +{tomorrowReward.coins.toLocaleString()} 🪙
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
-              4 Grand Milestone Chests along the way
-            </p>
           </div>
         </div>
 
@@ -222,8 +236,16 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, Math.round((completedDays / 21) * 100))}%` }}
               transition={reduce ? { duration: 0 } : { duration: 0.8, ease: "easeOut" }}
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-yellow-400 shadow-[0_0_12px_rgba(245,158,11,0.85)]"
-            />
+              className="relative h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-yellow-400 shadow-[0_0_12px_rgba(245,158,11,0.85)] overflow-hidden"
+            >
+              {!reduce && (
+                <motion.div
+                  animate={{ x: ["-100%", "220%"] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                />
+              )}
+            </motion.div>
           </div>
 
           <div className="relative z-10 grid grid-cols-3 gap-2">
@@ -243,7 +265,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                   }}
                   className={`min-h-[44px] p-2 rounded-2xl flex flex-col items-center justify-between text-center cursor-pointer transition-all ${
                     isNext
-                      ? "bg-gradient-to-b from-amber-500/15 to-transparent border border-amber-400/40 shadow-[0_0_20px_rgba(205,127,50,0.25)]"
+                      ? "bg-gradient-to-b from-amber-500/20 to-transparent border border-amber-400/60 shadow-[0_0_16px_rgba(205,127,50,0.25)] ring-1 ring-amber-400/40"
                       : isPassed
                       ? "bg-emerald-500/5"
                       : "opacity-75"
@@ -273,6 +295,13 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                     </div>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black font-mono bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                      {Math.min(completedDays, 7)} / 7d
+                    </span>
+                  </div>
+
                   {/* Base Waypoint Node */}
                   <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
@@ -298,13 +327,17 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
 
                   <div className="mt-0.5 text-[9px] font-black">
                     {isPassed ? (
-                      <span className="text-emerald-400">Claimed</span>
+                      <span className="text-emerald-400 uppercase tracking-wider">Collected</span>
                     ) : isNext ? (
-                      <span className="text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/30">
-                        {daysToNextMilestone}d away
+                      <span className="text-amber-300 bg-gradient-to-r from-amber-500/30 to-amber-600/30 px-1.5 py-0.5 rounded-full border border-amber-400/40 shadow-[0_0_8px_rgba(245,158,11,0.25)] flex items-center gap-0.5 justify-center">
+                        <Lock className="w-2 h-2 text-amber-300" />
+                        {daysToNextMilestone === 0 ? "Ready!" : `${daysToNextMilestone}d away`}
                       </span>
                     ) : (
-                      <span className="text-slate-400">Locked</span>
+                      <span className="text-slate-400 flex items-center gap-0.5 justify-center">
+                        <Lock className="w-2 h-2 text-slate-500" />
+                        Day 7 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -327,7 +360,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                   }}
                   className={`min-h-[44px] p-2 rounded-2xl flex flex-col items-center justify-between text-center cursor-pointer transition-all ${
                     isNext
-                      ? "bg-gradient-to-b from-slate-300/15 to-transparent border border-slate-300/40 shadow-[0_0_20px_rgba(203,213,225,0.25)]"
+                      ? "bg-gradient-to-b from-slate-300/15 to-transparent border border-slate-300/40 shadow-[0_0_10px_rgba(203,213,225,0.18)]"
                       : isPassed
                       ? "bg-emerald-500/5"
                       : "opacity-75"
@@ -357,6 +390,13 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                     </div>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black font-mono bg-slate-500/20 text-slate-300 border border-slate-400/30">
+                      {Math.min(completedDays, 14)} / 14d
+                    </span>
+                  </div>
+
                   {/* Base Waypoint Node */}
                   <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
@@ -382,13 +422,16 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
 
                   <div className="mt-0.5 text-[9px] font-black">
                     {isPassed ? (
-                      <span className="text-emerald-400">Claimed</span>
+                      <span className="text-emerald-400 uppercase tracking-wider">Collected</span>
                     ) : isNext ? (
                       <span className="text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/30">
-                        {daysToNextMilestone}d away
+                        {daysToNextMilestone === 0 ? "Ready!" : `${daysToNextMilestone}d away`}
                       </span>
                     ) : (
-                      <span className="text-slate-400">Locked</span>
+                      <span className="text-slate-400 flex items-center gap-0.5 justify-center">
+                        <Lock className="w-2 h-2 text-slate-500" />
+                        Day 14 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -411,7 +454,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                   }}
                   className={`min-h-[44px] p-2 rounded-2xl flex flex-col items-center justify-between text-center cursor-pointer transition-all ${
                     isNext
-                      ? "bg-gradient-to-b from-yellow-500/15 to-transparent border border-yellow-400/40 shadow-[0_0_20px_rgba(250,204,21,0.3)]"
+                      ? "bg-gradient-to-b from-yellow-500/15 to-transparent border border-yellow-400/40 shadow-[0_0_10px_rgba(250,204,21,0.2)]"
                       : isPassed
                       ? "bg-emerald-500/5"
                       : "opacity-75"
@@ -441,6 +484,13 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                     </div>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black font-mono bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                      {Math.min(completedDays, 21)} / 21d
+                    </span>
+                  </div>
+
                   {/* Base Waypoint Node */}
                   <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
@@ -466,13 +516,16 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
 
                   <div className="mt-0.5 text-[9px] font-black">
                     {isPassed ? (
-                      <span className="text-emerald-400">Claimed</span>
+                      <span className="text-emerald-400 uppercase tracking-wider">Collected</span>
                     ) : isNext ? (
                       <span className="text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/30">
-                        {daysToNextMilestone}d away
+                        {daysToNextMilestone === 0 ? "Ready!" : `${daysToNextMilestone}d away`}
                       </span>
                     ) : (
-                      <span className="text-slate-400">Locked</span>
+                      <span className="text-slate-400 flex items-center gap-0.5 justify-center">
+                        <Lock className="w-2 h-2 text-slate-500" />
+                        Day 21 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -503,41 +556,44 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                 AudioManager.play(AUDIO.UI_CLICK);
                 setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
               }}
-              className="relative p-3 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all
+              className="group relative p-4 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all active:scale-[0.98] overflow-hidden
                          bg-gradient-to-r from-[#101935] via-[#131b38] to-[#0c1020]
-                         border-cyan-400/80 shadow-[0_0_24px_rgba(56,189,248,0.3)] ring-1 ring-cyan-300/40"
+                         border-cyan-300 shadow-[0_0_34px_rgba(56,189,248,0.45)] ring-2 ring-cyan-300/50"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              {/* Extra ambient wash */}
+              <div className="absolute inset-[-30%] bg-gradient-to-br from-cyan-500/15 via-violet-500/10 to-amber-400/15 blur-2xl pointer-events-none" />
+
+              <div className="relative flex items-center gap-3 min-w-0">
                 <div className="shrink-0">
-                  <StreakHeroArtwork type="diamond" size={64} />
+                  <StreakHeroArtwork type="diamond" size={76} />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 flex items-center gap-0.5">
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 flex items-center gap-0.5 font-mono">
                       <Crown className="w-2.5 h-2.5 text-slate-950" />
-                      GRAND FINALE
+                      ULTIMATE VAULT
                     </span>
                     <span className="text-[9px] font-mono text-cyan-200 font-bold">
                       Day 30 {isPassed && "✓"}
                     </span>
                   </div>
-                  <div className="text-base font-black font-mono text-yellow-300 drop-shadow-sm mt-0.5">
+                  <div className="text-lg font-black font-mono text-yellow-300 drop-shadow-sm mt-0.5">
                     {chest.coins.toLocaleString()} COINS
                   </div>
                   <div className="text-[10px] font-bold text-cyan-200">
                     Monthly Champion Crown + Shield
                   </div>
                   <div className="text-[9px] font-black text-amber-200 mt-0.5 flex items-center gap-1 flex-wrap">
-                    <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
-                    <span>{totalCoinsAvailable.toLocaleString()} Total Coins</span>
+                    <Trophy className="w-2.5 h-2.5 text-amber-400 fill-amber-400/40" />
+                    <span>GRAND PRIZE POOL: {totalCoinsAvailable.toLocaleString()} COINS</span>
                     <span className="text-cyan-300/80 font-semibold normal-case">
-                      (≈ {Math.floor(totalCoinsAvailable / 100)} room entries)
+                      (≈ {Math.floor(totalCoinsAvailable / 100)} entries)
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="shrink-0 pl-2">
+              <div className="relative shrink-0 pl-2">
                 <span className="text-[10px] px-2.5 py-1 rounded-xl font-black bg-white/15 text-white border border-white/20">
                   Tap Loot
                 </span>
@@ -631,6 +687,17 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
             )}
           </div>
         )}
+
+        {/* Campaign summary — reframes the whole 30 days as one payoff
+            before the CTA, the way a season-pass screen sells the
+            destination, not just the next step. */}
+        <div className="mb-2.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-violet-500/15 to-cyan-500/15 border border-amber-400/30 flex items-center justify-center gap-1.5 text-center text-[10px] font-bold flex-wrap shadow-inner">
+          <Trophy className="w-3 h-3 text-amber-300 shrink-0" />
+          <span className="text-amber-300 font-mono font-black">★ EXPEDITION GRAND SPOILS:</span>
+          <span className="text-white font-mono font-bold">{totalCoinsAvailable.toLocaleString()} Coins</span>
+          <span className="text-slate-500">+</span>
+          <span className="text-cyan-200 font-black">Champion Crown</span>
+        </div>
 
         {isClaimable ? (
           <motion.button

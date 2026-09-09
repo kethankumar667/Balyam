@@ -285,6 +285,16 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
     return days;
   }, [schedule, todayDay]);
 
+  // Tomorrow's immediate reward — crucial for retention loop psychology
+  const tomorrowReward = useMemo(() => {
+    const nextDay = todayDay + 1;
+    if (nextDay > 30) return null;
+    return (
+      schedule.find((s) => s.day === nextDay) ??
+      (STREAK_REWARDS_SCHEDULE[nextDay - 1] as StreakScheduledDay)
+    );
+  }, [schedule, todayDay]);
+
   // Computed, not hand-typed, so it can never silently drift from the real
   // schedule the way a hardcoded total would.
   const totalCoinsAvailable = useMemo(
@@ -347,25 +357,24 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
 
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-lg font-black tracking-tight text-amber-200 drop-shadow-sm">
+              <h2 className="text-lg font-black tracking-tight bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-400 bg-clip-text text-transparent drop-shadow-sm">
                 Rewards Expedition
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-300 border border-amber-400/40 font-mono flex items-center gap-1">
                 <Flame className="w-3 h-3 text-orange-400 fill-orange-400" />
-                Day {completedDays} of 30
+                Day {completedDays} / 30
               </span>
-              {/* Today's specific payout, always visible from this screen —
-                  the road below only calls out the 4 milestone days, so
-                  without this a player checking in on, say, Day 12 has no
-                  way to see what today itself is worth without leaving. */}
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 font-mono flex items-center gap-1">
                 <Coins className="w-3 h-3" />
                 {isClaimable ? "Today" : "Claimed"}: +{todayReward.coins.toLocaleString()}
               </span>
+              {tomorrowReward && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/50 font-mono flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Tomorrow: +{tomorrowReward.coins.toLocaleString()} 🪙
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              4 Grand Milestone Chests along the monthly road
-            </p>
           </div>
         </div>
 
@@ -418,15 +427,29 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
         </div>
 
         <div className="relative w-full">
-          {/* THE EXPEDITION HIGHWAY: Positioned at the base across waypoint nodes */}
-          <div className="absolute top-[166px] left-[4%] right-[4%] h-2.5 rounded-full bg-slate-950 border border-white/10 shadow-inner z-0 overflow-hidden p-0.5">
-            {/* Luminous Animated Beam */}
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercent}%` }}
-              transition={reduce ? { duration: 0 } : { duration: 0.9, ease: "easeOut" }}
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-cyan-400 shadow-[0_0_16px_rgba(245,158,11,0.9)]"
-            />
+          {/* THE EXPEDITION HIGHWAY: Positioned at the base across waypoint nodes.
+              Flag/crown bookends plus a moving shimmer on the filled portion
+              give the road a sense of motion instead of reading as a static
+              divider line. */}
+          <div className="absolute top-[164px] left-[4%] right-[4%] flex items-center gap-1.5 z-0">
+            <span className="text-sm shrink-0 -ml-0.5" aria-hidden="true">🏁</span>
+            <div className="relative flex-1 h-3 rounded-full bg-slate-950 border border-white/10 shadow-inner overflow-hidden p-0.5">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercent}%` }}
+                transition={reduce ? { duration: 0 } : { duration: 0.9, ease: "easeOut" }}
+                className="relative h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-cyan-400 shadow-[0_0_16px_rgba(245,158,11,0.9)] overflow-hidden"
+              >
+                {!reduce && (
+                  <motion.div
+                    animate={{ x: ["-100%", "220%"] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  />
+                )}
+              </motion.div>
+            </div>
+            <Crown className="w-4 h-4 text-amber-300 fill-amber-400/70 shrink-0" aria-hidden="true" />
           </div>
 
           {/* "You are here" marker — floats at today's exact proportional
@@ -450,11 +473,11 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
 
           {/* STATIONS ROW (Grid of 5 Expeditions: Start, Bronze, Silver, Gold, Diamond Finale) */}
           <div className="relative z-10 grid grid-cols-12 gap-3 items-stretch">
-            {/* 1. START CHECKPOINT (Day 1) — 2 cols */}
+            {/* 1. START CHECKPOINT (Day 1 - Base Camp) — 2 cols */}
             <div className="col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl transition-all">
               {/* Top Tag */}
-              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-white/10 text-slate-300 border border-white/10">
-                START
+              <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                BASE CAMP
               </span>
 
               {/* Start Artwork */}
@@ -462,7 +485,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                 <div
                   className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-lg transition-transform ${
                     completedDays >= 1
-                      ? "bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/40"
+                      ? "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300 text-white shadow-emerald-500/50 ring-2 ring-emerald-400/40"
                       : "bg-amber-500 border-amber-300 text-white animate-pulse"
                   }`}
                 >
@@ -502,7 +525,9 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
               {/* Status Pill */}
               <div className="mt-1">
                 {completedDays >= 1 ? (
-                  <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                  <span className="text-[10px] font-black text-emerald-400 tracking-wider uppercase">
+                    Collected
+                  </span>
                 ) : (
                   <span className="text-[10px] font-bold text-amber-300">Ready</span>
                 )}
@@ -521,7 +546,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   onClick={() => openInspector(chest)}
                   className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
                     isNext
-                      ? "bg-gradient-to-b from-amber-500/15 via-amber-950/20 to-transparent border border-amber-400/50 shadow-[0_0_28px_rgba(205,127,50,0.25)]"
+                      ? "bg-gradient-to-b from-amber-500/20 via-amber-950/25 to-transparent border border-amber-400/60 shadow-[0_0_24px_rgba(205,127,50,0.3)] ring-1 ring-amber-400/40"
                       : isPassed
                       ? "bg-emerald-500/5 hover:bg-emerald-500/10"
                       : "opacity-75 hover:opacity-100"
@@ -539,7 +564,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   </span>
 
                   {/* Chest Artwork (Floating completely unobstructed above the road) */}
-                  <div className="h-[76px] flex items-center justify-center my-1">
+                  <div className="h-[76px] flex items-center justify-center my-1 transition-transform hover:-translate-y-1">
                     <StreakHeroArtwork type="bronze" size={68} />
                   </div>
 
@@ -553,8 +578,15 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     </span>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black font-mono bg-amber-500/20 text-amber-300 border border-amber-400/30 shadow-xs">
+                      {Math.min(completedDays, 7)} / 7 DAYS
+                    </span>
+                  </div>
+
                   {/* Waypoint Node (Centered directly on the highway line) */}
-                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                  <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
@@ -579,13 +611,19 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   {/* Status Pill */}
                   <div className="mt-1">
                     {isPassed ? (
-                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                      <span className="text-[10px] font-black text-emerald-400 tracking-wider uppercase">
+                        Collected
+                      </span>
                     ) : isNext ? (
-                      <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
-                        {daysToNextMilestone}d away
+                      <span className="text-[10px] font-black text-amber-300 bg-gradient-to-r from-amber-500/30 to-amber-600/30 px-2 py-0.5 rounded-full border border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.3)] flex items-center gap-1 justify-center">
+                        <Lock className="w-2.5 h-2.5 text-amber-300" />
+                        {daysToNextMilestone === 0 ? "Ready!" : `Opens in ${daysToNextMilestone}d`}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold text-slate-300">Locked</span>
+                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 justify-center">
+                        <Lock className="w-2.5 h-2.5 text-slate-500" />
+                        Day 7 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -604,7 +642,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   onClick={() => openInspector(chest)}
                   className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
                     isNext
-                      ? "bg-gradient-to-b from-slate-300/15 via-slate-800/20 to-transparent border border-slate-300/50 shadow-[0_0_28px_rgba(203,213,225,0.25)]"
+                      ? "bg-gradient-to-b from-slate-300/15 via-slate-800/20 to-transparent border border-slate-300/50 shadow-[0_0_14px_rgba(203,213,225,0.18)]"
                       : isPassed
                       ? "bg-emerald-500/5 hover:bg-emerald-500/10"
                       : "opacity-75 hover:opacity-100"
@@ -622,7 +660,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   </span>
 
                   {/* Chest Artwork */}
-                  <div className="h-[76px] flex items-center justify-center my-1">
+                  <div className="h-[76px] flex items-center justify-center my-1 transition-transform hover:-translate-y-1">
                     <StreakHeroArtwork type="silver" size={68} />
                   </div>
 
@@ -636,8 +674,15 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     </span>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black font-mono bg-slate-500/20 text-slate-300 border border-slate-400/30 shadow-xs">
+                      {Math.min(completedDays, 14)} / 14 DAYS
+                    </span>
+                  </div>
+
                   {/* Waypoint Node */}
-                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                  <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
@@ -662,13 +707,18 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   {/* Status Pill */}
                   <div className="mt-1">
                     {isPassed ? (
-                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                      <span className="text-[10px] font-black text-emerald-400 tracking-wider uppercase">
+                        Collected
+                      </span>
                     ) : isNext ? (
                       <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
-                        {daysToNextMilestone}d away
+                        {daysToNextMilestone === 0 ? "Ready!" : `Opens in ${daysToNextMilestone}d`}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold text-slate-300">Locked</span>
+                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 justify-center">
+                        <Lock className="w-2.5 h-2.5 text-slate-500" />
+                        Day 14 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -687,7 +737,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   onClick={() => openInspector(chest)}
                   className={`col-span-2 relative flex flex-col items-center justify-between text-center p-2 rounded-2xl cursor-pointer transition-all hover:scale-105 ${
                     isNext
-                      ? "bg-gradient-to-b from-yellow-500/15 via-yellow-950/20 to-transparent border border-yellow-400/50 shadow-[0_0_28px_rgba(250,204,21,0.25)]"
+                      ? "bg-gradient-to-b from-yellow-500/15 via-yellow-950/20 to-transparent border border-yellow-400/50 shadow-[0_0_14px_rgba(250,204,21,0.18)]"
                       : isPassed
                       ? "bg-emerald-500/5 hover:bg-emerald-500/10"
                       : "opacity-75 hover:opacity-100"
@@ -705,7 +755,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   </span>
 
                   {/* Chest Artwork */}
-                  <div className="h-[76px] flex items-center justify-center my-1">
+                  <div className="h-[76px] flex items-center justify-center my-1 transition-transform hover:-translate-y-1">
                     <StreakHeroArtwork type="gold" size={68} />
                   </div>
 
@@ -719,8 +769,15 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     </span>
                   </div>
 
+                  {/* Goal Gradient Micro-Pill */}
+                  <div className="my-0.5">
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black font-mono bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 shadow-xs">
+                      {Math.min(completedDays, 21)} / 21 DAYS
+                    </span>
+                  </div>
+
                   {/* Waypoint Node */}
-                  <div className="my-1.5 flex items-center justify-center z-10 relative">
+                  <div className="my-1 flex items-center justify-center z-10 relative">
                     {/* Opaque backing disc — masks the highway line behind this station */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-12 h-5 rounded-full bg-[#0f1629]" />
@@ -745,13 +802,18 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   {/* Status Pill */}
                   <div className="mt-1">
                     {isPassed ? (
-                      <span className="text-[10px] font-black text-emerald-400">Claimed</span>
+                      <span className="text-[10px] font-black text-emerald-400 tracking-wider uppercase">
+                        Collected
+                      </span>
                     ) : isNext ? (
                       <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/40">
-                        {daysToNextMilestone}d away
+                        {daysToNextMilestone === 0 ? "Ready!" : `Opens in ${daysToNextMilestone}d`}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold text-slate-300">Locked</span>
+                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 justify-center">
+                        <Lock className="w-2.5 h-2.5 text-slate-500" />
+                        Day 21 Goal
+                      </span>
                     )}
                   </div>
                 </div>
@@ -767,24 +829,29 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                 <div
                   key={chest.day}
                   onClick={() => openInspector(chest)}
-                  className="col-span-4 relative p-3.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-103
+                  className="group col-span-4 relative p-4 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all hover:scale-[1.04] overflow-hidden
                              bg-gradient-to-b from-[#101935] via-[#131b38] to-[#0c1020]
-                             border-cyan-400/80 shadow-[0_0_32px_rgba(56,189,248,0.35)] ring-1 ring-cyan-300/40"
+                             border-cyan-300 shadow-[0_0_46px_rgba(56,189,248,0.5)] ring-2 ring-cyan-300/60"
                 >
+                  {/* Extra ambient wash behind the whole card */}
+                  <div className="absolute inset-[-20%] bg-gradient-to-br from-cyan-500/15 via-violet-500/10 to-amber-400/15 blur-2xl pointer-events-none" />
+                  {/* Hover shine sweep */}
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+
                   {/* Top Badge Ribbon */}
-                  <span className="px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-sm flex items-center gap-1">
+                  <span className="relative px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-md flex items-center gap-1 font-mono">
                     <Crown className="w-3 h-3 text-slate-950" />
-                    GRAND FINALE · DAY 30
+                    ULTIMATE VAULT · DAY 30
                   </span>
 
                   {/* Grand Diamond Chest */}
-                  <div className="h-[76px] flex items-center justify-center my-1">
-                    <StreakHeroArtwork type="diamond" size={78} />
+                  <div className="relative h-[96px] flex items-center justify-center mt-4 mb-1 transition-transform group-hover:scale-105">
+                    <StreakHeroArtwork type="diamond" size={98} />
                   </div>
 
                   {/* High-Impact Reward Numbers */}
-                  <div className="h-[38px] flex flex-col justify-center w-full">
-                    <div className="text-xl font-black font-mono text-yellow-300 drop-shadow-md leading-tight">
+                  <div className="relative h-[38px] flex flex-col justify-center w-full">
+                    <div className="text-2xl font-black font-mono text-yellow-300 drop-shadow-md leading-tight">
                       {chest.coins.toLocaleString()} COINS
                     </div>
                     <div className="text-[10px] font-bold text-cyan-200 mt-0.5">
@@ -792,18 +859,13 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                     </div>
                   </div>
 
-                  {/* Grand Spoils Banner — the total is computed from the
-                      real schedule (not hand-typed, which had drifted 1,000
-                      coins off the actual sum), and the room-entry framing
-                      makes the abstract coin count concrete: 100 coins is
-                      the platform's minimum per-seat stake, so this is a
-                      truthful, checkable conversion, not invented flavor. */}
-                  <div className="mt-2 pt-1.5 border-t border-cyan-400/25 w-full flex flex-col items-center justify-center gap-0.5 text-[10px] font-black text-amber-200">
-                    <span className="flex items-center gap-1.5">
-                      <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      {totalCoinsAvailable.toLocaleString()} Total Coins Available
+                  {/* Grand Spoils Banner */}
+                  <div className="relative mt-2 pt-1.5 border-t border-cyan-400/25 w-full flex flex-col items-center justify-center gap-0.5 text-[10px] font-black text-amber-200">
+                    <span className="flex items-center gap-1.5 font-mono">
+                      <Trophy className="w-3.5 h-3.5 text-amber-400 fill-amber-400/40" />
+                      GRAND PRIZE POOL: {totalCoinsAvailable.toLocaleString()} COINS
                     </span>
-                    <span className="text-cyan-300/80 font-semibold normal-case">
+                    <span className="text-cyan-300/80 font-semibold normal-case text-[9px]">
                       ≈ {Math.floor(totalCoinsAvailable / 100)} free room entries
                     </span>
                   </div>
@@ -904,19 +966,43 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
         )}
 
         {/* 4. Integrated Seamless Bottom Action Bar */}
-        <div className="mt-5 pt-3.5 border-t border-white/10 flex items-center justify-between gap-3">
-          <div className="text-xs text-slate-400 font-medium flex items-center gap-2 flex-wrap">
-            {longestStreak > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-amber-200 font-bold text-[11px]">
-                <Trophy className="w-3 h-3 text-amber-300" />
-                Best: {longestStreak}d
-              </span>
-            )}
-            <span className={`w-2 h-2 rounded-full bg-emerald-400 ${reduce ? "" : "animate-pulse"}`} />
-            <span>Tap any milestone chest along the road to inspect guaranteed loot.</span>
+        <div className="mt-5 pt-3.5 border-t border-white/10">
+          {/* Campaign summary banner — replaces a footer that previously
+              contributed almost nothing ("Tap any chest to inspect loot").
+              This reframes the whole 30 days as one payoff, the way a
+              season-pass screen sells the destination, not just the next
+              step. */}
+          <div className="mb-3 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-violet-500/15 to-cyan-500/15 border border-amber-400/30 flex items-center justify-center gap-2 text-center flex-wrap shadow-inner">
+            <Trophy className="w-4 h-4 text-amber-300 shrink-0" />
+            <span className="text-xs font-black text-amber-300 font-mono tracking-wide">★ EXPEDITION GRAND SPOILS:</span>
+            <span className="text-xs font-black text-white font-mono">
+              {totalCoinsAvailable.toLocaleString()} Coins
+            </span>
+            <span className="text-slate-500">•</span>
+            <span className="text-xs font-bold text-slate-200">4 Grand Chests</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-xs font-black text-cyan-300 flex items-center gap-1">
+              <Crown className="w-3 h-3 text-cyan-300" />
+              Champion Crown + Shield
+            </span>
           </div>
 
-          <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-slate-400 font-medium flex items-center gap-2 flex-wrap">
+              {longestStreak > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-amber-200 font-bold text-[11px]">
+                  <Trophy className="w-3 h-3 text-amber-300" />
+                  Best: {longestStreak}d
+                </span>
+              )}
+              <span className={`w-2 h-2 rounded-full bg-emerald-400 ${reduce ? "" : "animate-pulse"}`} />
+              <span className="text-amber-200/90 font-medium flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                Tap any milestone chest to inspect guaranteed loot.
+              </span>
+            </div>
+
+            <div>
             {isClaimable ? (
               <button
                 type="button"
@@ -942,6 +1028,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                 <span className="font-mono text-amber-300">{timeUntilReset}</span>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
