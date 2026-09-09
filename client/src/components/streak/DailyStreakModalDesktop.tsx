@@ -201,9 +201,11 @@ export const MILESTONES_CATALOG: MilestoneChestDetail[] = [
 ];
 
 export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDesktopProps) {
-  const { state, isClaiming, claimToday } = useStreakStore();
+  const { state, isClaiming, claimToday, timeUntilReset, updateTimeRemaining } = useStreakStore();
 
   const currentStreak = state?.currentStreak ?? 0;
+  const longestStreak = state?.longestStreak ?? 0;
+  const shieldsRemaining = state?.shieldsRemaining ?? 0;
   const isClaimable = state?.isClaimableToday ?? false;
   const activeDay = state?.activeDayInCycle ?? 1;
   const schedule = state?.schedule ?? [];
@@ -217,6 +219,8 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
       description: "Day 1 Welcome Reward",
       status: "CLAIMABLE",
     };
+
+  const todayRarity = getRewardRarity(todayDay, todayReward.coins);
 
   const nextDayNum = (todayDay % 30) + 1;
   const nextReward =
@@ -234,6 +238,13 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
     MILESTONES_CATALOG.findIndex((m) => m.day >= completedDays)
   );
   const [inspectMilestone, setInspectMilestone] = useState<MilestoneChestDetail | null>(null);
+
+  // Live countdown to next 00:00 UTC reset
+  useEffect(() => {
+    updateTimeRemaining();
+    const interval = setInterval(updateTimeRemaining, 1000);
+    return () => clearInterval(interval);
+  }, [updateTimeRemaining]);
 
   const handleClaim = () => {
     HapticsManager.trigger("reward");
@@ -297,6 +308,15 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                 <Flame className="w-3 h-3 text-orange-400 fill-orange-400" />
                 Day {completedDays} of 30
               </span>
+              {longestStreak > 0 && (
+                <span
+                  className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-300 border border-white/10 font-mono items-center gap-1"
+                  title={`Personal Best Streak: ${longestStreak} Days`}
+                >
+                  <Trophy className="w-3 h-3 text-yellow-400" />
+                  Best: {longestStreak}d
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               4 Grand Milestone Chests along the monthly road
@@ -304,11 +324,37 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
           </div>
         </div>
 
-        {/* Status Chip & Close Button */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-amber-400/30 text-xs font-black text-amber-200 shadow-inner">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>{urgencyText}</span>
+        {/* Header Right: Urgency Timer, Shield Protection, Close */}
+        <div className="flex items-center gap-2.5">
+          {/* 1. Live Reset Countdown Timer (P0 Retention Driver) */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-amber-500/30 text-xs font-bold text-white shadow-inner"
+            title="Daily reset occurs at 00:00:00 UTC. Claim today before the timer expires!"
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-400 motion-safe:animate-pulse" />
+            <span className="text-slate-400 text-[11px]">Resets in:</span>
+            <span className="font-mono font-black text-amber-300">{timeUntilReset}</span>
+          </div>
+
+          {/* 2. Streak Shield / Loss-Aversion Protection (P0 Retention Mechanic) */}
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-inner transition-colors ${
+              shieldsRemaining > 0
+                ? "bg-sky-950/60 border-sky-400/40 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.25)]"
+                : "bg-white/5 border-white/10 text-slate-400"
+            }`}
+            title={
+              shieldsRemaining > 0
+                ? `${shieldsRemaining} Streak Shield active: your streak is safe if you miss 1 day!`
+                : "0 Streak Shields active. Earn shields at Day 30 Diamond Vault."
+            }
+          >
+            <Shield
+              className={`w-3.5 h-3.5 ${
+                shieldsRemaining > 0 ? "text-sky-400 fill-sky-400/30" : "text-slate-500"
+              }`}
+            />
+            <span>{shieldsRemaining > 0 ? `${shieldsRemaining} Shield Active` : "0 Shields"}</span>
           </div>
 
           <button
@@ -326,11 +372,67 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
       </div>
 
       {/* 2. THE EXPEDITION QUEST STAGE (Open Panoramic Landscape, No Boxy Cards) */}
-      <div className="relative px-6 py-6 flex flex-col justify-center z-10">
+      <div className="relative px-6 py-5 flex flex-col justify-center z-10">
         {/* Subtle Ambient Nebulae */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-72 h-44 bg-amber-500/10 blur-3xl rounded-full" />
           <div className="absolute top-1/2 right-12 -translate-y-1/2 w-80 h-56 bg-cyan-500/10 blur-3xl rounded-full" />
+        </div>
+
+        {/* TODAY'S ACTIVE SECTOR & ESCALATION HUD (Directly solves the intermediate days reward gap) */}
+        <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-cyan-500/10 border border-amber-400/30 flex flex-wrap items-center justify-between gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow-inner">
+              <Coins className="w-5 h-5 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                  Today's Sector · Day {todayDay}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-black font-mono uppercase ${todayRarity.badgeBg} ${todayRarity.badgeText} border`}
+                >
+                  {todayRarity.label}
+                </span>
+                {isClaimable ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 motion-safe:animate-pulse">
+                    Ready to Claim
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <Check className="w-3 h-3 stroke-[3]" /> Claimed Today
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className="text-base font-black font-mono text-white tracking-tight">
+                  +{todayReward.coins.toLocaleString()} Coins
+                </span>
+                <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                  <span>Tomorrow:</span>
+                  <span className="font-mono font-bold text-amber-300">
+                    +{nextReward.coins.toLocaleString()} Coins
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Escalation to Next Milestone Chest */}
+          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-xl border border-white/10 text-xs">
+            <Gift className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] font-bold uppercase text-slate-400">
+                Next Milestone Goal:
+              </span>
+              <span className="text-xs font-black text-amber-200">
+                {nextMilestone.title} ({daysToNextMilestone}{" "}
+                {daysToNextMilestone === 1 ? "day" : "days"} away · +
+                {nextMilestone.coins.toLocaleString()} Coins)
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="relative w-full">
@@ -344,6 +446,19 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
               className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-cyan-400 shadow-[0_0_16px_rgba(245,158,11,0.9)]"
             />
           </div>
+
+          {/* Current Position Waypoint Beacon (Surfaces exact location between milestone checkpoints) */}
+          {completedDays > 0 && completedDays < 30 && (
+            <div
+              style={{ left: `calc(4% + ${progressPercent * 0.92}%)` }}
+              className="absolute top-[146px] -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center transition-all duration-700"
+            >
+              <span className="px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase font-mono tracking-wider bg-amber-400 text-slate-950 shadow-md border border-yellow-200 whitespace-nowrap motion-safe:animate-bounce">
+                YOU · D{todayDay}
+              </span>
+              <div className="w-1.5 h-1.5 bg-amber-400 rotate-45 -mt-0.5" />
+            </div>
+          )}
 
           {/* STATIONS ROW (Grid of 5 Expeditions: Start, Bronze, Silver, Gold, Diamond Finale) */}
           <div className="relative z-10 grid grid-cols-12 gap-3 items-stretch">
@@ -708,7 +823,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                   {/* Grand Spoils Banner */}
                   <div className="mt-2 pt-1.5 border-t border-cyan-400/25 w-full flex items-center justify-center gap-1.5 text-[10px] font-black text-amber-200">
                     <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    <span>35,800 Total Coins Available</span>
+                    <span>35,800 Total Coins (≈ 358 match stakes)</span>
                   </div>
                 </div>
               );
@@ -716,64 +831,79 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
           </div>
         </div>
 
-        {/* 3. Floating Tap-To-Inspect Popover Tooltip */}
+        {/* 3. Floating Tap-To-Inspect Popover Tooltip (Dynamically Anchored Near Trigger) */}
         <AnimatePresence>
-          {inspectMilestone && (
-            <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              className="absolute top-6 left-1/2 -translate-x-1/2 z-30 max-w-sm w-full p-4 rounded-2xl
-                         bg-[#0e1424]/98 border-2 border-amber-400 text-white shadow-2xl backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-white/15">
-                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-                  <Gift className="w-4 h-4 text-amber-400" />
-                  {inspectMilestone.title} (Day {inspectMilestone.day})
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setInspectMilestone(null);
-                  }}
-                  className="min-h-[28px] min-w-[28px] rounded-full hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {inspectMilestone && (() => {
+            const anchorLeft =
+              inspectMilestone.day === 7
+                ? "25%"
+                : inspectMilestone.day === 14
+                ? "42%"
+                : inspectMilestone.day === 21
+                ? "58%"
+                : "78%";
 
-              <div className="py-2.5">
-                <span className="text-[10px] uppercase font-black tracking-wider text-amber-300/80 block mb-1.5">
-                  Guaranteed Loot Inside:
-                </span>
-                <ul className="space-y-1.5 text-xs font-medium">
-                  {inspectMilestone.contains.map((item: string) => (
-                    <li key={item} className="flex items-center gap-2 text-slate-200">
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                style={{ left: anchorLeft }}
+                className="absolute top-4 -translate-x-1/2 z-30 max-w-xs sm:max-w-sm w-full p-4 rounded-2xl
+                           bg-[#0e1424]/98 border-2 border-amber-400 text-white shadow-2xl backdrop-blur-xl"
+              >
+                {/* Downward Anchor Arrow Caret pointing toward the chest below */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#0e1424] border-r-2 border-b-2 border-amber-400 rotate-45 pointer-events-none" />
 
-              <div className="pt-2 border-t border-white/10 text-right">
-                <button
-                  type="button"
-                  onClick={() => setInspectMilestone(null)}
-                  className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
-                >
-                  Close Preview
-                </button>
-              </div>
-            </motion.div>
-          )}
+                <div className="flex items-center justify-between pb-2 border-b border-white/15">
+                  <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <Gift className="w-4 h-4 text-amber-400" />
+                    {inspectMilestone.title} (Day {inspectMilestone.day})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInspectMilestone(null);
+                    }}
+                    className="min-h-[28px] min-w-[28px] rounded-full hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="py-2.5">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-amber-300/80 block mb-1.5">
+                    Guaranteed Loot Inside:
+                  </span>
+                  <ul className="space-y-1.5 text-xs font-medium">
+                    {inspectMilestone.contains.map((item: string) => (
+                      <li key={item} className="flex items-center gap-2 text-slate-200">
+                        <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setInspectMilestone(null)}
+                    className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
 
         {/* 4. Integrated Seamless Bottom Action Bar */}
         <div className="mt-5 pt-3.5 border-t border-white/10 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-400 font-medium flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
             <span>Tap any milestone chest along the road to inspect guaranteed loot.</span>
           </div>
 
@@ -789,20 +919,26 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                            flex items-center gap-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
               >
                 <Sparkles className="w-4 h-4 fill-slate-950/20" />
-                <span>Claim Day {todayDay} (+{todayReward.coins})</span>
+                <span>Claim Day {todayDay} (+{todayReward.coins.toLocaleString()} Coins)</span>
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="min-h-[44px] px-6 py-2 rounded-xl font-black text-xs uppercase tracking-wider
-                           bg-white/10 hover:bg-white/20 text-white border border-white/15
-                           shadow-sm cursor-pointer active:scale-95 transition-all
-                           flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                <ArrowLeft className="w-4 h-4 text-amber-300" />
-                <span>Back to Today</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Day {todayDay} Claimed</span>
+                  <span className="text-slate-400 font-normal">· Resets in {timeUntilReset}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="min-h-[44px] px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider
+                             bg-white/10 hover:bg-white/20 text-white border border-white/15
+                             shadow-sm cursor-pointer active:scale-95 transition-all
+                             flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <span>Done</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
