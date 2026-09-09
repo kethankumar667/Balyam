@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrickBreakoutGame } from "../features/brick-breakout";
+import { useAudio } from "../hooks/useAudio";
 
 /**
  * The page heading lives here rather than in the game.
@@ -14,6 +15,15 @@ import { BrickBreakoutGame } from "../features/brick-breakout";
  * illusion the whole feature is built on.
  */
 export default function BrickBreakoutPage() {
+  // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)
+  // — this is one of them (catalog slug "breakout"), so report presence on
+  // mount/unmount.
+  const { setActiveGame } = useAudio();
+  useEffect(() => {
+    setActiveGame("breakout");
+    return () => setActiveGame(null);
+  }, [setActiveGame]);
+
   return (
     <>
       <h1 className="sr-only">Brick Breakout — retro paddle and ball arcade</h1>

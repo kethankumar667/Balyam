@@ -8,6 +8,18 @@ import {
   type AudioThemeId,
 } from "../constants/audio";
 import { THEME_BY_ID, type ThemeManifest } from "../assets/audio/themes/manifests";
+import { BHALYAM_GAMES, type BhalyamGameSlug } from "../components/bhalyam/data";
+
+/**
+ * Games carrying the catalog's "solo" tag — the only games sound is allowed
+ * to play for (see `isSoloContext`). Derived from the catalog itself rather
+ * than a hand-maintained list, so a future catalog edit (a game gaining or
+ * losing the "solo" tag) doesn't silently desync this gate from what the
+ * game grid actually shows.
+ */
+const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set(
+  BHALYAM_GAMES.filter((g) => g.tags.includes("solo")).map((g) => g.slug),
+);
 
 /**
  * Persistent user preferences. Saved on every change to localStorage
@@ -128,6 +140,14 @@ export class AudioManager {
   private currentMusic: { key: AudioKey; howl: Howl } | null = null;
   private theme: ThemeManifest;
   private unlocked = false;
+  /**
+   * The catalog slug of whatever game page is currently mounted, reported
+   * by that page itself (see `setActiveGame`). `null` means no game page is
+   * mounted right now (home, settings, streak modal, room lobby before a
+   * board renders, etc.) All sound is muted outside a "solo"-tagged game —
+   * see `isSoloContext`.
+   */
+  private activeGame: BhalyamGameSlug | null = null;
   private fadeTimers = new Set<number>();
 
   private constructor() {
@@ -179,6 +199,34 @@ export class AudioManager {
 
   isAudioUnlocked(): boolean {
     return this.unlocked;
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+   * Solo-only sound gate
+   * ──────────────────────────────────────────────────────────────── */
+
+  /**
+   * Called by whichever game page is currently mounted, with its own
+   * catalog slug — `Room.tsx` for server-routed games (reactively, as
+   * `roomState.game` changes) and each client-only arcade page
+   * (NokiaCricketPage, NokiaSnakePage, BrickRacerPage, BrickTetrisPage,
+   * BrickBreakoutPage) on mount. Call with `null` on unmount/navigation
+   * away so sound doesn't keep playing once the page is gone.
+   *
+   * Reports the game truthfully; this class decides on its own whether
+   * that game is actually "solo" (see `isSoloContext`), so callers never
+   * need to know or duplicate the tag list themselves.
+   */
+  setActiveGame(slug: BhalyamGameSlug | null): void {
+    this.activeGame = slug;
+  }
+
+  static setActiveGame(slug: BhalyamGameSlug | null): void {
+    this.getInstance().setActiveGame(slug);
+  }
+
+  private isSoloContext(): boolean {
+    return this.activeGame !== null && SOLO_GAME_SLUGS.has(this.activeGame);
   }
 
   /* ────────────────────────────────────────────────────────────────
@@ -318,6 +366,7 @@ export class AudioManager {
    * `play()` of the same key elsewhere in the app.
    */
   play(key: AudioKey, opts?: { rate?: number }): void {
+    if (!this.isSoloContext()) return;
     if (this.settings.isMuted) return;
     if (!this.unlocked) return;
     if (MUSIC_KEYS.has(key)) {
@@ -356,6 +405,7 @@ export class AudioManager {
    * ──────────────────────────────────────────────────────────────── */
 
   playMusic(key: AudioKey): void {
+    if (!this.isSoloContext()) return;
     if (!MUSIC_KEYS.has(key)) {
       warn(`playMusic called with non-music key ${key}`);
       return;
@@ -423,6 +473,11 @@ export class AudioManager {
 
   resumeMusic(): void {
     if (!this.unlocked) return;
+    // Guards the tab-visibility-change path: if the player left the solo
+    // game (or the tab was hidden through a navigation away from it)
+    // before this fires, don't resume music for a page that's no longer
+    // showing.
+    if (!this.isSoloContext()) return;
     const cur = this.currentMusic;
     if (!cur) return;
     if (!cur.howl.playing()) {

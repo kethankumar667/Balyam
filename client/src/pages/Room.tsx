@@ -13,6 +13,8 @@ import {
   isFullscreenSupported,
 } from "../lib/fullscreen";
 import { HapticsManager } from "../services/HapticsManager";
+import { useAudio } from "../hooks/useAudio";
+import type { BhalyamGameSlug } from "../components/bhalyam/data";
 import PlayerList from "../components/PlayerList";
 import SeatAvatar from "../components/profile/SeatAvatar";
 import Chat from "../components/Chat";
@@ -1037,6 +1039,23 @@ export default function Room() {
       getSocket().emit("room:startGame");
     }
   }, [roomState?.phase, roomState?.game, selfIsHost]);
+
+  // Sound only plays for catalog "solo" games (see AudioManager.isSoloContext)
+  // — snake and spacewar are the two that run through this room/lobby flow,
+  // everything else here is a real multiplayer-capable game and stays
+  // silent even when every other seat happens to be a bot. Reported
+  // truthfully on every game change; AudioManager itself decides which
+  // slugs actually count as solo, so this never needs its own tag list.
+  const { setActiveGame } = useAudio();
+  useEffect(() => {
+    // The server's `GameKind` is a slightly different union than the
+    // client catalog's `BhalyamGameSlug` (e.g. "blockblast" has no catalog
+    // entry yet) — cast rather than widen `setActiveGame`'s own type, since
+    // an unrecognized slug is harmless here: it just never matches
+    // SOLO_GAME_SLUGS, which is the correct (muted) outcome anyway.
+    setActiveGame((roomState?.game as BhalyamGameSlug | undefined) ?? null);
+    return () => setActiveGame(null);
+  }, [roomState?.game, setActiveGame]);
 
   const selfPlayer = useMemo(
     () => roomState?.players.find((p) => p.id === playerId) ?? null,

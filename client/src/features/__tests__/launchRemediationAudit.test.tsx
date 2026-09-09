@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 import React, { useState } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { AudioProvider } from "../../context/AudioContext";
 import RecoveryBanner from "../../core/recovery/RecoveryBanner";
 import RejoinBanner from "../../core/recovery/RejoinBanner";
 import BhalyamResultModal from "../../components/BhalyamResultModal";
@@ -49,19 +50,51 @@ vi.mock("../../games/brickracer/BrickRacerBoard", () => ({
   default: () => <div data-testid="brick-racer-board" />,
 }));
 
-// Mock AudioManager to avoid audio errors in tests
-vi.mock("../../services/AudioManager", () => ({
-  AudioManager: {
-    getInstance: () => ({
-      play: vi.fn(),
-      playThemeMusic: vi.fn(),
-      stopThemeMusic: vi.fn(),
-      setVolume: vi.fn(),
-      isMuted: () => false,
-      subscribe: () => () => {},
-    }),
-  },
-}));
+// Mock AudioManager to avoid audio errors in tests. Kept in sync with the
+// methods `AudioProvider` (context/AudioContext.tsx) actually calls — the
+// three retro pages below now render through a real `<AudioProvider>`, not
+// just bare `AudioManager.getInstance().play()` calls, so the mock needs
+// the provider's full surface (getSettings/subscribe/isAudioUnlocked/
+// setActiveGame/etc.), not just playback methods.
+vi.mock("../../services/AudioManager", () => {
+  // A single stable object, not a fresh literal per call: `AudioProvider`
+  // reads this through `useSyncExternalStore`, which requires `getSettings`
+  // to return the SAME reference when nothing changed. A new object every
+  // call looks like a change on every render and drives React into a
+  // synchronous re-render loop ("Should not already be working").
+  const mockSettings = {
+    masterVolume: 0.8,
+    musicVolume: 0.55,
+    effectsVolume: 0.85,
+    isMuted: false,
+    selectedAudioTheme: "classic",
+  };
+  return {
+    AudioManager: {
+      getInstance: () => ({
+        play: vi.fn(),
+        stop: vi.fn(),
+        playMusic: vi.fn(),
+        stopMusic: vi.fn(),
+        pauseMusic: vi.fn(),
+        resumeMusic: vi.fn(),
+        fadeIn: vi.fn(),
+        fadeOut: vi.fn(),
+        toggleMute: vi.fn(),
+        mute: vi.fn(),
+        unmute: vi.fn(),
+        setMasterVolume: vi.fn(),
+        setMusicVolume: vi.fn(),
+        setEffectsVolume: vi.fn(),
+        setAudioTheme: vi.fn(),
+        setActiveGame: vi.fn(),
+        isAudioUnlocked: () => false,
+        getSettings: () => mockSettings,
+        subscribe: () => () => {},
+      }),
+    },
+  };
+});
 
 // Mock HapticsManager
 vi.mock("../../services/HapticsManager", () => ({
@@ -365,29 +398,37 @@ describe("Launch Remediation — P1-02: Modal Standardization (Carrom & Chess)",
 
 describe("Launch Remediation — P1-04: Viewport Shell DVH Utilities", () => {
   it("applies min-h-dvh-safe and h-dvh-safe to retro page shells", () => {
-    const { container: nokiaCricket } = render(
-      <MemoryRouter>
-        <NokiaCricketPage />
-      </MemoryRouter>
+    const { container: nokiaCricket, unmount: unmountCricket } = render(
+      <AudioProvider>
+        <MemoryRouter>
+          <NokiaCricketPage />
+        </MemoryRouter>
+      </AudioProvider>
     );
     expect(nokiaCricket.firstChild).toBeDefined();
     const cricketEl = nokiaCricket.firstChild as HTMLElement;
     expect(cricketEl.className).toContain("min-h-dvh-safe");
     expect(cricketEl.className).toContain("h-dvh-safe");
+    unmountCricket();
 
-    const { container: nokiaSnake } = render(
-      <MemoryRouter>
-        <NokiaSnakePage />
-      </MemoryRouter>
+    const { container: nokiaSnake, unmount: unmountSnake } = render(
+      <AudioProvider>
+        <MemoryRouter>
+          <NokiaSnakePage />
+        </MemoryRouter>
+      </AudioProvider>
     );
     const snakeEl = nokiaSnake.firstChild as HTMLElement;
     expect(snakeEl.className).toContain("min-h-dvh-safe");
     expect(snakeEl.className).toContain("h-dvh-safe");
+    unmountSnake();
 
     const { container: brickRacer } = render(
-      <MemoryRouter>
-        <BrickRacerPage />
-      </MemoryRouter>
+      <AudioProvider>
+        <MemoryRouter>
+          <BrickRacerPage />
+        </MemoryRouter>
+      </AudioProvider>
     );
     const racerEl = brickRacer.firstChild as HTMLElement;
     expect(racerEl.className).toContain("min-h-dvh-safe");

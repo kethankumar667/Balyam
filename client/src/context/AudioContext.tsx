@@ -1,6 +1,7 @@
 import { createContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { AudioManager, type AudioSettings } from "../services/AudioManager";
 import type { AudioKey, AudioThemeId } from "../constants/audio";
+import type { BhalyamGameSlug } from "../components/bhalyam/data";
 
 /**
  * Public surface exposed to components via useAudio(). Mirrors the
@@ -40,6 +41,14 @@ export interface AudioContextValue {
 
   /* Theme. */
   setAudioTheme: (id: AudioThemeId) => void;
+
+  /**
+   * Reports which catalog game (by slug) is currently mounted, or `null`
+   * when none is. Sound only plays while this names a game tagged "solo"
+   * in the catalog — see `AudioManager.isSoloContext`. Game pages call this
+   * on mount/unmount; nothing else needs to.
+   */
+  setActiveGame: (slug: BhalyamGameSlug | null) => void;
 }
 
 export const AudioContext = createContext<AudioContextValue | null>(null);
@@ -79,6 +88,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       setMusicVolume:   (v) => manager.setMusicVolume(v),
       setEffectsVolume: (v) => manager.setEffectsVolume(v),
       setAudioTheme:    (id) => manager.setAudioTheme(id),
+      setActiveGame:    (slug) => manager.setActiveGame(slug),
     }),
     [manager, settings],
   );
