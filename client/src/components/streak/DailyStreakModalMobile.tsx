@@ -1,19 +1,14 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
-  Flame,
-  Clock,
-  Shield,
+  ArrowLeft,
   Gift,
-  Coins,
   Check,
-  Sparkles,
   Crown,
-  Lock,
-  Zap,
   Trophy,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
@@ -25,27 +20,23 @@ import {
   type StreakScheduledDay,
 } from "@shared/streak-types";
 import {
-  getRewardRarity,
-  getStreakRank,
   MILESTONES_CATALOG,
+  type MilestoneChestDetail,
 } from "./DailyStreakModalDesktop";
+import { StreakHeroArtwork } from "./StreakHeroArtwork";
 
 interface DailyStreakModalMobileProps {
   onClose: () => void;
+  onBack?: () => void;
 }
 
-export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps) {
-  const { state, isClaiming, claimToday, timeUntilReset, updateTimeRemaining } =
-    useStreakStore();
+export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobileProps) {
+  const { state, isClaiming, claimToday } = useStreakStore();
 
-  const currentStreak = state?.currentStreak ?? 0;
-  const cycleCount = state?.cycleCount ?? 0;
   const isClaimable = state?.isClaimableToday ?? false;
-  const shieldsRemaining = state?.shieldsRemaining ?? 0;
   const activeDay = state?.activeDayInCycle ?? 1;
   const schedule = state?.schedule ?? [];
 
-  // Today and Tomorrow indices & rewards
   const todayDay = isClaimable ? activeDay : Math.min(activeDay, 30);
   const todayReward =
     schedule.find((s) => s.day === todayDay) ??
@@ -56,61 +47,14 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
       status: "CLAIMABLE",
     };
 
-  const tomorrowDay = todayDay < 30 ? todayDay + 1 : 1;
-  const tomorrowReward =
-    schedule.find((s) => s.day === tomorrowDay) ??
-    (STREAK_REWARDS_SCHEDULE[tomorrowDay - 1] as StreakScheduledDay) ?? {
-      day: 2,
-      coins: 120,
-      description: "Day 2 Momentum Bonus",
-      status: "LOCKED",
-    };
-
-  // Progression calculation
   const completedDays = isClaimable ? Math.max(0, todayDay - 1) : todayDay;
   const progressPercent = Math.min(100, Math.round((completedDays / 30) * 100));
 
-  // Next milestone calculation with Near-Miss psychology
   const nextMilestone =
     MILESTONES_CATALOG.find((m) => m.day > completedDays) ?? MILESTONES_CATALOG[3];
   const daysToNextMilestone = Math.max(0, nextMilestone.day - completedDays);
-  const percentCloser = Math.round(
-    ((completedDays) / (nextMilestone.day)) * 100
-  );
 
-  // Total rewards remaining
-  const totalCycleCoins = 35800;
-  const claimedCoins = schedule
-    .filter((s) => s.status === "CLAIMED")
-    .reduce((sum, s) => sum + s.coins, 0);
-  const remainingCoins = Math.max(0, totalCycleCoins - claimedCoins);
-
-  // Status rank & dynamic companion mascot
-  const streakRank = getStreakRank(currentStreak);
-
-  // Determine which week the user is currently in (0..3)
-  const currentWeekIndex = Math.min(Math.floor((todayDay - 1) / 7), 3);
-  const [selectedWeek, setSelectedWeek] = useState<number>(currentWeekIndex);
-  const [viewAll, setViewAll] = useState<boolean>(false);
-
-  // Tick the countdown timer every second
-  useEffect(() => {
-    const interval = setInterval(updateTimeRemaining, 1000);
-    return () => clearInterval(interval);
-  }, [updateTimeRemaining]);
-
-  const handleTabChange = (weekIdx: number) => {
-    HapticsManager.trigger("subtle");
-    AudioManager.play(AUDIO.UI_CLICK);
-    setViewAll(false);
-    setSelectedWeek(weekIdx);
-  };
-
-  const handleToggleViewAll = () => {
-    HapticsManager.trigger("subtle");
-    AudioManager.play(AUDIO.UI_CLICK);
-    setViewAll(!viewAll);
-  };
+  const [inspectMilestone, setInspectMilestone] = useState<MilestoneChestDetail | null>(null);
 
   const handleClaim = () => {
     HapticsManager.trigger("reward");
@@ -118,21 +62,25 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
     void claimToday();
   };
 
-  // Week ranges: W1 (1-7), W2 (8-14), W3 (15-21), W4 (22-30)
-  const getWeekDays = (weekIdx: number) => {
-    const start = weekIdx * 7 + 1;
-    const end = weekIdx === 3 ? 30 : (weekIdx + 1) * 7;
-    return schedule.filter((s) => s.day >= start && s.day <= end);
+  const handleBack = () => {
+    AudioManager.play(AUDIO.UI_CLICK);
+    if (onBack) {
+      onBack();
+    } else {
+      onClose();
+    }
   };
 
-  const weekMilestone = MILESTONES_CATALOG[selectedWeek];
-  const displayedDays = viewAll ? schedule : getWeekDays(selectedWeek);
+  const urgencyText =
+    daysToNextMilestone === 0
+      ? `🎉 ${nextMilestone.title} Unlocked!`
+      : `${nextMilestone.title} Unlocks In ${daysToNextMilestone} ${daysToNextMilestone === 1 ? "Day" : "Days"}`;
 
   return (
     <motion.div
       role="dialog"
       aria-modal="true"
-      aria-label="Daily Login Streak Challenge & Rewards"
+      aria-label="30-Day Rewards Journey"
       drag="y"
       dragConstraints={{ top: 0 }}
       dragElastic={{ top: 0, bottom: 0.6 }}
@@ -147,40 +95,40 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
       exit={{ y: "100%" }}
       transition={bhalyamSpring}
       className="fixed inset-x-0 bottom-0 z-50 max-h-[92vh] flex flex-col rounded-t-[32px]
-                 bg-[var(--chrome-panel)] border-t-2 border-[var(--chrome-border)]
-                 shadow-[0_-12px_40px_rgba(0,0,0,0.3)] overflow-hidden pb-safe"
+                 bg-gradient-to-b from-[#0c101c] via-[#0f1629] to-[#070b14]
+                 border-t border-amber-500/30
+                 shadow-[0_-12px_48px_rgba(0,0,0,0.85)] overflow-hidden pb-safe select-none text-white"
     >
-      {/* 1. Top Tactile Grab Handle */}
-      <div className="flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600">
-        <div className="w-12 h-1.5 rounded-full bg-white/50 hover:bg-white/70 transition-colors" />
+      {/* Drag Bar */}
+      <div className="flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing bg-white/5">
+        <div className="w-12 h-1.5 rounded-full bg-white/30 hover:bg-white/50 transition-colors" />
       </div>
 
-      {/* 2. Header Bar — High Energy Hook with Rank Title & Mascot */}
-      <div className="relative px-4 pt-1.5 pb-3 flex items-center justify-between bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-25 pointer-events-none"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.4), transparent 35%)",
-          }}
-        />
-        <div className="relative flex items-center gap-2.5">
-          {/* Dynamic Mascot */}
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/20 border-2 border-white/50 shadow-inner">
-            <span className="text-xl select-none">{streakRank.mascot.emoji}</span>
-          </div>
+      {/* 1. Integrated Mobile Header */}
+      <div className="relative px-4 pt-2 pb-3 flex items-center justify-between border-b border-white/10 z-10">
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label="Back to Today's Reward"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-5 h-5 text-amber-300" />
+            </button>
+          )}
+
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-black text-white tracking-tight">
-                LOGIN STREAK CHALLENGE
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-black tracking-tight bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
+                Rewards Expedition
               </h2>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border flex items-center gap-1 ${streakRank.badgeClass}`}>
-                <span>{streakRank.icon}</span>
-                <span>{streakRank.title}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono">
+                Day {completedDays} / 30
               </span>
             </div>
-            <p className="text-[11px] text-white/90 font-medium">
-              🔥 {currentStreak} Days · Earn 35,800+ Coins across 30 Days
+            <p className="text-[11px] text-slate-400 font-medium">
+              4 Grand Milestone Chests along the way
             </p>
           </div>
         </div>
@@ -192,378 +140,344 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             onClose();
           }}
           aria-label="Close Streak Modal"
-          className="relative min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center
-                     text-white hover:bg-white/20 cursor-pointer transition-colors
-                     focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
+          className="min-h-[44px] min-w-[44px] rounded-full bg-white/10 hover:bg-white/20
+                     text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* 3. Cycle Summary & Near-Miss Bar */}
-      <div className="px-4 py-1.5 bg-[var(--chrome-control)] border-b border-[var(--chrome-hairline)] flex items-center justify-between text-[11px] font-bold text-[var(--chrome-ink-soft)]">
-        <span className="text-amber-800 dark:text-amber-300">
-          Remaining: <span className="font-mono font-black">{remainingCoins.toLocaleString()} Coins</span>
+      {/* 2. Urgency Progress Sub-header */}
+      <div className="px-4 py-2 bg-black/30 border-b border-white/10 flex items-center justify-between">
+        <span className="text-xs font-black text-slate-300 flex items-center gap-1.5 font-mono">
+          <Trophy className="w-3.5 h-3.5 text-amber-400" />
+          Day {completedDays} of 30 ({progressPercent}%)
         </span>
-        <span className="text-[var(--chrome-ink)]">
-          {daysToNextMilestone === 0
-            ? "Milestones Completed!"
-            : `Only ${daysToNextMilestone}d to ${nextMilestone.title} (${percentCloser}%)`}
+        <span className="text-[11px] font-black text-amber-300 flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-amber-400" />
+          {urgencyText}
         </span>
       </div>
 
-      {/* 4. Epic Milestone Progress Track */}
-      <div className="px-4 py-2 bg-[var(--chrome-panel)] border-b border-[var(--chrome-hairline)]">
-        <div className="flex items-center justify-between text-[11px] font-bold text-[var(--chrome-ink-soft)] mb-1">
-          <span className="flex items-center gap-1 text-[var(--chrome-ink)] font-black">
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            Day {completedDays} of 30 ({progressPercent}%)
-          </span>
-          <span className="text-amber-800 dark:text-amber-300 font-bold">
-            Next: {nextMilestone.title} ({daysToNextMilestone}d left)
-          </span>
-        </div>
+      {/* 3. The Adventure Quest Road (Map Layout) */}
+      <div className="relative flex-1 p-3.5 flex flex-col justify-between gap-3 overflow-hidden">
+        {/* Top 3 Connected Milestones: Bronze (D7), Silver (D14), Gold (D21) */}
+        <div className="relative">
+          {/* Progress conduit running under nodes */}
+          <div className="absolute top-[68px] left-[10%] right-[10%] h-2.5 rounded-full bg-slate-950/90 border border-white/15 shadow-inner pointer-events-none z-0 overflow-hidden p-0.5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, Math.round((completedDays / 21) * 100))}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-yellow-400 shadow-[0_0_12px_rgba(245,158,11,0.85)]"
+            />
+          </div>
 
-        <div className="relative w-full h-2.5 bg-[var(--chrome-control)] rounded-full border border-[var(--chrome-border)] overflow-visible">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 shadow-sm"
-          />
+          <div className="relative z-10 grid grid-cols-3 gap-2">
+            {/* Bronze Chest (Day 7) */}
+            {(() => {
+              const chest = MILESTONES_CATALOG[0];
+              const isPassed = completedDays >= chest.day;
+              const isNext = nextMilestone.day === chest.day && !isPassed;
 
-          {MILESTONES_CATALOG.map((m) => {
-            const pinPercent = (m.day / 30) * 100;
-            const isPassed = completedDays >= m.day;
-            const isNext = nextMilestone.day === m.day && !isPassed;
-
-            return (
-              <div
-                key={m.day}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
-                style={{ left: `${pinPercent}%` }}
-              >
+              return (
                 <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                  key={chest.day}
+                  onClick={() => {
+                    HapticsManager.trigger("subtle");
+                    AudioManager.play(AUDIO.UI_CLICK);
+                    setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
+                  }}
+                  className={`min-h-[44px] p-2.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all shadow-md backdrop-blur-md ${
                     isPassed
-                      ? "bg-emerald-500 border-white text-white shadow-xs"
+                      ? "bg-slate-900/90 border-emerald-500/50"
                       : isNext
-                      ? "bg-amber-500 border-white text-white scale-125 ring-2 ring-amber-400 animate-pulse"
-                      : "bg-[var(--chrome-control)] border-[var(--chrome-border)]"
+                      ? "bg-gradient-to-b from-[#2a1708] to-slate-900/95 border-[#CD7F32] shadow-[0_0_18px_rgba(205,127,50,0.35)] ring-2 ring-[#CD7F32]/50 scale-102"
+                      : "bg-slate-900/85 border-white/15 opacity-80"
                   }`}
                 >
-                  {isPassed ? (
-                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                  ) : m.day === 30 ? (
-                    <Crown className="w-2.5 h-2.5 text-amber-400" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                  )}
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                      isNext
+                        ? "bg-[#CD7F32] text-white"
+                        : "bg-white/10 text-slate-300 border border-white/10"
+                    }`}
+                  >
+                    DAY 7
+                  </span>
+
+                  <div className="my-1">
+                    <StreakHeroArtwork type="bronze" size={50} />
+                  </div>
+
+                  <div className="w-full">
+                    <div className="font-black text-[11px] text-white truncate">
+                      {chest.title}
+                    </div>
+                    <div className="text-[10px] font-black font-mono text-[#f59e0b]">
+                      +{chest.coins.toLocaleString()}
+                    </div>
+                    <div className="text-[9px] font-black mt-0.5">
+                      {isPassed ? (
+                        <span className="text-emerald-400 flex items-center justify-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" /> Claimed
+                        </span>
+                      ) : isNext ? (
+                        <span className="text-amber-300 font-bold">
+                          {daysToNextMilestone}d away
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Locked</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              );
+            })()}
 
-      {/* 5. Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {/* DOMINANT HERO REWARD CARD */}
-        {isClaimable ? (
-          /* READY TO CLAIM HERO */
-          <div className="relative p-4.5 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white shadow-[0_8px_24px_-4px_rgba(245,158,11,0.5)] overflow-hidden border-2 border-amber-300/40 text-center">
-            <div
-              className="absolute inset-0 opacity-25 pointer-events-none"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 75% 25%, rgba(255,255,255,0.4), transparent 45%)",
-              }}
-            />
+            {/* Silver Chest (Day 14) */}
+            {(() => {
+              const chest = MILESTONES_CATALOG[1];
+              const isPassed = completedDays >= chest.day;
+              const isNext = nextMilestone.day === chest.day && !isPassed;
 
-            <div className="relative flex items-center justify-between mb-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white border border-white/40 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-yellow-200" />
-                Today's Reward · Day {activeDay}
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/25 text-amber-200">
-                Ready to Claim
-              </span>
-            </div>
+              return (
+                <div
+                  key={chest.day}
+                  onClick={() => {
+                    HapticsManager.trigger("subtle");
+                    AudioManager.play(AUDIO.UI_CLICK);
+                    setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
+                  }}
+                  className={`min-h-[44px] p-2.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all shadow-md backdrop-blur-md ${
+                    isPassed
+                      ? "bg-slate-900/90 border-emerald-500/50"
+                      : isNext
+                      ? "bg-gradient-to-b from-slate-800 to-slate-900/95 border-slate-300 shadow-[0_0_18px_rgba(203,213,225,0.35)] ring-2 ring-slate-300/50 scale-102"
+                      : "bg-slate-900/85 border-white/15 opacity-75"
+                  }`}
+                >
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                      isNext
+                        ? "bg-slate-200 text-slate-950 font-black"
+                        : "bg-white/10 text-slate-300 border border-white/10"
+                    }`}
+                  >
+                    DAY 14
+                  </span>
 
-            <div className="relative my-1 flex flex-col items-center">
-              <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                className="w-12 h-12 rounded-2xl bg-white/20 border-2 border-white/60 flex items-center justify-center shadow-md mb-1.5"
-              >
-                <Coins className="w-7 h-7 text-amber-200 fill-amber-300" />
-              </motion.div>
+                  <div className="my-1">
+                    <StreakHeroArtwork type="silver" size={50} />
+                  </div>
 
-              <span className="text-3xl font-black font-mono tracking-tight drop-shadow-md">
-                +{todayReward.coins.toLocaleString()}
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-amber-100 mt-0.5">
-                Coins Ready To Claim
-              </span>
-
-              {todayReward.specialRewardTitle && (
-                <div className="mt-2 px-2.5 py-1 rounded-xl bg-black/20 border border-white/30 text-[11px] font-bold flex items-center gap-1.5">
-                  <Gift className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>Includes: {todayReward.specialRewardTitle}</span>
+                  <div className="w-full">
+                    <div className="font-black text-[11px] text-white truncate">
+                      {chest.title}
+                    </div>
+                    <div className="text-[10px] font-black font-mono text-slate-200">
+                      +{chest.coins.toLocaleString()}
+                    </div>
+                    <div className="text-[9px] font-black mt-0.5">
+                      {isPassed ? (
+                        <span className="text-emerald-400 flex items-center justify-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" /> Claimed
+                        </span>
+                      ) : isNext ? (
+                        <span className="text-amber-300 font-bold">
+                          {daysToNextMilestone}d away
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Locked</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })()}
+
+            {/* Gold Chest (Day 21) */}
+            {(() => {
+              const chest = MILESTONES_CATALOG[2];
+              const isPassed = completedDays >= chest.day;
+              const isNext = nextMilestone.day === chest.day && !isPassed;
+
+              return (
+                <div
+                  key={chest.day}
+                  onClick={() => {
+                    HapticsManager.trigger("subtle");
+                    AudioManager.play(AUDIO.UI_CLICK);
+                    setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
+                  }}
+                  className={`min-h-[44px] p-2.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center cursor-pointer transition-all shadow-md backdrop-blur-md ${
+                    isPassed
+                      ? "bg-slate-900/90 border-emerald-500/50"
+                      : isNext
+                      ? "bg-gradient-to-b from-[#2e2008] to-slate-900/95 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.4)] ring-2 ring-yellow-400/50 scale-102"
+                      : "bg-slate-900/85 border-white/15 opacity-75"
+                  }`}
+                >
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                      isNext
+                        ? "bg-yellow-400 text-slate-950 font-black"
+                        : "bg-white/10 text-slate-300 border border-white/10"
+                    }`}
+                  >
+                    DAY 21
+                  </span>
+
+                  <div className="my-1">
+                    <StreakHeroArtwork type="gold" size={52} />
+                  </div>
+
+                  <div className="w-full">
+                    <div className="font-black text-[11px] text-white truncate">
+                      {chest.title}
+                    </div>
+                    <div className="text-[10px] font-black font-mono text-yellow-300">
+                      +{chest.coins.toLocaleString()}
+                    </div>
+                    <div className="text-[9px] font-black mt-0.5">
+                      {isPassed ? (
+                        <span className="text-emerald-400 flex items-center justify-center gap-0.5">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" /> Claimed
+                        </span>
+                      ) : isNext ? (
+                        <span className="text-amber-300 font-bold">
+                          {daysToNextMilestone}d away
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Locked</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-        ) : (
-          /* CLAIMED REWARD + MOTIVATION */
-          <div className="space-y-2">
-            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/20 border-2 border-emerald-500/40 text-[var(--chrome-ink)] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 shrink-0">
-                  <Check className="w-6 h-6 stroke-[3]" />
-                  <span className="absolute -inset-1 rounded-2xl border-2 border-emerald-400 animate-ping opacity-40" />
+        </div>
+
+        {/* Connecting Pathway downward to D30 Hero */}
+        <div className="flex justify-center items-center py-0.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-400">
+            <span>↓</span>
+            <span>Final Quest Destination</span>
+            <span>↓</span>
+          </div>
+        </div>
+
+        {/* THE HERO — Diamond Crown (Day 30 Climax — 100% Width) */}
+        {(() => {
+          const chest = MILESTONES_CATALOG[3];
+          const isPassed = completedDays >= chest.day;
+
+          return (
+            <div
+              key={chest.day}
+              onClick={() => {
+                HapticsManager.trigger("subtle");
+                AudioManager.play(AUDIO.UI_CLICK);
+                setInspectMilestone(inspectMilestone?.day === chest.day ? null : chest);
+              }}
+              className="relative p-3 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all
+                         bg-gradient-to-r from-[#101935] via-[#131b38] to-[#0c1020]
+                         border-cyan-400/80 shadow-[0_0_24px_rgba(56,189,248,0.3)] ring-1 ring-cyan-300/40"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="shrink-0">
+                  <StreakHeroArtwork type="diamond" size={64} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                      +{todayReward.coins.toLocaleString()}
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 flex items-center gap-0.5">
+                      <Crown className="w-2.5 h-2.5 text-slate-950" />
+                      GRAND FINALE
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      COINS CLAIMED TODAY ✓
+                    <span className="text-[9px] font-mono text-cyan-200 font-bold">
+                      Day 30 {isPassed && "✓"}
                     </span>
                   </div>
-                  <p className="text-[11px] text-[var(--chrome-ink-soft)] font-medium">
-                    Day {activeDay} secured! Your streak is burning hot.
-                  </p>
+                  <div className="text-base font-black font-mono bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 bg-clip-text text-transparent drop-shadow-sm mt-0.5">
+                    10,000 COINS
+                  </div>
+                  <div className="text-[10px] font-bold text-cyan-200">
+                    Monthly Champion Crown + Shield
+                  </div>
+                  <div className="text-[9px] font-black text-amber-200 mt-0.5 flex items-center gap-1">
+                    <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                    <span>35,800 Total Coins Available</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* D30 ULTIMATE REWARD HERO BEACON */}
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-cyan-500/15 via-sky-500/10 to-violet-600/20 border-2 border-cyan-400/50 shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-white shadow-md shadow-amber-500/30 shrink-0">
-              <Crown className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-400/40">
-                  Legendary Finale
-                </span>
-                <span className="text-[10px] text-[var(--chrome-ink-soft)] font-bold">
-                  Day 30
-                </span>
-              </div>
-              <span className="text-xs font-black text-[var(--chrome-ink)] block mt-0.5">
-                +10,000 Coins + Monthly Champion Crown
-              </span>
-            </div>
-          </div>
-          <span className="text-[10px] font-mono font-black text-cyan-800 dark:text-cyan-300">
-            {Math.max(0, 30 - completedDays)}d away
-          </span>
-        </div>
-
-        {/* Split Teaser Strip: Tomorrow Preview & Next Chest */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* Tomorrow Preview */}
-          <div className="p-2.5 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[10px] font-black uppercase text-[var(--chrome-ink-soft)] mb-1">
-              <span className="flex items-center gap-1 text-amber-800 dark:text-amber-300">
-                <Zap className="w-3 h-3 text-amber-500" />
-                Tomorrow (D{tomorrowDay})
-              </span>
-            </div>
-            <div className="text-sm font-black font-mono text-[var(--chrome-ink)] flex items-center gap-1">
-              <Coins className="w-4 h-4 text-amber-500 fill-amber-500" />
-              +{tomorrowReward.coins.toLocaleString()} Coins
-            </div>
-            <div className="text-[10px] text-[var(--chrome-ink-soft)] flex items-center gap-1 mt-1">
-              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              In {timeUntilReset}
-            </div>
-          </div>
-
-          {/* Next Grand Chest */}
-          <div className="p-2.5 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[10px] font-black uppercase text-[var(--chrome-ink-soft)] mb-1">
-              <span className="flex items-center gap-1 text-violet-700 dark:text-violet-300">
-                <Gift className="w-3 h-3 text-violet-500" />
-                Next Chest
-              </span>
-            </div>
-            <div className="text-xs font-black text-[var(--chrome-ink)] truncate">
-              {nextMilestone.title}
-            </div>
-            <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 mt-1">
-              +{nextMilestone.coins.toLocaleString()} ({daysToNextMilestone}d left)
-            </div>
-          </div>
-        </div>
-
-        {/* Week Selector Tabs */}
-        <div className="pt-1 pb-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {["Week 1", "Week 2", "Week 3", "Week 4+"].map((label, idx) => {
-            const isSelected = !viewAll && selectedWeek === idx;
-            const isWeekActive = Math.min(Math.floor((todayDay - 1) / 7), 3) === idx;
-
-            return (
-              <button
-                type="button"
-                key={label}
-                onClick={() => handleTabChange(idx)}
-                className={`relative flex-1 min-h-[44px] px-2 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none text-center border-2
-                           focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                             isSelected
-                               ? "bg-gradient-to-r from-amber-500 to-orange-500 border-amber-500 text-white shadow-sm"
-                               : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]"
-                           }`}
-              >
-                <span>{label}</span>
-                {isWeekActive && !isSelected && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
-                )}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={handleToggleViewAll}
-            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none border-2
-                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                         viewAll
-                           ? "bg-violet-600 border-violet-600 text-white shadow-sm"
-                           : "bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink-soft)]"
-                       }`}
-          >
-            All 30
-          </button>
-        </div>
-
-        {/* Milestone Highlight Banner with "Contains" breakdown */}
-        {!viewAll && weekMilestone && (
-          <div className="p-2.5 rounded-2xl border-2 border-violet-400/50 bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-between text-xs text-white">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-white/20 border border-white/30">
-                {weekMilestone.day === 30 ? (
-                  <Crown className="w-4 h-4 text-cyan-200" />
-                ) : (
-                  <Gift className="w-4 h-4 text-yellow-200" />
-                )}
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-white/80 block">
-                  Week {selectedWeek + 1} Chest: {weekMilestone.title}
-                </span>
-                <span className="font-bold text-[11px] text-amber-200">
-                  Contains: {weekMilestone.contains[1]}
+              <div className="shrink-0 pl-2">
+                <span className="text-[10px] px-2.5 py-1 rounded-xl font-black bg-white/15 text-white border border-white/20">
+                  Tap Loot
                 </span>
               </div>
             </div>
-            <span className="font-mono font-black text-xs text-amber-200">
-              +{weekMilestone.coins.toLocaleString()}
-            </span>
-          </div>
-        )}
+          );
+        })()}
 
-        {/* Day Grid — Nodes with Rarity Colors & Explicit Coin Amounts */}
-        <div
-          className={`grid ${
-            viewAll ? "grid-cols-5 gap-x-1.5 gap-y-3" : "grid-cols-4 sm:grid-cols-7 gap-x-2 gap-y-3"
-          }`}
-        >
-          {displayedDays.map((item) => {
-            const isToday = isClaimable && item.day === activeDay;
-            const isMilestone = Boolean(item.milestoneChest);
-            const isClaimed = item.status === "CLAIMED";
-            const isLocked = item.status === "LOCKED";
-            const isCrown = item.day === 30;
-
-            const rarity = getRewardRarity(item.day, item.coins);
-
-            let nodeStyle =
-              `bg-[var(--chrome-control)] ${rarity.borderColor} text-[var(--chrome-ink-soft)]`;
-            if (isClaimed) {
-              nodeStyle =
-                "bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 text-white shadow-xs";
-            } else if (isToday) {
-              nodeStyle =
-                "bg-gradient-to-br from-amber-400 to-orange-500 border-amber-200 text-white shadow-sm scale-110";
-            } else if (isCrown) {
-              nodeStyle =
-                `bg-gradient-to-br ${rarity.gradient} ${rarity.borderColor} text-white ${rarity.glowShadow} scale-105`;
-            } else if (isMilestone) {
-              nodeStyle =
-                `bg-gradient-to-br ${rarity.gradient} ${rarity.borderColor} text-white ${rarity.glowShadow}`;
-            }
-
-            return (
-              <div
-                key={item.day}
-                className="relative flex flex-col items-center gap-1 select-none"
-              >
-                <span
-                  className={`text-[9px] font-black uppercase tracking-wider ${
-                    isToday ? "text-amber-800 dark:text-amber-300" : "text-[var(--chrome-ink-soft)]"
-                  }`}
+        {/* Floating Tap-To-Inspect Popover on Mobile */}
+        <AnimatePresence>
+          {inspectMilestone && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              className="absolute inset-x-3 bottom-3 z-30 p-3.5 rounded-2xl
+                         bg-[#0e1424]/98 border-2 border-amber-400 text-white shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-center justify-between pb-1.5 border-b border-white/15">
+                <span className="text-xs font-black text-amber-300 flex items-center gap-1">
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  {inspectMilestone.title} (Day {inspectMilestone.day})
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setInspectMilestone(null);
+                  }}
+                  className="min-h-[28px] min-w-[28px] rounded-full hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
                 >
-                  D{item.day}
-                </span>
-
-                <span
-                  className={`relative w-11 h-11 rounded-2xl border-2 flex items-center justify-center transition-transform ${nodeStyle}`}
-                >
-                  {isClaimed ? (
-                    <Check className="w-5 h-5 stroke-[3]" />
-                  ) : isCrown ? (
-                    <Crown className="w-5 h-5" />
-                  ) : isMilestone ? (
-                    <Gift className="w-5 h-5" />
-                  ) : isLocked ? (
-                    <Lock className="w-3.5 h-3.5 opacity-60" />
-                  ) : (
-                    <Coins className="w-4 h-4" />
-                  )}
-
-                  {isToday && (
-                    <span className="absolute -inset-1 rounded-2xl border-2 border-amber-400 animate-ping opacity-60" />
-                  )}
-                </span>
-
-                {/* REWARD AMOUNT WITH RARITY TIER COLOR */}
-                <span
-                  className={`text-[10px] font-black font-mono tracking-tight ${
-                    isClaimed
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : isToday
-                      ? "text-amber-800 dark:text-amber-300 font-bold"
-                      : rarity.textColor
-                  }`}
-                >
-                  +{item.coins >= 1000 ? `${item.coins / 1000}k` : item.coins}
-                </span>
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Protection Shield Indicator */}
-        <div className="pt-2 flex items-center justify-between text-[11px] text-[var(--chrome-ink-soft)]">
-          <div className="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-bold">
-            <Shield className="w-3.5 h-3.5 fill-sky-500/20" />
-            <span>{shieldsRemaining} Streak Shield{shieldsRemaining !== 1 ? "s" : ""} Active</span>
-          </div>
-          <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            Perfect Month: 35.8k Coins
-          </span>
-        </div>
+              <div className="py-2">
+                <span className="text-[9px] uppercase font-black tracking-wider text-amber-300/80 block mb-1">
+                  Guaranteed Loot Inside:
+                </span>
+                <ul className="space-y-1 text-xs font-medium">
+                  {inspectMilestone.contains.map((item: string) => (
+                    <li key={item} className="flex items-center gap-1.5 text-slate-200">
+                      <Sparkles className="w-3 h-3 text-yellow-300 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setInspectMilestone(null)}
+                  className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* 6. Bottom Sticky Action Footer */}
-      <div className="p-4 border-t border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]">
+      {/* 4. Bottom Seamless Action Area */}
+      <div className="p-3 border-t border-white/10 bg-black/40">
         {isClaimable ? (
           <motion.button
             type="button"
@@ -571,37 +485,35 @@ export function DailyStreakModalMobile({ onClose }: DailyStreakModalMobileProps)
             whileTap={{ scale: 0.98 }}
             onClick={handleClaim}
             disabled={isClaiming}
-            className="group relative w-full min-h-[52px] py-3.5 px-6 rounded-2xl font-black text-base
-                       bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white
-                       shadow-[0_8px_24px_-4px_rgba(245,158,11,0.5)] cursor-pointer flex items-center justify-center gap-2.5
-                       overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400
-                       before:absolute before:inset-0 before:-translate-x-full hover:before:translate-x-full
-                       before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent
-                       before:transition-transform before:duration-700"
+            className="w-full min-h-[48px] py-2.5 px-4 rounded-xl font-black text-sm
+                       bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300
+                       text-slate-950 shadow-[0_4px_16px_rgba(245,158,11,0.45)] cursor-pointer flex items-center justify-center gap-2
+                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
           >
             {isClaiming ? (
               <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                 Claiming Reward…
               </span>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 text-yellow-200 animate-spin" />
-                <span>CLAIM +{todayReward.coins.toLocaleString()} COINS NOW</span>
+                <Sparkles className="w-4 h-4 text-slate-950/40 fill-slate-950/20" />
+                <span>CLAIM TODAY (+{todayReward.coins.toLocaleString()} COINS)</span>
               </>
             )}
           </motion.button>
         ) : (
-          <div className="min-h-[52px] py-2.5 px-4 rounded-2xl bg-[var(--chrome-control)] border-2 border-[var(--chrome-border)] text-center flex flex-col items-center justify-center">
-            <span className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-500" />
-              COME BACK TOMORROW FOR +{tomorrowReward.coins.toLocaleString()} COINS
-            </span>
-            <span className="text-[10px] text-[var(--chrome-ink-soft)] font-mono font-medium mt-0.5 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              Unlocks at 00:00 UTC (in {timeUntilReset})
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="w-full min-h-[48px] py-2.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider
+                       bg-white/10 hover:bg-white/20 text-white border border-white/15
+                       shadow-sm cursor-pointer flex items-center justify-center gap-2
+                       focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <ArrowLeft className="w-4 h-4 text-amber-300" />
+            <span>Back to Today's Reward</span>
+          </button>
         )}
       </div>
     </motion.div>

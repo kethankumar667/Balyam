@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStreakStore } from "../../store/streakStore";
 import { useViewport } from "../../lib/useViewport";
 import DailyStreakModalMobile from "./DailyStreakModalMobile";
 import DailyStreakModalDesktop from "./DailyStreakModalDesktop";
+import DailyStreakRewardScreen from "./DailyStreakRewardScreen";
 import StreakClaimCelebration from "./StreakClaimCelebration";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
@@ -20,9 +21,13 @@ export function DailyStreakModal() {
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
 
-  // Audio on open/close
+  // Two-Screen Model: Screen 1 (reward moment) by default, Screen 2 (30-day journey) on user demand
+  const [viewMode, setViewMode] = useState<"reward" | "journey">("reward");
+
+  // Reset to reward moment whenever modal is opened
   useEffect(() => {
     if (isOpen) {
+      setViewMode("reward");
       AudioManager.play(AUDIO.UI_POPUP_OPEN);
     }
   }, [isOpen]);
@@ -39,6 +44,8 @@ export function DailyStreakModal() {
       if (e.key === "Escape") {
         if (showCelebration) {
           clearCelebration();
+        } else if (viewMode === "journey") {
+          setViewMode("reward");
         } else {
           handleClose();
         }
@@ -46,28 +53,42 @@ export function DailyStreakModal() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, showCelebration, clearCelebration]);
+  }, [isOpen, showCelebration, clearCelebration, viewMode]);
 
   return (
     <>
       {/* Main Modal Backdrop & Window */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-40 flex items-center justify-center p-0 sm:p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={handleClose}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
             />
 
-            {/* Responsive Layout Content */}
-            {isMobile ? (
-              <DailyStreakModalMobile onClose={handleClose} />
+            {/* SCREEN 1: Focused Reward Moment (Default) */}
+            {viewMode === "reward" ? (
+              <DailyStreakRewardScreen
+                onClose={handleClose}
+                onOpenJourney={() => setViewMode("journey")}
+              />
             ) : (
-              <DailyStreakModalDesktop onClose={handleClose} />
+              /* SCREEN 2: Full 30-Day Journey / Calendar (On Demand) */
+              isMobile ? (
+                <DailyStreakModalMobile
+                  onClose={handleClose}
+                  onBack={() => setViewMode("reward")}
+                />
+              ) : (
+                <DailyStreakModalDesktop
+                  onClose={handleClose}
+                  onBack={() => setViewMode("reward")}
+                />
+              )
             )}
           </div>
         )}
