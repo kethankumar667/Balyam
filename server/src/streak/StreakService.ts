@@ -7,6 +7,7 @@
 
 import { logger } from "../lib/logger.js";
 import { type EconomyService } from "../economy/EconomyService.js";
+import { type PlayerIdentityKind } from "../persistence/EconomyRepository.js";
 import {
   type DailyStreakClaimResult,
   type DailyStreakState,
@@ -173,7 +174,10 @@ export class StreakService {
    * wallet-layer log (see `adminAdjustWalletLocked`'s mutex + idempotency
    * check) collapse every concurrent claim for the day into one credit.
    */
-  async claimStreak(playerId: string): Promise<DailyStreakClaimResult> {
+  async claimStreak(
+    playerId: string,
+    identityKind: PlayerIdentityKind = "guest",
+  ): Promise<DailyStreakClaimResult> {
     const serverTimestamp = this.now();
     const currentUtcDate = getUtcDateString(serverTimestamp);
 
@@ -226,6 +230,12 @@ export class StreakService {
     if (this.economyService && evalResult.coinsAwarded > 0) {
       const claimIdempotencyKey = `streak:${playerId}:${currentUtcDate}`;
       try {
+        // Idempotent no-op for a repository that doesn't need it (Supabase
+        // already has the row via the shared player_identities table); for
+        // the in-memory dev store this is what makes a first-time claim
+        // from a player who has never touched the wallet before actually
+        // creditable, instead of throwing IdentityNotFoundError below.
+        await this.economyService.ensureIdentityRegistered(playerId, identityKind);
         const adjustment = await this.economyService.adminAdjustWallet({
           identityId: playerId,
           amountCoins: String(evalResult.coinsAwarded),
@@ -239,8 +249,30 @@ export class StreakService {
           message: `StreakService failed to credit wallet coins for player ${playerId}: ${String(err)}`,
           module: "STREAK",
         });
-        // Retrieve whatever balance is available
-        updatedWalletBalance = await this.getWalletBalance(playerId);
+        // The reward was never actually credited — the claim must NOT be
+        // persisted as consumed (that would burn the player's day for
+        // nothing). Report the failure honestly so the client can retry,
+        // rather than the previous behavior of returning success:true with
+        // a stale balance while the streak record advanced anyway.
+        const currentState = buildStreakState(existingRecord, serverTimestamp);
+        const balance = await this.getWalletBalance(playerId);
+        return {
+          success: false,
+          code: "ERROR",
+          message: "Failed to credit your reward. Please try again.",
+          claimedDay: evalResult.claimedDay,
+          reward: evalResult.reward,
+          coinsAwarded: 0,
+          newStreak: evalResult.newStreak,
+          cycleCompleted: false,
+          cycleCount: evalResult.newCycleCount,
+          shieldUsed: false,
+          walletBalance: balance,
+          updatedState: {
+            ...currentState,
+            playerId,
+          },
+        };
       }
     } else {
       updatedWalletBalance = await this.getWalletBalance(playerId);

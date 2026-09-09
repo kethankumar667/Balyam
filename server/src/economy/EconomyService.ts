@@ -17,6 +17,7 @@ import {
   type MatchEconomySettlementRecord,
   type ParticipantDebitSpec,
   type ParticipantIdentityKind,
+  type PlayerIdentityKind,
   type RewardVoucherRecord,
   type SettlementEventRecord,
   type SettlementParticipantInput as RepoSettlementParticipantInput,
@@ -478,6 +479,21 @@ export class EconomyService {
       }
     }
     return trimmed;
+  }
+
+  /**
+   * Idempotent no-op unless the active repository needs it (see
+   * `EconomyRepository.ensureIdentityRegistered`'s doc comment) — lets a
+   * caller that knows a player's `member`/`guest` kind (but hasn't
+   * necessarily called `getWallet`/`commitMatchEntry` yet) guarantee the
+   * identity is provisioned before its FIRST wallet-crediting call, instead
+   * of discovering an `IdentityNotFoundError` only after the reward was
+   * already computed.
+   */
+  async ensureIdentityRegistered(identityId: string, kind: PlayerIdentityKind): Promise<void> {
+    if (typeof this.repository.ensureIdentityRegistered === "function") {
+      await this.repository.ensureIdentityRegistered(identityId, kind);
+    }
   }
 
   /**

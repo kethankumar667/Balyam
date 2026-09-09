@@ -45,8 +45,12 @@ export function createStreakRouter(streakService: StreakService): Router {
 
       // Deliberately ignores any client-supplied body (timestamp,
       // idempotency key): the claim's day and dedup key are always the
-      // server's own — see StreakService.claimStreak for why.
-      const result = await streakService.claimStreak(playerId);
+      // server's own — see StreakService.claimStreak for why. `req.player`
+      // is guaranteed set by `requireIdentity` above; its `kind` lets
+      // StreakService provision the economy identity (member vs guest
+      // starter-grant behavior differs) before it ever tries to credit a
+      // wallet that has never been touched before.
+      const result = await streakService.claimStreak(playerId, req.player!.kind);
 
       // If already claimed today or clock issue, return 200 with success: false (not 500)
       res.json(result);
