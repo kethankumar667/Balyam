@@ -24,14 +24,11 @@ interface Particle {
 }
 
 const CONFETTI_COLORS = [
-  "#f59e0b", // Amber
-  "#f97316", // Orange
-  "#ef4444", // Rose
-  "#8b5cf6", // Purple
-  "#3b82f6", // Blue
-  "#10b981", // Emerald
-  "#fbbf24", // Gold
-  "#06b6d4", // Cyan
+  "#ffffff",
+  "#fef3c7", // Light amber
+  "#fed7aa", // Light orange
+  "#fecdd3", // Light rose
+  "#fde68a", // Gold
 ];
 
 export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrationProps) {
@@ -95,7 +92,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm select-none">
         {/* Confetti Explosion Layer (Active in revealed stage) */}
         {stage === "revealed" && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
@@ -127,7 +124,10 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
           </div>
         )}
 
-        {/* Modal Card */}
+        {/* Modal Card — bold solid gradient, matching the streak hero band.
+            This is the reward "big moment": it needs to read instantly and
+            stay legible through the entry animation, so every surface here
+            is a solid fill, not a translucent panel over a blurred backdrop. */}
         <motion.div
           role="dialog"
           aria-modal="true"
@@ -137,18 +137,19 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
           exit={{ scale: 0.9, opacity: 0 }}
           transition={bhalyamSpring}
           className="relative z-10 w-full max-w-sm rounded-3xl p-6 sm:p-8 text-center
-                     bg-[var(--chrome-panel)]/95 backdrop-blur-2xl border border-white/15 dark:border-white/10
-                     shadow-[0_24px_64px_-16px_rgba(0,0,0,0.7),0_0_40px_rgba(245,158,11,0.2)]
+                     bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500
+                     border-2 border-white/40
+                     shadow-[0_24px_64px_-16px_rgba(0,0,0,0.5)]
                      overflow-hidden"
         >
-          {/* Ambient Radiant Glow & Rotating Light Rays */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-amber-500/25 blur-3xl pointer-events-none" />
+          {/* Ambient Radiant Glow */}
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-white/20 blur-3xl pointer-events-none" />
 
           {/* Rotating Sunburst Rays (visible during burst and revealed stages) */}
           {stage !== "rumble" && (
             <motion.div
               initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 0.3, scale: 1, rotate: 360 }}
+              animate={{ opacity: 0.35, scale: 1, rotate: 360 }}
               transition={{
                 opacity: { duration: 0.4 },
                 scale: { duration: 0.6 },
@@ -157,7 +158,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 pointer-events-none -z-10"
               style={{
                 background:
-                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(245, 158, 11, 0.2) 20deg 40deg, transparent 40deg 60deg, rgba(245, 158, 11, 0.2) 60deg 80deg, transparent 80deg 100deg, rgba(245, 158, 11, 0.2) 100deg 120deg, transparent 120deg 140deg, rgba(245, 158, 11, 0.2) 140deg 160deg, transparent 160deg 180deg, rgba(245, 158, 11, 0.2) 180deg 200deg, transparent 200deg 220deg, rgba(245, 158, 11, 0.2) 220deg 240deg, transparent 240deg 260deg, rgba(245, 158, 11, 0.2) 260deg 280deg, transparent 280deg 300deg, rgba(245, 158, 11, 0.2) 300deg 320deg, transparent 320deg 340deg, rgba(245, 158, 11, 0.2) 340deg 360deg)",
+                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(255,255,255,0.25) 20deg 40deg, transparent 40deg 60deg, rgba(255,255,255,0.25) 60deg 80deg, transparent 80deg 100deg, rgba(255,255,255,0.25) 100deg 120deg, transparent 120deg 140deg, rgba(255,255,255,0.25) 140deg 160deg, transparent 160deg 180deg, rgba(255,255,255,0.25) 180deg 200deg, transparent 200deg 220deg, rgba(255,255,255,0.25) 220deg 240deg, transparent 240deg 260deg, rgba(255,255,255,0.25) 260deg 280deg, transparent 280deg 300deg, rgba(255,255,255,0.25) 300deg 320deg, transparent 320deg 340deg, rgba(255,255,255,0.25) 340deg 360deg)",
               }}
             />
           )}
@@ -181,15 +182,14 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               ease: "easeOut",
             }}
             className="mx-auto w-24 h-24 rounded-2xl flex items-center justify-center mb-4
-                       bg-gradient-to-tr from-amber-500/25 via-orange-500/30 to-yellow-400/35
-                       border border-amber-500/50 shadow-[0_0_32px_rgba(245,158,11,0.4)]"
+                       bg-white/25 border-2 border-white/50 shadow-inner"
           >
             {isGrandCycle || result.claimedDay === 30 ? (
-              <Crown className="w-12 h-12 text-cyan-400 animate-bounce drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
+              <Crown className="w-12 h-12 text-white animate-bounce" />
             ) : isMilestone ? (
-              <Gift className="w-12 h-12 text-amber-400 animate-pulse drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
+              <Gift className="w-12 h-12 text-white animate-pulse" />
             ) : (
-              <Coins className="w-12 h-12 text-amber-500 animate-pulse drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+              <Coins className="w-12 h-12 text-white animate-pulse" />
             )}
           </motion.div>
 
@@ -199,11 +199,11 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-amber-500/20 text-amber-500 dark:text-amber-300 border border-amber-500/40 mb-2 shadow-xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-white/25 text-white border border-white/50 mb-2">
               <Sparkles className="w-3.5 h-3.5" />
               Day {result.claimedDay} Claimed!
             </span>
-            <h2 className="text-2xl font-black text-[var(--chrome-ink)] tracking-tight">
+            <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-sm">
               {result.cycleCompleted
                 ? "Grand Cycle Completed!"
                 : isMilestone
@@ -217,14 +217,14 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="my-4 p-4 rounded-2xl bg-[var(--chrome-control)]/80 border border-[var(--chrome-border)] shadow-inner"
+            className="my-4 p-4 rounded-2xl bg-black/20 border border-white/25"
           >
-            <div className="flex items-center justify-center gap-2 text-3xl font-black text-amber-500 dark:text-amber-400 font-mono">
-              <Coins className="w-8 h-8 text-amber-500 animate-pulse" />
+            <div className="flex items-center justify-center gap-2 text-3xl font-black text-white font-mono">
+              <Coins className="w-8 h-8 text-white animate-pulse" />
               <span>+</span>
               <CountUp end={result.coinsAwarded} duration={1.2} />
             </div>
-            <p className="text-xs text-[var(--chrome-ink-soft)] mt-1 font-medium">
+            <p className="text-xs text-white/85 mt-1 font-medium">
               Coins credited directly to your BHALYAM balance
             </p>
           </motion.div>
@@ -235,18 +235,18 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.45 }}
-              className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-purple-500/15 via-amber-500/15 to-orange-500/15 border border-purple-500/30 flex items-center justify-center gap-2.5 shadow-xs"
+              className="mb-5 p-3 rounded-2xl bg-black/20 border border-white/25 flex items-center justify-center gap-2.5"
             >
               {result.reward.specialRewardType === "shield" ? (
-                <Shield className="w-5 h-5 text-sky-400 fill-sky-400/20" />
+                <Shield className="w-5 h-5 text-white fill-white/20" />
               ) : (
-                <Trophy className="w-5 h-5 text-amber-400" />
+                <Trophy className="w-5 h-5 text-white" />
               )}
               <div className="text-left">
-                <span className="block text-[10px] font-bold text-purple-400 uppercase tracking-wider">
+                <span className="block text-[10px] font-bold text-white/75 uppercase tracking-wider">
                   Special Reward Unlocked
                 </span>
-                <span className="text-sm font-black text-[var(--chrome-ink)]">
+                <span className="text-sm font-black text-white">
                   {result.reward.specialRewardTitle}
                 </span>
               </div>
@@ -261,14 +261,11 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             whileTap={{ scale: 0.98 }}
             onClick={onClose}
             className="group relative w-full min-h-[50px] py-3.5 px-6 rounded-2xl font-black text-base
-                       bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white
-                       shadow-[0_8px_24px_-4px_rgba(245,158,11,0.5)] cursor-pointer flex items-center justify-center gap-2
-                       overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400
-                       before:absolute before:inset-0 before:-translate-x-full hover:before:translate-x-full
-                       before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent
-                       before:transition-transform before:duration-700"
+                       bg-white text-orange-600
+                       shadow-[0_8px_24px_-4px_rgba(0,0,0,0.35)] cursor-pointer flex items-center justify-center gap-2
+                       overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white"
           >
-            <Check className="w-5 h-5" />
+            <Check className="w-5 h-5 stroke-[3]" />
             Awesome!
           </motion.button>
         </motion.div>
