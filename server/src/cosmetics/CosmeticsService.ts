@@ -15,6 +15,7 @@ import {
   type UnequipCosmeticResponsePayload,
   BHALYAM_COSMETIC_REGISTRY,
   isKnownCosmeticId,
+  sanitizeCosmeticId,
   resolveEffectiveLoadout,
   getDefaultCosmetic,
 } from "@shared/cosmetics.js";
@@ -183,9 +184,22 @@ export class CosmeticsService {
     cosmeticId: string,
     isAdmin = false,
   ): Promise<EquipCosmeticResponsePayload> {
-    if (!isKnownCosmeticId(cosmeticId)) {
-      throw new InvalidCosmeticError(`${cosmeticId} does not exist.`);
+    // Validates existence AND that this exact (category, scope) pairing is
+    // one the cosmetic actually supports — not just that the id exists
+    // somewhere in the catalog. Without this, a caller could equip e.g. a
+    // UNO-only card back (`cardback_neon_cyber_uno`, supportedScopes:
+    // ["uno"]) into the `rummy` slot: the write would succeed, but the
+    // Rummy-specific renderer only recognizes rummy-scoped card-back ids
+    // and silently falls back to the default look — the exact bug this
+    // check exists to prevent, since only the *sanitized* id is trusted
+    // downstream.
+    const sanitizedId = sanitizeCosmeticId(cosmeticId, category, scope);
+    if (!sanitizedId) {
+      throw new InvalidCosmeticError(
+        `${cosmeticId} is not a valid ${category} cosmetic for scope ${scope}.`,
+      );
     }
+    cosmeticId = sanitizedId;
 
     // Default items and admins are always permissible; non-defaults for regular users require ownership verification
     const defaultDef = getDefaultCosmetic(category, scope);

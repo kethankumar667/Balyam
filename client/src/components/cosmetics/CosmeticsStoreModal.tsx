@@ -35,6 +35,7 @@ import { useAuthStore } from "../../store/authStore";
 import {
   type CosmeticCategory,
   type CosmeticCatalogItem,
+  getRegistryCosmetic,
 } from "@shared/cosmetics";
 import {
   type PreviewMode,
@@ -97,10 +98,26 @@ export function CosmeticsStoreModal() {
     closeStore();
   };
 
-  // Filter catalog items for selected category
+  // Filter catalog items for selected category AND the active game-variant
+  // scope. Category alone used to be the only filter, which let e.g. a
+  // UNO-only card back (supportedScopes: ["uno"]) appear and be equipped
+  // while the RUMMY tab was active — the write succeeded (nothing validated
+  // it server-side either, now fixed in CosmeticsService.equipCosmetic),
+  // but the Rummy-specific renderer only recognizes rummy-scoped ids and
+  // silently fell back to the default look. A catalog item with no
+  // registry match (shouldn't happen — assertCatalogIntegrity guards this
+  // at boot) is excluded rather than shown unfiltered.
   const categoryItems = useMemo(() => {
-    return catalog.filter((item) => item.category === selectedCategory);
-  }, [catalog, selectedCategory]);
+    return catalog.filter((item) => {
+      if (item.category !== selectedCategory) return false;
+      const def = getRegistryCosmetic(item.id);
+      if (!def) return false;
+      return (
+        def.supportedScopes.includes(selectedScope) ||
+        def.supportedScopes.includes("GLOBAL")
+      );
+    });
+  }, [catalog, selectedCategory, selectedScope]);
 
   // Selected item object (or fallback to first item / default)
   const previewItem = useMemo(() => {

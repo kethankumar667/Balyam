@@ -402,6 +402,31 @@ export function sanitizePublicPresentation(raw: unknown): PublicPresentationLoad
   return publicPresentation;
 }
 
+/**
+ * Validates `id` against the exact (category, scope) it's about to resolve
+ * into before trusting it, falling back otherwise.
+ *
+ * Without this, `resolveEffectiveLoadout` only checked whether a field was
+ * `undefined` — an equipped id that exists in the catalog but for the WRONG
+ * scope (e.g. a UNO-only card back written into the `rummy` slot, which
+ * `CosmeticsService.equipCosmetic` used to allow) passed straight through
+ * as "resolved", even though no rummy-specific renderer recognizes it and
+ * silently falls back to the default look. Re-validating here — the one
+ * place both the server's `/loadout` response and every client resolver
+ * ultimately go through — makes any already-written bad data self-heal on
+ * the very next load, instead of staying stuck until someone re-equips by
+ * hand.
+ */
+function sanitizedOrDefault(
+  id: string | undefined,
+  category: CosmeticCategory,
+  scope: CosmeticGameScope,
+  fallback: string,
+): string {
+  if (!id) return fallback;
+  return sanitizeCosmeticId(id, category, scope) ?? fallback;
+}
+
 export function resolveEffectiveLoadout(
   equipped?: Partial<EquippedCosmeticsLoadout>,
 ): ResolvedCosmeticsLoadout {
@@ -413,34 +438,46 @@ export function resolveEffectiveLoadout(
   const defaultAura = getDefaultCosmetic("AVATAR_AURA").id;
   const defaultTitle = getDefaultCosmetic("PODIUM_TITLE").id;
 
+  const tableGlobal = sanitizedOrDefault(equipped?.tableThemes?.GLOBAL, "TABLE_THEME", "GLOBAL", defaultTable);
+
   return {
     tableThemes: {
-      GLOBAL: equipped?.tableThemes?.GLOBAL ?? defaultTable,
-      uno: equipped?.tableThemes?.uno ?? equipped?.tableThemes?.GLOBAL ?? defaultTable,
-      rummy: equipped?.tableThemes?.rummy ?? equipped?.tableThemes?.GLOBAL ?? defaultTable,
-      ludo: equipped?.tableThemes?.ludo ?? equipped?.tableThemes?.GLOBAL ?? defaultTable,
-      snl: equipped?.tableThemes?.snl ?? equipped?.tableThemes?.GLOBAL ?? defaultTable,
+      GLOBAL: tableGlobal,
+      uno: sanitizedOrDefault(equipped?.tableThemes?.uno, "TABLE_THEME", "uno", tableGlobal),
+      rummy: sanitizedOrDefault(equipped?.tableThemes?.rummy, "TABLE_THEME", "rummy", tableGlobal),
+      ludo: sanitizedOrDefault(equipped?.tableThemes?.ludo, "TABLE_THEME", "ludo", tableGlobal),
+      snl: sanitizedOrDefault(equipped?.tableThemes?.snl, "TABLE_THEME", "snl", tableGlobal),
     },
     diceSkins: {
-      GLOBAL: equipped?.diceSkins?.GLOBAL ?? defaultDice,
-      ludo: equipped?.diceSkins?.ludo ?? equipped?.diceSkins?.GLOBAL ?? defaultDice,
-      snl: equipped?.diceSkins?.snl ?? equipped?.diceSkins?.GLOBAL ?? defaultDice,
+      GLOBAL: sanitizedOrDefault(equipped?.diceSkins?.GLOBAL, "DICE_SKIN", "GLOBAL", defaultDice),
+      ludo: sanitizedOrDefault(
+        equipped?.diceSkins?.ludo,
+        "DICE_SKIN",
+        "ludo",
+        sanitizedOrDefault(equipped?.diceSkins?.GLOBAL, "DICE_SKIN", "GLOBAL", defaultDice),
+      ),
+      snl: sanitizedOrDefault(
+        equipped?.diceSkins?.snl,
+        "DICE_SKIN",
+        "snl",
+        sanitizedOrDefault(equipped?.diceSkins?.GLOBAL, "DICE_SKIN", "GLOBAL", defaultDice),
+      ),
       uno: defaultDice,
       rummy: defaultDice,
     },
     tokenSkins: {
-      GLOBAL: equipped?.tokenSkins?.GLOBAL ?? defaultToken,
-      ludo: equipped?.tokenSkins?.ludo ?? defaultToken,
+      GLOBAL: sanitizedOrDefault(equipped?.tokenSkins?.GLOBAL, "TOKEN_SKIN", "GLOBAL", defaultToken),
+      ludo: sanitizedOrDefault(equipped?.tokenSkins?.ludo, "TOKEN_SKIN", "ludo", defaultToken),
       snl: defaultToken,
       uno: defaultToken,
       rummy: defaultToken,
     },
     cardBacks: {
-      uno: equipped?.cardBacks?.uno ?? defaultUnoCardBack,
-      rummy: equipped?.cardBacks?.rummy ?? defaultRummyCardBack,
+      uno: sanitizedOrDefault(equipped?.cardBacks?.uno, "CARD_BACK", "uno", defaultUnoCardBack),
+      rummy: sanitizedOrDefault(equipped?.cardBacks?.rummy, "CARD_BACK", "rummy", defaultRummyCardBack),
     },
-    avatarAura: equipped?.avatarAura ?? defaultAura,
-    podiumTitle: equipped?.podiumTitle ?? defaultTitle,
+    avatarAura: sanitizedOrDefault(equipped?.avatarAura, "AVATAR_AURA", "GLOBAL", defaultAura),
+    podiumTitle: sanitizedOrDefault(equipped?.podiumTitle, "PODIUM_TITLE", "GLOBAL", defaultTitle),
   };
 }
 

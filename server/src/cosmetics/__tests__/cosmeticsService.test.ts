@@ -3,7 +3,7 @@ import { CosmeticsService } from "../CosmeticsService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { StreakService } from "../../streak/StreakService.js";
-import { UnownedCosmeticError, CosmeticsDebitUnsupportedError } from "../CosmeticsRepository.js";
+import { UnownedCosmeticError, InvalidCosmeticError, CosmeticsDebitUnsupportedError } from "../CosmeticsRepository.js";
 
 describe("CosmeticsService", () => {
   let economyRepo: InMemoryEconomyRepository;
@@ -402,6 +402,52 @@ describe("CosmeticsService", () => {
       } finally {
         repoWithoutDebit.debitWallet = realDebitWallet;
       }
+    });
+  });
+
+  describe("Equip rejects a cosmetic that doesn't support the requested scope (reported bug)", () => {
+    /**
+     * Reported symptom: a user equipped "Synthwave Grid Cyber" (a card back)
+     * from the shop while the Rummy tab was selected, but never saw it in
+     * an actual Rummy match. Root cause: that item's catalog id
+     * (cardback_neon_cyber_uno) only supports the `uno` scope —
+     * equipCosmetic never cross-checked the submitted (category, scope)
+     * against the item's own registry definition, so it wrote an
+     * out-of-scope id into the `rummy` slot. The write "succeeded" from the
+     * client's point of view, but the Rummy-specific renderer's lookup
+     * table has no entry for a uno-only id and silently fell back to the
+     * default navy card back — indistinguishable from the equip having
+     * silently failed.
+     */
+    it("refuses to equip a UNO-only card back into the rummy scope", async () => {
+      await expect(
+        cosmeticsService.equipCosmetic(USER_ID, "CARD_BACK", "rummy", "cardback_neon_cyber_uno", true),
+      ).rejects.toBeInstanceOf(InvalidCosmeticError);
+    });
+
+    it("refuses to equip a rummy-only card back into the uno scope", async () => {
+      await expect(
+        cosmeticsService.equipCosmetic(USER_ID, "CARD_BACK", "uno", "cardback_vintage_velvet_rummy", true),
+      ).rejects.toBeInstanceOf(InvalidCosmeticError);
+    });
+
+    it("still allows the correctly-scoped equip for the same item", async () => {
+      const res = await cosmeticsService.equipCosmetic(USER_ID, "CARD_BACK", "uno", "cardback_neon_cyber_uno", true);
+      expect(res.success).toBe(true);
+      expect(res.loadout.cardBacks.uno).toBe("cardback_neon_cyber_uno");
+      // The rummy slot must be completely untouched by a uno-scoped equip.
+      expect(res.loadout.cardBacks.rummy).toBeUndefined();
+    });
+
+    it("resolveEffectiveLoadout self-heals a pre-existing bad equip instead of surfacing the wrong-scope id", async () => {
+      const { resolveEffectiveLoadout } = await import("@shared/cosmetics.js");
+      // Simulates the exact bad row this bug used to be able to write
+      // before this fix, e.g. from a purchase made before the fix shipped.
+      const resolved = resolveEffectiveLoadout({
+        cardBacks: { rummy: "cardback_neon_cyber_uno", uno: "cardback_classic_uno" },
+      });
+      expect(resolved.cardBacks.rummy).toBe("cardback_classic_navy"); // falls back to the real rummy default
+      expect(resolved.cardBacks.uno).toBe("cardback_classic_uno"); // valid id passes through unchanged
     });
   });
 });
