@@ -15,8 +15,7 @@
  * - Admin and Super Admin free pass (all items unlocked for free with no coin deduction).
  */
 
-import React, { useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useMemo } from "react";
 import {
   Store,
   X,
@@ -35,11 +34,13 @@ import { useWallet } from "../../hooks/useEconomy";
 import { useAuthStore } from "../../store/authStore";
 import {
   type CosmeticCategory,
-  type CosmeticGameScope,
   type CosmeticCatalogItem,
-  COSMETIC_CATEGORIES,
-  getDefaultCosmetic,
 } from "@shared/cosmetics";
+import {
+  type PreviewMode,
+  isValidModeForCategory,
+  getDefaultPreviewMode,
+} from "./previewModes";
 import { CosmeticsPreviewStage } from "./CosmeticsPreviewStage";
 import { CosmeticsItemCard } from "./CosmeticsItemCard";
 import { AudioManager } from "../../services/AudioManager";
@@ -65,7 +66,6 @@ export function CosmeticsStoreModal() {
     catalog,
     ownedIds,
     equipped,
-    resolved,
     selectedCategory,
     selectedScope,
     selectedItemId,
@@ -84,6 +84,12 @@ export function CosmeticsStoreModal() {
   const { balance: walletBalance } = useWallet();
   const { isAdmin, isSuperAdmin } = useAuthStore();
   const isAdminUser = isAdmin || isSuperAdmin;
+
+  // Race-safe preview mode: derived synchronously during render
+  const [storedMode, setStoredMode] = useState<PreviewMode>("INSPECT");
+  const previewMode = isValidModeForCategory(storedMode, selectedCategory)
+    ? storedMode
+    : getDefaultPreviewMode(selectedCategory);
 
   // Close audio feedback
   const handleClose = () => {
@@ -302,6 +308,8 @@ export function CosmeticsStoreModal() {
             item={previewItem}
             category={selectedCategory}
             scope={selectedScope}
+            previewMode={previewMode}
+            onSelectPreviewMode={setStoredMode}
             isEquipped={isPreviewEquipped}
             isOwned={isPreviewOwned}
             isAdminUser={isAdminUser}
@@ -313,9 +321,9 @@ export function CosmeticsStoreModal() {
           />
         </div>
 
-        {/* Right Column (Desktop) / Bottom Grid (Mobile): Collectible Tiles List */}
-        <div className="w-full md:w-7/12 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
+        {/* Right Column (Desktop) / Bottom Grid (Mobile): Subtle Ambient Collection Container */}
+        <div className="w-full md:w-7/12 flex flex-col bg-gradient-to-b from-[#0d1322] to-[#080c16] border border-zinc-800/60 rounded-2xl p-4 shadow-xl">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800/50">
             <span className="text-xs font-black uppercase tracking-wider text-white">
               {categoryHeaderTitle} • {categoryItems.length} styles
             </span>
@@ -359,9 +367,6 @@ export function CosmeticsStoreModal() {
                     walletBalance={walletBalance ?? "0"}
                     isAdminUser={isAdminUser}
                     onSelect={() => selectItem(item.id)}
-                    onPurchase={() => handlePurchase(item)}
-                    onEquip={() => handleEquip(item)}
-                    onUnequip={handleUnequip}
                   />
                 );
               })}

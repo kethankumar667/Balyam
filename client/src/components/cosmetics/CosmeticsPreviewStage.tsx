@@ -1,25 +1,23 @@
 /**
  * BHALYAM — Cosmetics Boutique "Enchanted Display Vault" Preview Stage
  *
- * Transforms the cosmetic preview into an artifact exhibition chamber:
- * - 4 atmospheric background layers (rarity radial glow, cosmic runes, mist, pedestal shadow).
- * - Doubled artifact visual scale with layered energy, orbiting particles, and rotating rune rings.
- * - Real-context preview switcher: [Profile | Game Seat | Podium].
- * - Full lore typography hierarchy (Rarity eyebrow, bold title, unabridged description).
- * - Integrated single decisive Purchase / Equip CTA with explicit coin-deficit calculations.
- * - Admin and Super Admin free pass support (instant equip with zero cost).
- * - Restrained motion with full prefers-reduced-motion support and WCAG 2.1 AA contrast.
+ * Polished artifact exhibition chamber with:
+ * - Category-specific preview modes (Inspect, Roll Preview, In Game, etc.)
+ * - High-fidelity 3D Dice materials (Teak Wood, Polished Ivory, Golden Ember, Cyber Neon)
+ * - Presentation-only roll simulation isolated from gameplay RNG
+ * - Pure static presentational in-game mockup (zero game engine or network calls)
+ * - Unified single decisive CTA with safe deficit calculation
+ * - Full WAI-ARIA tablist/tabpanel accessibility and prefers-reduced-motion support
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
   Coins,
   Check,
-  Lock,
-  RefreshCw,
-  User,
+  RotateCw,
+  Eye,
   Gamepad2,
   Trophy,
   Star,
@@ -34,13 +32,21 @@ import {
 import SeatAvatar from "../profile/SeatAvatar";
 import { useRoomStore } from "../../store/roomStore";
 import { bhalyamSpring } from "../../lib/motion";
-
-export type PreviewContext = "profile" | "seat" | "podium";
+import {
+  type PreviewMode,
+  PREVIEW_MODES_BY_CATEGORY,
+} from "./previewModes";
+import {
+  resolveCosmeticPresentationState,
+  type CosmeticPresentationResult,
+} from "./presentationState";
 
 interface CosmeticsPreviewStageProps {
   item: CosmeticCatalogItem | null;
   category: CosmeticCategory;
   scope: CosmeticGameScope;
+  previewMode: PreviewMode;
+  onSelectPreviewMode: (mode: PreviewMode) => void;
   isEquipped: boolean;
   isOwned: boolean;
   isAdminUser: boolean;
@@ -55,6 +61,8 @@ export function CosmeticsPreviewStage({
   item,
   category,
   scope,
+  previewMode,
+  onSelectPreviewMode,
   isEquipped,
   isOwned,
   isAdminUser,
@@ -66,26 +74,34 @@ export function CosmeticsPreviewStage({
 }: CosmeticsPreviewStageProps) {
   const { playerName, avatarId } = useRoomStore();
   const displayName = playerName.trim() || "Player";
-  const [context, setContext] = useState<PreviewContext>("profile");
 
   // Effective preview item (or category default if none selected)
-  const previewId = item?.id ?? getDefaultCosmetic(category, scope).id;
-  const previewName = item?.name ?? "Default";
-  const rarity = item?.rarity ?? "COMMON";
-  const isDefault = item?.unlockMethod === "DEFAULT";
+  const previewItem: CosmeticCatalogItem = item ?? {
+    id: getDefaultCosmetic(category, scope).id,
+    category,
+    name: "Standard Default",
+    description: "Standard lounge default cosmetic.",
+    priceCoins: 0,
+    rarity: "COMMON",
+    unlockMethod: "DEFAULT",
+    isActive: true,
+    displayOrder: 0,
+  };
+  const rarity = previewItem.rarity ?? "COMMON";
 
-  // Ownership & transaction math
-  const effectiveOwned = isAdminUser || isDefault || isOwned;
-  const priceCoins = item?.priceCoins ?? 0;
-  const balanceBn = BigInt(walletBalance || "0");
-  const priceBn = BigInt(priceCoins);
-  const canAfford = balanceBn >= priceBn;
-  const deficitBn = priceBn > balanceBn ? priceBn - balanceBn : 0n;
-  const deficitFormatted = Number(deficitBn).toLocaleString();
-  const progressPercent =
-    priceCoins > 0
-      ? Math.min(100, Math.max(0, Math.round((Number(balanceBn) / priceCoins) * 100)))
-      : 100;
+  // Compute deterministic presentation state
+  const presentation: CosmeticPresentationResult =
+    resolveCosmeticPresentationState({
+      item: previewItem,
+      isOwned,
+      isEquipped,
+      isAdminUser,
+      walletBalance,
+      isSubmitting,
+    });
+
+  // Available preview modes for this category
+  const modeOptions = PREVIEW_MODES_BY_CATEGORY[category];
 
   // Rarity atmospheric illumination
   const getRarityAtmosphere = (r: string) => {
@@ -129,7 +145,7 @@ export function CosmeticsPreviewStage({
 
   return (
     <div
-      className={`w-full flex flex-col justify-between p-5 rounded-2xl bg-gradient-to-b from-[#0e1424] via-[#090d18] to-[#05070d] border ${rarityTheme.border} shadow-2xl relative overflow-hidden min-h-[460px] transition-colors duration-500`}
+      className={`w-full flex flex-col justify-between p-5 rounded-2xl bg-gradient-to-b from-[#0e1424] via-[#090d18] to-[#05070d] border ${rarityTheme.border} shadow-2xl relative overflow-hidden min-h-[490px] transition-colors duration-500`}
     >
       {/* ── 1. Layer: Atmospheric Rarity Radial Glow ── */}
       <div
@@ -138,231 +154,296 @@ export function CosmeticsPreviewStage({
 
       {/* ── 2. Layer: Background Geometric Runes & Celestial Compass ── */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-        <svg className="w-80 h-80 animate-spin [animation-duration:120s]" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r="90" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.5" strokeDasharray="4 4" />
-          <circle cx="100" cy="100" r="75" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="1" strokeDasharray="12 6" />
-          <polygon points="100,10 190,100 100,190 10,100" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.5" />
-          <polygon points="100,25 175,100 100,175 25,100" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.5" />
+        <svg
+          viewBox="0 0 400 400"
+          className="w-80 h-80 animate-spin [animation-duration:120s] [animation-timing-function:linear]"
+          aria-hidden="true"
+        >
+          <circle
+            cx="200"
+            cy="200"
+            r="160"
+            fill="none"
+            stroke={rarityTheme.runeStroke}
+            strokeWidth="1.5"
+            strokeDasharray="4 8"
+          />
+          <circle
+            cx="200"
+            cy="200"
+            r="120"
+            fill="none"
+            stroke={rarityTheme.runeStroke}
+            strokeWidth="1"
+            strokeDasharray="2 12"
+          />
+          <polygon
+            points="200,45 335,280 65,280"
+            fill="none"
+            stroke={rarityTheme.runeStroke}
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
+          <polygon
+            points="200,355 65,120 335,120"
+            fill="none"
+            stroke={rarityTheme.runeStroke}
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
         </svg>
       </div>
 
-      {/* ── 3. Layer: Grounded Pedestal Shadow ── */}
+      {/* ── 3. Layer: Ground Pedestal Shadow ── */}
       <div className="absolute top-[48%] left-1/2 -translate-x-1/2 w-48 h-8 rounded-[100%] bg-black/60 blur-md pointer-events-none" />
 
-      {/* ── Top Bar: Rarity Eyebrow + Context Segmented Switch ── */}
+      {/* ── Top Bar: Rarity Eyebrow + WAI-ARIA Category-Specific Tablist ── */}
       <div className="w-full flex items-center justify-between gap-2 z-10">
-        <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider shadow-xs ${rarityTheme.pill}`}>
+        <span
+          className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider shadow-xs ${rarityTheme.pill}`}
+        >
           {rarity}
         </span>
 
-        {/* Real-Context Preview Segmented Switch */}
+        {/* WAI-ARIA Tablist with arrow-key roving tabindex */}
         <div
           role="tablist"
           aria-label="Preview Context"
-          className="flex items-center p-0.5 rounded-lg bg-black/50 border border-zinc-800 text-[11px] font-bold select-none"
+          className="flex items-center p-0.5 rounded-lg bg-black/60 border border-zinc-800 text-[11px] font-bold select-none"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={context === "profile"}
-            onClick={() => setContext("profile")}
-            className={`min-h-[32px] px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
-              context === "profile"
-                ? "bg-zinc-800 text-white shadow-xs"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <User className="w-3 h-3" />
-            <span>Profile</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={context === "seat"}
-            onClick={() => setContext("seat")}
-            className={`min-h-[32px] px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
-              context === "seat"
-                ? "bg-zinc-800 text-white shadow-xs"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Gamepad2 className="w-3 h-3" />
-            <span>Game Seat</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={context === "podium"}
-            onClick={() => setContext("podium")}
-            className={`min-h-[32px] px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
-              context === "podium"
-                ? "bg-zinc-800 text-white shadow-xs"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Trophy className="w-3 h-3" />
-            <span>Podium</span>
-          </button>
+          {modeOptions.map((opt, idx) => {
+            const Icon = opt.icon;
+            const isActive = previewMode === opt.id;
+            return (
+              <button
+                key={opt.id}
+                id={`preview-tab-${opt.id}`}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`preview-panel-${opt.id}`}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => onSelectPreviewMode(opt.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const next = modeOptions[(idx + 1) % modeOptions.length];
+                    onSelectPreviewMode(next.id);
+                    document
+                      .getElementById(`preview-tab-${next.id}`)
+                      ?.focus();
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    const prev =
+                      modeOptions[
+                        (idx - 1 + modeOptions.length) % modeOptions.length
+                      ];
+                    onSelectPreviewMode(prev.id);
+                    document
+                      .getElementById(`preview-tab-${prev.id}`)
+                      ?.focus();
+                  }
+                }}
+                aria-label={opt.accessibleLabel}
+                className={`min-h-[32px] px-2.5 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                  isActive
+                    ? "bg-zinc-800 text-white shadow-xs"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                <span className="text-[11px] whitespace-nowrap">{opt.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Center Stage: 2x Scale Visual Artifact ── */}
-      <div className="w-full flex-1 flex items-center justify-center my-3 relative z-10 min-h-[190px]">
+      {/* ── Main Artifact Display Stage (WAI-ARIA Tabpanel) ── */}
+      <div
+        role="tabpanel"
+        id={`preview-panel-${previewMode}`}
+        aria-labelledby={`preview-tab-${previewMode}`}
+        className="flex-1 flex flex-col items-center justify-center my-3 relative z-10 min-h-[220px]"
+      >
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${previewId}-${context}`}
+            key={`${previewItem.id}-${previewMode}`}
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.04 }}
+            exit={{ opacity: 0, scale: 0.94 }}
             transition={bhalyamSpring}
-            className="w-full flex items-center justify-center"
+            className="flex flex-col items-center justify-center"
           >
-            {category === "TABLE_THEME" && (
-              <EnchantedTableThemePreview skinId={previewId} context={context} />
-            )}
             {category === "DICE_SKIN" && (
-              <EnchantedDiceSkinPreview skinId={previewId} context={context} />
-            )}
-            {category === "TOKEN_SKIN" && (
-              <EnchantedTokenSkinPreview skinId={previewId} context={context} />
-            )}
-            {category === "CARD_BACK" && (
-              <EnchantedCardBackPreview skinId={previewId} scope={scope} context={context} />
-            )}
-            {category === "AVATAR_AURA" && (
-              <EnchantedAvatarAuraPreview
-                skinId={previewId}
-                avatarId={avatarId}
-                displayName={displayName}
-                context={context}
+              <EnchantedDiceSkinPreview
+                skinId={previewItem.id}
+                mode={previewMode}
               />
             )}
+
+            {category === "AVATAR_AURA" && (
+              <EnchantedAvatarAuraPreview
+                auraId={previewItem.id}
+                mode={previewMode}
+                displayName={displayName}
+                avatarId={avatarId}
+              />
+            )}
+
+            {category === "TOKEN_SKIN" && (
+              <EnchantedTokenSkinPreview
+                skinId={previewItem.id}
+                mode={previewMode}
+              />
+            )}
+
+            {category === "CARD_BACK" && (
+              <EnchantedCardBackPreview
+                cardId={previewItem.id}
+                mode={previewMode}
+                scope={scope}
+              />
+            )}
+
+            {category === "TABLE_THEME" && (
+              <EnchantedTableThemePreview
+                skinId={previewItem.id}
+                mode={previewMode}
+              />
+            )}
+
             {category === "PODIUM_TITLE" && (
               <EnchantedPodiumTitlePreview
-                skinId={previewId}
-                titleName={previewName}
+                skinId={previewItem.id}
+                titleName={previewItem.name}
                 displayName={displayName}
-                context={context}
+                mode={previewMode}
               />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ── Selected Item Lore & Info Hierarchy ── */}
-      <div className="w-full text-center z-10 mb-2">
-        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-          {rarity} {category.replace("_", " ")}
-        </div>
-        <h4 className="text-lg font-black tracking-tight text-white uppercase mt-0.5">
-          {previewName}
-        </h4>
-        <p className="text-xs text-zinc-300/90 max-w-sm mx-auto mt-1 leading-relaxed">
-          {item?.description ?? "Standard default customization."}
-        </p>
-      </div>
-
-      {/* ── Transaction Bar: Balance, Price & Unified Primary CTA ── */}
-      <div className="w-full pt-3 border-t border-zinc-800/80 flex flex-col gap-2.5 z-10 bg-zinc-950/40 rounded-xl p-3">
-        {/* Balance and Price Row */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5 text-zinc-400">
-            <span>Your Balance:</span>
-            <span className="font-mono font-bold text-amber-300 flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
-              {Number(walletBalance || 0).toLocaleString()}
+      {/* ── Lore Narrative & Single Unified CTA ── */}
+      <div className="flex flex-col gap-3 z-10">
+        {/* Lore Typography */}
+        <div className="flex flex-col gap-1 border-t border-zinc-800/80 pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={`text-[10px] font-black uppercase tracking-wider ${rarityTheme.accent}`}
+            >
+              {rarity} • {category.replace("_", " ")}
+            </span>
+            <span className="text-[11px] text-zinc-400 font-mono">
+              {previewItem.priceCoins > 0
+                ? `${previewItem.priceCoins.toLocaleString()} Coins`
+                : "Free Default"}
             </span>
           </div>
+          <h4 className="text-base font-extrabold text-white tracking-tight leading-snug">
+            {previewItem.name}
+          </h4>
+          <p className="text-xs text-zinc-300 leading-relaxed">
+            {previewItem.description}
+          </p>
+        </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-zinc-400">Price:</span>
-            {isDefault ? (
-              <span className="font-black text-emerald-400 text-xs">DEFAULT</span>
-            ) : isAdminUser ? (
-              <span className="font-black text-amber-400 text-xs flex items-center gap-1">
-                <Crown className="w-3.5 h-3.5" /> FREE
+        {/* Financial Context & Deficit Calculation */}
+        <div className="flex flex-col gap-1.5 bg-black/40 border border-zinc-800/80 rounded-xl p-2.5">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <div className="flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-amber-400" />
+              <span>Balance:</span>
+              <strong className="font-mono text-zinc-200">
+                {presentation.safeBalance.toLocaleString()} Coins
+              </strong>
+            </div>
+
+            {/* Exactly ONE full shortfall sentence (Deduplication Rule) */}
+            {presentation.state === "INSUFFICIENT_BALANCE" && (
+              <span className="text-rose-400 font-bold text-xs">
+                Need {presentation.shortfall.toLocaleString()} more Coins
               </span>
-            ) : (
-              <span className="font-mono font-bold text-white text-xs flex items-center gap-1">
-                <Coins className="w-3.5 h-3.5 text-amber-400" />
-                {priceCoins.toLocaleString()}
+            )}
+
+            {presentation.state === "AVAILABLE" && (
+              <span className="text-emerald-400 font-bold text-xs">
+                Sufficient funds
               </span>
             )}
           </div>
+
+          {/* Progress bar for unowned items */}
+          {!isOwned &&
+            !isAdminUser &&
+            previewItem.unlockMethod !== "DEFAULT" && (
+              <div className="w-full flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      presentation.state === "INSUFFICIENT_BALANCE"
+                        ? "bg-gradient-to-r from-amber-500 to-rose-500"
+                        : "bg-gradient-to-r from-amber-400 to-emerald-400"
+                    }`}
+                    style={{ width: `${presentation.progressPercent}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                  {presentation.progressText}
+                </span>
+              </div>
+            )}
         </div>
 
-        {/* Deficit Bar when insufficient funds */}
-        {!effectiveOwned && !canAfford && (
-          <div className="flex flex-col gap-1 pt-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-rose-400 font-semibold flex items-center gap-1">
-                <Lock className="w-3 h-3" /> Need {deficitFormatted} more Coins
-              </span>
-              <span className="text-zinc-500 font-mono text-[10px]">
-                {Number(walletBalance || 0).toLocaleString()} / {priceCoins.toLocaleString()}
-              </span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Unified Decisive Action CTA */}
-        <div className="pt-1 flex items-center gap-2">
-          {isEquipped ? (
-            <div className="w-full flex items-center gap-2">
-              <div className="flex-1 min-h-[44px] px-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black text-xs flex items-center justify-center gap-2">
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>EQUIPPED</span>
-              </div>
-              {!isDefault && (
+        {/* ── Single Decisive Action Button ── */}
+        <div className="w-full">
+          {presentation.state === "EQUIPPED" ? (
+            presentation.canEquip || isEquipped ? (
+              previewItem.unlockMethod !== "DEFAULT" ? (
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={onUnequip}
-                  aria-label="Restore default"
-                  title="Restore default"
-                  className="min-h-[44px] px-3.5 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Reset</span>
+                  <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                  <span>EQUIPPED (Click to Reset Default)</span>
                 </button>
-              )}
-            </div>
-          ) : effectiveOwned ? (
+              ) : (
+                <div className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-bold text-xs bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 select-none">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>EQUIPPED AS DEFAULT</span>
+                </div>
+              )
+            ) : null
+          ) : presentation.canEquip ? (
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => item && onEquip(item)}
-              aria-label={`Equip ${previewName}`}
-              className="w-full min-h-[44px] px-4 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 active:scale-98 text-black transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+              onClick={() => onEquip(previewItem)}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-extrabold text-xs bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-[0.99] text-black shadow-lg shadow-amber-500/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>EQUIP {category.replace("_", " ")}</span>
+              <span>{presentation.ctaLabel}</span>
             </button>
-          ) : canAfford ? (
+          ) : presentation.canPurchase ? (
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => item && onPurchase(item)}
-              aria-label={`Unlock ${previewName} for ${priceCoins} coins`}
-              className="w-full min-h-[44px] px-4 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:brightness-110 active:scale-98 text-black transition flex items-center justify-center gap-2 shadow-xl shadow-amber-500/30 cursor-pointer disabled:opacity-50"
+              onClick={() => onPurchase(previewItem)}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-extrabold text-xs bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-[0.99] text-black shadow-lg shadow-amber-500/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Coins className="w-4 h-4" />
-              <span>UNLOCK FOR {priceCoins.toLocaleString()} COINS</span>
+              <span>{presentation.ctaLabel}</span>
             </button>
           ) : (
             <button
               type="button"
               disabled
-              className="w-full min-h-[44px] px-4 rounded-xl text-xs font-bold bg-zinc-900 border border-zinc-800 text-zinc-500 flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-extrabold text-xs bg-zinc-900 text-zinc-500 border border-zinc-800 flex items-center justify-center gap-2 cursor-not-allowed select-none"
             >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Need {deficitFormatted} more Coins</span>
+              <span>{presentation.ctaLabel}</span>
             </button>
           )}
         </div>
@@ -372,330 +453,770 @@ export function CosmeticsPreviewStage({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ENCHANTED ARTIFACT VISUAL PREVIEW RENDERERS
+// 1. ENCHANTED 3D DICE SKIN PREVIEW (136x136px, Tactile Materials, 3 Modes)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── 1. Enchanted Avatar Aura Preview (2x Scale, 3 Contexts) ──
-function EnchantedAvatarAuraPreview({
-  skinId,
-  avatarId,
-  displayName,
-  context,
-}: {
+interface DiceFaceProps {
+  value: number;
   skinId: string;
-  avatarId: string | null;
-  displayName: string;
-  context: PreviewContext;
-}) {
-  const getAuraColor = (id: string) => {
-    switch (id) {
-      case "aura_radiant_vanguard":
-        return {
-          coreRing: "border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.9)]",
-          orbitColor: "#f59e0b",
-          pulseColor: "rgba(245,158,11,0.4)",
-        };
-      case "aura_ludo_king":
-        return {
-          coreRing: "border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.9)]",
-          orbitColor: "#f43f5e",
-          pulseColor: "rgba(244,63,94,0.4)",
-        };
-      case "aura_rummy_maestro":
-        return {
-          coreRing: "border-emerald-400 shadow-[0_0_35px_rgba(52,211,153,0.9)]",
-          orbitColor: "#10b981",
-          pulseColor: "rgba(16,185,129,0.4)",
-        };
-      default:
-        return {
-          coreRing: "border-zinc-500 shadow-[0_0_15px_rgba(255,255,255,0.2)]",
-          orbitColor: "#71717a",
-          pulseColor: "transparent",
-        };
-    }
-  };
+  pipClass: string;
+}
 
-  const style = getAuraColor(skinId);
+function DiceFacePipGrid({ value, skinId, pipClass }: DiceFaceProps) {
+  // Return standard pip positions for 1-6
+  const pips = [];
+  const isOne = value === 1;
+  const isTwo = value === 2;
+  const isThree = value === 3;
+  const isFour = value === 4;
+  const isFive = value === 5;
+  const isSix = value === 6;
 
-  // Profile context (large avatar showcase)
-  if (context === "profile") {
-    return (
-      <div className="relative flex flex-col items-center justify-center">
-        {/* Layer: Outer Rotating Rune Ring */}
-        <div className="absolute -inset-6 flex items-center justify-center pointer-events-none">
-          <svg className="w-44 h-44 animate-spin [animation-duration:18s]" viewBox="0 0 160 160">
-            <circle cx="80" cy="80" r="72" fill="none" stroke={style.orbitColor} strokeWidth="1.5" strokeDasharray="6 4 2 4" opacity="0.7" />
-            <circle cx="80" cy="8" r="3" fill={style.orbitColor} />
-            <circle cx="80" cy="152" r="3" fill={style.orbitColor} />
-            <circle cx="8" cy="80" r="3" fill={style.orbitColor} />
-            <circle cx="152" cy="80" r="3" fill={style.orbitColor} />
-          </svg>
-        </div>
-
-        {/* Layer: Middle Particle Orbit */}
-        <div className="absolute -inset-3 flex items-center justify-center pointer-events-none">
-          <svg className="w-36 h-36 animate-spin [animation-duration:12s] [animation-direction:reverse]" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke={style.orbitColor} strokeWidth="1" strokeDasharray="3 8" opacity="0.5" />
-            <circle cx="60" cy="6" r="2.5" fill="#ffffff" />
-            <circle cx="114" cy="60" r="2.5" fill="#ffffff" />
-          </svg>
-        </div>
-
-        {/* Layer: Inner Pulsing Energy Halo */}
-        <div
-          className="absolute -inset-1 rounded-full animate-pulse blur-sm pointer-events-none"
-          style={{ backgroundColor: style.pulseColor }}
-        />
-
-        {/* Center: 2x Scale Avatar (112x112 px) */}
-        <div className={`w-28 h-28 rounded-full overflow-hidden border-3 ${style.coreRing} relative z-10 bg-zinc-900 shadow-2xl`}>
-          <SeatAvatar avatar={avatarId ?? undefined} name={displayName} className="w-full h-full" />
-        </div>
-
-        {/* Soft Reflected Glow Below */}
-        <div
-          className="w-24 h-4 rounded-full blur-md mt-2 opacity-70"
-          style={{ backgroundColor: style.pulseColor }}
-        />
-      </div>
+  // Dot 1: Top-Left
+  if (isTwo || isThree || isFour || isFive || isSix) {
+    pips.push(
+      <span
+        key="tl"
+        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-1 ${pipClass}`}
+      />,
+    );
+  }
+  // Dot 2: Top-Right
+  if (isFour || isFive || isSix) {
+    pips.push(
+      <span
+        key="tr"
+        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-1 ${pipClass}`}
+      />,
+    );
+  }
+  // Dot 3: Center-Left
+  if (isSix) {
+    pips.push(
+      <span
+        key="cl"
+        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-2 ${pipClass}`}
+      />,
+    );
+  }
+  // Dot 4: Center
+  if (isOne || isThree || isFive) {
+    pips.push(
+      <span
+        key="cc"
+        className={`w-3.5 h-3.5 rounded-full col-start-2 row-start-2 ${pipClass} ${
+          isOne && skinId === "dice_classic_ivory"
+            ? "scale-125 !bg-red-600"
+            : ""
+        }`}
+      />,
+    );
+  }
+  // Dot 5: Center-Right
+  if (isSix) {
+    pips.push(
+      <span
+        key="cr"
+        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-2 ${pipClass}`}
+      />,
+    );
+  }
+  // Dot 6: Bottom-Left
+  if (isFour || isFive || isSix) {
+    pips.push(
+      <span
+        key="bl"
+        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-3 ${pipClass}`}
+      />,
+    );
+  }
+  // Dot 7: Bottom-Right
+  if (isTwo || isThree || isFour || isFive || isSix) {
+    pips.push(
+      <span
+        key="br"
+        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-3 ${pipClass}`}
+      />,
     );
   }
 
-  // Game Seat context (in-match table seat representation)
-  if (context === "seat") {
-    return (
-      <div className="w-64 p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/80 via-zinc-900 to-black border border-emerald-500/30 flex items-center gap-3.5 shadow-2xl relative">
-        <div className="relative">
-          <div className={`w-16 h-16 rounded-full overflow-hidden border-2 ${style.coreRing} bg-zinc-900 shadow-lg`}>
-            <SeatAvatar avatar={avatarId ?? undefined} name={displayName} className="w-full h-full" />
-          </div>
-          <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-black border border-black shadow-xs">
-            1P
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-white truncate">{displayName}</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">Turn 14 • 5 cards</p>
-          <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-300 font-mono">
-            <Coins className="w-3 h-3 text-amber-400" />
-            <span>2,500 Bet</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Podium context (victory result stage)
   return (
-    <div className="flex flex-col items-center justify-center">
-      {/* Crown */}
-      <Crown className="w-7 h-7 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)] -mb-2 z-20" />
-
-      {/* Avatar with Aura */}
-      <div className="relative">
-        <div className={`w-20 h-20 rounded-full overflow-hidden border-3 ${style.coreRing} bg-zinc-900 shadow-2xl relative z-10`}>
-          <SeatAvatar avatar={avatarId ?? undefined} name={displayName} className="w-full h-full" />
-        </div>
-        {/* Victory Star */}
-        <Star className="w-5 h-5 text-amber-300 fill-amber-300 absolute -top-1 -right-2 animate-bounce z-20" />
-      </div>
-
-      {/* Victory Pedestal */}
-      <div className="w-32 py-1.5 mt-1 rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-400 text-black text-center font-black text-xs shadow-lg shadow-amber-500/30">
-        #1 WINNER
-      </div>
-      <div className="w-40 h-2 bg-amber-800 rounded-b-md shadow-md" />
+    <div className="w-20 h-20 grid grid-cols-3 grid-rows-3 p-1.5 items-center justify-items-center">
+      {pips}
     </div>
   );
 }
 
-// ── 2. Enchanted 3D Dice Skin Preview (2x Scale) ──
 function EnchantedDiceSkinPreview({
   skinId,
-  context,
+  mode,
 }: {
   skinId: string;
-  context: PreviewContext;
+  mode: PreviewMode;
 }) {
-  const getDiceStyle = (id: string) => {
+  const [rollFace, setRollFace] = useState(5);
+  const [isTumbling, setIsTumbling] = useState(false);
+  const tumbleIntervalRef = useRef<number | null>(null);
+
+  // Check user reduced-motion preference
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Dice visual material styles
+  const getDiceMaterial = (id: string) => {
     switch (id) {
       case "dice_wooden_teak":
         return {
-          bg: "bg-gradient-to-br from-amber-700 to-amber-950 border-amber-950 text-amber-950 shadow-[0_8px_30px_rgba(120,53,15,0.5)]",
-          pip: "bg-amber-950 shadow-inner",
+          container:
+            "bg-gradient-to-br from-[#8B4513] via-[#5C2E0B] to-[#3B1E08] border-[3.5px] border-[#2A1406] shadow-[inset_0_2px_4px_rgba(255,255,255,0.22),inset_0_-3px_6px_rgba(0,0,0,0.85),0_16px_35px_rgba(0,0,0,0.75)]",
+          pip: "bg-[#1A0A02] shadow-[inset_0_2px_3px_rgba(0,0,0,0.95)] border border-[#3A1804]",
+          grain: true,
+          aura: "shadow-[0_0_25px_rgba(180,83,9,0.3)]",
         };
       case "dice_golden_ember":
         return {
-          bg: "bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 border-amber-200 text-amber-950 shadow-[0_0_40px_rgba(245,158,11,0.7)]",
-          pip: "bg-amber-950 shadow-[0_0_10px_rgba(245,158,11,1)]",
+          container:
+            "bg-gradient-to-br from-[#FDE047] via-[#D97706] to-[#78350F] border-[3px] border-[#FEF08A] shadow-[inset_0_3px_6px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.6),0_0_35px_rgba(245,158,11,0.5)]",
+          pip: "bg-[#451A03] shadow-[0_0_8px_rgba(245,158,11,0.8)] border border-amber-950",
+          grain: false,
+          aura: "shadow-[0_0_35px_rgba(245,158,11,0.6)]",
         };
       case "dice_cyber_neon":
         return {
-          bg: "bg-zinc-950 border-cyan-400 text-cyan-400 shadow-[0_0_40px_rgba(6,182,212,0.6)]",
-          pip: "bg-cyan-400 shadow-[0_0_12px_rgba(6,182,212,1)]",
+          container:
+            "bg-gradient-to-br from-[#18181B] via-[#09090B] to-[#000000] border-[2.5px] border-cyan-400 shadow-[inset_0_1px_4px_rgba(6,182,212,0.6),0_0_30px_rgba(6,182,212,0.4)]",
+          pip: "bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,1),0_0_18px_rgba(6,182,212,0.6)] border border-cyan-200",
+          grain: false,
+          aura: "shadow-[0_0_35px_rgba(6,182,212,0.4)]",
         };
       default:
+        // dice_classic_ivory
         return {
-          bg: "bg-gradient-to-br from-white via-zinc-100 to-zinc-300 border-zinc-400 text-zinc-900 shadow-[0_8px_30px_rgba(0,0,0,0.4)]",
-          pip: "bg-rose-600 shadow-sm",
+          container:
+            "bg-gradient-to-br from-[#FFFFFF] via-[#F4F4F5] to-[#D4D4D8] border-[3px] border-[#A1A1AA] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-2px_4px_rgba(0,0,0,0.25),0_16px_32px_rgba(0,0,0,0.5)]",
+          pip: "bg-[#18181B] shadow-[inset_0_1.5px_2px_rgba(0,0,0,0.8)]",
+          grain: false,
+          aura: "shadow-[0_8px_25px_rgba(0,0,0,0.4)]",
         };
     }
   };
 
-  const style = getDiceStyle(skinId);
+  const mat = getDiceMaterial(skinId);
 
-  return (
-    <motion.div
-      animate={{ rotateX: [0, 15, -15, 0], rotateY: [0, 25, -25, 0] }}
-      transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-      className={`w-28 h-28 rounded-3xl border-3 flex items-center justify-center relative cursor-grab active:cursor-grabbing ${style.bg}`}
-      style={{ transformStyle: "preserve-3d" }}
-    >
-      <div className="w-20 h-20 grid grid-cols-3 grid-rows-3 p-1.5">
-        <span className={`w-4 h-4 rounded-full col-start-1 row-start-1 ${style.pip}`} />
-        <span className={`w-4 h-4 rounded-full col-start-3 row-start-1 ${style.pip}`} />
-        <span className={`w-4 h-4 rounded-full col-start-2 row-start-2 ${style.pip}`} />
-        <span className={`w-4 h-4 rounded-full col-start-1 row-start-3 ${style.pip}`} />
-        <span className={`w-4 h-4 rounded-full col-start-3 row-start-3 ${style.pip}`} />
+  // Presentation-only roll preview trigger
+  const triggerPresentationRoll = () => {
+    if (isTumbling) return;
+    setIsTumbling(true);
+    let step = 0;
+    const sequence = [2, 4, 1, 6, 3, 5, (Math.floor(Math.random() * 6) + 1)];
+    tumbleIntervalRef.current = window.setInterval(() => {
+      step++;
+      if (step < sequence.length) {
+        setRollFace(sequence[step]);
+      } else {
+        if (tumbleIntervalRef.current) clearInterval(tumbleIntervalRef.current);
+        setIsTumbling(false);
+      }
+    }, 140);
+  };
+
+  useEffect(() => {
+    if (mode === "ROLL_PREVIEW" && !prefersReducedMotion) {
+      triggerPresentationRoll();
+    }
+    return () => {
+      if (tumbleIntervalRef.current) clearInterval(tumbleIntervalRef.current);
+    };
+  }, [mode]);
+
+  // Mode 1: IN_GAME Preview (Static presentational mockup, zero engine or network code)
+  if (mode === "IN_GAME") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        {/* Static Mini Board Felt Mockup */}
+        <div className="w-64 h-36 rounded-2xl bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-950 border-2 border-emerald-600/40 relative overflow-hidden flex items-center justify-center shadow-2xl">
+          {/* Subtle felt texture lines */}
+          <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
+
+          {/* Table track borders */}
+          <div className="absolute inset-2 rounded-xl border border-dashed border-emerald-500/30 pointer-events-none" />
+
+          {/* Tokens at corners */}
+          <div className="absolute top-3 left-3 w-4 h-4 rounded-full bg-rose-500 border-2 border-white shadow-md" />
+          <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-amber-400 border-2 border-white shadow-md" />
+          <div className="absolute bottom-3 left-3 w-4 h-4 rounded-full bg-sky-500 border-2 border-white shadow-md" />
+          <div className="absolute bottom-3 right-3 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white shadow-md" />
+
+          {/* Dice placed in center of felt */}
+          <div className="relative z-10 scale-75">
+            <div
+              className={`w-28 h-28 rounded-2xl flex items-center justify-center relative ${mat.container} ${mat.aura}`}
+            >
+              <DiceFacePipGrid
+                value={6}
+                skinId={skinId}
+                pipClass={mat.pip}
+              />
+            </div>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono tracking-wider text-emerald-400/80 uppercase mt-2">
+          In-Match Table Surface View
+        </span>
       </div>
-    </motion.div>
+    );
+  }
+
+  // Mode 2: ROLL_PREVIEW (Presentation-only visual roll animation)
+  if (mode === "ROLL_PREVIEW") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <motion.div
+          animate={
+            isTumbling && !prefersReducedMotion
+              ? {
+                  rotateX: [0, 90, 180, 270, 360],
+                  rotateY: [0, -90, -180, -270, -360],
+                  scale: [1, 1.1, 0.95, 1.05, 1],
+                }
+              : { rotateX: 12, rotateY: -15 }
+          }
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+          className={`w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none ${mat.container} ${mat.aura}`}
+          style={{ transformStyle: "preserve-3d" }}
+          onClick={triggerPresentationRoll}
+        >
+          {mat.grain && (
+            <div className="absolute inset-0 rounded-3xl opacity-25 bg-[radial-gradient(circle_at_25%_25%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
+          )}
+          <DiceFacePipGrid
+            value={rollFace}
+            skinId={skinId}
+            pipClass={mat.pip}
+          />
+        </motion.div>
+
+        {/* Contact Shadow */}
+        <div className="w-28 h-3 rounded-[100%] bg-black/70 blur-sm mt-2" />
+
+        {/* Interactive Roll Again CTA */}
+        <button
+          type="button"
+          onClick={triggerPresentationRoll}
+          disabled={isTumbling}
+          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+        >
+          <RotateCw
+            className={`w-3 h-3 text-amber-400 ${
+              isTumbling ? "animate-spin" : ""
+            }`}
+          />
+          <span>{isTumbling ? "Rolling..." : "Roll Again"}</span>
+        </button>
+        <span className="text-[9px] font-mono text-zinc-500 mt-1">
+          Visual Preview Only • Independent of game RNG
+        </span>
+      </div>
+    );
+  }
+
+  // Mode 3: INSPECT (Default, 136x136px Large 3D Tilt Dice Showcase)
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <motion.div
+        animate={
+          prefersReducedMotion
+            ? { rotateX: 12, rotateY: -12 }
+            : {
+                rotateX: [10, 18, 5, 10],
+                rotateY: [-15, 15, -20, -15],
+              }
+        }
+        transition={{
+          repeat: Infinity,
+          duration: 7,
+          ease: "easeInOut",
+        }}
+        className={`w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none ${mat.container} ${mat.aura}`}
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        {/* Wood grain pattern overlay for Teak */}
+        {mat.grain && (
+          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none opacity-30 mix-blend-overlay">
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+              <circle
+                cx="15"
+                cy="15"
+                r="30"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+              <circle
+                cx="15"
+                cy="15"
+                r="50"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="1"
+                opacity="0.3"
+              />
+              <circle
+                cx="15"
+                cy="15"
+                r="70"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="0.8"
+                opacity="0.2"
+              />
+            </svg>
+          </div>
+        )}
+
+        <DiceFacePipGrid
+          value={5}
+          skinId={skinId}
+          pipClass={mat.pip}
+        />
+      </motion.div>
+
+      {/* Ground Contact Shadow */}
+      <div className="w-32 h-4 rounded-[100%] bg-black/75 blur-md mt-3" />
+      <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase mt-1">
+        3D Tactile Material Inspection
+      </span>
+    </div>
   );
 }
 
-// ── 3. Enchanted Token Skin Preview (2x Scale) ──
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. ENCHANTED AVATAR AURA PREVIEW (Profile, Game Seat, Podium)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EnchantedAvatarAuraPreview({
+  auraId,
+  mode,
+  displayName,
+  avatarId,
+}: {
+  auraId: string;
+  mode: PreviewMode;
+  displayName: string;
+  avatarId: string | null;
+}) {
+  const getAuraStyle = (id: string) => {
+    switch (id) {
+      case "aura_radiant_vanguard":
+        return {
+          glow: "from-amber-400/40 via-yellow-500/20 to-transparent",
+          coreRing: "border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.9)]",
+          ringColor: "#f59e0b",
+        };
+      case "aura_ludo_king":
+        return {
+          glow: "from-rose-500/40 via-red-600/20 to-transparent",
+          coreRing: "border-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.9)]",
+          ringColor: "#f43f5e",
+        };
+      case "aura_rummy_maestro":
+        return {
+          glow: "from-emerald-400/40 via-green-500/20 to-transparent",
+          coreRing: "border-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.9)]",
+          ringColor: "#34d399",
+        };
+      default:
+        return {
+          glow: "from-zinc-500/20 via-zinc-700/10 to-transparent",
+          coreRing: "border-zinc-500 shadow-md",
+          ringColor: "#71717a",
+        };
+    }
+  };
+
+  const style = getAuraStyle(auraId);
+
+  // Mode: GAME_SEAT
+  if (mode === "GAME_SEAT") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <div className="w-56 h-36 rounded-2xl bg-[#0b1220] border-2 border-zinc-700/80 relative flex flex-col items-center justify-center p-3 shadow-xl">
+          <div className="absolute top-2 left-3 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase">
+              Seat 1
+            </span>
+          </div>
+          <div className="relative">
+            <div
+              className={`w-14 h-14 rounded-full overflow-hidden border-2 ${style.coreRing} bg-zinc-900 shadow-lg`}
+            >
+              <SeatAvatar
+                avatar={avatarId ?? undefined}
+                name={displayName}
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+          <span className="text-xs font-bold text-white mt-1.5">
+            {displayName}
+          </span>
+          <div className="w-24 h-1 rounded-full bg-amber-400/70 mt-1" />
+        </div>
+      </div>
+    );
+  }
+
+  // Mode: PODIUM
+  if (mode === "PODIUM") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <Crown className="w-7 h-7 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)] -mb-2 z-20" />
+        <div className="relative">
+          <div
+            className={`w-20 h-20 rounded-full overflow-hidden border-3 ${style.coreRing} bg-zinc-900 shadow-2xl relative z-10`}
+          >
+            <SeatAvatar
+              avatar={avatarId ?? undefined}
+              name={displayName}
+              className="w-full h-full"
+            />
+          </div>
+          <Star className="w-5 h-5 text-amber-300 fill-amber-300 absolute -top-1 -right-2 animate-bounce z-20" />
+        </div>
+        <div className="w-32 py-1.5 mt-1 rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-400 text-black text-center font-black text-xs shadow-lg shadow-amber-500/30">
+          #1 WINNER
+        </div>
+        <div className="w-40 h-2 bg-amber-800 rounded-b-md shadow-md" />
+      </div>
+    );
+  }
+
+  // Mode: PROFILE (Default)
+  return (
+    <div className="relative flex items-center justify-center w-40 h-40">
+      {/* Outer pulsing radiance halo */}
+      <div
+        className={`absolute inset-0 rounded-full bg-gradient-to-tr ${style.glow} blur-xl animate-pulse`}
+      />
+
+      {/* Rotating celestial rune ring */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <svg
+          viewBox="0 0 160 160"
+          className="w-full h-full animate-spin [animation-duration:24s] [animation-timing-function:linear]"
+          aria-hidden="true"
+        >
+          <circle
+            cx="80"
+            cy="80"
+            r="68"
+            fill="none"
+            stroke={style.ringColor}
+            strokeWidth="1.5"
+            strokeDasharray="6 8"
+            opacity="0.8"
+          />
+          <circle
+            cx="80"
+            cy="80"
+            r="74"
+            fill="none"
+            stroke={style.ringColor}
+            strokeWidth="1"
+            strokeDasharray="2 6"
+            opacity="0.5"
+          />
+        </svg>
+      </div>
+
+      {/* 2x Scale Avatar with Core Aura Ring */}
+      <div
+        className={`w-28 h-28 rounded-full overflow-hidden border-4 ${style.coreRing} bg-zinc-900 shadow-2xl relative z-10`}
+      >
+        <SeatAvatar
+          avatar={avatarId ?? undefined}
+          name={displayName}
+          className="w-full h-full"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. ENCHANTED TOKEN SKIN PREVIEW (Inspect, Home Base, On Board)
+// ─────────────────────────────────────────────────────────────────────────────
+
 function EnchantedTokenSkinPreview({
   skinId,
-  context,
+  mode,
 }: {
   skinId: string;
-  context: PreviewContext;
+  mode: PreviewMode;
 }) {
   const isCrown = skinId === "token_golden_crown";
   const isFireball = skinId === "token_fireball_ludo";
   const isNeon = skinId === "token_neon_ring";
 
+  if (mode === "HOME_BASE") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        {/* Yard Mockup */}
+        <div className="w-44 h-44 rounded-full bg-amber-950/40 border-4 border-amber-500/40 p-3 grid grid-cols-2 grid-rows-2 gap-3 items-center justify-items-center shadow-2xl relative">
+          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
+            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+          </div>
+          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
+            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+          </div>
+          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
+            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+          </div>
+          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
+            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-zinc-400 mt-2">
+          Home Base Yard View
+        </span>
+      </div>
+    );
+  }
+
+  if (mode === "ON_BOARD") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        {/* Track Step Mockup */}
+        <div className="flex items-center gap-2 bg-zinc-900/90 p-3 rounded-2xl border border-zinc-700 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
+            24
+          </div>
+          <div className="w-14 h-14 rounded-xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center shadow-lg relative">
+            <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-md">
+              {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+              {isFireball && <div className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />}
+              {isNeon && <div className="w-5 h-5 rounded-full border border-cyan-300" />}
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
+            26
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-zinc-400 mt-2">
+          Board Track Movement View
+        </span>
+      </div>
+    );
+  }
+
+  // INSPECT (Default)
   return (
-    <div className="relative flex items-center justify-center">
-      {isFireball && (
-        <span className="absolute -inset-6 rounded-full bg-gradient-to-r from-orange-500/50 via-red-500/40 to-amber-500/50 blur-lg animate-pulse" />
-      )}
-      {isNeon && (
-        <span className="absolute -inset-4 rounded-full border-3 border-cyan-400 animate-ping opacity-60" />
-      )}
-
-      {/* 2x Scale SVG Pawn Body */}
-      <svg className="w-28 h-36 drop-shadow-2xl" viewBox="0 0 60 75" fill="none">
-        <defs>
-          <radialGradient id="pawnGrad2" cx="30%" cy="25%" r="70%">
-            <stop offset="0%" stopColor="#f59e0b" />
-            <stop offset="100%" stopColor="#b45309" />
-          </radialGradient>
-        </defs>
-
-        <circle cx="30" cy="22" r="14" fill="url(#pawnGrad2)" stroke="#78350f" strokeWidth="2" />
+    <div className="flex flex-col items-center justify-center relative">
+      <div className="relative flex flex-col items-center justify-center">
         {isCrown && (
-          <path
-            d="M20 12 L24 16 L30 8 L36 16 L40 12 L38 20 L22 20 Z"
-            fill="#fbbf24"
-            stroke="#78350f"
-            strokeWidth="1.5"
-          />
+          <Crown className="w-12 h-12 text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.9)] mb-1" />
         )}
-        <ellipse cx="30" cy="36" rx="10" ry="3" fill="#d97706" stroke="#78350f" strokeWidth="1.5" />
-        <path
-          d="M23 36 C23 48, 12 62, 12 66 L48 66 C48 62, 37 48, 37 36 Z"
-          fill="url(#pawnGrad2)"
-          stroke="#78350f"
-          strokeWidth="2"
-        />
-        <ellipse cx="30" cy="66" rx="20" ry="6" fill="#92400e" stroke="#78350f" strokeWidth="2" />
-      </svg>
+        {isFireball && (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-600 via-orange-500 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(244,63,94,0.9)] mb-1" />
+        )}
+        {isNeon && (
+          <div className="w-12 h-12 rounded-full border-4 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,1)] mb-1" />
+        )}
+
+        {/* Sculpted Pawn Base */}
+        <div className="w-20 h-28 bg-gradient-to-b from-amber-500 via-amber-600 to-amber-800 rounded-t-full rounded-b-2xl border-2 border-amber-300 shadow-2xl flex flex-col items-center justify-end pb-2">
+          <div className="w-16 h-3 rounded-full bg-amber-900/60" />
+        </div>
+      </div>
+      <div className="w-24 h-4 rounded-[100%] bg-black/60 blur-md mt-2" />
     </div>
   );
 }
 
-// ── 4. Enchanted Card Back Preview (2x Scale) ──
-function EnchantedCardBackPreview({
-  skinId,
-  scope,
-  context,
-}: {
-  skinId: string;
-  scope: CosmeticGameScope;
-  context: PreviewContext;
-}) {
-  const isUno = scope === "uno" || skinId.includes("uno");
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. ENCHANTED CARD BACK PREVIEW (Card Back, Draw Pile, In Hand)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const getCardBackStyle = (id: string) => {
+function EnchantedCardBackPreview({
+  cardId,
+  mode,
+  scope,
+}: {
+  cardId: string;
+  mode: PreviewMode;
+  scope: CosmeticGameScope;
+}) {
+  const getCardDesign = (id: string) => {
     switch (id) {
-      case "cardback_vintage_velvet_rummy":
-        return "bg-gradient-to-br from-red-950 via-rose-900 to-red-950 border-amber-400 text-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.4)]";
       case "cardback_neon_cyber_uno":
-        return "bg-gradient-to-br from-indigo-950 via-purple-900 to-black border-cyan-400 text-cyan-300 shadow-[0_0_35px_rgba(6,182,212,0.5)]";
-      case "cardback_classic_uno":
-        return "bg-red-600 border-white text-white shadow-2xl";
+        return {
+          bg: "bg-zinc-950 border-cyan-400 text-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.5)]",
+          pattern: "CYBER",
+          badge: "bg-cyan-500/20 text-cyan-300 border border-cyan-400",
+        };
+      case "cardback_vintage_velvet_rummy":
+        return {
+          bg: "bg-gradient-to-br from-red-950 via-red-900 to-black border-amber-500/60 text-amber-400 shadow-[0_0_30px_rgba(185,28,28,0.5)]",
+          pattern: "VELVET",
+          badge: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+        };
       default:
-        return "bg-blue-900 border-amber-200 text-amber-200 shadow-2xl";
+        return {
+          bg: "bg-gradient-to-br from-rose-600 via-red-700 to-rose-900 border-white text-white shadow-2xl",
+          pattern: "UNO",
+          badge: "bg-black/30 text-white border border-white/40",
+        };
     }
   };
 
-  return (
-    <motion.div
-      animate={{ rotateY: [0, 180, 360] }}
-      transition={{ repeat: Infinity, duration: 9, ease: "linear" }}
-      className={`w-32 h-48 rounded-2xl border-4 flex flex-col items-center justify-center p-3 text-center relative overflow-hidden ${getCardBackStyle(
-        skinId,
-      )}`}
-      style={{ transformStyle: "preserve-3d" }}
-    >
-      <div className="w-full h-full border border-dashed border-current/40 rounded-xl flex flex-col items-center justify-center">
-        {isUno ? (
-          <span className="text-3xl font-black italic tracking-tighter drop-shadow-md">UNO</span>
-        ) : (
-          <>
-            <span className="text-3xl font-serif">♠</span>
-            <span className="text-[10px] font-mono tracking-widest uppercase mt-1">BHALYAM</span>
-          </>
-        )}
+  const style = getCardDesign(cardId);
+
+  if (mode === "DRAW_PILE") {
+    return (
+      <div className="relative flex flex-col items-center justify-center">
+        {/* Stacked Deck Layers */}
+        <div className="w-28 h-40 rounded-xl bg-zinc-800 border border-zinc-700 absolute -top-2 left-2 shadow-md rotate-3" />
+        <div className="w-28 h-40 rounded-xl bg-zinc-800 border border-zinc-700 absolute -top-1 left-1 shadow-md rotate-1" />
+        <div
+          className={`w-28 h-40 rounded-xl border-3 flex flex-col items-center justify-center relative shadow-2xl ${style.bg}`}
+        >
+          <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase ${style.badge}`}>
+            {style.pattern}
+          </span>
+        </div>
+        <span className="text-[10px] font-mono text-zinc-400 mt-3">
+          Draw Pile Deck View
+        </span>
       </div>
-    </motion.div>
+    );
+  }
+
+  if (mode === "IN_HAND") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <div className="relative flex items-center justify-center h-44 w-52">
+          {/* Card 1 */}
+          <div
+            className={`w-24 h-36 rounded-xl border-2 flex items-center justify-center absolute left-2 -rotate-12 shadow-xl ${style.bg}`}
+          >
+            <span className="text-[10px] font-black">{style.pattern}</span>
+          </div>
+          {/* Card 2 */}
+          <div
+            className={`w-24 h-36 rounded-xl border-2 flex items-center justify-center absolute z-10 shadow-2xl ${style.bg}`}
+          >
+            <span className="text-xs font-black">{style.pattern}</span>
+          </div>
+          {/* Card 3 */}
+          <div
+            className={`w-24 h-36 rounded-xl border-2 flex items-center justify-center absolute right-2 rotate-12 shadow-xl ${style.bg}`}
+          >
+            <span className="text-[10px] font-black">{style.pattern}</span>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-zinc-400 mt-1">
+          Fanned Player Hand View
+        </span>
+      </div>
+    );
+  }
+
+  // CARD_BACK (Default)
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <div
+        className={`w-32 h-44 rounded-2xl border-3 flex flex-col items-center justify-center relative shadow-2xl ${style.bg}`}
+      >
+        <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase ${style.badge}`}>
+          {style.pattern}
+        </span>
+        <div className="w-20 h-28 mt-2 rounded-lg border border-dashed border-white/20 flex items-center justify-center">
+          <span className="text-[9px] font-mono text-white/50 uppercase">BHALYAM</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
-// ── 5. Enchanted Table Theme Preview (Perspective Display) ──
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. ENCHANTED TABLE THEME PREVIEW (Full Table, Player View, Mobile View)
+// ─────────────────────────────────────────────────────────────────────────────
+
 function EnchantedTableThemePreview({
   skinId,
-  context,
+  mode,
 }: {
   skinId: string;
-  context: PreviewContext;
+  mode: PreviewMode;
 }) {
   const getThemeClass = (id: string) => {
     switch (id) {
-      case "table_crt_neon_90s":
-        return "bg-gradient-to-br from-indigo-950 via-purple-900 to-black border-cyan-400 shadow-[0_0_40px_rgba(6,182,212,0.4)]";
       case "table_royal_mahogany":
-        return "bg-gradient-to-br from-amber-950 via-amber-900 to-amber-950 border-amber-500 shadow-[0_0_35px_rgba(245,158,11,0.3)]";
+        return "bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950 border-amber-700 shadow-[0_0_35px_rgba(180,83,9,0.4)]";
+      case "table_crt_neon_90s":
+        return "bg-gradient-to-br from-zinc-950 via-purple-950 to-cyan-950 border-cyan-500 shadow-[0_0_40px_rgba(6,182,212,0.4)]";
       case "table_midnight_velvet":
-        return "bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 border-blue-400 shadow-[0_0_35px_rgba(59,130,246,0.3)]";
+        return "bg-gradient-to-br from-blue-950 via-indigo-950 to-black border-indigo-600 shadow-[0_0_35px_rgba(79,70,229,0.3)]";
       default:
         return "bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-950 border-emerald-600 shadow-[0_0_35px_rgba(16,185,129,0.3)]";
     }
   };
 
+  if (mode === "MOBILE_VIEW") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        {/* Smartphone mockup */}
+        <div className="w-32 h-44 rounded-3xl border-3 border-zinc-700 bg-zinc-950 p-1.5 shadow-2xl relative">
+          <div className="w-10 h-1.5 bg-zinc-800 rounded-full mx-auto mb-1" />
+          <div
+            className={`w-full h-[140px] rounded-2xl border flex flex-col items-center justify-center ${getThemeClass(
+              skinId,
+            )}`}
+          >
+            <Grid className="w-5 h-5 text-white/40" />
+            <span className="text-[8px] font-mono text-white/50 uppercase mt-1">
+              Mobile Table
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "PLAYER_VIEW") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        {/* Player close-up view */}
+        <div
+          className={`w-64 h-36 rounded-2xl border-3 flex flex-col items-center justify-between p-3 relative overflow-hidden shadow-2xl ${getThemeClass(
+            skinId,
+          )}`}
+        >
+          <div className="w-full flex items-center justify-between text-[10px] text-white/60 font-mono">
+            <span>Opponent Seat</span>
+            <span>Pot: 500 Coins</span>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-8 h-11 rounded bg-black/40 border border-white/20" />
+            <div className="w-8 h-11 rounded bg-black/40 border border-white/20" />
+            <div className="w-8 h-11 rounded bg-black/40 border border-white/20" />
+          </div>
+          <span className="text-[10px] font-bold text-white/80">Your Hand</span>
+        </div>
+      </div>
+    );
+  }
+
+  // FULL_TABLE (Default)
   return (
     <div
-      className={`w-64 h-36 rounded-2xl border-4 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${getThemeClass(
+      className={`w-64 h-36 rounded-2xl border-4 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl ${getThemeClass(
         skinId,
       )}`}
     >
-      {skinId === "table_crt_neon_90s" && (
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none" />
-      )}
       <div className="w-32 h-20 rounded-xl border border-dashed border-white/25 flex flex-col items-center justify-center">
         <Grid className="w-6 h-6 text-white/50 animate-pulse" />
         <span className="text-[10px] font-mono tracking-widest text-white/60 uppercase mt-1">
@@ -706,24 +1227,62 @@ function EnchantedTableThemePreview({
   );
 }
 
-// ── 6. Enchanted Podium Title Preview ──
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. ENCHANTED PODIUM TITLE PREVIEW (Profile, Lobby, Podium)
+// ─────────────────────────────────────────────────────────────────────────────
+
 function EnchantedPodiumTitlePreview({
   skinId,
   titleName,
   displayName,
-  context,
+  mode,
 }: {
   skinId: string;
   titleName: string;
   displayName: string;
-  context: PreviewContext;
+  mode: PreviewMode;
 }) {
+  if (mode === "LOBBY") {
+    return (
+      <div className="w-60 bg-zinc-900/90 border border-zinc-700/80 rounded-xl p-3 flex items-center gap-3 shadow-xl">
+        <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center">
+          <Crown className="w-5 h-5 text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-bold text-white truncate">
+            {displayName}
+          </div>
+          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            {titleName}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "PODIUM") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <Crown className="w-8 h-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)] mb-1" />
+        <div className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/30">
+          {titleName}
+        </div>
+        <div className="w-32 h-6 mt-2 rounded-t-lg bg-amber-800 text-amber-200 text-center text-[10px] font-bold py-1">
+          #1 CHAMPION
+        </div>
+      </div>
+    );
+  }
+
+  // PROFILE (Default)
   return (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <span className="text-sm font-bold text-zinc-400">{displayName}</span>
-      <div className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/30 to-amber-500/20 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.5)] flex items-center gap-2.5">
-        <Crown className="w-5 h-5 text-amber-400 animate-pulse" />
-        <span className="text-base font-black tracking-wider uppercase text-amber-300 drop-shadow-md">
+    <div className="flex flex-col items-center justify-center gap-2">
+      <Crown className="w-8 h-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
+      <div className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.3)] flex flex-col items-center">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/80">
+          AWARDED TITLE
+        </span>
+        <span className="text-sm font-black text-amber-300 uppercase tracking-wide mt-0.5">
           {titleName}
         </span>
       </div>
