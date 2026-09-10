@@ -477,6 +477,32 @@ export default {
           "0%,100%": { boxShadow: "0 0 0 rgba(245,158,11,0)" },
           "50%":     { boxShadow: "0 0 24px rgba(245,158,11,0.6)" },
         },
+        /**
+         * Cosmetics Boutique — Legendary-tier restrained edge sweep. A single
+         * diagonal highlight band drifting across the tile, not a shimmer
+         * loop: the long 4.5s duration and low peak opacity (see the
+         * gradient stops at the call site) keep it a "premium" cue rather
+         * than a distracting animation. `motion-safe:` gated at every call
+         * site — never runs under `prefers-reduced-motion: reduce`.
+         */
+        cosmeticSweep: {
+          "0%":   { transform: "translateX(-160%) rotate(12deg)" },
+          "50%":  { transform: "translateX(160%) rotate(12deg)" },
+          "100%": { transform: "translateX(160%) rotate(12deg)" },
+        },
+        /**
+         * Cosmetics Boutique — modal entrance. A soft settle (opacity + a
+         * small rise + scale), not a bounce: the boutique is a display case,
+         * not a toy. Single run on mount, no repeat.
+         */
+        cosmeticModalIn: {
+          "0%":   { opacity: "0", transform: "translateY(14px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        cosmeticFadeIn: {
+          "0%":   { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         "card-flip":  "cardFlip 360ms ease-in-out",
@@ -484,6 +510,9 @@ export default {
         "win-burst":  "winBurst 480ms cubic-bezier(0.34,1.56,0.64,1)",
         shake:        "shake 280ms ease-in-out",
         "glow-pulse": "glowPulse 1800ms ease-in-out infinite",
+        "cosmetic-sweep":     "cosmeticSweep 4.5s ease-in-out infinite",
+        "cosmetic-modal-in":  "cosmeticModalIn 420ms cubic-bezier(0.16,1,0.3,1) both",
+        "cosmetic-fade-in":   "cosmeticFadeIn 420ms ease-out both",
       },
     },
   },

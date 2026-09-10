@@ -77,12 +77,21 @@ describe("CosmeticsService", () => {
     });
 
     it("rejects purchase when user has insufficient wallet funds", async () => {
-      // title_grandmaster costs 10000 coins (user has 5000 starter coins)
+      // User starts with 5000 coins. Spend all of it on dice_cyber_neon
+      // (5000 coins) first, then any further purchase must be rejected.
+      const drain = await cosmeticsService.purchaseCosmetic(
+        USER_ID,
+        "dice_cyber_neon",
+        "idem_key_drain",
+      );
+      expect(drain.applied).toBe(true);
+
       const walletBefore = await economyService.getWallet(USER_ID);
+      expect(walletBefore.balance).toBe("0");
 
       const result = await cosmeticsService.purchaseCosmetic(
         USER_ID,
-        "title_grandmaster",
+        "dice_wooden_teak",
         "idem_key_insufficient",
       );
 
@@ -95,7 +104,7 @@ describe("CosmeticsService", () => {
 
       // Entitlement must not be granted
       const state = await cosmeticsService.getState(USER_ID);
-      expect(state.ownedIds).not.toContain("title_grandmaster");
+      expect(state.ownedIds).not.toContain("dice_wooden_teak");
     });
 
     it("returns cached result on idempotent retry with the same key without duplicate debit", async () => {
@@ -191,12 +200,18 @@ describe("CosmeticsService", () => {
     });
 
     it("allows equipping an owned cosmetic and reflects in effective loadout", async () => {
-      // Purchase first
-      await cosmeticsService.purchaseCosmetic(
-        USER_ID,
-        "table_royal_mahogany",
-        "idem_equip_1",
-      );
+      // table_royal_mahogany is a TABLE_THEME item deactivated from the shop
+      // (isActive: false) but still a valid registry entry — granting it
+      // directly (as a pre-existing purchase would have) verifies a player
+      // who already owns a now-removed item can still equip it, per the
+      // migration's referential-integrity guarantee.
+      const granted = await cosmeticsService.grantCosmeticEntitlement({
+        userId: USER_ID,
+        cosmeticId: "table_royal_mahogany",
+        sourceType: "COIN_PURCHASE",
+        sourceReference: "idem_equip_1",
+      });
+      expect(granted).toBe(true);
 
       const equipRes = await cosmeticsService.equipCosmetic(
         USER_ID,
@@ -290,11 +305,11 @@ describe("CosmeticsService", () => {
     it("handles concurrent purchase requests serially within the wallet mutex", async () => {
       // User has 5000 starter coins
       // Two concurrent purchases:
-      // Item A: table_midnight_velvet (1200 coins)
+      // Item A: cardback_vintage_velvet_rummy (2000 coins)
       // Item B: dice_wooden_teak (800 coins)
-      // Total: 2000 coins <= 5000 coins. Both should succeed serially.
+      // Total: 2800 coins <= 5000 coins. Both should succeed serially.
       const [resA, resB] = await Promise.all([
-        cosmeticsService.purchaseCosmetic(USER_ID, "table_midnight_velvet", "concurrent_key_A"),
+        cosmeticsService.purchaseCosmetic(USER_ID, "cardback_vintage_velvet_rummy", "concurrent_key_A"),
         cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "concurrent_key_B"),
       ]);
 
@@ -302,11 +317,11 @@ describe("CosmeticsService", () => {
       expect(resB.applied).toBe(true);
 
       const finalWallet = await economyService.getWallet(USER_ID);
-      // 5000 - 1200 - 800 = 3000
-      expect(finalWallet.balance).toBe("3000");
+      // 5000 - 2000 - 800 = 2200
+      expect(finalWallet.balance).toBe("2200");
 
       const state = await cosmeticsService.getState(USER_ID);
-      expect(state.ownedIds).toContain("table_midnight_velvet");
+      expect(state.ownedIds).toContain("cardback_vintage_velvet_rummy");
       expect(state.ownedIds).toContain("dice_wooden_teak");
     });
   });
@@ -319,9 +334,13 @@ describe("CosmeticsService", () => {
       const adminState = await cosmeticsService.getUserLoadout(USER_ID, true);
       const catalog = await cosmeticsService.getCatalog();
       expect(adminState.ownedIds.length).toBe(catalog.length);
-      expect(adminState.ownedIds).toContain("table_royal_mahogany");
-      expect(adminState.ownedIds).toContain("aura_radiant_vanguard");
-      expect(adminState.ownedIds).toContain("title_grandmaster");
+      expect(adminState.ownedIds).toContain("dice_cyber_neon");
+      expect(adminState.ownedIds).toContain("token_fireball_ludo");
+      expect(adminState.ownedIds).toContain("cardback_neon_cyber_uno");
+      // Deactivated (shop-removed) items are not part of the active
+      // catalog, so admins don't get them "for free" via this path either —
+      // that's expected: getCatalog() only returns isActive items.
+      expect(adminState.ownedIds).not.toContain("table_royal_mahogany");
     });
 
     it("allows admin users to equip any cosmetic item for free without purchasing", async () => {
@@ -397,7 +416,7 @@ describe("CosmeticsService", () => {
         const { InMemoryCosmeticsRepository } = await import("../InMemoryCosmeticsRepository.js");
         const bareRepo = new InMemoryCosmeticsRepository(economyRepo);
         await expect(
-          bareRepo.purchaseCosmetic({ userId: USER_ID, cosmeticId: "table_midnight_velvet", idempotencyKey: "idem_no_debit_2" }),
+          bareRepo.purchaseCosmetic({ userId: USER_ID, cosmeticId: "cardback_vintage_velvet_rummy", idempotencyKey: "idem_no_debit_2" }),
         ).rejects.toBeInstanceOf(CosmeticsDebitUnsupportedError);
       } finally {
         repoWithoutDebit.debitWallet = realDebitWallet;

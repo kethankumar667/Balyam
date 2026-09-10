@@ -98,6 +98,20 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     bundledAssetKey: "dice-cyber-neon",
     isDefault: false,
   },
+  {
+    id: "dice_sapphire_frost",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-sapphire-frost",
+    isDefault: false,
+  },
+  {
+    id: "dice_dragon_scale",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-dragon-scale",
+    isDefault: false,
+  },
 
   // ── Token Skins (Ludo) ──
   {
@@ -128,6 +142,20 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     bundledAssetKey: "token-neon-ring",
     isDefault: false,
   },
+  {
+    id: "token_diamond_elite",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-diamond-elite",
+    isDefault: false,
+  },
+  {
+    id: "token_phoenix_wing",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-phoenix-wing",
+    isDefault: false,
+  },
 
   // ── Card Backs ──
   {
@@ -156,6 +184,20 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     category: "CARD_BACK",
     supportedScopes: ["uno"],
     bundledAssetKey: "cardback-neon-cyber",
+    isDefault: false,
+  },
+  {
+    id: "cardback_royal_sapphire_rummy",
+    category: "CARD_BACK",
+    supportedScopes: ["rummy"],
+    bundledAssetKey: "cardback-royal-sapphire",
+    isDefault: false,
+  },
+  {
+    id: "cardback_dragon_ember_uno",
+    category: "CARD_BACK",
+    supportedScopes: ["uno"],
+    bundledAssetKey: "cardback-dragon-ember",
     isDefault: false,
   },
 

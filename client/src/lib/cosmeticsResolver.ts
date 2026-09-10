@@ -116,6 +116,24 @@ export const DICE_SKINS: Record<string, DiceSkinConfig> = {
     pipBorder: "inset 0 1px 2px rgba(0,0,0,0.8), 0 0 6px rgba(6,182,212,0.9)",
     glow: "0 0 16px rgba(6,182,212,0.7)",
   },
+  dice_sapphire_frost: {
+    id: "dice_sapphire_frost",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #BFDBFE 0%, #3B82F6 55%, #1E3A8A 100%)",
+    faceBorder: "#93C5FD",
+    pipBg: "linear-gradient(135deg, #EFF6FF 0%, #BFDBFE 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.3), 0 0 6px rgba(191,219,254,0.9)",
+    glow: "0 0 18px rgba(59,130,246,0.55)",
+  },
+  dice_dragon_scale: {
+    id: "dice_dragon_scale",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #1C1917 0%, #0C0A09 60%, #000000 100%)",
+    faceBorder: "#B91C1C",
+    pipBg: "linear-gradient(135deg, #F97316 0%, #B91C1C 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(239,68,68,0.9)",
+    glow: "0 0 20px rgba(239,68,68,0.6)",
+  },
 };
 
 export function getDiceSkinConfig(skinId?: string): DiceSkinConfig {
@@ -132,6 +150,8 @@ export interface TokenSkinConfig {
   hasCrown: boolean;
   hasFireball: boolean;
   hasNeonRing: boolean;
+  hasDiamond: boolean;
+  hasPhoenixWing: boolean;
 }
 
 export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
@@ -140,24 +160,48 @@ export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
     hasCrown: false,
     hasFireball: false,
     hasNeonRing: false,
+    hasDiamond: false,
+    hasPhoenixWing: false,
   },
   token_golden_crown: {
     id: "token_golden_crown",
     hasCrown: true,
     hasFireball: false,
     hasNeonRing: false,
+    hasDiamond: false,
+    hasPhoenixWing: false,
   },
   token_fireball_ludo: {
     id: "token_fireball_ludo",
     hasCrown: false,
     hasFireball: true,
     hasNeonRing: false,
+    hasDiamond: false,
+    hasPhoenixWing: false,
   },
   token_neon_ring: {
     id: "token_neon_ring",
     hasCrown: false,
     hasFireball: false,
     hasNeonRing: true,
+    hasDiamond: false,
+    hasPhoenixWing: false,
+  },
+  token_diamond_elite: {
+    id: "token_diamond_elite",
+    hasCrown: false,
+    hasFireball: false,
+    hasNeonRing: false,
+    hasDiamond: true,
+    hasPhoenixWing: false,
+  },
+  token_phoenix_wing: {
+    id: "token_phoenix_wing",
+    hasCrown: false,
+    hasFireball: false,
+    hasNeonRing: false,
+    hasDiamond: false,
+    hasPhoenixWing: true,
   },
 };
 
@@ -190,6 +234,12 @@ export const RUMMY_CARD_BACKS: Record<string, RummyCardBackConfig> = {
     stopColor2: "#4c0519",
     accentColor: "#F59E0B",
   },
+  cardback_royal_sapphire_rummy: {
+    id: "cardback_royal_sapphire_rummy",
+    stopColor1: "#1E3A8A",
+    stopColor2: "#0C1B3D",
+    accentColor: "#CBD5E1",
+  },
 };
 
 export interface UnoCardBackConfig {
@@ -214,6 +264,13 @@ export const UNO_CARD_BACKS: Record<string, UnoCardBackConfig> = {
     ovalColor: "#06B6D4",
     textColor: "#A5F3FC",
     edgeColor: "#0891B2",
+  },
+  cardback_dragon_ember_uno: {
+    id: "cardback_dragon_ember_uno",
+    bodyColor: "#1C1006",
+    ovalColor: "#EA580C",
+    textColor: "#FED7AA",
+    edgeColor: "#B91C1C",
   },
 };
 

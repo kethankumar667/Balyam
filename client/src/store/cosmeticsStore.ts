@@ -87,7 +87,7 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
   ownedIds: new Set<string>(),
   equipped: initialEquipped,
   resolved: resolveEffectiveLoadout(initialEquipped),
-  selectedCategory: "TABLE_THEME",
+  selectedCategory: "DICE_SKIN",
   selectedScope: "GLOBAL",
   selectedItemId: null,
   isOpen: false,

@@ -29,8 +29,15 @@ import {
 import { CosmeticsItemCard } from "../CosmeticsItemCard";
 import { CosmeticsPreviewStage } from "../CosmeticsPreviewStage";
 import {
+  RARITY_TOKENS,
+  getRarityTokens,
+  COSMETIC_SURFACE,
+  COSMETIC_GLOW,
+} from "../designTokens";
+import {
   type CosmeticCatalogItem,
   type CosmeticCategory,
+  type CosmeticRarity,
 } from "@shared/cosmetics";
 
 // Mock audio & haptics singletons
@@ -366,7 +373,13 @@ describe("Cosmetics Boutique Polish — CosmeticsItemCard Component", () => {
       />
     );
 
-    const card = screen.getByRole("button", { name: /inspect carved teak wood in vault/i });
+    // The accessible name now includes rarity — a sighted user reads it off
+    // the visible color-coded badge, but that badge's text is suppressed
+    // from the accessible name once an explicit aria-label is set, so a
+    // screen-reader-only user previously got zero rarity information from
+    // this control at all. Folding rarity into the label itself closes that
+    // gap (see designTokens.ts's own "never rarity through color alone" rule).
+    const card = screen.getByRole("button", { name: /inspect carved teak wood, rare rarity, in vault/i });
     fireEvent.click(card);
     expect(onSelect).toHaveBeenCalledTimes(1);
 
@@ -492,5 +505,149 @@ describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => 
     );
 
     expect(screen.getByText(/In-Match Table Surface View/i)).toBeDefined();
+  });
+});
+
+describe("Cosmetics Boutique Premium — Design Token Layer", () => {
+  const ALL_RARITIES: CosmeticRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY"];
+
+  it("resolves a complete token set for every rarity", () => {
+    for (const rarity of ALL_RARITIES) {
+      const tokens = getRarityTokens(rarity);
+      expect(tokens.key).toBe(rarity);
+      expect(tokens.border).toBeTruthy();
+      expect(tokens.badge).toBeTruthy();
+      expect(tokens.eyebrowPill).toBeTruthy();
+      expect(tokens.ambientGlow).toBeTruthy();
+      expect(tokens.runeStroke).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(tokens.glowShadow).toBeTruthy();
+    }
+  });
+
+  it("falls back to COMMON tokens for an unrecognized rarity rather than throwing", () => {
+    // @ts-expect-error — deliberately passing an invalid value to prove the runtime fallback
+    const tokens = getRarityTokens("MYTHIC");
+    expect(tokens).toEqual(RARITY_TOKENS.COMMON);
+  });
+
+  it("resolves surface elevation tokens for base, raised, overlay, and inset", () => {
+    expect(COSMETIC_SURFACE.base).toBeTruthy();
+    expect(COSMETIC_SURFACE.raised).toBeTruthy();
+    expect(COSMETIC_SURFACE.overlay).toBeTruthy();
+    expect(COSMETIC_SURFACE.inset).toBeTruthy();
+    expect(COSMETIC_SURFACE.edgeLight).toBeTruthy();
+  });
+
+  it("resolves a three-step glow scale", () => {
+    expect(COSMETIC_GLOW.soft).not.toBe(COSMETIC_GLOW.medium);
+    expect(COSMETIC_GLOW.medium).not.toBe(COSMETIC_GLOW.intense);
+  });
+
+  it("gives every rarity a strictly increasing particle tier, COMMON having none", () => {
+    expect(RARITY_TOKENS.COMMON.particleTier).toBe(0);
+    expect(RARITY_TOKENS.RARE.particleTier).toBeGreaterThan(RARITY_TOKENS.COMMON.particleTier);
+    expect(RARITY_TOKENS.EPIC.particleTier).toBeGreaterThan(RARITY_TOKENS.RARE.particleTier);
+    expect(RARITY_TOKENS.LEGENDARY.particleTier).toBeGreaterThan(RARITY_TOKENS.EPIC.particleTier);
+  });
+
+  it("gives every rarity a visually distinct rune/accent color — never relying on identical hues", () => {
+    const strokes = ALL_RARITIES.map((r) => RARITY_TOKENS[r].runeStroke);
+    expect(new Set(strokes).size).toBe(ALL_RARITIES.length);
+  });
+
+  it("pairs rarity color with independent badge TEXT, never color-only signaling", () => {
+    // Every rarity badge/eyebrow embeds real characters (uppercase rarity
+    // name is rendered separately by the component), and every tier also
+    // carries a distinct particleTier used to gate real DOM/animation
+    // differences — so color is never the only channel.
+    for (const rarity of ALL_RARITIES) {
+      const tokens = getRarityTokens(rarity);
+      expect(tokens.label.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("Cosmetics Boutique Premium — Legendary tile renders a real DOM difference, not just color", () => {
+  const mockLegendaryItem: CosmeticCatalogItem = {
+    id: "dice_cyber_neon",
+    name: "Cyber Neon Obsidian",
+    description: "Pitch-black chassis with luminous cyan-edge pips.",
+    category: "DICE_SKIN",
+    rarity: "LEGENDARY",
+    priceCoins: 5000,
+    unlockMethod: "COIN_PURCHASE",
+    isActive: true,
+    displayOrder: 4,
+  };
+
+  const mockCommonItem: CosmeticCatalogItem = {
+    id: "dice_classic_ivory",
+    name: "Classic Ivory",
+    description: "Smooth polished ivory resin.",
+    category: "DICE_SKIN",
+    rarity: "COMMON",
+    priceCoins: 0,
+    unlockMethod: "DEFAULT",
+    isActive: true,
+    displayOrder: 1,
+  };
+
+  it("Legendary selected tile renders the edge-sweep layer; Common does not", () => {
+    const { container: legendaryContainer } = render(
+      <CosmeticsItemCard
+        item={mockLegendaryItem}
+        category="DICE_SKIN"
+        scope="GLOBAL"
+        isSelected={true}
+        isOwned={true}
+        isEquipped={false}
+        isSubmitting={false}
+        walletBalance="9999"
+        isAdminUser={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    // `motion-safe:animate-cosmetic-sweep` is one literal class token (the
+    // colon is part of the Tailwind variant name), so a plain `.class`
+    // selector won't match it — check via the class attribute substring.
+    expect(legendaryContainer.querySelector('[class*="cosmetic-sweep"]')).not.toBeNull();
+
+    const { container: commonContainer } = render(
+      <CosmeticsItemCard
+        item={mockCommonItem}
+        category="DICE_SKIN"
+        scope="GLOBAL"
+        isSelected={true}
+        isOwned={true}
+        isEquipped={false}
+        isSubmitting={false}
+        walletBalance="9999"
+        isAdminUser={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(commonContainer.querySelector('[class*="cosmetic-sweep"]')).toBeNull();
+  });
+
+  it("keeps the card's interactive hit target at least 44px tall (mobile touch-target guarantee)", () => {
+    const { container } = render(
+      <CosmeticsItemCard
+        item={mockCommonItem}
+        category="DICE_SKIN"
+        scope="GLOBAL"
+        isSelected={false}
+        isOwned={true}
+        isEquipped={false}
+        isSubmitting={false}
+        walletBalance="9999"
+        isAdminUser={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    const card = container.firstChild as HTMLElement;
+    // min-h-[148px] comfortably clears the 44px WCAG touch-target minimum —
+    // asserted as a class presence rather than a computed layout size,
+    // since jsdom does not perform real layout.
+    expect(card.className).toContain("min-h-[148px]");
   });
 });

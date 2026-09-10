@@ -13,20 +13,25 @@
  * - Decoupled presentation effects (audio and haptics trigger only on confirmed success).
  * - Strict zero-pay-to-win aesthetic customization.
  * - Admin and Super Admin free pass (all items unlocked for free with no coin deduction).
+ *
+ * Premium visual pass (art direction only — layout, state model, and
+ * backend authority are unchanged): layered surface elevation from the
+ * shared `designTokens.ts`, a soft-spring modal entrance, a gradient
+ * wordmark, and a real sliding tab indicator (framer-motion `layoutId`)
+ * replacing the old teleporting dash under the active category.
  */
 
 import React, { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   Store,
   X,
   Coins,
-  Palette,
   Dice5,
   Layers,
   CircleDot,
   Crown,
   Info,
-  Orbit,
 } from "lucide-react";
 import Modal from "../Modal";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
@@ -44,21 +49,25 @@ import {
 } from "./previewModes";
 import { CosmeticsPreviewStage } from "./CosmeticsPreviewStage";
 import { CosmeticsItemCard } from "./CosmeticsItemCard";
+import { getCosmeticSurface } from "./designTokens";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
+import { bhalyamSpring } from "../../lib/motion";
+import { useTheme } from "../../lib/useTheme";
 
+// Tables, Auras, and Titles are removed from the shop (2026-09-10) — their
+// catalog rows are deactivated server-side (see InMemoryCosmeticsRepository's
+// SEED_CATALOG / the matching Supabase migration), and simply not listed
+// here so the shop UI never offers a tab with nothing purchasable behind it.
 const CATEGORY_TABS: Array<{
   category: CosmeticCategory;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { category: "TABLE_THEME", label: "Tables", icon: Palette },
   { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
   { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
   { category: "CARD_BACK", label: "Cards", icon: Layers },
-  { category: "AVATAR_AURA", label: "Auras", icon: Orbit },
-  { category: "PODIUM_TITLE", label: "Titles", icon: Crown },
 ];
 
 export function CosmeticsStoreModal() {
@@ -85,6 +94,13 @@ export function CosmeticsStoreModal() {
   const { balance: walletBalance } = useWallet();
   const { isAdmin, isSuperAdmin } = useAuthStore();
   const isAdminUser = isAdmin || isSuperAdmin;
+
+  // Shop chrome (shell, header/footer bars, tab strip, item-grid container)
+  // follows the app's real light/dark toggle — see designTokens.ts's own
+  // comment on why the preview stage (CosmeticsPreviewStage) is the one
+  // surface that deliberately stays a fixed dark "display case" instead.
+  const [theme] = useTheme();
+  const surface = getCosmeticSurface(theme);
 
   // Race-safe preview mode: derived synchronously during render
   const [storedMode, setStoredMode] = useState<PreviewMode>("INSPECT");
@@ -213,56 +229,79 @@ export function CosmeticsStoreModal() {
       onClose={handleClose}
       mobileSheet={true}
       ariaLabelledBy="cosmetics-boutique-title"
-      panelClassName="w-full max-w-4xl bg-[#090d18] border border-zinc-800/90 rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative"
+      panelClassName="w-full max-w-4xl border border-stone-300 dark:border-zinc-800/90 rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative motion-safe:animate-cosmetic-modal-in motion-reduce:animate-cosmetic-fade-in"
+      panelStyle={{
+        background: surface.base,
+        boxShadow: `${surface.edgeLight}, 0 24px 60px -12px rgba(0,0,0,0.65)`,
+      }}
     >
       {/* ── Surface Reflections: Warm Top-Left & Cool Bottom-Right ── */}
       <div className="absolute top-0 left-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* ── Modal Header ── */}
-      <div className="flex-shrink-0 px-5 py-4 border-b border-zinc-800/80 bg-[#0d1322]/80 flex items-center justify-between gap-3 relative z-10">
-        <div className="flex items-center gap-3">
+      {/* ── Modal Header: Boutique Marquee ── */}
+      <div
+        className="flex-shrink-0 px-5 py-4 border-b border-stone-200 dark:border-zinc-800/80 flex items-center justify-between gap-3 relative z-10"
+        style={{ background: theme === "light" ? "rgba(255, 253, 247, 0.9)" : "rgba(13, 19, 34, 0.82)", boxShadow: surface.edgeLight }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-400 text-black flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
             <Store className="w-5 h-5" />
           </div>
-          <div>
-            <h3 id="cosmetics-boutique-title" className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+          <div className="min-w-0">
+            <h3
+              id="cosmetics-boutique-title"
+              className="text-lg font-black tracking-tight flex items-center gap-2 bg-clip-text text-transparent bg-gradient-to-r from-stone-900 via-amber-800 to-stone-900 dark:from-white dark:via-amber-50 dark:to-white"
+            >
               <span>Cosmetics Boutique</span>
               {isAdminUser && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40 border flex items-center gap-1 shrink-0">
                   <Crown className="w-3 h-3" />
                   ADMIN PASS
                 </span>
               )}
             </h3>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-stone-500 dark:text-zinc-400 truncate">
               {isAdminUser ? "All cosmetics unlocked for free" : "Collect your look. Own the table."}
             </p>
           </div>
         </div>
 
         {/* Right Header Area: Balance chip + Close button */}
-        <div className="flex items-center gap-2.5">
-          {/* Wallet Coin Balance */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs shadow-inner">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Wallet Coin Balance — refined chip with soft inner glow */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-400/50 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs"
+            style={{
+              background: theme === "light" ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)",
+              boxShadow: theme === "light"
+                ? "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 12px rgba(245,158,11,0.12)"
+                : "inset 0 1px 0 rgba(255,255,255,0.05), 0 0 12px rgba(245,158,11,0.18)",
+            }}
+          >
+            <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span>{Number(walletBalance || 0).toLocaleString()}</span>
           </div>
 
-          {/* Close button: >=44x44px target */}
+          {/* Close button: >=44x44px target, premium hover/focus */}
           <button
             type="button"
             onClick={handleClose}
             aria-label="Close Cosmetics Boutique"
-            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 active:scale-95 text-zinc-400 hover:text-white transition flex items-center justify-center cursor-pointer"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-stone-100 dark:hover:bg-zinc-800 hover:border-amber-500/40 active:scale-95 text-stone-500 dark:text-zinc-400 hover:text-amber-700 dark:hover:text-amber-300 transition flex items-center justify-center cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0d1322]"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* ── Category Navigation Tabs: >=44x44px touch targets with illuminated dark pill ── */}
-      <div className="flex-shrink-0 px-4 py-2.5 border-b border-zinc-800/60 bg-[#090d18]/90 overflow-x-auto scrollbar-none flex items-center gap-1.5 relative z-10">
+      {/* ── Category Navigation: Dimensional Segmented Control ── */}
+      <div
+        role="tablist"
+        aria-label="Cosmetic categories"
+        className="flex-shrink-0 px-4 py-2.5 border-b border-stone-200 dark:border-zinc-800/60 overflow-x-auto scrollbar-none flex items-center gap-1.5 relative z-10"
+        style={{ background: theme === "light" ? "rgba(251, 245, 233, 0.85)" : "rgba(9, 13, 24, 0.9)" }}
+      >
         {CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = selectedCategory === tab.category;
@@ -273,16 +312,24 @@ export function CosmeticsStoreModal() {
               onClick={() => selectCategory(tab.category)}
               aria-selected={isActive}
               role="tab"
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer select-none relative ${
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer select-none relative focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 isActive
-                  ? "bg-gradient-to-r from-amber-500/25 via-amber-500/15 to-amber-500/25 text-amber-300 border border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.25)] font-black"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 border border-zinc-800/80"
+                  ? "bg-gradient-to-b from-amber-500/20 to-amber-600/10 text-amber-800 dark:text-amber-300 border border-amber-500/50 font-black"
+                  : "bg-white/60 dark:bg-zinc-900/60 text-stone-500 dark:text-zinc-400 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800/80 border border-stone-300 dark:border-zinc-800/80"
               }`}
+              style={isActive ? { boxShadow: theme === "light" ? "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 12px rgba(245,158,11,0.12)" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(245,158,11,0.18)" } : undefined}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-400 animate-pulse" : ""}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-700 dark:text-amber-400" : ""}`} />
               <span>{tab.label}</span>
+              {/* Sliding indicator — a shared layoutId animates it between
+                  tabs instead of teleporting; framer-motion measures both
+                  positions and tweens the difference automatically. */}
               {isActive && (
-                <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                <motion.span
+                  layoutId="cosmetic-category-indicator"
+                  transition={bhalyamSpring}
+                  className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                />
               )}
             </button>
           );
@@ -291,17 +338,17 @@ export function CosmeticsStoreModal() {
 
       {/* ── Scope Switcher (for Card Backs & Table Themes) ── */}
       {selectedCategory === "CARD_BACK" && (
-        <div className="flex-shrink-0 px-5 py-2 bg-[#0d1322]/50 border-b border-zinc-800/40 flex items-center gap-2 relative z-10">
-          <span className="text-xs text-zinc-400 font-medium mr-1">Game Variant:</span>
+        <div className="flex-shrink-0 px-5 py-2 bg-white/70 dark:bg-[#0d1322]/50 border-b border-stone-200 dark:border-zinc-800/40 flex items-center gap-2 relative z-10">
+          <span className="text-xs text-stone-500 dark:text-zinc-400 font-medium mr-1">Game Variant:</span>
           {(["rummy", "uno"] as const).map((scope) => (
             <button
               key={scope}
               type="button"
               onClick={() => selectScope(scope)}
-              className={`min-h-[36px] px-3.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer uppercase ${
+              className={`min-h-[36px] px-3.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer uppercase focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 selectedScope === scope
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black"
-                  : "text-zinc-400 hover:text-white"
+                  ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-400 dark:border-amber-500/40 font-black"
+                  : "text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-white"
               }`}
             >
               {scope}
@@ -312,7 +359,7 @@ export function CosmeticsStoreModal() {
 
       {/* ── Error Banner ── */}
       {errorMessage && (
-        <div className="px-5 py-2.5 bg-rose-950/80 border-b border-rose-800 text-rose-300 text-xs font-medium flex items-center justify-between relative z-10">
+        <div className="px-5 py-2.5 bg-rose-50 dark:bg-rose-950/80 border-b border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-center justify-between relative z-10">
           <span>{errorMessage}</span>
         </div>
       )}
@@ -339,22 +386,25 @@ export function CosmeticsStoreModal() {
         </div>
 
         {/* Right Column (Desktop) / Bottom Grid (Mobile): Subtle Ambient Collection Container */}
-        <div className="w-full md:w-7/12 flex flex-col bg-gradient-to-b from-[#0d1322] to-[#080c16] border border-zinc-800/60 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800/50">
-            <span className="text-xs font-black uppercase tracking-wider text-white">
+        <div
+          className="w-full md:w-7/12 flex flex-col border border-stone-300 dark:border-zinc-800/60 rounded-2xl p-4 shadow-xl"
+          style={{ background: surface.raised, boxShadow: `${surface.edgeLight}, 0 12px 32px -8px rgba(0,0,0,0.4)` }}
+        >
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-stone-200 dark:border-zinc-800/50">
+            <span className="text-xs font-black uppercase tracking-wider text-stone-900 dark:text-white">
               {categoryHeaderTitle} • {categoryItems.length} styles
             </span>
-            <span className="text-[11px] text-zinc-400 font-medium">Select an item to inspect</span>
+            <span className="text-[11px] text-stone-500 dark:text-zinc-400 font-medium">Select an item to inspect</span>
           </div>
 
           {isLoading ? (
-            <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-zinc-500">
-              <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+            <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-stone-500 dark:text-zinc-500">
+              <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent motion-safe:animate-spin" />
               <span className="text-xs font-medium">Loading boutique collection...</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1">
-              {categoryItems.map((item) => {
+              {categoryItems.map((item, index) => {
                 const isSelected = previewItem?.id === item.id;
                 const isItemOwned =
                   isAdminUser || ownedIds.has(item.id) || item.unlockMethod === "DEFAULT";
@@ -372,19 +422,24 @@ export function CosmeticsStoreModal() {
                             : equipped.podiumTitle === item.id;
 
                 return (
-                  <CosmeticsItemCard
+                  <div
                     key={item.id}
-                    item={item}
-                    category={selectedCategory}
-                    scope={selectedScope}
-                    isSelected={isSelected}
-                    isOwned={isItemOwned}
-                    isEquipped={isItemEquipped}
-                    isSubmitting={isSubmitting}
-                    walletBalance={walletBalance ?? "0"}
-                    isAdminUser={isAdminUser}
-                    onSelect={() => selectItem(item.id)}
-                  />
+                    className="motion-safe:animate-cosmetic-fade-in motion-reduce:opacity-100"
+                    style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}
+                  >
+                    <CosmeticsItemCard
+                      item={item}
+                      category={selectedCategory}
+                      scope={selectedScope}
+                      isSelected={isSelected}
+                      isOwned={isItemOwned}
+                      isEquipped={isItemEquipped}
+                      isSubmitting={isSubmitting}
+                      walletBalance={walletBalance ?? "0"}
+                      isAdminUser={isAdminUser}
+                      onSelect={() => selectItem(item.id)}
+                    />
+                  </div>
                 );
               })}
             </div>
@@ -393,10 +448,13 @@ export function CosmeticsStoreModal() {
       </div>
 
       {/* ── Footer Disclaimer: Purely Cosmetic Statement ── */}
-      <div className="flex-shrink-0 px-5 py-3 border-t border-zinc-800/80 bg-[#0d1322]/80 flex items-center justify-between text-xs text-zinc-400 relative z-10">
+      <div
+        className="flex-shrink-0 px-5 py-3 border-t border-stone-200 dark:border-zinc-800/80 flex items-center justify-between text-xs text-stone-500 dark:text-zinc-400 relative z-10"
+        style={{ background: theme === "light" ? "rgba(255, 253, 247, 0.9)" : "rgba(13, 19, 34, 0.82)" }}
+      >
         <div className="flex items-center gap-2">
-          <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span className="font-medium text-zinc-300">Cosmetic only. Every match stays fair.</span>
+          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="font-medium text-stone-700 dark:text-zinc-300">Cosmetic only. Every match stays fair.</span>
         </div>
       </div>
     </Modal>

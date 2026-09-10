@@ -114,9 +114,18 @@ describe("cosmetics broadcast to the room only when actually owned", () => {
     const identityId = "player_after_purchase";
     await economyService.ensureIdentityRegistered(identityId, "member");
 
-    // aura_radiant_vanguard costs 4000; the 5000-coin member starter grant covers it.
-    const purchase = await cosmeticsService.purchaseCosmetic(identityId, "aura_radiant_vanguard", "idem_own_1");
-    expect(purchase.applied).toBe(true);
+    // aura_radiant_vanguard is a shop-deactivated AVATAR_AURA item
+    // (isActive: false) — purchaseCosmetic() now refuses it (INVALID_COSMETIC)
+    // since it's no longer buyable. Grant the entitlement directly, as a
+    // pre-existing purchase would have left it: this proves a player who
+    // already owns a now-removed item still gets it broadcast correctly.
+    const granted = await cosmeticsService.grantCosmeticEntitlement({
+      userId: identityId,
+      cosmeticId: "aura_radiant_vanguard",
+      sourceType: "COIN_PURCHASE",
+      sourceReference: "idem_own_1",
+    });
+    expect(granted).toBe(true);
 
     const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
     await rooms.setCosmetics("sock_alice", { avatarAura: "aura_radiant_vanguard" });

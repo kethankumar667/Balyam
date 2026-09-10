@@ -22,6 +22,8 @@ import {
   Trophy,
   Star,
   Grid,
+  Gem,
+  Flame,
 } from "lucide-react";
 import {
   type CosmeticCatalogItem,
@@ -40,6 +42,8 @@ import {
   resolveCosmeticPresentationState,
   type CosmeticPresentationResult,
 } from "./presentationState";
+import { getRarityTokens } from "./designTokens";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 interface CosmeticsPreviewStageProps {
   item: CosmeticCatalogItem | null;
@@ -103,45 +107,19 @@ export function CosmeticsPreviewStage({
   // Available preview modes for this category
   const modeOptions = PREVIEW_MODES_BY_CATEGORY[category];
 
-  // Rarity atmospheric illumination
-  const getRarityAtmosphere = (r: string) => {
-    switch (r) {
-      case "LEGENDARY":
-        return {
-          glow: "from-amber-500/25 via-amber-700/10 to-transparent",
-          border: "border-amber-500/40",
-          accent: "text-amber-400",
-          pill: "bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-black",
-          runeStroke: "#f59e0b",
-        };
-      case "EPIC":
-        return {
-          glow: "from-purple-500/25 via-fuchsia-900/10 to-transparent",
-          border: "border-purple-500/40",
-          accent: "text-purple-300",
-          pill: "bg-gradient-to-r from-purple-400 to-pink-500 text-white font-black",
-          runeStroke: "#a855f7",
-        };
-      case "RARE":
-        return {
-          glow: "from-sky-500/25 via-blue-900/10 to-transparent",
-          border: "border-sky-500/40",
-          accent: "text-sky-300",
-          pill: "bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold",
-          runeStroke: "#38bdf8",
-        };
-      default:
-        return {
-          glow: "from-zinc-500/15 via-zinc-800/5 to-transparent",
-          border: "border-zinc-700/50",
-          accent: "text-zinc-300",
-          pill: "bg-gradient-to-r from-zinc-400 to-zinc-600 text-white font-bold",
-          runeStroke: "#71717a",
-        };
-    }
+  // Rarity atmospheric illumination — shared token layer (designTokens.ts),
+  // replacing a locally-duplicated copy of the same four-tier switch that
+  // also lived in CosmeticsItemCard. `accent`/`pill`/`border`/`glow` names
+  // are kept as local aliases so the JSX below reads unchanged.
+  const rarityVisual = getRarityTokens(previewItem.rarity ?? "COMMON");
+  const rarityTheme = {
+    glow: rarityVisual.ambientGlow,
+    border: rarityVisual.border,
+    accent: rarityVisual.accentText,
+    pill: rarityVisual.eyebrowPill,
+    runeStroke: rarityVisual.runeStroke,
   };
-
-  const rarityTheme = getRarityAtmosphere(rarity);
+  const prefersReducedMotionGlobal = useReducedMotion();
 
   return (
     <div
@@ -152,47 +130,64 @@ export function CosmeticsPreviewStage({
         className={`absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,_var(--tw-gradient-stops))] ${rarityTheme.glow} pointer-events-none transition-all duration-700`}
       />
 
-      {/* ── 2. Layer: Background Geometric Runes & Celestial Compass ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-        <svg
-          viewBox="0 0 400 400"
-          className="w-80 h-80 animate-spin [animation-duration:120s] [animation-timing-function:linear]"
-          aria-hidden="true"
-        >
-          <circle
-            cx="200"
-            cy="200"
-            r="160"
-            fill="none"
-            stroke={rarityTheme.runeStroke}
-            strokeWidth="1.5"
-            strokeDasharray="4 8"
-          />
-          <circle
-            cx="200"
-            cy="200"
-            r="120"
-            fill="none"
-            stroke={rarityTheme.runeStroke}
-            strokeWidth="1"
-            strokeDasharray="2 12"
-          />
-          <polygon
-            points="200,45 335,280 65,280"
-            fill="none"
-            stroke={rarityTheme.runeStroke}
-            strokeWidth="0.8"
-            opacity="0.6"
-          />
-          <polygon
-            points="200,355 65,120 335,120"
-            fill="none"
-            stroke={rarityTheme.runeStroke}
-            strokeWidth="0.8"
-            opacity="0.6"
-          />
-        </svg>
-      </div>
+      {/* ── 2. Layer: Rarity-Tiered Ambient Particle System ──
+          COMMON gets nothing here — "no particles" per the rarity spec.
+          RARE gets a handful of sparse shimmer motes. EPIC keeps the
+          rotating rune compass (orbiting accents). LEGENDARY adds radiating
+          light rays and a slow edge sweep on top of the compass. This is
+          never the ONLY rarity signal — the border hue, eyebrow pill text,
+          and accent color all still differ independently. Reduced motion
+          keeps the geometry (a static decoration) but drops the spin/sweep. */}
+      {rarityVisual.particleTier >= 1 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10" aria-hidden="true">
+          <svg
+            viewBox="0 0 400 400"
+            className={`w-80 h-80 ${
+              rarityVisual.particleTier >= 2 && !prefersReducedMotionGlobal
+                ? "motion-safe:animate-spin [animation-duration:120s] [animation-timing-function:linear]"
+                : ""
+            }`}
+          >
+            {rarityVisual.particleTier >= 2 && (
+              <>
+                <circle cx="200" cy="200" r="160" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="1.5" strokeDasharray="4 8" />
+                <circle cx="200" cy="200" r="120" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="1" strokeDasharray="2 12" />
+                <polygon points="200,45 335,280 65,280" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.8" opacity="0.6" />
+                <polygon points="200,355 65,120 335,120" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.8" opacity="0.6" />
+              </>
+            )}
+            {/* RARE: sparse shimmer motes only (no full compass). */}
+            {rarityVisual.particleTier === 1 && (
+              <>
+                <circle cx="140" cy="120" r="2.5" fill={rarityTheme.runeStroke} opacity="0.7" />
+                <circle cx="280" cy="180" r="2" fill={rarityTheme.runeStroke} opacity="0.5" />
+                <circle cx="220" cy="290" r="2.5" fill={rarityTheme.runeStroke} opacity="0.6" />
+              </>
+            )}
+            {/* LEGENDARY: light rays radiating from the artifact's center. */}
+            {rarityVisual.particleTier >= 3 && (
+              <g stroke={rarityTheme.runeStroke} strokeWidth="1" opacity="0.35">
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                  <line
+                    key={deg}
+                    x1="200"
+                    y1="200"
+                    x2={200 + 190 * Math.cos((deg * Math.PI) / 180)}
+                    y2={200 + 190 * Math.sin((deg * Math.PI) / 180)}
+                  />
+                ))}
+              </g>
+            )}
+          </svg>
+        </div>
+      )}
+
+      {/* Legendary-only animated edge sweep across the whole stage. */}
+      {rarityVisual.particleTier >= 3 && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none motion-reduce:hidden" aria-hidden="true">
+          <div className="absolute -inset-y-16 -left-1/2 w-1/4 rotate-12 bg-gradient-to-r from-transparent via-amber-100/[0.06] to-transparent motion-safe:animate-cosmetic-sweep" />
+        </div>
+      )}
 
       {/* ── 3. Layer: Ground Pedestal Shadow ── */}
       <div className="absolute top-[48%] left-1/2 -translate-x-1/2 w-48 h-8 rounded-[100%] bg-black/60 blur-md pointer-events-none" />
@@ -558,10 +553,10 @@ function EnchantedDiceSkinPreview({
   const [isTumbling, setIsTumbling] = useState(false);
   const tumbleIntervalRef = useRef<number | null>(null);
 
-  // Check user reduced-motion preference
-  const prefersReducedMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Reactive reduced-motion preference — a live OS-level toggle mid-session
+  // now actually takes effect, unlike the one-off matchMedia snapshot this
+  // replaced (computed once per render, never updated again).
+  const prefersReducedMotion = useReducedMotion();
 
   // Dice visual material styles
   const getDiceMaterial = (id: string) => {
@@ -589,6 +584,22 @@ function EnchantedDiceSkinPreview({
           pip: "bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,1),0_0_18px_rgba(6,182,212,0.6)] border border-cyan-200",
           grain: false,
           aura: "shadow-[0_0_35px_rgba(6,182,212,0.4)]",
+        };
+      case "dice_sapphire_frost":
+        return {
+          container:
+            "bg-gradient-to-br from-[#DBEAFE] via-[#3B82F6] to-[#1E3A8A] border-[3px] border-[#93C5FD] shadow-[inset_0_3px_6px_rgba(255,255,255,0.6),inset_0_-3px_6px_rgba(0,0,0,0.4),0_0_35px_rgba(59,130,246,0.5)]",
+          pip: "bg-[#EFF6FF] shadow-[0_0_8px_rgba(191,219,254,0.9)] border border-blue-200",
+          grain: false,
+          aura: "shadow-[0_0_35px_rgba(59,130,246,0.55)]",
+        };
+      case "dice_dragon_scale":
+        return {
+          container:
+            "bg-gradient-to-br from-[#292524] via-[#0C0A09] to-[#000000] border-[3px] border-[#B91C1C] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-3px_6px_rgba(0,0,0,0.9),0_0_35px_rgba(239,68,68,0.5)]",
+          pip: "bg-gradient-to-br from-orange-500 to-red-800 shadow-[0_0_10px_rgba(239,68,68,0.9)] border border-red-950",
+          grain: false,
+          aura: "shadow-[0_0_40px_rgba(239,68,68,0.6)]",
         };
       default:
         // dice_classic_ivory
@@ -960,6 +971,8 @@ function EnchantedTokenSkinPreview({
   const isCrown = skinId === "token_golden_crown";
   const isFireball = skinId === "token_fireball_ludo";
   const isNeon = skinId === "token_neon_ring";
+  const isDiamond = skinId === "token_diamond_elite";
+  const isPhoenix = skinId === "token_phoenix_wing";
 
   if (mode === "HOME_BASE") {
     return (
@@ -968,15 +981,23 @@ function EnchantedTokenSkinPreview({
         <div className="w-44 h-44 rounded-full bg-amber-950/40 border-4 border-amber-500/40 p-3 grid grid-cols-2 grid-rows-2 gap-3 items-center justify-items-center shadow-2xl relative">
           <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
             {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+            {isDiamond && <Gem className="w-4 h-4 text-white" />}
+            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
           </div>
           <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
             {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+            {isDiamond && <Gem className="w-4 h-4 text-white" />}
+            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
           </div>
           <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
             {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+            {isDiamond && <Gem className="w-4 h-4 text-white" />}
+            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
           </div>
           <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
             {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+            {isDiamond && <Gem className="w-4 h-4 text-white" />}
+            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
           </div>
         </div>
         <span className="text-[10px] font-mono text-zinc-400 mt-2">
@@ -999,6 +1020,8 @@ function EnchantedTokenSkinPreview({
               {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
               {isFireball && <div className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />}
               {isNeon && <div className="w-5 h-5 rounded-full border border-cyan-300" />}
+              {isDiamond && <Gem className="w-4 h-4 text-cyan-100" />}
+              {isPhoenix && <Flame className="w-4 h-4 text-orange-100" />}
             </div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
@@ -1024,6 +1047,16 @@ function EnchantedTokenSkinPreview({
         )}
         {isNeon && (
           <div className="w-12 h-12 rounded-full border-4 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,1)] mb-1" />
+        )}
+        {isDiamond && (
+          <div className="w-12 h-12 flex items-center justify-center mb-1">
+            <Gem className="w-11 h-11 text-cyan-200 drop-shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
+          </div>
+        )}
+        {isPhoenix && (
+          <div className="w-12 h-12 flex items-center justify-center mb-1">
+            <Flame className="w-11 h-11 text-orange-400 animate-pulse drop-shadow-[0_0_20px_rgba(251,146,60,0.9)]" />
+          </div>
         )}
 
         {/* Sculpted Pawn Base */}
@@ -1062,6 +1095,18 @@ function EnchantedCardBackPreview({
           bg: "bg-gradient-to-br from-red-950 via-red-900 to-black border-amber-500/60 text-amber-400 shadow-[0_0_30px_rgba(185,28,28,0.5)]",
           pattern: "VELVET",
           badge: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+        };
+      case "cardback_royal_sapphire_rummy":
+        return {
+          bg: "bg-gradient-to-br from-blue-900 via-blue-950 to-black border-slate-300/60 text-slate-200 shadow-[0_0_30px_rgba(30,58,138,0.5)]",
+          pattern: "SAPPHIRE",
+          badge: "bg-slate-500/20 text-slate-200 border border-slate-300/40",
+        };
+      case "cardback_dragon_ember_uno":
+        return {
+          bg: "bg-gradient-to-br from-orange-700 via-red-900 to-black border-orange-400/70 text-orange-300 shadow-[0_0_35px_rgba(234,88,12,0.55)]",
+          pattern: "EMBER",
+          badge: "bg-orange-500/20 text-orange-300 border border-orange-400/40",
         };
       default:
         return {
