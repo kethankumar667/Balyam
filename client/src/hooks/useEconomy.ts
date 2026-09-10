@@ -248,6 +248,18 @@ export function useWallet(): WalletState {
  * reason — `guestId` is included, not just `userId`, so a guest-to-guest
  * swap (`userId` stays `null` on both sides) still triggers a refetch
  * instead of leaving the previous guest's ledger on screen.
+ *
+ * Also re-fetches whenever the SHARED wallet cache reports a new balance
+ * version for this identity (`refreshCurrentWallet()` — daily streak
+ * claims, match settlements, voucher redemptions, admin top-ups all call
+ * it). Every one of those writes a ledger row, but this hook's `entries`
+ * were previously local state with no listener on that cache at all: the
+ * balance updated instantly (via the shared cache `useWallet()` reads),
+ * while the ledger stayed frozen on its last fetch until something
+ * remounted this hook — in practice, only a full page reload. Keying off
+ * `wallet.version` (not the whole cache entry) means an unrelated
+ * loading-state flash for the SAME wallet doesn't trigger a redundant
+ * refetch — only an actual, applied mutation does.
  */
 export function useLedger(initialLimit = 20) {
   const [entries, setEntries] = useState<CoinLedgerEntryRecord[]>([]);
@@ -262,6 +274,10 @@ export function useLedger(initialLimit = 20) {
   const tag = identityTag(userId, guestId);
   const lastTagRef = useRef<IdentityTag>(tag);
   const fetchTokenRef = useRef(0);
+
+  const walletCacheEntry = useSyncExternalStore(subscribeWalletCache, getWalletCacheSnapshot, () => null);
+  const walletVersion =
+    walletCacheEntry && walletCacheEntry.tag === tag ? walletCacheEntry.wallet?.version ?? null : null;
 
   const fetchInitial = useCallback(async () => {
     const requestToken = ++fetchTokenRef.current;
@@ -334,6 +350,18 @@ export function useLedger(initialLimit = 20) {
     }
     void fetchInitial();
   }, [authReady, tag, fetchInitial]);
+
+  // Refetch on an actual wallet mutation for THIS identity (see doc comment
+  // above). `walletVersion` only changes when the wallet cache resolves a
+  // NEW version number, never on a loading-state flash for the same wallet,
+  // so this does not compete with the effect above for the initial fetch —
+  // it only fires for a genuine post-mutation refresh.
+  useEffect(() => {
+    if (!authReady) return;
+    if (walletVersion === null) return;
+    if (lastTagRef.current !== tag) return;
+    void fetchInitial();
+  }, [authReady, tag, walletVersion, fetchInitial]);
 
   return {
     entries,

@@ -370,4 +370,42 @@ describe("useLedger — identity-aware and stale-response fencing", () => {
     expect(result.current.error).toBeNull();
     expect(result.current.entries[0].id).toBe(301);
   });
+
+  it("refetches automatically when the wallet cache reports a new version for the same identity (daily-reward-claim regression)", async () => {
+    // Reproduces the reported bug: after claiming a daily reward, the
+    // wallet balance updated instantly (shared cache), but the ledger list
+    // stayed on its stale pre-claim fetch until the page was reloaded.
+    useAuthStore.setState({ ready: true, userId: null });
+    setGuestId("guest_ledger_refresh_regression");
+
+    mockedGetEconomyLedger.mockResolvedValueOnce({
+      entries: [ledgerEntry(1, "500")],
+      hasMore: false,
+    });
+
+    const { result } = renderHook(() => useLedger());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0].id).toBe(1);
+
+    // Simulate what a successful streak claim does client-side: it never
+    // touches useLedger directly, only calls refreshCurrentWallet().
+    const { refreshCurrentWallet } = await import("../useEconomy");
+    mockedGetEconomyWallet.mockResolvedValueOnce(
+      wallet("2100", "guest_ledger_refresh_regression", "guest"),
+    );
+    mockedGetEconomyLedger.mockResolvedValueOnce({
+      entries: [ledgerEntry(2, "100"), ledgerEntry(1, "500")],
+      hasMore: false,
+    });
+
+    await act(async () => {
+      await refreshCurrentWallet();
+    });
+
+    // No remount, no identity change — the ledger must pick up the new
+    // entry on its own once the wallet's authoritative version changed.
+    await waitFor(() => expect(result.current.entries).toHaveLength(2));
+    expect(result.current.entries[0].id).toBe(2);
+  });
 });
