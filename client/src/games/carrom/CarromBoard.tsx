@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import CarromBoardMobile from "./CarromBoardMobile";
-import CarromBoardDesktop from "./CarromBoardDesktop";
+import { useEffect, useState, lazy, Suspense } from "react";
 import type { ChatMessage, CarromPublicState, Player } from "@shared/types";
+
+const CarromBoardMobile = lazy(() => import("./CarromBoardMobile"));
+const CarromBoardDesktop = lazy(() => import("./CarromBoardDesktop"));
 
 export interface CarromBoardProps {
   state: CarromPublicState;
@@ -37,5 +38,18 @@ export default function CarromBoard(props: CarromBoardProps) {
     };
   }, []);
 
-  return isDesktop ? <CarromBoardDesktop {...props} /> : <CarromBoardMobile {...props} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-full min-h-[350px] flex flex-col items-center justify-center gap-3 text-amber-400 font-sans">
+          <div className="w-10 h-10 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-200/80">
+            Setting up Carrom Board...
+          </span>
+        </div>
+      }
+    >
+      {isDesktop ? <CarromBoardDesktop {...props} /> : <CarromBoardMobile {...props} />}
+    </Suspense>
+  );
 }

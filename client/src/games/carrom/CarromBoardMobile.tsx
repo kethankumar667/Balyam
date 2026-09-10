@@ -3,26 +3,20 @@ import type { CarromBoardProps } from "./CarromBoard";
 import type { StrikerSkin, BoardFeltSkin } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
 import {
-  CarromLoungeHeader,
-  CarromPlayerCards,
-  CarromTurnBar,
   CarromSvgBoard,
-  CarromShotControls,
-  CarromActivityLog,
-  CarromBottomBar,
-  CarromRulesList,
   useCarromFeed,
   pointerToBoard,
   type AimData,
 } from "./carrom-shared";
+import CarromMatchHud from "./CarromMatchHud";
+import CarromStrikerSlider from "./CarromStrikerSlider";
+import CarromQuickChatPopover from "./CarromQuickChatPopover";
+import CarromMenuPopover from "./CarromMenuPopover";
 import CarromSkinModal from "./CarromSkinModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
-import { useTutorialGate, markSeen } from "../../components/GameTutorial";
-
-/** Same "seen" bookkeeping convention as every other game's tutorial gate. */
-const CARROM_RULES_KEY = "carrom.tutorial.completed.v1";
+import { HapticsManager } from "../../services/HapticsManager";
 
 export default function CarromBoardMobile({
   state,
@@ -37,24 +31,19 @@ export default function CarromBoardMobile({
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [showSkins, setShowSkins] = useState(false);
+  const [showQuickChat, setShowQuickChat] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [unread, setUnread] = useState(0);
+
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
   const reactions = useSeatReactions(selfId);
+
   const selfSeatIndex = state.seats.findIndex((s) => s.playerId === selfId);
   const isFlipped = selfSeatIndex === 1;
+  const opponentSeat = state.seats.find((s) => s.playerId !== selfId);
 
   const myTurn = state.turnPlayerId === selfId && state.phase === "aiming";
-  // Auto-opens once per browser the first time this player reaches the
-  // board (desktop keeps the same rules permanently visible in a column —
-  // see carrom-shared.tsx — so only the mobile popover needed this gate).
-  // Never over a live aiming turn, matching the other games' tutorial gates.
-  const rulesTut = useTutorialGate(CARROM_RULES_KEY, !myTurn);
-  const showRules = rulesTut.open;
-  const closeRules = () => {
-    markSeen(CARROM_RULES_KEY);
-    rulesTut.setOpen(false);
-  };
   const striker = state.pieces.find((p) => p.kind === "striker");
 
   const nameOf = useMemo(() => {
@@ -62,12 +51,10 @@ export default function CarromBoardMobile({
     return (id: string) => map.get(id) ?? "Player";
   }, [players]);
 
-  const modeLabel =
-    state.mode === "freestyle"
-      ? "Freestyle"
-      : state.mode === "discpool"
-      ? "Disc Pool"
-      : "Classic";
+  const avatarOf = useMemo(() => {
+    const map = new Map(players.map((p) => [p.id, p.avatar]));
+    return (id: string) => map.get(id);
+  }, [players]);
 
   function toBoard(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } | null {
     const svg = svgRef.current;
@@ -121,62 +108,24 @@ export default function CarromBoardMobile({
     [state, localStriker, localFelt]
   );
 
-  const feed = useCarromFeed(state.phase, state.lastShot, state.lastCombo);
-
   return (
     <div
-      className="h-full min-h-0 overflow-hidden flex flex-col select-none font-sans"
+      className="h-full min-h-0 overflow-hidden flex flex-col justify-between select-none font-sans relative"
       style={{
-        background: "linear-gradient(180deg, #F7E8C4 0%, #EED8B0 50%, #E8D0A0 100%)",
+        background: "radial-gradient(circle at 50% 38%, #0C2144 0%, #061226 55%, #020611 100%)",
       }}
     >
-      {/* ─── Carrom Lounge Header ─── */}
-      <CarromLoungeHeader
-        modeLabel={modeLabel}
-        onOpenSkins={() => setShowSkins(true)}
-        onLeave={onLeave}
-        onToggleRules={() => (showRules ? closeRules() : rulesTut.setOpen(true))}
-        rulesOpen={showRules}
-      />
-
-      {/* ─── Rules sheet (desktop keeps these permanently open in a column) ─── */}
-      {showRules && (
-        <div
-          className="px-4 py-3 flex-shrink-0"
-          style={{ background: "#FFF3DB", borderBottom: "1.5px solid #E8D5B5" }}
-        >
-          <CarromRulesList />
-          <button
-            type="button"
-            onClick={closeRules}
-            className="text-[10px] font-bold uppercase px-2 py-1 rounded mt-2 cursor-pointer"
-            style={{ background: "#F0DFB8", border: "1px solid #E8D5B5", color: "#6D4323" }}
-          >
-            Close
-          </button>
-        </div>
-      )}
-
-      {/* ─── Player Cards Row ─── */}
-      <CarromPlayerCards
+      {/* ─── Top Match Face-Off HUD ─── */}
+      <CarromMatchHud
         state={activeState}
         players={players}
         selfId={selfId}
-        registerCardRef={reactions.registerCardRef}
-        onTarget={reactions.openTarget}
-        activeTargetId={reactions.activeTargetId}
-        onCloseTarget={reactions.closeTarget}
-      />
-
-      {/* ─── Turn Indicator Bar ─── */}
-      <CarromTurnBar
-        state={activeState}
         nameOf={nameOf}
-        selfId={selfId}
+        avatarOf={avatarOf}
       />
 
-      {/* ─── SVG Board ─── */}
-      <div className="flex-1 flex items-center justify-center min-h-0 px-2 py-1 max-h-[50vh]">
+      {/* ─── Central Carrom Board Area ─── */}
+      <div className="flex-1 flex items-center justify-center min-h-0 px-2 py-1 max-h-[60vh]">
         <CarromSvgBoard
           state={activeState}
           selfId={selfId}
@@ -190,45 +139,77 @@ export default function CarromBoardMobile({
         />
       </div>
 
-      {/* ─── Shot Controls ─── */}
-      <div className="px-2 pb-1">
-        <CarromShotControls
+      {/* ─── Inset Wooden Striker Slider ─── */}
+      <div className="px-4 py-1 flex-shrink-0">
+        <CarromStrikerSlider
           myTurn={myTurn}
+          phase={state.phase}
           strikerPos={state.strikerPos}
           onPlace={(pos) => onMove("place", { pos })}
-          aim={aim}
-          phase={state.phase}
           isFlipped={isFlipped}
         />
       </div>
 
-      {/* ─── Activity Log ─── */}
-      <div className="px-2 pb-1">
-        <CarromActivityLog entries={feed} />
+      {/* ─── Bottom Floating Action Buttons (FABs) ─── */}
+      <div className="w-full flex items-center justify-between px-6 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex-shrink-0 z-20">
+        {/* Left: Quick Chat FAB */}
+        <button
+          type="button"
+          onClick={() => {
+            HapticsManager.getInstance().subtle();
+            setShowQuickChat((prev) => !prev);
+          }}
+          aria-label="Quick chat and reactions"
+          className="relative w-14 h-14 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform duration-100 shadow-[0_0_16px_rgba(245,158,11,0.45)] ring-2 ring-amber-400/80"
+          style={{
+            background: "radial-gradient(circle at 35% 35%, #FEF08A 0%, #EAB308 55%, #92400E 100%)",
+          }}
+        >
+          <span className="text-2xl leading-none drop-shadow-sm select-none">💬</span>
+          {unread > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-600 border-2 border-white rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </button>
+
+        {/* Right: Hamburger Menu Options FAB */}
+        <button
+          type="button"
+          onClick={() => {
+            HapticsManager.getInstance().subtle();
+            setShowMenu((prev) => !prev);
+          }}
+          aria-label="Game options and menu"
+          className="relative w-14 h-14 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform duration-100 shadow-[0_0_16px_rgba(245,158,11,0.45)] ring-2 ring-amber-400/80"
+          style={{
+            background: "radial-gradient(circle at 35% 35%, #FEF08A 0%, #EAB308 55%, #92400E 100%)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#451A03" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+          </svg>
+        </button>
       </div>
 
-      {/* ─── Bottom Action Bar ─── */}
-      <CarromBottomBar unread={unread} />
+      {/* ─── Quick Chat Popover Drawer ─── */}
+      <CarromQuickChatPopover
+        isOpen={showQuickChat}
+        onClose={() => setShowQuickChat(false)}
+        opponentId={opponentSeat?.playerId}
+      />
 
-      {/* Strip-less room rail: the bottom bar above is the only visible
-          toolbar, and it opens these panels through the
-          `bhalyam:open-room-panel` bridge — the same arrangement Ludo mobile
-          uses. Without this mount, mobile Carrom had no chat, voice, player
-          list or room code at all. */}
-      {roomCode && (
-        <InlineRoomRail
-          code={roomCode}
-          game="carrom"
-          phase={roomPhase ?? "playing"}
-          players={players}
-          selfId={selfId}
-          messages={messages}
-          hideStrip
-          onUnreadChange={setUnread}
-        />
-      )}
+      {/* ─── Menu Options Popover Drawer ─── */}
+      <CarromMenuPopover
+        isOpen={showMenu}
+        onClose={() => setShowMenu(false)}
+        onOptions={() => setShowSkins(true)}
+        onLeave={onLeave ?? (() => {})}
+      />
 
-      {/* ─── Custom Skins Modal ─── */}
+      {/* ─── Custom Skins & Rules Modal ─── */}
       <CarromSkinModal
         open={showSkins}
         onClose={() => setShowSkins(false)}
@@ -244,6 +225,21 @@ export default function CarromBoardMobile({
         }}
       />
 
+      {/* Background Room Rail for socket signaling */}
+      {roomCode && (
+        <InlineRoomRail
+          code={roomCode}
+          game="carrom"
+          phase={roomPhase ?? "playing"}
+          players={players}
+          selfId={selfId}
+          messages={messages}
+          hideStrip
+          onUnreadChange={setUnread}
+        />
+      )}
+
+      {/* Floating Reactions Layer */}
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </div>
   );

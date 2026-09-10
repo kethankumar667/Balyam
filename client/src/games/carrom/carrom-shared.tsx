@@ -249,7 +249,7 @@ export function CarromRulesList({ className = "" }: { className?: string }) {
 
 /* ─────────────────────────── Letter Avatar ─────────────────────────── */
 /** Generates a colored avatar circle with the first letter of the player's name. */
-function LetterAvatar({
+export function LetterAvatar({
   name,
   avatar,
   isWhite,
