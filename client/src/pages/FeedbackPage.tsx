@@ -1,6 +1,16 @@
 import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bug, Lightbulb, MoreHorizontal, Check, CheckCircle2, Send, Sparkles, MessageSquare, ArrowLeft } from "lucide-react";
+import {
+  Bug,
+  Lightbulb,
+  MoreHorizontal,
+  Check,
+  CheckCircle2,
+  Send,
+  MessageSquare,
+  ArrowLeft,
+  Star,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { submitFeedback, type FeedbackCategory } from "../lib/feedbackApi";
 import { toast } from "../hooks/useToast";
@@ -126,7 +136,7 @@ export default function FeedbackPage() {
           {/* ── Header ── */}
           <div className="space-y-3 text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Star className="w-3.5 h-3.5" />
               <span>Community Voice</span>
             </div>
 

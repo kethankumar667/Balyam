@@ -27,6 +27,8 @@ import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
+import { useCosmeticsStore } from "../../store/cosmeticsStore";
+import { getPublicPresentationLoadout } from "../../lib/cosmeticsResolver";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import {
@@ -596,6 +598,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           name: n,
           game: asGameKind(game),
           avatar: avatarId ?? undefined,
+          cosmetics: getPublicPresentationLoadout(useCosmeticsStore.getState().resolved, asGameKind(game)),
           // Decides whether the server opens a shareable table or seals it.
           hostKind: currentAccountKind(),
           accessToken: cred.accessToken ?? currentAccessToken(),
@@ -770,6 +773,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         name: n,
         game: asGameKind(game),
         avatar: avatarId ?? undefined,
+        cosmetics: getPublicPresentationLoadout(useCosmeticsStore.getState().resolved, asGameKind(game)),
         // Pass & Play is open to guests: every seat is on THIS device, so a
         // sealed room is exactly right — nothing is being shared anyway.
         hostKind: currentAccountKind(),
@@ -904,6 +908,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         name: n,
         code,
         avatar: avatarId ?? undefined,
+        cosmetics: getPublicPresentationLoadout(useCosmeticsStore.getState().resolved),
         accountKind: currentAccountKind(),
         accessToken: cred.accessToken ?? currentAccessToken(),
         guestToken: cred.guestToken,

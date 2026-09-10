@@ -9,7 +9,6 @@ import {
   User,
   Landmark,
   Layers,
-  Sparkles,
   CheckCircle2,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";

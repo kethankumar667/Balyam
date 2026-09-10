@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, Zap, Volume2, VolumeX, ArrowLeft, Shield, Sparkles, Pause } from "lucide-react";
+import {
+  Trophy,
+  Zap,
+  Volume2,
+  VolumeX,
+  ArrowLeft,
+  Shield,
+  Pause,
+  Award,
+} from "lucide-react";
 import { RenderPipeline } from "./canvas/RenderPipeline";
 import { GameEngine } from "./engine/GameEngine";
 import { StateMachine } from "./engine/StateMachine";
@@ -359,7 +368,7 @@ export default function NokiaCricketBoardDesktop({ onExit }: NokiaCricketBoardPr
 
           <div className="p-4 rounded-3xl bg-[#1E293B] border border-white/10 shadow-xl space-y-2">
             <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
+              <Award className="w-4 h-4" />
               <span>Timing Secrets</span>
             </div>
             <p className="text-[11.5px] text-zinc-300 leading-snug">

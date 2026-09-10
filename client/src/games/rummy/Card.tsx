@@ -2,6 +2,7 @@ import { useId } from "react";
 import type { CSSProperties, ElementType, KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Card as CardType, Rank } from "@shared/types";
 import { useIsCoachHighlighted } from "../../components/CoachHintButton";
+import { useCardBack, getRummyCardBackConfig } from "../../lib/cosmeticsResolver";
 
 // The Card Room token system + this component's own rules. Imported here
 // because Card.tsx is the atom every Rummy surface pulls in — board, result
@@ -618,11 +619,16 @@ function JackTop({ ink, gold, skin, cx, hh }: { ink: string; gold: string; skin:
 export function FaceDownCard({
   small = false,
   size,
+  skin,
 }: {
   small?: boolean;
   size?: CardSize;
+  /** Cosmetic card back skin identifier (e.g. cardback_vintage_velvet_rummy) */
+  skin?: string;
 }) {
   const resolvedSize: CardSize = size ?? (small ? "sm" : "md");
+  const localCardBack = useCardBack("rummy");
+  const cardBackConfig = getRummyCardBackConfig(skin ?? localCardBack);
   // Unique per instance: a face-down pile renders many of these, and a literal
   // id meant every copy shared one definition (all `url(#…)` resolving to
   // whichever mounted first). Harmless while the gradient is a fixed navy, but
@@ -639,14 +645,14 @@ export function FaceDownCard({
       >
         <defs>
           <linearGradient id={bgId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="var(--rm-card-back)" />
-            <stop offset="100%" stopColor="var(--rm-card-back-deep)" />
+            <stop offset="0%" stopColor={cardBackConfig.stopColor1} />
+            <stop offset="100%" stopColor={cardBackConfig.stopColor2} />
           </linearGradient>
         </defs>
         <rect x="0" y="0" width="48" height="66" fill={`url(#${bgId})`} />
         <rect
           x="5" y="5" width="38" height="56" rx="3"
-          fill="none" stroke="var(--rm-brass)" strokeWidth="0.75" opacity="0.6"
+          fill="none" stroke={cardBackConfig.accentColor} strokeWidth="0.75" opacity="0.6"
         />
         {Array.from({ length: 4 }).map((_, row) =>
           Array.from({ length: 3 }).map((_, col) => (
@@ -656,17 +662,17 @@ export function FaceDownCard({
               cy={14 + row * 13}
               r="2.6"
               fill="none"
-              stroke="var(--rm-brass)"
+              stroke={cardBackConfig.accentColor}
               strokeWidth="0.9"
               opacity="0.65"
             />
           )),
         )}
-        <circle cx="24" cy="33" r="8" fill="var(--rm-brass)" opacity="0.9" />
+        <circle cx="24" cy="33" r="8" fill={cardBackConfig.accentColor} opacity="0.9" />
         <text
           x="24" y="36.5" textAnchor="middle"
           fontSize="9" fontWeight="700"
-          fill="var(--rm-card-back)"
+          fill={cardBackConfig.stopColor1}
           fontFamily="var(--rm-font-card)"
         >
           B

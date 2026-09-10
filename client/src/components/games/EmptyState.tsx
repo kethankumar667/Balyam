@@ -1,4 +1,7 @@
-import { Sparkles, RotateCcw } from "lucide-react";
+import {
+  RotateCcw,
+  Gamepad2,
+} from "lucide-react";
 
 export interface EmptyStateProps {
   title?: string;
@@ -20,7 +23,7 @@ export default function EmptyState({
       className="p-8 sm:p-12 text-center rounded-3xl bg-surface-0 border border-surface-rim shadow-sm space-y-4 max-w-lg mx-auto my-8 flex flex-col items-center justify-center"
     >
       <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shadow-inner">
-        <Sparkles className="w-8 h-8" />
+        <Gamepad2 className="w-8 h-8" />
       </div>
 
       <div className="space-y-1.5">

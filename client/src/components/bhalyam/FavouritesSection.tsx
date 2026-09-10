@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Heart, Play, Sparkles, ArrowRight } from "lucide-react";
+import {
+  Heart,
+  Play,
+  ArrowRight,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useFavourites } from "../../hooks/useFavourites";
 import { BHALYAM_GAMES, type BhalyamGameSlug } from "./data";

@@ -1,6 +1,10 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Lock, Sparkles, UserPlus } from "lucide-react";
+import {
+  Lock,
+  UserPlus,
+  Zap,
+} from "lucide-react";
 import { CoinDelta } from "../CoinDelta";
 import { formatCoinString } from "../CoinAmount";
 import type { GuestEscrowMotionPayload } from "./types";
@@ -51,7 +55,7 @@ export const EscrowSequence: React.FC<EscrowSequenceProps> = ({
       {/* Escrow Value Delta Card */}
       <div className="p-3.5 rounded-2xl bg-white/40 dark:bg-black/30 border border-purple-500/20 flex items-center justify-between">
         <div className="flex items-center gap-2 text-left">
-          <Sparkles className="w-5 h-5 text-purple-500 shrink-0" />
+          <Zap className="w-5 h-5 text-purple-500 shrink-0" />
           <div>
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-purple-300 block">
               Sealed Voucher

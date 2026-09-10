@@ -1,5 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Gamepad2, DoorOpen, Bot, Sparkles, User, Bookmark, Trophy, Smartphone } from "lucide-react";
+import {
+  ArrowLeft,
+  Gamepad2,
+  DoorOpen,
+  Bot,
+  User,
+  Bookmark,
+  Trophy,
+  Smartphone,
+} from "lucide-react";
 import AuthLangToggle from "./AuthLangToggle";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 

@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Database,
   Layers,
-  Sparkles,
   RotateCcw,
   Plus,
   ArrowRight,
@@ -17,6 +16,7 @@ import {
   Clock,
   Activity,
   Zap,
+  Star,
 } from "lucide-react";
 import {
   AreaChart,
@@ -202,7 +202,7 @@ export default function AdminComponentLibraryPage() {
         description="Internal design systems gallery and UI test harness. Demonstrates all 12 core admin components across Default, Loading, Empty, Error, and Variant states without backend dependencies."
         badge={
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-            <Sparkles className="w-3 h-3" /> Dev & QA Harness
+            <Star className="w-3 h-3" /> Dev & QA Harness
           </span>
         }
         breadcrumbs={[

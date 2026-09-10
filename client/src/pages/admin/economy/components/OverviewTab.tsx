@@ -11,7 +11,6 @@ import {
   Award,
   Lock,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import StatCard from "../../../../components/admin/stat-card";
 import MetricCard from "../../../../components/admin/metric-card";

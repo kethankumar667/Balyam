@@ -25,6 +25,7 @@ import { bhalyamSpring } from "../../lib/motion";
 import { WalletBalanceChip } from "../economy/WalletBalanceChip";
 import { useWallet } from "../../hooks/useEconomy";
 import { DailyStreakEntryChip } from "../streak/DailyStreakEntryChip";
+import { CosmeticsStoreEntryChip } from "../cosmetics/CosmeticsStoreEntryChip";
 
 /**
  * The global header.
@@ -188,6 +189,9 @@ export default function AppHeader({
           <div className="flex items-center gap-1.5 sm:gap-2.5">
             {/* Daily Login Streak Entry Chip */}
             <DailyStreakEntryChip />
+
+            {/* Cosmetics Boutique Customization Shop Chip */}
+            <CosmeticsStoreEntryChip />
 
             {/* Global Wallet Balance Chip */}
             <WalletBalanceChip

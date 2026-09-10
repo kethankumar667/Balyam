@@ -1,6 +1,15 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coins, Sparkles, Trophy, Shield, Gift, Check, Crown, ArrowRight, Flame } from "lucide-react";
+import {
+  Coins,
+  Trophy,
+  Shield,
+  Gift,
+  Check,
+  Crown,
+  ArrowRight,
+  Flame,
+} from "lucide-react";
 import { type DailyStreakClaimResult, STREAK_REWARDS_SCHEDULE } from "@shared/streak-types";
 import { HapticsManager } from "../../services/HapticsManager";
 import { AudioManager } from "../../services/AudioManager";
@@ -206,7 +215,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             transition={{ delay: 0.15 }}
           >
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-white border border-emerald-300 shadow-md mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Flame className="w-3.5 h-3.5" />
               Day {result.claimedDay} Complete!
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-sm">

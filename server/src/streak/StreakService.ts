@@ -7,6 +7,7 @@
 
 import { logger } from "../lib/logger.js";
 import { type EconomyService } from "../economy/EconomyService.js";
+import { type CosmeticsService } from "../cosmetics/CosmeticsService.js";
 import { type PlayerIdentityKind } from "../persistence/EconomyRepository.js";
 import {
   type DailyStreakClaimResult,
@@ -41,6 +42,7 @@ interface LoginStreakRow {
 
 export interface StreakServiceOptions {
   economyService?: EconomyService | null;
+  cosmeticsService?: CosmeticsService | null;
   postgrestConfig?: PostgrestConfig | null;
   now?: () => number;
 }
@@ -49,10 +51,12 @@ export class StreakService {
   private readonly memoryStore = new Map<string, StoredStreakRecord>();
   private readonly postgrest: PostgrestClient | null;
   private readonly economyService: EconomyService | null;
+  private readonly cosmeticsService: CosmeticsService | null;
   private readonly now: () => number;
 
   constructor(options: StreakServiceOptions = {}) {
     this.economyService = options.economyService ?? null;
+    this.cosmeticsService = options.cosmeticsService ?? null;
     this.now = options.now ?? Date.now;
 
     const config = options.postgrestConfig !== undefined
@@ -300,6 +304,21 @@ export class StreakService {
     };
 
     await this.persistRecord(updatedRecord);
+
+    // Authoritative achievement cosmetic grant: Day 7 milestone -> title_early_bird
+    if (evalResult.claimedDay === 7 && this.cosmeticsService) {
+      void this.cosmeticsService.grantCosmeticEntitlement({
+        userId: playerId,
+        cosmeticId: "title_early_bird",
+        sourceType: "STREAK_MILESTONE",
+        sourceReference: `streak:cycle-${evalResult.newCycleCount}:day-7`,
+      }).catch((err) => {
+        logger.warn({
+          message: `Failed to grant Day 7 milestone cosmetic title_early_bird to ${playerId}: ${String(err)}`,
+          module: "STREAK",
+        });
+      });
+    }
 
     const updatedState = buildStreakState(updatedRecord, serverTimestamp);
 

@@ -38,6 +38,8 @@ import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from ".
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
 import { useCheckoutQuote } from "../hooks/useEconomy";
 import type { MatchCheckoutQuote } from "../lib/economyApi";
+import { useCosmeticsStore } from "../store/cosmeticsStore";
+import { getPublicPresentationLoadout } from "../lib/cosmeticsResolver";
 import { deriveLobbyLockPhase } from "../lib/lobbyEconomy";
 import { deriveTerminalMatchId, isMatchStartTransition, buildCommitmentPayload } from "../lib/economyMotionTriggers";
 import { ECONOMY_MAX_APPROVED_SEAT_COUNT, GAME_DISPLAY_NAMES, GAME_LIMITS, NO_BOT_GAMES } from "@shared/catalog";
@@ -630,6 +632,7 @@ export default function Room() {
         playerId: seat?.playerId,
         seatToken: seat?.seatToken,
         avatar: useRoomStore.getState().avatarId ?? undefined,
+        cosmetics: getPublicPresentationLoadout(useCosmeticsStore.getState().resolved),
         accountKind: currentAccountKind(),
         accessToken: cred.accessToken ?? currentAccessToken(),
         guestToken: cred.guestToken,

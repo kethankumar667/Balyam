@@ -51,3 +51,19 @@
 - `<EmptyStateIllustration>`: Gamified zero-data illustration (`matches`, `achievements`, `friends`, `tournaments`) with action CTA.
 - `<PremiumErrorState>`: Diagnostic container with glowing danger aura and retry button.
 - `<TurnTimeWarning>`: Pulsing golden-border warning activating when <= 10 seconds remain on turn timer.
+
+---
+
+## 3. Mandatory Iconography Standards
+
+> **STRICT USER MANDATE:** **NEVER USE `Sparkles` FROM `lucide-react` ANYWHERE IN BHALYAM.**  
+> The sparkle icon feels like generic AI fluff, cheap novelty glitter, or an uninspired placeholder. All assistants and contributors must adhere to domain-specific gaming iconography instead:
+
+| Domain / Concept | Prohibited Icon | Approved Standard Icons | Rationale |
+| :--- | :--- | :--- | :--- |
+| **Avatar Auras & Energy Rings** | `Sparkles` ❌ | `Orbit`, `Flame`, `Zap` | `Orbit` represents planetary/cosmic rings; `Flame` represents fiery radiant power. |
+| **Boutique & Shop Entry** | `Sparkles` ❌ | `Store`, `ShoppingBag` | Anchors the merchant/vault metaphor without generic magic glitter. |
+| **Podium / Victory Celebrations** | `Sparkles` ❌ | `Crown`, `Award`, `Trophy`, `Star` | Authentic game tournament prestige rather than AI fairy dust. |
+| **Tabletop Felt Mats & Boards** | `Sparkles` ❌ | `Grid`, `Layers`, `Palette` | Tactile tabletop geometry. |
+| **Achievements & Badges** | `Sparkles` ❌ | `Medal`, `Trophy`, `ShieldCheck` | Distinct milestone progression. |
+

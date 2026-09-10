@@ -1,5 +1,5 @@
 import React from "react";
-import { Users, UserPlus, UserMinus, MessageSquare, Flame, Sparkles } from "lucide-react";
+import { Users, UserPlus, UserMinus, MessageSquare, Flame, Star } from "lucide-react";
 
 interface SocialIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number | string;
@@ -27,5 +27,5 @@ export const StreakFlameIcon: React.FC<SocialIconProps> = ({ size = 16, classNam
 );
 
 export const LevelSparkleIcon: React.FC<SocialIconProps> = ({ size = 16, className = "", ...props }) => (
-  <Sparkles size={size} className={className} aria-hidden="true" {...props} />
+  <Star size={size} className={className} aria-hidden="true" {...props} />
 );

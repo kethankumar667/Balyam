@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
+import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -52,6 +53,8 @@ function initialOf(name: string): string {
 export interface SeatAvatarProps {
   /** The seat's chosen avatar filename, from server state. */
   avatar?: string;
+  /** Cosmetic avatar aura identifier (e.g. aura_radiant_vanguard, aura_ludo_king) */
+  aura?: string;
   /** Used for the initial and for picking the fallback colour. */
   name: string;
   /** Tailwind size classes for the circle, e.g. "w-8 h-8". */
@@ -69,6 +72,7 @@ export interface SeatAvatarProps {
 
 export default function SeatAvatar({
   avatar,
+  aura,
   name,
   className = "w-8 h-8",
   textClassName = "text-[11px]",
@@ -77,6 +81,7 @@ export default function SeatAvatar({
 }: SeatAvatarProps) {
   const option = findAvatar(avatar);
   const [failed, setFailed] = useState(false);
+  const auraConfig = getAvatarAuraConfig(aura);
 
   const isEmoji =
     avatar &&
@@ -94,8 +99,18 @@ export default function SeatAvatar({
   // avatar behind the previous occupant's failure.
   useEffect(() => setFailed(false), [option?.src, avatar]);
 
-  if (option && !failed) {
+  const wrapWithAura = (node: React.ReactNode) => {
+    if (!auraConfig || !auraConfig.className) return node;
     return (
+      <span className="relative inline-flex items-center justify-center">
+        <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
+        {node}
+      </span>
+    );
+  };
+
+  if (option && !failed) {
+    return wrapWithAura(
       <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
         <img
           src={option.src}
@@ -111,7 +126,7 @@ export default function SeatAvatar({
   }
 
   if (isDirectImage && !failed) {
-    return (
+    return wrapWithAura(
       <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
         <img
           src={avatar}
@@ -127,7 +142,7 @@ export default function SeatAvatar({
   }
 
   if (isEmoji) {
-    return (
+    return wrapWithAura(
       <span
         className={`inline-flex items-center justify-center rounded-full
                     flex-shrink-0 select-none ${className} ${textClassName}`}
@@ -142,7 +157,7 @@ export default function SeatAvatar({
     return <>{fallback}</>;
   }
 
-  return (
+  return wrapWithAura(
     <span
       className={`inline-flex items-center justify-center rounded-full
                   font-bold text-white flex-shrink-0 select-none

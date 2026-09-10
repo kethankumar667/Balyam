@@ -8,11 +8,11 @@ import {
   Smartphone,
   Globe,
   Bell,
-  Sparkles,
   Zap,
   Check,
   Radio,
   Sliders,
+  Star,
 } from "lucide-react";
 import SettingsLayout from "../components/layout/SettingsLayout";
 import { useTheme, setTheme } from "../lib/useTheme";
@@ -241,7 +241,7 @@ export default function PreferencesPage() {
             <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-stone-50/70 dark:bg-[#151c2e]/70 border border-stone-200/60 dark:border-white/5">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-500/30 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
+                  <Star className="w-4 h-4" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-stone-900 dark:text-white block">

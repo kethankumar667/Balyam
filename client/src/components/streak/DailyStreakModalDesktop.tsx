@@ -9,7 +9,6 @@ import {
   Gift,
   Coins,
   Check,
-  Sparkles,
   Crown,
   Lock,
   Zap,
@@ -370,7 +369,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
               </span>
               {tomorrowReward && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/50 font-mono flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <Flame className="w-3 h-3 text-amber-400" />
                   Tomorrow: +{tomorrowReward.coins.toLocaleString()} 🪙
                 </span>
               )}
@@ -400,7 +399,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
           )}
 
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-amber-400/30 text-xs font-black text-amber-200 shadow-inner">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Flame className="w-3.5 h-3.5 text-amber-300" />
             <span>{urgencyText}</span>
           </div>
 
@@ -916,7 +915,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                 <ul className="space-y-1.5 text-xs font-medium">
                   {inspectMilestone.detail.contains.map((item: string) => (
                     <li key={item} className="flex items-center gap-2 text-slate-200">
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                      <Flame className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -997,7 +996,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
               )}
               <span className={`w-2 h-2 rounded-full bg-emerald-400 ${reduce ? "" : "animate-pulse"}`} />
               <span className="text-amber-200/90 font-medium flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                <Flame className="w-3 h-3 text-amber-400 shrink-0" />
                 Tap any milestone chest to inspect guaranteed loot.
               </span>
             </div>
@@ -1013,7 +1012,7 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
                            text-slate-950 shadow-[0_4px_16px_rgba(245,158,11,0.45)] cursor-pointer active:scale-95
                            flex items-center gap-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
               >
-                <Sparkles className="w-4 h-4 fill-slate-950/20" />
+                <Flame className="w-4 h-4 fill-slate-950/20" />
                 <span>Claim Day {todayDay} (+{todayReward.coins})</span>
               </button>
             ) : (

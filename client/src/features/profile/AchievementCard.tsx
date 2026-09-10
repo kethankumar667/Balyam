@@ -2,7 +2,9 @@ import React from "react";
 import type { Achievement } from "@shared/profile/Achievements";
 import { AchievementRarityBadge, type AchievementRarity } from "../../design-system/icons";
 import { PREMIUM_RARITY_COLORS } from "../../design-system/premium";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  CheckCircle2,
+} from "lucide-react";
 
 interface AchievementCardProps {
   achievement: Achievement;

@@ -2,7 +2,11 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { STARTER_QUESTS } from "@shared/onboarding/PlayerJourney";
 import { journeyTracker } from "./PlayerJourneyTracker";
-import { ArrowRight, CheckCircle2, Sparkles, X } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  X,
+} from "lucide-react";
 import Modal from "../../components/Modal";
 
 interface GettingStartedCardProps {

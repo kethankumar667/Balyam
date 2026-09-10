@@ -2,13 +2,13 @@ import { useState } from "react";
 import {
   ToggleLeft,
   Sliders,
-  Sparkles,
   Server,
   Plus,
   Save,
   RotateCcw,
   CheckCircle2,
   AlertTriangle,
+  Flame,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -249,7 +249,7 @@ export default function AdminFeatureFlagsPage() {
         <StatCard
           title="Canary Experiments"
           value="2 Flags"
-          icon={<Sparkles className="w-5 h-5 text-orange-500" />}
+          icon={<Flame className="w-5 h-5 text-orange-500" />}
           subtitle="Partial percentage gating"
         />
       </div>

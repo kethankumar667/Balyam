@@ -348,6 +348,13 @@ export class EconomyService {
     this.infrastructureRetryBackoffMs = options.infrastructureRetryBackoffMs ?? DEFAULT_INFRASTRUCTURE_RETRY_BACKOFF_MS;
   }
 
+  /**
+   * Expose the underlying repository for cooperating authoritative services (e.g. CosmeticsService).
+   */
+  public getRepository(): EconomyRepository {
+    return this.repository;
+  }
+
   /* ═══════════════════════ logging (Phase 8) ═══════════════════════════
    * Every field logged below is safe by construction: operation name, a
    * match id (a room-scoped identifier, not a secret), applied/replay,

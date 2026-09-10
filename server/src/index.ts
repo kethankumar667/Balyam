@@ -43,6 +43,9 @@ import socialRouter from "./social/SocialController.js";
 import partyRouter from "./party/PartyController.js";
 import { StreakService } from "./streak/StreakService.js";
 import { createStreakRouter } from "./streak/StreakController.js";
+import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
+import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
+import { readPostgrestConfig } from "./persistence/postgrest.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -255,7 +258,35 @@ app.use("/api/reviews", createReviewsRouter(reviewsService));
 app.use("/api/admin/reviews", createAdminReviewsRouter(reviewsService));
 app.use("/api/admin/feedback", createAdminFeedbackRouter());
 
-const roomManager = new RoomManager(io, economyService);
+/**
+ * Cosmetics Economy Sink & Customization API.
+ * Server-authoritative catalog, atomic purchases, equipment loadouts, and achievement grants.
+ *
+ * Mirrors economy's own repository selection (`initialiseEconomyStore`)
+ * rather than deciding independently: this used to always construct
+ * `InMemoryCosmeticsRepository` regardless of `economyStoreStatus()`, so
+ * every purchased cosmetic, equipped slot, and entitlement lived only in
+ * process memory — even in a fully Supabase-configured deployment — and was
+ * wiped on the next restart or redeploy. Following `economyStoreStatus()`
+ * here (rather than re-deriving from env independently) also keeps cosmetics
+ * and economy in lockstep with `ALLOW_EPHEMERAL_ECONOMY`-style overrides:
+ * if economy fell back to memory for any reason, cosmetics does too, instead
+ * of pointing at a Supabase store the wallet debits never actually reach.
+ *
+ * Constructed BEFORE `RoomManager` (moved up from its original position
+ * below) so it can be injected there — `RoomManager.setCosmetics` needs it
+ * to verify a player actually owns a cosmetic before broadcasting it into
+ * room state, closing a gap where any connected client could otherwise
+ * claim any catalog cosmetic over the socket with no ownership check.
+ */
+const cosmeticsService = new CosmeticsService(
+  economyStoreStatus().kind === "supabase"
+    ? { postgrestConfig: readPostgrestConfig() }
+    : { economyRepository: economyService?.getRepository() },
+);
+await cosmeticsService.assertCatalogIntegrity();
+
+const roomManager = new RoomManager(io, economyService, cosmeticsService);
 // Blocker 06: startup recovery. Discovers and processes any PENDING,
 // due-RETRYABLE, or expired-claim PROCESSING terminal intent left behind by
 // a prior process (crash, deploy, OOM kill) BEFORE starting periodic
@@ -288,11 +319,13 @@ if (economyService) {
   app.use("/api/economy", createEconomyRouter(economyService));
 }
 
+app.use("/api/cosmetics", createCosmeticsRouter(cosmeticsService));
+
 /**
  * 30-Day Daily Login Streak & Rewards API.
  * Server-authoritative daily progression, protection shields, and milestone rewards.
  */
-const streakService = new StreakService({ economyService });
+const streakService = new StreakService({ economyService, cosmeticsService });
 app.use("/api/streak", createStreakRouter(streakService));
 
 /**

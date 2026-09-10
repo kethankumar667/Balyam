@@ -15,7 +15,6 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Sparkles,
   ScrollText,
   HeartPulse,
   Flag,

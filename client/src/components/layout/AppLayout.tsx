@@ -17,6 +17,7 @@ const MenuSheet = lazy(() => import("../../pages/home/sheets/MenuSheet").then((m
 const ProfileSheet = lazy(() => import("../../pages/home/sheets/ProfileSheet").then((m) => ({ default: m.ProfileSheet })));
 const WalletDrawer = lazy(() => import("../economy/WalletDrawer").then((m) => ({ default: m.WalletDrawer })));
 const DailyStreakModal = lazy(() => import("../streak/DailyStreakModal").then((m) => ({ default: m.DailyStreakModal })));
+const CosmeticsStoreModal = lazy(() => import("../cosmetics/CosmeticsStoreModal").then((m) => ({ default: m.CosmeticsStoreModal })));
 
 interface AppLayoutContextType {
   openJoin: () => void;
@@ -345,6 +346,7 @@ export default function AppLayout({
             onClose={() => setWalletOpen(false)}
           />
           <DailyStreakModal />
+          <CosmeticsStoreModal />
         </Suspense>
       </div>
     </AppLayoutContext.Provider>

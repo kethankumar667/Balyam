@@ -15,7 +15,7 @@ import {
   ChevronRight,
   ExternalLink,
   Share2,
-  Sparkles,
+  Star,
   Flame,
   Zap,
   Clock,
@@ -88,8 +88,8 @@ export const ShareNavIcon: React.FC<IconProps> = ({ size = 18, className = "", .
   <Share2 size={size} className={className} aria-hidden="true" {...props} />
 );
 
-export const SparklesIcon: React.FC<IconProps> = ({ size = 18, className = "", ...props }) => (
-  <Sparkles size={size} className={className} aria-hidden="true" {...props} />
+export const StarNavIcon: React.FC<IconProps> = ({ size = 18, className = "", ...props }) => (
+  <Star size={size} className={className} aria-hidden="true" {...props} />
 );
 
 export const FlameIcon: React.FC<IconProps> = ({ size = 18, className = "", ...props }) => (

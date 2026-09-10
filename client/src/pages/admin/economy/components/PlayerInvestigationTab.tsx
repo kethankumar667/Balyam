@@ -14,10 +14,10 @@ import {
   Clock,
   UserCheck,
   User,
-  Sparkles,
   History,
   Lock,
   Code,
+  Star,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";
 import StatusBadge from "../../../../components/admin/status-badge";
@@ -589,7 +589,7 @@ export function PlayerInvestigationTab() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500">
-                  <Sparkles className="w-4 h-4" />
+                  <Star className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-[var(--chrome-ink)]">Manual Wallet Top-Up (Super Admin)</h3>
@@ -750,7 +750,7 @@ export function PlayerInvestigationTab() {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Star className="w-3.5 h-3.5" />
                       <span>Confirm Top-Up (+{Number(topupAmount || 0).toLocaleString()} Coins)</span>
                     </>
                   )}

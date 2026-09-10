@@ -6,6 +6,7 @@ import {
   type CommitMatchEntryInput,
   type CreateTerminalIntentInput,
   type CreateTerminalIntentResult,
+  type DebitWalletInput,
   type EconomyConfigurationRecord,
   type EconomyOperationResult,
   type EconomyPrizeScheduleRecord,
@@ -675,6 +676,14 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     );
   }
 
+  async debitWallet(
+    input: DebitWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${input.identityId}`, () =>
+      this.withRollback(() => this.debitWalletLocked(input)),
+    );
+  }
+
   async resolveIdentityId(query: string): Promise<string | null> {
     return query.trim();
   }
@@ -827,7 +836,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
             ? "BOT_ENTRY_DEBIT"
             : "ROOM_ENTRY_DEBIT";
 
-        const debited = this.debitWallet(wallet, cost, {
+        const debited = this.applyWalletDebit(wallet, cost, {
           entryType,
           sourceKind: "match",
           sourceId: input.matchId,
@@ -857,7 +866,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
           ? "BOT_ENTRY_DEBIT"
           : "ROOM_ENTRY_DEBIT";
 
-      const debited = this.debitWallet(hostWallet, totalCost, {
+      const debited = this.applyWalletDebit(hostWallet, totalCost, {
         entryType,
         sourceKind: "match",
         sourceId: input.matchId,
@@ -1561,6 +1570,58 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     };
   }
 
+  private debitWalletLocked(
+    input: DebitWalletInput,
+  ): EconomyOperationResult<CoinWalletRecord> {
+    if (!input.identityId || input.identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.identityId);
+    }
+    const amountBn = toBig(input.amountCoins);
+    if (amountBn <= 0n) {
+      throw new Error("INVALID_AMOUNT: debit amount must be strictly greater than 0");
+    }
+
+    this.ensureWalletLocked(input.identityId);
+
+    const existing = this.idempotencyLog.get(input.idempotencyKey);
+    if (existing) {
+      const wallet = this.wallets.get(input.identityId)!;
+      return {
+        applied: false,
+        operation: "debit_wallet",
+        idempotencyKey: input.idempotencyKey,
+        result: clone(wallet),
+      };
+    }
+
+    const wallet = this.wallets.get(input.identityId)!;
+    if (wallet.isFrozen) {
+      throw new WalletFrozenError(`Wallet for ${input.identityId} is frozen`);
+    }
+
+    if (toBig(wallet.balance) < amountBn) {
+      throw new InsufficientFundsError(`Debit of ${input.amountCoins} exceeds wallet balance of ${wallet.balance}`);
+    }
+
+    const updated = this.applyWalletDebit(wallet, amountBn, {
+      entryType: input.entryType ?? "COSMETIC_PURCHASE",
+      sourceKind: input.sourceKind ?? "cosmetics",
+      sourceId: input.sourceId ?? "shop",
+      idempotencyKey: input.idempotencyKey,
+      description: input.reason || "Cosmetic purchase debit",
+      lifetimeField: "lifetimeSpent",
+    });
+
+    this.wallets.set(input.identityId, updated);
+    this.logIdempotency(input.idempotencyKey, "debit_wallet");
+    return {
+      applied: true,
+      operation: "debit_wallet",
+      idempotencyKey: input.idempotencyKey,
+      result: clone(updated),
+    };
+  }
+
   /* ═══════════════════════════ shared mutation primitives ═══════════════ */
 
   private creditWallet(
@@ -1591,7 +1652,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     return updated;
   }
 
-  private debitWallet(
+  private applyWalletDebit(
     wallet: CoinWalletRecord,
     amount: bigint,
     ledger: {

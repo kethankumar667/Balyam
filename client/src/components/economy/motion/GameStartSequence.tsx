@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Shuffle, Layers, Swords, Sparkles } from "lucide-react";
+import {
+  Shuffle,
+  Layers,
+  Swords,
+  Flame,
+} from "lucide-react";
 import CountdownNumeral3D, { chromeAccentFor, type CountdownStep } from "../../../animations/app/CountdownNumeral3D";
 import { pickCountdownSlogans } from "../../../animations/app/countdownSlogans";
 import { fireComicDustBurst, fireStarSparkleBurst } from "../../../animations/particles/comicBursts";
@@ -135,7 +140,7 @@ export const GameStartSequence: React.FC<GameStartSequenceProps> = ({
 
         {/* Title */}
         <span className="relative text-xs font-mono uppercase tracking-[0.25em] text-amber-400/90 font-bold flex items-center gap-1 mb-1">
-          <Sparkles className="w-3.5 h-3.5" />
+          <Flame className="w-3.5 h-3.5" />
           {accent.eyebrow}
         </span>
 

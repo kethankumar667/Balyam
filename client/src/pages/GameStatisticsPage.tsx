@@ -14,7 +14,6 @@ import {
   FileEdit,
   Download,
   ChevronRight,
-  Sparkles,
   Award,
 } from "lucide-react";
 import { useRoomStore } from "../store/roomStore";
@@ -560,7 +559,7 @@ export default function GameStatisticsPage() {
         <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
+              <Award className="w-4 h-4 text-amber-500" />
               <span>Personalize Your Lounge</span>
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">

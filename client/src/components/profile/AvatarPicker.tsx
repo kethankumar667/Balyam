@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Sparkles, User as UserIcon, X } from "lucide-react";
+import {
+  Check,
+  User as UserIcon,
+  X,
+  Crown,
+} from "lucide-react";
 import { AVATARS, findAvatar, type AvatarOption } from "../../lib/avatars";
 
 export interface AvatarPickerProps {
@@ -175,7 +180,7 @@ export default function AvatarPicker({
                   className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#D97706] text-white flex items-center justify-center text-[10px] shadow-sm ring-2 ring-white dark:ring-[#161F2E]"
                   title="Selected Persona"
                 >
-                  <Sparkles size={11} />
+                  <Crown size={11} />
                 </div>
               )}
             </div>

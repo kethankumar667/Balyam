@@ -6,10 +6,10 @@ import {
   User,
   Users,
   ShieldCheck,
-  Sparkles,
   ArrowRight,
   ArrowLeft,
   Crown,
+  Flame,
 } from "lucide-react";
 import AppLayout from "../layout/AppLayout";
 import { FancyLockIcon } from "../../design-system/icons";
@@ -59,7 +59,7 @@ const FEATURE_META: Record<
     icon: Trophy,
     perks: [
       { icon: Trophy, text: "Track your position on global and game-specific leaderboards" },
-      { icon: Sparkles, text: "Complete daily quests and skill-based challenges" },
+      { icon: Flame, text: "Complete daily quests and skill-based challenges" },
       { icon: Crown, text: "Earn prestigious grandmaster badges and tier ranks" },
       { icon: ShieldCheck, text: "Verified matchmaking and fair play rating" },
     ],
@@ -72,7 +72,7 @@ const FEATURE_META: Record<
     icon: User,
     perks: [
       { icon: User, text: "Save your lifetime win rates and match history across games" },
-      { icon: Sparkles, text: "Unlock 50+ achievement badges and level up your career" },
+      { icon: Trophy, text: "Unlock 50+ achievement badges and level up your career" },
       { icon: Crown, text: "Personalize your display identity, avatar, and player bio" },
       { icon: ShieldCheck, text: "Sync your game career across mobile, desktop, and tablet" },
     ],
@@ -87,7 +87,7 @@ const FEATURE_META: Record<
       { icon: User, text: "Verified email security and recovery credentials" },
       { icon: ShieldCheck, text: "DPDP-compliant privacy control and JSON data export" },
       { icon: Crown, text: "Permanent display name and custom avatar preservation" },
-      { icon: Sparkles, text: "Priority access to new game lounge beta releases" },
+      { icon: Crown, text: "Priority access to new game lounge beta releases" },
     ],
   },
   settings: {
@@ -100,7 +100,7 @@ const FEATURE_META: Record<
       { icon: ShieldCheck, text: "Cloud sync for game sound, theme, and haptic preferences" },
       { icon: User, text: "Account management, password controls, and active sessions" },
       { icon: Crown, text: "Full data portability and account management tools" },
-      { icon: Sparkles, text: "100% free account with zero telemetry tracking" },
+      { icon: ShieldCheck, text: "100% free account with zero telemetry tracking" },
     ],
   },
   social: {
@@ -180,7 +180,7 @@ export default function MemberLockedGate({
             {/* Perks List */}
             <div className="relative z-10 bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-2xl p-4 sm:p-5 text-left space-y-3">
               <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" aria-hidden />
+                <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" aria-hidden />
                 <span>Included with Free Member Account:</span>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

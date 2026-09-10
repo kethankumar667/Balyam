@@ -81,6 +81,13 @@ import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } fr
 import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
+import {
+  sanitizePublicPresentation,
+  getDefaultCosmetic,
+  type PublicPresentationLoadout,
+  type CosmeticCategory,
+  type CosmeticGameScope,
+} from "@shared/cosmetics.js";
 import { ALLOWED_SOUND_CLIPS, SOUND_RATE_LIMIT } from "@shared/soundboard.js";
 import type { RoomLifecycleState } from "@shared/lifecycle.js";
 import { isValidLifecycleTransition } from "@shared/lifecycle.js";
@@ -128,6 +135,8 @@ import {
 import { resolveIdentity } from "./economyIdentity.js";
 import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
 import { DurableSettlementWorker } from "../economy/DurableSettlementWorker.js";
+import type { CosmeticsService } from "../cosmetics/CosmeticsService.js";
+import { operationalAuthConfig, getUserRole } from "../security/operationalAuth.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -739,7 +748,11 @@ export class RoomManager {
   /** Background timer for periodic in-process retries of rooms in FAILED terminal persistence status */
   private failedTerminalRetryTimer: NodeJS.Timeout | null = null;
 
-  constructor(private io: IO, private readonly economyService?: EconomyService) {
+  constructor(
+    private io: IO,
+    private readonly economyService?: EconomyService,
+    private readonly cosmeticsService?: CosmeticsService,
+  ) {
     this.durableWorker = economyService
       ? new DurableSettlementWorker(economyService, {
           onVouchersIssued: (matchId, vouchers) => this.handleVouchersIssued(matchId, vouchers),
@@ -2232,6 +2245,76 @@ export class RoomManager {
     }
     player.penColor = color as DotsBoxesColor;
     this.broadcastRoomState(room);
+  }
+
+  /**
+   * Updates the seat's active public presentation cosmetics loadout (aura, title, token/dice skin).
+   *
+   * `sanitizePublicPresentation` only proves each id is a well-formed,
+   * known catalog entry of the right category/scope — it CANNOT check
+   * ownership, since it is a pure shared client/server utility with no
+   * database access. Without the ownership check below, any connected
+   * client could emit `room:setCosmetics` (or the `cosmetics` field on
+   * `room:create`/`room:join`) directly — bypassing the UI entirely — and
+   * instantly broadcast themselves wearing every legendary cosmetic in the
+   * game to the whole room, with no purchase at all. For a cosmetics-only
+   * economy, the VISIBLE presentation is the entire product; skipping this
+   * check would have made the purchase flow this session just secured
+   * pointless — the free version was one WebSocket message away.
+   *
+   * Per-field, not per-request: an unowned field is dropped silently rather
+   * than failing the whole update, so one stale/unpurchased id (e.g. a
+   * cosmetic sold back or revoked) doesn't also block the fields the player
+   * legitimately owns.
+   */
+  async setCosmetics(socketId: string, cosmetics: unknown): Promise<void> {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return;
+    const sanitized = sanitizePublicPresentation(cosmetics);
+    player.cosmetics = await this.filterToOwnedCosmetics(player.identityId ?? null, sanitized);
+    this.broadcastRoomState(room);
+  }
+
+  /** See `setCosmetics`'s own doc comment for why this exists. */
+  private async filterToOwnedCosmetics(
+    identityId: string | null,
+    loadout: PublicPresentationLoadout,
+  ): Promise<PublicPresentationLoadout> {
+    if (Object.keys(loadout).length === 0) return loadout;
+    // No cosmetics backend wired at all, or no verifiable identity behind
+    // this seat — fail closed (show nothing) rather than trust an
+    // unverifiable claim, matching this codebase's "no wallet, no debit"
+    // posture for unresolved identities elsewhere in this file.
+    if (!this.cosmeticsService || !identityId) return {};
+
+    if (this.isIdentityAdmin(identityId)) return loadout;
+
+    const ownedIds = new Set((await this.cosmeticsService.getUserLoadout(identityId, false)).ownedIds);
+    const isAllowed = (
+      cosmeticId: string | undefined,
+      category: CosmeticCategory,
+      scope: CosmeticGameScope,
+    ): cosmeticId is string =>
+      !!cosmeticId && (getDefaultCosmetic(category, scope).id === cosmeticId || ownedIds.has(cosmeticId));
+
+    const filtered: PublicPresentationLoadout = {};
+    if (isAllowed(loadout.avatarAura, "AVATAR_AURA", "GLOBAL")) filtered.avatarAura = loadout.avatarAura;
+    if (isAllowed(loadout.podiumTitle, "PODIUM_TITLE", "GLOBAL")) filtered.podiumTitle = loadout.podiumTitle;
+    if (isAllowed(loadout.tokenSkin, "TOKEN_SKIN", "ludo")) filtered.tokenSkin = loadout.tokenSkin;
+    if (isAllowed(loadout.diceSkin, "DICE_SKIN", "GLOBAL")) filtered.diceSkin = loadout.diceSkin;
+    return filtered;
+  }
+
+  /**
+   * Mirrors two of `CosmeticsController.isCallerAdmin`'s three signals — the
+   * operational-key and dev-mode-header branches don't apply to an ambient
+   * socket connection, only to a same-request HTTP header.
+   */
+  private isIdentityAdmin(identityId: string): boolean {
+    const { adminUserIds } = operationalAuthConfig();
+    if (adminUserIds.includes(identityId)) return true;
+    const role = getUserRole(identityId);
+    return role === "admin" || role === "super_admin";
   }
 
   /**

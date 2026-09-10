@@ -11,7 +11,6 @@ import {
   Send,
   HelpCircle,
   ArrowRight,
-  Sparkles,
   VolumeX,
   Copy,
   Check,

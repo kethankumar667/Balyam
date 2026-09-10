@@ -148,7 +148,7 @@ function isProduction(): boolean {
  * (`if (a.length !== b.length) return false`) reintroduces exactly the leak
  * we are removing, by answering "wrong length" faster than "wrong bytes".
  */
-function secretsMatch(provided: string, expected: string): boolean {
+export function secretsMatch(provided: string, expected: string): boolean {
   if (expected.length === 0 || provided.length === 0) return false;
   const a = crypto.createHash("sha256").update(provided).digest();
   const b = crypto.createHash("sha256").update(expected).digest();

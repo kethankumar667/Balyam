@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useDiceSkin, type DiceSkinConfig } from "../../lib/cosmeticsResolver";
 
 // Pacing lives in shared/ludo-pacing.ts so the whole feel budget is tunable
 // in one place; re-exported here because callers already import it from Dice.
@@ -37,6 +38,7 @@ export function Dice({
   rolling,
   highlight,
   wooden = false,
+  skin,
   size = "4rem",
   onClick,
 }: {
@@ -44,11 +46,15 @@ export function Dice({
   rolling: boolean;
   highlight: boolean;
   wooden?: boolean;
+  /** Cosmetic dice skin identifier (e.g. dice_golden_ember, dice_cyber_neon) */
+  skin?: string;
   /** CSS size (both axes) - defaults to 4rem (64px). */
   size?: string;
   /** When set, the dice itself is the roll control. */
   onClick?: () => void;
 }) {
+  const diceSkin = useDiceSkin("ludo", skin);
+  const isWooden = wooden || diceSkin.wooden;
   const [throwId, setThrowId] = useState(0);
   const [currentVal, setCurrentVal] = useState<number>(value && value >= 1 && value <= 6 ? value : 1);
   const prevRolling = useRef(rolling);
@@ -164,12 +170,12 @@ export function Dice({
         }
       >
         {/* Six faces of the cube */}
-        <DiceFace faceNum={1} wooden={wooden} transform="rotateY(0deg) translateZ(calc(var(--face-depth, 28px)))" />
-        <DiceFace faceNum={6} wooden={wooden} transform="rotateY(180deg) translateZ(calc(var(--face-depth, 28px)))" />
-        <DiceFace faceNum={2} wooden={wooden} transform="rotateY(90deg) translateZ(calc(var(--face-depth, 28px)))" />
-        <DiceFace faceNum={5} wooden={wooden} transform="rotateY(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
-        <DiceFace faceNum={3} wooden={wooden} transform="rotateX(90deg) translateZ(calc(var(--face-depth, 28px)))" />
-        <DiceFace faceNum={4} wooden={wooden} transform="rotateX(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={1} wooden={isWooden} skinConfig={diceSkin} transform="rotateY(0deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={6} wooden={isWooden} skinConfig={diceSkin} transform="rotateY(180deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={2} wooden={isWooden} skinConfig={diceSkin} transform="rotateY(90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={5} wooden={isWooden} skinConfig={diceSkin} transform="rotateY(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={3} wooden={isWooden} skinConfig={diceSkin} transform="rotateX(90deg) translateZ(calc(var(--face-depth, 28px)))" />
+        <DiceFace faceNum={4} wooden={isWooden} skinConfig={diceSkin} transform="rotateX(-90deg) translateZ(calc(var(--face-depth, 28px)))" />
       </div>
     </div>
   );
@@ -179,13 +185,22 @@ export function Dice({
 function DiceFace({
   faceNum,
   wooden,
+  skinConfig,
   transform,
 }: {
   faceNum: number;
   wooden: boolean;
+  skinConfig?: DiceSkinConfig;
   transform: string;
 }) {
   const isOne = faceNum === 1;
+  const isSpecialSkin = skinConfig && skinConfig.id !== "dice_classic_ivory" && skinConfig.id !== "dice_wooden_teak";
+
+  const faceBg = skinConfig ? skinConfig.faceBg : wooden
+    ? "linear-gradient(135deg, #D49862 0%, #A46934 60%, #6E411B 100%)"
+    : "linear-gradient(135deg, #FFFFFF 0%, #FAF5EE 55%, #EBE1D0 100%)";
+
+  const faceBorder = skinConfig ? skinConfig.faceBorder : wooden ? "#502F13" : "#DCD0BD";
 
   return (
     <div
@@ -194,12 +209,12 @@ function DiceFace({
         transform,
         backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
-        background: wooden
-          ? "linear-gradient(135deg, #D49862 0%, #A46934 60%, #6E411B 100%)"
-          : "linear-gradient(135deg, #FFFFFF 0%, #FAF5EE 55%, #EBE1D0 100%)",
-        borderColor: wooden ? "#502F13" : "#DCD0BD",
+        background: faceBg,
+        borderColor: faceBorder,
         boxShadow: wooden
           ? "inset 2px 2px 3px rgba(255,225,185,0.45), inset -2px -2px 3px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.3)"
+          : skinConfig?.glow
+          ? `inset 2px 2px 3px rgba(255,255,255,0.5), ${skinConfig.glow}`
           : "inset 2px 2px 3px rgba(255,255,255,0.95), inset -2px -2px 3px rgba(100,75,50,0.22), 0 0 2px rgba(0,0,0,0.15)",
       }}
     >
@@ -215,14 +230,19 @@ function DiceFace({
               {hasDot && (
                 <div
                   className={`rounded-full ${
-                    isOne && !wooden
+                    isOne && !wooden && !isSpecialSkin
                       ? "w-[88%] h-[88%] bg-gradient-to-br from-[#EF4444] to-[#B91C1C]"
+                      : isSpecialSkin
+                      ? "w-[80%] h-[80%]"
                       : wooden
                       ? "w-[75%] h-[75%] bg-gradient-to-br from-[#FFF5DE] to-[#DEC698]"
                       : "w-[75%] h-[75%] bg-gradient-to-br from-[#334155] to-[#0F172A]"
                   }`}
                   style={{
-                    boxShadow: isOne && !wooden
+                    background: isSpecialSkin ? skinConfig.pipBg : undefined,
+                    boxShadow: isSpecialSkin
+                      ? skinConfig.pipBorder
+                      : isOne && !wooden
                       ? "inset 0 1.5px 2px rgba(255,255,255,0.6), inset 0 -1.5px 2px rgba(120,0,0,0.7), 0 1px 1px rgba(0,0,0,0.3)"
                       : wooden
                       ? "inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.4)"

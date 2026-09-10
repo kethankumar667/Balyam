@@ -3,7 +3,6 @@ import {
   Heart,
   Users,
   Clock,
-  Sparkles,
   Bot,
   Flame,
   ArrowRight,
@@ -226,7 +225,7 @@ export const GameTile = memo(function GameTile({
           <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between z-10">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-mono font-black uppercase tracking-wider bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full text-amber-300 border border-white/10 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
+                <Flame className="w-3 h-3" />
                 Featured Memory
               </span>
               {game.supportsBots && (

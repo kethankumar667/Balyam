@@ -1,6 +1,12 @@
 import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, XCircle, AlertTriangle, Info, Sparkles, X } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Info,
+  X,
+} from "lucide-react";
 import { toastStore, type ToastRecord } from "../lib/toastStore";
 
 const ICONS: Record<ToastRecord["type"], React.ReactNode> = {
@@ -8,7 +14,7 @@ const ICONS: Record<ToastRecord["type"], React.ReactNode> = {
   error: <XCircle className="w-full h-full" />,
   warning: <AlertTriangle className="w-full h-full" />,
   info: <Info className="w-full h-full" />,
-  default: <Sparkles className="w-full h-full" />,
+  default: <Info className="w-full h-full" />,
 };
 
 const ACCENT_BAR: Record<ToastRecord["type"], string> = {

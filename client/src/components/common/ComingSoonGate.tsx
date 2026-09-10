@@ -1,6 +1,10 @@
 import React, { useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Sparkles, type LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  type LucideIcon,
+  Star,
+} from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { FancyLockIcon } from "../../design-system/icons";
 import AppLayout from "../layout/AppLayout";
@@ -141,7 +145,7 @@ export default function ComingSoonGate({
                   style={{ transform: "translateZ(40px)" }}
                 >
                   <p className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 font-mono flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+                    <Star className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
                     <span>Upcoming Vault Features:</span>
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

@@ -2,6 +2,7 @@ import { useId } from "react";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import { hopMsFor } from "@shared/ludo-pacing";
 import type { LudoColor } from "@shared/types";
+import { useTokenSkin } from "../../lib/cosmeticsResolver";
 
 /** A hop that decelerates into the cell — no overshoot. See the `transition`
  *  comment on the pawn's style for why a spring is wrong here. */
@@ -39,6 +40,7 @@ export function Token({
   cbMode = false,
   golden = false,
   celebrating = false,
+  skin,
   hex,
   hexDark,
   counterRotateDeg = 0,
@@ -56,6 +58,8 @@ export function Token({
   cbMode?: boolean;
   golden?: boolean;
   celebrating?: boolean;
+  /** Cosmetic token skin identifier (e.g. token_golden_crown, token_fireball_ludo, token_neon_ring) */
+  skin?: string;
   /** Optional flat-palette override (print boards recolor seats by sector). */
   hex?: string;
   hexDark?: string;
@@ -68,6 +72,7 @@ export function Token({
    */
   hopMs?: number;
 }) {
+  const tokenSkin = useTokenSkin("ludo", skin);
   const main = golden ? "#D4AF37" : hex ?? COLOR_HEX[color];
   const dark = golden ? "#8B6914" : hexDark ?? COLOR_HEX_DARK[color];
   // Every token defines its own shine gradients, so the ids MUST be unique per
@@ -144,6 +149,17 @@ export function Token({
         )}
 
         {/* Base (oval) */}
+        {tokenSkin.hasNeonRing && (
+          <ellipse cx="0" cy="48" rx="44" ry="15" fill="none" stroke="#06B6D4" strokeWidth="2.5" opacity="0.8">
+            <animate attributeName="opacity" values="0.5;1;0.5" dur="1.6s" repeatCount="indefinite" />
+          </ellipse>
+        )}
+        {tokenSkin.hasFireball && (
+          <ellipse cx="0" cy="48" rx="42" ry="16" fill="none" stroke="#F97316" strokeWidth="3" opacity="0.6">
+            <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.2s" repeatCount="indefinite" />
+            <animate attributeName="rx" values="40;46;40" dur="1.2s" repeatCount="indefinite" />
+          </ellipse>
+        )}
         <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
         <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
         <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
@@ -169,6 +185,16 @@ export function Token({
         <circle cx="0" cy="-36" r="20" fill={dark} />
         <circle cx="0" cy="-37" r="19" fill={main} />
         <circle cx="-6" cy="-43" r="7" fill="white" opacity="0.55" />
+
+        {/* Crown Accessory */}
+        {tokenSkin.hasCrown && (
+          <path
+            d="M -14 -46 L -10 -40 L 0 -52 L 10 -40 L 14 -46 L 11 -34 L -11 -34 Z"
+            fill="#F59E0B"
+            stroke="#78350F"
+            strokeWidth="1.5"
+          />
+        )}
 
         {/* Number badge on chest */}
         {label && (

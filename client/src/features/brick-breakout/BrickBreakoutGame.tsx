@@ -1,6 +1,12 @@
 import React, { useReducer, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Pause, Volume2, VolumeX, Trophy, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Pause,
+  Volume2,
+  VolumeX,
+  Trophy,
+} from "lucide-react";
 import {
   createInitialBreakoutState,
   breakoutGameReducer,
@@ -247,7 +253,7 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
 
           <div className="p-4 rounded-3xl bg-[#1E293B] border border-white/10 shadow-xl space-y-2">
             <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
+              <Trophy className="w-4 h-4" />
               <span>Angle Deflection Secrets</span>
             </div>
             <p className="text-[11.5px] text-zinc-300 leading-snug">

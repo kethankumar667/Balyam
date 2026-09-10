@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
-import { Sparkles, Crown } from "lucide-react";
+import {
+  Crown,
+  Star,
+} from "lucide-react";
 import { type StreakMilestoneChest } from "@shared/streak-types";
 
 interface StreakHeroArtworkProps {
@@ -152,7 +155,7 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
             className="absolute -top-1.5 -right-0.5 pointer-events-none"
             style={{ color: isGold ? "#fde047" : "#e2e8f0" }}
           >
-            <Sparkles className="w-4 h-4 fill-current drop-shadow-[0_0_6px_rgba(250,204,21,0.7)]" />
+            <Star className="w-4 h-4 fill-current drop-shadow-[0_0_6px_rgba(250,204,21,0.7)]" />
           </motion.div>
         )}
         {isGold && (
@@ -161,7 +164,7 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
             transition={{ duration: 2.3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
             className="absolute bottom-1 -left-1 text-amber-200 pointer-events-none"
           >
-            <Sparkles className="w-3.5 h-3.5 fill-current drop-shadow-[0_0_5px_rgba(253,224,71,0.8)]" />
+            <Star className="w-3.5 h-3.5 fill-current drop-shadow-[0_0_5px_rgba(253,224,71,0.8)]" />
           </motion.div>
         )}
 
@@ -268,7 +271,7 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         className="absolute -top-2 -right-1 text-amber-300"
       >
-        <Sparkles className="w-5 h-5 fill-amber-300/60 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
+        <Star className="w-5 h-5 fill-amber-300/60 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
       </motion.div>
 
       <motion.div
@@ -276,7 +279,7 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
         transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
         className="absolute bottom-2 -left-2 text-yellow-300"
       >
-        <Sparkles className="w-4 h-4 fill-yellow-200/60 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
+        <Star className="w-4 h-4 fill-yellow-200/60 drop-shadow-[0_0_6px_rgba(250,204,21,0.8)]" />
       </motion.div>
 
       {/* Golden Coin Stack SVG */}
