@@ -8,7 +8,6 @@ import {
   HelpCircle,
   Mail,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   Clock,
   Printer,

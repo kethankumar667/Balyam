@@ -5,13 +5,13 @@ import {
   Send,
   Calendar,
   AlertCircle,
-  Sparkles,
   Info,
   Wrench,
   CheckCircle2,
   Trash2,
   Eye,
   Search,
+  Star,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -201,7 +201,7 @@ export default function AdminAnnouncementsPage() {
             {row.type === "maintenance" ? (
               <Wrench className="w-4 h-4" />
             ) : row.type === "event" ? (
-              <Sparkles className="w-4 h-4" />
+              <Star className="w-4 h-4" />
             ) : row.type === "warning" ? (
               <AlertCircle className="w-4 h-4" />
             ) : (

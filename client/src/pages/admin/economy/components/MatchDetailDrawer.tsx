@@ -11,7 +11,6 @@ import {
   Landmark,
   FileText,
   RotateCcw,
-  Sparkles,
   Layers,
 } from "lucide-react";
 import DetailDrawer from "../../../../components/admin/detail-drawer";

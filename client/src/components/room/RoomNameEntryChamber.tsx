@@ -1,7 +1,13 @@
 import React, { useState, useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { User, Dices, ArrowRight, ArrowLeft, Check, Sparkles } from "lucide-react";
+import {
+  User,
+  Dices,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+} from "lucide-react";
 import { HapticsManager } from "../../services/HapticsManager";
 
 export interface RoomNameEntryChamberProps {
@@ -251,7 +257,7 @@ export default function RoomNameEntryChamber({
 
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
-                <Sparkles className="w-3 h-3" />
+                <Dices className="w-3 h-3" />
                 <span>{guest ? "GUEST TABLE CHECK-IN" : "LOUNGE TABLE SEAT"}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-amber-100 tracking-tight">

@@ -1,6 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Quote, PenLine, Sparkles, Star, ShieldCheck, Heart, MessageSquare } from "lucide-react";
+import {
+  Quote,
+  PenLine,
+  Star,
+  ShieldCheck,
+  Heart,
+  MessageSquare,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import StarRating from "../components/StarRating";
 import { getFeaturedReviews, type ReviewRecord } from "../lib/reviewsApi";

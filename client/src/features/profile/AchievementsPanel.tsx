@@ -6,7 +6,6 @@ import {
   Zap,
   Crown,
   Award,
-  Sparkles,
   Star,
   Shield,
   Users,
@@ -64,7 +63,7 @@ export default function AchievementsPanel({ achievements }: AchievementsPanelPro
       case "hundred_wins":
         return (
           <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Sparkles className="w-5 h-5" />
+            <Award className="w-5 h-5" />
           </div>
         );
       case "fifty_matches":

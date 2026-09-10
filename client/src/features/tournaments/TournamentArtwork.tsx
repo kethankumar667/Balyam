@@ -345,7 +345,7 @@ export const TournamentTrophyArtwork: React.FC<{ size?: number; className?: stri
         <rect x="75" y="170" width="50" height="12" rx="2" fill="url(#goldCup)" stroke="#FEF3C7" strokeWidth="0.8" />
         <text x="100" y="179" fill="#451A03" fontSize="7" fontWeight="900" textAnchor="middle" fontFamily="monospace">BHALYAM 1ST</text>
 
-        {/* Star Sparkles */}
+        {/* Trophy Shimmer Stars */}
         <polygon points="135,45 138,52 145,55 138,58 135,65 132,58 125,55 132,52" fill="#FFFFFF" />
         <polygon points="65,90 67,95 72,97 67,99 65,104 63,99 58,97 63,95" fill="#FEF08A" />
       </svg>

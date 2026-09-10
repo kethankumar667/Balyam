@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, X, Check, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  Ticket,
+  X,
+  Check,
+  ShieldAlert,
+  Award,
+} from "lucide-react";
 import { CoinAmount } from "./CoinAmount";
 import { EconomyActionButton, type EconomyActionButtonState } from "./EconomyActionButton";
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
@@ -165,7 +171,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-black/10 dark:border-white/10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20">
-                  <Sparkles className="w-5 h-5" aria-hidden="true" />
+                  <Award className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-ink-hi dark:text-text-hi tracking-tight">
@@ -214,7 +220,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
                 /* Success State */
                 <div className="flex flex-col items-center justify-center p-6 text-center space-y-3.5 bg-emerald-500/10 rounded-3xl border border-emerald-500/25">
                   <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center animate-bounce shadow-lg shadow-emerald-500/20">
-                    <Sparkles className="w-7 h-7" aria-hidden="true" />
+                    <Award className="w-7 h-7" aria-hidden="true" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="text-xl font-black text-ink-hi dark:text-text-hi">
@@ -299,7 +305,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
                       disabled={buttonState === "loading"}
                       className="w-full h-12 text-sm font-black shadow-lg shadow-amber-500/30 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Sparkles className="w-4 h-4 text-slate-950" />
+                      <Award className="w-4 h-4 text-slate-950" />
                       Claim Coins
                     </EconomyActionButton>
                     <button

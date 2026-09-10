@@ -11,11 +11,11 @@ import {
   Mail,
   Trophy,
   Users as UsersLucideIcon,
-  Sparkles,
   Pencil,
   LogOut,
   ShieldCheck,
   Trash2,
+  Award,
 } from "lucide-react";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
@@ -511,7 +511,7 @@ function NotificationsPanelBody({
       <div className="space-y-2.5 my-2">
         {filteredNotifs.length === 0 ? (
           <div className="py-12 text-center">
-            <Sparkles className="w-9 h-9 text-amber-400 mx-auto mb-2" />
+            <Award className="w-9 h-9 text-amber-400 mx-auto mb-2" />
             <p className={`text-[13px] font-bold ${isDark ? "text-zinc-300" : "text-[#5C3B1E]"}`}>
               You're all caught up!
             </p>
@@ -557,7 +557,7 @@ function NotificationsPanelBody({
                     {item.type === "invite" ? (
                       <Mail className="w-4.5 h-4.5" />
                     ) : item.type === "reward" ? (
-                      <Sparkles className="w-4.5 h-4.5" />
+                      <Award className="w-4.5 h-4.5" />
                     ) : item.type === "gang" ? (
                       <UsersLucideIcon className="w-4.5 h-4.5" />
                     ) : (

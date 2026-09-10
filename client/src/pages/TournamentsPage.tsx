@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Swords, Trophy, Play, Users, Sparkles, ShieldCheck, ArrowLeft, RefreshCw } from "lucide-react";
+import {
+  Swords,
+  Trophy,
+  Play,
+  Users,
+  ShieldCheck,
+  ArrowLeft,
+  RefreshCw,
+} from "lucide-react";
 import ComingSoonGate from "../components/common/ComingSoonGate";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";

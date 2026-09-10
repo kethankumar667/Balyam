@@ -5,7 +5,6 @@ import {
   Users,
   PlusCircle,
   ArrowRight,
-  Sparkles,
   Bot,
   Clock,
   ShieldCheck,

@@ -252,12 +252,27 @@ export async function ensureGuestToken(): Promise<string | undefined> {
  */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const credential = await getPlayerCredential();
+  const auth = useAuthStore.getState();
+  const adminHeaders: Record<string, string> = {};
+  if (auth.isAdmin || auth.isSuperAdmin) {
+    adminHeaders["x-account-kind"] = auth.kind;
+  }
+  try {
+    const opsKey = sessionStorage.getItem("bhalyam.ops.key");
+    if (opsKey) {
+      adminHeaders["x-operational-key"] = opsKey;
+    }
+  } catch {
+    /* private browsing */
+  }
+
   const send = (cred: PlayerCredential | null): Promise<Response> =>
     fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
       headers: {
         ...(init.body ? { "Content-Type": "application/json" } : {}),
         ...(cred ? { Authorization: `Bearer ${cred.token}` } : {}),
+        ...adminHeaders,
         ...(init.headers as Record<string, string> | undefined),
       },
     });

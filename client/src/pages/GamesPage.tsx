@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useOutletContext } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import {
+  Flame,
+} from "lucide-react";
 import type { GamesFamilyOutletContext } from "../components/layout/GamesFamilyLayout";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
 import GameCard from "../components/games/GameCard";
@@ -77,7 +79,7 @@ export default function GamesPage() {
         {/* Page Header */}
         <header className="space-y-1.5 text-left w-full min-w-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Flame className="w-3.5 h-3.5" />
             <span>Nostalgic Indian Games Lounge</span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-black text-ink-hi tracking-tight truncate">

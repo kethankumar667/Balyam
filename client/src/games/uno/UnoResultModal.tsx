@@ -423,11 +423,11 @@ function DoodleBackground() {
   );
 }
 
-/** Golden Hand-Drawn Trophy with Star Badge & Sparkles */
+/** Golden Hand-Drawn Trophy with Star Badge & Radiant Stars */
 function HandDrawnTrophy() {
   return (
     <svg viewBox="0 0 90 70" className="w-full h-full overflow-visible">
-      {/* Sparkles around trophy */}
+      {/* Radiant stars around trophy */}
       <circle cx="12" cy="18" r="1.5" fill="#EAB308" />
       <circle cx="78" cy="16" r="1.5" fill="#EAB308" />
       <path d="M 16 10 L 17 12 L 19 13 L 17 14 L 16 16 L 15 14 L 13 13 L 15 12 Z" fill="#EAB308" />
@@ -507,7 +507,7 @@ function CelebrationIllustration({ winnerName }: { winnerName: string }) {
         </linearGradient>
       </defs>
 
-      {/* Background Sparkles */}
+      {/* Background Stars */}
       <circle cx="30" cy="30" r="2" fill="#F59E0B" opacity="0.6" />
       <circle cx="190" cy="35" r="2.5" fill="#EF4444" opacity="0.6" />
       <circle cx="45" cy="15" r="1.5" fill="#3B82F6" opacity="0.6" />

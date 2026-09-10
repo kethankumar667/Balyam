@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { MessageSquareText, Star, Inbox, CheckCircle2, XCircle, Sparkles, Filter } from "lucide-react";
+import {
+  MessageSquareText,
+  Star,
+  Inbox,
+  CheckCircle2,
+  XCircle,
+  Filter,
+} from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
 import StatCard from "../../../components/admin/stat-card";
@@ -172,7 +179,7 @@ export default function AdminReviewsPage() {
           <StatusBadge status={reviewStatusVisual(row.status)} label={row.status} size="sm" />
           {row.isFeatured && (
             <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 rounded inline-flex items-center gap-0.5">
-              <Sparkles className="w-2.5 h-2.5" /> Featured
+              <Star className="w-2.5 h-2.5" /> Featured
             </span>
           )}
         </span>
@@ -368,7 +375,7 @@ export default function AdminReviewsPage() {
                 onClick={() => handleToggleFeatured(selectedReview)}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4" />
+                <Star className="w-4 h-4" />
                 <span>{selectedReview.isFeatured ? "Remove from Testimonials" : "Feature in Testimonials"}</span>
               </button>
             ) : null)

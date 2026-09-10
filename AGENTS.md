@@ -224,6 +224,14 @@ These are observations from the existing codebase, not inventions.
 - Heavy use of JSDoc-style `/** … */` block comments at the top of types, interfaces, and non-trivial functions, especially when explaining *why* (Pass-and-Play model, ICE/STUN choices, grace period rationale, ESM `.js` imports, etc.). Match this style when the rationale is non-obvious.
 - Inline `// …` comments are reserved for short clarifications.
 
+### Iconography & Symbolism (Mandatory)
+- **STRICT PROHIBITION:** **NEVER use `Sparkles` from `lucide-react` anywhere in this repository.** Do not use it for auras, boutiques, buttons, celebrations, or empty states.
+- For Avatar Auras: Use `Orbit`, `Flame`, or `Zap`.
+- For Boutique / Shop: Use `Store` or `ShoppingBag`.
+- For Podium / Victory: Use `Crown`, `Award`, `Trophy`, or `Star`.
+- For Table Themes: Use `Grid` or `Layers`.
+- For Achievements: Use `Medal`, `Trophy`, or `ShieldCheck`.
+
 ---
 
 ## 5. React Guidelines (observed)

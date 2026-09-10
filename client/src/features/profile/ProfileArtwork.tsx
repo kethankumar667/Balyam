@@ -81,7 +81,7 @@ export function ProfileHeroArtwork({ className = "w-44 h-32" }: { className?: st
         <circle cx="35" cy="44" r="3.5" fill="#18181B" />
       </g>
 
-      {/* Sparkles */}
+      {/* Stars */}
       <g fill="#FDE047" opacity="0.9">
         <path d="M 30 35 Q 30 40 25 40 Q 30 40 30 45 Q 30 40 35 40 Q 30 40 30 35 Z" />
         <path d="M 210 35 Q 210 40 205 40 Q 210 40 210 45 Q 210 40 215 40 Q 210 40 210 35 Z" />
@@ -174,7 +174,7 @@ export function MatchHistoryEmptyArtwork({ className = "w-36 h-36" }: { classNam
       {/* Soft Glow */}
       <circle cx="80" cy="80" r="65" fill="#FEF3C7" fillOpacity="0.5" />
 
-      {/* Little Star Sparkles */}
+      {/* Little Stars */}
       <path d="M 35 45 Q 35 48 32 48 Q 35 48 35 51 Q 35 48 38 48 Q 35 48 35 45 Z" fill="#F59E0B" opacity="0.8" />
       <path d="M 125 35 Q 125 38 122 38 Q 125 38 125 41 Q 125 38 128 38 Q 125 38 125 35 Z" fill="#F59E0B" opacity="0.8" />
       <path d="M 135 105 Q 135 108 132 108 Q 135 108 135 111 Q 135 108 138 108 Q 135 108 135 105 Z" fill="#F59E0B" opacity="0.8" />

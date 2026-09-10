@@ -12,7 +12,6 @@ import {
   XCircle,
   Mail,
   ArrowRight,
-  Sparkles,
   Download,
   Share2,
   Copy,
@@ -21,6 +20,7 @@ import {
   Menu,
   X,
   Sliders,
+  ShieldCheck,
 } from "lucide-react";
 import HelpLayout from "../components/layout/HelpLayout";
 import {
@@ -162,7 +162,7 @@ export default function PrivacyPolicyPage() {
                     : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-slate-300 hover:bg-stone-200"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-3.5 h-3.5" />
                 <span>{tldrMode ? "Showing: Plain English TL;DR" : "View Plain English Summary"}</span>
               </button>
 
@@ -316,7 +316,7 @@ export default function PrivacyPolicyPage() {
                 {/* Plain English Highlight Card */}
                 {tldrMode && (
                   <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300/60 dark:border-amber-700/40 text-xs text-amber-900 dark:text-amber-300 font-medium flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block text-[11px] uppercase tracking-wider font-bold">
                         Plain English Takeaway:

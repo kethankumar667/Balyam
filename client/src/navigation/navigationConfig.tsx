@@ -6,7 +6,6 @@ import {
   HelpCircle,
   Settings as SettingsIcon,
   LayoutGrid,
-  Sparkles,
   Shield,
   User,
   Flame,
@@ -154,7 +153,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       {
         id: "games-retro",
         label: "Classic Nokia Games",
-        icon: Sparkles,
+        icon: Gamepad2,
         path: "/games",
         search: "?c=retro",
         badge: { text: "90s", variant: "amber" },

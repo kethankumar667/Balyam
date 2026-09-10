@@ -10,7 +10,7 @@ import {
   FileText,
   Lock,
   ArrowUp,
-  Sparkles,
+  Star,
 } from "lucide-react";
 import AppLayout from "./AppLayout";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -100,7 +100,7 @@ export default function HelpLayout({
             <div className="rounded-[22px] p-5 sm:p-7 bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 dark:from-[#0b101e] dark:via-[#11192e] dark:to-[#070c16] border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
               <div className="flex items-start sm:items-center gap-3.5">
                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
-                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <Star className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">

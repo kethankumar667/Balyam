@@ -1,6 +1,10 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Landmark, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  Landmark,
+  CheckCircle2,
+  Award,
+} from "lucide-react";
 import { formatCoinString, AshthaKonaCoinIcon } from "../CoinAmount";
 
 export interface PrizePotProps {
@@ -73,7 +77,7 @@ export const PrizePot: React.FC<PrizePotProps> = ({
 
       {/* Label */}
       <span className="text-[11px] font-mono uppercase tracking-widest font-black text-amber-600 dark:text-amber-300/90 mb-0.5 flex items-center gap-1">
-        <Sparkles className="w-3 h-3" />
+        <Award className="w-3 h-3" />
         {label}
       </span>
 

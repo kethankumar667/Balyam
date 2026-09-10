@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Activity,
   Layers,
-  Sparkles,
   Info,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";

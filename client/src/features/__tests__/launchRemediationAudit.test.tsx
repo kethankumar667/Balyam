@@ -104,6 +104,8 @@ vi.mock("../../services/HapticsManager", () => ({
       impact: vi.fn(),
       win: vi.fn(),
       notification: vi.fn(),
+      subtle: vi.fn(),
+      trigger: vi.fn(),
       subscribe: () => () => {},
       getState: () => ({ isSupported: false, isEnabled: true }),
       isSupported: () => false,

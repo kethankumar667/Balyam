@@ -7,6 +7,13 @@ export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" 
  */
 export type AccountKind = "guest" | "member" | "admin" | "super_admin";
 
+export interface PublicPresentationLoadout {
+  avatarAura?: string;
+  podiumTitle?: string;
+  tokenSkin?: string;
+  diceSkin?: string;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -55,6 +62,11 @@ export interface Player {
    * in rather than trusted. Seats fall back to their initial.
    */
   avatar?: string;
+  /**
+   * Sanitized public presentation loadout (aura, title, token/dice skin).
+   * Validated on ingress against closed-set catalog before broadcast.
+   */
+  cosmetics?: PublicPresentationLoadout;
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
   /**
@@ -2623,6 +2635,8 @@ export interface CreateRoomPayload {
    * unconditional re-check at match start.
    */
   entryStakeCoins?: number;
+  /** Sanitized public presentation loadout (aura, title, token/dice skin). */
+  cosmetics?: PublicPresentationLoadout;
 }
 
 export interface SetTokenNicknamesPayload {
@@ -2641,6 +2655,8 @@ export interface JoinRoomPayload {
   seatToken?: string;
   /** Chosen avatar filename. Ignored unless it is on the shared list. */
   avatar?: string;
+  /** Sanitized public presentation loadout (aura, title, token/dice skin). */
+  cosmetics?: PublicPresentationLoadout;
   /**
    * What the joiner claims to be, so the table can label the seat and so host
    * migration knows whether this seat could inherit a shareable room. Only an
@@ -2933,6 +2949,8 @@ export interface ClientToServerEvents {
   "room:chooseCoinColor": (color: CoinColor) => void;
   "room:choosePenColor": (color: DotsBoxesColor) => void;
   "room:setTokenNicknames": (payload: SetTokenNicknamesPayload) => void;
+  /** Update player's active public presentation cosmetics loadout */
+  "room:setCosmetics": (cosmetics: PublicPresentationLoadout) => void;
   /**
    * Reports whether THIS client currently needs to rotate to landscape to
    * play comfortably (small portrait viewport). Generic on the wire, but

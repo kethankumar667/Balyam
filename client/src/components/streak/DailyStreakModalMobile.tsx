@@ -11,8 +11,8 @@ import {
   Crown,
   Trophy,
   Star,
-  Sparkles,
   Lock,
+  Flame,
 } from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
@@ -171,7 +171,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
               </span>
               {tomorrowReward && (
                 <span className="text-[9px] px-2 py-0.5 rounded-full font-black bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-400/40 font-mono flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.2)]">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                  <Flame className="w-2.5 h-2.5 text-amber-400" />
                   Tomorrow: +{tomorrowReward.coins.toLocaleString()} 🪙
                 </span>
               )}
@@ -221,7 +221,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
           Day {completedDays} of 30 ({progressPercent}%)
         </span>
         <span className="text-[11px] font-black text-amber-300 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-amber-400" />
+          <Flame className="w-3 h-3 text-amber-400" />
           {urgencyText}
         </span>
       </div>
@@ -636,7 +636,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
                 <ul className="space-y-1 text-xs font-medium">
                   {inspectMilestone.contains.map((item: string) => (
                     <li key={item} className="flex items-center gap-1.5 text-slate-200">
-                      <Sparkles className="w-3 h-3 text-yellow-300 shrink-0" />
+                      <Flame className="w-3 h-3 text-yellow-300 shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -718,7 +718,7 @@ export function DailyStreakModalMobile({ onClose, onBack }: DailyStreakModalMobi
               </span>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-slate-950/40 fill-slate-950/20" />
+                <Flame className="w-4 h-4 text-slate-950/40 fill-slate-950/20" />
                 <span>CLAIM TODAY (+{todayReward.coins.toLocaleString()} COINS)</span>
               </>
             )}

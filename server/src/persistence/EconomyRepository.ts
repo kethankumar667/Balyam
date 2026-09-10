@@ -67,7 +67,8 @@ export type WalletLedgerEntryType =
   | "VOUCHER_REDEMPTION"
   | "MATCH_REFUND"
   | "ADMIN_ADJUSTMENT"
-  | "DAILY_REWARD_CREDIT";
+  | "DAILY_REWARD_CREDIT"
+  | "COSMETIC_PURCHASE";
 
 /* ═══════════════════════════ Output DTOs (repository models) ════════════ */
 
@@ -363,6 +364,16 @@ export interface AdminAdjustWalletInput {
    * human operator's action.
    */
   entryType?: WalletLedgerEntryType;
+}
+
+export interface DebitWalletInput {
+  identityId: string;
+  amountCoins: string;
+  reason: string;
+  idempotencyKey: string;
+  entryType: WalletLedgerEntryType;
+  sourceKind?: string;
+  sourceId?: string;
 }
 
 /* ═══════════════════════ Durable terminal intents (Blocker 06) ════════════
@@ -827,6 +838,13 @@ export interface EconomyRepository {
    */
   adminAdjustWallet(
     input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /**
+   * Authoritative wallet debit with ledger auditing (e.g. for cosmetic purchases).
+   */
+  debitWallet?(
+    input: DebitWalletInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
   /**

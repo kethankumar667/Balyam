@@ -1,6 +1,7 @@
 import type { Player, UnoCard, UnoColor } from "@shared/types";
 import { getCardLabel, CARD_DISPLAY } from "./helpers/deck";
 import Avatar from "../rummy/Avatar";
+import { useCardBack, getUnoCardBackConfig } from "../../lib/cosmeticsResolver";
 
 /**
  * Dumb, presentation-only UNO building blocks shared by both shells. They hold
@@ -232,8 +233,11 @@ export function UnoCardFace({ card, className }: { card: UnoCard; className?: st
   );
 }
 
-/** The face-down draw-pile back: black body, red oval, slanted "UNO". */
-export function UnoCardBack({ className }: { className?: string }) {
+/** The face-down draw-pile back: custom cosmetic skin or classic black body, red oval, slanted "UNO". */
+export function UnoCardBack({ className, skin }: { className?: string; skin?: string }) {
+  const localSkin = useCardBack("uno");
+  const config = getUnoCardBackConfig(skin ?? localSkin);
+
   return (
     <svg
       viewBox="0 0 100 150"
@@ -243,9 +247,9 @@ export function UnoCardBack({ className }: { className?: string }) {
       preserveAspectRatio="xMidYMid meet"
     >
       <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
-      <rect x={5} y={5} width={90} height={140} rx={10} fill={WILD_BODY} />
-      <ellipse cx={50} cy={75} rx={46} ry={29} fill="#D22B27" transform="rotate(-20 50 75)" />
-      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, "#F5C400", "UNO", "#fff")}</g>
+      <rect x={5} y={5} width={90} height={140} rx={10} fill={config.bodyColor} />
+      <ellipse cx={50} cy={75} rx={46} ry={29} fill={config.ovalColor} transform="rotate(-20 50 75)" />
+      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, config.textColor, "UNO", config.edgeColor)}</g>
     </svg>
   );
 }

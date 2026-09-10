@@ -13,10 +13,10 @@ import {
   Send,
   HelpCircle,
   ArrowRight,
-  Sparkles,
   Award,
   ChevronDown,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import HelpLayout from "../components/layout/HelpLayout";
 import Modal from "../components/Modal";
@@ -230,7 +230,7 @@ export default function CommunityRulesPage() {
                   onClick={handleTakePledge}
                   className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-md hover:scale-102 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer min-h-[44px] focus-visible:outline-2 focus-visible:outline-amber-500"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4" />
                   <span>I Pledge to Play Fair</span>
                 </button>
               )}

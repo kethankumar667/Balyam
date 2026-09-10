@@ -4,7 +4,7 @@ import {
   AddFriendUserIcon,
   SwordsClashIcon,
   ShieldNavIcon,
-  SparklesIcon,
+  LightningIcon,
 } from "../../design-system/icons";
 
 interface SocialQuickActionsProps {
@@ -27,7 +27,7 @@ export default function SocialQuickActions({
       <div className="flex items-center justify-between">
         <h3 className="font-extrabold text-sm text-[var(--auth-ink)] flex items-center gap-2">
           <span className="w-7 h-7 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center flex-shrink-0">
-            <SparklesIcon size={14} />
+            <LightningIcon size={14} />
           </span>
           Quick Actions
         </h3>

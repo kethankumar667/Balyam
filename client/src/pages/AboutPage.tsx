@@ -3,7 +3,15 @@ import { Link } from "react-router-dom";
 import HelpLayout from "../components/layout/HelpLayout";
 import { useTheme } from "../lib/useTheme";
 import { HapticsManager } from "../services/HapticsManager";
-import { Sparkles, Heart, Users, Volume2, ShieldCheck, Gamepad2, Award, Clock } from "lucide-react";
+import {
+  Heart,
+  Users,
+  Volume2,
+  ShieldCheck,
+  Gamepad2,
+  Award,
+  Clock,
+} from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────
    Nostalgic Web Audio Soundboard Synthesizer

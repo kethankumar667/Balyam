@@ -8,7 +8,6 @@ import {
   History,
   Award,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import ProfileHeader from "../../features/profile/ProfileHeader";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";

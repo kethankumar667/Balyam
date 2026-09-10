@@ -1,6 +1,7 @@
 import type { Player } from "@shared/types";
 import { Users, Crown, Check, Target } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
+import { getPodiumTitleConfig } from "../lib/cosmeticsResolver";
 
 export default function PlayerList({
   players,
@@ -37,7 +38,7 @@ export default function PlayerList({
           >
             {/* Avatar with presence ring */}
             <span className="relative flex-shrink-0">
-              <SeatAvatar avatar={p.avatar} name={p.name} className="w-7 h-7" />
+              <SeatAvatar avatar={p.avatar} aura={p.cosmetics?.avatarAura} name={p.name} className="w-7 h-7" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[#FFF9EE] dark:ring-[#182234] ${
                   p.isConnected ? "bg-emerald-500" : "bg-amber-500"
@@ -47,7 +48,7 @@ export default function PlayerList({
             </span>
 
             {/* Name + details */}
-            <div className="flex-1 min-w-0 flex items-center gap-1">
+            <div className="flex-1 min-w-0 flex items-center gap-1.5">
               <span className="truncate font-semibold text-xs sm:text-sm text-[#2B3550] dark:text-slate-100">
                 {p.name}
               </span>
@@ -59,6 +60,15 @@ export default function PlayerList({
               {p.isHost && (
                 <span className="text-amber-500" title="Room Host">
                   <Crown size={13} aria-hidden />
+                </span>
+              )}
+              {p.cosmetics?.podiumTitle && getPodiumTitleConfig(p.cosmetics.podiumTitle) && (
+                <span
+                  className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex-shrink-0 ${
+                    getPodiumTitleConfig(p.cosmetics.podiumTitle)!.badgeClass
+                  }`}
+                >
+                  {getPodiumTitleConfig(p.cosmetics.podiumTitle)!.label}
                 </span>
               )}
             </div>

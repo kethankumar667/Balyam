@@ -1,4 +1,9 @@
-import { ArrowRight, Plus, Sparkles, Heart } from "lucide-react";
+import {
+  ArrowRight,
+  Plus,
+  Heart,
+  Flame,
+} from "lucide-react";
 import { useTheme } from "../../lib/useTheme";
 import { type BhalyamGameSlug } from "./data";
 
@@ -76,7 +81,7 @@ export default function WhatAreWePlayingSection({
         <h2 className="bhalyam-display text-[22px] sm:text-[28px] font-black text-[#2A221B] dark:text-white tracking-tight">
           What are we playing today?
         </h2>
-        <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500/20 animate-pulse" aria-hidden />
+        <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20 animate-pulse" aria-hidden />
       </div>
 
       {/* ── 4 Nostalgic Scene Cards ── */}

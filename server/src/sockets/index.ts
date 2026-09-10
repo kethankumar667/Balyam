@@ -94,6 +94,15 @@ export function registerSocketHandlers(
         identityId,
         payload.entryStakeCoins
       );
+      if (payload.cosmetics) {
+        rooms.setCosmetics(socket.id, payload.cosmetics).catch((err) => {
+          logger.error({
+            message: `setCosmetics failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+            module: "SOCKET",
+            socketId: socket.id,
+          });
+        });
+      }
       // `seatToken` goes to this socket's ack only — never into a broadcast.
       ack({ ok: true, code, playerId, seatToken, state });
     } catch (err) {
@@ -120,6 +129,15 @@ export function registerSocketHandlers(
       if (!result.ok) {
         ack({ ok: false, error: result.error });
         return;
+      }
+      if (payload.cosmetics) {
+        rooms.setCosmetics(socket.id, payload.cosmetics).catch((err) => {
+          logger.error({
+            message: `setCosmetics failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+            module: "SOCKET",
+            socketId: socket.id,
+          });
+        });
       }
       ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken, state: result.state });
     } catch (err) {
@@ -196,6 +214,16 @@ export function registerSocketHandlers(
 
   socket.on("room:setTokenNicknames", ({ nicknames }) => {
     rooms.setTokenNicknames(socket.id, nicknames);
+  });
+
+  socket.on("room:setCosmetics", (cosmetics) => {
+    rooms.setCosmetics(socket.id, cosmetics).catch((err) => {
+      logger.error({
+        message: `setCosmetics failed for socket ${socket.id}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCKET",
+        socketId: socket.id,
+      });
+    });
   });
 
   // The `onAny` hook above already did the work; this exists so the event is

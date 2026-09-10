@@ -12,7 +12,6 @@ import {
   BarChart3,
   RefreshCw,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";

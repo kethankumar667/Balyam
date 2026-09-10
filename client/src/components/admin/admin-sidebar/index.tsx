@@ -12,8 +12,8 @@ import {
   Settings,
   X,
   Shield,
-  Sparkles,
   Landmark,
+  Star,
 } from "lucide-react";
 import BhalyamLogo from "../../bhalyam/BhalyamLogo";
 
@@ -144,7 +144,7 @@ export default function AdminSidebar({
         {/* Footer info widget */}
         <div className="p-4 m-3 rounded-2xl bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent border border-amber-500/20">
           <div className="flex items-center gap-2 text-xs font-bold text-[var(--chrome-ink)] mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Star className="w-3.5 h-3.5 text-amber-500" />
             <span className="font-mono">Bhalyam Ops v2.4</span>
           </div>
           <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">

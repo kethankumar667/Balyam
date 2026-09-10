@@ -22,9 +22,9 @@ import {
   CheckCircle2,
   Copy,
   MessageSquare,
-  Sparkles,
   Headphones,
   CheckCheck,
+  Star,
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -800,7 +800,7 @@ export default function ContactUsPage() {
                     {/* Card 1: What happens next? */}
                     <div className="p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-lg space-y-4 text-left">
                       <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-xs sm:text-sm">
-                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <Star className="w-4 h-4 text-amber-500" />
                         <span>What happens next?</span>
                       </div>
 
@@ -901,7 +901,7 @@ export default function ContactUsPage() {
 function HeroEnvelopeIllustration() {
   return (
     <svg viewBox="0 0 160 120" className="w-full h-full" fill="none" aria-hidden>
-      {/* Background Sparkles */}
+      {/* Background Stars */}
       <text x="140" y="80" fill="#F59E0B" fontSize="14" fontWeight="bold">✦</text>
       <text x="30" y="25" fill="#F59E0B" fontSize="10" opacity="0.6">✦</text>
 

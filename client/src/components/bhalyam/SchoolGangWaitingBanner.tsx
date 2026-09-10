@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lightbulb, Sparkles, Users, DoorOpen } from "lucide-react";
+import {
+  ArrowRight,
+  Lightbulb,
+  Users,
+  DoorOpen,
+} from "lucide-react";
 import { useTheme } from "../../lib/useTheme";
 import { motion, AnimatePresence } from "framer-motion";
 

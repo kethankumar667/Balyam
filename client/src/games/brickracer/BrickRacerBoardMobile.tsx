@@ -9,7 +9,6 @@ import {
   Zap,
   Flame,
   Gauge,
-  Sparkles,
 } from "lucide-react";
 import { RenderPipeline } from "./canvas/RenderPipeline";
 import { GameEngine } from "./engine/GameEngine";
@@ -200,7 +199,7 @@ export default function BrickRacerBoardMobile({ onExit }: BrickRacerBoardProps) 
               </span>
               {stats.isNewRecord && (
                 <span className="text-[9px] font-black text-emerald-400 flex items-center gap-0.5 animate-pulse">
-                  <Sparkles className="w-2.5 h-2.5" /> NEW!
+                  <Zap className="w-2.5 h-2.5" /> NEW!
                 </span>
               )}
             </div>

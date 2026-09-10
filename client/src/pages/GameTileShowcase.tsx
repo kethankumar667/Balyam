@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Sparkles, Heart, RotateCcw, Flame, LayoutGrid, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Heart,
+  RotateCcw,
+  Flame,
+  LayoutGrid,
+  CheckCircle2,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import GameTile from "../components/bhalyam/GameTile";
 import {

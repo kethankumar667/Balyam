@@ -1,6 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { X, Flame, Gift, ArrowRight, Check, Clock, Shield, Sparkles } from "lucide-react";
+import {
+  X,
+  Flame,
+  Gift,
+  ArrowRight,
+  Check,
+  Clock,
+  Shield,
+} from "lucide-react";
 import { useStreakStore } from "../../store/streakStore";
 import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
@@ -169,7 +177,7 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
       <div className="my-2 flex justify-center">
         {isClaimable ? (
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-400/20 border border-amber-300/50 text-amber-200 text-xs font-black uppercase tracking-wider shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Flame className="w-3.5 h-3.5 text-amber-300" />
             Day {currentDay} Ready to Claim
           </div>
         ) : (
@@ -281,7 +289,7 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
               </span>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 fill-slate-950/20" />
+                <Flame className="w-5 h-5 fill-slate-950/20" />
                 <span>CLAIM +{todayReward.coins.toLocaleString()} COINS</span>
               </>
             )}

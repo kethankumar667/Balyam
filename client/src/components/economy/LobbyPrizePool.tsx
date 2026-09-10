@@ -1,6 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Trophy, Lock, Sparkles, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck, Landmark, Loader2, HelpCircle } from "lucide-react";
+import {
+  Trophy,
+  Lock,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  Landmark,
+  Loader2,
+  HelpCircle,
+  Award,
+} from "lucide-react";
 import { deriveLobbyEconomyPreview, type LobbyLockPhase } from "../../lib/lobbyEconomy";
 import type { MatchCheckoutQuote } from "../../lib/economyApi";
 import { AshthaKonaCoinIcon, CoinAmount } from "./CoinAmount";
@@ -159,7 +170,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             }`}
           >
             {isFreePractice ? (
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             ) : isLocked ? (
               <Lock className="w-3.5 h-3.5" aria-hidden="true" />
             ) : isSecuring ? (
@@ -201,7 +212,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
         <div className="shrink-0">
           {isFreePractice ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/50 border border-emerald-300/60 dark:border-emerald-700/50 rounded-full px-2 py-0.5">
-              <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
+              <Award className="w-2.5 h-2.5 text-emerald-500" />
               <span>Free Play · {readyCount}/{seatCount} Ready</span>
             </span>
           ) : isLocked ? (
@@ -221,7 +232,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-700/50 rounded-full px-2 py-0.5">
-              <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+              <Award className="w-2.5 h-2.5 text-amber-500" />
               <span>{readyCount}/{seatCount} Ready</span>
             </span>
           )}

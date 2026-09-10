@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, ChevronDown, Sparkles, Quote, Star, Award, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Quote,
+  Star,
+  Award,
+  ShieldCheck,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import StarRating from "../components/StarRating";
 import { BHALYAM_GAME_CATALOGUE, getGameById } from "../catalog/gameCatalog";
@@ -92,7 +99,7 @@ export default function WriteReviewPage() {
           {/* ── Header ── */}
           <div className="space-y-3 text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Star className="w-3.5 h-3.5" />
               <span>Player Voice</span>
             </div>
 
@@ -233,7 +240,7 @@ export default function WriteReviewPage() {
                   disabled={isSubmitting}
                   className="w-full inline-flex items-center justify-center gap-2 bg-[#EA580C] hover:bg-[#C2410C] active:scale-95 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-full text-xs sm:text-sm shadow-md hover:shadow-lg transition min-h-[44px] cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-amber-500"
                 >
-                  <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  <Star className="w-4 h-4" aria-hidden="true" />
                   <span>{isSubmitting ? "Submitting..." : "Submit Review"}</span>
                 </button>
               </form>

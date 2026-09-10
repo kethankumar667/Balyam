@@ -24,11 +24,11 @@ import {
   MessageSquareText,
   Sun,
   Moon,
-  Sparkles,
   Wifi,
   Activity,
   Radio,
   CheckCircle2,
+  Flame,
 } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { WhatsappGlyph } from "./icons";
@@ -100,7 +100,7 @@ export function Footer() {
 
             {/* Made with ❤️ for 90s Kids Badge */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-amber-500/25 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <Flame className="w-3.5 h-3.5 text-amber-500" />
               <span>Made with</span>
               <Heart className="w-3.5 h-3.5 text-rose-500 fill-current inline mx-0.5" />
               <span>for 90s Kids</span>

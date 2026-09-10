@@ -1,5 +1,10 @@
 import React from "react";
-import { ShieldCheck, Trophy, Users, Sparkles } from "lucide-react";
+import {
+  ShieldCheck,
+  Trophy,
+  Users,
+  Award,
+} from "lucide-react";
 
 export const TournamentTrustStrip: React.FC = () => {
   const values = [
@@ -25,7 +30,7 @@ export const TournamentTrustStrip: React.FC = () => {
       description: "Zero entry fees, seamless guest participation, and balanced matchmaking brackets for all skill tiers.",
     },
     {
-      icon: Sparkles,
+      icon: Award,
       iconColor: "text-purple-500 dark:text-purple-400",
       bgColor: "bg-purple-500/10 border-purple-500/20",
       title: "BHALYAM Arena",

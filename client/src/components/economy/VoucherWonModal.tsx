@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { PartyPopper, Copy, Check, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  PartyPopper,
+  Copy,
+  Check,
+  ShieldAlert,
+  Award,
+} from "lucide-react";
 import { CoinAmount } from "./CoinAmount";
 import { savePendingVoucher } from "./pendingVoucher";
 
@@ -94,7 +100,7 @@ export function VoucherWonModal({ coinAmount, rawCode, onClose }: VoucherWonModa
               onClick={handleClaimCoins}
               className="w-full py-3 rounded-full font-black text-sm text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
             >
-              <Sparkles className="w-4 h-4 text-slate-950" />
+              <Award className="w-4 h-4 text-slate-950" />
               Claim Coins
             </button>
             <button

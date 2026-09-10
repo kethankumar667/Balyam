@@ -4,6 +4,8 @@ import { getSocket } from "../../lib/socket";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
+import { useCosmeticsStore } from "../../store/cosmeticsStore";
+import { getPublicPresentationLoadout } from "../../lib/cosmeticsResolver";
 import Modal from "../Modal";
 import { ArrowRightIcon } from "./icons";
 import { isCompleteRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from "../../lib/roomCode";
@@ -196,6 +198,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
         name: n,
         code: c,
         avatar: avatarId ?? undefined,
+        cosmetics: getPublicPresentationLoadout(useCosmeticsStore.getState().resolved),
         accountKind: currentAccountKind(),
         accessToken: cred.accessToken ?? currentAccessToken(),
         guestToken: cred.guestToken,

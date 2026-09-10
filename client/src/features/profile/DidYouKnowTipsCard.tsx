@@ -1,5 +1,8 @@
 import React from "react";
-import { Lightbulb, Sparkles } from "lucide-react";
+import {
+  Lightbulb,
+  Star,
+} from "lucide-react";
 
 export default function DidYouKnowTipsCard() {
   return (
@@ -12,7 +15,7 @@ export default function DidYouKnowTipsCard() {
         In traditional Indian <strong>Ludo</strong>, cutting an opponent&apos;s token awards you a bonus die roll. In <strong>Rummy</strong>, maintaining at least one pure sequence is mandatory before making a valid declaration!
       </p>
       <div className="flex items-center gap-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold pt-1">
-        <Sparkles className="w-3 h-3" />
+        <Star className="w-3 h-3" />
         <span>BHALYAM 90s Gaming Lounge</span>
       </div>
     </div>
