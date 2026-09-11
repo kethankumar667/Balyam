@@ -160,6 +160,17 @@ export function Token({
             <animate attributeName="rx" values="40;46;40" dur="1.2s" repeatCount="indefinite" />
           </ellipse>
         )}
+        {tokenSkin.hasDiamond && (
+          <ellipse cx="0" cy="48" rx="40" ry="14" fill="none" stroke="#67E8F9" strokeWidth="2.5" opacity="0.7">
+            <animate attributeName="opacity" values="0.35;0.95;0.35" dur="2s" repeatCount="indefinite" />
+          </ellipse>
+        )}
+        {tokenSkin.hasPhoenixWing && (
+          <ellipse cx="0" cy="48" rx="44" ry="17" fill="none" stroke="#FB923C" strokeWidth="3" opacity="0.6">
+            <animate attributeName="opacity" values="0.3;0.95;0.3" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="rx" values="40;48;40" dur="1s" repeatCount="indefinite" />
+          </ellipse>
+        )}
         <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
         <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
         <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
@@ -193,6 +204,26 @@ export function Token({
             fill="#F59E0B"
             stroke="#78350F"
             strokeWidth="1.5"
+          />
+        )}
+
+        {/* Diamond Gem Accessory */}
+        {tokenSkin.hasDiamond && (
+          <path
+            d="M -12 -47 L 12 -47 L 18 -41 L 0 -22 L -18 -41 Z"
+            fill="#A5F3FC"
+            stroke="#0E7490"
+            strokeWidth="1.5"
+          />
+        )}
+
+        {/* Phoenix Wing Accessory */}
+        {tokenSkin.hasPhoenixWing && (
+          <path
+            d="M -18 -44 Q -28 -32 -15 -21 L -6 -34 Z M 18 -44 Q 28 -32 15 -21 L 6 -34 Z"
+            fill="#FB923C"
+            stroke="#7C2D12"
+            strokeWidth="1.2"
           />
         )}
 
