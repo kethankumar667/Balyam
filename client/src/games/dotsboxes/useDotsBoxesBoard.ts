@@ -14,6 +14,7 @@ import {
 } from "./dotsboxes-theme";
 import { AudioManager } from "../../services/AudioManager";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
+import { useRoomStore } from "../../store/roomStore";
 
 export interface DotsBoxesBoardProps {
   state: DotsBoxesPublicState;
@@ -160,7 +161,7 @@ export function useDotsBoxesBoard(props: DotsBoxesBoardProps): DotsBoxesBoardMod
   // Player helper functions — Always return real player name so initials (e.g. "K" for kethan) work
   const nameOf = useCallback(
     (id: string): string => {
-      const found = players.find((p) => p.id === id);
+      const found = players.find((p) => p.id === id) ?? useRoomStore.getState().knownPlayers[id];
       if (found?.name) return found.name;
       return id === selfId ? "You" : "Player";
     },
@@ -171,7 +172,7 @@ export function useDotsBoxesBoard(props: DotsBoxesBoardProps): DotsBoxesBoardMod
     (id: string): DotsBoxesPlayerTheme => {
       const seatIndex = state.playerOrder.indexOf(id);
       const safeIndex = seatIndex >= 0 ? seatIndex : 0;
-      const p = players.find((pl) => pl.id === id);
+      const p = players.find((pl) => pl.id === id) ?? useRoomStore.getState().knownPlayers[id];
       if (p?.penColor) {
         const custom = getPlayerThemeByColor(p.penColor, skin, safeIndex);
         if (custom) return custom;
@@ -182,12 +183,12 @@ export function useDotsBoxesBoard(props: DotsBoxesBoardProps): DotsBoxesBoardMod
   );
 
   const avatarOf = useCallback(
-    (id: string): string | undefined => players.find((p) => p.id === id)?.avatar,
+    (id: string): string | undefined => (players.find((p) => p.id === id) ?? useRoomStore.getState().knownPlayers[id])?.avatar,
     [players]
   );
 
   const isBot = useCallback(
-    (id: string): boolean => !!players.find((p) => p.id === id)?.isBot,
+    (id: string): boolean => !!(players.find((p) => p.id === id) ?? useRoomStore.getState().knownPlayers[id])?.isBot,
     [players]
   );
 

@@ -80,6 +80,8 @@ interface RoomStore {
   messages: ChatMessage[];
   lastError: string | null;
   rematch: RematchState;
+  /** Preserved registry of all players/bots seen in the room/match so scorecards never lose bot names */
+  knownPlayers: Record<string, Player>;
   /** Last 3 distinct named Rummy rosters the player joined */
   lastGangs: LastGangEntry[];
 
@@ -207,6 +209,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   messages: [],
   lastError: null,
   rematch: idleRematch,
+  knownPlayers: {},
   lastGangs: loadLastGangs(),
 
   setPlayerId: (id) => {
@@ -279,7 +282,21 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       return { seats: next };
     }),
   seatFor: (code) => get().seats[code.trim().toUpperCase()] ?? null,
-  setRoomState: (state) => set({ roomState: state }),
+  setRoomState: (state) =>
+    set((s) => {
+      const nextKnown = { ...s.knownPlayers };
+      if (state?.players) {
+        for (const p of state.players) {
+          nextKnown[p.id] = p;
+        }
+      }
+      if (state?.lastMatchPlayers) {
+        for (const p of state.lastMatchPlayers) {
+          nextKnown[p.id] = p;
+        }
+      }
+      return { roomState: state, knownPlayers: nextKnown };
+    }),
   setGameState: (state) => set({ gameState: state }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages.slice(-199), msg] })),
   setError: (err) => set({ lastError: err }),
@@ -300,6 +317,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       messages: [],
       lastError: null,
       rematch: idleRematch,
+      knownPlayers: {},
     }),
 
   resetIdentity: () => {

@@ -8,6 +8,7 @@ import { useHaptics } from "../../hooks/useHaptics";
 import { useTranslation } from "../../hooks/useTranslation";
 import { announceNumber, stopAnnouncing } from "./announcer";
 import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
+import { useRoomStore } from "../../store/roomStore";
 
 export interface BingoBoardProps {
   state: BingoPlayerState;
@@ -92,7 +93,7 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
   }, [players]);
 
   const nameOf = useCallback(
-    (id: string) => rosterById.get(id)?.name ?? "Player",
+    (id: string) => rosterById.get(id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "Player",
     [rosterById]
   );
 

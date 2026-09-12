@@ -333,6 +333,7 @@ function startCancelledMessage(reason: string): string {
 function LudoBoardContainer({
   gameState,
   roomState,
+  effectivePlayers,
   playerId,
   messages,
   requestLeaveConfirmation,
@@ -340,6 +341,7 @@ function LudoBoardContainer({
 }: {
   gameState: LudoState;
   roomState: RoomPublicState;
+  effectivePlayers?: Player[];
   playerId: string | null;
   messages: ChatMessage[];
   requestLeaveConfirmation: () => void;
@@ -347,7 +349,7 @@ function LudoBoardContainer({
 }) {
   const isHost = roomState.hostId === playerId;
   const activePid = gameState.turnPlayerId;
-  const players: Player[] = roomState.players ?? [];
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
   const activeP = players.find((p: Player) => p.id === activePid);
   const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
   return (
@@ -373,17 +375,19 @@ function LudoBoardContainer({
 function SnlBoardContainer({
   gameState,
   roomState,
+  effectivePlayers,
   playerId,
   messages,
 }: {
   gameState: SnlState;
   roomState: RoomPublicState;
+  effectivePlayers?: Player[];
   playerId: string | null;
   messages: ChatMessage[];
 }) {
   const isHost = roomState.hostId === playerId;
   const activePid = gameState.turnPlayerId;
-  const players: Player[] = roomState.players ?? [];
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
   const activeP = players.find((p: Player) => p.id === activePid);
   const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
   return (
@@ -407,6 +411,7 @@ function SnlBoardContainer({
 function DotsBoxesBoardContainer({
   gameState,
   roomState,
+  effectivePlayers,
   playerId,
   messages,
   requestLeaveConfirmation,
@@ -414,6 +419,7 @@ function DotsBoxesBoardContainer({
 }: {
   gameState: DotsBoxesPublicState;
   roomState: RoomPublicState;
+  effectivePlayers?: Player[];
   playerId: string | null;
   messages: ChatMessage[];
   requestLeaveConfirmation: () => void;
@@ -421,7 +427,7 @@ function DotsBoxesBoardContainer({
 }) {
   const isHost = roomState.hostId === playerId;
   const activePid = gameState.turnPlayerId;
-  const players: Player[] = roomState.players ?? [];
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
   const activeP = players.find((p: Player) => p.id === activePid);
   const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
   return (
@@ -447,19 +453,21 @@ function DotsBoxesBoardContainer({
 function WordBuildingBoardContainer({
   gameState,
   roomState,
+  effectivePlayers,
   playerId,
   messages,
   requestLeaveConfirmation,
 }: {
   gameState: WordBuildingPublicState;
   roomState: RoomPublicState;
+  effectivePlayers?: Player[];
   playerId: string | null;
   messages: ChatMessage[];
   requestLeaveConfirmation: () => void;
 }) {
   const isHost = roomState.hostId === playerId;
   const activePid = gameState.turnPlayerId;
-  const players: Player[] = roomState.players ?? [];
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
   const activeP = players.find((p: Player) => p.id === activePid);
   const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
   return (
@@ -510,6 +518,7 @@ export default function Room() {
     messages,
     lastError,
     rematch,
+    knownPlayers,
     setPlayerId,
     setPlayerName,
     rememberSeat,
@@ -1329,15 +1338,33 @@ export default function Room() {
   // previous render and threw "Rendered more hooks than during the
   // previous render" — the exact crash behind the "A piece slipped off the
   // board!" error boundary on reload-during-match.
+  const effectiveMatchPlayers = useMemo(() => {
+    if (!roomState) return [];
+    if (roomState.phase === "lobby") return roomState.players;
+    const map = new Map<string, Player>();
+    for (const p of Object.values(knownPlayers)) {
+      map.set(p.id, p);
+    }
+    if (roomState.lastMatchPlayers) {
+      for (const p of roomState.lastMatchPlayers) {
+        map.set(p.id, p);
+      }
+    }
+    for (const p of roomState.players) {
+      map.set(p.id, p);
+    }
+    return Array.from(map.values());
+  }, [roomState, knownPlayers]);
+
   const rankedPlayers = useMemo(() => {
     if (!roomState) return [];
-    return roomState.players.map((p) => ({
+    return effectiveMatchPlayers.map((p) => ({
       id: p.id,
       name: p.name,
       score: p.id === gameOverWinnerId ? 100 : 0,
       avatar: p.avatar,
     }));
-  }, [roomState, gameOverWinnerId]);
+  }, [roomState, effectiveMatchPlayers, gameOverWinnerId]);
 
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
@@ -1421,7 +1448,7 @@ export default function Room() {
   // function, ahead of the two early `return`s above — see the comment
   // there.
   const gameOverWinnerName = gameOverWinnerId
-    ? (roomState?.players.find((p) => p.id === gameOverWinnerId)?.name ?? null)
+    ? (effectiveMatchPlayers.find((p) => p.id === gameOverWinnerId)?.name ?? null)
     : null;
 
   return (
@@ -1655,7 +1682,7 @@ export default function Room() {
                 {roomState.game === "rps" && gameState != null && (
                   <RpsBoard
                     state={gameState as RpsState & { currentChoices: Partial<Record<string, "rock" | "paper" | "scissors">> }}
-                    players={roomState.players}
+                    players={effectiveMatchPlayers}
                     selfId={playerId}
                     messages={messages}
                     roomCode={roomState.code}
@@ -1668,7 +1695,7 @@ export default function Room() {
               {roomState.game === "rummy" && gameState != null && (
                 <RummyBoard
                   state={gameState as RummyPlayerState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1683,6 +1710,7 @@ export default function Room() {
                 <LudoBoardContainer
                   gameState={gameState as LudoState}
                   roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}
                   messages={messages}
                   requestLeaveConfirmation={requestLeaveConfirmation}
@@ -1694,6 +1722,7 @@ export default function Room() {
                 <SnlBoardContainer
                   gameState={gameState as SnlState}
                   roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}
                   messages={messages}
                 />
@@ -1702,7 +1731,7 @@ export default function Room() {
               {roomState.game === "handcricket" && gameState != null && (
                 <HandCricketBoard
                   state={gameState as HcState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1715,7 +1744,7 @@ export default function Room() {
               {roomState.game === "uno" && gameState != null && (
                 <UnoBoard
                   state={gameState as UnoPlayerState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1731,6 +1760,7 @@ export default function Room() {
                 <DotsBoxesBoardContainer
                   gameState={gameState as DotsBoxesPublicState}
                   roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}
                   messages={messages}
                   requestLeaveConfirmation={requestLeaveConfirmation}
@@ -1742,6 +1772,7 @@ export default function Room() {
                 <WordBuildingBoardContainer
                   gameState={gameState as WordBuildingPublicState}
                   roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}
                   messages={messages}
                   requestLeaveConfirmation={requestLeaveConfirmation}
@@ -1751,7 +1782,7 @@ export default function Room() {
               {roomState.game === "stargame" && gameState != null && (
                 <StarBoard
                   state={gameState as StarPlayerView}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId}
                   roomCode={roomState.code}
                   messages={messages}
@@ -1763,7 +1794,7 @@ export default function Room() {
               {roomState.game === "bingo" && gameState != null && (
                 <BingoBoard
                   state={gameState as BingoPlayerState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1779,7 +1810,7 @@ export default function Room() {
                   myAnswers={(gameState as NamePlaceAnimalPlayerState).myAnswers}
                   myPlayerId={playerId || ""}
                   onMove={sendMove}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
@@ -1791,7 +1822,7 @@ export default function Room() {
                   state={gameState as TambolaPlayerState}
                   selfId={playerId || ""}
                   onMove={sendMove}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
@@ -1803,7 +1834,7 @@ export default function Room() {
                   onMove={sendMove}
                   state={gameState as SnakePublicState}
                   selfId={playerId || ""}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
@@ -1813,7 +1844,7 @@ export default function Room() {
               {roomState.game === "carrom" && gameState != null && (
                 <CarromBoard
                   state={gameState as CarromPublicState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId || ""}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1826,7 +1857,7 @@ export default function Room() {
               {roomState.game === "chess" && gameState != null && (
                 <ChessBoard
                   state={gameState as ChessPublicState}
-                  players={roomState.players}
+                  players={effectiveMatchPlayers}
                   selfId={playerId || ""}
                   messages={messages}
                   roomCode={roomState.code}
@@ -1920,7 +1951,7 @@ export default function Room() {
       <Suspense fallback={<ModalSuspenseFallback />}>
         {showScorecard && roomState && !GAMES_WITH_OWN_SCORECARD.has(roomState.game) && (
           <BhalyamResultModal
-            players={roomState.players}
+            players={effectiveMatchPlayers}
             rankedPlayers={rankedPlayers}
             selfId={playerId}
             winnerName={gameOverWinnerName ?? undefined}

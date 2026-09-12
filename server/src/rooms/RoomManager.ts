@@ -382,6 +382,8 @@ export interface Room {
   bingoHistory: BingoRoundRecap[];
   ludoHistory: LudoMatchRecap[];
   players: Map<string, Player>;
+  /** Participants of the most recently concluded match (including bots). */
+  lastMatchPlayers: Player[] | null;
   socketToPlayer: Map<string, string>;
   engine: GameEngine | null;
   cleanupTimers: Map<string, NodeJS.Timeout>;
@@ -1212,6 +1214,7 @@ export class RoomManager {
       // — see its doc comment in shared/types.ts) and must never reach a
       // broadcast; every OTHER field is intentionally passed through as-is.
       players: Array.from(room.players.values()).map(({ identityId: _identityId, ...rest }) => rest),
+      lastMatchPlayers: room.lastMatchPlayers ?? undefined,
       // Players are told when they are on a screen. Being displayed in a
       // room without knowing it is not something to discover later.
       spectatorCount: room.spectators.size,
@@ -1517,6 +1520,7 @@ export class RoomManager {
       processedActionIds: new Map(),
       currentMatchId: null,
       departedThisMatch: new Map(),
+      lastMatchPlayers: null,
       lastMatchId: null,
       committedCostPerSeat: null,
       committedTotalPot: null,
@@ -3108,6 +3112,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      room.lastMatchPlayers = null;
       room.matchStartedAt = Date.now();
       this.transitionLifecycle(room, "IN_PROGRESS", "Game started");
       serverTimelineRecorder.recordGameStarted(room.code, room.game, playersList.length);
@@ -3377,6 +3382,7 @@ export class RoomManager {
       room.phase = "finished";
       this.transitionLifecycle(room, "COMPLETED", "Match finished");
       this.recordPostMatchStats(room);
+      room.lastMatchPlayers = Array.from(room.players.values()).map(({ identityId: _identityId, ...rest }) => rest);
       this.purgeMatchBots(room);
       for (const p of room.players.values()) p.isReady = false;
       this.broadcastRoomState(room);
@@ -3388,6 +3394,7 @@ export class RoomManager {
     // Economically active match — durability-gated terminal settlement
     const matchId = room.currentMatchId;
     room.phase = "finished";
+    room.lastMatchPlayers = Array.from(room.players.values()).map(({ identityId: _identityId, ...rest }) => rest);
     this.transitionLifecycle(room, "FINALIZING", "Match finished, finalizing settlement");
     // Broadcast immediately so clients exit gameplay into finalization / scorecard
     this.broadcastRoomState(room);
@@ -3459,6 +3466,7 @@ export class RoomManager {
       room.committedTotalPot = null;
       this.transitionLifecycle(room, "COMPLETED", "Match finished");
       this.recordPostMatchStats(room);
+      room.lastMatchPlayers = Array.from(room.players.values()).map(({ identityId: _identityId, ...rest }) => rest);
       this.purgeMatchBots(room);
       for (const p of room.players.values()) p.isReady = false;
       this.broadcastRoomState(room);
@@ -6387,6 +6395,7 @@ export class RoomManager {
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
+      room.lastMatchPlayers = null;
       room.matchStartedAt = Date.now();
       this.transitionLifecycle(room, "IN_PROGRESS", "Rematch started");
       this.emitRummyBotTells(room);

@@ -33,8 +33,8 @@ export default function UnoResultModal({
   onLeave,
 }: UnoResultModalProps) {
   const winnerId = state.winnerId;
-  const winnerPlayer = players.find((p) => p.id === winnerId);
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
+  const winnerPlayer = players.find((p) => p.id === winnerId) ?? (winnerId ? useRoomStore.getState().knownPlayers[winnerId] : undefined);
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
   const isSelfWinner = winnerId != null && winnerId === selfId;
   const animConfig = useAnimationConfig();
 

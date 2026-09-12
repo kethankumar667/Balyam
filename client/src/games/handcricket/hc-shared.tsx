@@ -98,7 +98,7 @@ export function teamLabel(state: HcState, playerId: string, players: Player[]): 
   color?: string;
 } {
   const teamId = state.teamSelections[playerId]?.teamId;
-  const playerName = players.find((p) => p.id === playerId)?.name ?? "?";
+  const playerName = players.find((p) => p.id === playerId)?.name ?? useRoomStore.getState().knownPlayers[playerId]?.name ?? "?";
   if (!teamId) return { flag: "❓", short: "?", name: "Choosing…", playerName };
   const country = (HC_COUNTRIES as Record<string, typeof HC_COUNTRIES.india | undefined>)[teamId];
   if (country) {
@@ -2380,7 +2380,10 @@ export function computeManOfTheMatch(state: HcState, players: Player[]): ManOfTh
   if (innings.length === 0) return null;
 
   const agg = new Map<string, MomAgg>();
-  const nameOfPlayer = (pid: string) => players.find((p) => p.id === pid)?.name ?? "Player";
+  const nameOfPlayer = (pid: string) =>
+    players.find((p) => p.id === pid)?.name ??
+    useRoomStore.getState().knownPlayers[pid]?.name ??
+    "Player";
 
   const ensure = (id: string, teamPlayerId: string): MomAgg => {
     let a = agg.get(id);
@@ -2462,7 +2465,10 @@ export function MatchSummary({
   const STAMP_R = "#991b1b";
 
   const youWon = state.winnerId === selfId;
-  const winnerName = players.find((p) => p.id === state.winnerId)?.name ?? "—";
+  const winnerName =
+    players.find((p) => p.id === state.winnerId)?.name ??
+    (state.winnerId ? useRoomStore.getState().knownPlayers[state.winnerId]?.name : undefined) ??
+    "—";
   const winnerTeam = state.winnerId
     ? teamLabel(state, state.winnerId, players)
     : null;
@@ -2938,7 +2944,7 @@ export function HcCelebrationLayer({
   const prevPhaseRef = useRef(state.phase);
 
   const nameOf = (id: string | null | undefined) =>
-    players.find((p) => p.id === id)?.name ?? "Player";
+    (id ? players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name : undefined) ?? "Player";
 
   // Ball events
   useEffect(() => {

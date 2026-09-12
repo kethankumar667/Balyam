@@ -12,6 +12,7 @@ import { getSocket } from "../../lib/socket";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { useBackgroundPause } from "../../hooks/useBackgroundPause";
+import { useRoomStore } from "../../store/roomStore";
 
 /** Props handed down from Room.tsx to the gate, then to either shell. */
 export interface StarBoardProps {
@@ -164,7 +165,7 @@ export function useStarBoard(props: StarBoardProps): StarBoardModel {
   const me = useMemo(() => seats.find((s) => s.isSelf), [seats, selfId]);
 
   const nameOf = useCallback(
-    (id: string) => rosterById.get(id)?.name ?? "Player",
+    (id: string) => rosterById.get(id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "Player",
     [rosterById],
   );
 

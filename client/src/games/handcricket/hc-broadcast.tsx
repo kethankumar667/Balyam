@@ -60,7 +60,7 @@ export interface HcTeamId2 {
 /** Colour plate identity for a seat. Falls back gracefully mid-selection. */
 export function proTeam(state: HcState, playerId: string, players: Player[], seat: number): HcTeamId2 {
   const teamId = state.teamSelections[playerId]?.teamId;
-  const playerName = players.find((p) => p.id === playerId)?.name ?? "?";
+  const playerName = players.find((p) => p.id === playerId)?.name ?? useRoomStore.getState().knownPlayers[playerId]?.name ?? "?";
   const fallback = PRO_SIDES[seat % PRO_SIDES.length].base;
   if (!teamId) return { short: "—", name: "Choosing…", playerName, color: fallback };
 
@@ -1640,7 +1640,10 @@ export function HcProSummary({
   const i2 = state.innings2;
   const iWon = state.winnerId === selfId;
   const tie = state.result === "tie";
-  const winnerName = players.find((p) => p.id === state.winnerId)?.name ?? "—";
+  const winnerName =
+    players.find((p) => p.id === state.winnerId)?.name ??
+    (state.winnerId ? useRoomStore.getState().knownPlayers[state.winnerId]?.name : undefined) ??
+    "—";
   // Both already existed and were used only by the nostalgia skin — this is
   // the first slice of converging the two.
   const margin = summarizeMatch(state);

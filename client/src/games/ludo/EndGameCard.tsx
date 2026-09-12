@@ -39,7 +39,7 @@ export default function EndGameCard({
   const [previewMode, setPreviewMode] = useState(false);
 
   function nameOf(id: string): string {
-    return players.find((p) => p.id === id)?.name ?? "?";
+    return players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
   }
 
   const durationMs = (stats.endedAt ?? Date.now()) - stats.startedAt;
@@ -55,7 +55,8 @@ export default function EndGameCard({
     finishedCount,
   );
   const byId = new Map(players.map((p) => [p.id, p]));
-  const orderedPlayers = order.map((id) => byId.get(id)).filter((p): p is Player => !!p);
+  const known = useRoomStore.getState().knownPlayers;
+  const orderedPlayers = order.map((id) => byId.get(id) ?? known[id]).filter((p): p is Player => !!p);
   const placedCount = finishOrder.length;
 
   // Real-money prize per placement, for a paid, settled match only.

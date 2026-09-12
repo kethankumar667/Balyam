@@ -50,7 +50,10 @@ export default function RummyResultModal({
   const isWrongShow = wrongShowerId !== null;
   const wildRank = state.wildJoker.rank;
 
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
+  const nameOf = (id: string) =>
+    players.find((p) => p.id === id)?.name ??
+    useRoomStore.getState().knownPlayers[id]?.name ??
+    "?";
   const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
 
   // Chips: normal round → winner takes Σ(losers' hand values), each loser pays

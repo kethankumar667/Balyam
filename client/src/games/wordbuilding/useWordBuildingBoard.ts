@@ -12,6 +12,7 @@ import { useTutorialGate } from "../../components/GameTutorial";
 import { inkFor, type Ink } from "./inks";
 import { useCoach, type CoachState } from "../../components/CoachHintButton";
 import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
+import { useRoomStore } from "../../store/roomStore";
 
 /**
  * Shared props for every Word Building shell (picker, mobile, desktop).
@@ -107,9 +108,9 @@ export function useWordBuildingBoard({
   }, [state.playerOrder]);
 
   const nameOf = (id: string): string =>
-    players.find((p) => p.id === id)?.name ?? "?";
+    players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
   const avatarOf = (id: string): string | undefined =>
-    players.find((p) => p.id === id)?.avatar;
+    players.find((p) => p.id === id)?.avatar ?? useRoomStore.getState().knownPlayers[id]?.avatar;
 
   // Cell -> { color, word } map of the most recent scored word that covers
   // each cell. Overlapping words layer via stacked underlines (see render).

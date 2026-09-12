@@ -217,6 +217,8 @@ export interface RoomPublicState {
   /** Authoritative derived start readiness */
   startReadiness?: RoomStartReadiness;
   players: Player[];
+  /** Roster of players who participated in the most recently finished match (including bots). */
+  lastMatchPlayers?: Player[];
   hostId: string;
   maxPlayers: number;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set. Persists for the room's lifetime; not game-specific. */

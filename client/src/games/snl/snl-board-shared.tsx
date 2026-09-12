@@ -5,6 +5,7 @@ import { Dice } from "../ludo/Dice";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { useRoomStore } from "../../store/roomStore";
 
 /**
  * Snakes & Ladders — shared presentational layer.
@@ -934,7 +935,7 @@ export function EventFeed({
 }) {
   const recent = events.slice(-6).reverse();
   function name(id: string): string {
-    return players.find((p) => p.id === id)?.name ?? "?";
+    return players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
   }
   return (
     <div
@@ -971,7 +972,7 @@ function renderEvent(e: SnlEvent, name: (id: string) => string): string {
 }
 
 export function toastForEvent(e: SnlEvent, players: Player[]): { text: string; emoji: string; color: string } | null {
-  const n = players.find((p) => p.id === e.playerId)?.name ?? "Player";
+  const n = players.find((p) => p.id === e.playerId)?.name ?? useRoomStore.getState().knownPlayers[e.playerId]?.name ?? "Player";
   switch (e.kind) {
     case "ladder": return { text: `${n} climbed to ${e.to}!`, emoji: "🪜", color: "#16a34a" };
     case "snake":  return { text: `${n} got bit! Down to ${e.to}`, emoji: "🐍", color: "#dc2626" };
@@ -1026,6 +1027,10 @@ export function SnlFinishedBanner({
   players: Player[];
   winnerId: string | null;
 }) {
+  const winnerName =
+    players.find((p) => p.id === winnerId)?.name ??
+    (winnerId ? useRoomStore.getState().knownPlayers[winnerId]?.name : undefined) ??
+    "Someone";
   return (
     <div
       className="rounded-xl p-4 text-center"
@@ -1037,7 +1042,7 @@ export function SnlFinishedBanner({
     >
       <div className="text-3xl mb-1">🏆</div>
       <div className="text-xl font-bold text-emerald-200">
-        {players.find((p) => p.id === winnerId)?.name ?? "Someone"} reached 100!
+        {winnerName} reached 100!
       </div>
     </div>
   );
