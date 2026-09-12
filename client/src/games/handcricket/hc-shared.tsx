@@ -672,22 +672,28 @@ export function SquadPicker({
    *  wider cards — there's far more room than on a phone. */
   isDesktop?: boolean;
 }) {
+  // `myTeamId`/`roster` intentionally stay possibly-null here — the two
+  // guards that used to sit right here (`if (!mySelection?.teamId) return
+  // null;` / `if (!roster) return <Roster unavailable>`) ran BEFORE the hooks
+  // below, so the render where a team gets picked (0 hooks → many hooks), or
+  // one where the roster briefly fails to resolve (many hooks → 0 hooks),
+  // violated the Rules of Hooks and crashed React with "Rendered fewer/more
+  // hooks than during the previous render." Hooks must run unconditionally on
+  // every render, so the guards are now placed after all of them, with safe
+  // fallbacks feeding the hooks in between — the same shape `useHcSquad`
+  // (the broadcast skin's equivalent picker) already uses correctly.
   const mySelection = state.teamSelections[selfId];
-  if (!mySelection?.teamId) return null;
-  const myTeamId = mySelection.teamId;
-  const roster = getRosterFor(myTeamId, state.options.format);
-  if (!roster) return (
-    <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
-  );
+  const myTeamId = mySelection?.teamId;
+  const roster = myTeamId ? getRosterFor(myTeamId, state.options.format) : null;
 
   // When the shared `HC_COUNTRIES` pool is empty (server-side), the canonical
   // JSON files in `client/src/games/handcricket/data` are the source of truth
   // for international teams such as Bangladesh and Afghanistan. If the
   // shared roster is empty, build a client-side squad from the JSON players
   // so the UI can present a selectable XI.
-  const _jsonPlayersForTeam = getJsonPlayers(myTeamId, state.options.format);
+  const _jsonPlayersForTeam = myTeamId ? getJsonPlayers(myTeamId, state.options.format) : [];
   let rosterToUse = roster;
-  if (roster.squad.length === 0 && _jsonPlayersForTeam.length > 0) {
+  if (roster && roster.squad.length === 0 && _jsonPlayersForTeam.length > 0) {
     const squad = _jsonPlayersForTeam.map((j) => ({
       id: j.id,
       name: j.name,
@@ -698,16 +704,16 @@ export function SquadPicker({
 
   /** Stable reference to the JSON-derived playing XI + captain names. */
   const jsonMeta = useMemo(
-    () => getJsonTeamMeta(myTeamId, state.options.format),
+    () => (myTeamId ? getJsonTeamMeta(myTeamId, state.options.format) : null),
     [myTeamId, state.options.format],
   );
 
   const sortedSquad = useMemo(
-    () => rosterToUse.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
+    () => (rosterToUse ? rosterToUse.squad.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]) : []),
     [rosterToUse],
   );
   const sortedExtras = useMemo(
-    () => rosterToUse.extras.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]),
+    () => (rosterToUse ? rosterToUse.extras.slice().sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]) : []),
     [rosterToUse],
   );
   const profilesById = useMemo(() => {
@@ -731,7 +737,7 @@ export function SquadPicker({
 
   /** JSON player-style lookup keyed by lowercase name for card display. */
   const styleMap = useMemo(
-    () => getJsonPlayerStyleMap(myTeamId, state.options.format),
+    () => (myTeamId ? getJsonPlayerStyleMap(myTeamId, state.options.format) : new Map()),
     [myTeamId, state.options.format],
   );
 
@@ -824,6 +830,12 @@ export function SquadPicker({
     [sortedExtras, selected],
   );
   const composition = useMemo(() => evaluateSquadComposition(xiPlayers), [xiPlayers]);
+
+  // All hooks have run — safe to branch now.
+  if (!myTeamId) return null;
+  if (!roster) return (
+    <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
+  );
 
   const profile = (HC_COUNTRIES as Record<string, typeof HC_COUNTRIES.india | undefined>)[myTeamId];
   const franchise = (HC_FRANCHISES as Record<string, typeof HC_FRANCHISES.csk | undefined>)[myTeamId];

@@ -251,7 +251,11 @@ describe("GameRoomSheet — guest token failure prevents room creation & joining
       guestToken: "mock-guest-token",
     };
     useAuthStore.setState({ kind: "member", userId: "u_verified", capabilities: capabilitiesFor("member") });
-    useRoomStore.setState({ playerId: null, roomState: null, gameState: null, playerName: "Krishna" });
+    // Empty, not pre-filled: every test below explicitly types "Krishna"
+    // itself, and the name field only renders as an editable input when no
+    // name is stored yet (GameRoomSheet.tsx) — a stored name instead renders
+    // a static "Playing as ..." row with no input to query.
+    useRoomStore.setState({ playerId: null, roomState: null, gameState: null, playerName: "" });
   });
 
   afterEach(() => {

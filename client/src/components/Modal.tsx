@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /**
@@ -88,7 +89,16 @@ export default function Modal({
 
   const align = mobileSheet ? "items-end md:items-center" : "items-center";
 
-  return (
+  // Portalled to `document.body` rather than rendered in place. A caller
+  // nested a few levels under a `position:relative` ancestor with an
+  // explicit z-index (a stacking context, e.g. a route wrapper) traps this
+  // backdrop's stacking inside that ancestor's rank no matter how high its
+  // OWN z-index goes — verified live: the global app header (a plain
+  // sibling outside that ancestor) kept painting over a modal opened from
+  // deep inside the routed page content even at z-index 999999. Escaping to
+  // `document.body` (a sibling of the whole app root) sidesteps every such
+  // nested-context trap by construction, for this and every other modal.
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex ${align} justify-center p-4 ${BACKDROP} ${className}`}
       style={zIndex !== undefined ? { zIndex } : undefined}
@@ -108,6 +118,7 @@ export default function Modal({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
