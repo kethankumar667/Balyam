@@ -57,6 +57,42 @@ export interface HcSquadModel {
   confirm: () => void;
 }
 
+/**
+ * Id → profile lookup for a player's CONFIRMED team (any player, not just
+ * the caller) — the roster/JSON-fallback resolution `useHcSquad` does,
+ * without its squad-BUILDING state. Needed once a match is past team
+ * selection: `useHcSquad`'s `selected` is local draft state seeded from
+ * JSON defaults, so re-calling it after confirmation would not necessarily
+ * reflect what was actually confirmed. Used for bowler/next-batter pickers,
+ * the opponent's names in a live scorebug, and scorecard tables.
+ */
+export function resolveTeamProfiles(state: HcState, playerId: string): Map<string, HcPlayerProfile> {
+  const teamId = state.teamSelections[playerId]?.teamId;
+  const map = new Map<string, HcPlayerProfile>();
+  if (!teamId) return map;
+  const format = state.options.format;
+  const roster = getRosterFor(teamId, format);
+  if (roster) {
+    for (const p of roster.squad) map.set(p.id, p);
+    for (const p of roster.extras) map.set(p.id, p);
+  }
+  // Same condition `useHcSquad` below uses for its own JSON fallback
+  // (`roster.squad.length === 0`, not "map ended up empty") — kept
+  // identical on purpose so a future team with an empty `squad` but a
+  // non-empty `extras` pool resolves names the same way in both places
+  // instead of silently disagreeing.
+  if (!roster || roster.squad.length === 0) {
+    for (const j of getJsonPlayers(teamId, format)) {
+      map.set(j.id, {
+        id: j.id,
+        name: j.name,
+        role: j.isWicketKeeper ? "keeper" : j.isAllRounder ? "allrounder" : j.isBowler ? "bowler" : "batter",
+      });
+    }
+  }
+  return map;
+}
+
 export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null {
   const mySelection = state.teamSelections[selfId];
   const myTeamId = mySelection?.teamId ?? null;

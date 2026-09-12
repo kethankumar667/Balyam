@@ -3,11 +3,11 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate } from "../../components/GameTutorial";
 import { HANDCRICKET_TUTORIAL } from "../tutorials";
 import { HcCelebrationLayer, type HandCricketBoardProps } from "./hc-shared";
-import { useSkin } from "../skin";
 import { ProShell } from "../pro/pro-kit";
 import {
   HcProHeader,
   HcProInnings,
+  HcProInningsBreak,
   HcProSquadPicker,
   HcProSummary,
   HcProTeamPicker,
@@ -43,7 +43,6 @@ export default function HcBroadcastShell({
 }: HandCricketBoardProps & { compact?: boolean }) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
-  const [, setSkin] = useSkin();
   const reactions = useSeatReactions();
 
   const mySelection = state.teamSelections[sid];
@@ -120,7 +119,6 @@ export default function HcBroadcastShell({
         selfId={sid}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
-        onSkin={() => setSkin("nostalgia")}
         rail={
           <InlineRoomRail
             code={roomCode}
@@ -150,6 +148,7 @@ export default function HcBroadcastShell({
         </div>
       </div>
 
+      <HcProInningsBreak state={state} players={players} selfId={sid} />
       <HcCelebrationLayer state={state} players={players} selfId={sid} />
 
       {tut.open && (

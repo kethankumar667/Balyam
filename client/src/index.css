@@ -2366,7 +2366,7 @@ body, #root, .bhalyam-paper {
 }
 .hc-hattrick-strobe { animation: hc-hattrick-strobe 920ms ease-out both; }
 
-/* STREAK — energetic side-to-side wobble, "on a roll" swagger. */
+/* STREAK (mixed) — energetic side-to-side wobble, "on a roll" swagger. */
 @keyframes hc-streak-wobble {
   0%   { transform: scale(0.5) rotate(0); opacity: 0; }
   40%  { transform: scale(1.13) rotate(-4deg); opacity: 1; }
@@ -2376,6 +2376,44 @@ body, #root, .bhalyam-paper {
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 .hc-streak-wobble { animation: hc-streak-wobble 840ms ease-out both; }
+
+/* STREAK (sixes) — three stacked launches, each landing higher than the
+   last, echoing hc-six-launch's hang-time but compounding it three times. */
+@keyframes hc-streak-sixes {
+  0%   { transform: translateY(55vh) scale(0.4) rotate(-3deg); opacity: 0; }
+  30%  { transform: translateY(-4vh) scale(1.16) rotate(2deg); opacity: 1; }
+  42%  { transform: translateY(3vh) scale(1.0) rotate(-1deg); }
+  58%  { transform: translateY(-7vh) scale(1.1) rotate(2deg); }
+  70%  { transform: translateY(1.5vh) scale(1.0); }
+  84%  { transform: translateY(-3vh) scale(1.05); }
+  100% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+}
+.hc-streak-sixes { animation: hc-streak-sixes 1050ms cubic-bezier(.16,.7,.28,1.1) both; }
+
+/* STREAK (fours) — a rapid triple slam from alternating sides, the "machine
+   gun" of boundaries rather than sixes' single big hang-time. */
+@keyframes hc-streak-fours {
+  0%   { transform: translateX(-50vw) scale(0.75); opacity: 0; }
+  22%  { transform: translateX(3vw) scale(1.08); opacity: 1; }
+  32%  { transform: translateX(-2vw) scale(0.97); }
+  44%  { transform: translateX(2.5vw) scale(1.05); }
+  54%  { transform: translateX(-1.5vw) scale(0.98); }
+  66%  { transform: translateX(1.5vw) scale(1.03); }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+.hc-streak-fours { animation: hc-streak-fours 760ms cubic-bezier(.2,.85,.3,1) both; }
+
+/* MILESTONE (century) — a bigger, slower burst-through than a plain fifty:
+   overshoots further and settles with a lingering rotation, backed by
+   hc-rays-spin on the card for the "biggest moment of the innings" weight. */
+@keyframes hc-milestone-century {
+  0%   { transform: scale(0.25) rotate(-14deg); opacity: 0; }
+  50%  { transform: scale(1.28) rotate(6deg); opacity: 1; }
+  68%  { transform: scale(0.94) rotate(-3deg); }
+  82%  { transform: scale(1.08) rotate(1.5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.hc-milestone-century { animation: hc-milestone-century 900ms cubic-bezier(.34,1.4,.4,1) both; }
 
 @keyframes hc-burst-out {
   0%   { transform: translate(0,0) scale(0.4); opacity: 0; }

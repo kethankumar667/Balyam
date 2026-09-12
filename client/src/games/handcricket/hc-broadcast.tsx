@@ -32,6 +32,9 @@ import {
   type ProSide,
 } from "../pro/pro-kit";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import { HcThemeSwitcher } from "./HcThemeSwitcher";
+import { useHcSkin } from "./hc-skin";
+import { useInningsBreakCountdown } from "./useInningsBreakCountdown";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -139,7 +142,6 @@ export function HcProHeader({
   selfId,
   onHelp,
   onLeave,
-  onSkin,
   rail,
 }: {
   state: HcState;
@@ -147,11 +149,11 @@ export function HcProHeader({
   selfId: string;
   onHelp?: () => void;
   onLeave?: () => void;
-  onSkin?: () => void;
   /** Room rail slot — the shells pass InlineRoomRail so this file stays
    *  presentational and doesn't reach for socket-connected components. */
   rail?: ReactNode;
 }) {
+  const [skin, setSkin] = useHcSkin();
   const [p0, p1] = state.playerOrder;
   const a = proTeam(state, p0 ?? "", players, 0);
   const b = proTeam(state, p1 ?? "", players, 1);
@@ -216,7 +218,23 @@ export function HcProHeader({
             {opts.format.toUpperCase()}
             {overs != null ? ` · ${overs} ov` : ""}
           </ProChip>
-          {onSkin && <HeaderBtn label="Classic" onClick={onSkin} />}
+          <HcThemeSwitcher
+            current={skin}
+            onChange={setSkin}
+            renderOption={(opt, isActive) => (
+              <span
+                className="inline-block rounded-lg px-2 py-1.5 text-[10px] font-extrabold uppercase"
+                style={{
+                  letterSpacing: "0.12em",
+                  background: isActive ? "rgba(245,196,81,0.16)" : "rgba(255,255,255,0.06)",
+                  color: isActive ? PRO.gold : PRO.inkMid,
+                  border: `1px solid ${isActive ? "rgba(245,196,81,0.5)" : PRO.line}`,
+                }}
+              >
+                {opt.label}
+              </span>
+            )}
+          />
           {onHelp && <HeaderBtn label="Help" onClick={onHelp} />}
           {onLeave && <HeaderBtn label="Leave" onClick={onLeave} danger />}
         </div>
@@ -242,6 +260,66 @@ function HeaderBtn({ label, onClick, danger }: { label: string; onClick: () => v
     >
       {label}
     </button>
+  );
+}
+
+/**
+ * The broadcast skin's own innings-break overlay.
+ *
+ * Replaces the old (broadcast-only, but oddly generic-looking)
+ * InningsBreakOverlay.tsx — that file hardcoded this exact dark/gold styling
+ * while pretending to be skin-agnostic. Now each theme owns its break
+ * overlay explicitly, all three sharing only the countdown/continue logic
+ * via useInningsBreakCountdown. `HcProScorecard` (defined further down this
+ * file, hoisted) is passed innings1 explicitly rather than rendering
+ * `HcProInnings` — `endCurrentInnings` has already flipped `state.phase` to
+ * "innings2" by the time the break opens, so anything that renders "the
+ * current innings" would show the empty innings-2 panel instead.
+ */
+export function HcProInningsBreak({ state, players, selfId }: { state: HcState; players: Player[]; selfId: string }) {
+  const countdown = useInningsBreakCountdown(state, players, selfId);
+  const innings1 = state.innings1;
+  if (!countdown.active || !innings1) return null;
+
+  const target = innings1.runs + 1;
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Innings break"
+    >
+      <div className="my-auto w-full max-w-2xl space-y-3">
+        <header className="text-center">
+          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-400/80">
+            End of innings 1
+          </div>
+          <div className="mt-1 text-2xl font-black text-white">Target {target}</div>
+          <div className="text-sm font-bold text-white/70">
+            {prettyName(innings1.battingPlayerId)} made {innings1.runs}/{innings1.wickets}
+          </div>
+        </header>
+
+        <HcProScorecard state={state} innings={innings1} players={players} />
+
+        <div className="sticky bottom-0 space-y-2 rounded-xl bg-slate-900/95 p-3">
+          <button
+            type="button"
+            disabled={countdown.iAmReady}
+            onClick={countdown.continueInnings}
+            className="w-full rounded-xl px-4 py-3 text-base font-black transition-transform active:scale-95 disabled:cursor-default bg-amber-400 text-slate-900 disabled:bg-slate-700 disabled:text-slate-200"
+          >
+            {countdown.iAmReady ? "Waiting…" : "Continue"}
+          </button>
+          <p className="text-center text-xs font-bold text-slate-300" aria-live="polite">
+            {countdown.iAmReady && countdown.waitingOn.length > 0
+              ? `Waiting for ${countdown.waitingOn.join(", ")}`
+              : `Innings 2 starts in ${countdown.secondsLeft}s`}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 

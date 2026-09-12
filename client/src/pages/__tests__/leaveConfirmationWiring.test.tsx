@@ -9,7 +9,8 @@ import LeaveRoomModal from "../../components/room/LeaveRoomModal";
  * Carrom, Word Building, Dots & Boxes, Bingo, Hand Cricket, RPS) were wired
  * as `onLeave={leaveRoom}` in Room.tsx — every board just forwards whatever
  * `onLeave` callback it's given to its own Leave button (see
- * `HcLeaveButton` in hc-notebook.tsx, `ludo-board-composites.tsx`,
+ * `HcLeaveButton` in hc-notebook.tsx, `DoordarshanLeaveButton` in Hand
+ * Cricket's `doordarshan/` theme folder, `ludo-board-composites.tsx`,
  * `carrom-shared.tsx`, etc.), so the bug was entirely in Room.tsx's own
  * wiring: it hands boards the real leave function instead of a function
  * that opens `LeaveRoomModal` first.

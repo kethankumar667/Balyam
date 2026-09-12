@@ -277,6 +277,10 @@ export default {
         notebook: ['Kalam', '"Patrick Hand"', 'Caveat', 'cursive'],
         // Sketchy marker for Hand Cricket headings (loaded in index.html).
         sketch:  ['"Architects Daughter"', 'Kalam', 'cursive'],
+        // Hand Cricket "Doordarshan Rerun" theme — analog character-generator
+        // scorebug (VT323) and period newsprint/TV-guide captions (Special Elite).
+        crt:        ['VT323', 'ui-monospace', 'monospace'],
+        typewriter: ['"Special Elite"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
         xs: "4px",

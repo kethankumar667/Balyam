@@ -22,6 +22,8 @@ import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
 import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
 import QrCodeModal from "../../components/QrCodeModal";
+import { HcThemeSwitcher } from "./HcThemeSwitcher";
+import { useHcSkin } from "./hc-skin";
 import {
   RoughFrame as RoughBorder,
   PaperCard,
@@ -657,7 +659,6 @@ export function HcNotebookHeader({
   messages: _messages,
   onHelp,
   onLeave,
-  onSkin,
 }: {
   state: HcState;
   players: Player[];
@@ -667,8 +668,8 @@ export function HcNotebookHeader({
   messages: ChatMessage[];
   onHelp?: () => void;
   onLeave?: () => void;
-  onSkin?: () => void;
 }) {
+  const [skin, setSkin] = useHcSkin();
   const [p0, p1] = state.playerOrder;
   const t0 = labelFor(state, p0, players);
   const t1 = labelFor(state, p1, players);
@@ -747,51 +748,33 @@ export function HcNotebookHeader({
       </button>
     ) : null;
 
-  const renderBroadcastButton = () =>
-    onSkin ? (
-      <button
-        onClick={onSkin}
-        title="Switch to the broadcast look"
-        style={{
-          height: 36,
-          padding: "0 14px",
-          borderRadius: 9999,
-          border: "1px solid rgba(80,50,20,0.18)",
-          background: "#FFFDF5",
-          boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
-          color: INK,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          fontWeight: 800,
-          fontSize: 13,
-          fontFamily: "'Kalam', system-ui, sans-serif",
-          transition: "transform 140ms ease",
-          whiteSpace: "nowrap",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <svg
-          width={17}
-          height={17}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={INK}
-          strokeWidth={2.2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+  const renderBroadcastButton = () => (
+    <HcThemeSwitcher
+      current={skin}
+      onChange={setSkin}
+      renderOption={(opt, isActive) => (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            height: 36,
+            padding: "0 12px",
+            borderRadius: 9999,
+            border: `1px solid ${isActive ? "rgba(80,50,20,0.4)" : "rgba(80,50,20,0.18)"}`,
+            background: isActive ? "#F5E9C4" : "#FFFDF5",
+            boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
+            color: INK,
+            fontWeight: 800,
+            fontSize: 12,
+            fontFamily: "'Kalam', system-ui, sans-serif",
+            whiteSpace: "nowrap",
+          }}
         >
-          <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
-          <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
-          <circle cx="12" cy="12" r="2" fill={INK} />
-          <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
-          <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1" />
-        </svg>
-        <span>Broadcast</span>
-      </button>
-    ) : null;
+          {opt.label}
+        </span>
+      )}
+    />
+  );
 
   const renderMenu = (ref: React.RefObject<HTMLDivElement>) => (
     <div style={{ position: "relative" }} ref={ref}>
