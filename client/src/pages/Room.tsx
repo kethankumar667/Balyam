@@ -14,7 +14,6 @@ import { useAudio } from "../hooks/useAudio";
 import type { BhalyamGameSlug } from "../components/bhalyam/data";
 import PlayerList from "../components/PlayerList";
 import SeatAvatar from "../components/profile/SeatAvatar";
-import Chat from "../components/Chat";
 import ChatMessageToast from "../components/ChatMessageToast";
 import AppLayout from "../components/layout/AppLayout";
 import BoardPreviewPill from "../components/BoardPreviewPill";
@@ -24,7 +23,6 @@ import RoomHeader from "../components/room/RoomHeader";
 import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
-import CommunicationPanel from "../components/room/CommunicationPanel";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
@@ -1453,7 +1451,9 @@ export default function Room() {
             ? "bhalyam-font bhalyam-paper h-full min-h-screen overflow-hidden p-0"
             : ludoInPlay
               ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
-              : "bhalyam-font bhalyam-paper min-h-screen px-3.5 py-3 sm:px-6 sm:py-5 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
+              : isLobbyLike || isGameStartingCeremony
+                ? "bhalyam-font bhalyam-paper min-h-screen px-3.5 sm:px-6 overflow-x-hidden"
+                : "bhalyam-font bhalyam-paper min-h-screen px-3.5 py-3 sm:px-6 sm:py-5 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
         }
         style={{
           backgroundColor: ludoInPlay ? "var(--ludo-screen-bg)" : undefined,
@@ -1472,7 +1472,9 @@ export default function Room() {
               ? // Ludo in play wants the full desktop width so the board can
                 // be large between its side rails (max-w-6xl squeezed it).
                 "mx-auto space-y-3 sm:space-y-4 max-w-[110rem]"
-              : "mx-auto space-y-3 sm:space-y-4 max-w-6xl") +
+              : isLobbyLike || isGameStartingCeremony
+                ? "mx-auto max-w-4xl w-full"
+                : "mx-auto space-y-3 sm:space-y-4 max-w-6xl") +
           // FallingPetals is a fixed, z-0 background layer during the lobby —
           // give the lobby content explicit stacking so it paints above the
           // petals instead of losing to CSS's positioned-over-static default.
@@ -1484,6 +1486,7 @@ export default function Room() {
             roomState={roomState}
             isHost={selfIsHost}
             onLeave={leaveRoom}
+            maxPlayers={viewModel.maxPlayers}
           />
         ) : (
           roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && roomState.game !== "rps" && (
@@ -1522,162 +1525,117 @@ export default function Room() {
         )}
 
         {isLobbyLike || isGameStartingCeremony ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-start">
-            {/* Left Column (approx 62% - lg:col-span-7 xl:col-span-8) */}
-            <div className="lg:col-span-7 xl:col-span-8 space-y-2.5 sm:space-y-3 pb-40 sm:pb-44 lg:pb-0">
-              {roomState.lifecycleState === "FINALIZING" && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold shadow-sm"
-                >
-                  <span className="animate-spin inline-block w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full" aria-hidden="true" />
-                  <span>Match completed — finalizing prize settlement and rewards...</span>
+          <div className="w-full space-y-2.5 sm:space-y-3 lg:space-y-3 pt-18 sm:pt-20 lg:pt-20 pb-24 sm:pb-28">
+            {roomState.lifecycleState === "FINALIZING" && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold shadow-sm"
+              >
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full" aria-hidden="true" />
+                <span>Match completed — finalizing prize settlement and rewards...</span>
+              </div>
+            )}
+            {roomState.lifecycleState === "FINALIZATION_FAILED" && (
+              <div
+                role="alert"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs font-medium shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base" aria-hidden="true">⚠️</span>
+                  <span>Settlement synchronization is pending. Your match results are saved and will be finalized.</span>
                 </div>
-              )}
-              {roomState.lifecycleState === "FINALIZATION_FAILED" && (
-                <div
-                  role="alert"
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs font-medium shadow-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base" aria-hidden="true">⚠️</span>
-                    <span>Settlement synchronization is pending. Your match results are saved and will be finalized.</span>
-                  </div>
-                  {selfIsHost && (
-                    <button
-                      type="button"
-                      onClick={() => getSocket().emit("room:retryTerminalPersistence")}
-                      className="self-start sm:self-auto px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-lg transition text-xs shadow-sm cursor-pointer"
-                    >
-                      Retry Settlement Sync
-                    </button>
-                  )}
-                </div>
-              )}
-              <Suspense fallback={null}>
-                {roomState.phase === "finished" && (
-                  <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
+                {selfIsHost && (
+                  <button
+                    type="button"
+                    onClick={() => getSocket().emit("room:retryTerminalPersistence")}
+                    className="self-start sm:self-auto px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-lg transition text-xs shadow-sm cursor-pointer"
+                  >
+                    Retry Settlement Sync
+                  </button>
                 )}
-                {roomState.sealed ? (
-                  <SignInWall
-                    from="room"
-                    reason="This table is just you and the bots"
-                  />
-                ) : (
-                  <RoomShareCard
-                    code={roomState.code}
-                    game={roomState.game}
-                    name={roomState.name}
-                  />
-                )}
-              </Suspense>
+              </div>
+            )}
 
-              {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count */}
-              {viewModel.isSeatCountSupported ? (
-                <LobbyPrizePool
-                  seatCount={viewModel.totalPlayersCount}
-                  readyCount={viewModel.readyPlayersCount}
-                  allReady={viewModel.allReady}
-                  quote={effectiveLobbyQuote}
-                  isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
-                  lockPhase={lobbyLockPhase}
-                  isHost={selfIsHost}
-                  entryStakeCoins={roomState.entryStakeCoins}
-                  canChangeStake={canChangeStake}
-                  onChangeStake={() => setShowChangeStakeModal(true)}
-                  stakeLockedReason={stakeLockedReason}
+            <Suspense fallback={null}>
+              {roomState.phase === "finished" && (
+                <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
+              )}
+              {roomState.sealed ? (
+                <SignInWall
+                  from="room"
+                  reason="This table is just you and the bots"
                 />
               ) : (
-                <UnsupportedSeatCountCard
-                  seatCount={viewModel.totalPlayersCount}
-                  isHost={selfIsHost}
+                <RoomShareCard
+                  code={roomState.code}
+                  game={roomState.game}
+                  name={roomState.name}
                 />
               )}
+            </Suspense>
 
-              <ParticipantPanel
-                players={roomState.players}
-                maxPlayers={viewModel.maxPlayers}
-                selfId={playerId}
+            <ParticipantPanel
+              players={roomState.players}
+              maxPlayers={viewModel.maxPlayers}
+              selfId={playerId}
+              isHost={selfIsHost}
+              game={roomState.game}
+              onAddBot={(name, diff) => { getSocket().emit("room:addBot", name, diff); }}
+              onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
+              onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
+              onRenameBot={(id, newName) => { getSocket().emit("room:renameBot", id, newName); }}
+              startReadiness={roomState.startReadiness}
+            />
+
+            {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count */}
+            {viewModel.isSeatCountSupported ? (
+              <LobbyPrizePool
+                seatCount={viewModel.totalPlayersCount}
+                readyCount={viewModel.readyPlayersCount}
+                allReady={viewModel.allReady}
+                quote={effectiveLobbyQuote}
+                isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
+                lockPhase={lobbyLockPhase}
                 isHost={selfIsHost}
-                game={roomState.game}
-                onAddBot={(name, diff) => { getSocket().emit("room:addBot", name, diff); }}
-                onRemoveBot={(id) => { getSocket().emit("room:removeBot", id); }}
-                onRemoveLocalPlayer={(id) => { getSocket().emit("room:removeLocalPlayer", id); }}
-                onRenameBot={(id, newName) => { getSocket().emit("room:renameBot", id, newName); }}
-                startReadiness={roomState.startReadiness}
+                entryStakeCoins={roomState.entryStakeCoins}
+                canChangeStake={canChangeStake}
+                onChangeStake={() => setShowChangeStakeModal(true)}
+                stakeLockedReason={stakeLockedReason}
               />
+            ) : (
+              <UnsupportedSeatCountCard
+                seatCount={viewModel.totalPlayersCount}
+                isHost={selfIsHost}
+              />
+            )}
 
-              {viewModel.colorPickerKind && (
-                <CompactColorSelector
-                  kind={viewModel.colorPickerKind}
-                  players={roomState.players}
-                  selfId={playerId}
-                  onChooseLudoColor={(c) => getSocket().emit("room:chooseColor", c)}
-                  onChooseCoinColor={(c) => getSocket().emit("room:chooseCoinColor", c)}
-                  onChoosePenColor={(c) => getSocket().emit("room:choosePenColor", c)}
-                />
-              )}
-
-              {/* Mobile / Tablet communication drawer trigger */}
-              <div className="block lg:hidden">
-                <CommunicationPanel
-                  messages={messages}
-                  players={roomState.players}
-                  selfId={playerId}
-                  isMobile={true}
-                />
-              </div>
-
-              {/* Mobile / Tablet sticky bottom action bar. Hidden while a
-                  rematch negotiation is active — RematchPanel already owns
-                  "get everyone ready and start" messaging at that point, and
-                  showing both together put a live countdown ("Next match
-                  starts in Xs") next to a stale "Waiting for players to be
-                  ready" bar on screen at the same time. */}
-              {rematch.status === "idle" && (
-                <div className="block lg:hidden">
-                  <LobbyActionBar
-                    isHost={selfIsHost}
-                    isReady={viewModel.selfIsReady}
-                    canStart={viewModel.canStartGame}
-                    startGameDisabledReason={viewModel.startGameDisabledReason}
-                    readyCount={viewModel.readyPlayersCount}
-                    totalCount={viewModel.totalPlayersCount}
-                    commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
-                    onToggleReady={toggleReady}
-                    onStartGame={startGame}
-                    variant="sticky-mobile"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Right Column (approx 38% - lg:col-span-5 xl:col-span-4) - Desktop only */}
-            <div className="hidden lg:flex flex-col gap-2.5 sm:gap-3 lg:sticky lg:top-4 lg:col-span-5 xl:col-span-4 w-full">
-              {/* Same rematch-active suppression as the mobile bar above. */}
-              {rematch.status === "idle" && (
-                <LobbyActionBar
-                  isHost={selfIsHost}
-                  isReady={viewModel.selfIsReady}
-                  canStart={viewModel.canStartGame}
-                  startGameDisabledReason={viewModel.startGameDisabledReason}
-                  readyCount={viewModel.readyPlayersCount}
-                  totalCount={viewModel.totalPlayersCount}
-                  commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
-                  onToggleReady={toggleReady}
-                  onStartGame={startGame}
-                  variant="desktop-panel"
-                />
-              )}
-
-              <CommunicationPanel
-                messages={messages}
+            {viewModel.colorPickerKind && (
+              <CompactColorSelector
+                kind={viewModel.colorPickerKind}
                 players={roomState.players}
                 selfId={playerId}
-                isMobile={false}
+                onChooseLudoColor={(c) => getSocket().emit("room:chooseColor", c)}
+                onChooseCoinColor={(c) => getSocket().emit("room:chooseCoinColor", c)}
+                onChoosePenColor={(c) => getSocket().emit("room:choosePenColor", c)}
               />
-            </div>
+            )}
+
+            {/* Sticky bottom action dock across all screen sizes */}
+            {rematch.status === "idle" && (
+              <LobbyActionBar
+                isHost={selfIsHost}
+                isReady={viewModel.selfIsReady}
+                canStart={viewModel.canStartGame}
+                startGameDisabledReason={viewModel.startGameDisabledReason}
+                readyCount={viewModel.readyPlayersCount}
+                totalCount={viewModel.totalPlayersCount}
+                commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
+                onToggleReady={toggleReady}
+                onStartGame={startGame}
+                variant="sticky-mobile"
+              />
+            )}
           </div>
         ) : (
           <div

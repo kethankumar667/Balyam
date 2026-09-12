@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ChatMessage, Player } from "@shared/types";
-import { MessageSquare, Mic } from "lucide-react";
+import { MessageSquare, Mic, ChevronRight } from "lucide-react";
 import VoicePanel from "../VoicePanel";
 import Chat from "../Chat";
 import { useVoiceSession } from "../../lib/voice-session";
@@ -113,37 +113,61 @@ export default function CommunicationPanel({
     </div>
   );
 
-  // Mobile Trigger & Bottom Drawer
+  // Mobile / Inline Trigger & Bottom Drawer
   if (isMobile) {
     return (
       <>
-        {/* Compact Mobile Strip */}
-        <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3 shadow-xs">
-          <button
-            type="button"
-            onClick={() => setMobileDrawerOpen(true)}
-            className="w-full min-h-[44px] flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 hover:border-amber-400 transition active:scale-98 cursor-pointer"
-          >
-            <div className="flex items-center gap-2 text-xs font-extrabold text-[#2B3550] dark:text-slate-200">
-              <MessageSquare size={16} aria-hidden />
-              <span>Chat & 🎙 Voice</span>
-              {messages.length > 0 && (
-                <span className="text-[10px] bg-[#EA5A1F] text-white rounded-full px-1.5 py-0.5 font-black">
-                  {messages.length}
-                </span>
-              )}
+        {/* Polished Teaser Card matching the mockup */}
+        <div
+          data-testid="communication-teaser-card"
+          onClick={() => setMobileDrawerOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setMobileDrawerOpen(true);
+            }
+          }}
+          aria-label="Open Chat and Voice drawer"
+          className="w-full bg-white dark:bg-[#131926] border border-stone-200/80 dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-xs flex items-center justify-between gap-3 relative overflow-hidden select-none cursor-pointer hover:border-amber-300 dark:hover:border-slate-700 transition active:scale-98 group"
+        >
+          {/* Left: Chat & Mic Icons Container */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200/70 dark:border-sky-800/60 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 gap-0.5">
+              <MessageSquare size={16} />
+              <Mic size={14} className="opacity-80" />
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#EA5A1F] dark:text-amber-400">
-              {voiceConnected && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-extrabold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-[#2B3550] dark:text-slate-100">
+                  Chat &amp; Voice
                 </span>
-              )}
-              <span>Open ↗</span>
+                {messages.length > 0 && (
+                  <span className="text-[10px] bg-orange-600 text-white rounded-full px-1.5 py-0.2 font-black">
+                    {messages.length}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-500 dark:text-slate-400 font-medium truncate">
+                Chat with players or jump on voice before the match
+              </p>
             </div>
-          </button>
+          </div>
+
+          {/* Right: Open Button & Voice status */}
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <div className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border border-stone-200/90 dark:border-slate-700 bg-stone-50/80 dark:bg-slate-800 group-hover:bg-amber-50 dark:group-hover:bg-slate-700 text-xs font-bold text-stone-700 dark:text-slate-200 transition shadow-2xs">
+              <span>Open</span>
+              <ChevronRight size={14} />
+            </div>
+
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 dark:text-slate-400">
+              <span className={`w-1.5 h-1.5 rounded-full ${voiceConnected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"}`} />
+              <span>Voice available</span>
+            </div>
+          </div>
         </div>
 
         {/* Mobile Bottom Sheet Drawer */}
@@ -174,7 +198,6 @@ export default function CommunicationPanel({
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-1.5 border-b border-[#EEDBCA]/60 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="w-8 h-1 bg-[#EEDBCA] dark:bg-slate-700 rounded-full mx-auto hidden" />
                   <h3 className="text-xs font-black uppercase tracking-wider text-[#8A6D4B] dark:text-slate-400 flex items-center gap-1.5">
                     <span>💬 Table Communication</span>
                   </h3>
@@ -183,7 +206,7 @@ export default function CommunicationPanel({
                   type="button"
                   onClick={() => setMobileDrawerOpen(false)}
                   aria-label="Close communication drawer"
-                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
+                  className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-[#EFE4D2] dark:bg-slate-800 text-[#2B3550] dark:text-slate-100 font-black flex items-center justify-center cursor-pointer active:scale-95 transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F]"
                 >
                   ✕
                 </button>
@@ -202,7 +225,7 @@ export default function CommunicationPanel({
 
   // Desktop Panel
   return (
-    <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border border-[#EEDBCA] dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-col h-[280px] sm:h-[300px] max-h-[340px] overflow-hidden w-full">
+    <div className="bg-white dark:bg-[#131926] border border-stone-200/80 dark:border-slate-800 rounded-3xl p-3 sm:p-3.5 shadow-xs flex flex-col h-[280px] sm:h-[300px] max-h-[340px] overflow-hidden w-full">
       {renderTabContent()}
     </div>
   );

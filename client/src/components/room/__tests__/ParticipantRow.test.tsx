@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import type { Player } from "@shared/types";
 import ParticipantRow from "../ParticipantRow";
 
@@ -84,5 +84,75 @@ describe("ParticipantRow — readiness blocker visibility (2026-09-09)", () => {
     );
     expect(screen.getByText("Reconnecting...")).toBeDefined();
     expect(screen.getByLabelText("Waiting")).toBeDefined();
+  });
+
+  it("renders Edit and Delete buttons for a bot when user is host in card variant", () => {
+    const onRemoveBot = vi.fn();
+    const onRenameBot = vi.fn();
+
+    render(
+      <ParticipantRow
+        player={makePlayer({ id: "bot_1", name: "Robo", isBot: true })}
+        selfId="p_host"
+        isHost={true}
+        onRemoveBot={onRemoveBot}
+        onRenameBot={onRenameBot}
+        variant="card"
+      />
+    );
+
+    const editBtn = screen.getByLabelText("Rename Robo");
+    const deleteBtn = screen.getByLabelText("Remove Robo");
+    expect(editBtn).toBeDefined();
+    expect(deleteBtn).toBeDefined();
+
+    // Click Delete calls onRemoveBot
+    fireEvent.click(deleteBtn);
+    expect(onRemoveBot).toHaveBeenCalledWith("bot_1");
+  });
+
+  it("opens RenameBotModal when clicking edit button and submits new name", () => {
+    const onRenameBot = vi.fn();
+
+    render(
+      <ParticipantRow
+        player={makePlayer({ id: "bot_1", name: "Robo", isBot: true })}
+        selfId="p_host"
+        isHost={true}
+        onRenameBot={onRenameBot}
+        variant="card"
+      />
+    );
+
+    const editBtn = screen.getByLabelText("Rename Robo");
+    fireEvent.click(editBtn);
+
+    // Modal dialog is open
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(screen.getByText("Rename Bot")).toBeDefined();
+
+    const input = screen.getByLabelText("Bot Nickname") as HTMLInputElement;
+    expect(input.value).toBe("Robo");
+
+    // Change value and submit
+    fireEvent.change(input, { target: { value: "SuperBot" } });
+    const saveBtn = screen.getByRole("button", { name: /save/i });
+    fireEvent.click(saveBtn);
+
+    expect(onRenameBot).toHaveBeenCalledWith("bot_1", "SuperBot");
+  });
+
+  it("does not render Edit or Delete buttons if player is human or user is not host", () => {
+    render(
+      <ParticipantRow
+        player={makePlayer({ id: "p_guest", name: "Guest", isBot: false })}
+        selfId="p_host"
+        isHost={true}
+        variant="card"
+      />
+    );
+
+    expect(screen.queryByLabelText("Rename Guest")).toBeNull();
+    expect(screen.queryByLabelText("Remove Guest")).toBeNull();
   });
 });
