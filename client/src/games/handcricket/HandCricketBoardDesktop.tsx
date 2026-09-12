@@ -12,6 +12,7 @@ import {
   type HandCricketBoardProps,
 } from "./hc-shared";
 import { useSkin } from "../skin";
+import HandCricketThemeModal from "./HandCricketThemeModal";
 import {
   HcNotebookPage,
   HcNotebookHeader,
@@ -52,7 +53,8 @@ export default function HandCricketBoardDesktop({
 }: HandCricketBoardProps) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
-  const [, setSkin] = useSkin();
+  const [skin, setSkin] = useSkin();
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
   const reactions = useSeatReactions();
 
   const isTeamSelect = state.phase === "teamSelect";
@@ -129,7 +131,7 @@ export default function HandCricketBoardDesktop({
         messages={messages}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
-        onSkin={() => setSkin("broadcast")}
+        onSkin={() => setThemeModalOpen(true)}
       />
 
       {/* ── Phase content ── */}
@@ -165,6 +167,16 @@ export default function HandCricketBoardDesktop({
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <HandCricketThemeModal
+        open={themeModalOpen}
+        activeSkin={skin}
+        onSelectSkin={(newSkin) => {
+          setSkin(newSkin);
+          setThemeModalOpen(false);
+        }}
+        onClose={() => setThemeModalOpen(false)}
+      />
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </HcNotebookPage>

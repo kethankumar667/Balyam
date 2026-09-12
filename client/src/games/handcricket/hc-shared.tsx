@@ -24,6 +24,14 @@ import {
   getJsonPlayers,
   type JsonPlayerStyle,
 } from "./hc-json-data";
+import {
+  currentPartnership,
+  economy,
+  fallOfWickets,
+  lastOvers,
+  oversFromBalls,
+  strikeRate,
+} from "./hc-stats";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
@@ -1145,7 +1153,9 @@ export function WaitingForOpponentSquad({
   const oppId = state.playerOrder.find((id) => id !== selfId)!;
   const oppSelection = state.teamSelections[oppId];
   const oppName = players.find((p) => p.id === oppId)?.name ?? "Opponent";
+  const myName = players.find((p) => p.id === selfId)?.name ?? "You";
   const t0 = teamLabel(state, selfId, players);
+  const t1 = oppId ? teamLabel(state, oppId, players) : null;
 
   function reopen() {
     if (state.teamSelections[selfId]?.teamId) {
@@ -1157,19 +1167,63 @@ export function WaitingForOpponentSquad({
   }
 
   return (
-    <PaperPanel tone="soft" strong pad="lg" className="text-center font-notebook">
-      <div className="text-[2.4rem] mb-1">{t0.flag}</div>
-      <div className="font-sketch font-bold text-[18px] text-hc-ink mb-0.5">{t0.name}</div>
-      <div className="text-xs text-hc-ink-lt mb-2.5">
-        XI confirmed · {state.teamSelections[selfId]?.squadPlayerIds?.length ?? 0} players
+    <PaperPanel tone="soft" strong pad="lg" className="text-center font-notebook max-w-[540px] mx-auto space-y-4">
+      {/* Top Banner: SQUAD LOCKED */}
+      <div>
+        <span className="inline-block px-3 py-1 rounded bg-[#166534]/15 border border-[#166534]/40 font-sketch font-bold text-[#166534] text-[13px] tracking-wider uppercase">
+          ✓ SQUAD LOCKED
+        </span>
       </div>
-      <div className="text-[13px] text-hc-ink mb-3.5">
-        Waiting for <strong>{oppName}</strong>
-        {oppSelection?.teamId ? " to confirm their XI…" : " to pick a team…"}
+
+      {/* Head-to-Head Matchup Display */}
+      <div className="flex items-center justify-center gap-3 sm:gap-6 py-2">
+        {/* Your Team */}
+        <div className="flex flex-col items-center gap-1 min-w-[100px]">
+          <span className="text-3xl sm:text-4xl">{t0.flag}</span>
+          <span className="font-sketch font-bold text-hc-ink text-[15px] sm:text-[17px]">{t0.short}</span>
+          <span className="text-[11px] text-[#166534] font-bold font-kalam">You ({myName})</span>
+        </div>
+
+        {/* VS Doodle */}
+        <div className="flex flex-col items-center">
+          <span className="font-sketch font-black text-hc-ink-lt text-[18px] sm:text-[22px] tracking-widest">VS</span>
+        </div>
+
+        {/* Opponent Team */}
+        <div className="flex flex-col items-center gap-1 min-w-[100px]">
+          <span className="text-3xl sm:text-4xl">{t1?.flag ?? "🏏"}</span>
+          <span className="font-sketch font-bold text-hc-ink text-[15px] sm:text-[17px]">{t1?.short ?? "???"}</span>
+          <span className="text-[11px] text-[#64748B] font-bold font-kalam">{oppName}</span>
+        </div>
       </div>
-      <PaperButton variant="ghost" size="sm" onClick={reopen} className="font-kalam normal-case tracking-normal">
-        ← Edit my XI
-      </PaperButton>
+
+      {/* Waiting Status Text */}
+      <div className="space-y-1">
+        <div className="font-sketch font-bold text-[17px] sm:text-[20px] text-hc-ink">
+          Waiting for {oppName}
+        </div>
+        <p className="font-kalam text-[13px] sm:text-[14px] text-hc-ink-lt">
+          {oppSelection?.squadPlayerIds
+            ? "Both squads confirmed! Proceeding to toss…"
+            : oppSelection?.teamId
+            ? "They are currently selecting their playing XI…"
+            : "They are choosing their team…"}
+        </p>
+      </div>
+
+      {/* Toss is next chip */}
+      <div className="flex items-center justify-center gap-2">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF08A] border border-[#EAB308]/50 text-[#713F12] font-kalam font-bold text-[12px] shadow-xs">
+          🪙 Toss is next
+        </span>
+      </div>
+
+      {/* Reopen / Edit my XI */}
+      <div className="pt-1">
+        <PaperButton variant="ghost" size="sm" onClick={reopen} className="font-kalam normal-case tracking-normal">
+          ← Edit my XI
+        </PaperButton>
+      </div>
     </PaperPanel>
   );
 }
@@ -2433,15 +2487,169 @@ export function InningsPhase({
     : null;
 
   const needsBowler = innings.currentBowlerId == null;
+  const thisOver = innings.history.filter((b) => b.overNumber === upcomingOver);
 
+  // ── DESKTOP 2-COLUMN CONTROL ROOM LAYOUT ──
+  if (isDesktop) {
+    return (
+      <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_310px] font-notebook text-left">
+        {/* Left: Main Action Column */}
+        <div className="flex min-h-0 min-w-0 flex-col gap-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
+          <Scoreboard
+            state={state}
+            innings={innings}
+            target={target}
+            players={players}
+            big={true}
+            registerCardRef={registerCardRef}
+          />
+
+          {isPowerplayOver && innings.currentBowlerId != null && (
+            <PowerplayBanner
+              overNumber={upcomingOver}
+              totalPowerplayOvers={innings.powerplayOvers}
+              restrictedBalls={restrictedThisOver}
+              currentBallInOver={upcomingBall}
+              bowlerRestricted={bowlerRestricted}
+              myRole={myRole}
+            />
+          )}
+
+          <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={true} registerCardRef={registerCardRef} />
+
+          {/* Wicket announcement */}
+          {wicketAnnounce && (
+            <WicketNotification
+              outName={wicketAnnounce.outName}
+              inName={wicketAnnounce.inName}
+              onDismiss={() => setWicketAnnounce(null)}
+            />
+          )}
+
+          {/* Role ribbon */}
+          {myRole && !needsBowler && (
+            <HcRibbonBanner tone={myRole === "batter" ? "batting" : "bowling"}>
+              You are {myRole === "batter" ? "Batting" : "Bowling"}
+            </HcRibbonBanner>
+          )}
+
+          {/* Batting order shuffle for batter */}
+          {isBattingPlayer && !innings.endedReason && (
+            <div>
+              <button
+                onClick={() => setBattingOrderOpen((o) => !o)}
+                className="w-full flex items-center justify-between text-xs font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-lg transition"
+                style={{
+                  background: battingOrderOpen ? "rgba(22,101,52,0.14)" : "rgba(22,101,52,0.07)",
+                  border: "1px solid rgba(22,101,52,0.28)",
+                  color: "#166534",
+                }}
+              >
+                <span>🏏 Batting Order</span>
+                <span style={{ fontSize: 10 }}>{battingOrderOpen ? "▲ hide" : "▼ show"}</span>
+              </button>
+              {battingOrderOpen && (
+                <BattingOrderPanel innings={innings} state={state} />
+              )}
+            </div>
+          )}
+
+          {/* Blocking picker (Wicket / Bowler) OR Live Ball (Reveal + PickRow) */}
+          {innings.needsNextBatterPick ? (
+            <>
+              {isBattingPlayer ? (
+                <NextBatterPicker state={state} innings={innings} big={true} />
+              ) : (
+                <div
+                  className="rounded-lg text-center py-5 font-notebook"
+                  style={{
+                    background: "rgba(245,233,196,0.6)",
+                    border: "1.5px dashed rgba(46,40,25,0.45)",
+                    fontFamily: "'Kalam', cursive",
+                  }}
+                >
+                  <div className="text-[28px] mb-1">🏏</div>
+                  <div className="font-bold text-hc-ink text-[16px]">
+                    Opponent is selecting the next batter…
+                  </div>
+                </div>
+              )}
+              {needsBowler && (
+                <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={true} />
+              )}
+            </>
+          ) : needsBowler ? (
+            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={true} />
+          ) : (
+            <div className="sticky bottom-0 z-10 pt-2 bg-gradient-to-t from-[#F5E9C4]/95 via-[#F5E9C4]/80 to-transparent">
+              <PaperPanel tone="soft" strong pad="sm" className="space-y-2">
+                <RevealStage
+                  reveal={reveal}
+                  innings={innings}
+                  myId={selfId}
+                  oppLockedIn={oppLockedIn}
+                  myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                  big={true}
+                />
+
+                <PickRow
+                  disabled={myPick != null || reveal !== null}
+                  onPick={pick}
+                  selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                  allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
+                  restrictedNote={bowlerRestricted ? "Powerplay — bowler limited to 1, 2 or 3" : null}
+                  big={true}
+                />
+
+                <div className="flex justify-center gap-6 text-hc-ink-lt font-kalam text-[13px]">
+                  <div>You: {myPick != null && typeof myPick === "number" && myPick > 0 ? "✓ locked in" : "pick a number…"}</div>
+                  <div>Opponent: {oppLockedIn ? "✓ locked in" : "thinking…"}</div>
+                </div>
+              </PaperPanel>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Reference Rail */}
+        <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+          <PaperPanel tone="soft" pad="sm">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-hc-ink-lt mb-1.5 pl-1 font-sketch">
+              This over
+            </div>
+            <RecentBalls history={thisOver} />
+
+            <div className="text-[11px] font-bold uppercase tracking-wider text-hc-ink-lt mt-3 mb-1.5 pl-1 font-sketch">
+              This innings
+            </div>
+            <RecentBalls history={innings.history.slice(-24)} />
+
+            <div className="mt-3 pt-2.5 border-t border-[#4A3525]/15">
+              <RecentFormNotebook innings={innings} />
+            </div>
+          </PaperPanel>
+
+          <BowlingFiguresNotebook state={state} innings={innings} />
+
+          <PaperPanel tone="soft" pad="sm">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-hc-ink-lt mb-1.5 pl-1 font-sketch">
+              Fall of wickets
+            </div>
+            <FallOfWicketsNotebook state={state} innings={innings} />
+          </PaperPanel>
+        </div>
+      </div>
+    );
+  }
+
+  // ── MOBILE SINGLE-COLUMN LAYOUT WITH STICKY PICKER & COLLAPSIBLE LOG ──
   return (
-    <div className={isDesktop ? "space-y-2.5" : "space-y-3"}>
+    <div className="space-y-2.5 font-notebook text-left">
       <Scoreboard
         state={state}
         innings={innings}
         target={target}
         players={players}
-        big={isDesktop}
+        big={false}
         registerCardRef={registerCardRef}
       />
 
@@ -2456,9 +2664,37 @@ export function InningsPhase({
         />
       )}
 
-      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={isDesktop} registerCardRef={registerCardRef} />
+      {/* Blocking Pickers */}
+      {innings.needsNextBatterPick ? (
+        <>
+          {isBattingPlayer ? (
+            <NextBatterPicker state={state} innings={innings} big={false} />
+          ) : (
+            <div
+              className="rounded-lg text-center py-4 font-notebook"
+              style={{
+                background: "rgba(245,233,196,0.6)",
+                border: "1.5px dashed rgba(46,40,25,0.45)",
+                fontFamily: "'Kalam', cursive",
+              }}
+            >
+              <div className="text-[24px] mb-0.5">🏏</div>
+              <div className="font-bold text-hc-ink text-[14px]">
+                Opponent is selecting the next batter…
+              </div>
+            </div>
+          )}
+          {needsBowler && (
+            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={false} />
+          )}
+        </>
+      ) : needsBowler ? (
+        <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={false} />
+      ) : null}
 
-      {/* Wicket + new batter announcement — shows for 4 s when a wicket falls. */}
+      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={false} registerCardRef={registerCardRef} />
+
+      {/* Wicket announcement */}
       {wicketAnnounce && (
         <WicketNotification
           outName={wicketAnnounce.outName}
@@ -2467,15 +2703,7 @@ export function InningsPhase({
         />
       )}
 
-      {/* Ripped-parchment ribbon — dynamically announces the local player's
-          role, floating between the scoreboard and the action card below. */}
-      {myRole && !needsBowler && (
-        <HcRibbonBanner tone={myRole === "batter" ? "batting" : "bowling"}>
-          You are {myRole === "batter" ? "Batting" : "Bowling"}
-        </HcRibbonBanner>
-      )}
-
-      {/* Batting order panel — batting player can shuffle upcoming batters. */}
+      {/* Batting order shuffle */}
       {isBattingPlayer && !innings.endedReason && (
         <div>
           <button
@@ -2496,80 +2724,60 @@ export function InningsPhase({
         </div>
       )}
 
-      {/* ── Action area ─────────────────────────────────────────────────
-           Three mutually-exclusive states:
-           1. Wicket pending → show NextBatterPicker (batting) / waiting (bowling)
-           2. No bowler yet  → show BowlerPicker
-           3. Live ball      → show RevealStage + PickRow                       */}
-      {innings.needsNextBatterPick ? (
-        <>
-          {isBattingPlayer ? (
-            <NextBatterPicker state={state} innings={innings} big={isDesktop} />
-          ) : (
-            <div
-              className="rounded-lg text-center py-5 font-notebook"
-              style={{
-                background: "rgba(245,233,196,0.6)",
-                border: "1.5px dashed rgba(46,40,25,0.45)",
-                fontFamily: "'Kalam', cursive",
-              }}
-            >
-              <div className="text-[28px] mb-1">🏏</div>
-              <div className="font-bold text-hc-ink" style={{ fontSize: isDesktop ? 16 : 14 }}>
-                Opponent is selecting the next batter…
-              </div>
+      {/* Collapsible reference details log on mobile */}
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2 bg-[#F5E9C4]/70 border border-[#4A3525]/20 font-kalam">
+          <span className="font-bold text-hc-ink text-[12px] uppercase tracking-wider">📜 This innings</span>
+          <span className="flex items-center gap-2">
+            <span className="text-[11px] text-hc-ink-lt font-bold">
+              {innings.history.length} balls
+            </span>
+            <span className="text-[11px] font-black text-hc-ink-lt">
+              <span className="group-open:hidden">▾</span>
+              <span className="hidden group-open:inline">▴</span>
+            </span>
+          </span>
+        </summary>
+        <PaperPanel tone="soft" pad="sm" className="mt-2 space-y-2">
+          <RecentBalls history={innings.history.slice(-18)} />
+          <div className="pt-2 border-t border-[#4A3525]/15">
+            <RecentFormNotebook innings={innings} />
+          </div>
+          {innings.wickets > 0 && (
+            <div className="pt-2 border-t border-[#4A3525]/15">
+              <div className="text-[10.5px] font-bold uppercase tracking-wider text-hc-ink-lt mb-1 font-sketch">Fall of wickets</div>
+              <FallOfWicketsNotebook state={state} innings={innings} />
             </div>
           )}
-          {/* Concurrent: bowling player may also need to pick a bowler
-               if the wicket fell on the last ball of an over. */}
-          {needsBowler && (
-            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
-          )}
-        </>
-      ) : needsBowler ? (
-        <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
-      ) : (
-        <>
-          <RevealStage
-            reveal={reveal}
-            innings={innings}
-            myId={selfId}
-            oppLockedIn={oppLockedIn}
-            myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
-            big={isDesktop}
-          />
+        </PaperPanel>
+      </details>
 
-          <PickRow
-            disabled={myPick != null || reveal !== null}
-            onPick={pick}
-            selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
-            allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
-            restrictedNote={bowlerRestricted ? "Powerplay — bowler limited to 1, 2 or 3" : null}
-            big={isDesktop}
-          />
+      {/* Sticky Bottom Pick Footer on Mobile */}
+      {!innings.needsNextBatterPick && !needsBowler && (
+        <div className="sticky bottom-0 z-20 pt-2 bg-gradient-to-t from-[#F5E9C4] via-[#F5E9C4]/90 to-transparent">
+          <PaperPanel tone="soft" strong pad="sm" className="space-y-1.5 shadow-lg border-2 border-[#166534]/30">
+            {/* Inline reveal on mobile */}
+            <div className="pb-1 border-b border-[#4A3525]/15">
+              <RevealStage
+                reveal={reveal}
+                innings={innings}
+                myId={selfId}
+                oppLockedIn={oppLockedIn}
+                myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                big={false}
+              />
+            </div>
 
-          <div
-            className="flex justify-center gap-6 text-hc-ink-lt"
-            style={{ fontSize: isDesktop ? 14 : 12 }}
-          >
-            <div>You: {myPick != null && typeof myPick === "number" && myPick > 0 ? "✓ locked" : "thinking…"}</div>
-            <div>Opp: {oppLockedIn ? "✓ locked" : "thinking…"}</div>
-          </div>
-        </>
-      )}
-
-      {target != null && (
-        <div
-          className="text-center text-hc-amber font-bold"
-          style={{ fontSize: isDesktop ? 15 : 13 }}
-        >
-          Target: <b>{target}</b> · Need {Math.max(0, target - innings.runs)} more from{" "}
-          {Math.max(0, innings.overs * 6 - innings.balls)} balls
+            <PickRow
+              disabled={myPick != null || reveal !== null}
+              onPick={pick}
+              selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
+              allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
+              restrictedNote={bowlerRestricted ? "Powerplay — 1, 2 or 3 only" : null}
+              big={false}
+            />
+          </PaperPanel>
         </div>
-      )}
-
-      {innings.history.length > 0 && (
-        <RecentBalls history={innings.history.slice(-12)} />
       )}
     </div>
   );
@@ -2639,11 +2847,27 @@ export function CurrentPlayersBar({
   const waitingForBowler = !currentBowler;
   const bowlingPlayer = players.find((p) => p.id === innings.bowlingPlayerId);
 
+  const stand = currentPartnership(innings);
+
   return (
-    // One organic single-stroke sketch box holds all three columns — divided
-    // internally by hairlines rather than three separately-bordered cards.
-    <div className="relative rounded-lg bg-hc-paper-l/70">
+    // One organic single-stroke sketch box holds all three columns with partnership header on top
+    <div className="relative rounded-lg bg-hc-paper-l/70 overflow-hidden">
       <RoughBorder roughness={1.6} stroke="rgba(46,40,25,0.5)" strokeWidth={1.6} padding={3} />
+      
+      {/* Partnership Header */}
+      <div className="relative z-[1] flex items-center justify-between px-3.5 py-1.5 border-b border-[#4A3525]/20 bg-[#166534]/10 font-kalam">
+        <span className="font-bold text-[#166534] text-[11.5px] sm:text-[12.5px] uppercase tracking-wider">
+          Partnership · {stand.forWicket + 1}th wicket
+        </span>
+        <div className="flex items-baseline gap-1">
+          <span className="font-sketch font-bold text-hc-ink text-[14px] sm:text-[15px]">{stand.runs}</span>
+          <span className="text-hc-ink-lt text-[11px] sm:text-[12px]">({stand.balls} balls)</span>
+          {stand.balls >= 6 && (
+            <span className="text-hc-ink-lt text-[11px] ml-1">· RR {((stand.runs / stand.balls) * 6).toFixed(1)}</span>
+          )}
+        </div>
+      </div>
+
       <div className={cn("relative z-[1] grid grid-cols-1 sm:grid-cols-3", big ? "divide-y sm:divide-y-0 sm:divide-x" : "divide-y sm:divide-y-0 sm:divide-x")} style={{ borderColor: "rgba(46,40,25,0.22)" }}>
         <PlayerCard
           label="🏏 Striker ●"
@@ -3023,57 +3247,94 @@ export function Scoreboard({
   const battingPlayer = players.find((p) => p.id === innings.battingPlayerId);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
+  const runRate = innings.balls > 0 ? (innings.runs / innings.balls) * 6 : 0;
+  const ballsLeft = innings.overs * 6 - innings.balls;
+  const need = target != null ? Math.max(0, target - innings.runs) : null;
+  const reqRate = need != null && ballsLeft > 0 ? (need / ballsLeft) * 6 : null;
+
   return (
     <PaperPanel
       tone="soft"
       strong
       pad="none"
-      className={cn("relative flex items-center justify-between gap-3 font-notebook", big ? "px-4 py-2 sm:py-2.5" : "px-3.5 py-2.5")}
+      className={cn("relative font-notebook", big ? "px-4 py-2 sm:py-2.5" : "px-3.5 py-2.5")}
     >
       {/* "Taped down" corners — the scoreboard reads as a thick piece of
           cardstock pinned onto the notebook page rather than a flat panel. */}
       <MaskingTapeCorner side="left" />
       <MaskingTapeCorner side="right" />
 
-      <div ref={registerCardRef?.(innings.battingPlayerId)} className="flex items-center gap-3">
-        <span className={big ? "text-2xl sm:text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
-        <SeatAvatar
-          avatar={battingPlayer?.avatar}
-          name={batterTeam.playerName}
-          className={big ? "w-7 h-7 sm:w-8 sm:h-8" : "w-7 h-7"}
-          textClassName={big ? "text-[10px] sm:text-[11px]" : "text-[10px]"}
-        />
-        <div>
-          <div
-            className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"
-            style={{ fontSize: big ? 12 : 11 }}
-          >
-            Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
-          </div>
-          {/* Giant organic handwritten score — runs in ink, wickets in red pen. */}
-          <div
-            className="font-sketch tabular-nums leading-none text-hc-ink"
-            style={{ fontSize: big ? 50 : 44, fontWeight: 700 }}
-          >
-            {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
-          </div>
-          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 13 : 12 }}>
-            Overs {oversBowled}.{ballsThisOver} / {innings.overs}
+      <div className="flex items-center justify-between gap-3">
+        <div ref={registerCardRef?.(innings.battingPlayerId)} className="flex items-center gap-3 min-w-0">
+          <span className={big ? "text-2xl sm:text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
+          <SeatAvatar
+            avatar={battingPlayer?.avatar}
+            name={batterTeam.playerName}
+            className={big ? "w-7 h-7 sm:w-8 sm:h-8" : "w-7 h-7"}
+            textClassName={big ? "text-[10px] sm:text-[11px]" : "text-[10px]"}
+          />
+          <div className="min-w-0">
+            <div
+              className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt truncate"
+              style={{ fontSize: big ? 12 : 11 }}
+            >
+              Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName})
+            </div>
+            {/* Giant organic handwritten score — runs in ink, wickets in red pen. */}
+            <div
+              className="font-sketch tabular-nums leading-none text-hc-ink"
+              style={{ fontSize: big ? 46 : 38, fontWeight: 700 }}
+            >
+              {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
+            </div>
+            <div className="tabular-nums text-hc-ink-lt font-kalam text-[11.5px] sm:text-[12.5px]">
+              Overs {oversBowled}.{ballsThisOver} / {innings.overs} · RR {runRate.toFixed(2)}
+            </div>
           </div>
         </div>
+
+        {/* Three stumps pitched in a scribbled patch of grass */}
+        <div className="flex-shrink-0 hidden md:block" style={{ opacity: 0.9 }}>
+          <StumpsInGrassSketch size={big ? 44 : 38} />
+        </div>
+
+        {target != null ? (
+          <div className="text-right text-hc-amber flex-shrink-0">
+            <div className="uppercase tracking-wider font-bold text-[10px] sm:text-[11px]">Target</div>
+            <div className="font-extrabold tabular-nums font-sketch text-[22px] sm:text-[28px] leading-tight">{target}</div>
+            {need != null && (
+              <div className="text-[10.5px] sm:text-[11.5px] font-bold text-[#92400E] font-kalam">
+                Need {need} off {ballsLeft}
+              </div>
+            )}
+            {reqRate != null && Number.isFinite(reqRate) && (
+              <div className="text-[10px] sm:text-[10.5px] font-bold text-hc-ink-lt">
+                RRR {reqRate.toFixed(2)}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-right text-hc-ink-lt flex-shrink-0 font-kalam">
+            <div className="uppercase tracking-wider font-bold text-[10px] sm:text-[11px] text-[#166534]">Projected</div>
+            <div className="font-extrabold tabular-nums font-sketch text-[22px] sm:text-[28px] leading-tight text-hc-ink">
+              {innings.balls > 0 ? Math.round(runRate * innings.overs) : "—"}
+            </div>
+            <div className="text-[10.5px] sm:text-[11.5px] text-hc-ink-lt">
+              {ballsLeft} balls left
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Three stumps pitched in a scribbled patch of grass — sits between
-          the score and the target chip so the card reads as illustrated,
-          not just typeset. */}
-      <div className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.9 }}>
-        <StumpsInGrassSketch size={big ? 50 : 44} />
-      </div>
-
+      {/* Chase progress meter when in 2nd innings */}
       {target != null && (
-        <div className="text-right text-hc-amber flex-shrink-0">
-          <div className="uppercase tracking-wider font-bold" style={{ fontSize: big ? 12 : 10 }}>Target</div>
-          <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 32 : 24 }}>{target}</div>
+        <div className="mt-2 pt-1.5 border-t border-[#4A3525]/15 w-full">
+          <div className="w-full bg-[#E5DCC5] h-2 rounded-full overflow-hidden border border-[#4A3525]/20">
+            <div
+              className="h-full bg-gradient-to-r from-[#166534] to-[#22C55E] transition-all duration-300 rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, (innings.runs / target) * 100))}%` }}
+            />
+          </div>
         </div>
       )}
     </PaperPanel>
@@ -3325,6 +3586,99 @@ export function RecentBalls({ history }: { history: HcBall[] }) {
   );
 }
 
+export function RecentFormNotebook({ innings, overs = 5 }: { innings: HcInnings; overs?: number }) {
+  const form = lastOvers(innings, overs);
+  if (form.balls === 0) return null;
+  const rate = (form.runs / form.balls) * 6;
+  return (
+    <div className="flex items-center justify-between gap-2 font-kalam text-[12px]">
+      <span className="text-hc-ink-lt font-bold">Last {Math.min(overs, Math.ceil(form.balls / 6))} ov</span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-sketch font-bold text-hc-ink tabular-nums text-[14px]">
+          {form.runs}
+        </span>
+        <span className="font-bold text-hc-ink-lt tabular-nums text-[11px]">
+          / {form.wickets} wkt · RR {rate.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function BowlingFiguresNotebook({ state, innings }: { state: HcState; innings: HcInnings }) {
+  const sel = state.teamSelections[innings.bowlingPlayerId];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const pool: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const rows = Object.entries(innings.bowlerStats).filter(([, s]) => s.balls > 0);
+
+  return (
+    <PaperPanel tone="soft" pad="sm" className="font-notebook">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-hc-ink-lt mb-1.5 pl-1 font-sketch">
+        ⚾ Bowling Figures
+      </div>
+      {rows.length === 0 ? (
+        <div className="py-2 text-center text-[11px] text-hc-ink-lt font-kalam">
+          No overs bowled yet
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {rows.map(([id, s]) => {
+            const name = pool.find((p) => p.id === id)?.name ?? id;
+            const current = innings.currentBowlerId === id;
+            return (
+              <div
+                key={id}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded px-2 py-1 font-kalam text-[12px]",
+                  current ? "bg-[#166534]/15 border border-[#166534]/30" : "bg-white/60 border border-[#4A3525]/10"
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate font-bold text-hc-ink">
+                  {name}
+                </span>
+                <span className="shrink-0 font-bold tabular-nums text-hc-ink-lt">
+                  {oversFromBalls(s.balls)}–{s.wickets}–{s.runs}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </PaperPanel>
+  );
+}
+
+export function FallOfWicketsNotebook({ state, innings }: { state: HcState; innings: HcInnings }) {
+  const sel = state.teamSelections[innings.battingPlayerId];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const pool: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? id;
+
+  const fow = fallOfWickets(innings);
+  if (fow.length === 0) {
+    return (
+      <div className="py-1 text-center text-[11px] text-hc-ink-lt font-kalam">
+        No wickets down
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1 font-kalam text-[11.5px]">
+      {fow.map((w) => (
+        <div key={w.wicket} className="flex items-baseline justify-between gap-2">
+          <span className="shrink-0 font-bold tabular-nums text-[#991B1B]">
+            {w.wicket}–{w.score}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-right text-hc-ink">
+            {nameOf(w.batterId)}
+            <span className="tabular-nums text-hc-ink-lt font-normal"> · {w.over} ov</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Aggregated match contribution for one cricketer, used to pick MoM. */
 interface MomAgg {
   id: string;
@@ -3445,6 +3799,7 @@ export function MatchSummary({
   const STAMP_R = "#991b1b";
 
   const youWon = state.winnerId === selfId;
+  const isTie = state.result === "tie";
   const winnerName =
     players.find((p) => p.id === state.winnerId)?.name ??
     (state.winnerId ? useRoomStore.getState().knownPlayers[state.winnerId]?.name : undefined) ??
@@ -3454,6 +3809,7 @@ export function MatchSummary({
     : null;
 
   const mom = useMemo(() => computeManOfTheMatch(state, players), [state, players]);
+  const margin = summarizeMatch(state);
 
   // Real-money prize for the winner, for a paid, settled match only.
   const roomState = useRoomStore((s) => s.roomState);
@@ -3487,65 +3843,112 @@ export function MatchSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const bannerBg = state.result === "tie"
+  const bannerBg = isTie
     ? "linear-gradient(135deg, #e7e2cf 0%, #cbd5e1 100%)"
     : youWon
     ? "linear-gradient(135deg, #dcfce7 0%, #fef9c3 55%, #fde68a 100%)"
     : "linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%)";
 
   return (
-    <div className="space-y-3 font-notebook">
-      <div
-        className="rounded-xl p-4 text-center border-2"
+    <div className="space-y-3 font-notebook w-full mx-auto">
+      {/* Top Hero Band: Verdict + Man of the Match + Continue Button */}
+      <PaperPanel
+        tone="default"
+        pad="md"
+        className="border-2"
         style={{
           background: bannerBg,
-          borderColor: state.result === "tie" ? INK_LT : youWon ? STAMP_G : STAMP_R,
-          boxShadow: youWon ? "0 4px 22px rgba(22,101,52,0.22)" : "0 4px 16px rgba(0,0,0,0.10)",
+          borderColor: isTie ? INK_LT : youWon ? STAMP_G : STAMP_R,
+          boxShadow: youWon ? "0 4px 22px rgba(22,101,52,0.18)" : "0 4px 16px rgba(0,0,0,0.08)",
         }}
       >
-        <div className="text-4xl mb-1">
-          {state.result === "tie" ? "🤝" : youWon ? "🏆" : "👏"}
-        </div>
-        <div className="font-sketch text-[22px] font-bold" style={{ color: state.result === "tie" ? INK : youWon ? STAMP_G : STAMP_R }}>
-          {state.result === "tie"
-            ? "Match tied!"
-            : winnerTeam
-            ? `${winnerTeam.flag} ${winnerTeam.name} (${winnerName}) win!`
-            : "Match over"}
-        </div>
-        <div className="text-sm text-hc-ink-lt mt-1 font-bold">
-          {summarizeMatch(state)}
-        </div>
-        {winnerPrize && (
-          <div className="flex justify-center mt-2">
-            <PrizeWonChip amount={winnerPrize} size="md" />
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Left: Verdict */}
+          <div className="flex items-center gap-3 min-w-0 text-left">
+            <span
+              className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-2xl border-2 shadow-sm"
+              style={{
+                background: "rgba(255,255,255,0.7)",
+                borderColor: isTie ? INK_LT : youWon ? STAMP_G : STAMP_R,
+              }}
+            >
+              {isTie ? "🤝" : youWon ? "🏆" : "👏"}
+            </span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-hc-ink-lt font-sketch">
+                Match Complete
+              </div>
+              <div
+                className="font-sketch text-[22px] font-bold truncate leading-tight"
+                style={{ color: isTie ? INK : youWon ? STAMP_G : STAMP_R }}
+              >
+                {isTie
+                  ? "Match Tied!"
+                  : youWon
+                  ? "You Win!"
+                  : winnerTeam
+                  ? `${winnerTeam.flag} ${winnerTeam.name} (${winnerName}) win!`
+                  : `${winnerName} Wins!`}
+              </div>
+              {margin && (
+                <div className="text-xs text-hc-ink-lt font-bold font-kalam mt-0.5">
+                  {margin}
+                </div>
+              )}
+              {winnerPrize && (
+                <div className="mt-1">
+                  <PrizeWonChip amount={winnerPrize} size="sm" />
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Center: Man of the Match */}
+          {mom && (
+            <div
+              className="relative flex-1 min-w-0 rounded-xl px-3.5 py-2 text-center md:text-left bg-amber-100/70 border border-amber-400/60 shadow-sm"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl shrink-0">🏅</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-800 font-sketch">
+                    Player of the Match
+                  </div>
+                  <div className="font-sketch text-[16px] font-bold text-hc-ink truncate leading-tight mt-0.5">
+                    {mom.name}
+                    <span className="ml-1.5 text-[11px] text-hc-ink-lt font-normal font-kalam">
+                      ({mom.teamShort})
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-bold text-amber-900 font-kalam truncate">
+                    {mom.line}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Right: Continue button */}
+          {onContinue && (
+            <div className="flex flex-col items-center shrink-0 w-full md:w-auto">
+              <PaperButton
+                variant="confirm"
+                size="md"
+                onClick={onContinue}
+                className="w-full md:w-auto tracking-[0.08em] px-6 py-2.5 text-[13px] font-bold font-sketch shadow-md"
+              >
+                Continue →
+              </PaperButton>
+              <div className="text-[10px] text-hc-ink-lt mt-1 text-center font-kalam">
+                Auto-advances in {secondsLeft}s
+              </div>
+            </div>
+          )}
+        </div>
+      </PaperPanel>
 
       {typeof myRank === "number" && (
         <PlayerSettlementSummary settlement={settlement} myRank={myRank} isGuest={selfIsGuest} />
-      )}
-
-      {/* Man of the Match */}
-      {mom && (
-        <div
-          className="relative rounded-xl px-4 py-3 text-center"
-          style={{ background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fcd34d 100%)" }}
-        >
-          <RoughBorder roughness={1.7} strokeWidth={2} stroke="rgba(180,120,20,0.95)" padding={3} />
-          <div className="relative">
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "#92400e" }}>
-              🏅 Player of the Match
-            </div>
-            <div className="font-sketch text-[20px] font-bold text-hc-ink mt-0.5">
-              {mom.name}
-            </div>
-            <div className="text-xs font-bold" style={{ color: "#78350f" }}>
-              {mom.teamShort} ({mom.playerName}){mom.line ? ` — ${mom.line}` : ""}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Innings scorecards — side by side on desktop to keep the page from
@@ -3568,18 +3971,6 @@ export function MatchSummary({
           />
         )}
       </div>
-
-      {/* End-of-match page chrome: Continue + 90 s auto-advance countdown. */}
-      {onContinue && (
-        <div className="sticky bottom-0 flex flex-col items-center gap-2 pt-2 pb-1 bg-[#F5F0E4]/90 backdrop-blur-sm rounded-b-xl">
-          <PaperButton variant="confirm" size="block" onClick={onContinue} className="max-w-xs tracking-[0.08em]">
-            Continue →
-          </PaperButton>
-          <div className="text-[11px] text-hc-ink-lt">
-            Auto-continues in {secondsLeft}s · tap Continue to skip
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -3709,6 +4100,14 @@ export function InningsScorecard({
         )}
         {bowlerRows.length > 0 && (
           <BowlerTable rows={bowlerRows} nameOf={nameOfBowler} />
+        )}
+        {innings.wickets > 0 && (
+          <div className="pt-1">
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#991b1b", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
+              🍂 Fall of Wickets
+            </div>
+            <FallOfWicketsNotebook state={state} innings={innings} />
+          </div>
         )}
       </div>
     </PaperPanel>

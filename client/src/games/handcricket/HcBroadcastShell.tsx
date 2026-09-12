@@ -3,7 +3,6 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import GameTutorial, { useTutorialGate } from "../../components/GameTutorial";
 import { HANDCRICKET_TUTORIAL } from "../tutorials";
 import { HcCelebrationLayer, type HandCricketBoardProps } from "./hc-shared";
-import { useSkin } from "../skin";
 import { ProShell } from "../pro/pro-kit";
 import {
   HcProHeader,
@@ -17,18 +16,20 @@ import {
 } from "./hc-broadcast";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { useSkin } from "../skin";
+import { HC_THEMES } from "./hc-theme-definitions";
+import HandCricketThemeModal from "./HandCricketThemeModal";
 
 /**
- * Hand Cricket — broadcast shell, shared by desktop and mobile.
+ * Hand Cricket — dedicated theme broadcast shell, shared by desktop and mobile.
  *
- * ONE shell for both, unlike the notebook skin's two files. The broadcast
- * layout is a single centred column whose max-width is the only thing that
- * differs between a phone and a monitor, so a second component would be two
- * copies of the same tree drifting apart. `compact` carries the difference.
- *
- * Reuses exactly one thing from the notebook implementation:
- * `HcCelebrationLayer`, which is a full-screen effects overlay (confetti,
- * bursts) with no paper styling of its own.
+ * ONE shell for both, supporting all 6 visual themes:
+ *   1. Broadcast Pro (stadium broadcast)
+ *   2. Gully Street (concrete street cricket)
+ *   3. Midnight Cyber (neon laser grid)
+ *   4. 8-Bit Retro Arcade (pixel art CRT arcade)
+ *   5. Vintage Pavilion (heritage club mahogany & brass)
+ *   6. Classic Notebook (warm parchment)
  */
 export default function HcBroadcastShell({
   state,
@@ -39,12 +40,15 @@ export default function HcBroadcastShell({
   roomPhase,
   onLeave,
   onScorecardClose,
+  onSkin,
   compact = false,
-}: HandCricketBoardProps & { compact?: boolean }) {
+}: HandCricketBoardProps & { compact?: boolean; onSkin?: () => void }) {
   const sid = selfId as string;
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
-  const [, setSkin] = useSkin();
   const reactions = useSeatReactions();
+  const [skin, setSkin] = useSkin();
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const theme = HC_THEMES[skin] ?? HC_THEMES.broadcast;
 
   const mySelection = state.teamSelections[sid];
   const isTeamSelect = state.phase === "teamSelect";
@@ -99,20 +103,15 @@ export default function HcBroadcastShell({
   }
 
   return (
-    /*
-     * Full-viewport overlay, matching the notebook skin's `HcNotebookPage`
-     * (`position: fixed; inset: 0; z-index: 50`).
-     *
-     * Room.tsx renders the board inside its ordinary page container, so an
-     * in-flow shell left the app's cream page background framing a dark panel
-     * — the board read as a widget dropped on a page rather than the screen.
-     * Hand Cricket is the one game that takes over the viewport, and the
-     * broadcast skin has to do the same or the two skins disagree about what
-     * the game IS.
-     */
     <ProShell
       className={compact ? "min-h-dvh-safe" : ""}
-      style={{ position: "fixed", inset: 0, zIndex: 50 }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        background: theme.shellBg,
+        fontFamily: theme.fontBody,
+      }}
     >
       <HcProHeader
         state={state}
@@ -120,7 +119,7 @@ export default function HcBroadcastShell({
         selfId={sid}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
-        onSkin={() => setSkin("nostalgia")}
+        onSkin={() => (onSkin ? onSkin() : setThemeModalOpen(true))}
         rail={
           <InlineRoomRail
             code={roomCode}
@@ -160,6 +159,16 @@ export default function HcBroadcastShell({
           onClose={() => tut.setOpen(false)}
         />
       )}
+
+      <HandCricketThemeModal
+        open={themeModalOpen}
+        activeSkin={skin}
+        onSelectSkin={(newSkin) => {
+          setSkin(newSkin);
+          setThemeModalOpen(false);
+        }}
+        onClose={() => setThemeModalOpen(false)}
+      />
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
     </ProShell>

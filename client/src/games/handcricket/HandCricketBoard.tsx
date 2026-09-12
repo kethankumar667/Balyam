@@ -28,9 +28,7 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
     };
   }, []);
 
-  // Skin picks the LOOK, the gate above picks the LAYOUT — two independent
-  // axes, same split as RpsBoard.
-  const [skin] = useSkin();
+  const [skin, setSkin] = useSkin();
 
   // Preserve the original board's early-return exactly: render nothing
   // until we know who's asking (e.g. a spectating socket with no seat).
@@ -52,12 +50,14 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
     />
   );
 
-  if (skin === "broadcast") {
-    // One shell for both layouts — the broadcast composition is a single
-    // centred column, so only its max-width and density change.
+  if (skin === "nostalgia") {
     return (
       <>
-        <HcBroadcastShell {...props} compact={!isDesktop} />
+        {isDesktop ? (
+          <HandCricketBoardDesktop {...props} />
+        ) : (
+          <HandCricketBoardMobile {...props} />
+        )}
         {breakOverlay}
       </>
     );
@@ -65,11 +65,10 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
 
   return (
     <>
-      {isDesktop ? (
-        <HandCricketBoardDesktop {...props} />
-      ) : (
-        <HandCricketBoardMobile {...props} />
-      )}
+      <HcBroadcastShell
+        {...props}
+        compact={!isDesktop}
+      />
       {breakOverlay}
     </>
   );

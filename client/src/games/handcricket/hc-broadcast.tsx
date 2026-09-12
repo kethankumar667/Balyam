@@ -32,6 +32,12 @@ import {
   type ProSide,
 } from "../pro/pro-kit";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import { useSkin } from "../skin";
+import { HC_THEMES } from "./hc-theme-definitions";
+import HcClashReveal from "./HcClashReveal";
+import HcTensionHud from "./HcTensionHud";
+import HcMomentumAura from "./HcMomentumAura";
+import HcPitchCam from "./HcPitchCam";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -152,6 +158,8 @@ export function HcProHeader({
    *  presentational and doesn't reach for socket-connected components. */
   rail?: ReactNode;
 }) {
+  const [skin] = useSkin();
+  const theme = HC_THEMES[skin] ?? HC_THEMES.broadcast;
   const [p0, p1] = state.playerOrder;
   const a = proTeam(state, p0 ?? "", players, 0);
   const b = proTeam(state, p1 ?? "", players, 1);
@@ -164,7 +172,11 @@ export function HcProHeader({
   return (
     <div
       className="shrink-0 px-4 py-2.5"
-      style={{ borderBottom: `1px solid ${PRO.line}`, background: "rgba(4,10,20,0.55)" }}
+      style={{
+        borderBottom: `1px solid ${theme.headerBorder}`,
+        background: theme.headerBg,
+        fontFamily: theme.fontBody,
+      }}
     >
       {/* Wraps rather than clipping: at 390px the wordmark, matchup, context
           chips and three actions do not fit on one line, and `shrink-0` on the
@@ -173,32 +185,33 @@ export function HcProHeader({
         <div className="flex min-w-0 items-center gap-2.5">
           <div
             className="grid h-7 w-7 shrink-0 place-items-center rounded-md"
-            style={{ background: `linear-gradient(150deg, ${PRO.gold}, ${PRO.goldDeep})`, color: "#2A1D05" }}
+            style={{
+              background: `linear-gradient(150deg, ${theme.headerAccent}, ${theme.headerAccent}AA)`,
+              color: "#181408",
+            }}
           >
             <IconBat size={15} />
           </div>
           <div className="min-w-0">
             <div
               className="truncate text-[12px] font-black uppercase leading-none"
-              style={{ letterSpacing: "0.18em", color: PRO.ink }}
+              style={{ letterSpacing: "0.18em", color: theme.headerText, fontFamily: theme.fontHeading }}
             >
               Hand&nbsp;Cricket
             </div>
             <div
               className="mt-1 truncate text-[9px] font-bold uppercase leading-none"
-              style={{ letterSpacing: "0.14em", color: PRO.inkLo }}
+              style={{ letterSpacing: "0.14em", color: theme.chipText }}
             >
               {PHASE_LABEL[state.phase]}
             </div>
           </div>
         </div>
 
-        {/* Matchup. Was `hidden sm:flex`, so on a phone you played a whole
-            match with no persistent answer to "who am I, and who am I
-            playing?" — the score bug only ever shows the batting side. */}
+        {/* Matchup */}
         <div className="flex items-center gap-2">
           <TeamPlate team={a} size="sm" />
-          <span className="text-[10px] font-black" style={{ color: PRO.inkLo, letterSpacing: "0.12em" }}>
+          <span className="text-[10px] font-black" style={{ color: theme.chipText, letterSpacing: "0.12em" }}>
             V
           </span>
           <TeamPlate team={b} size="sm" />
@@ -206,17 +219,27 @@ export function HcProHeader({
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
           {live && <ProLive />}
-          {/* Format and overs now survive on a phone as one merged chip
-              ("T20 · 10 ov") rather than being hidden outright — the match
-              length is the frame for every decision in a chase, and it was
-              invisible for the entire match on the platform most people
-              play on. Two chips became one so the header still fits. */}
           {opts.mode === "galli" && <ProChip tone="gold">Galli</ProChip>}
           <ProChip>
             {opts.format.toUpperCase()}
             {overs != null ? ` · ${overs} ov` : ""}
           </ProChip>
-          {onSkin && <HeaderBtn label="Classic" onClick={onSkin} />}
+          {onSkin && (
+            <button
+              type="button"
+              onClick={onSkin}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition hover:brightness-125 active:scale-95 cursor-pointer"
+              style={{
+                background: theme.chipBg,
+                color: theme.headerAccent,
+                border: `1px solid ${theme.headerBorder}`,
+              }}
+              title="Change visual theme"
+            >
+              <span>🎨</span>
+              <span>{theme.name}</span>
+            </button>
+          )}
           {onHelp && <HeaderBtn label="Help" onClick={onHelp} />}
           {onLeave && <HeaderBtn label="Leave" onClick={onLeave} danger />}
         </div>
@@ -947,6 +970,34 @@ export function HcProPlayersBar({
       ? `${s.runs}${s.isOut ? "" : "*"} (${s.balls})${s.fours ? ` · ${s.fours}×4` : ""}${s.sixes ? ` · ${s.sixes}×6` : ""}`
       : "Yet to face";
 
+  // Check striker recent boundary momentum
+  const strikerRecentBalls = innings.history.filter((b) => b.batterId === strikerId);
+  const strikerStreak = (() => {
+    let count = 0;
+    for (let i = strikerRecentBalls.length - 1; i >= 0; i--) {
+      if (strikerRecentBalls[i].isBoundary) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  })();
+
+  // Check bowler recent dot/wicket momentum
+  const bowlerRecentBalls = innings.history.filter((b) => b.bowlerId === bowlerId);
+  const bowlerStreak = (() => {
+    let count = 0;
+    for (let i = bowlerRecentBalls.length - 1; i >= 0; i--) {
+      if (bowlerRecentBalls[i].wicket || bowlerRecentBalls[i].runs === 0) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  })();
+
   const stand = currentPartnership(innings);
 
   return (
@@ -958,9 +1009,6 @@ export function HcProPlayersBar({
         className="flex items-center justify-between gap-2 px-4 py-2"
         style={{
           borderBottom: `1px solid ${PRO.line}`,
-          // Same innings accent as the score bug's rail, at a low alpha so it
-          // reads as "this belongs to the batting side" without becoming a
-          // second thing competing for attention.
           background: `linear-gradient(90deg, ${batColor}26, transparent 70%)`,
         }}
       >
@@ -980,12 +1028,7 @@ export function HcProPlayersBar({
         </div>
       </div>
 
-      {/* Three columns on EVERY width, not just `sm` and up.
-       *
-       * On a phone this was `grid-cols-1`, so three short facts — a name and a
-       * figure each — cost three stacked rows and ~150px of a column that has
-       * roughly 500px to spend. Side by side they cost ~62px and read as one
-       * line of crease state, which is how a scoreboard presents them. */}
+      {/* Three columns on EVERY width */}
       <div className="grid grid-cols-3">
         <CreaseCell
           label="Striker"
@@ -995,6 +1038,9 @@ export function HcProPlayersBar({
           sub={batLine(strikerStats)}
           compact={compact}
           accent={batColor}
+          streakText={strikerStreak >= 2 ? `${strikerStreak}× 4/6` : null}
+          momentumActive={strikerStreak >= 2 || (strikerStats != null && strikerStats.runs >= 50)}
+          momentumType={strikerStreak >= 3 ? "fire" : "electric"}
         />
         <CreaseCell
           label="Non-striker"
@@ -1024,6 +1070,9 @@ export function HcProPlayersBar({
           bordered
           accent={bowlColor}
           cardRef={registerCardRef?.(innings.bowlingPlayerId)}
+          streakText={bowlerStreak >= 3 ? `${bowlerStreak}× DOT` : null}
+          momentumActive={bowlerStreak >= 3 || (bowlerStats != null && bowlerStats.wickets >= 3)}
+          momentumType="frost"
         />
       </div>
     </ProPanel>
@@ -1044,69 +1093,57 @@ function CreaseCell({
   compact = false,
   accent,
   cardRef,
+  streakText,
+  momentumActive = false,
+  momentumType = "fire",
 }: {
   label: string;
   name: string;
   sub: string;
   mine: boolean;
-  /** Side identity — batting colour for the two batters, bowling colour for
-   *  the bowler. Carried on the label and a top rail, never on the figures. */
   accent?: string;
-  /** The controlling account's avatar filename, if there is one to show.
-   *  `name`/`sub` above are the fictional roster cricketer at this crease
-   *  position, not an account — only the bowling cell (a real seat, not a
-   *  roster slot) carries this. */
   avatar?: string;
-  /** Real player name backing `avatar`, used for the initial/colour fallback. */
   avatarName?: string;
   dim?: boolean;
   warn?: boolean;
   onStrike?: boolean;
   bordered?: boolean;
   compact?: boolean;
-  /** From useSeatReactions()'s registerCardRef, pre-bound to a playerId by
-   *  the caller. Only the bowling cell passes this — same reasoning as
-   *  `avatar` above, it's the one cell backed by a real account. */
   cardRef?: (el: HTMLElement | null) => void;
+  streakText?: string | null;
+  momentumActive?: boolean;
+  momentumType?: "fire" | "electric" | "frost" | "gold";
 }) {
   return (
-    <div
-      ref={cardRef}
-      className={`min-w-0 ${compact ? "px-2 py-1.5" : "px-4 py-3"}`}
-      style={{
-        // Now that the cells are side by side at every width, the divider is
-        // always the vertical one. The old `borderTop` existed only for the
-        // stacked phone layout, which no longer happens.
-        borderLeft: bordered ? `1px solid ${PRO.line}` : undefined,
-      }}
-    >
-      {accent && (
-        <div aria-hidden className="mb-1 h-[2px] w-6 rounded-full" style={{ background: accent }} />
-      )}
-      <div className="flex min-w-0 items-center gap-1">
-        <ProLabel color={warn ? PRO.gold : accent ?? PRO.inkLo} className="truncate">
-          {/* Three columns on a 390px phone leaves ~118px each — "Non-striker"
-              does not fit beside a dot and a YOU tag, and truncating a LABEL
-              to "Non-str…" is worse than shortening it deliberately. */}
-          {compact && label === "Non-striker" ? "Non-str" : label}
-        </ProLabel>
-        {onStrike && (
-          <>
-            {/* Was a 5px span with `title` only — not exposed by most screen
-                readers, unreachable by keyboard, and the sole indicator of who
-                faces the next ball. The dot stays; the meaning is now text. */}
-            <span
-              aria-hidden
-              className="inline-block rounded-full"
-              style={{ width: 5, height: 5, background: PRO.win, boxShadow: `0 0 6px ${PRO.win}` }}
-            />
-            <span className="sr-only">on strike</span>
-          </>
+    <HcMomentumAura active={momentumActive} type={momentumType} streakText={streakText} compact={compact}>
+      <div
+        ref={cardRef}
+        className={`min-w-0 ${compact ? "px-2 py-1.5" : "px-4 py-3"}`}
+        style={{
+          borderLeft: bordered ? `1px solid ${PRO.line}` : undefined,
+        }}
+      >
+        {accent && (
+          <div aria-hidden className="mb-1 h-[2px] w-6 rounded-full" style={{ background: accent }} />
         )}
-        {mine && <span className="text-[9px] font-black" style={{ color: PRO.gold, letterSpacing: "0.12em" }}>YOU</span>}
-      </div>
-      <div className="mt-1 flex min-w-0 items-center gap-1.5">
-        {avatarName && (
+        <div className="flex min-w-0 items-center gap-1">
+          <ProLabel color={warn ? PRO.gold : accent ?? PRO.inkLo} className="truncate">
+            {compact && label === "Non-striker" ? "Non-str" : label}
+          </ProLabel>
+          {onStrike && (
+            <>
+              <span
+                aria-hidden
+                className="inline-block rounded-full"
+                style={{ width: 5, height: 5, background: PRO.win, boxShadow: `0 0 6px ${PRO.win}` }}
+              />
+              <span className="sr-only">on strike</span>
+            </>
+          )}
+          {mine && <span className="text-[9px] font-black" style={{ color: PRO.gold, letterSpacing: "0.12em" }}>YOU</span>}
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          {avatarName && (
           <SeatAvatar
             avatar={avatar}
             name={avatarName}
@@ -1125,6 +1162,7 @@ function CreaseCell({
         {sub}
       </div>
     </div>
+    </HcMomentumAura>
   );
 }
 
@@ -1261,28 +1299,14 @@ export function HcProPickRow({
   /** Phone density — still above the 44px touch floor. */
   compactRow?: boolean;
 }) {
+  const [skin] = useSkin();
+  const theme = HC_THEMES[skin] ?? HC_THEMES.broadcast;
   const verb = role === "bowler" ? "Bowl" : "Play";
-
-  /**
-   * Value ramp on the tiles.
-   *
-   * In hand cricket the number IS the outcome, so six identical grey tiles
-   * threw away the one piece of meaning the control already carries. The ramp
-   * runs cool→hot with magnitude: 1–3 green (singles), 4–5 amber, 6 gold
-   * (maximum). Deliberately keyed to VALUE, not to good/bad — the same tile
-   * is a hope for the batter and a fear for the bowler, so a
-   * success/danger reading would be wrong for one of them every ball.
-   *
-   * Colour is never the only code: the numeral is the label, and the capped
-   * powerplay tiles keep their strike-through rule mark.
-   */
-  const valueTint = (n: number): string =>
-    n >= 6 ? PRO.gold : n >= 4 ? "#E0982A" : PRO.win;
 
   return (
     <div>
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <ProLabel color={myPick != null ? PRO.inkLo : PRO.gold}>
+        <ProLabel color={myPick != null ? theme.chipText : theme.headerAccent}>
           {myPick != null ? "Locked in" : role === "batter" ? "Your shot" : role === "bowler" ? "Your delivery" : "Watching"}
         </ProLabel>
         {restricted && <ProChip tone="gold">Powerplay · 1–3 only</ProChip>}
@@ -1290,10 +1314,8 @@ export function HcProPickRow({
 
       {/*
        * THE HERO. This is the entire game — one tap among six, sixty times a
-       * match — and it previously rendered as the smallest, dimmest element on
-       * a page of statistics, below a toss picker used once. Size now follows
-       * frequency and consequence: tall tiles, large numerals, and a gold
-       * treatment on the live state.
+       * match. Size now follows frequency and consequence: tall tiles, large numerals,
+       * and active visual theme treatment on the live state.
        */}
       <div role="group" aria-label={role === "bowler" ? "Choose your delivery" : "Choose your shot"}>
         <div className="grid grid-cols-6 gap-2">
@@ -1302,14 +1324,14 @@ export function HcProPickRow({
             const chosen = myPick === n;
             const disabled = !ok || myPick != null || role == null;
             const capped = !ok && restricted;
+            const btnStyle = theme.pickButton(n, chosen, ok, restricted);
+
             return (
               <button
                 key={n}
                 type="button"
                 onClick={() => onPick(n)}
                 disabled={disabled}
-                // Screen readers previously heard six buttons named "1".."6"
-                // with no indication of what they do or why one is unavailable.
                 aria-label={
                   capped
                     ? `${n}. Unavailable — powerplay caps you at 1 to 3`
@@ -1320,24 +1342,13 @@ export function HcProPickRow({
                 aria-pressed={chosen}
                 className="relative grid place-items-center rounded-2xl font-black tabular-nums transition active:scale-[0.96] disabled:cursor-not-allowed"
                 style={{
-                  // 64px floor clears the 44px touch minimum with room to spare
-                  // on the axis a thumb actually travels.
                   minHeight: compactRow ? 56 : 64,
                   fontSize: compactRow ? 24 : 28,
-                  background: chosen
-                    ? `linear-gradient(168deg, ${PRO.gold}, ${PRO.goldDeep})`
-                    : ok
-                    // Tinted from the tile's own value rather than a flat
-                    // white wash — low alpha so six lit tiles read as one
-                    // ramp, not six competing buttons.
-                    ? `linear-gradient(168deg, ${valueTint(n)}2E, ${valueTint(n)}0F)`
-                    : "rgba(255,255,255,0.03)",
-                  color: chosen ? "#2A1D05" : ok ? PRO.ink : PRO.inkLo,
-                  border: `1px solid ${chosen ? "rgba(255,235,180,0.6)" : ok ? `${valueTint(n)}66` : PRO.line}`,
-                  boxShadow: chosen ? `0 4px 18px ${PRO.gold}44` : "none",
-                  // Was 0.3, which put a capped tile near 1.5:1 and defeated
-                  // this row's own reason for keeping them on screen. The cap
-                  // is now carried by a rule mark, not by fading it out.
+                  fontFamily: theme.fontDigits,
+                  background: btnStyle.bg,
+                  color: btnStyle.text,
+                  border: btnStyle.border.includes("px") ? btnStyle.border : `1px solid ${btnStyle.border}`,
+                  boxShadow: btnStyle.shadow ?? "none",
                   opacity: disabled && !chosen ? 0.62 : 1,
                 }}
               >
@@ -1346,7 +1357,7 @@ export function HcProPickRow({
                   <span
                     aria-hidden
                     className="pointer-events-none absolute inset-x-3 top-1/2 h-[2px] -translate-y-1/2 rotate-[-18deg] rounded-full"
-                    style={{ background: PRO.gold, opacity: 0.7 }}
+                    style={{ background: theme.headerAccent, opacity: 0.7 }}
                   />
                 )}
               </button>
@@ -1358,7 +1369,7 @@ export function HcProPickRow({
   );
 }
 
-/** Reveal plate: what each side threw on the ball just bowled. */
+/** Reveal plate: what each side threw on the ball just bowled with collision showdown FX. */
 export function HcProReveal({
   reveal,
   meIsBatter,
@@ -1374,41 +1385,14 @@ export function HcProReveal({
    *  ~180px of column for two numerals. */
   compact?: boolean;
 }) {
-  const plate = compact ? 48 : 64;
-  if (reveal) {
-    const mine = meIsBatter ? reveal.batterPick : reveal.bowlerPick;
-    const theirs = meIsBatter ? reveal.bowlerPick : reveal.batterPick;
-    const out = reveal.wicket;
-    const headline = out
-      ? meIsBatter ? "Out!" : "Wicket!"
-      : reveal.isBoundary
-      ? `${reveal.runs} runs`
-      : `${reveal.runs} run${reveal.runs === 1 ? "" : "s"}`;
-    const tone = out ? (meIsBatter ? PRO.loss : PRO.win) : reveal.isBoundary ? PRO.gold : PRO.ink;
-    return (
-      <div className={`flex flex-col items-center ${compact ? "gap-1.5 py-0.5" : "gap-2.5 py-2"}`}>
-        <div className="flex items-center gap-4">
-          <RevealNum n={mine} label="You" tone={PRO.info} size={plate} />
-          <span className="text-[11px] font-black" style={{ color: PRO.inkLo }}>V</span>
-          <RevealNum n={theirs} label="Them" tone={PRO.loss} size={plate} />
-        </div>
-        <div className={compact ? "text-[15px] font-black uppercase" : "text-[18px] font-black uppercase"} style={{ letterSpacing: "0.1em", color: tone }}>
-          {headline}
-        </div>
-      </div>
-    );
-  }
   return (
-    <div className={`flex flex-col items-center ${compact ? "gap-1.5 py-1" : "gap-2 py-4"}`}>
-      <div className="flex items-center gap-4">
-        <RevealNum n={myPick} label="You" tone={PRO.info} hidden={myPick == null} size={plate} />
-        <span className="text-[11px] font-black" style={{ color: PRO.inkLo }}>V</span>
-        <RevealNum n={null} label="Them" tone={PRO.loss} hidden locked={oppLockedIn} size={plate} />
-      </div>
-      <div className="text-[11px] font-bold uppercase" style={{ letterSpacing: "0.14em", color: PRO.inkLo }}>
-        {myPick == null ? "Make your pick" : oppLockedIn ? "Revealing…" : "Waiting for opponent"}
-      </div>
-    </div>
+    <HcClashReveal
+      reveal={reveal}
+      meIsBatter={meIsBatter}
+      myPick={myPick}
+      oppLockedIn={oppLockedIn}
+      compact={compact}
+    />
   );
 }
 
@@ -2144,6 +2128,7 @@ export function HcProInnings({
           compact
           footer={powerplay}
         />
+        <HcTensionHud state={state} innings={innings} target={target} compact />
 
         {/* Requested order: reveal → crease → log.
             1. YOU ARE BATTING  — the live ball
@@ -2154,9 +2139,16 @@ export function HcProInnings({
 
             The reveal is NOT rendered here any more — on a phone it lives
             inside the pinned pick card, beside the tiles that produce it. */}
-        {blocking}
-
         {crease}
+        <HcPitchCam
+          innings={innings}
+          reveal={reveal}
+          meIsBatter={myRole === "batter"}
+          myPick={myPick}
+          oppLockedIn={oppLockedIn}
+          compact
+        />
+        {blocking}
 
         {/* The log, as ONE line.
          *
@@ -2226,7 +2218,15 @@ export function HcProInnings({
           players={players}
           footer={powerplay}
         />
+        <HcTensionHud state={state} innings={innings} target={target} />
         {crease}
+        <HcPitchCam
+          innings={innings}
+          reveal={reveal}
+          meIsBatter={myRole === "batter"}
+          myPick={myPick}
+          oppLockedIn={oppLockedIn}
+        />
         {blocking}
         {liveBall && revealPanel}
         {pickFooter}
