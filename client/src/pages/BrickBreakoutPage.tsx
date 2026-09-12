@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { BrickBreakoutGame } from "../features/brick-breakout";
 import { useAudio } from "../hooks/useAudio";
+import { useGameFullscreen } from "../hooks/useGameFullscreen";
 
 /**
  * The page heading lives here rather than in the game.
@@ -15,6 +16,10 @@ import { useAudio } from "../hooks/useAudio";
  * illusion the whole feature is built on.
  */
 export default function BrickBreakoutPage() {
+  // No Start button — the engine boots into its keypad menu, so the player's
+  // first tap is the start gesture.
+  useGameFullscreen({ slug: "breakout", wantsFullscreen: true, enterOnFirstGesture: true });
+
   // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)
   // — this is one of them (catalog slug "breakout"), so report presence on
   // mount/unmount.

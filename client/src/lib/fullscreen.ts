@@ -44,15 +44,38 @@ export function isFullscreenActive(): boolean {
 }
 
 /**
+ * Phone-class device test, used to decide whether an orientation lock is
+ * appropriate at all.
+ *
+ * Locking is only ever right on a phone. On a tablet held in landscape,
+ * forcing a "portrait" game into portrait is worse than leaving it alone —
+ * the player chose that grip and the boards are responsive. On desktop the
+ * lock throws anyway.
+ *
+ * Measured on the SHORT side so the answer does not flip when the device
+ * rotates: a phone is still a phone in landscape.
+ */
+export function isPhoneClass(): boolean {
+  if (typeof window === "undefined") return false;
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  return coarsePointer && shortSide < 768;
+}
+
+/**
  * Tries to enter fullscreen and (optionally) lock to a target orientation.
  * Must be called from a user gesture. Returns true if fullscreen succeeded —
  * orientation lock is best-effort and never blocks the return value (it
  * fails on desktop and many browsers without throwing).
  *
- * Pass `orientation` per game:
- *   - "landscape" → Rummy (the only landscape table)
- *   - "portrait"  → Ludo, Snakes & Ladders, Hand Cricket, RPS, Uno
- *   - "any" / undefined → no orientation lock, fullscreen only
+ * Do NOT hardcode a per-game list here — `GAME_PREFERRED_ORIENTATION` in
+ * `shared/catalog.ts` is the single source of truth, and the list this
+ * comment used to carry had already drifted out of sync with it (it claimed
+ * UNO was portrait when the catalog declares it landscape). Resolve the
+ * argument with `getGamePreferredOrientation(slug)`.
+ *
+ * The lock is only attempted on phone-class devices (see `isPhoneClass`);
+ * tablets and desktops get fullscreen with their orientation left alone.
  */
 export async function enterFullscreen(
   orientation: "landscape" | "portrait" | "any" = "any",
@@ -74,7 +97,12 @@ export async function enterFullscreen(
   // Orientation lock — best effort. Will throw on desktop (no orientation
   // to lock), on iOS (unsupported), and sometimes on Android Firefox.
   // None of that should fail the fullscreen call.
-  if (orientation === "landscape" || orientation === "portrait") {
+  //
+  // Phone-class only: a tablet or laptop must keep the orientation its owner
+  // is holding it in. On Android Chrome this lock overrides even the OS-level
+  // rotation-lock setting, which is exactly the "auto rotation" behaviour we
+  // want for a landscape table — and exactly why it must not fire elsewhere.
+  if ((orientation === "landscape" || orientation === "portrait") && isPhoneClass()) {
     try {
       const orient = (screen.orientation as OrientationLock | undefined);
       if (orient?.lock) {
@@ -97,8 +125,26 @@ export async function enterFullscreen(
   return true;
 }
 
+/**
+ * Release any orientation lock we asserted.
+ *
+ * Browsers drop the lock on their own when the document leaves fullscreen, so
+ * this is belt-and-braces — but the webkit paths are less reliable about it,
+ * and a phone left stuck in forced landscape after leaving a room is a bug
+ * the player cannot undo from inside the app.
+ */
+export function unlockOrientation(): void {
+  if (typeof screen === "undefined") return;
+  try {
+    (screen.orientation as ScreenOrientation & { unlock?: () => void } | undefined)?.unlock?.();
+  } catch {
+    // ignore — unsupported on iOS and desktop Safari
+  }
+}
+
 export async function exitFullscreen(): Promise<void> {
   if (typeof document === "undefined") return;
+  unlockOrientation();
   const d = document as WebkitDoc;
   try {
     if (d.exitFullscreen) {

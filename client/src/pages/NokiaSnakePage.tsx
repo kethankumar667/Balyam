@@ -2,9 +2,14 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import NokiaSnakeBoard from "../games/nokiasnake/NokiaSnakeBoard";
 import { useAudio } from "../hooks/useAudio";
+import { useGameFullscreen } from "../hooks/useGameFullscreen";
 
 export default function NokiaSnakePage() {
   const navigate = useNavigate();
+
+  // The engine boots straight into its keypad menu, so there is no Start
+  // button to hang this on — the player's first tap is the start gesture.
+  useGameFullscreen({ slug: "snake", wantsFullscreen: true, enterOnFirstGesture: true });
 
   // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)
   // — this is one of them, so report presence on mount/unmount.

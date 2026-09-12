@@ -2,8 +2,13 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BrickRacerBoard from "../games/brickracer/BrickRacerBoard";
 import { useAudio } from "../hooks/useAudio";
+import { useGameFullscreen } from "../hooks/useGameFullscreen";
 
 export default function BrickRacerPage() {
+  // No Start button — the engine boots into its keypad menu, so the player's
+  // first tap is the start gesture.
+  useGameFullscreen({ slug: "roadrash", wantsFullscreen: true, enterOnFirstGesture: true });
+
   const navigate = useNavigate();
 
   // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)

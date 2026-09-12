@@ -2,8 +2,13 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import NokiaCricketBoard from "../games/nokiacricket/NokiaCricketBoard";
 import { useAudio } from "../hooks/useAudio";
+import { useGameFullscreen } from "../hooks/useGameFullscreen";
 
 export default function NokiaCricketPage() {
+  // No Start button — the engine boots into its keypad menu, so the player's
+  // first tap is the start gesture.
+  useGameFullscreen({ slug: "nokiacricket", wantsFullscreen: true, enterOnFirstGesture: true });
+
   const navigate = useNavigate();
 
   // Sound is scoped to catalog "solo" games (see AudioManager.isSoloContext)

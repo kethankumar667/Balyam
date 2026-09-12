@@ -89,6 +89,62 @@ export function getGameOrientationRequirement(game: GameKind): "landscape" | "po
   return GAME_START_REQUIREMENTS[game]?.requiresOrientation ?? null;
 }
 
+/**
+ * The orientation each game is DESIGNED for — a soft display preference, not
+ * a gate.
+ *
+ * Deliberately separate from `GAME_START_REQUIREMENTS.requiresOrientation`
+ * above, which is a HARD gate: the server blocks match start until the player
+ * physically rotates (see `room:startPreflight` / `ORIENTATION_REQUIRED`).
+ * Only Rummy and UNO are unplayable in the wrong orientation, so only they
+ * carry that gate. Folding portrait into it would block Ludo from starting on
+ * a landscape tablet, which is a worse bug than the one it fixes.
+ *
+ * This map, by contrast, only says "when we take over the screen, point it
+ * this way". It is the single source of truth for the fullscreen +
+ * orientation-lock behaviour on game start. Keyed by `BhalyamGameSlug` rather
+ * than `GameKind` so the browser-only retro titles (which never open a room)
+ * resolve from the same table as everything else.
+ *
+ * Callers must apply it through `client/src/lib/fullscreen.ts`, which only
+ * asserts the lock on phone-class devices — a tablet held in landscape is
+ * never flipped into portrait for a "portrait" game.
+ */
+export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "portrait"> = {
+  // Wide tables: the hand/discard row and the melded-run layout need the
+  // horizontal room, which is why these two also carry the hard gate above.
+  rummy: "landscape",
+  uno: "landscape",
+
+  // Everything else is phone-first portrait.
+  rps: "portrait",
+  ludo: "portrait",
+  snl: "portrait",
+  handcricket: "portrait",
+  wordbuilding: "portrait",
+  dotsboxes: "portrait",
+  stargame: "portrait",
+  bingo: "portrait",
+  namesplaceanimal: "portrait",
+  tambola: "portrait",
+  snake: "portrait",
+  carrom: "portrait",
+  chess: "portrait",
+  blockblast: "portrait",
+  spacewar: "portrait",
+  roadrash: "portrait",
+
+  // Browser-only retro titles — all modelled on portrait handhelds.
+  nokiacricket: "portrait",
+  brickblocks: "portrait",
+  tetris: "portrait",
+  breakout: "portrait",
+};
+
+export function getGamePreferredOrientation(slug: BhalyamGameSlug): "landscape" | "portrait" {
+  return GAME_PREFERRED_ORIENTATION[slug] ?? "portrait";
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
  * Game Taxonomy & Catalogue Types
  * ───────────────────────────────────────────────────────────────────────── */

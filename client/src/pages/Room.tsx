@@ -6,12 +6,9 @@ import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../lib/playerIdentity";
-import {
-  enterFullscreen,
-  exitFullscreen,
-  isFullscreenActive,
-  isFullscreenSupported,
-} from "../lib/fullscreen";
+import { exitFullscreen, isFullscreenActive, isPhoneClass } from "../lib/fullscreen";
+import { useGameFullscreen } from "../hooks/useGameFullscreen";
+import { getGamePreferredOrientation } from "@shared/catalog";
 import { HapticsManager } from "../services/HapticsManager";
 import { useAudio } from "../hooks/useAudio";
 import type { BhalyamGameSlug } from "../components/bhalyam/data";
@@ -76,6 +73,7 @@ const VoucherWonModal = lazy(() => import("../components/economy/VoucherWonModal
 const ChangeStakeModal = lazy(() => import("../components/room/ChangeStakeModal").then((m) => ({ default: m.ChangeStakeModal })));
 const RoomNameEntryChamber = lazy(() => import("../components/room/RoomNameEntryChamber"));
 const PreflightRotatePrompt = lazy(() => import("../components/room/PreflightRotatePrompt"));
+const FullscreenGatePrompt = lazy(() => import("../components/room/FullscreenGatePrompt"));
 const RematchPanel = lazy(() => import("../components/RematchPanel"));
 const SoundboardLayer = lazy(() => import("../components/SoundboardLayer"));
 const SignInWall = lazy(() => import("../components/auth/SignInWall"));
@@ -1139,29 +1137,23 @@ export default function Room() {
   }, [selfIsAutoPlaying]);
 
   /**
-   * Every game auto-enters fullscreen at the moment the room transitions
-   * from "lobby" to "playing".
+   * Fullscreen + orientation for the match.
    *
-   * Rummy is a landscape-only table, so we force the device into landscape
-   * via the Screen Orientation lock — this rotates the phone regardless of
-   * the user's auto-rotate setting (the lock works once fullscreen is active
-   * on Android Chrome). The rotate-device prompt in the Rummy board stays as
-   * the fallback for browsers that reject the lock (notably iOS Safari).
+   * The per-game orientation used to be decided by a local helper here that
+   * hardcoded `rummy → landscape` and everything else to `"any"` — which had
+   * already drifted from `shared/catalog.ts`, where UNO is *also* declared
+   * landscape. One table now decides it for every surface:
+   * `GAME_PREFERRED_ORIENTATION`.
    *
-   * Every other game stays "any" so the board simply follows the phone's own
-   * rotation; their responsive layouts (Ludo/SnL at any aspect ratio) handle
-   * the UX. The fullscreen call still fires so the address/nav bars disappear.
+   * The attempt itself lives on real user gestures (`toggleReady`,
+   * `startGame`) because the Fullscreen API only grants a request made inside
+   * one — the lobby→playing effect below is a socket-driven fallback that the
+   * browser will refuse for anyone who was not the player that clicked.
    */
-  function orientationForGame(game: GameKind | undefined): "landscape" | "portrait" | "any" {
-    if (game === "rummy") return "landscape";
-    return "any";
-  }
-
-  function maybeEnterFullscreenForGame() {
-    if (!roomState?.game) return;
-    if (!isFullscreenSupported() || isFullscreenActive()) return;
-    void enterFullscreen(orientationForGame(roomState.game));
-  }
+  const gameFullscreen = useGameFullscreen({
+    slug: roomState?.game,
+    wantsFullscreen: roomState?.phase === "playing",
+  });
 
   // Watch for the lobby → playing transition and request fullscreen at
   // that moment. `prevPhaseForFullscreenRef` survives the StrictMode
@@ -1170,7 +1162,7 @@ export default function Room() {
   useEffect(() => {
     const prev = prevPhaseForFullscreenRef.current;
     if (prev === "lobby" && roomState?.phase === "playing" && roomState?.game) {
-      maybeEnterFullscreenForGame();
+      gameFullscreen.requestFullscreen();
     }
     prevPhaseForFullscreenRef.current = roomState?.phase;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1256,11 +1248,27 @@ export default function Room() {
 
 
   function toggleReady() {
-    // No fullscreen on Ready — the trigger lives on the phase transition.
-    // No debit animation here either, for the same reason — see the doc
-    // comment where triggerDebitAnimationForPlayer used to live: marking
-    // ready moves no money, so nothing here should look like it did.
+    // No debit animation here — see the doc comment where
+    // triggerDebitAnimationForPlayer used to live: marking ready moves no
+    // money, so nothing here should look like it did.
     const willBeReady = !selfPlayer?.isReady;
+    if (willBeReady) {
+      /**
+       * Fullscreen rides on THIS gesture, not on the phase transition.
+       *
+       * "Ready" is the only click every player at the table makes. The
+       * phase→playing effect fires from a socket event, so the browser grants
+       * it only to whoever happened to be inside a user-activation window —
+       * in practice the host alone, which is why everyone else used to stay
+       * windowed. Going fullscreen here also front-loads the orientation
+       * lock, so `usePlayerCapability`'s preflight check already sees the
+       * right orientation and stops blocking Rummy/UNO players outright.
+       *
+       * Not mirrored on un-ready: yanking someone out of fullscreen for
+       * toggling a checkbox is worse than leaving them in it.
+       */
+      gameFullscreen.requestFullscreen();
+    }
     getSocket().emit("room:setReady", willBeReady);
   }
 
@@ -1273,7 +1281,7 @@ export default function Room() {
     // because the deal/shuffle path adds a sessionStorage write that
     // delays the lobby→playing render.
     if (roomState?.game) {
-      maybeEnterFullscreenForGame();
+      gameFullscreen.requestFullscreen();
     }
     getSocket().emit("room:startGame");
   }
@@ -1968,6 +1976,18 @@ export default function Room() {
 
         {blockedByOrientation && orientationDeadline !== null && (
           <PreflightRotatePrompt deadline={orientationDeadline} />
+        )}
+
+        {/* Only when the silent attempts were refused, and never stacked on
+            top of the rotate prompt — that one owns the screen until the
+            preflight resolves. */}
+        {gameFullscreen.needsGesture && !blockedByOrientation && roomState?.game && (
+          <FullscreenGatePrompt
+            blocking={
+              isPhoneClass() && getGamePreferredOrientation(roomState.game) === "landscape"
+            }
+            onEnterFullscreen={gameFullscreen.requestFullscreen}
+          />
         )}
 
         <LeaveRoomModal
