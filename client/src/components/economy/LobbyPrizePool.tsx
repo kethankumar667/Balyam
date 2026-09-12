@@ -240,7 +240,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
       </div>
 
       {/* Unified Economy Plate: Total Pot & Entry Stake */}
-      <div className="flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl bg-white/80 dark:bg-black/30 border border-[#EEDBCA]/80 dark:border-slate-800 shadow-inner">
         {/* Left: Total Prize Pool */}
         <div className="flex items-center gap-2 min-w-0">
           <AshthaKonaCoinIcon size={24} className="text-amber-500 drop-shadow-xs shrink-0" />

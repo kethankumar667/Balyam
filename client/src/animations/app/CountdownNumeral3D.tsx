@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { GameKind } from "@shared/types";
-import ComicBurstText from "../comic/ComicBurstText";
 
 export type CountdownStep = 3 | 2 | 1 | "GO";
 
@@ -124,10 +123,21 @@ export default function CountdownNumeral3D({ step, game, slogan, size = 140 }: C
                 borderColor: palette.border,
               } as React.CSSProperties
             }
-            className="ludo-chip rounded-[28%] border-4 flex items-center justify-center"
+            className="ludo-chip rounded-[28%] border-4 flex items-center justify-center shadow-[0_10px_35px_rgba(0,0,0,0.55)]"
           >
             {isGo ? (
-              <ComicBurstText text="GO!" accent={palette.chipDark} fill={palette.ring} seed={41} />
+              <motion.span
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: [0.5, 1.2, 1], opacity: 1 }}
+                transition={{ type: "spring", stiffness: 450, damping: 16 }}
+                className="font-black leading-none select-none tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]"
+                style={{
+                  fontSize: size * 0.44,
+                  textShadow: `0 0 24px ${palette.ring}, 0 4px 12px rgba(0,0,0,0.65)`,
+                }}
+              >
+                GO!
+              </motion.span>
             ) : (
               <span
                 data-testid="countdown-numeral"

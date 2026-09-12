@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import ComicBurstText from "../comic/ComicBurstText";
+import { CheckCircle2, Zap } from "lucide-react";
 import { fireStarSparkleBurst } from "../particles/comicBursts";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
@@ -64,17 +64,37 @@ export function EveryoneReadyBanner({ onComplete }: { onComplete?: () => void })
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ scale: 0, y: -30, opacity: 0 }}
-        animate={{ scale: [0, 1.3, 1], y: [-30, 8, 0], opacity: 1 }}
+        animate={{ scale: [0, 1.12, 1], y: [-30, 4, 0], opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
         transition={{ duration: 0.38, ease: "backOut" }}
-        className="flex flex-col items-center gap-1"
+        className="relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-[#102A22]/95 via-[#0A1A15]/95 to-[#06100D]/95 border-2 border-emerald-500/60 shadow-[0_0_50px_rgba(16,185,129,0.35)] text-center max-w-sm w-full backdrop-blur-xl select-none"
       >
-        <div className="text-4xl">⚡ ✨ ⚡</div>
-        <ComicBurstText text="ALL READY!" accent="#065F46" fill="#A7F3D0" seed={77} />
+        {/* Ambient Ring Glow */}
+        <div
+          className="absolute w-48 h-48 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none"
+          aria-hidden="true"
+        />
+
+        {/* Ceremonial Icon */}
+        <div className="relative w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-400 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+          <CheckCircle2 className="w-7 h-7 animate-pulse" aria-hidden="true" />
+        </div>
+
+        {/* Eyebrow label */}
+        <span className="relative text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.25em] text-emerald-400/90 flex items-center gap-1.5 mb-1">
+          <Zap className="w-3.5 h-3.5 text-emerald-400" />
+          SQUAD READINESS CONFIRMED
+        </span>
+
+        {/* Main Title */}
+        <h2 className="relative text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-[0_2px_10px_rgba(16,185,129,0.5)]">
+          ALL READY!
+        </h2>
       </motion.div>
     </div>
   );
 }
+
