@@ -42,20 +42,6 @@ export default function EndGameCard({
     return players.find((p) => p.id === id)?.name ?? "?";
   }
 
-  if (previewMode) {
-    return (
-      <BoardPreviewPill
-        onClosePreview={() => setPreviewMode(false)}
-        // NOT `svgRef`. That ref points at the miniature board inside this
-        // card's own body — the subtree this very branch unmounts — so by
-        // the time the player taps 📸 it is always null and the capture
-        // silently fell through to window.print(). Target the live board on
-        // screen instead, which is what preview mode is showing them anyway.
-        targetElementId="game-board-container"
-      />
-    );
-  }
-
   const durationMs = (stats.endedAt ?? Date.now()) - stats.startedAt;
   const minutes = Math.floor(durationMs / 60000);
   const seconds = Math.floor((durationMs % 60000) / 1000);
@@ -135,6 +121,20 @@ export default function EndGameCard({
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        // NOT `svgRef`. That ref points at the miniature board inside this
+        // card's own body — the subtree this very branch unmounts — so by
+        // the time the player taps 📸 it is always null and the capture
+        // silently fell through to window.print(). Target the live board on
+        // screen instead, which is what preview mode is showing them anyway.
+        targetElementId="game-board-container"
+      />
+    );
   }
 
   return (

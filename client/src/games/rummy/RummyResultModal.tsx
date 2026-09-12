@@ -45,15 +45,6 @@ export default function RummyResultModal({
   const paperRef = useRef<HTMLDivElement>(null);
   const [previewMode, setPreviewMode] = useState(false);
 
-  if (previewMode) {
-    return (
-      <BoardPreviewPill
-        onClosePreview={() => setPreviewMode(false)}
-        targetElementId="rummy-table-container"
-      />
-    );
-  }
-
   const winnerId = state.winnerId ?? null;
   const wrongShowerId = state.invalidDeclareBy ?? null;
   const isWrongShow = wrongShowerId !== null;
@@ -173,6 +164,15 @@ export default function RummyResultModal({
   const sheetRowH = 46;
   const sheetRowsTop = 118;
   const sheetH = sheetRowsTop + rows.length * sheetRowH + 56;
+
+  if (previewMode) {
+    return (
+      <BoardPreviewPill
+        onClosePreview={() => setPreviewMode(false)}
+        targetElementId="rummy-table-container"
+      />
+    );
+  }
 
   return (
     <div

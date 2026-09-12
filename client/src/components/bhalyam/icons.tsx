@@ -58,6 +58,76 @@ export const ArrowRightIcon = makeIcon(
   </>,
 );
 
+/**
+ * Room-setup sheet iconography (GameRoomSheet.tsx redesign) — replaces raw
+ * emoji, which the craft floor treats as "standing in for an icon system"
+ * rather than a drawn one. Same 24x24 / currentColor / 1.8-stroke house
+ * style as every icon above, so they sit in one consistent family.
+ */
+
+export const CoinIcon = makeIcon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="5.2" />
+    <path d="M12 8.6v6.8M9.9 10.2c0-1 .9-1.6 2.1-1.6s2.1.5 2.1 1.3-.8 1.1-2.1 1.4-2.1.6-2.1 1.4.9 1.3 2.1 1.3 2.1-.6 2.1-1.6" />
+  </>,
+);
+
+export const TrophyIcon = makeIcon(
+  <>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0Z" />
+    <path d="M7 5H4.5A2.5 2.5 0 0 0 4 9.9L7 11M17 5h2.5A2.5 2.5 0 0 1 20 9.9L17 11" />
+    <path d="M12 14v3M9 21h6M9.5 21c0-2 .8-3 2.5-3s2.5 1 2.5 3" />
+  </>,
+);
+
+export const KeyIcon = makeIcon(
+  <>
+    <circle cx="8" cy="15.5" r="4" />
+    <path d="M11 12.5 19 4.5M16.5 7 19 4.5M19 4.5 21.5 7" />
+  </>,
+);
+
+export const GearIcon = makeIcon(
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.7 6.3l-1.7 1.7M8 16l-1.7 1.7M17.7 17.7 16 16M8 8 6.3 6.3" />
+  </>,
+);
+
+export const DiceIcon = makeIcon(
+  <>
+    <rect x="4" y="4" width="16" height="16" rx="3.5" />
+    <circle cx="8.3" cy="8.3" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15.7" cy="8.3" r="1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="8.3" cy="15.7" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15.7" cy="15.7" r="1" fill="currentColor" stroke="none" />
+  </>,
+);
+
+export const InfoIcon = makeIcon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5.2" />
+    <circle cx="12" cy="8" r="0.9" fill="currentColor" stroke="none" />
+  </>,
+);
+
+export const LockIcon = makeIcon(
+  <>
+    <rect x="5.5" y="10.5" width="13" height="9" rx="2.2" />
+    <path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7" />
+  </>,
+);
+
+export const EditIcon = makeIcon(
+  <>
+    <path d="M15.5 4.5 19.5 8.5 8.5 19.5 4 20l0.5-4.5Z" />
+    <path d="M13.5 6.5 17.5 10.5" />
+  </>,
+);
+
 /* ────────── Game pictograms (Home tiles + GameRoomSheet header) ────────── */
 
 export const HandCricketGlyph = makeIcon(

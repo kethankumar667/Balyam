@@ -92,6 +92,16 @@ export default function DotsBoxesScorecardModal({
     }
   }, [open, winner]);
 
+  // Real-money prize per placement, for a paid, settled match only. Must run
+  // unconditionally on every render — this used to sit after an
+  // `if (!open) return null;` guard, so the render where `open` flips true
+  // (right when the last box is claimed) suddenly called MORE hooks than the
+  // prior `open=false` render, and React crashed with "Rendered more hooks
+  // than during the previous render." A page reload masked it because the
+  // modal then mounted fresh with `open` already true.
+  const roomState = useRoomStore((s) => s.roomState);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
+
   if (!open) return null;
 
   const isNotebook = skin === "notebook";
@@ -100,9 +110,6 @@ export default function DotsBoxesScorecardModal({
     ((winner?.score ?? 0) / Math.max(1, totalBoxes)) * 100
   );
 
-  // Real-money prize per placement, for a paid, settled match only.
-  const roomState = useRoomStore((s) => s.roomState);
-  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrizes = winnerPrizesFor(settlement);
   const selfRanked = rankedPlayers.find((p) => p.pid === selfId);
   const myRank = selfRanked ? selfRanked.rank - 1 : -1;
