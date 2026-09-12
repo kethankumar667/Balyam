@@ -228,18 +228,16 @@ export function HcNotebookPage({
         position: "fixed",
         inset: 0,
         zIndex: 50,
-        // Richer wood spine: radial dark-to-medium gradient with subtle
-        // horizontal grain streaks — replaces the flat #4a2c12 constant.
+        // Rich wood border frame around the notebook page
         background:
           "radial-gradient(ellipse 60% 100% at 20% 50%, #3a1c08 0%, #4a2c12 50%, #5a3418 100%), repeating-linear-gradient(178deg, transparent, transparent 9px, rgba(0,0,0,0.06) 9px, rgba(0,0,0,0.06) 10px)",
         display: "flex",
-        padding: "10px 10px 10px 54px",
+        padding: "10px",
         boxShadow:
           "0 0 100px rgba(0,0,0,0.85), inset 0 0 24px rgba(0,0,0,0.35)",
       }}
     >
       <NotebookSvgFilters />
-      <BindingHoles />
 
       {/* Inner paper — fills all remaining space */}
       <div
@@ -249,15 +247,15 @@ export function HcNotebookPage({
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          borderRadius: "3px 6px 6px 3px",
+          borderRadius: "6px",
           overflow: "hidden",
           background: PAPER,
           backgroundImage: `${RULED_BG}, ${VINTAGE_BG}`,
           backgroundPosition:
             "0 13px, 48px 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0",
-          // Tri-layer inset: binding-side cast shadow + top-edge stain + ambient depth
+          // Dual-layer inset: top-edge stain + ambient depth
           boxShadow:
-            "inset 14px 0 28px rgba(50,20,5,0.26), inset 0 6px 16px rgba(50,20,5,0.14), inset 0 0 70px rgba(90,55,15,0.16)",
+            "inset 0 6px 16px rgba(50,20,5,0.14), inset 0 0 70px rgba(90,55,15,0.16)",
         }}
       >
         {children}
@@ -266,125 +264,397 @@ export function HcNotebookPage({
   );
 }
 
-function BindingHoles() {
+/* ═══════════════════════════════════════════════════════════════
+   NOTEBOOK HEADER — compact horizontal bar ~54–70px tall
+═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   TEAM DISPLAY HELPER & CRESTS
+═══════════════════════════════════════════════════════════════ */
+
+export interface HcTeamDisplayInfo {
+  flag?: string;
+  short?: string;
+  playerName: string;
+  color?: string;
+  textColor?: string;
+  name?: string;
+  id?: string;
+}
+
+const COUNTRY_FLAGS: Record<string, typeof IN> = {
+  india: IN,
+  australia: AU,
+  england: GB,
+  newzealand: NZ,
+  southafrica: ZA,
+  pakistan: PK,
+  srilanka: LK,
+  bangladesh: BD,
+  afghanistan: AF,
+  ireland: IE,
+  zimbabwe: ZW,
+};
+
+function labelFor(
+  state: HcState,
+  pid: string | undefined,
+  players: Player[],
+): HcTeamDisplayInfo {
+  if (!pid) {
+    return {
+      flag: undefined,
+      short: undefined,
+      playerName: "Waiting...",
+      color: "#64748b",
+      textColor: "#ffffff",
+      id: undefined,
+    };
+  }
+  const playerName = players.find((p) => p.id === pid)?.name ?? "?";
+  const sel = state.teamSelections[pid];
+  if (!sel?.teamId) {
+    return {
+      flag: undefined,
+      short: undefined,
+      playerName,
+      color: "rgba(255,255,255,0.72)",
+      textColor: INK,
+      id: undefined,
+    };
+  }
+  const id = sel.teamId;
+  if (id in HC_COUNTRIES) {
+    const profile = HC_COUNTRIES[id as HcCountry];
+    const meta = COUNTRY_META[id as HcCountry];
+    const color = meta?.color ?? "#166534";
+    const isLight = color === "#facc15" || color === "#eab308";
+    return {
+      flag: profile.flag,
+      short: profile.short,
+      playerName,
+      color,
+      textColor: isLight ? INK : "#ffffff",
+      name: profile.name,
+      id,
+    };
+  }
+  if (id in HC_FRANCHISES) {
+    const f = HC_FRANCHISES[id as HcFranchise];
+    const color = f.color;
+    const isLight = f.id === "csk";
+    return {
+      flag: undefined,
+      short: f.short,
+      playerName,
+      color,
+      textColor: isLight ? INK : "#ffffff",
+      name: f.name,
+      id,
+    };
+  }
+  return {
+    flag: undefined,
+    short: undefined,
+    playerName,
+    color: "#64748b",
+    textColor: "#ffffff",
+    id: undefined,
+  };
+}
+
+/** RCB Golden Lion Crest matching reference */
+function RcbLionCrest({ size = 36 }: { size?: number }) {
   return (
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 54,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-evenly",
-        alignItems: "center",
-        paddingTop: 16,
-        paddingBottom: 16,
-        pointerEvents: "none",
-      }}
-    >
-      {/* Cast-shadow strip — the binding bleeds a warm shadow onto the paper edge */}
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" aria-hidden>
+      {/* Crown */}
+      <path
+        d="M16 8 L18.5 11 L22 7 L25.5 11 L28 8 L27 13 L17 13 Z"
+        fill="#ffd700"
+        stroke="#b45309"
+        strokeWidth="0.8"
+      />
+      {/* Lion head with open roar and mane */}
+      <path
+        d="M20 14 C18 16 16 19 17 22 C18 24 20 25 22 25 C21 23 21 21 23 20 C25 19 26 16 24 14 Z"
+        fill="#ffd700"
+        stroke="#b45309"
+        strokeWidth="0.8"
+      />
+      {/* Rampant torso and hind leg */}
+      <path
+        d="M22 23 C24 25 25 29 23 33 C22 35 19 37 20 38 L26 38 C26 35 28 33 28 30 C28 26 26 24 24 23 Z"
+        fill="#ffd700"
+        stroke="#b45309"
+        strokeWidth="0.8"
+      />
+      {/* Front paws clawing */}
+      <path
+        d="M24 19 L30 17 M24 21 L31 21"
+        stroke="#ffd700"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      {/* Tail curving up */}
+      <path
+        d="M20 35 C16 34 14 29 16 25 C17 23 19 24 18 26"
+        stroke="#ffd700"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="18" cy="26" r="1.6" fill="#ffd700" />
+      {/* Golden RCB lettering */}
+      <text
+        x="22"
+        y="42"
+        textAnchor="middle"
+        fill="#ffd700"
+        fontSize="7"
+        fontWeight="900"
+        fontFamily="sans-serif"
+        letterSpacing="0.08em"
+      >
+        RCB
+      </text>
+    </svg>
+  );
+}
+
+/** CSK Roaring Lion Crest matching reference */
+function CskLionCrest({ size = 36 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" aria-hidden>
+      {/* Roaring mane silhouette */}
+      <path
+        d="M10 26 C8 22 9 16 14 11 C19 6 26 6 32 9 C36 11 39 15 38 19 C37 21 35 22 33 21 C31 20 30 17 27 16 C24 15 21 15 18 17 C16 18 15 21 16 24 C13 23 12 25 13 27 C11 27 10 29 11 31 C8 30 7 34 10 36 C13 38 18 37 21 35 C23 34 25 31 27 31 C31 31 34 34 32 38 C28 41 21 42 15 40 C11 38 8 33 10 26 Z"
+        fill="#b45309"
+        opacity="0.88"
+      />
+      {/* Roaring open jaws */}
+      <path
+        d="M20 19 C22 18 26 18 28 20 C30 22 30 25 28 27 C26 29 23 29 21 28 L26 24 Z"
+        fill="#0284c7"
+      />
+      {/* Eye */}
+      <circle cx="23" cy="18" r="1.3" fill="#ffffff" />
+      {/* CSK text */}
+      <text
+        x="22"
+        y="30"
+        textAnchor="middle"
+        fill="#0284c7"
+        fontSize="7"
+        fontWeight="900"
+        fontFamily="sans-serif"
+        letterSpacing="0.05em"
+      >
+        CSK
+      </text>
+      <text
+        x="22"
+        y="36"
+        textAnchor="middle"
+        fill="#0369a1"
+        fontSize="4"
+        fontWeight="800"
+        fontFamily="sans-serif"
+        letterSpacing="0.08em"
+      >
+        CHENNAI
+      </text>
+    </svg>
+  );
+}
+
+function HcTeamCrest({
+  id,
+  flag,
+  size = 36,
+}: {
+  id?: string;
+  flag?: string;
+  size?: number;
+}) {
+  if (!id) {
+    return (
       <div
         style={{
-          position: "absolute",
-          right: -10,
-          top: 0,
-          bottom: 0,
-          width: 18,
-          background:
-            "linear-gradient(to right, rgba(50,20,5,0.28) 0%, rgba(50,20,5,0.06) 70%, transparent 100%)",
-          pointerEvents: "none",
+          width: size,
+          height: size,
+          borderRadius: 8,
+          background: "rgba(80,50,20,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: INK_LT,
+          fontSize: 16,
         }}
-      />
+      >
+        🏏
+      </div>
+    );
+  }
 
-      {Array.from({ length: 13 }).map((_, i) => (
+  if (id === "rcb") return <RcbLionCrest size={size} />;
+  if (id === "csk") return <CskLionCrest size={size} />;
+
+  if (id in HC_FRANCHISES) {
+    const f = HC_FRANCHISES[id as HcFranchise];
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.22)",
+          border: "1.5px solid rgba(255,255,255,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#ffffff",
+          fontWeight: 900,
+          fontSize: 13,
+          fontFamily: "'Kalam', system-ui, sans-serif",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.20)",
+        }}
+      >
+        {f?.short?.slice(0, 3) ?? id.toUpperCase()}
+      </div>
+    );
+  }
+
+  const FlagComp = COUNTRY_FLAGS[id];
+  if (FlagComp) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: Math.round(size * 0.7),
+          borderRadius: 4,
+          overflow: "hidden",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+          display: "flex",
+        }}
+      >
+        <FlagComp style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
+
+  if (flag) {
+    return <span style={{ fontSize: 24, lineHeight: 1 }}>{flag}</span>;
+  }
+
+  return <span>🏏</span>;
+}
+
+function MatchupCard({
+  team,
+  style,
+}: {
+  team: HcTeamDisplayInfo;
+  style?: React.CSSProperties;
+}) {
+  const isSelected = Boolean(team.short);
+  const bgColor = team.color ?? "#e2e8f0";
+  const textColor = team.textColor ?? (isSelected ? "#ffffff" : INK);
+
+  const cardBg = isSelected
+    ? team.id === "csk"
+      ? "linear-gradient(135deg, #fde047 0%, #eab308 100%)"
+      : team.id === "rcb"
+        ? "linear-gradient(135deg, #c5221f 0%, #881337 100%)"
+        : team.id === "mi"
+          ? "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)"
+          : `linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%)`
+    : "rgba(255,255,255,0.72)";
+
+  const crestSize =
+    style?.height && typeof style.height === "number" && style.height < 50
+      ? 32
+      : 36;
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        height: 52,
+        borderRadius: 12,
+        background: cardBg,
+        border: isSelected ? "none" : "1.5px dashed rgba(80,50,20,0.22)",
+        boxShadow: isSelected
+          ? "0 3px 8px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.25)"
+          : "none",
+        display: "flex",
+        alignItems: "center",
+        padding: "6px 12px",
+        gap: 10,
+        overflow: "hidden",
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          width: crestSize,
+          height: crestSize,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <HcTeamCrest id={team.id} flag={team.flag} size={crestSize} />
+      </div>
+
+      <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
         <div
-          key={i}
+          className="font-sketch"
           style={{
-            position: "relative",
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            // Near-black punched hole — maximum contrast against wood
-            background:
-              "radial-gradient(circle at 38% 32%, #2e1408 0%, #0e0401 48%, #070100 100%)",
-            border: "2px solid rgba(255,210,150,0.10)",
-            boxShadow:
-              "inset 0 3px 7px rgba(0,0,0,0.85), inset 0 -1px 3px rgba(255,190,120,0.08), 0 1px 0 rgba(255,230,180,0.07)",
+            fontSize: "clamp(15px, 1.8vw, 19px)",
+            fontWeight: 900,
+            color: textColor,
+            lineHeight: 1.1,
+            letterSpacing: "0.03em",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          {/* Rim highlight — ambient light catching the top of the hole */}
-          <div
-            style={{
-              position: "absolute",
-              top: 3,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 11,
-              height: 4,
-              borderRadius: "50%",
-              background: "rgba(255,210,140,0.16)",
-              filter: "blur(1.5px)",
-            }}
-          />
-          {/* Spiral wire — thicker, high-contrast arcs: back arc + front arc + sheen */}
-          <svg
-            width={46}
-            height={22}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%,-50%)",
-              pointerEvents: "none",
-              overflow: "visible",
-            }}
-            aria-hidden
-          >
-            {/* Back arc — dark, passes behind the hole */}
-            <path
-              d="M3 11 C 3 3, 43 3, 43 11"
-              stroke="rgba(30,12,3,0.95)"
-              strokeWidth="2.8"
-              fill="none"
-              strokeLinecap="round"
-            />
-            {/* Front arc — mid-tone, passes in front of hole */}
-            <path
-              d="M3 11 C 3 19, 43 19, 43 11"
-              stroke="rgba(55,26,8,0.88)"
-              strokeWidth="2.4"
-              fill="none"
-              strokeLinecap="round"
-            />
-            {/* Sheen — specular highlight on the top wire */}
-            <path
-              d="M9 5.5 C 16 2.5, 30 2.5, 37 5.5"
-              stroke="rgba(180,120,55,0.50)"
-              strokeWidth="1.2"
-              fill="none"
-              strokeLinecap="round"
-            />
-          </svg>
+          {team.short ?? "Picking..."}
         </div>
-      ))}
+        <div
+          style={{
+            fontSize: 11.5,
+            fontWeight: 600,
+            color: textColor,
+            opacity: 0.88,
+            lineHeight: 1.2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            fontFamily: "'Kalam', system-ui, sans-serif",
+          }}
+        >
+          {team.short ? `${team.short} (${team.playerName})` : team.playerName}
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   NOTEBOOK HEADER — compact horizontal bar ~54–70px tall
+   NOTEBOOK HEADER — redesigned authentic notebook skin
 ═══════════════════════════════════════════════════════════════ */
 
 export function HcNotebookHeader({
   state,
   players,
-  selfId,
+  selfId: _selfId,
   roomCode,
-  roomPhase,
-  messages,
+  roomPhase: _roomPhase,
+  messages: _messages,
   onHelp,
   onLeave,
   onSkin,
@@ -397,173 +667,506 @@ export function HcNotebookHeader({
   messages: ChatMessage[];
   onHelp?: () => void;
   onLeave?: () => void;
-  /** Switch to the broadcast skin. Styled in the notebook idiom — a dark
-   *  pro-kit control would read as a rendering bug on parchment. */
   onSkin?: () => void;
 }) {
   const [p0, p1] = state.playerOrder;
   const t0 = labelFor(state, p0, players);
   const t1 = labelFor(state, p1, players);
+
   const formatLabel =
     state.options.format === "test"
-      ? "Test · 30 overs"
+      ? "Test • 30 Overs"
       : state.options.format === "odi"
-        ? "ODI · 15 overs"
-        : "T20 · 10 overs";
+        ? "ODI • 15 Overs"
+        : "T20 • 10 Overs";
   const categoryLabel =
-    state.options.category === "ipl" ? "IPL" : "INTERNATIONAL";
+    state.options.category === "ipl" ? "IPL" : "International";
 
-  return (
-    <div style={{ flexShrink: 0 }}>
-      <div
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const inDesktop = desktopMenuRef.current?.contains(target);
+      const inMobile = mobileMenuRef.current?.contains(target);
+      if (!inDesktop && !inMobile) {
+        setMenuOpen(false);
+      }
+    }
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  function handleCopyRoomCode() {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  const renderBackButton = () =>
+    onLeave ? (
+      <button
+        onClick={onLeave}
+        aria-label="Leave room"
+        title="Leave room"
         style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          background: "#FFFDF5",
+          border: "1px solid rgba(80,50,20,0.18)",
+          boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          rowGap: 8,
-          flexWrap: "wrap",
-          padding: "12px 18px 10px",
-          borderBottom: `1.5px solid ${LINE_CLR}`,
-          background: "transparent",
+          justifyContent: "center",
+          cursor: "pointer",
           flexShrink: 0,
-          minHeight: 58,
+          transition: "transform 140ms ease, box-shadow 140ms ease",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <svg
+          width={18}
+          height={18}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#3a1c08"
+          strokeWidth={2.6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+      </button>
+    ) : null;
+
+  const renderBroadcastButton = () =>
+    onSkin ? (
+      <button
+        onClick={onSkin}
+        title="Switch to the broadcast look"
+        style={{
+          height: 36,
+          padding: "0 14px",
+          borderRadius: 9999,
+          border: "1px solid rgba(80,50,20,0.18)",
+          background: "#FFFDF5",
+          boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
+          color: INK,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          fontWeight: 800,
+          fontSize: 13,
+          fontFamily: "'Kalam', system-ui, sans-serif",
+          transition: "transform 140ms ease",
+          whiteSpace: "nowrap",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <svg
+          width={17}
+          height={17}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={INK}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+          <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+          <circle cx="12" cy="12" r="2" fill={INK} />
+          <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+          <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1" />
+        </svg>
+        <span>Broadcast</span>
+      </button>
+    ) : null;
+
+  const renderMenu = (ref: React.RefObject<HTMLDivElement>) => (
+    <div style={{ position: "relative" }} ref={ref}>
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Options"
+        title="More options"
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          background: "#FFFDF5",
+          border: "1px solid rgba(80,50,20,0.18)",
+          boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          color: "#3a1c08",
         }}
       >
-        {/* ── Left: ball icon + title + format/category torn chips ── */}
+        <svg width={16} height={16} viewBox="0 0 24 24" fill="#3a1c08">
+          <circle cx="12" cy="5" r="2.2" />
+          <circle cx="12" cy="12" r="2.2" />
+          <circle cx="12" cy="19" r="2.2" />
+        </svg>
+      </button>
+
+      {menuOpen && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            rowGap: 6,
-            flexWrap: "wrap",
-            minWidth: 0,
+            position: "absolute",
+            top: 42,
+            right: 0,
+            zIndex: 100,
+            minWidth: 170,
+            background: "#FFFDF5",
+            border: "1.5px solid rgba(80,50,20,0.22)",
+            borderRadius: 10,
+            boxShadow: "0 8px 24px rgba(40,20,5,0.20)",
+            padding: "6px 0",
+            overflow: "hidden",
           }}
         >
-          <CricketBallIcon />
-          <div style={{ minWidth: 0 }}>
-            <span
-              className="font-sketch"
+          {onHelp && (
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                onHelp();
+              }}
               style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
                 color: INK,
-                fontSize: "clamp(15px,2vw,22px)",
-                fontWeight: 900,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                display: "block",
-                lineHeight: 1.05,
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: "'Kalam', system-ui, sans-serif",
+              }}
+            >
+              <span>❓</span>
+              <span>How to Play</span>
+            </button>
+          )}
+          {roomCode && (
+            <button
+              onClick={handleCopyRoomCode}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: INK,
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: "'Kalam', system-ui, sans-serif",
+              }}
+            >
+              <span>📋</span>
+              <span>{copied ? "Copied!" : `Room: ${roomCode}`}</span>
+            </button>
+          )}
+          {onLeave && (
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                onLeave();
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: INK_RED,
+                fontSize: 13,
+                fontWeight: 800,
+                borderTop: "1px solid rgba(80,50,20,0.10)",
+                fontFamily: "'Kalam', system-ui, sans-serif",
+              }}
+            >
+              <span>🚪</span>
+              <span>Leave Game</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderBadges = () => (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <span
+        style={{
+          height: 25,
+          padding: "0 12px",
+          borderRadius: 9999,
+          background: "#FFFDF5",
+          border: "1px solid rgba(80,50,20,0.14)",
+          boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
+          color: INK,
+          fontSize: 12,
+          fontWeight: 800,
+          display: "inline-flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
+          fontFamily: "'Kalam', system-ui, sans-serif",
+        }}
+      >
+        {formatLabel}
+      </span>
+      <span
+        style={{
+          height: 25,
+          padding: "0 12px",
+          borderRadius: 9999,
+          background: "#FFFDF5",
+          border: "1px solid rgba(80,50,20,0.14)",
+          boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
+          color: INK,
+          fontSize: 12,
+          fontWeight: 800,
+          display: "inline-flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
+          fontFamily: "'Kalam', system-ui, sans-serif",
+        }}
+      >
+        {categoryLabel}
+      </span>
+    </div>
+  );
+
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        borderBottom: `1.5px solid ${LINE_CLR}`,
+        padding: "10px 14px 12px",
+        background: "transparent",
+      }}
+    >
+      {/* ══════════════════════════════════════════════════════
+          DESKTOP VIEW (≥ lg / 1024px):
+          Single streamlined widescreen bar.
+          Left: Back + Ball + Brand + Badges
+          Center: Matchup Fixture ([Card] VS [Card])
+          Right: Broadcast + Menu
+      ══════════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex items-center justify-between gap-4 w-full">
+        {/* Left Section */}
+        <div className="flex items-center gap-3 shrink-0">
+          {renderBackButton()}
+          <CricketBallIcon />
+          <div className="flex flex-col justify-center">
+            <div className="relative inline-block">
+              <span
+                className="font-sketch"
+                style={{
+                  color: INK,
+                  fontSize: 20,
+                  fontWeight: 900,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  display: "block",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Hand Cricket
+              </span>
+              <RoughUnderline />
+            </div>
+            <span
+              style={{
+                fontFamily: "'Caveat', 'Kalam', cursive",
+                color: "#b91c1c",
+                fontSize: 12.5,
+                fontWeight: 700,
+                fontStyle: "italic",
+                lineHeight: 1.15,
+                marginTop: 2,
                 whiteSpace: "nowrap",
               }}
             >
-              Hand Cricket
+              Same game. New stories!
             </span>
-            <RoughUnderline />
           </div>
+
           <div
-            style={{ display: "flex", gap: 8, marginLeft: 4, flexWrap: "wrap" }}
-          >
-            <HeaderPill>{formatLabel.toUpperCase()}</HeaderPill>
-            <HeaderPill>{categoryLabel}</HeaderPill>
-          </div>
+            style={{
+              width: 1.5,
+              height: 24,
+              background: "rgba(80,50,20,0.15)",
+              margin: "0 4px",
+            }}
+          />
+          {renderBadges()}
         </div>
 
-        {/* ── Right: matchup strip + room rail + help + leave (all torn) ── */}
+        {/* Center Section: Matchup Banner */}
+        <div
+          className="flex items-center justify-center gap-3 flex-1 min-w-0"
+          style={{ maxWidth: 540 }}
+        >
+          <MatchupCard team={t0} style={{ maxWidth: 230, height: 46 }} />
+          <div
+            className="font-sketch"
+            style={{
+              color: INK,
+              fontSize: 18,
+              fontWeight: 900,
+              padding: "0 2px",
+              userSelect: "none",
+              flexShrink: 0,
+            }}
+          >
+            VS
+          </div>
+          <MatchupCard team={t1} style={{ maxWidth: 230, height: 46 }} />
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-2 shrink-0">
+          {renderBroadcastButton()}
+          {renderMenu(desktopMenuRef)}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          MOBILE VIEW (< lg):
+          Classic 3-row layout matching mockup
+      ══════════════════════════════════════════════════════ */}
+      <div className="flex lg:hidden flex-col gap-2 w-full">
+        {/* ROW 1: Back + Brand ... Broadcast + 3-dots */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-end",
-            gap: 10,
-            rowGap: 8,
-            flexWrap: "wrap",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "nowrap",
           }}
         >
-          {/* Team matchup on a single torn strip */}
-          <TornChip padding="4px 12px" rotate={-0.6}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <TeamChipNb
-                flag={t0.flag}
-                code={t0.short}
-                playerName={t0.playerName}
-                isSelf={p0 === selfId}
-                unknown={!t0.short}
-              />
-              <span
-                className="font-notebook"
-                style={{ color: INK_LT, fontSize: 11, fontWeight: 700 }}
-              >
-                vs
-              </span>
-              <TeamChipNb
-                flag={t1.flag}
-                code={t1.short}
-                playerName={t1.playerName}
-                isSelf={p1 === selfId}
-                unknown={!t1.short}
-              />
-            </div>
-          </TornChip>
-
-          {/* Skin switch back to broadcast */}
-          {onSkin && (
-            <button
-              onClick={onSkin}
-              title="Switch to the broadcast look"
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
+            }}
+          >
+            {renderBackButton()}
+            <CricketBallIcon />
+            <div
               style={{
-                height: 32,
-                padding: "0 12px",
-                borderRadius: 5,
-                border: `1.5px solid ${INK_LT}`,
-                background: "transparent",
-                color: INK_LT,
-                cursor: "pointer",
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 800,
-                fontSize: 12,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                flexShrink: 0,
-              }}
-            >
-              Broadcast
-            </button>
-          )}
-
-          {/* Help button */}
-          {onHelp && (
-            <button
-              onClick={onHelp}
-              aria-label="How to play"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
+                minWidth: 0,
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `2px solid ${INK_LT}`,
-                color: INK_LT,
-                background: "transparent",
-                cursor: "pointer",
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 900,
-                fontSize: 14,
-                flexShrink: 0,
+                flexDirection: "column",
               }}
             >
-              ?
-            </button>
-          )}
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <span
+                  className="font-sketch"
+                  style={{
+                    color: INK,
+                    fontSize: "clamp(17px, 2.2vw, 22px)",
+                    fontWeight: 900,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    display: "block",
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Hand Cricket
+                </span>
+                <RoughUnderline />
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Caveat', 'Kalam', cursive",
+                  color: "#b91c1c",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontStyle: "italic",
+                  lineHeight: 1.15,
+                  marginTop: 2,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Same game. New stories!
+              </span>
+            </div>
+          </div>
 
-          {/* Leave button — the fixed notebook overlay covers Room.tsx's own
-            Leave control, so the shell must surface its own exit. */}
-          {onLeave && <HcLeaveButton onLeave={onLeave} />}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexShrink: 0,
+            }}
+          >
+            {renderBroadcastButton()}
+            {renderMenu(mobileMenuRef)}
+          </div>
+        </div>
+
+        {/* ROW 2: Format & Category Badges */}
+        <div style={{ marginTop: 2 }}>{renderBadges()}</div>
+
+        {/* ROW 3: Matchup Banner */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            marginTop: 4,
+            width: "100%",
+          }}
+        >
+          <MatchupCard team={t0} />
+          <div
+            className="font-sketch"
+            style={{
+              color: INK,
+              fontSize: 18,
+              fontWeight: 900,
+              padding: "0 2px",
+              userSelect: "none",
+              flexShrink: 0,
+            }}
+          >
+            VS
+          </div>
+          <MatchupCard team={t1} />
         </div>
       </div>
-
-      {/* Inline room rail removed for this notebook composition to keep
-          the team-selection board as the primary focal area. */}
     </div>
   );
 }
@@ -2635,27 +3238,7 @@ export function HcPhaseCard({
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   HELPER: derive team label from state
-═══════════════════════════════════════════════════════════════ */
 
-function labelFor(state: HcState, pid: string, players: Player[]) {
-  const playerName = players.find((p) => p.id === pid)?.name ?? "?";
-  const sel = state.teamSelections[pid];
-  if (!sel?.teamId) return { flag: undefined, short: undefined, playerName };
-  const id = sel.teamId;
-  // Use `in` narrowing — HC_COUNTRIES and HC_FRANCHISES are Records whose
-  // key sets are exactly HcCountry and HcFranchise respectively.
-  if (id in HC_COUNTRIES) {
-    const profile = HC_COUNTRIES[id as HcCountry];
-    return { flag: profile.flag, short: profile.short, playerName };
-  }
-  if (id in HC_FRANCHISES) {
-    const f = HC_FRANCHISES[id as HcFranchise];
-    return { flag: undefined, short: f.short, playerName };
-  }
-  return { flag: undefined, short: undefined, playerName };
-}
 
 /* ═══════════════════════════════════════════════════════════════
    SCRAPBOOK DOODLE LAYER — fills the page margins so post-teamSelect
@@ -2891,48 +3474,76 @@ function IplHeartDoodle({
    DECORATIVE SVG ELEMENTS
 ═══════════════════════════════════════════════════════════════ */
 
-/** Cricket ball header icon (filled, coloured — used in header) */
-function CricketBallIcon() {
+/** Cricket ball header icon (filled, rich 3D shading with white seam stitches) */
+function CricketBallIcon({ size = 36 }: { size?: number }) {
   return (
     <svg
-      width={28}
-      height={28}
-      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      viewBox="0 0 36 36"
       fill="none"
       aria-hidden
       style={{ flexShrink: 0 }}
     >
+      <defs>
+        <radialGradient id="hc-ball-icon-grad" cx="30%" cy="28%" r="70%">
+          <stop offset="0%" stopColor="#ef4444" />
+          <stop offset="28%" stopColor="#dc2626" />
+          <stop offset="70%" stopColor="#991b1b" />
+          <stop offset="100%" stopColor="#450a0a" />
+        </radialGradient>
+        <filter id="hc-ball-icon-sh" x="-10%" y="-10%" width="130%" height="130%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodOpacity="0.32" />
+        </filter>
+      </defs>
       <circle
-        cx={16}
-        cy={16}
-        r={14}
-        fill="#c0392b"
-        stroke="#7c1d1d"
-        strokeWidth={1.5}
+        cx="18"
+        cy="18"
+        r="16.5"
+        fill="url(#hc-ball-icon-grad)"
+        filter="url(#hc-ball-icon-sh)"
+        stroke="#7f1d1d"
+        strokeWidth="0.8"
+      />
+      {/* Curved white primary seam lines */}
+      <path
+        d="M13.5 2.8 C 18.5 11, 18.5 25, 13.5 33.2"
+        stroke="#ffffff"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.95"
       />
       <path
-        d="M8 10 Q12 16 8 22"
-        stroke="#f5e9c4"
-        strokeWidth={1.8}
+        d="M19.5 2.8 C 24.5 11, 24.5 25, 19.5 33.2"
+        stroke="#ffffff"
+        strokeWidth="1.8"
+        strokeLinecap="round"
         fill="none"
+        opacity="0.95"
+      />
+      {/* Seam cross stitches */}
+      <path
+        d="M12.5 7.5 h2.8 M13.5 12.5 h2.8 M14.5 17.5 h2.8 M14.5 22.5 h2.8 M13.5 27.5 h2.8"
+        stroke="#fecaca"
+        strokeWidth="1.1"
         strokeLinecap="round"
       />
       <path
-        d="M24 10 Q20 16 24 22"
-        stroke="#f5e9c4"
-        strokeWidth={1.8}
-        fill="none"
+        d="M18.8 7.5 h2.8 M19.8 12.5 h2.8 M20.8 17.5 h2.8 M20.8 22.5 h2.8 M19.8 27.5 h2.8"
+        stroke="#fecaca"
+        strokeWidth="1.1"
         strokeLinecap="round"
       />
+      {/* Specular gloss highlight */}
       <ellipse
-        cx={16}
-        cy={16}
-        rx={4}
-        ry={13}
-        fill="none"
-        stroke="#f5e9c4"
-        strokeWidth={1.2}
-        opacity={0.5}
+        cx="11"
+        cy="9"
+        rx="4.5"
+        ry="2.5"
+        fill="#ffffff"
+        opacity="0.28"
+        transform="rotate(-28 11 9)"
       />
     </svg>
   );

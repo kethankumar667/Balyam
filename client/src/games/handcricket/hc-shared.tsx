@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type {
   ChatMessage,
   HcBall,
@@ -1174,6 +1174,133 @@ export function WaitingForOpponentSquad({
   );
 }
 
+function TossCoinIllustration() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: 120,
+        height: 120,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {/* 3D Gold Tossing Coin — enlarged, completely clean without any background lines */}
+      <motion.div
+        animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+        style={{ width: 110, height: 110, position: "relative" }}
+      >
+        <svg width="110" height="110" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient
+              id="hcTossRimGrad"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="#ca8a04" />
+              <stop offset="50%" stopColor="#78350f" />
+              <stop offset="100%" stopColor="#451a03" />
+            </linearGradient>
+            <radialGradient id="hcTossFaceGrad" cx="38%" cy="32%" r="68%">
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="35%" stopColor="#facc15" />
+              <stop offset="75%" stopColor="#eab308" />
+              <stop offset="100%" stopColor="#ca8a04" />
+            </radialGradient>
+            <linearGradient id="hcTossInnerGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#92400e" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
+
+          {/* Soft Drop Shadow under coin */}
+          <ellipse
+            cx="50"
+            cy="93"
+            rx="28"
+            ry="4.5"
+            fill="rgba(0,0,0,0.16)"
+            filter="blur(1.5px)"
+          />
+
+          {/* Coin tilted at 20deg */}
+          <g transform="rotate(20, 50, 50)">
+            {/* 3D Extrusion Bevel (Rim) */}
+            <ellipse cx="50" cy="54" rx="38" ry="32" fill="url(#hcTossRimGrad)" />
+
+            {/* Rim milled ridges */}
+            <path
+              d="M 14 53 L 14 57 M 19 59 L 19 63 M 26 64 L 26 68 M 35 68 L 35 72 M 45 70 L 45 74 M 55 70 L 55 74 M 65 67 L 65 71 M 74 62 L 74 66 M 82 56 L 82 60 M 87 50 L 87 54"
+              stroke="#451a03"
+              strokeWidth="1.6"
+              opacity="0.65"
+            />
+
+            {/* Front Coin Face */}
+            <ellipse
+              cx="50"
+              cy="48"
+              rx="38"
+              ry="32"
+              fill="url(#hcTossFaceGrad)"
+              stroke="#854d0e"
+              strokeWidth="1.5"
+            />
+
+            {/* Inner Stamped Rings */}
+            <ellipse
+              cx="50"
+              cy="48"
+              rx="31"
+              ry="26"
+              fill="none"
+              stroke="url(#hcTossInnerGlow)"
+              strokeWidth="1.8"
+            />
+            <ellipse
+              cx="50"
+              cy="48"
+              rx="29.5"
+              ry="24.5"
+              fill="none"
+              stroke="#a16207"
+              strokeWidth="1"
+              strokeDasharray="2,2"
+            />
+
+            {/* Crown Emblem (stamped in center) */}
+            <g transform="translate(35, 33) scale(1.2)">
+              {/* Crown shadow */}
+              <path
+                d="M 2 18 L 4 6 L 10 12 L 13 3 L 16 12 L 22 6 L 24 18 Z"
+                fill="#854d0e"
+                opacity="0.4"
+                transform="translate(0, 1)"
+              />
+              {/* Crown main body */}
+              <path
+                d="M 2 18 L 4 6 L 10 12 L 13 3 L 16 12 L 22 6 L 24 18 Z"
+                fill="#78350f"
+              />
+              {/* Crown tip jewels */}
+              <circle cx="4" cy="5" r="1.3" fill="#78350f" />
+              <circle cx="13" cy="2" r="1.5" fill="#78350f" />
+              <circle cx="22" cy="5" r="1.3" fill="#78350f" />
+              {/* Crown base */}
+              <rect x="2" y="19" width="22" height="2" rx="1" fill="#78350f" />
+            </g>
+          </g>
+        </svg>
+      </motion.div>
+    </div>
+  );
+}
+
 export function TossPhase({
   state,
   selfId,
@@ -1184,128 +1311,731 @@ export function TossPhase({
   players: Player[];
 }) {
   const myPick = state.tossPicks[selfId];
-  const oppId = state.playerOrder.find((id) => id !== selfId)!;
-  const oppPick = state.tossPicks[oppId];
+  const oppId = state.playerOrder.find((id) => id !== selfId) ?? "";
+  const oppPick = oppId ? state.tossPicks[oppId] : null;
   const oppLockedIn = oppPick != null;
-  const oppName = players.find((p) => p.id === oppId)?.name ?? "Opponent";
 
-  function pick(n: number) {
+  const me = players.find((p) => p.id === selfId);
+  const myName = me?.name ?? "You";
+  const myAvatar = me?.avatar;
+
+  const opponent = players.find((p) => p.id === oppId);
+  const oppName = opponent?.name ?? "Opponent";
+  const oppAvatar = opponent?.avatar;
+
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(
+    myPick ?? null,
+  );
+
+  useEffect(() => {
+    if (myPick != null) {
+      setSelectedNumber(myPick);
+    }
+  }, [myPick]);
+
+  function handlePick(n: number) {
     if (myPick != null) return;
-    getSocket().emit("game:move", { type: "tossPick", data: { pick: n } });
+    setSelectedNumber(n);
+    getSocket().emit("game:move", {
+      type: "tossPick",
+      data: { pick: n },
+    });
   }
 
   return (
-    <PaperPanel tone="soft" pad="lg" className="font-notebook">
-      <div className="flex flex-col items-center gap-5">
-        {/* Kinetic dice — 52 px + bounce + rotation makes the coin feel
-            airborne rather than decorative. Size step alone (34 → 52) is
-            the single biggest emotional lift; the animation seals it. */}
-        <motion.div
-          aria-hidden
-          animate={{ y: [0, -14, 0], rotate: [0, 16, -16, 0] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-          style={{ fontSize: 52, lineHeight: 1 }}
-        >
-          🎲
-        </motion.div>
-
-        <div className="text-center space-y-1.5">
-          {/* 32 px heading vs the previous 20 px — the toss deserves
-              the same prominence as the scoreboard headline. */}
-          <SketchHeading arrows={false} className="text-[32px] tracking-[0.08em]">
-            The Toss
-          </SketchHeading>
-          <p className="font-hand text-hc-ink-lt text-[12px] max-w-[340px] mx-auto leading-snug">
-            Both players pick 1-6. Even sum: first player wins. Odd sum: second player wins.
-          </p>
-        </div>
-
-        <PickRow disabled={myPick != null} onPick={pick} selected={myPick ?? null} />
-
-        {/* Bilateral tension — YOU on left, OPPONENT on right, VS divider
-            mirrors two captains walking to the pitch for the coin toss. */}
-        <div className="flex items-stretch w-full max-w-[380px]">
-          <TossStatusPill
-            label="You"
-            value={myPick != null ? String(myPick) : "…"}
-            ready={myPick != null}
-            mine
-          />
-          <div className="flex flex-col items-center justify-center px-4 flex-shrink-0" aria-hidden>
-            <div style={{ width: 1, flexGrow: 1, background: "rgba(26,41,82,0.18)" }} />
-            <span
-              className="font-sketch font-extrabold text-hc-ink-lt"
-              style={{ fontSize: 9, letterSpacing: "0.22em", padding: "5px 0" }}
-            >
-              VS
-            </span>
-            <div style={{ width: 1, flexGrow: 1, background: "rgba(26,41,82,0.18)" }} />
-          </div>
-          <TossStatusPill
-            label={oppName}
-            value={oppLockedIn ? "✓ ready" : "thinking…"}
-            ready={oppLockedIn}
-          />
-        </div>
-      </div>
-    </PaperPanel>
-  );
-}
-
-function TossStatusPill({
-  label,
-  value,
-  ready,
-  mine = false,
-}: {
-  label: string;
-  value: string;
-  ready: boolean;
-  mine?: boolean;
-}) {
-  return (
-    <motion.div
-      animate={ready ? { scale: [1, 1.08, 0.97, 1] } : { scale: 1 }}
-      transition={{ duration: 0.4, ease: "backOut" }}
+    <div
+      className="relative mx-auto w-full my-auto select-none"
       style={{
-        flex: 1,
-        minWidth: 0,
-        textAlign: "center",
-        background: ready && mine
-          ? "rgba(22,101,52,0.13)"
-          : ready
-          ? "rgba(22,101,52,0.07)"
-          : mine
-          ? "rgba(245,233,196,0.85)"
-          : "rgba(245,233,196,0.5)",
-        border: `2px ${ready ? "solid" : "dashed"} ${ready ? "#166534" : "rgba(46,40,25,0.35)"}`,
-        borderRadius: 10,
-        padding: "10px 14px",
-        fontFamily: "'Kalam', cursive",
+        maxWidth: 580,
+        background: "#FFFDF8",
+        border: "2px solid #2e1d0f",
+        borderRadius: 16,
+        boxShadow:
+          "0 8px 24px rgba(46, 29, 15, 0.09), inset 0 0 0 1px rgba(80, 50, 20, 0.12)",
+        padding: "24px 22px 24px",
+        position: "relative",
       }}
     >
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", color: "#4a5a82", fontWeight: 800 }}>
-        {label}
+      {/* ── Corner Washi Tape (translucent taped paper look) ── */}
+      <div
+        style={{
+          position: "absolute",
+          top: -9,
+          left: 20,
+          width: 68,
+          height: 22,
+          background: "rgba(220, 195, 155, 0.75)",
+          transform: "rotate(-32deg)",
+          borderRadius: 2,
+          boxShadow: "0 1px 3px rgba(40,20,5,0.15)",
+          borderLeft: "2px dashed rgba(160, 130, 90, 0.6)",
+          borderRight: "2px dashed rgba(160, 130, 90, 0.6)",
+          pointerEvents: "none",
+          zIndex: 10,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: -9,
+          right: 20,
+          width: 68,
+          height: 22,
+          background: "rgba(220, 195, 155, 0.75)",
+          transform: "rotate(32deg)",
+          borderRadius: 2,
+          boxShadow: "0 1px 3px rgba(40,20,5,0.15)",
+          borderLeft: "2px dashed rgba(160, 130, 90, 0.6)",
+          borderRight: "2px dashed rgba(160, 130, 90, 0.6)",
+          pointerEvents: "none",
+          zIndex: 10,
+        }}
+      />
+
+      {/* ── TOP SECTION: Heads/Tails Doodle + 3D Coin + Sticky Note ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 6,
+          width: "100%",
+        }}
+      >
+        {/* Left Handwritten Doodle: "Heads or Tails?" */}
+        <div
+          style={{
+            transform: "rotate(-10deg)",
+            textAlign: "center",
+            flexShrink: 0,
+            width: 105,
+            userSelect: "none",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Caveat', 'Kalam', cursive",
+              color: "#2e1d0f",
+              fontSize: "clamp(18px, 3vw, 21px)",
+              fontWeight: 700,
+              lineHeight: 1.15,
+            }}
+          >
+            Heads or
+            <br />
+            Tails?
+          </div>
+          <svg
+            width={68}
+            height={6}
+            viewBox="0 0 68 6"
+            style={{ margin: "2px auto 0", display: "block" }}
+          >
+            <path
+              d="M 2 3 Q 22 6, 44 3 T 66 4"
+              fill="none"
+              stroke="#b91c1c"
+              strokeWidth={2}
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
+        {/* Center: 3D Gold Tossing Coin with crown & spin arcs */}
+        <TossCoinIllustration />
+
+        {/* Right Sticky Note: "Toss decides who bats first!" */}
+        <div
+          style={{
+            transform: "rotate(6deg)",
+            background: "linear-gradient(135deg, #fef9c3 0%, #fef08a 100%)",
+            border: "1px solid rgba(234, 179, 8, 0.4)",
+            boxShadow: "0 3px 10px rgba(60, 40, 10, 0.12)",
+            borderRadius: 4,
+            padding: "8px 12px",
+            textAlign: "center",
+            flexShrink: 0,
+            maxWidth: 135,
+            userSelect: "none",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Caveat', 'Kalam', cursive",
+              color: "#2e1d0f",
+              fontSize: "clamp(14px, 2.4vw, 16px)",
+              fontWeight: 700,
+              lineHeight: 1.15,
+            }}
+          >
+            Toss decides
+            <br />
+            who bats first!
+          </div>
+          <svg
+            width={72}
+            height={6}
+            viewBox="0 0 72 6"
+            style={{ margin: "3px auto 0", display: "block" }}
+          >
+            <path
+              d="M 2 3 Q 24 5, 48 3 T 70 4"
+              fill="none"
+              stroke="#b91c1c"
+              strokeWidth={2}
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: ready ? "#166534" : "#1a2952", lineHeight: 1.25 }}>
-        {value === "thinking…" ? (
-          /* Bouncing dots — opponent suspense made legible */
-          <span className="inline-flex gap-1 items-center" aria-label="thinking">
-            {([0, 1, 2] as const).map((i) => (
-              <motion.span
-                key={i}
-                style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#1a2952" }}
-                animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 0.85, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
-              />
-            ))}
+
+      {/* ── TITLE: "THE TOSS" ── */}
+      <div style={{ textAlign: "center", marginTop: 8 }}>
+        <div
+          className="font-sketch"
+          style={{
+            color: "#1e293b",
+            fontSize: "clamp(28px, 4.5vw, 34px)",
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            display: "inline-block",
+            position: "relative",
+          }}
+        >
+          THE TOSS
+          <svg
+            width="100%"
+            height="8"
+            viewBox="0 0 120 8"
+            preserveAspectRatio="none"
+            style={{ display: "block", marginTop: 2 }}
+          >
+            <path
+              d="M 2 4 Q 30 7, 60 4 T 118 5"
+              fill="none"
+              stroke="#b91c1c"
+              strokeWidth={2.6}
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+      </div>
+
+      {/* ── RULES EXPLANATION BOX ── */}
+      <div
+        style={{
+          background: "rgba(238, 228, 210, 0.65)",
+          border: "1px solid rgba(80, 50, 20, 0.14)",
+          borderRadius: 14,
+          padding: "10px 16px",
+          textAlign: "center",
+          marginTop: 14,
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Kalam', system-ui, sans-serif",
+            color: "#2e1d0f",
+            fontSize: 13.5,
+            fontWeight: 700,
+            lineHeight: 1.35,
+          }}
+        >
+          <div>Both players pick a number between 1 and 6.</div>
+          <div style={{ opacity: 0.9, marginTop: 2, fontSize: 13 }}>
+            Even sum: first player wins <span style={{ opacity: 0.4 }}>|</span> Odd sum: second player wins.
+          </div>
+        </div>
+      </div>
+
+      {/* ── SECTION HEADER: "PICK YOUR NUMBER" (yellow marker) ── */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+        <div
+          style={{
+            background: "rgba(254, 240, 138, 0.9)",
+            padding: "4px 20px",
+            borderRadius: 6,
+            display: "inline-block",
+          }}
+        >
+          <span
+            className="font-sketch"
+            style={{
+              color: "#1e293b",
+              fontSize: 16,
+              fontWeight: 900,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            PICK YOUR NUMBER
           </span>
-        ) : value}
+        </div>
       </div>
-    </motion.div>
+
+      {/* ── NUMBER CARDS (1 to 6) — Extra Bold Numbers ── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "clamp(6px, 2vw, 12px)",
+          marginTop: 14,
+          width: "100%",
+        }}
+      >
+        {[1, 2, 3, 4, 5, 6].map((num) => {
+          const isSelected = selectedNumber === num;
+          const isLocked = myPick != null;
+          return (
+            <button
+              key={num}
+              type="button"
+              disabled={isLocked}
+              onClick={() => handlePick(num)}
+              style={{
+                flex: 1,
+                maxWidth: 64,
+                minWidth: 44,
+                height: 68,
+                borderRadius: 12,
+                background: isSelected ? "#f0fdf4" : "#ffffff",
+                border: isSelected
+                  ? "2.5px solid #16a34a"
+                  : "1.5px solid rgba(80, 50, 20, 0.22)",
+                boxShadow: isSelected
+                  ? "0 4px 12px rgba(22, 163, 74, 0.25)"
+                  : "0 2px 6px rgba(50, 20, 5, 0.08)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: isLocked ? "default" : "pointer",
+                transition: "all 140ms ease",
+                transform: isSelected ? "translateY(-3px) scale(1.04)" : "none",
+              }}
+              onMouseEnter={(e) => {
+                if (!isLocked && !isSelected) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.borderColor = "rgba(80, 50, 20, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.transform = "none";
+                  e.currentTarget.style.borderColor = "rgba(80, 50, 20, 0.22)";
+                }
+              }}
+            >
+              <span
+                className="font-sketch"
+                style={{
+                  fontSize: "clamp(26px, 5.5vw, 34px)",
+                  fontWeight: 900,
+                  color: isSelected ? "#15803d" : "#0f172a",
+                  lineHeight: 1,
+                  WebkitTextStroke: isSelected ? "0.6px #15803d" : "0.6px #0f172a",
+                }}
+              >
+                {num}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── PLAYER STATUS CARDS (Bilateral tension with VS) ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginTop: 14,
+          width: "100%",
+        }}
+      >
+        {/* You */}
+        <div
+          style={{
+            flex: 1,
+            background: "#FFFDF9",
+            border: "1.5px solid rgba(80, 50, 20, 0.16)",
+            borderRadius: 14,
+            padding: "10px 12px",
+            boxShadow: "0 2px 6px rgba(50, 20, 5, 0.05)",
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <div style={{ width: 34, height: 34, flexShrink: 0 }}>
+              <SeatAvatar
+                avatar={myAvatar}
+                name={myName}
+                className="w-full h-full object-cover rounded-full"
+                textClassName="text-[11px]"
+              />
+            </div>
+            <div
+              style={{
+                fontFamily: "'Kalam', system-ui, sans-serif",
+                fontWeight: 800,
+                fontSize: 13.5,
+                color: "#1e293b",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                lineHeight: 1.2,
+              }}
+            >
+              {myName} <span style={{ opacity: 0.75, fontSize: 12 }}>(You)</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 24 }}>
+            {myPick != null ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "2px 10px",
+                  borderRadius: 9999,
+                  background: "rgba(22, 101, 52, 0.12)",
+                  border: "1px solid #166534",
+                  color: "#166534",
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  fontFamily: "'Kalam', system-ui, sans-serif",
+                }}
+              >
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Ready
+              </span>
+            ) : (
+              <span className="inline-flex gap-1.5 items-center" aria-label="waiting">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    style={{
+                      display: "inline-block",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#94a3b8",
+                    }}
+                    animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.85, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+                  />
+                ))}
+              </span>
+            )}
+          </div>
+
+          <div
+            style={{
+              fontFamily: "'Kalam', system-ui, sans-serif",
+              fontSize: 11,
+              color: "#64748b",
+              textAlign: "center",
+              lineHeight: 1.2,
+            }}
+          >
+            {myPick != null ? "Locked in!" : "Waiting for your choice..."}
+          </div>
+        </div>
+
+        {/* Center VS Divider with accent ticks */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            padding: "0 2px",
+          }}
+        >
+          {/* Top burst ticks */}
+          <svg width={18} height={8} viewBox="0 0 18 8">
+            <line x1="3" y1="7" x2="1" y2="1" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="9" y1="7" x2="9" y2="0" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="15" y1="7" x2="17" y2="1" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+          </svg>
+          <div
+            className="font-sketch"
+            style={{
+              color: "#2e1d0f",
+              fontSize: 18,
+              fontWeight: 900,
+              padding: "2px 0",
+              userSelect: "none",
+            }}
+          >
+            VS
+          </div>
+          {/* Bottom burst ticks */}
+          <svg width={18} height={8} viewBox="0 0 18 8">
+            <line x1="3" y1="1" x2="1" y2="7" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="9" y1="1" x2="9" y2="8" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="15" y1="1" x2="17" y2="7" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
+          </svg>
+        </div>
+
+        {/* Opponent */}
+        <div
+          style={{
+            flex: 1,
+            background: "#FFFDF9",
+            border: "1.5px solid rgba(80, 50, 20, 0.16)",
+            borderRadius: 14,
+            padding: "10px 12px",
+            boxShadow: "0 2px 6px rgba(50, 20, 5, 0.05)",
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <div style={{ width: 34, height: 34, flexShrink: 0 }}>
+              <SeatAvatar
+                avatar={oppAvatar}
+                name={oppName}
+                className="w-full h-full object-cover rounded-full"
+                textClassName="text-[11px]"
+              />
+            </div>
+            <div
+              style={{
+                fontFamily: "'Kalam', system-ui, sans-serif",
+                fontWeight: 800,
+                fontSize: 13.5,
+                color: "#1e293b",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                lineHeight: 1.2,
+              }}
+            >
+              {oppName}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 24 }}>
+            {oppLockedIn ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "2px 10px",
+                  borderRadius: 9999,
+                  background: "rgba(22, 101, 52, 0.12)",
+                  border: "1px solid #166534",
+                  color: "#166534",
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  fontFamily: "'Kalam', system-ui, sans-serif",
+                }}
+              >
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Ready
+              </span>
+            ) : (
+              <span className="inline-flex gap-1.5 items-center" aria-label="thinking">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    style={{
+                      display: "inline-block",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#94a3b8",
+                    }}
+                    animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 0.85, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+                  />
+                ))}
+              </span>
+            )}
+          </div>
+
+          <div
+            style={{
+              fontFamily: "'Kalam', system-ui, sans-serif",
+              fontSize: 11,
+              color: "#64748b",
+              textAlign: "center",
+              lineHeight: 1.2,
+            }}
+          >
+            {oppLockedIn ? "Waiting for your call..." : "Thinking..."}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
+
+function NotebookWashiTape({ corner }: { corner: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
+  const positionStyle: Record<typeof corner, CSSProperties> = {
+    "top-left": { top: -9, left: -9, transform: "rotate(-35deg)" },
+    "top-right": { top: -9, right: -9, transform: "rotate(35deg)" },
+    "bottom-left": { bottom: -9, left: -9, transform: "rotate(35deg)" },
+    "bottom-right": { bottom: -9, right: -9, transform: "rotate(-35deg)" },
+  };
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        ...positionStyle[corner],
+        zIndex: 20,
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          width: 52,
+          height: 18,
+          backgroundColor: "rgba(245, 230, 185, 0.82)",
+          border: "1px stroke rgba(180, 150, 100, 0.45)",
+          boxShadow: "0 1.5px 4px rgba(0,0,0,0.12)",
+        }}
+      />
+    </div>
+  );
+}
+
+function TossChoiceCoinIllustration() {
+  return (
+    <div className="relative inline-block my-0.5 sm:my-1">
+      <svg viewBox="0 0 140 120" className="w-[85px] h-[72px] sm:w-[140px] sm:h-[120px] overflow-visible">
+        <defs>
+          <radialGradient id="tossCoinGoldGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#FFF2A1" />
+            <stop offset="45%" stopColor="#F59E0B" />
+            <stop offset="85%" stopColor="#D97706" />
+            <stop offset="100%" stopColor="#B45309" />
+          </radialGradient>
+          <linearGradient id="tossCoinRimGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FEF3C7" />
+            <stop offset="50%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#92400E" />
+          </linearGradient>
+          <filter id="coinShadowFilter" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#78350F" floodOpacity="0.28" />
+          </filter>
+        </defs>
+
+        {/* 3D Coin Body (Enlarged coin, clean without surrounding lines) */}
+        <g filter="url(#coinShadowFilter)">
+          <circle cx={70} cy={60} r={48} fill="url(#tossCoinRimGrad)" stroke="#78350F" strokeWidth={2.5} />
+          <circle cx={70} cy={60} r={41} fill="url(#tossCoinGoldGrad)" stroke="#92400E" strokeWidth={2} />
+          <circle cx={70} cy={60} r={37} fill="none" stroke="#FEF3C7" strokeWidth={1.5} opacity={0.7} strokeDasharray="4 2.5" />
+
+          {/* Crown symbol */}
+          <path d="M 53 68 L 53 53 L 60 59 L 70 49 L 80 59 L 87 53 L 87 68 Z" fill="none" stroke="#78350F" strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
+          <path d="M 53 68 L 53 53 L 60 59 L 70 49 L 80 59 L 87 53 L 87 68 Z" fill="none" stroke="#FEF3C7" strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+          <line x1={53} y1={68} x2={87} y2={68} stroke="#78350F" strokeWidth={3.5} strokeLinecap="round" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function CricketBatIllustration() {
+  return (
+    <svg viewBox="0 0 95 65" className="w-[65px] h-[44px] sm:w-[95px] sm:h-[65px] drop-shadow-md">
+      <defs>
+        <linearGradient id="batWoodGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FDE68A" />
+          <stop offset="45%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#D97706" />
+        </linearGradient>
+        <linearGradient id="batGripGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#EF4444" />
+          <stop offset="100%" stopColor="#991B1B" />
+        </linearGradient>
+      </defs>
+      <g transform="rotate(-30 47 32)">
+        {/* Handle */}
+        <rect x={68} y={28} width={22} height={7} rx={3.5} fill="url(#batGripGrad)" stroke="#7F1D1D" strokeWidth={1} />
+        <line x1={74} y1={28} x2={74} y2={35} stroke="#FEF2F2" strokeWidth={1} opacity={0.6} />
+        <line x1={80} y1={28} x2={80} y2={35} stroke="#FEF2F2" strokeWidth={1} opacity={0.6} />
+        <line x1={85} y1={28} x2={85} y2={35} stroke="#FEF2F2" strokeWidth={1} opacity={0.6} />
+
+        {/* Shoulder cone */}
+        <path d="M 60 26 L 69 28 L 69 35 L 60 37 Z" fill="#D97706" stroke="#92400E" strokeWidth={1} />
+
+        {/* Blade */}
+        <rect x={8} y={21} width={53} height={21} rx={4} fill="url(#batWoodGrad)" stroke="#78350F" strokeWidth={1.5} />
+        {/* Wood grain */}
+        <line x1={13} y1={26} x2={56} y2={26} stroke="#B45309" strokeWidth={1} opacity={0.4} />
+        <line x1={10} y1={31} x2={54} y2={31} stroke="#FEF3C7" strokeWidth={1.2} opacity={0.75} />
+        <line x1={14} y1={36} x2={57} y2={36} stroke="#B45309" strokeWidth={1} opacity={0.4} />
+      </g>
+    </svg>
+  );
+}
+
+function CricketBallInMotionIllustration() {
+  return (
+    <svg viewBox="0 0 95 65" className="w-[65px] h-[44px] sm:w-[95px] sm:h-[65px] drop-shadow-md">
+      <defs>
+        <radialGradient id="ball3dGrad" cx="35%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#F87171" />
+          <stop offset="40%" stopColor="#DC2626" />
+          <stop offset="85%" stopColor="#991B1B" />
+          <stop offset="100%" stopColor="#450A0A" />
+        </radialGradient>
+      </defs>
+      {/* Motion speed lines */}
+      <path d="M 10 25 Q 26 23 40 24" fill="none" stroke="#93C5FD" strokeWidth={2.5} strokeLinecap="round" opacity={0.85} />
+      <path d="M 4 33 Q 24 33 44 33" fill="none" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" opacity={0.95} />
+      <path d="M 12 41 Q 28 43 42 42" fill="none" stroke="#93C5FD" strokeWidth={2.5} strokeLinecap="round" opacity={0.85} />
+
+      {/* Red Cricket Ball */}
+      <circle cx={62} cy={33} r={21} fill="url(#ball3dGrad)" stroke="#7F1D1D" strokeWidth={1.5} />
+
+      {/* White seam stitches */}
+      <path d="M 49 18 Q 62 33 75 48" fill="none" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" strokeDasharray="3 2" />
+      <path d="M 47 22 Q 60 35 73 50" fill="none" stroke="#FEE2E2" strokeWidth={1} strokeLinecap="round" opacity={0.5} />
+    </svg>
+  );
+}
+
+function SketchCrownIcon() {
+  return (
+    <svg width={26} height={20} viewBox="0 0 26 20" fill="none">
+      <path d="M 2 17 L 2 6 L 8 11 L 13 3 L 18 11 L 24 6 L 24 17 Z" fill="none" stroke="#FACC15" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <line x1={2} y1={17} x2={24} y2={17} stroke="#FACC15" strokeWidth={2} strokeLinecap="round" />
+      <circle cx={2} cy={4} r={1.5} fill="#FACC15" />
+      <circle cx={13} cy={2} r={1.5} fill="#FACC15" />
+      <circle cx={24} cy={4} r={1.5} fill="#FACC15" />
+    </svg>
+  );
+}
+
+function GreenLightbulbIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 sm:w-7 sm:h-7 flex-shrink-0">
+      <circle cx={12} cy={12} r={10} fill="#DCFCE7" />
+      <path d="M9 18h6m-5 3h4m-4-6a5 5 0 1 1 6-7.5 4.97 4.97 0 0 1-2 4.5V15H10v-3z" stroke="#16A34A" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function TossChoicePhase({
   state,
@@ -1323,61 +2053,174 @@ export function TossChoicePhase({
     getSocket().emit("game:move", { type: "tossChoice", data: { choice } });
   }
 
+  // Non-winner view (waiting for winner to choose)
   if (!isWinner) {
     return (
-      <PaperPanel tone="soft" pad="lg" className="font-notebook text-hc-ink-lt">
-        <div className="text-center space-y-2">
-          <div className="text-[34px] leading-none">🪙</div>
-          <div className="font-kalam font-extrabold text-[18px] text-hc-ink">
-            {winnerName} won the toss
+      <div className="relative w-full max-w-[620px] mx-auto my-auto p-2.5 sm:p-6 bg-[#FAF6EA] rounded-2xl border-2 border-[#4A3525]/40 shadow-[0_8px_30px_rgba(74,53,37,0.15)] font-notebook">
+        <NotebookWashiTape corner="top-left" />
+        <NotebookWashiTape corner="top-right" />
+        <NotebookWashiTape corner="bottom-left" />
+        <NotebookWashiTape corner="bottom-right" />
+
+        <div className="border border-dashed border-[#4A3525]/25 rounded-xl p-3 sm:p-7 text-center relative space-y-2 sm:space-y-4">
+          <TossChoiceCoinIllustration />
+
+          <div className="space-y-0.5 sm:space-y-1">
+            <div className="font-sketch font-extrabold text-[18px] sm:text-[26px] text-hc-ink">
+              {winnerName.toUpperCase()} WON THE TOSS!
+            </div>
+            <p className="text-[12px] sm:text-[14px] text-hc-ink-lt font-kalam">
+              Sum was <strong className="text-hc-ink">{state.tossSum}</strong>. They are currently deciding whether to bat or bowl first...
+            </p>
           </div>
-          <div className="text-[13px]">
-            Sum was <strong>{state.tossSum}</strong> — they're choosing to bat or bowl…
+
+          <div className="flex items-center justify-center gap-1.5 pt-1 text-[#475569] font-kalam text-[11.5px] sm:text-[13px]">
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.2 }}
+              className="inline-block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#166534]"
+            />
+            <span>Hang tight! The game will start as soon as they make their pick.</span>
           </div>
-        </div>
-      </PaperPanel>
-    );
-  }
-  return (
-    <PaperPanel tone="soft" pad="lg" className="font-notebook">
-      <div className="text-center space-y-5">
-        <div className="space-y-1">
-          <div className="text-[34px] leading-none">🎉</div>
-          <SketchHeading arrows={false} className="text-[20px] tracking-normal">You won the toss!</SketchHeading>
-          <div className="text-hc-ink-lt text-[13px]">
-            Sum was <strong>{state.tossSum}</strong>. What would you like to do?
-          </div>
-        </div>
-        <div className="flex justify-center gap-4 flex-wrap">
-          <TossChoiceButton emoji="🏏" label="BAT first" sub="Set a target" variant="solidGreen" onClick={() => choose("bat")} />
-          <TossChoiceButton emoji="⚾" label="BOWL first" sub="Chase it down" variant="solidBlue" onClick={() => choose("bowl")} />
         </div>
       </div>
-    </PaperPanel>
-  );
-}
+    );
+  }
 
-function TossChoiceButton({
-  emoji,
-  label,
-  sub,
-  variant,
-  onClick,
-}: {
-  emoji: string;
-  label: string;
-  sub: string;
-  variant: "solidGreen" | "solidBlue";
-  onClick: () => void;
-}) {
+  // Winner View (Choose Bat or Bowl)
   return (
-    <PaperButton variant={variant} onClick={onClick} className="min-w-[150px] px-6 py-4 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.22)]">
-      <span className="flex flex-col items-center">
-        <span className="text-[30px] leading-none">{emoji}</span>
-        <span className="font-black text-[17px] tracking-[0.04em] mt-1">{label}</span>
-        <span className="text-[11px] opacity-85 mt-0.5 font-normal">{sub}</span>
-      </span>
-    </PaperButton>
+    <div className="relative w-full max-w-[640px] mx-auto my-auto p-2.5 sm:p-6 bg-[#FAF6EA] rounded-2xl border-2 border-[#4A3525]/40 shadow-[0_8px_30px_rgba(74,53,37,0.15)] font-notebook">
+      <NotebookWashiTape corner="top-left" />
+      <NotebookWashiTape corner="top-right" />
+      <NotebookWashiTape corner="bottom-left" />
+      <NotebookWashiTape corner="bottom-right" />
+
+      {/* Double inner sketch border container */}
+      <div className="border border-dashed border-[#4A3525]/25 rounded-xl p-2.5 sm:p-6 relative space-y-2 sm:space-y-5">
+        
+        {/* Top Row: Coin in center + Yellow Sticky Note on right */}
+        <div className="relative flex flex-col items-center">
+          
+          {/* Sticky Note Top Right */}
+          <div className="absolute right-0 top-0 transform translate-x-1 -translate-y-1 rotate-6 z-10 hidden sm:block">
+            <div className="bg-[#FEF08A] border border-[#EAB308]/40 shadow-md px-2.5 py-1.5 rounded-sm max-w-[120px] text-center transform hover:scale-105 transition-transform">
+              <p className="font-kalam font-bold text-[12px] text-[#713F12] leading-tight">
+                It's yours!
+              </p>
+              <p className="font-kalam text-[11px] text-[#854D0E] leading-tight">
+                Make it count!
+              </p>
+            </div>
+          </div>
+
+          {/* 3D Coin Illustration */}
+          <TossChoiceCoinIllustration />
+
+          {/* Title & Underline */}
+          <div className="text-center mt-0.5 space-y-0.5">
+            <h2 className="font-sketch font-extrabold text-[20px] sm:text-[30px] text-hc-ink tracking-tight uppercase leading-tight">
+              YOU WON THE TOSS!
+            </h2>
+            <div className="flex justify-center">
+              <svg viewBox="0 0 180 8" fill="none" className="w-[120px] sm:w-[180px] h-[6px] sm:h-[8px]">
+                <path d="M 4 5 Q 45 1, 90 5 T 176 4" stroke="#DC2626" strokeWidth={2.8} strokeLinecap="round" />
+              </svg>
+            </div>
+            <p className="font-kalam text-[12px] sm:text-[15px] text-[#334155] mt-1">
+              The coin showed <strong className="text-[#0F172A]">Heads</strong>. What would you like to do?
+            </p>
+          </div>
+        </div>
+
+        {/* Lightbulb Strategy Tip Box */}
+        <div className="bg-[#F4EFE0] border border-[#4A3525]/15 rounded-xl p-2 sm:p-3.5 flex items-center gap-2 sm:gap-3 shadow-inner">
+          <GreenLightbulbIcon />
+          <div className="font-kalam text-[11px] sm:text-[13.5px] text-[#2E1D0F] leading-snug">
+            <div><strong>Bat first:</strong> set a target for the opponent.</div>
+            <div><strong>Bowl first:</strong> chase it down.</div>
+          </div>
+        </div>
+
+        {/* Two Main Choice Cards (BAT FIRST vs BOWL FIRST) — Side-by-side 2-column grid on ALL screens */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 pt-0.5">
+          
+          {/* BAT FIRST CARD */}
+          <button
+            type="button"
+            onClick={() => choose("bat")}
+            className="group relative bg-gradient-to-br from-[#15803D] to-[#166534] hover:from-[#166534] hover:to-[#14532D] text-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border-2 border-[#14532D] shadow-[0_4px_14px_rgba(22,101,52,0.35)] hover:shadow-[0_8px_25px_rgba(22,101,52,0.45)] transition-all duration-200 hover:-translate-y-1 text-center flex flex-col items-center justify-between min-h-[135px] sm:min-h-[220px]"
+          >
+            {/* Top-left sketch crown */}
+            <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 opacity-90 group-hover:scale-110 transition-transform scale-75 sm:scale-100 origin-top-left">
+              <SketchCrownIcon />
+            </div>
+
+            {/* Bat graphic */}
+            <div className="mt-1 sm:mt-2 mb-0.5 group-hover:scale-105 transition-transform">
+              <CricketBatIllustration />
+            </div>
+
+            {/* Titles */}
+            <div className="space-y-0">
+              <div className="font-sketch font-black text-[15px] sm:text-[22px] tracking-wider text-white">
+                BAT FIRST
+              </div>
+              <div className="font-kalam text-[10.5px] sm:text-[13.5px] text-emerald-100 opacity-90">
+                Set a target
+              </div>
+            </div>
+
+            {/* Circular Arrow Button */}
+            <div className="mt-1 sm:mt-3 w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-white text-[#166534] flex items-center justify-center shadow-md group-hover:bg-emerald-50 group-hover:scale-110 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 sm:w-5 sm:h-5">
+                <line x1={5} y1={12} x2={19} y2={12} />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </div>
+          </button>
+
+          {/* BOWL FIRST CARD */}
+          <button
+            type="button"
+            onClick={() => choose("bowl")}
+            className="group relative bg-gradient-to-br from-[#1D4ED8] to-[#1E40AF] hover:from-[#1E40AF] hover:to-[#1E3A8A] text-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border-2 border-[#1E3A8A] shadow-[0_4px_14px_rgba(29,78,216,0.35)] hover:shadow-[0_8px_25px_rgba(29,78,216,0.45)] transition-all duration-200 hover:-translate-y-1 text-center flex flex-col items-center justify-between min-h-[135px] sm:min-h-[220px]"
+          >
+            {/* Ball graphic */}
+            <div className="mt-1 sm:mt-2 mb-0.5 group-hover:scale-105 transition-transform">
+              <CricketBallInMotionIllustration />
+            </div>
+
+            {/* Titles */}
+            <div className="space-y-0">
+              <div className="font-sketch font-black text-[15px] sm:text-[22px] tracking-wider text-white">
+                BOWL FIRST
+              </div>
+              <div className="font-kalam text-[10.5px] sm:text-[13.5px] text-blue-100 opacity-90">
+                Chase it down
+              </div>
+            </div>
+
+            {/* Circular Arrow Button */}
+            <div className="mt-1 sm:mt-3 w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-white text-[#1D4ED8] flex items-center justify-center shadow-md group-hover:bg-blue-50 group-hover:scale-110 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 sm:w-5 sm:h-5">
+                <line x1={5} y1={12} x2={19} y2={12} />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </div>
+          </button>
+        </div>
+
+        {/* Bottom Helper Note */}
+        <div className="flex items-center justify-center gap-1.5 pt-1 text-center text-[#475569] font-kalam text-[11px] sm:text-[13px]">
+          <svg viewBox="0 0 24 24" fill="#2563EB" className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0">
+            <circle cx={12} cy={12} r={10} />
+            <path d="M12 16v-4m0-4h.01" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" />
+          </svg>
+          <span>You can play your selected role after the toss. Good luck!</span>
+        </div>
+
+      </div>
+    </div>
   );
 }
 
@@ -1626,7 +2469,7 @@ export function InningsPhase({
 
       {/* Ripped-parchment ribbon — dynamically announces the local player's
           role, floating between the scoreboard and the action card below. */}
-      {myRole && (
+      {myRole && !needsBowler && (
         <HcRibbonBanner tone={myRole === "batter" ? "batting" : "bowling"}>
           You are {myRole === "batter" ? "Batting" : "Bowling"}
         </HcRibbonBanner>
@@ -1680,11 +2523,11 @@ export function InningsPhase({
           {/* Concurrent: bowling player may also need to pick a bowler
                if the wicket fell on the last ball of an over. */}
           {needsBowler && (
-            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
+            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
           )}
         </>
       ) : needsBowler ? (
-        <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} />
+        <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
       ) : (
         <>
           <RevealStage
@@ -1909,12 +2752,15 @@ export function BowlerPicker({
   innings,
   selfId,
   players,
+  isDesktop = false,
 }: {
   state: HcState;
   innings: HcInnings;
   selfId: string;
   players: Player[];
+  isDesktop?: boolean;
 }) {
+  const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
   const amBowling = innings.bowlingPlayerId === selfId;
   const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
   const bowlingTeamId = bowlingSelection?.teamId;
@@ -1928,96 +2774,230 @@ export function BowlerPicker({
     .filter((p): p is HcPlayerProfile => !!p);
   const bowlingName = players.find((p) => p.id === innings.bowlingPlayerId)?.name ?? "Bowler";
 
+  const styleMap = useMemo(() => {
+    return bowlingTeamId ? getJsonPlayerStyleMap(bowlingTeamId, state.options.format) : new Map<string, JsonPlayerStyle>();
+  }, [bowlingTeamId, state.options.format]);
+
   function pickBowler(profileId: string) {
+    setSelectedBowlerId(profileId);
     getSocket().emit("game:move", { type: "selectBowler", data: { playerId: profileId } });
   }
 
+  const maxOvers = HC_MAX_OVERS_PER_BOWLER[state.options.format] ?? 3;
+  const quotaLabel = maxOvers == null ? "no limit" : `${maxOvers} overs max`;
+  const overNumber = Math.floor(innings.balls / 6) + 1;
+
   if (!amBowling) {
     return (
-      <PaperPanel tone="soft" pad="md" className="text-center font-notebook">
-        <span className="text-hc-ink-lt">⚾ Waiting for </span>
-        <span className="font-bold text-hc-ink">{bowlingName}</span>
-        <span className="text-hc-ink-lt"> to pick the bowler for over {Math.floor(innings.balls / 6) + 1}…</span>
-      </PaperPanel>
+      <div className="relative w-full p-3 sm:p-5 bg-[#FAF6EA] rounded-2xl border border-[#4A3525]/30 shadow-md font-notebook text-center space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-center gap-2">
+          <BallInMotionIcon size={22} />
+          <span className="font-sketch font-bold text-hc-ink text-[15px] sm:text-[18px]">
+            Waiting for {bowlingName} to pick the bowler for over {overNumber}…
+          </span>
+        </div>
+        <div className="flex items-center justify-center gap-2 text-[#64748B] font-kalam text-[12px] sm:text-[13px]">
+          <motion.span
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ repeat: Infinity, duration: 1.2 }}
+            className="inline-block w-2.5 h-2.5 rounded-full bg-[#166534]"
+          />
+          <span>They are selecting who bowls this over.</span>
+        </div>
+      </div>
     );
   }
 
   // Only bowlers and all-rounders can bowl.
   const bowlersOnly = candidates
     .filter((p) => p.role === "bowler" || p.role === "allrounder")
-    .sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
-  const maxOvers = HC_MAX_OVERS_PER_BOWLER[state.options.format];
-  const quotaLabel = maxOvers == null ? "no limit" : `${maxOvers} overs max`;
+    .sort((a, b) => {
+      if (a.role === b.role) return a.name.localeCompare(b.name);
+      return a.role === "allrounder" ? -1 : 1;
+    });
 
   return (
-    // Distressed parchment card with a curled bottom-right corner — the
-    // "Lower Action Box" of the reference layout.
-    <PaperPanel tone="soft" pad="md" className="relative space-y-3 font-notebook overflow-visible">
-      <CurledCornerFold size={40} />
+    <div className={cn("relative w-full font-notebook", isDesktop ? "space-y-2" : "space-y-2.5")}>
+      {/* ── HEADER BANNER: Stumps on left, YOU ARE BOWLING in center, annotation on right ── */}
+      <div className="relative flex items-center justify-between gap-2 px-1 pt-0.5 pb-0.5">
+        {/* Left: Stumps in grass sketch */}
+        <div className="flex-shrink-0">
+          <StumpsInGrassSketch size={isDesktop ? 36 : 40} />
+        </div>
 
-      <div className="flex items-center justify-center gap-2">
-        <BallInMotionIcon size={22} />
-        <span className="font-sketch font-bold text-hc-ink text-[15px]">
-          Pick your bowler for over {Math.floor(innings.balls / 6) + 1}
-        </span>
+        {/* Center: YOU ARE BOWLING ribbon + Pick your bowler sticky note */}
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          {/* Stamped Red Banner */}
+          <div className="relative">
+            {/* Left burst lines */}
+            <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg width={12} height={12} viewBox="0 0 14 14" fill="none">
+                <line x1={12} y1={7} x2={2} y2={3} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
+                <line x1={12} y1={7} x2={3} y2={11} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            </div>
+            {/* Right burst lines */}
+            <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg width={12} height={12} viewBox="0 0 14 14" fill="none">
+                <line x1={2} y1={7} x2={12} y2={3} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
+                <line x1={2} y1={7} x2={11} y2={11} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <div
+              className="px-3.5 sm:px-5 py-0.5 sm:py-1 rounded shadow-md transform -rotate-1"
+              style={{
+                background: "linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)",
+              }}
+            >
+              <span className="font-sketch font-black text-[14px] sm:text-[17px] tracking-wider text-white uppercase">
+                YOU ARE BOWLING
+              </span>
+            </div>
+          </div>
+
+          {/* Sticky tape subtext */}
+          <div className="mt-0.5 bg-[#FDF0D5] border border-[#D97706]/35 px-2.5 sm:px-3.5 py-0.5 rounded shadow-xs transform rotate-0.5">
+            <span className="font-kalam font-bold text-[11.5px] sm:text-[13px] text-[#78350F]">
+              Pick your bowler for over {overNumber}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Handwritten annotation arrow */}
+        <div className="hidden sm:flex items-center gap-1 text-[#64748B] font-kalam text-[10.5px] sm:text-[11.5px] leading-tight max-w-[125px] text-right">
+          <span>Only Bowlers & All-rounders can bowl!</span>
+          <svg width={16} height={20} viewBox="0 0 18 22" fill="none" stroke="#64748B" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <path d="M 3 2 Q 15 5 13 15 L 7 12 M 13 15 L 16 10" />
+          </svg>
+        </div>
       </div>
 
+      {/* ── BOWLER CARDS (WITHOUT PLAYER AVATARS — 3 COLUMNS ON DESKTOP, 2 ON MOBILE) ── */}
       {bowlersOnly.length === 0 ? (
-        <div className="text-center text-sm font-bold py-4 text-hc-amber">
-          No bowlers or all-rounders in your XI. (This shouldn't happen if composition rules held.)
+        <div className="text-center text-sm font-bold py-3 text-hc-amber bg-white/70 rounded-xl border border-dashed border-amber-300">
+          No bowlers or all-rounders in your XI.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
+        <div className={cn("grid gap-2 sm:gap-2.5 pt-0.5", isDesktop ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2")}>
           {bowlersOnly.map((p) => {
             const stats = innings.bowlerStats[p.id];
             const completedOvers = stats ? Math.floor(stats.balls / 6) : 0;
             const atQuota = maxOvers != null && completedOvers >= maxOvers;
+            const isConsecutive = innings.lastBowlerId === p.id;
+            const isDisabled = atQuota || isConsecutive;
+            const isSelected = selectedBowlerId === p.id || innings.currentBowlerId === p.id;
+            
+            const style = styleMap.get(p.name.toLowerCase());
+            const styleLabel = isConsecutive
+              ? "Bowled previous over (Resting)"
+              : style
+              ? [style.battingStyle, style.bowlingStyle].filter(Boolean).join(" • ")
+              : p.role === "bowler"
+              ? "RA Fast"
+              : "RHB • RA Medium";
+
             return (
-              <PaperCard
+              <button
                 key={p.id}
-                tone="default"
-                disabled={atQuota}
-                interactive={!atQuota}
-                onClick={() => !atQuota && pickBowler(p.id)}
-                ariaLabel={p.name}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => !isDisabled && pickBowler(p.id)}
+                className={cn(
+                  "relative rounded-xl p-2 sm:p-2.5 text-left transition-all duration-150 border-2 shadow-xs flex flex-col justify-between",
+                  isSelected
+                    ? "bg-[#F0FDF4] border-[#16A34A] shadow-[0_2px_10px_rgba(22,163,74,0.20)] -translate-y-0.5"
+                    : isDisabled
+                    ? "bg-[#F8FAFC] border-slate-200 opacity-55 cursor-not-allowed"
+                    : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1] hover:shadow-xs hover:-translate-y-0.5 cursor-pointer"
+                )}
               >
-                {/* Metal paperclip "pinning" this card to the page. */}
-                <PaperclipGraphic />
-                <div className="px-2 py-1.5 text-left">
-                  <div className="flex items-center gap-1.5">
-                    <PaperBadge tone={p.role === "bowler" ? "bowler" : "allrounder"}>
-                      {p.role === "bowler" ? "BOWL" : "AR"}
-                    </PaperBadge>
-                    {p.isCaptain && <PaperBadge tone="captain">C</PaperBadge>}
-                    {atQuota && <PaperBadge tone="bowler" className="ml-auto">MAX</PaperBadge>}
-                  </div>
-                  <div className="text-xs font-bold mt-1 leading-tight text-hc-ink">{p.name}</div>
-                  <div className="flex items-center justify-between mt-0.5 gap-2">
-                    {stats && (stats.balls > 0 || stats.wickets > 0) ? (
-                      <span className="tabular-nums text-[10px] text-hc-ink-lt">
-                        {Math.floor(stats.balls / 6)}.{stats.balls % 6}-{stats.wickets}-{stats.runs}
+                {/* Top Row: Role Badge on Left, Quota Chip or Checkmark on Right */}
+                <div className="flex items-center justify-between gap-1 w-full">
+                  <div className="flex items-center gap-1">
+                    {p.role === "allrounder" ? (
+                      <span className="px-1.5 py-0.5 rounded font-bold text-[10px] sm:text-[10.5px] bg-[#9333EA] text-white shadow-xs">
+                        AR
                       </span>
                     ) : (
-                      <span className="italic text-[10px] text-hc-ink-lt">unused</span>
+                      <span className="px-1.5 py-0.5 rounded font-bold text-[10px] sm:text-[10.5px] bg-[#B91C1C] text-white shadow-xs">
+                        BOWL
+                      </span>
                     )}
-                    {maxOvers != null && (
-                      <span className="font-bold tabular-nums text-[9px] px-1.5 rounded-[3px] bg-hc-ink/10 text-hc-ink-lt">
+                    {p.isCaptain && (
+                      <span className="px-1 py-0.5 rounded font-bold text-[9.5px] bg-[#D97706] text-white">
+                        C
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Quota or Checkmark Badge */}
+                  <div className="flex items-center gap-1">
+                    {atQuota ? (
+                      <span className="px-1.5 py-0.5 rounded font-bold text-[9.5px] sm:text-[10px] bg-red-100 text-red-700">
+                        MAX
+                      </span>
+                    ) : isConsecutive ? (
+                      <span className="px-1.5 py-0.5 rounded font-bold text-[9.5px] sm:text-[10px] bg-amber-100 text-amber-800 border border-amber-300/60">
+                        REST
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded font-bold text-[10.5px] sm:text-[11.5px] bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] tabular-nums">
                         {completedOvers}/{maxOvers}
                       </span>
                     )}
+
+                    {isSelected && (
+                      <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#166534] text-white flex items-center justify-center text-[10px] sm:text-[11px] font-black shadow-xs ml-0.5">
+                        ✓
+                      </div>
+                    )}
                   </div>
                 </div>
-              </PaperCard>
+
+                {/* Bowler Name (WITHOUT AVATAR PHOTO) */}
+                <div className="font-sketch font-bold text-[14px] sm:text-[16px] text-[#0F172A] leading-snug mt-1 truncate">
+                  {p.name}
+                </div>
+
+                {/* Bowler / Batter Style Subtext */}
+                <div className={cn("font-kalam text-[10.5px] sm:text-[11.5px] truncate mt-0.5", isConsecutive ? "text-amber-800 font-semibold" : "text-[#64748B] italic")}>
+                  {styleLabel}
+                </div>
+              </button>
             );
           })}
         </div>
       )}
 
-      {/* Hand-scrawled red warning caption. */}
-      <div className="text-center font-hand font-bold text-hc-ink-red" style={{ fontSize: 12 }}>
-        Only bowlers and all-rounders can bowl · Format quota: {quotaLabel}
+      {/* ── BOTTOM HELPER INFO PILL & LET'S PLAY DOODLE (COMPACT HORIZONTAL BAR ON DESKTOP) ── */}
+      <div className={cn("pt-1", isDesktop ? "flex items-center justify-between gap-2" : "space-y-1")}>
+        {/* Info pill */}
+        <div className="bg-[#F4EFE0] border border-[#4A3525]/15 rounded-full px-3 py-1 flex items-center justify-center gap-1.5 shadow-inner text-center mx-auto sm:mx-0">
+          <svg viewBox="0 0 24 24" fill="#2563EB" className="w-3.5 h-3.5 flex-shrink-0">
+            <circle cx={12} cy={12} r={10} />
+            <path d="M12 16v-4m0-4h.01" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" />
+          </svg>
+          <span className="font-kalam text-[11px] sm:text-[12px] text-[#4A3525]">
+            Only bowlers and all-rounders can bowl. Format quota: {quotaLabel}.
+          </span>
+        </div>
+
+        {/* Bottom-right Let's Play doodle */}
+        <div className="flex items-center justify-end gap-1 text-right pr-1 flex-shrink-0">
+          <span className="font-kalam font-extrabold text-[12px] sm:text-[13px] text-[#991B1B] -rotate-6">
+            Let's Play!
+          </span>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <path d="M 2 8 Q 8 6 12 7" stroke="#DC2626" strokeWidth={1.5} strokeLinecap="round" opacity={0.6} />
+            <path d="M 1 12 Q 7 12 11 12" stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
+            <path d="M 3 16 Q 8 17 12 16" stroke="#DC2626" strokeWidth={1.5} strokeLinecap="round" opacity={0.6} />
+            <circle cx={16} cy={12} r={6} fill="#DC2626" stroke="#7F1D1D" strokeWidth={1} />
+            <path d="M 12 9 Q 16 12 20 15" stroke="#FFFFFF" strokeWidth={1} strokeDasharray="1.5 1" strokeLinecap="round" />
+          </svg>
+        </div>
       </div>
-    </PaperPanel>
+    </div>
   );
 }
 
@@ -2048,7 +3028,7 @@ export function Scoreboard({
       tone="soft"
       strong
       pad="none"
-      className={cn("relative flex items-center justify-between gap-3 font-notebook", big ? "px-5 py-3" : "px-3.5 py-2.5")}
+      className={cn("relative flex items-center justify-between gap-3 font-notebook", big ? "px-4 py-2 sm:py-2.5" : "px-3.5 py-2.5")}
     >
       {/* "Taped down" corners — the scoreboard reads as a thick piece of
           cardstock pinned onto the notebook page rather than a flat panel. */}
@@ -2056,28 +3036,28 @@ export function Scoreboard({
       <MaskingTapeCorner side="right" />
 
       <div ref={registerCardRef?.(innings.battingPlayerId)} className="flex items-center gap-3">
-        <span className={big ? "text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
+        <span className={big ? "text-2xl sm:text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
         <SeatAvatar
           avatar={battingPlayer?.avatar}
           name={batterTeam.playerName}
-          className={big ? "w-8 h-8" : "w-7 h-7"}
-          textClassName={big ? "text-[11px]" : "text-[10px]"}
+          className={big ? "w-7 h-7 sm:w-8 sm:h-8" : "w-7 h-7"}
+          textClassName={big ? "text-[10px] sm:text-[11px]" : "text-[10px]"}
         />
         <div>
           <div
             className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"
-            style={{ fontSize: big ? 13 : 11 }}
+            style={{ fontSize: big ? 12 : 11 }}
           >
             Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
           </div>
           {/* Giant organic handwritten score — runs in ink, wickets in red pen. */}
           <div
             className="font-sketch tabular-nums leading-none text-hc-ink"
-            style={{ fontSize: big ? 66 : 48, fontWeight: 700 }}
+            style={{ fontSize: big ? 50 : 44, fontWeight: 700 }}
           >
             {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
           </div>
-          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 12 }}>
+          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 13 : 12 }}>
             Overs {oversBowled}.{ballsThisOver} / {innings.overs}
           </div>
         </div>
@@ -2087,7 +3067,7 @@ export function Scoreboard({
           the score and the target chip so the card reads as illustrated,
           not just typeset. */}
       <div className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.9 }}>
-        <StumpsInGrassSketch size={big ? 58 : 44} />
+        <StumpsInGrassSketch size={big ? 50 : 44} />
       </div>
 
       {target != null && (

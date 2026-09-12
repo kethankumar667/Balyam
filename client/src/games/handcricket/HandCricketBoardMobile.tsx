@@ -97,6 +97,7 @@ export default function HandCricketBoardMobile({
         roomCode={roomCode}
         roomPhase={roomPhase}
         messages={messages}
+        onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
         onSkin={() => setSkin("broadcast")}
       />
@@ -105,12 +106,28 @@ export default function HandCricketBoardMobile({
       {isTeamSelect ? (
         teamSelectContent()
       ) : (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "8px 12px 80px" }} className="space-y-3">
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: (state.phase === "toss" || state.phase === "tossChoice") ? "center" : "flex-start",
+            padding: (state.phase === "toss" || state.phase === "tossChoice") ? "12px 12px 24px" : "8px 12px 80px",
+          }}
+          className="space-y-3"
+        >
           {state.phase === "toss" && (
-            <TossPhase state={state} selfId={sid} players={players} />
+            <div className="w-full my-auto">
+              <TossPhase state={state} selfId={sid} players={players} />
+            </div>
           )}
           {state.phase === "tossChoice" && (
-            <TossChoicePhase state={state} selfId={sid} players={players} />
+            <div className="w-full my-auto">
+              <TossChoicePhase state={state} selfId={sid} players={players} />
+            </div>
           )}
           {(state.phase === "innings1" || state.phase === "innings2") && (
             <HcPhaseCard>

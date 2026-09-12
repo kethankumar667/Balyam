@@ -72,6 +72,7 @@ function freshInnings(
     nonStrikerIdx: 1,
     nextBatterIdx: 2,
     currentBowlerId: null,   // bowling player must pick before play starts
+    lastBowlerId: null,
     batterStats,
     bowlerStats,
     restrictedBallsByOver: {},
@@ -382,6 +383,13 @@ export class HandCricketEngine implements GameEngine {
           };
         }
       }
+      // Consecutive overs restriction: a bowler cannot bowl two consecutive overs.
+      if (innings.lastBowlerId && profileId === innings.lastBowlerId) {
+        return {
+          ok: false,
+          error: "Bowler cannot bowl consecutive overs",
+        };
+      }
     }
     innings.currentBowlerId = profileId;
 
@@ -639,6 +647,7 @@ export class HandCricketEngine implements GameEngine {
     if (innings.balls % 6 === 0) {
       [innings.strikerIdx, innings.nonStrikerIdx] =
         [innings.nonStrikerIdx, innings.strikerIdx];
+      innings.lastBowlerId = bowlerId;
       innings.currentBowlerId = null;
     }
 
@@ -1131,6 +1140,8 @@ export class HandCricketEngine implements GameEngine {
         return completed < maxOvers;
       });
     if (eligible.length === 0) return null;
-    return eligible[Math.floor(Math.random() * eligible.length)].id;
+    const withoutConsecutive = eligible.filter((p) => p.id !== innings.lastBowlerId);
+    const poolToPick = withoutConsecutive.length > 0 ? withoutConsecutive : eligible;
+    return poolToPick[Math.floor(Math.random() * poolToPick.length)].id;
   }
 }

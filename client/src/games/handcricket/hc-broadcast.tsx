@@ -1586,13 +1586,15 @@ export function HcProBowlerPicker({
             const st = innings.bowlerStats[p.id];
             const done = st ? Math.floor(st.balls / 6) : 0;
             const atQuota = maxOvers != null && done >= maxOvers;
+            const isConsecutive = innings.lastBowlerId === p.id;
+            const isDisabled = atQuota || isConsecutive;
             const tag = ROLE_TAG[p.role];
             return (
               <button
                 key={p.id}
                 type="button"
-                disabled={atQuota}
-                onClick={() => pickBowler(p.id)}
+                disabled={isDisabled}
+                onClick={() => !isDisabled && pickBowler(p.id)}
                 className="rounded-lg p-2.5 text-left transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
                 style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${PRO.line}` }}
               >
@@ -1604,14 +1606,19 @@ export function HcProBowlerPicker({
                     {tag.label}
                   </span>
                   {atQuota && <ProChip tone="loss">Max</ProChip>}
+                  {!atQuota && isConsecutive && <ProChip tone="gold">Rest</ProChip>}
                 </div>
                 <div className="mt-1.5 truncate text-[12px] font-bold" style={{ color: PRO.ink }}>
                   {p.name}
                 </div>
                 <div className="mt-0.5 text-[10px] font-semibold tabular-nums" style={{ color: PRO.inkLo }}>
-                  {st && st.balls > 0
-                    ? `${Math.floor(st.balls / 6)}.${st.balls % 6}–${st.wickets}–${st.runs}`
-                    : "Unused"}
+                  {isConsecutive ? (
+                    <span style={{ color: PRO.gold }}>Bowled last over</span>
+                  ) : st && st.balls > 0 ? (
+                    `${Math.floor(st.balls / 6)}.${st.balls % 6}–${st.wickets}–${st.runs}`
+                  ) : (
+                    "Unused"
+                  )}
                   {maxOvers != null ? ` · ${done}/${maxOvers}` : ""}
                 </div>
               </button>

@@ -605,17 +605,53 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     expect(i.batterStats["a1"]).toMatchObject({ runs: 5, balls: 2 });
   });
 
+  it("enforces consecutive over restriction for same bowler", () => {
+    engine.setOptions({ mode: "single", format: "t20", category: "international" });
+    engine.init(makePlayers());
+    bothSelectTeams(engine);
+    tossThen(engine, 2, 2, "bat");
+    // Over 1: b0 bowls 6 balls
+    selectBowler(engine, "b0");
+    for (let j = 0; j < 6; j++) ballWithBowler(engine, 2, 3);
+
+    // Over 2: attempting to select b0 again immediately is rejected
+    const r = engine.applyMove({
+      playerId: "p1",
+      type: "selectBowler",
+      data: { playerId: "b0" },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/consecutive/i);
+
+    // Selecting b1 is accepted
+    const r2 = engine.applyMove({
+      playerId: "p1",
+      type: "selectBowler",
+      data: { playerId: "b1" },
+    });
+    expect(r2.ok).toBe(true);
+    for (let j = 0; j < 6; j++) ballWithBowler(engine, 2, 3);
+
+    // Over 3: b0 can bowl again now that b1 bowled the previous over
+    const r3 = engine.applyMove({
+      playerId: "p1",
+      type: "selectBowler",
+      data: { playerId: "b0" },
+    });
+    expect(r3.ok).toBe(true);
+  });
+
   it("T20 enforces 3-over quota per bowler", () => {
     engine.setOptions({ mode: "single", format: "t20", category: "international" });
     engine.init(makePlayers());
     bothSelectTeams(engine);
     tossThen(engine, 2, 2, "bat");
-    // Bowl 3 full overs with b0 (18 balls).
-    for (let over = 0; over < 3; over++) {
-      selectBowler(engine, "b0");
+    // Bowl 6 full overs alternating b0 and b1 (3 overs each).
+    for (let over = 0; over < 6; over++) {
+      selectBowler(engine, over % 2 === 0 ? "b0" : "b1");
       for (let j = 0; j < 6; j++) ballWithBowler(engine, 2, 3);
     }
-    // 4th over: cannot pick b0 again — quota of 3 is reached.
+    // 7th over: cannot pick b0 again — quota of 3 is reached (even though last was b1).
     const r = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
@@ -623,11 +659,11 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     });
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/quota/i);
-    // Another bowler is fine.
+    // Another fresh bowler (b2) is fine.
     const r2 = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
-      data: { playerId: "b1" },
+      data: { playerId: "b2" },
     });
     expect(r2.ok).toBe(true);
   });
@@ -637,12 +673,12 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.init(makePlayers());
     bothSelectTeams(engine);
     tossThen(engine, 2, 2, "bat");
-    // Bowl 4 full overs with b0 (24 balls).
-    for (let over = 0; over < 4; over++) {
-      selectBowler(engine, "b0");
+    // Bowl 8 full overs alternating b0 and b1 (4 overs each).
+    for (let over = 0; over < 8; over++) {
+      selectBowler(engine, over % 2 === 0 ? "b0" : "b1");
       for (let j = 0; j < 6; j++) ballWithBowler(engine, 2, 3);
     }
-    // 5th over: cannot pick b0 again.
+    // 9th over: cannot pick b0 again.
     const r = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
@@ -652,17 +688,17 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     expect(r.error).toMatch(/quota/i);
   });
 
-  it("Test format has no bowler quota — same bowler can keep going", () => {
+  it("Test format has no bowler quota — bowler can bowl multiple non-consecutive overs", () => {
     engine.setOptions({ mode: "single", format: "test", category: "international" });
     engine.init(makePlayers());
     bothSelectTeams(engine);
     tossThen(engine, 2, 2, "bat");
-    // Bowl 6 full overs with b0 (36 balls) — quotaless in Test.
+    // Bowl 6 full overs alternating b0 and b1.
     for (let over = 0; over < 6; over++) {
-      selectBowler(engine, "b0");
+      selectBowler(engine, over % 2 === 0 ? "b0" : "b1");
       for (let j = 0; j < 6; j++) ballWithBowler(engine, 2, 3);
     }
-    // 7th over: still allowed.
+    // 7th over: still allowed since b0 was not the previous bowler (b1 was) and Test has no quota.
     const r = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",

@@ -1042,6 +1042,8 @@ export interface HcInnings {
   nextBatterIdx: number;
   /** Profile id of the current bowler, or null when the bowling player needs to pick one. */
   currentBowlerId: string | null;
+  /** Profile id of the bowler who completed the most recent over, or null. */
+  lastBowlerId: string | null;
   /** Per-player batting stats, keyed by squad profile id. */
   batterStats: Record<string, HcBatterStats>;
   /** Per-player bowling stats, keyed by squad profile id. */
