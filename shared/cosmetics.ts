@@ -201,6 +201,42 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     isDefault: false,
   },
 
+  // ── Card Backs — Rummy Artwork Collection (16, added 2026-09-14) ──
+  { id: "cardback_art_deco_noir_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY1.png", isDefault: false },
+  { id: "cardback_sapphire_filigree_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY2.png", isDefault: false },
+  { id: "cardback_crimson_regalia_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY3.png", isDefault: false },
+  { id: "cardback_emerald_damask_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY4.png", isDefault: false },
+  { id: "cardback_violet_lotus_heart_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY5.png", isDefault: false },
+  { id: "cardback_ivory_diamond_crest_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY6.png", isDefault: false },
+  { id: "cardback_teal_lotus_club_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY7.png", isDefault: false },
+  { id: "cardback_blood_ruby_spade_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY8.png", isDefault: false },
+  { id: "cardback_ivory_heart_jewel_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY9.png", isDefault: false },
+  { id: "cardback_golden_tide_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY10.png", isDefault: false },
+  { id: "cardback_ruby_medallion_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY11.png", isDefault: false },
+  { id: "cardback_regal_crimson_spade_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY12.png", isDefault: false },
+  { id: "cardback_midnight_gold_club_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY13.png", isDefault: false },
+  { id: "cardback_obsidian_cross_diamond_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY14.png", isDefault: false },
+  { id: "cardback_amethyst_mandala_spade_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY15.png", isDefault: false },
+  { id: "cardback_emerald_mandala_heart_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY16.png", isDefault: false },
+
+  // ── Card Backs — UNO Artwork Collection (16, added 2026-09-14) ──
+  { id: "cardback_pigment_blast_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO1.png", isDefault: false },
+  { id: "cardback_golden_eclipse_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO2.png", isDefault: false },
+  { id: "cardback_retro_blocks_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO3.png", isDefault: false },
+  { id: "cardback_rainbow_swirl_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO4.png", isDefault: false },
+  { id: "cardback_action_pack_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO5.png", isDefault: false },
+  { id: "cardback_neon_vortex_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO6.png", isDefault: false },
+  { id: "cardback_prism_shatter_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO7.png", isDefault: false },
+  { id: "cardback_brush_strokes_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO8.png", isDefault: false },
+  { id: "cardback_hazard_stripes_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO9.png", isDefault: false },
+  { id: "cardback_emerald_leaf_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO10.png", isDefault: false },
+  { id: "cardback_deep_blue_vortex_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO11.png", isDefault: false },
+  { id: "cardback_crimson_vortex_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO12.png", isDefault: false },
+  { id: "cardback_confetti_shapes_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO13.png", isDefault: false },
+  { id: "cardback_gilded_swirl_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO14.png", isDefault: false },
+  { id: "cardback_splash_burst_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO15.png", isDefault: false },
+  { id: "cardback_neon_streak_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO16.png", isDefault: false },
+
   // ── Avatar Auras ──
   {
     id: "aura_none",

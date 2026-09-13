@@ -636,6 +636,20 @@ export function FaceDownCard({
   // are stripped from useId() — legal in an id, but they break `url(#…)`.
   const bgId = `rcb${useId().replace(/:/g, "")}`;
 
+  if (cardBackConfig.kind === "image") {
+    return (
+      <div className={`rm-card rm-card--back${sizeClass(resolvedSize)}`} aria-hidden>
+        <img
+          src={cardBackConfig.imageSrc}
+          alt=""
+          draggable={false}
+          className="rm-card__back-art"
+          style={{ objectFit: "cover" }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`rm-card rm-card--back${sizeClass(resolvedSize)}`} aria-hidden>
       <svg

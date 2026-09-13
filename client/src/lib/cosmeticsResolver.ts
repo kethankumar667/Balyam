@@ -213,46 +213,65 @@ export function getTokenSkinConfig(skinId?: string): TokenSkinConfig {
 }
 
 // ── 4. Card Backs ──
+//
+// Two representations share one id space: the original 6 are hand-drawn SVG
+// shapes tinted by a small color config ("vector"); the 32 added alongside
+// real illustrated artwork just point at a bundled PNG ("image"). Every
+// renderer branches on `.kind` — see FaceDownCard (Rummy), UnoCardBack,
+// CollectibleThumbnail, and CosmeticsPreviewStage's card-back preview.
 
-export interface RummyCardBackConfig {
-  id: string;
-  stopColor1: string;
-  stopColor2: string;
-  accentColor: string;
-}
+export type RummyCardBackConfig =
+  | { id: string; kind: "vector"; stopColor1: string; stopColor2: string; accentColor: string }
+  | { id: string; kind: "image"; imageSrc: string };
 
 export const RUMMY_CARD_BACKS: Record<string, RummyCardBackConfig> = {
   cardback_classic_navy: {
     id: "cardback_classic_navy",
+    kind: "vector",
     stopColor1: "var(--rm-card-back, #1e3a8a)",
     stopColor2: "var(--rm-card-back-deep, #0f172a)",
     accentColor: "var(--rm-brass, #d4af37)",
   },
   cardback_vintage_velvet_rummy: {
     id: "cardback_vintage_velvet_rummy",
+    kind: "vector",
     stopColor1: "#881337",
     stopColor2: "#4c0519",
     accentColor: "#F59E0B",
   },
   cardback_royal_sapphire_rummy: {
     id: "cardback_royal_sapphire_rummy",
+    kind: "vector",
     stopColor1: "#1E3A8A",
     stopColor2: "#0C1B3D",
     accentColor: "#CBD5E1",
   },
+  cardback_art_deco_noir_rummy: { id: "cardback_art_deco_noir_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY1.png" },
+  cardback_sapphire_filigree_rummy: { id: "cardback_sapphire_filigree_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY2.png" },
+  cardback_crimson_regalia_rummy: { id: "cardback_crimson_regalia_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY3.png" },
+  cardback_emerald_damask_rummy: { id: "cardback_emerald_damask_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY4.png" },
+  cardback_violet_lotus_heart_rummy: { id: "cardback_violet_lotus_heart_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY5.png" },
+  cardback_ivory_diamond_crest_rummy: { id: "cardback_ivory_diamond_crest_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY6.png" },
+  cardback_teal_lotus_club_rummy: { id: "cardback_teal_lotus_club_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY7.png" },
+  cardback_blood_ruby_spade_rummy: { id: "cardback_blood_ruby_spade_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY8.png" },
+  cardback_ivory_heart_jewel_rummy: { id: "cardback_ivory_heart_jewel_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY9.png" },
+  cardback_golden_tide_rummy: { id: "cardback_golden_tide_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY10.png" },
+  cardback_ruby_medallion_rummy: { id: "cardback_ruby_medallion_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY11.png" },
+  cardback_regal_crimson_spade_rummy: { id: "cardback_regal_crimson_spade_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY12.png" },
+  cardback_midnight_gold_club_rummy: { id: "cardback_midnight_gold_club_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY13.png" },
+  cardback_obsidian_cross_diamond_rummy: { id: "cardback_obsidian_cross_diamond_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY14.png" },
+  cardback_amethyst_mandala_spade_rummy: { id: "cardback_amethyst_mandala_spade_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY15.png" },
+  cardback_emerald_mandala_heart_rummy: { id: "cardback_emerald_mandala_heart_rummy", kind: "image", imageSrc: "/rummy-card-backs/RUMMY16.png" },
 };
 
-export interface UnoCardBackConfig {
-  id: string;
-  bodyColor: string;
-  ovalColor: string;
-  textColor: string;
-  edgeColor: string;
-}
+export type UnoCardBackConfig =
+  | { id: string; kind: "vector"; bodyColor: string; ovalColor: string; textColor: string; edgeColor: string }
+  | { id: string; kind: "image"; imageSrc: string };
 
 export const UNO_CARD_BACKS: Record<string, UnoCardBackConfig> = {
   cardback_classic_uno: {
     id: "cardback_classic_uno",
+    kind: "vector",
     bodyColor: "#17181d",
     ovalColor: "#D22B27",
     textColor: "#F5C400",
@@ -260,6 +279,7 @@ export const UNO_CARD_BACKS: Record<string, UnoCardBackConfig> = {
   },
   cardback_neon_cyber_uno: {
     id: "cardback_neon_cyber_uno",
+    kind: "vector",
     bodyColor: "#05070F",
     ovalColor: "#06B6D4",
     textColor: "#A5F3FC",
@@ -267,11 +287,28 @@ export const UNO_CARD_BACKS: Record<string, UnoCardBackConfig> = {
   },
   cardback_dragon_ember_uno: {
     id: "cardback_dragon_ember_uno",
+    kind: "vector",
     bodyColor: "#1C1006",
     ovalColor: "#EA580C",
     textColor: "#FED7AA",
     edgeColor: "#B91C1C",
   },
+  cardback_pigment_blast_uno: { id: "cardback_pigment_blast_uno", kind: "image", imageSrc: "/uno-card-backs/UNO1.png" },
+  cardback_golden_eclipse_uno: { id: "cardback_golden_eclipse_uno", kind: "image", imageSrc: "/uno-card-backs/UNO2.png" },
+  cardback_retro_blocks_uno: { id: "cardback_retro_blocks_uno", kind: "image", imageSrc: "/uno-card-backs/UNO3.png" },
+  cardback_rainbow_swirl_uno: { id: "cardback_rainbow_swirl_uno", kind: "image", imageSrc: "/uno-card-backs/UNO4.png" },
+  cardback_action_pack_uno: { id: "cardback_action_pack_uno", kind: "image", imageSrc: "/uno-card-backs/UNO5.png" },
+  cardback_neon_vortex_uno: { id: "cardback_neon_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO6.png" },
+  cardback_prism_shatter_uno: { id: "cardback_prism_shatter_uno", kind: "image", imageSrc: "/uno-card-backs/UNO7.png" },
+  cardback_brush_strokes_uno: { id: "cardback_brush_strokes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO8.png" },
+  cardback_hazard_stripes_uno: { id: "cardback_hazard_stripes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO9.png" },
+  cardback_emerald_leaf_uno: { id: "cardback_emerald_leaf_uno", kind: "image", imageSrc: "/uno-card-backs/UNO10.png" },
+  cardback_deep_blue_vortex_uno: { id: "cardback_deep_blue_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO11.png" },
+  cardback_crimson_vortex_uno: { id: "cardback_crimson_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO12.png" },
+  cardback_confetti_shapes_uno: { id: "cardback_confetti_shapes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO13.png" },
+  cardback_gilded_swirl_uno: { id: "cardback_gilded_swirl_uno", kind: "image", imageSrc: "/uno-card-backs/UNO14.png" },
+  cardback_splash_burst_uno: { id: "cardback_splash_burst_uno", kind: "image", imageSrc: "/uno-card-backs/UNO15.png" },
+  cardback_neon_streak_uno: { id: "cardback_neon_streak_uno", kind: "image", imageSrc: "/uno-card-backs/UNO16.png" },
 };
 
 export function getRummyCardBackConfig(skinId?: string): RummyCardBackConfig {

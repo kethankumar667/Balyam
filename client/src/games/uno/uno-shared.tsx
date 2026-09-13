@@ -238,6 +238,18 @@ export function UnoCardBack({ className, skin }: { className?: string; skin?: st
   const localSkin = useCardBack("uno");
   const config = getUnoCardBackConfig(skin ?? localSkin);
 
+  if (config.kind === "image") {
+    return (
+      <img
+        src={config.imageSrc}
+        alt="UNO card back"
+        draggable={false}
+        className={className}
+        style={{ objectFit: "contain" }}
+      />
+    );
+  }
+
   return (
     <svg
       viewBox="0 0 100 150"

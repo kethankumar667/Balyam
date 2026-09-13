@@ -44,6 +44,7 @@ import {
 } from "./presentationState";
 import { getRarityTokens } from "./designTokens";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { getRummyCardBackConfig, getUnoCardBackConfig } from "../../lib/cosmeticsResolver";
 
 interface CosmeticsPreviewStageProps {
   item: CosmeticCatalogItem | null;
@@ -1118,6 +1119,51 @@ function EnchantedCardBackPreview({
   };
 
   const style = getCardDesign(cardId);
+
+  // Real illustrated card backs render the actual artwork instead of the
+  // hand-authored gradient mockup above — more faithful than an approximated
+  // color block, and avoids hand-writing a gradient case per artwork item.
+  const isUno = scope === "uno" || cardId.includes("uno");
+  const resolvedConfig = isUno ? getUnoCardBackConfig(cardId) : getRummyCardBackConfig(cardId);
+  const imageSrc = resolvedConfig.kind === "image" ? resolvedConfig.imageSrc : null;
+
+  if (imageSrc) {
+    if (mode === "DRAW_PILE") {
+      return (
+        <div className="relative flex flex-col items-center justify-center">
+          {/* Stacked Deck Layers */}
+          <div className="w-28 h-40 rounded-xl bg-zinc-800 border border-zinc-700 absolute -top-2 left-2 shadow-md rotate-3" />
+          <div className="w-28 h-40 rounded-xl bg-zinc-800 border border-zinc-700 absolute -top-1 left-1 shadow-md rotate-1" />
+          <img src={imageSrc} alt="" className="w-28 h-40 rounded-xl object-cover relative shadow-2xl" />
+          <span className="text-[10px] font-mono text-zinc-400 mt-3">
+            Draw Pile Deck View
+          </span>
+        </div>
+      );
+    }
+
+    if (mode === "IN_HAND") {
+      return (
+        <div className="flex flex-col items-center justify-center">
+          <div className="relative flex items-center justify-center h-44 w-52">
+            <img src={imageSrc} alt="" className="w-24 h-36 rounded-xl object-cover absolute left-2 -rotate-12 shadow-xl" />
+            <img src={imageSrc} alt="" className="w-24 h-36 rounded-xl object-cover absolute z-10 shadow-2xl" />
+            <img src={imageSrc} alt="" className="w-24 h-36 rounded-xl object-cover absolute right-2 rotate-12 shadow-xl" />
+          </div>
+          <span className="text-[10px] font-mono text-zinc-400 mt-1">
+            Fanned Player Hand View
+          </span>
+        </div>
+      );
+    }
+
+    // CARD_BACK (Default)
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <img src={imageSrc} alt="" className="w-32 h-44 rounded-2xl object-cover shadow-2xl" />
+      </div>
+    );
+  }
 
   if (mode === "DRAW_PILE") {
     return (

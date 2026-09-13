@@ -300,6 +300,15 @@ function CollectibleThumbnail({
     const isUno = item.id.includes("uno");
     if (isUno) {
       const bg = getUnoCardBackConfig(item.id);
+      if (bg.kind === "image") {
+        return (
+          <img
+            src={bg.imageSrc}
+            alt=""
+            className="w-8 h-11 rounded-lg border-2 border-stone-300 dark:border-zinc-700 object-cover shadow-md shrink-0"
+          />
+        );
+      }
       return (
         <div
           className="w-8 h-11 rounded-lg border-2 flex items-center justify-center shadow-md shrink-0"
@@ -314,6 +323,15 @@ function CollectibleThumbnail({
       );
     }
     const bg = getRummyCardBackConfig(item.id);
+    if (bg.kind === "image") {
+      return (
+        <img
+          src={bg.imageSrc}
+          alt=""
+          className="w-8 h-11 rounded-lg border-2 border-stone-300 dark:border-zinc-700 object-cover shadow-md shrink-0"
+        />
+      );
+    }
     return (
       <div
         className="w-8 h-11 rounded-lg border-2 flex items-center justify-center shadow-md shrink-0"
