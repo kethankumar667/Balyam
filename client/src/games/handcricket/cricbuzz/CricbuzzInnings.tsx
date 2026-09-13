@@ -426,115 +426,136 @@ export function CricbuzzInnings({
   const activeInnings = innings;
 
   /* ── Interactive Play Area ─────────────────────────────────────────────── */
-  function renderActionPanel() {
-    if (activeInnings.currentBowlerId == null) {
-      if (!isBowling) {
-        const bowlingOppName = nameOf(players, activeInnings.bowlingPlayerId);
-        return (
-          <CricbuzzCard className="p-4 border-l-4 border-l-[#035A46] text-center">
-            <span className="font-bold text-[13px] uppercase tracking-wider text-[#035A46] dark:text-[#A7F3D0] block mb-1">
-              Over {currentOver}
-            </span>
-            <p className="text-[13px] text-[#555555] dark:text-[#A0A5A8]">
-              {bowlingOppName} is choosing their bowler for Over {currentOver}…
-            </p>
-          </CricbuzzCard>
-        );
-      }
-
-      const cap = HC_MAX_OVERS_PER_BOWLER[state.options.format] ?? 2;
-      const bowlerCandidates = bowlingXiIds.filter((id) => {
-        const p = bowlingProfiles.get(id);
-        return p?.role === "bowler" || p?.role === "allrounder";
-      });
-      const displayBowlerIds = bowlerCandidates.length > 0 ? bowlerCandidates : bowlingXiIds;
-
+  function renderBowlerPicker() {
+    if (!isBowling) {
+      const bowlingOppName = nameOf(players, activeInnings.bowlingPlayerId);
       return (
-        <CricbuzzCard className="p-4 border-l-4 border-l-[#009270]">
-          <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#222222] dark:text-white mb-2">
-            Select Next Bowler
-          </h3>
-          <p className="text-[12px] text-[#666666] dark:text-[#A0A5A8] mb-3">
-            Choose a bowler for Over {currentOver}. (Max {cap} overs per bowler, cannot bowl back-to-back overs).
+        <CricbuzzCard className="p-4 border-l-4 border-l-[#035A46] text-center">
+          <span className="font-bold text-[13px] uppercase tracking-wider text-[#035A46] dark:text-[#A7F3D0] block mb-1">
+            Over {currentOver}
+          </span>
+          <p className="text-[13px] text-[#555555] dark:text-[#A0A5A8]">
+            {bowlingOppName} is choosing their bowler for Over {currentOver}…
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {displayBowlerIds.map((id) => {
-              const p = bowlingProfiles.get(id);
-              const s = activeInnings.bowlerStats[id];
-              const balls = s?.balls ?? 0;
-              const oversBowled = Math.floor(balls / 6);
-              const isOverCap = oversBowled >= cap;
-              const isLastBowler = id === activeInnings.lastBowlerId;
-              const disabled = isOverCap || isLastBowler;
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => pickBowler(id)}
-                  className={`flex flex-col items-start p-2 rounded-md border text-left transition ${
-                    disabled
-                      ? "opacity-40 border-[#E3E6E8] bg-[#F5F7F8] dark:bg-[#151B19] cursor-not-allowed"
-                      : "border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] dark:bg-[#10261E] dark:text-[#00B38A] dark:hover:bg-[#009270] dark:hover:text-white"
-                  }`}
-                >
-                  <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Bowler"}</span>
-                  <span className="text-[11px] opacity-80">
-                    {oversFromBalls(balls)} ov · {s?.wickets ?? 0}w {p?.role === "allrounder" ? "• AR" : ""}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </CricbuzzCard>
       );
     }
 
-    if (activeInnings.needsNextBatterPick) {
-      if (!isBatting) {
-        const battingOppName = nameOf(players, activeInnings.battingPlayerId);
-        return (
-          <CricbuzzCard className="p-4 border-l-4 border-l-[#CB0606] text-center">
-            <span className="font-bold text-[13px] uppercase tracking-wider text-[#CB0606] block mb-1">
-              Wicket Down!
-            </span>
-            <p className="text-[13px] text-[#555555] dark:text-[#A0A5A8]">
-              {battingOppName} is selecting their next batter to take guard…
-            </p>
-          </CricbuzzCard>
-        );
-      }
+    const cap = HC_MAX_OVERS_PER_BOWLER[state.options.format] ?? 2;
+    const bowlerCandidates = bowlingXiIds.filter((id) => {
+      const p = bowlingProfiles.get(id);
+      return p?.role === "bowler" || p?.role === "allrounder";
+    });
+    const displayBowlerIds = bowlerCandidates.length > 0 ? bowlerCandidates : bowlingXiIds;
 
-      // Find remaining batters who have not batted
-      const unbattedIds = battingXiIds.filter((id) => !activeInnings.batterStats[id]?.isOut && id !== strikerId && id !== nonStrikerId);
+    return (
+      <CricbuzzCard className="p-4 border-l-4 border-l-[#009270]">
+        <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#222222] dark:text-white mb-2">
+          Select Next Bowler
+        </h3>
+        <p className="text-[12px] text-[#666666] dark:text-[#A0A5A8] mb-3">
+          Choose a bowler for Over {currentOver}. (Max {cap} overs per bowler, cannot bowl back-to-back overs).
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {displayBowlerIds.map((id) => {
+            const p = bowlingProfiles.get(id);
+            const s = activeInnings.bowlerStats[id];
+            const balls = s?.balls ?? 0;
+            const oversBowled = Math.floor(balls / 6);
+            const isOverCap = oversBowled >= cap;
+            const isLastBowler = id === activeInnings.lastBowlerId;
+            const disabled = isOverCap || isLastBowler;
 
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={disabled}
+                onClick={() => pickBowler(id)}
+                className={`flex flex-col items-start p-2 rounded-md border text-left transition ${
+                  disabled
+                    ? "opacity-40 border-[#E3E6E8] bg-[#F5F7F8] dark:bg-[#151B19] cursor-not-allowed"
+                    : "border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] dark:bg-[#10261E] dark:text-[#00B38A] dark:hover:bg-[#009270] dark:hover:text-white"
+                }`}
+              >
+                <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Bowler"}</span>
+                <span className="text-[11px] opacity-80">
+                  {oversFromBalls(balls)} ov · {s?.wickets ?? 0}w {p?.role === "allrounder" ? "• AR" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </CricbuzzCard>
+    );
+  }
+
+  function renderNextBatterPicker() {
+    if (!isBatting) {
+      const battingOppName = nameOf(players, activeInnings.battingPlayerId);
       return (
-        <CricbuzzCard className="p-4 border-l-4 border-l-[#CB0606]">
-          <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#CB0606] mb-2">
-            Wicket Down! Select Next Batter
-          </h3>
-          <p className="text-[12px] text-[#666666] dark:text-[#A0A5A8] mb-3">
-            Choose which batter comes out to the crease next.
+        <CricbuzzCard className="p-4 border-l-4 border-l-[#CB0606] text-center">
+          <span className="font-bold text-[13px] uppercase tracking-wider text-[#CB0606] block mb-1">
+            Wicket Down!
+          </span>
+          <p className="text-[13px] text-[#555555] dark:text-[#A0A5A8]">
+            {battingOppName} is selecting their next batter to take guard…
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {unbattedIds.map((id) => {
-              const p = battingProfiles.get(id);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => pickNextBatter(id)}
-                  className="flex flex-col items-start p-2.5 rounded-md border border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] transition dark:bg-[#10261E] dark:text-[#00B38A]"
-                >
-                  <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Batter"}</span>
-                  <span className="text-[10px] uppercase tracking-wider opacity-80">{p?.role}</span>
-                </button>
-              );
-            })}
-          </div>
         </CricbuzzCard>
       );
+    }
+
+    // Find remaining batters who have not batted
+    const unbattedIds = battingXiIds.filter((id) => !activeInnings.batterStats[id]?.isOut && id !== strikerId && id !== nonStrikerId);
+
+    return (
+      <CricbuzzCard className="p-4 border-l-4 border-l-[#CB0606]">
+        <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#CB0606] mb-2">
+          Wicket Down! Select Next Batter
+        </h3>
+        <p className="text-[12px] text-[#666666] dark:text-[#A0A5A8] mb-3">
+          Choose which batter comes out to the crease next.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {unbattedIds.map((id) => {
+            const p = battingProfiles.get(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => pickNextBatter(id)}
+                className="flex flex-col items-start p-2.5 rounded-md border border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] transition dark:bg-[#10261E] dark:text-[#00B38A]"
+              >
+                <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Batter"}</span>
+                <span className="text-[10px] uppercase tracking-wider opacity-80">{p?.role}</span>
+              </button>
+            );
+          })}
+        </div>
+      </CricbuzzCard>
+    );
+  }
+
+  function renderActionPanel() {
+    const needsBowler = activeInnings.currentBowlerId == null;
+
+    // A wicket on the last ball of an over needs BOTH pickers rendered
+    // concurrently — checking `needsBowler` first (the old order) hid the
+    // batting side's next-batter picker behind the bowling side's bowler
+    // picker until a bowler was chosen, deadlocking that side's UI. See
+    // Broadcast's `blocking` composition (hc-broadcast.tsx) and the server's
+    // `pendingActors()`, which treat these as independent, simultaneous asks.
+    if (activeInnings.needsNextBatterPick) {
+      return (
+        <>
+          {renderNextBatterPicker()}
+          {needsBowler && renderBowlerPicker()}
+        </>
+      );
+    }
+
+    if (needsBowler) {
+      return renderBowlerPicker();
     }
 
     // `secondsLeft` comes from the hoisted `useTurnSecondsLeft` call at the

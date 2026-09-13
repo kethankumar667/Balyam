@@ -9,7 +9,7 @@ import { HcScorecardFX } from "../animations3d/scorecard/HcScorecardFX";
 function InningsTables({ innings, battingName, bowlingName, state }: { innings: HcInnings; battingName: string; bowlingName: string; state: HcState }) {
   const battingProfiles = resolveTeamProfiles(state, innings.battingPlayerId);
   const bowlingProfiles = resolveTeamProfiles(state, innings.bowlingPlayerId);
-  const batters = Object.entries(innings.batterStats);
+  const batters = Object.entries(innings.batterStats).filter(([, s]) => s.balls > 0 || s.isOut);
   const bowlers = Object.entries(innings.bowlerStats).filter(([, s]) => s.balls > 0);
 
   return (

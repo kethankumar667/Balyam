@@ -2095,8 +2095,11 @@ export class RoomManager {
     // gate (see scheduleInitialTurnTimer) and this report just cleared the
     // last blocker, arm it now instead of waiting out the safety net.
     if (room.dealGateWaitTimer && !needsRotation) {
+      // Same `!== false` reasoning as `scheduleInitialTurnTimer` — a
+      // player who hasn't reported yet must keep the gate held, not be
+      // read as already clear.
       const stillBlocking = Array.from(room.players.values()).some(
-        (p) => p.isConnected && !p.isBot && p.needsRotation,
+        (p) => p.isConnected && !p.isBot && p.needsRotation !== false,
       );
       if (!stillBlocking) this.armInitialTurnTimer(room);
     }
@@ -3881,8 +3884,18 @@ export class RoomManager {
       this.scheduleTurnTimer(room);
       return;
     }
+    // `needsRotation` is `undefined` until a player's client has reported
+    // ANYTHING (see rotation-sync.tsx's `useOrientationReport`) — which
+    // cannot happen before this synchronous method returns, since it runs
+    // the instant `engine.init()` does, before the client has even received
+    // the broadcast that told it a match started. Checking plain truthiness
+    // treated that "haven't heard from them yet" state as "confirmed not
+    // blocking," so a player who needed to rotate — but simply hadn't had a
+    // network round-trip's worth of time to say so — was invisible to this
+    // check, and the gate armed immediately anyway. `!== false` waits for an
+    // explicit "no rotation needed" instead of defaulting to it.
     const stillBlocking = Array.from(room.players.values()).some(
-      (p) => p.isConnected && !p.isBot && p.needsRotation,
+      (p) => p.isConnected && !p.isBot && p.needsRotation !== false,
     );
     if (!stillBlocking) {
       this.armInitialTurnTimer(room);

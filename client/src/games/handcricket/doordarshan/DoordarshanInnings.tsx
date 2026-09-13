@@ -128,23 +128,43 @@ export function DoordarshanInnings({
           </DoordarshanScreen>
         )}
 
-        {bowlerId == null ? (
+        {/* A wicket on the last ball of an over needs BOTH pickers rendered
+            concurrently — checking `bowlerId == null` first (the old order)
+            hid the batting side's next-batter picker behind the bowling
+            side's bowler picker until a bowler was chosen, deadlocking that
+            side's UI. See Broadcast's `blocking` composition
+            (hc-broadcast.tsx) and the server's `pendingActors()`, which treat
+            these as independent, simultaneous asks. */}
+        {innings.needsNextBatterPick ? (
+          <>
+            {isBatting ? (
+              <NextBatterPicker innings={innings} battingProfiles={battingProfiles} battingXiIds={battingXiIds} nonStrikerId={nonStrikerId} />
+            ) : (
+              <DoordarshanScreen className="py-4 text-center">
+                <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
+                  Wicket fallen. {nameOf(players, innings.battingPlayerId)} is selecting next batter…
+                </div>
+              </DoordarshanScreen>
+            )}
+            {bowlerId == null && (
+              isBowling ? (
+                <BowlerPicker innings={innings} bowlingProfiles={bowlingProfiles} bowlingXiIds={bowlingXiIds} format={state.options.format} />
+              ) : (
+                <DoordarshanScreen className="py-4 text-center">
+                  <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
+                    {nameOf(players, innings.bowlingPlayerId)} is choosing a bowler…
+                  </div>
+                </DoordarshanScreen>
+              )
+            )}
+          </>
+        ) : bowlerId == null ? (
           isBowling ? (
             <BowlerPicker innings={innings} bowlingProfiles={bowlingProfiles} bowlingXiIds={bowlingXiIds} format={state.options.format} />
           ) : (
             <DoordarshanScreen className="py-4 text-center">
               <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
                 {nameOf(players, innings.bowlingPlayerId)} is choosing a bowler…
-              </div>
-            </DoordarshanScreen>
-          )
-        ) : innings.needsNextBatterPick ? (
-          isBatting ? (
-            <NextBatterPicker innings={innings} battingProfiles={battingProfiles} battingXiIds={battingXiIds} nonStrikerId={nonStrikerId} />
-          ) : (
-            <DoordarshanScreen className="py-4 text-center">
-              <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
-                Wicket fallen. {nameOf(players, innings.battingPlayerId)} is selecting next batter…
               </div>
             </DoordarshanScreen>
           )

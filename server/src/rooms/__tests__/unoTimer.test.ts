@@ -66,6 +66,15 @@ describe("RoomManager — UNO turn timer wiring", () => {
     rooms.joinRoom("s1", "Babji", code);
     rooms.setReady("s0", true);
     rooms.setReady("s1", true);
+    // A real client reports its orientation once it mounts — `needsRotation`
+    // is `undefined` (not `false`) until it does, and the deal-gate now
+    // correctly treats "hasn't reported yet" as still-blocking (see
+    // RoomManager's scheduleInitialTurnTimer fix). Reporting both already
+    // landscape here simulates two clients that never needed to rotate, so
+    // this test still exercises the fixed-animation-pause path rather than
+    // the 20s safety-net fallback.
+    rooms.setOrientation("s0", false);
+    rooms.setOrientation("s1", false);
 
     function latestGameStateFor(socketId: string): UnoPlayerState {
       const matches = emitted.filter((e) => e.event === "game:state" && e.socketId === socketId);
@@ -84,7 +93,8 @@ describe("RoomManager — UNO turn timer wiring", () => {
       // client's synchronized rotate+deal opener (rotation-sync.tsx) so the
       // clock can't run out from under a player before the board is even
       // interactive — see RoomManager's DEAL_GATE_ANIM_MS. No blockers here
-      // (test players report no needsRotation), so the gate is just the
+      // (both already reported needsRotation:false above), so the gate is
+      // just the
       // fixed animation pause, not the full rotation wait.
       expect(justStarted.turnDeadline).toBeNull();
 
@@ -112,6 +122,59 @@ describe("RoomManager — UNO turn timer wiring", () => {
       expect(after.lastAction).not.toBe(before.lastAction);
       // A fresh timer must have been scheduled for the resulting state too.
       expect(after.turnDeadline).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds the first deadline until a slow-to-report player's rotation actually clears, instead of arming the instant nobody has reported yet", () => {
+    const { io, addSocket, emitted } = makeFakeIO();
+    addSocket("s0");
+    addSocket("s1");
+    const rooms = new RoomManager(io);
+
+    const { code } = rooms.createRoom(
+      "s0", "Anand", "uno",
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      { turnTimerSeconds: 1 },
+    );
+    rooms.joinRoom("s1", "Babji", code);
+    rooms.setReady("s0", true);
+    rooms.setReady("s1", true);
+    // Neither socket has called setOrientation yet — the exact state every
+    // real client is in for the first tick after a match starts, before its
+    // own mount effect has had a chance to report anything.
+
+    function latestDeadline(): number | null {
+      const matches = emitted.filter((e) => e.event === "game:state" && e.socketId === "s0");
+      const last = matches[matches.length - 1];
+      return (last.payload as UnoPlayerState).turnDeadline;
+    }
+
+    vi.useFakeTimers();
+    try {
+      rooms.startGame("s0");
+
+      // Reproduces the reported bug directly: with the pre-fix `p.needsRotation`
+      // truthiness check, "nobody has reported" read as "nobody is blocking",
+      // so the deal-gate armed right after the fixed animation pause even
+      // though neither client had said anything about its orientation yet.
+      vi.advanceTimersByTime(2_600);
+      expect(latestDeadline()).toBeNull();
+
+      // s0 (the host) resolves quickly — s1 is the one slow-to-report straggler.
+      rooms.setOrientation("s0", false);
+      // s1 finally reports it needed to rotate and is still doing so —
+      // still nothing to arm.
+      rooms.setOrientation("s1", true);
+      vi.advanceTimersByTime(1_000);
+      expect(latestDeadline()).toBeNull();
+
+      // s1 finishes rotating — THIS is what should resolve the gate, not
+      // the mere passage of time.
+      rooms.setOrientation("s1", false);
+      vi.advanceTimersByTime(2_600);
+      expect(latestDeadline()).not.toBeNull();
     } finally {
       vi.useRealTimers();
     }

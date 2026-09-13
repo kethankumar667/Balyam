@@ -74,7 +74,7 @@ export function CricbuzzInningsScorecardTable({
                 const isOut = stats?.isOut ?? false;
                 const isStriker = idx === innings.strikerIdx && !isOut;
                 const isNonStriker = idx === innings.nonStrikerIdx && !isOut;
-                const hasBatted = stats != null;
+                const hasBatted = stats != null && (stats.balls > 0 || stats.isOut);
 
                 if (!hasBatted) return null;
 

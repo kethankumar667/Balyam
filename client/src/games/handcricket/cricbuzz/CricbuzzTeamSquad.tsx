@@ -274,6 +274,17 @@ export function CricbuzzSquadPicker({
                   </button>
                   <button
                     type="button"
+                    onClick={() => s.setViceCaptain(player.id)}
+                    className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
+                      isViceCaptain
+                        ? "bg-[#035A46] text-white"
+                        : "bg-[#ECEEF2] text-[#555555] hover:bg-[#D0D4D9] dark:bg-[#2C3533] dark:text-[#CCCCCC]"
+                    }`}
+                  >
+                    Vice-C
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => s.toggle(player.id)}
                     className="rounded bg-[#FFEBEE] px-2 py-1 text-[10px] font-bold text-[#C62828] hover:bg-[#FFCDD2] transition"
                   >
