@@ -4,6 +4,8 @@ import { CB, CricbuzzLiveIndicator, IconBat } from "./cricbuzz-kit";
 import { HcThemeSwitcher } from "../HcThemeSwitcher";
 import { useHcSkin } from "../hc-skin";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
+import { useFullscreenToggle } from "../../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../../lib/fullscreen";
 
 const PHASE_TITLE: Record<HcState["phase"], string> = {
   teamSelect: "TEAMS & SQUADS",
@@ -29,6 +31,7 @@ export function CricbuzzHeader({
   rail?: ReactNode;
 }) {
   const [skin, setSkin] = useHcSkin();
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const [p0, p1] = state.playerOrder;
   const isLive = state.phase === "innings1" || state.phase === "innings2";
 
@@ -82,8 +85,12 @@ export function CricbuzzHeader({
           </div>
         )}
 
-        {/* Right Tools (Skin switcher, Help, Leave) */}
-        <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
+        {/* Right Tools (Skin switcher, Help, Leave). `flex-wrap` matches the
+            Broadcast and Doordarshan headers' equivalent row — without it,
+            the brand block plus all 4 theme pills plus Help/Leave don't fit
+            in 390px and the whole page scrolls horizontally instead of this
+            row wrapping onto a second line. */}
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
           {/* Format Chip */}
           <span className="hidden sm:inline-block rounded bg-[#035A46] px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#A7F3D0] border border-[#047857]">
             {state.options.format.toUpperCase()}
@@ -106,6 +113,17 @@ export function CricbuzzHeader({
               </span>
             )}
           />
+
+          {isFullscreenSupported() && (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="rounded bg-[#035A46] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-[#047857] active:scale-95 transition"
+            >
+              {isFullscreen ? "Exit FS" : "Fullscreen"}
+            </button>
+          )}
 
           {onHelp && (
             <button

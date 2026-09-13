@@ -36,6 +36,8 @@ import { HcThemeSwitcher } from "./HcThemeSwitcher";
 import { useHcSkin } from "./hc-skin";
 import { useInningsBreakCountdown } from "./useInningsBreakCountdown";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -156,6 +158,7 @@ export function HcProHeader({
   rail?: ReactNode;
 }) {
   const [skin, setSkin] = useHcSkin();
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const [p0, p1] = state.playerOrder;
   const a = proTeam(state, p0 ?? "", players, 0);
   const b = proTeam(state, p1 ?? "", players, 1);
@@ -237,6 +240,9 @@ export function HcProHeader({
               </span>
             )}
           />
+          {isFullscreenSupported() && (
+            <HeaderBtn label={isFullscreen ? "Exit FS" : "Fullscreen"} onClick={toggleFullscreen} />
+          )}
           {onHelp && <HeaderBtn label="Help" onClick={onHelp} />}
           {onLeave && <HeaderBtn label="Leave" onClick={onLeave} danger />}
         </div>

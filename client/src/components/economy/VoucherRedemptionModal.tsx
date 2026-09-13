@@ -13,7 +13,7 @@ import { EconomyActionButton, type EconomyActionButtonState } from "./EconomyAct
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
 import { getVoucherStatus, redeemRewardVoucher, type VoucherStatusView, EconomyClientError } from "../../lib/economyApi";
 import { useAuthStore } from "../../store/authStore";
-import { savePendingVoucher, clearPendingVoucher } from "./pendingVoucher";
+import { savePendingVoucher, removePendingVoucher } from "./pendingVoucher";
 
 export interface VoucherRedemptionModalProps {
   isOpen: boolean;
@@ -65,18 +65,29 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
   };
 
   const handleClose = () => {
-    if (isAutoMode) {
-      clearPendingVoucher();
+    // Only removes THIS code — not the whole queue. A redeemed code was
+    // already removed by `handleRedeem` below; an un-redeemed one being
+    // dismissed here (the X button, "I'll claim later") is removed now,
+    // exactly as before. Either way every OTHER pending voucher survives.
+    if (isAutoMode && initialCode) {
+      removePendingVoucher(initialCode);
     }
     resetState();
     onClose();
   };
 
-  // Auto-verify prefilled voucher on open
+  // Auto-verify prefilled voucher on open — and every time `initialCode`
+  // changes while the modal stays open, which happens when the caller
+  // advances to the NEXT queued voucher without ever setting `isOpen` back
+  // to false in between. Without resetting `verifiedVoucher`/`redeemedAmount`
+  // here too, the previous voucher's success screen (or its verified amount)
+  // kept rendering underneath the new code being fetched.
   useEffect(() => {
     if (isOpen && initialCode) {
       const cleanCode = initialCode.trim();
       setVoucherCode(cleanCode);
+      setVerifiedVoucher(null);
+      setRedeemedAmount(null);
       setButtonState("loading");
       setErrorMessage(null);
 
@@ -137,7 +148,7 @@ export const VoucherRedemptionModal: React.FC<VoucherRedemptionModalProps> = ({
 
     try {
       const res = await redeemRewardVoucher(cleanCode);
-      clearPendingVoucher();
+      removePendingVoucher(cleanCode);
       setRedeemedAmount(res.voucher.coinAmount);
       setButtonState("success");
       onSuccess?.(res.newBalance, res.voucher.coinAmount);

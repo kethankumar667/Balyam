@@ -22,7 +22,9 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
-import { LogOut, RotateCcw, Volume2, VolumeX, HelpCircle, Trophy } from "lucide-react";
+import { LogOut, RotateCcw, Volume2, VolumeX, HelpCircle, Trophy, Maximize, Minimize } from "lucide-react";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 import { getSocket } from "../../lib/socket";
 
 export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
@@ -55,6 +57,8 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
     comboStreak,
     comboBanner,
   } = useDotsBoxesBoard(props);
+
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
 
   // Auto-opens once per browser on first reaching the board — see the
   // matching comment in DotsBoxesBoardMobile.tsx.
@@ -163,6 +167,17 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                 {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600" />}
                 <span>{isMuted ? "Sound Off" : "Sound On"}</span>
               </button>
+
+              {isFullscreenSupported() && (
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border-2 border-stone-300 bg-white/90 text-xs font-bold text-stone-700 hover:text-stone-950 transition-all cursor-pointer shadow-xs"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4 text-stone-600" /> : <Maximize className="w-4 h-4 text-stone-600" />}
+                  <span>{isFullscreen ? "Exit FS" : "Fullscreen"}</span>
+                </button>
+              )}
 
               <button
                 type="button"

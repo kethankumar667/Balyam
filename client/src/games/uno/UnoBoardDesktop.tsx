@@ -4,12 +4,7 @@ import type { ReactionRecvPayload } from "@shared/types";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { useAudio } from "../../hooks/useAudio";
-import {
-  enterFullscreen,
-  exitFullscreen,
-  isFullscreenActive,
-  onFullscreenChange,
-} from "../../lib/fullscreen";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import { getSocket } from "../../lib/socket";
 import { UnoHandFan, useUnoEventFlourish, useUnoHitReaction, UnoHitBadge } from "./uno-table";
 import {
@@ -249,7 +244,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
   /* ─── Sound + fullscreen header controls — same global toggles as the
      retired wood skin. ─── */
   const { settings: audioSettings, toggleMute } = useAudio();
-  const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
+  const { isFullscreen: isFs, toggleFullscreen } = useFullscreenToggle();
   const [showRulesModal, setShowRulesModal] = useState(false);
 
   /* ─── Live Flying Reactions & Throwables ─── */
@@ -314,12 +309,6 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
       socket.off("room:reaction", onReaction);
     };
   }, [stadiumPositions, selfId, triggerWobble]);
-
-  useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
-  function toggleFullscreen() {
-    if (isFs) void exitFullscreen();
-    else void enterFullscreen("any");
-  }
 
   /* ─── Keyboard shortcuts — desktop only. D draw, P pass, U declare UNO,
      Escape deselects/cancels the Wild colour picker. ─── */

@@ -12,6 +12,8 @@ import {
   ProPanel,
   ProPips,
   IconClose,
+  IconCompress,
+  IconExpand,
   IconFlame,
   IconHelp,
   IconSkin,
@@ -19,6 +21,8 @@ import {
   type ProSide,
 } from "../pro/pro-kit";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 
 /**
  * ROCK PAPER SCISSORS — broadcast skin.
@@ -218,6 +222,7 @@ export function ProTopBar({
   onHelp?: () => void;
   onSkin?: () => void;
 }) {
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   return (
     <div
       className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5"
@@ -265,6 +270,11 @@ export function ProTopBar({
             onToggle={onSkin}
             variant="compact"
           />
+        )}
+        {isFullscreenSupported() && (
+          <ProIconButton title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={toggleFullscreen}>
+            {isFullscreen ? <IconCompress size={15} /> : <IconExpand size={15} />}
+          </ProIconButton>
         )}
         {onHelp && (
           <ProIconButton title="How to play" onClick={onHelp}>

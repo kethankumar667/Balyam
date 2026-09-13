@@ -21,6 +21,8 @@ import type {
 import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
 import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
+import { isFullscreenSupported } from "../../lib/fullscreen";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import QrCodeModal from "../../components/QrCodeModal";
 import { HcThemeSwitcher } from "./HcThemeSwitcher";
 import { useHcSkin } from "./hc-skin";
@@ -670,6 +672,7 @@ export function HcNotebookHeader({
   onLeave?: () => void;
 }) {
   const [skin, setSkin] = useHcSkin();
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const [p0, p1] = state.playerOrder;
   const t0 = labelFor(state, p0, players);
   const t1 = labelFor(state, p1, players);
@@ -843,6 +846,32 @@ export function HcNotebookHeader({
             >
               <span>❓</span>
               <span>How to Play</span>
+            </button>
+          )}
+          {isFullscreenSupported() && (
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                toggleFullscreen();
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: INK,
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: "'Kalam', system-ui, sans-serif",
+              }}
+            >
+              <span>⛶</span>
+              <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
             </button>
           )}
           {roomCode && (

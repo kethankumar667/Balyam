@@ -46,6 +46,8 @@ import type { RoundOutcome } from "./useRpsBoard";
 import { findAvatar } from "../../lib/avatars";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 
 /* ─────────────────────── Palette constants ─────────────────────── */
 export const PAPER   = "#F5E9C4";
@@ -116,6 +118,7 @@ export function NotebookTopBar({
    *  parchment. */
   onSkin?: () => void;
 }) {
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   return (
     <div className="flex items-start justify-between px-6 pt-4 pb-1">
       {/* Left: game title */}
@@ -183,6 +186,22 @@ export function NotebookTopBar({
             onToggle={onSkin}
             variant="compact"
           />
+        )}
+
+        {isFullscreenSupported() && (
+          <button
+            onClick={toggleFullscreen}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+            style={{
+              border: `2px solid ${INK_LT}`,
+              color: INK_LT,
+              background: "transparent",
+            }}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            ⛶
+          </button>
         )}
 
         {onHelp && (

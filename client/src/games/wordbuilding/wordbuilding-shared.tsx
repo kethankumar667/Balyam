@@ -12,6 +12,8 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
 import type { GameSkinTheme } from "../../hooks/useGameTheme";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 
 /**
  * Word Building — shared presentational layer.
@@ -461,6 +463,7 @@ export function StudentBar({
   onToggleTheme?: () => void;
   isNeon?: boolean;
 }) {
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   return (
     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-1 sm:px-2">
       {/* Leave — top-left */}
@@ -556,6 +559,26 @@ export function StudentBar({
         >
           ⏱ {remainingSec}s
         </div>
+      )}
+      {/* Fullscreen toggle — beside Help, top-right */}
+      {isFullscreenSupported() && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="rounded-full px-3 py-1.5 transition active:translate-y-px"
+          style={{
+            background: isNeon ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.7)",
+            border: isNeon ? "1px solid rgba(56,189,248,0.3)" : "1px solid #c2a578",
+            color: isNeon ? "#38bdf8" : "#7c2d12",
+            fontFamily: "'Caveat', 'Patrick Hand', cursive",
+            fontSize: 18,
+            cursor: "pointer",
+          }}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+        >
+          ⛶ {isFullscreen ? "Exit FS" : "Fullscreen"}
+        </button>
       )}
       {/* Help — top-right */}
       <button

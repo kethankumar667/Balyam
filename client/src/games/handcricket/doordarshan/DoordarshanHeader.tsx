@@ -4,6 +4,8 @@ import type { HcState, Player } from "@shared/types";
 import { DD, DdChip, DdLive, IconBat, ddSideFor, DdAvatar } from "./doordarshan-kit";
 import { HcThemeSwitcher } from "../HcThemeSwitcher";
 import { useHcSkin } from "../hc-skin";
+import { useFullscreenToggle } from "../../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../../lib/fullscreen";
 
 function pad2(n: number): string {
   return n.toString().padStart(2, "0");
@@ -86,6 +88,7 @@ export function DoordarshanHeader({
   state: HcState; players: Player[]; onHelp?: () => void; onLeave?: () => void; rail?: ReactNode;
 }) {
   const [skin, setSkin] = useHcSkin();
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const [p0, p1] = state.playerOrder;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const avatarOf = (id: string) => players.find((p) => p.id === id)?.avatar;
@@ -141,6 +144,9 @@ export function DoordarshanHeader({
               </span>
             )}
           />
+          {isFullscreenSupported() && (
+            <ChipBtn label={isFullscreen ? "Exit FS" : "Fullscreen"} onClick={toggleFullscreen} />
+          )}
           {onHelp && <ChipBtn label="Help" onClick={onHelp} />}
           {onLeave && <DoordarshanLeaveButton onLeave={onLeave} />}
         </div>

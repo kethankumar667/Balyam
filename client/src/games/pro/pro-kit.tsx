@@ -521,6 +521,22 @@ export function IconHelp({ size = 16 }: { size?: number }) {
   );
 }
 
+export function IconExpand({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...ico} aria-hidden>
+      <path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6" />
+    </svg>
+  );
+}
+
+export function IconCompress({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...ico} aria-hidden>
+      <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+    </svg>
+  );
+}
+
 export function IconTrophy({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...ico} aria-hidden>

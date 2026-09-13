@@ -338,6 +338,26 @@ export function CricbuzzInnings({
     lastBallCount.current = innings.history.length;
   }, [innings?.history.length]);
 
+  // Mystery Yorker arm/disarm toggle and the live turn-deadline countdown.
+  // Both used to live below the `if (!innings) return null` guard (the
+  // toggle) or inside `renderActionPanel()`, itself called after several of
+  // ITS OWN early returns (`useTurnSecondsLeft`). Either path meant this
+  // component called a different number of hooks depending on game phase —
+  // "select a bowler" vs. "wicket, pick next batter" vs. "live ball" — which
+  // is exactly what triggers React's "Rendered more hooks than during the
+  // previous render" crash the moment the phase changes. Every hook must run
+  // on every render regardless of `innings`/phase, so both live here,
+  // unconditionally, before the guard below.
+  const [isYorkerToggled, setIsYorkerToggled] = useState(false);
+  const yorkerUsedThisOverForReset = innings ? Boolean(innings.yorkerUsedByOver?.[Math.floor(innings.balls / 6) + 1]) : false;
+  const myPickForReset = innings ? state.pendingPicks[selfId] : null;
+  useEffect(() => {
+    if (myPickForReset != null || yorkerUsedThisOverForReset) {
+      setIsYorkerToggled(false);
+    }
+  }, [myPickForReset, yorkerUsedThisOverForReset]);
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+
   if (!innings) return null;
 
   const isBatting = innings.battingPlayerId === selfId;
@@ -369,7 +389,6 @@ export function CricbuzzInnings({
   const bowlerRestricted = isBowling && isRestrictedBall;
   const yorkerUsedThisOver = Boolean(innings.yorkerUsedByOver?.[currentOver]);
   const canBowlYorker = isBowling && isPowerplayOver && !yorkerUsedThisOver;
-  const [isYorkerToggled, setIsYorkerToggled] = useState(false);
   const partnership = currentPartnership(innings);
   const recent = innings.history.slice(-12);
 
@@ -378,12 +397,6 @@ export function CricbuzzInnings({
   const oppId = state.playerOrder.find((id) => id !== selfId) ?? "";
   const oppLockedIn = state.pendingPicks[oppId] != null;
   const oppName = nameOf(players, oppId);
-
-  useEffect(() => {
-    if (myPick != null || yorkerUsedThisOver) {
-      setIsYorkerToggled(false);
-    }
-  }, [myPick, yorkerUsedThisOver, currentOver]);
 
   // Current Run Rate (CRR) & Required Run Rate (RRR)
   const crr = innings.balls > 0 ? (innings.runs / (innings.balls / 6)).toFixed(2) : "0.00";
@@ -524,7 +537,10 @@ export function CricbuzzInnings({
       );
     }
 
-    const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+    // `secondsLeft` comes from the hoisted `useTurnSecondsLeft` call at the
+    // top of the component (closure) — calling the hook again here, inside a
+    // helper reached only via some of this component's render paths, was the
+    // Rules-of-Hooks violation that crashed the board on a phase change.
     const hasDeadline = state.turnDeadline != null;
     const timerTone = secondsLeft <= 2 ? "#CB0606" : secondsLeft <= 5 ? "#E65100" : "#009270";
     const timerProgressPct = Math.min(100, Math.max(0, (secondsLeft / 10) * 100));

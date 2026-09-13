@@ -4,6 +4,8 @@ import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
 import { findAvatar } from "../../lib/avatars";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 import {
   appendEntry,
   formatFeedClock,
@@ -379,6 +381,7 @@ export function CarromLoungeHeader({
   onToggleRules?: () => void;
   rulesOpen?: boolean;
 }) {
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   return (
     <div
       className="w-full flex items-center justify-between gap-2 px-3 py-2.5"
@@ -433,6 +436,22 @@ export function CarromLoungeHeader({
 
       {/* Rules + Skins */}
       <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+        {isFullscreenSupported() && (
+          <IconButton
+            label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </IconButton>
+        )}
         {onToggleRules && (
           <IconButton label="How to play" onClick={onToggleRules} active={rulesOpen}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">

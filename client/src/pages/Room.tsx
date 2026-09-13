@@ -6,7 +6,8 @@ import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../lib/playerIdentity";
-import { exitFullscreen, isFullscreenActive, isPhoneClass } from "../lib/fullscreen";
+import { exitFullscreen, isFullscreenActive, isFullscreenSupported, isPhoneClass } from "../lib/fullscreen";
+import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
 import { getGamePreferredOrientation } from "@shared/catalog";
 import { HapticsManager } from "../services/HapticsManager";
@@ -1235,6 +1236,12 @@ export default function Room() {
   const isLobbyLike =
     roomState?.phase === "lobby" || (roomState?.phase === "finished" && scorecardDismissed);
 
+  // For the generic fallback header below — the games with no chrome of
+  // their own (Bingo, SNL, Chess mobile, Snake, SpaceWar, Tambola,
+  // NamesPlaceAnimal, Star Game mobile) get their fullscreen toggle here,
+  // in the one place they all already get their Leave button.
+  const { isFullscreen: roomIsFullscreen, toggleFullscreen: toggleRoomFullscreen } = useFullscreenToggle();
+
   const canChangeStake = selfIsHost && isLobbyLike && !otherHumansReady;
 
   const stakeLockedReason = useMemo(() => {
@@ -1555,6 +1562,16 @@ export default function Room() {
                   : "flex items-center justify-end"
               }
             >
+              {isFullscreenSupported() && (
+                <button
+                  onClick={toggleRoomFullscreen}
+                  aria-label={roomIsFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                  title={roomIsFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  className="pointer-events-auto mr-2 text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-slate-700 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3 py-1.5 rounded-lg shadow-lg transition font-medium"
+                >
+                  {roomIsFullscreen ? "🗗" : "⛶"}
+                </button>
+              )}
               <button
                 onClick={requestLeaveConfirmation}
                 className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"

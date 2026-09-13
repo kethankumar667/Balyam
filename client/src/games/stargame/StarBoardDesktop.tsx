@@ -8,6 +8,8 @@ import FloatingReactionsLayer from "../../components/reactions/FloatingReactions
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { StarBurstOverlay, StarWinnerCelebration } from "./StarAnimations";
 import { STARGAME_TUTORIAL } from "../tutorials";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 import {
   Chit,
   DeadlinePill,
@@ -48,6 +50,7 @@ import {
  */
 export default function StarBoardDesktop(props: StarBoardProps) {
   const m = useStarBoard(props);
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const reduce = useReducedMotion();
   const reactions = useSeatReactions(props.selfId);
   // Never over a live action window — Star Game has two ("themeSelect" and
@@ -199,6 +202,14 @@ export default function StarBoardDesktop(props: StarBoardProps) {
 
         {/* Right Controls & Leave Button */}
         <div className="flex items-center gap-2.5">
+          {isFullscreenSupported() && (
+            <StarIconButton
+              onClick={toggleFullscreen}
+              label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? "🗗" : "⛶"}
+            </StarIconButton>
+          )}
           <StarIconButton onClick={() => tut.setOpen(true)} label="How to play Star Game">
             ?
           </StarIconButton>

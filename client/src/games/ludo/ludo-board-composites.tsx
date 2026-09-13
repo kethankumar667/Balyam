@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { LudoColor, LudoState, Player } from "@shared/types";
-import { enterFullscreen, exitFullscreen, isFullscreenActive, onFullscreenChange } from "../../lib/fullscreen";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import type { CameraShakeOptions, CameraPunchOptions } from "../../animations/camera/useTableCamera";
 
 /** CSS custom-prop pair the global `.ludo-chip` glossy treatment reads. */
@@ -232,9 +232,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
     "flex-shrink-0 h-9 px-3 rounded-full flex items-center gap-1.5 justify-center text-sm font-bold active:scale-95 transition";
   const themeLabel = LUDO_THEME_LABELS[m.settings.theme];
   // Fullscreen toggle — self-contained (no other game state needs it).
-  const [isFs, setIsFs] = useState<boolean>(() => isFullscreenActive());
-  useEffect(() => onFullscreenChange(() => setIsFs(isFullscreenActive())), []);
-  const toggleFullscreen = () => (isFs ? void exitFullscreen() : void enterFullscreen("any"));
+  const { isFullscreen: isFs, toggleFullscreen } = useFullscreenToggle();
   // Mirrors TurnTimeWarning's own trigger so the two can't disagree about
   // whether the chip is on screen.
   const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
@@ -290,7 +288,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       </button>
       <button
         onClick={toggleFullscreen}
-        className={`${iconChip} hidden sm:flex`}
+        className={iconChip}
         style={chipStyle}
         title={isFs ? "Exit fullscreen" : "Fullscreen"}
         aria-label={isFs ? "Exit fullscreen" : "Enter fullscreen"}

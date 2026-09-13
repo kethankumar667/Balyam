@@ -15,7 +15,7 @@ import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
 import { VoucherRedemptionModal } from "../components/economy";
-import { getPendingVoucher, clearPendingVoucher, type PendingVoucherData } from "../components/economy/pendingVoucher";
+import { getPendingVouchers, type PendingVoucherData } from "../components/economy/pendingVoucher";
 
 /**
  * BHALYAM home — the app's landing surface.
@@ -46,17 +46,20 @@ export default function BhalyamHome() {
   });
   const isMember = useAuthStore((s) => s.isMember);
   const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
-  const [pendingVoucher, setPendingVoucher] = useState<PendingVoucherData | null>(null);
+  // A queue, not a single voucher: a guest who won more than once before
+  // signing up has one entry per unclaimed win, oldest first. The modal
+  // below always shows `pendingVouchers[0]`; closing or redeeming it advances
+  // to the next instead of losing every OTHER win the moment one is handled.
+  const [pendingVouchers, setPendingVouchers] = useState<PendingVoucherData[]>([]);
 
-  // Check for an unredeemed voucher preserved across guest signup
+  // Check for unredeemed vouchers preserved across guest signup
   useEffect(() => {
     if (hasMemberAccount) {
-      const stored = getPendingVoucher();
-      if (stored && stored.code) {
-        setPendingVoucher(stored);
-      }
+      setPendingVouchers(getPendingVouchers());
     }
   }, [hasMemberAccount]);
+
+  const currentVoucher = pendingVouchers[0] ?? null;
 
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
@@ -99,22 +102,21 @@ export default function BhalyamHome() {
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
         <WelcomeModal
-          open={welcomeOpen && !pendingVoucher}
+          open={welcomeOpen && !currentVoucher}
           onClose={() => setWelcomeOpen(false)}
           onStartQuest={() => setSheetGame("uno")}
         />
         <VoucherRedemptionModal
-          isOpen={Boolean(pendingVoucher)}
-          initialCode={pendingVoucher?.code}
-          initialAmount={pendingVoucher?.amount}
+          isOpen={Boolean(currentVoucher)}
+          initialCode={currentVoucher?.code}
+          initialAmount={currentVoucher?.amount}
           isAutoClaimPrompt={true}
-          onClose={() => {
-            clearPendingVoucher();
-            setPendingVoucher(null);
-          }}
-          onSuccess={() => {
-            clearPendingVoucher();
-          }}
+          // The modal already removed THIS voucher from storage (on redeem,
+          // or on dismiss — see VoucherRedemptionModal's handleClose/
+          // handleRedeem). Dropping it from local state here is what reveals
+          // the next queued voucher, if any, since `currentVoucher` is always
+          // `pendingVouchers[0]`.
+          onClose={() => setPendingVouchers((prev) => prev.slice(1))}
         />
       </div>
     </AppLayout>

@@ -29,7 +29,11 @@ import {
   Zap,
   BookOpen,
   Target,
+  Maximize,
+  Minimize,
 } from "lucide-react";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { isFullscreenSupported } from "../../lib/fullscreen";
 import Chat from "../../components/Chat";
 import { getSocket } from "../../lib/socket";
 
@@ -64,6 +68,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
     comboBanner,
   } = useDotsBoxesBoard(props);
 
+  const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   const [showChatModal, setShowChatModal] = useState(false);
   // Auto-opens once per browser on first reaching the board — see the
   // matching comment in DotsBoxesBoardMobile.tsx.
@@ -137,6 +142,17 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600" />}
             </button>
+
+            {isFullscreenSupported() && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="w-8 h-8 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
+                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize className="w-4 h-4 text-stone-600" /> : <Maximize className="w-4 h-4 text-stone-600" />}
+              </button>
+            )}
 
             <button
               type="button"

@@ -4,13 +4,8 @@ import type { ReactionRecvPayload } from "@shared/types";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useUnoBoard, type UnoBoardProps } from "./useUnoBoard";
 import { useAudio } from "../../hooks/useAudio";
-import {
-  enterFullscreen,
-  exitFullscreen,
-  isFullscreenActive,
-  isFullscreenSupported,
-  onFullscreenChange,
-} from "../../lib/fullscreen";
+import { isFullscreenSupported } from "../../lib/fullscreen";
+import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import { getSocket } from "../../lib/socket";
 import { UnoHandFan, useUnoEventFlourish, useUnoHitReaction, UnoHitBadge } from "./uno-table";
 import {
@@ -199,10 +194,6 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
   const fakeCelebPos = fakeCelebEvent ? stadiumPositions[fakeCelebEvent.playerId] : undefined;
 
   const { settings: audioSettings, toggleMute } = useAudio();
-  const [isFs, setIsFs] = useState(isFullscreenActive());
-  useEffect(() => {
-    return onFullscreenChange(() => setIsFs(isFullscreenActive()));
-  }, []);
   /**
    * Room.tsx already tries to enter fullscreen automatically on the
    * lobby→playing transition, but that attempt can silently fail on a real
@@ -212,13 +203,9 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
    * that started it — can lose its "real user gesture" standing and get
    * rejected. Root-caused 2026-09-09 from a live report that UNO wasn't
    * going fullscreen on mobile, with no way to trigger it by hand. This
-   * button (wired below, next to mute/help) was already half-built — the
-   * state and handler existed but were never rendered anywhere.
+   * button (wired below, next to mute/help) closes that gap.
    */
-  const toggleFullscreen = () => {
-    if (isFullscreenActive()) exitFullscreen();
-    else enterFullscreen();
-  };
+  const { isFullscreen: isFs, toggleFullscreen } = useFullscreenToggle();
 
   // ── Sizing refs and measurement ──
   const rootRef = useRef<HTMLDivElement | null>(null);
