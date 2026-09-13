@@ -56,6 +56,8 @@ import {
 } from "../../components/paper";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { useHcCelebrationEvents, type HcCelebrationData } from "./useHcCelebrationEvents";
+import { HcScorecardFX } from "./animations3d/scorecard/HcScorecardFX";
+import { Hc3DCelebrationLayer } from "./animations3d/Hc3DCelebrationLayer";
 
 /**
  * Shared props for every Hand Cricket shell (picker, mobile, desktop).
@@ -3651,6 +3653,9 @@ export function MatchSummary({
 
   return (
     <div className="space-y-3 font-notebook">
+      {/* 5-second Firing Crackers & Flower Blast for Winner or Cheer-up for Runner */}
+      <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="nostalgia" />
+
       <div
         className="rounded-xl p-4 text-center border-2"
         style={{
@@ -4008,9 +4013,7 @@ export function HcCelebrationLayer({
   players: Player[];
   selfId: string;
 }) {
-  const active = useHcCelebrationEvents(state, players, selfId);
-  if (!active) return null;
-  return <HcCelebrationOverlay data={active} />;
+  return <Hc3DCelebrationLayer state={state} players={players} selfId={selfId} />;
 }
 
 export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
@@ -4025,7 +4028,7 @@ export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
         className="absolute inset-0"
         style={{
           background:
-            data.kind === "wicket" || data.kind === "hattrickWickets"
+            data.kind === "wicket" || data.kind === "duck" || data.kind === "hattrickWickets"
               ? "radial-gradient(ellipse at center, rgba(127,29,29,0.45) 0%, rgba(0,0,0,0.55) 70%)"
               : data.kind === "winner"
               ? "radial-gradient(ellipse at center, rgba(217,119,6,0.4) 0%, rgba(0,0,0,0.6) 70%)"
@@ -4037,6 +4040,9 @@ export function HcCelebrationOverlay({ data }: { data: HcCelebrationData }) {
       )}
       {(data.kind === "wicket" || data.kind === "hattrickWickets") && (
         <EmojiBurst emojis={data.kind === "wicket" ? ["💥", "🎯"] : ["🎯", "💥", "🔥"]} count={data.kind === "hattrickWickets" ? 18 : 10} />
+      )}
+      {data.kind === "duck" && (
+        <EmojiBurst emojis={["🦆", "💔", "🥚", "🏏"]} count={16} />
       )}
       {data.kind === "milestone" && (
         <EmojiBurst emojis={data.runs >= 100 ? ["💯", "🎉", "👏", "🏏"] : ["🎉", "👏", "🏏"]} count={data.runs >= 100 ? 24 : 16} />
@@ -4131,6 +4137,30 @@ export function HcCelebrationCard({ data }: { data: HcCelebrationData }) {
           </div>
         </div>
       );
+    case "duck": {
+      const title = data.duckType === "diamond" ? "DIAMOND DUCK!" : data.duckType === "golden" ? "GOLDEN DUCK!" : "DUCK OUT!";
+      return (
+        <div className="relative hc-shake text-center">
+          <div className="text-[36px] sm:text-[44px] mb-1">🦆🥚</div>
+          <div
+            className="font-black tracking-tight leading-none"
+            style={{
+              fontSize: "clamp(56px, 16vw, 150px)",
+              background: "linear-gradient(180deg, #fef08a 0%, #f97316 50%, #dc2626 100%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              textShadow: "0 6px 24px rgba(0,0,0,0.7)",
+            }}
+          >
+            {title}
+          </div>
+          <div className="mt-2 text-amber-100 font-extrabold text-base sm:text-xl drop-shadow">
+            {data.message}
+          </div>
+        </div>
+      );
+    }
     case "hattrickWickets":
       return (
         <div className="relative hc-hattrick-strobe text-center">

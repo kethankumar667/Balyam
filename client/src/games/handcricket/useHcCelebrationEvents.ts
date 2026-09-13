@@ -19,10 +19,11 @@ import { useRoomStore } from "../../store/roomStore";
 export type HcCelebrationData =
   | { kind: "four"; id: number; batter: string; message: string }
   | { kind: "six"; id: number; batter: string; message: string }
-  | { kind: "wicket"; id: number; batter: string; bowler: string; message: string }
+  | { kind: "wicket"; id: number; batter: string; bowler: string; isYorker?: boolean; message: string }
+  | { kind: "duck"; id: number; batter: string; bowler: string; duckType: "diamond" | "golden" | "duck"; balls: number; isYorker?: boolean; message: string }
   | { kind: "hattrickWickets"; id: number; bowler: string; message: string }
   | { kind: "streak"; id: number; batter: string; title: string; message: string; variant: "sixes" | "fours" | "mixed" }
-  | { kind: "milestone"; id: number; batter: string; runs: number; message: string }
+  | { kind: "milestone"; id: number; batter: string; runs: number; balls: number; fours: number; sixes: number; message: string }
   | { kind: "winner"; id: number; youWon: boolean; winnerName: string; margin: string; isTie: boolean };
 
 /** Resolve a batter/bowler profile id to the real player's name (e.g. "Pathum
@@ -141,11 +142,15 @@ export function useHcCelebrationEvents(state: HcState, players: Player[], selfId
         // Can't coincide with `allWickets`/`lastBall.wicket`: a dismissal
         // ball scores 0 runs, so it can never cross a runs milestone.
         const m = lastBall.milestone;
+        const bStats = inn.batterStats[lastBall.batterId];
         setActive({
           kind: "milestone",
           id: stamp,
           batter: batterName,
           runs: m,
+          balls: bStats?.balls ?? 0,
+          fours: bStats?.fours ?? 0,
+          sixes: bStats?.sixes ?? 0,
           message:
             m === 100
               ? pickLine([
@@ -161,17 +166,47 @@ export function useHcCelebrationEvents(state: HcState, players: Player[], selfId
         const s = describeBoundaryStreak(last3, batterName);
         setActive({ kind: "streak", id: stamp, batter: batterName, ...s });
       } else if (lastBall.wicket) {
-        setActive({
-          kind: "wicket",
-          id: stamp,
-          batter: batterName,
-          bowler: bowlerName,
-          message: pickLine([
-            `🎯 ${batterName} has to go — ${bowlerName} strikes!`,
-            `💥 ${bowlerName} gets his man! ${batterName} departs.`,
-            `😱 Big wicket! ${batterName} is dismissed by ${bowlerName}.`,
-          ]),
-        });
+        const bStats = inn.batterStats[lastBall.batterId];
+        const runsScored = bStats?.runs ?? 0;
+        const ballsFaced = bStats?.balls ?? 1;
+        const isYorker = Boolean(lastBall.isYorker || lastBall.yorkerDismissal);
+
+        if (runsScored === 0) {
+          const duckType = ballsFaced <= 0 ? "diamond" : ballsFaced === 1 ? "golden" : "duck";
+          const duckTitle = duckType === "diamond" ? "Diamond Duck" : duckType === "golden" ? "Golden Duck" : "Duck Out";
+          setActive({
+            kind: "duck",
+            id: stamp,
+            batter: batterName,
+            bowler: bowlerName,
+            duckType,
+            balls: ballsFaced,
+            isYorker,
+            message: pickLine([
+              `🦆 ${batterName} dismissed for a ${duckTitle}!`,
+              `🦆 Walk of shame! ${batterName} out for a duck!`,
+              `🦆 ${bowlerName} removes ${batterName} for naught!`,
+            ]),
+          });
+        } else {
+          setActive({
+            kind: "wicket",
+            id: stamp,
+            batter: batterName,
+            bowler: bowlerName,
+            isYorker,
+            message: isYorker
+              ? pickLine([
+                  `⚡ MYSTERY YORKER! ${bowlerName} cleans up ${batterName}!`,
+                  `⚡ Unplayable toe-crusher! ${batterName} is clean bowled!`,
+                ])
+              : pickLine([
+                  `🎯 ${batterName} has to go — ${bowlerName} strikes!`,
+                  `💥 ${bowlerName} gets his man! ${batterName} departs.`,
+                  `😱 Big wicket! ${batterName} is dismissed by ${bowlerName}.`,
+                ]),
+          });
+        }
       } else if (lastBall.runs === 6) {
         setActive({
           kind: "six",
@@ -248,11 +283,12 @@ export function useHcCelebrationEvents(state: HcState, players: Player[], selfId
       // A century is a bigger deal than a fifty — and both are rarer than a
       // plain boundary, so they hold the screen closer to the streak/
       // hat-trick beat than the four/six one.
-      : active.kind === "milestone" ? (active.runs >= 100 ? 2800 : 2200)
-      : active.kind === "hattrickWickets" || active.kind === "streak" ? 2400
-      : active.kind === "six" ? 1300
-      : active.kind === "wicket" ? 1300
-      : 1100;
+      : active.kind === "milestone" ? (active.runs >= 100 ? 3000 : 2500)
+      : active.kind === "hattrickWickets" || active.kind === "streak" ? 2500
+      : active.kind === "duck" ? 2600
+      : active.kind === "six" ? 1800
+      : active.kind === "wicket" ? 1800
+      : 1400;
     const t = setTimeout(() => setActive(null), ms);
     return () => clearTimeout(t);
   }, [active]);

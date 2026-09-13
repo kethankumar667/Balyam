@@ -103,13 +103,16 @@ export function CricbuzzHeader({
             onChange={setSkin}
             renderOption={(opt, isActive) => (
               <span
-                className={`inline-block rounded px-2 py-1 text-[11px] font-bold uppercase tracking-wide transition-all ${
+                className={`inline-block rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide transition-all ${
                   isActive
                     ? "bg-[#009270] text-white shadow-xs border border-[#A7F3D0]/60"
                     : "bg-[#035A46]/80 text-[#A7F3D0] hover:bg-[#035A46] border border-transparent"
                 }`}
               >
-                {opt.label}
+                <span className="hidden sm:inline">{opt.label}</span>
+                <span className="sm:hidden">
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                </span>
               </span>
             )}
           />

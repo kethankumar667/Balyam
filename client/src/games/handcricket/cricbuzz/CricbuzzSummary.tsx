@@ -6,6 +6,7 @@ import {
   IconTrophy,
 } from "./cricbuzz-kit";
 import { CricbuzzFullScorecard } from "./CricbuzzScorecard";
+import { HcScorecardFX } from "../animations3d/scorecard/HcScorecardFX";
 
 export function CricbuzzSummary({
   state,
@@ -27,6 +28,9 @@ export function CricbuzzSummary({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-6 pt-2">
+      {/* 5-second Firing Crackers & Flower Blast for Winner or Cheer-up for Runner */}
+      <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="cricbuzz" />
+
       {/* Match Result Banner Card */}
       <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center shadow-md">
         <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">

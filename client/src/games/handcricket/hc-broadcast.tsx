@@ -38,6 +38,7 @@ import { useInningsBreakCountdown } from "./useInningsBreakCountdown";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
 import { isFullscreenSupported } from "../../lib/fullscreen";
+import { HcScorecardFX } from "./animations3d/scorecard/HcScorecardFX";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -1847,6 +1848,9 @@ export function HcProSummary({
      * player of the match) and hands the totals to the cards that own them.
      */
     <div className="mx-auto w-full">
+      {/* 5-second Firing Crackers & Flower Blast for Winner or Cheer-up for Runner */}
+      <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="broadcast" />
+
       <ProPanel glow className="mb-3">
         <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:gap-6">
           {/* Verdict */}

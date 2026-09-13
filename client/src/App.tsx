@@ -48,6 +48,7 @@ const LazyBrickBreakoutPage = lazy(() => import("./pages/BrickBreakoutPage"));
 const LazyPartyScreen = lazy(() => import("./pages/PartyScreen"));
 const LazyDiagnostics = lazy(() => import("./pages/Diagnostics"));
 const LazyPreviewLudo = lazy(() => import("./pages/PreviewLudo"));
+const LazyPreviewAnimations3D = lazy(() => import("./pages/PreviewAnimations3D"));
 const LazyAdminDashboardPage = lazy(() => import("./pages/admin/dashboard"));
 const LazyAdminUsersPage = lazy(() => import("./pages/admin/users"));
 const LazyAdminMatchesPage = lazy(() => import("./pages/admin/matches"));
@@ -586,6 +587,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/brickbreakout" element={<BrickBreakoutPage />} />
             <Route path="/brick-breakout" element={<BrickBreakoutPage />} />
             <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
+            <Route path="/preview/animations" element={<LazyPreviewAnimations3D />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

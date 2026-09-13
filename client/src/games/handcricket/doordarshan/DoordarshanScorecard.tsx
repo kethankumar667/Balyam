@@ -4,6 +4,7 @@ import { resolveTeamProfiles } from "../useHcSquad";
 import { useInningsBreakCountdown } from "../useInningsBreakCountdown";
 import { oversFromBalls, strikeRate, economy } from "../hc-stats";
 import { DD, DoordarshanScreen, DdButton, DdLabel, DdChip, IconTrophy } from "./doordarshan-kit";
+import { HcScorecardFX } from "../animations3d/scorecard/HcScorecardFX";
 
 function InningsTables({ innings, battingName, bowlingName, state }: { innings: HcInnings; battingName: string; bowlingName: string; state: HcState }) {
   const battingProfiles = resolveTeamProfiles(state, innings.battingPlayerId);
@@ -114,6 +115,9 @@ export function DoordarshanSummary({ state, players, selfId, onContinue }: { sta
 
   return (
     <div className="space-y-3">
+      {/* 5-second Firing Crackers & Flower Blast for Winner or Cheer-up for Runner */}
+      <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="doordarshan" />
+
       <DoordarshanScreen glow className="text-center space-y-1.5">
         <IconTrophy size={28} />
         <div className="font-crt text-[28px]" style={{ color: isTie ? DD.ink : youWon ? DD.win : DD.loss }}>

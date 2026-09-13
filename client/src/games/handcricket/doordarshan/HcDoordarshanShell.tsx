@@ -12,6 +12,7 @@ import { DoordarshanInnings } from "./DoordarshanInnings";
 import { DoordarshanInningsBreak, DoordarshanSummary } from "./DoordarshanScorecard";
 import { DoordarshanCelebrationOverlay } from "./DoordarshanCelebration";
 import { DoordarshanCaptionTicker } from "./DoordarshanCaptionTicker";
+import { Hc3DCelebrationLayer } from "../animations3d/Hc3DCelebrationLayer";
 import { DoordarshanBumper, DoordarshanGlitchWipe, usePhaseGlitch } from "./DoordarshanTransientFX";
 import FloatingReactionsLayer from "../../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../../components/reactions/useSeatReactions";
@@ -97,7 +98,7 @@ export default function HcDoordarshanShell({
 
       <DoordarshanCaptionTicker active={celebration} />
       <DoordarshanInningsBreak state={state} players={players} selfId={sid} />
-      {celebration && <DoordarshanCelebrationOverlay data={celebration} />}
+      <Hc3DCelebrationLayer state={state} players={players} selfId={sid} forcedSkin="doordarshan" />
       <DoordarshanBumper />
 
       {tut.open && (

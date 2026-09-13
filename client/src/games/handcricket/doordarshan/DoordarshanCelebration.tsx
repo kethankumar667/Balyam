@@ -132,6 +132,7 @@ const ANIMATION_BY_KIND: Record<HcCelebrationData["kind"], string> = {
   four: "dd-cut-four 520ms cubic-bezier(.2,.85,.3,1) 1",
   six: "dd-cut-six 640ms cubic-bezier(.16,.7,.28,1.1) 1",
   wicket: "dd-cut-wicket 560ms ease-out 1",
+  duck: "dd-cut-wicket 560ms ease-out 1",
   hattrickWickets: "dd-cut-hattrick 760ms ease-out 1",
   streak: "dd-cut-streak-fours 620ms cubic-bezier(.2,.85,.3,1) 1", // overridden per variant below
   milestone: "dd-cut-fifty 380ms cubic-bezier(.34,1.4,.4,1) 1", // overridden by runs below
@@ -159,6 +160,7 @@ function headlineFor(data: HcCelebrationData): string {
     case "four": return "FOUR!";
     case "six": return "SIX!";
     case "wicket": return "OUT!";
+    case "duck": return data.duckType === "diamond" ? "DIAMOND DUCK!" : data.duckType === "golden" ? "GOLDEN DUCK!" : "DUCK OUT!";
     case "hattrickWickets": return "HAT-TRICK!";
     case "streak": return data.title;
     case "milestone": return data.runs === 50 ? "FIFTY!" : data.runs === 100 ? "CENTURY!" : `${data.runs}!`;
@@ -174,7 +176,7 @@ export function messageFor(data: HcCelebrationData): string {
 }
 
 function isDramatic(data: HcCelebrationData): boolean {
-  return data.kind === "wicket" || data.kind === "hattrickWickets";
+  return data.kind === "wicket" || data.kind === "duck" || data.kind === "hattrickWickets";
 }
 
 /** Century and the match-winner both get the spinning ring flare — the

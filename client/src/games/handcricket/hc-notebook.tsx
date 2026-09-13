@@ -19,6 +19,7 @@ import type {
   ChatMessage,
 } from "@shared/types";
 import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
+import { getJsonPlayers } from "./hc-json-data";
 import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
 import { isFullscreenSupported } from "../../lib/fullscreen";
@@ -2515,7 +2516,17 @@ export function HcCountryPickerNotebook({
             {COUNTRY_ORDER.map((id, idx) => {
               const profile = HC_COUNTRIES[id];
               const meta = COUNTRY_META[id];
-              const hasRoster = getRosterFor(id, state.options.format) !== null;
+              // `getRosterFor` returns a non-null object even for countries
+              // whose static pool is a deliberate empty placeholder
+              // (Bangladesh, Afghanistan — see hc-rosters.ts's own comment:
+              // their real squads live in the client JSON files instead), so
+              // `!== null` was never false and this card's "no roster"
+              // treatment could never actually trigger. A roster only really
+              // exists here if either source has players.
+              const roster = getRosterFor(id, state.options.format);
+              const hasRoster =
+                roster !== null &&
+                (roster.squad.length > 0 || getJsonPlayers(id, state.options.format).length > 0);
               const isOpp = oppPick === id;
               const isSelected = state.teamSelections[selfId]?.teamId === id;
               const FlagSvg = FLAG_COMPONENTS[id];
