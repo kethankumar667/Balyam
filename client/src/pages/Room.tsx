@@ -533,6 +533,20 @@ export default function Room() {
   } = useRoomStore();
 
   const isMember = useAuthStore((s) => s.isMember);
+  /**
+   * False for the first tick(s) of a fresh tab while the Supabase session is
+   * still being read from storage (see authStore.ts's `ready`). `isMember`
+   * is reliably `false` until then even on an already-signed-in browser,
+   * because the in-memory access token it depends on has not been restored
+   * yet. A room opened from a shared link acts on `isMember`/`mustDeclare`
+   * within moments of mount — before hydration has had time to catch up —
+   * so it used to read that transient `false` as "this is a guest" and both
+   * showed the guest name-entry screen and joined on a freshly minted guest
+   * token, even though the same browser was signed in on another tab a
+   * second earlier. Gating on `authReady` below holds that decision until
+   * the real session state is in.
+   */
+  const authReady = useAuthStore((s) => s.ready);
 
   /**
    * Has this player announced themselves at THIS table?
@@ -554,7 +568,10 @@ export default function Room() {
   const [declaredHere, setDeclaredHere] = useState(() =>
     code ? useRoomStore.getState().seatFor(code) !== null : true,
   );
-  const mustDeclare = !isMember && !declaredHere;
+  // `authReady &&` — see the comment on `authReady` above: before it flips,
+  // this deliberately stays `false` rather than trusting a not-yet-hydrated
+  // `isMember`.
+  const mustDeclare = authReady && !isMember && !declaredHere;
 
   // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
   // Rummy table, remember who was at it so the home screen can offer a
@@ -608,7 +625,12 @@ export default function Room() {
   const [wonVoucher, setWonVoucher] = useState<{ coinAmount: string; rawCode: string } | null>(null);
 
   const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
-    if (!code || !playerName || mustDeclare) return;
+    // Wait for the real auth session before resolving a credential — see the
+    // `authReady` comment above `mustDeclare`. Without this, a reconnect
+    // firing in the same window as a fresh tab's session hydration could
+    // still race `resolveRoomCredential()` ahead of the restored access
+    // token and rejoin on a guest credential.
+    if (!code || !playerName || mustDeclare || !authReady) return;
     if (joinInFlightRef.current) return;
     joinInFlightRef.current = true;
     const socket = getSocket();
@@ -673,7 +695,7 @@ export default function Room() {
         }
       }
     );
-  }, [code, playerName, mustDeclare, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
+  }, [code, playerName, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
 
   const handleRetryConnection = useCallback(() => {
     joinInFlightRef.current = false;
@@ -687,6 +709,12 @@ export default function Room() {
     }
     if (!playerName) return;
     if (mustDeclare) return;
+    // See the `authReady` comment above `mustDeclare`: hold off subscribing
+    // and joining until the real session state is in, then let the
+    // `authReady` dependency below re-run this once it flips so a
+    // signed-in tab's initial join carries the restored access token
+    // instead of racing ahead on a guest one.
+    if (!authReady) return;
     const socket = getSocket();
 
     if (!roomState) attemptJoin("initial");
@@ -760,8 +788,11 @@ export default function Room() {
     // re-running on that transition the effect early-returns once, never
     // registers socket listeners, and the join button appears to hang until
     // the user reloads (which seeds playerName from localStorage on mount).
+    // `authReady` is in the deps for the same reason: a signed-in tab mounts
+    // with it `false` for a moment, so the effect must re-run once it flips
+    // to `true` rather than being stuck on the early return above forever.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, playerName]);
+  }, [code, playerName, authReady]);
 
   /**
    * One stable `game:move` sender.

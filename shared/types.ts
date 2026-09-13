@@ -805,11 +805,13 @@ export type SnlMove = SnlRollMove;
 // ---- Hand Cricket ----
 export type HcPhase =
   | "teamSelect"
+  | "tossCall"
   | "toss"
   | "tossChoice"
   | "innings1"
   | "innings2"
   | "finished";
+export type HcTossCall = "odd" | "even";
 export type HcInningsEndReason = "allOut" | "oversUp" | "chased";
 export type HcResult = "win" | "tie";
 
@@ -997,6 +999,10 @@ export interface HcBall {
   isBoundary: boolean;   // 4s and 6s
   /** True if this ball was inside the powerplay window and bowler was restricted to 1-3. */
   isRestrictedBall: boolean;
+  /** True if this ball was delivered as a Powerplay Mystery Yorker. */
+  isYorker?: boolean;
+  /** True if this ball resulted in a wicket specifically because the batter played 4, 5, or 6 against a Mystery Yorker. */
+  yorkerDismissal?: boolean;
   /** Profile id of the batter who faced this ball (from batting team's squadPlayerIds). */
   batterId: string;
   /** Profile id of the bowler who delivered this ball (from bowling team's squadPlayerIds). */
@@ -1054,6 +1060,11 @@ export interface HcInnings {
    * Generated when the bowler is chosen for a powerplay over.
    */
   restrictedBallsByOver: Record<number, number[]>;
+  /**
+   * Tracks whether the bowler has used their 1 Mystery Yorker for each over
+   * (1-based over number -> true).
+   */
+  yorkerUsedByOver: Record<number, boolean>;
   /** Total powerplay overs this innings (derived from format). */
   powerplayOvers: number;
   /**
@@ -1090,6 +1101,8 @@ export interface HcState {
   /** Per-player team selection. null until they pick. */
   teamSelections: Record<string, HcTeamSelection | null>;
   /** Per-player pick for the toss phase. Hidden from opponent until both lock in. */
+  tossCallerId: string | null;
+  tossCall: HcTossCall | null;
   tossPicks: Record<string, number | null>;
   tossSum: number | null;
   tossWinnerId: string | null;
@@ -1118,8 +1131,14 @@ export interface HcState {
   /** Overs per innings, derived from format. */
   oversPerInnings: number;
   startedAt: number;
+  /** Active turn/delivery deadline timestamp in ms (10s countdown window). */
+  turnDeadline: number | null;
 }
 
+export interface HcTossCallMove {
+  type: "tossCall";
+  data: { call: HcTossCall };
+}
 export interface HcTossPickMove {
   type: "tossPick";
   data: { pick: number };
@@ -1170,6 +1189,7 @@ export interface HcSelectNextBatterMove {
   data: { profileId: string };
 }
 export type HcMove =
+  | HcTossCallMove
   | HcTossPickMove
   | HcTossChoiceMove
   | HcPickMove

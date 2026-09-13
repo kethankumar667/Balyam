@@ -3375,6 +3375,13 @@ export class RoomManager {
 
     // Freeze turn clock and real-time simulations immediately
     this.clearTurnTimer(room);
+    // clearTurnTimer only cancels the JS setTimeout; a deciding ball reaches
+    // finalizeMatch directly (not through scheduleTurnTimer's own isOver()
+    // branch), so the engine's own deadline field survives into a finished
+    // match unless cleared here too.
+    if (room.engine instanceof HandCricketEngine) {
+      room.engine.clearTurnDeadline();
+    }
     this.stopSimulation(room);
 
     // Non-economy match: complete immediately and synchronously
@@ -5040,6 +5047,20 @@ export class RoomManager {
   private scheduleTurnTimer(room: Room): void {
     this.clearTurnTimer(room);
     if (room.phase !== "playing") return;
+    if (room.engine instanceof HandCricketEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) {
+        engine.clearTurnDeadline();
+        this.broadcastGameState(room);
+        return;
+      }
+      const ms = engine.armDeliveryDeadline(10_000);
+      this.broadcastGameState(room);
+      if (ms > 0) {
+        this.armTurnTimer(room, ms);
+      }
+      return;
+    }
     if (room.engine instanceof RpsEngine) {
       const engine = room.engine;
       // RPS is simultaneous: one 30 s deadline per round shared by both
@@ -5234,6 +5255,17 @@ export class RoomManager {
     if (room.engine instanceof BlockBlastEngine) {
       const engine = room.engine;
       engine.finishOnDeadline();
+      await this.afterAutoMove(room, engine.isOver());
+      return;
+    }
+    if (room.engine instanceof HandCricketEngine) {
+      const engine = room.engine;
+      if (engine.isOver()) return;
+      for (const pid of engine.pickersRemaining()) {
+        if (engine.isOver()) break;
+        if (!this.canApplyTimeoutMove(room, pid)) continue;
+        engine.applyAutoMove(pid);
+      }
       await this.afterAutoMove(room, engine.isOver());
       return;
     }

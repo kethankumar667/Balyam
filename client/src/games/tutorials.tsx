@@ -85,6 +85,11 @@ export const HANDCRICKET_TUTORIAL: TutorialDeck = {
       body: "If both players pick the same number, the batter is OUT. Lose all your wickets (or finish your overs) and the innings ends.",
     },
     {
+      emoji: "⚡",
+      title: "Powerplay & Mystery Yorker",
+      body: "In Powerplay overs, bowlers get 1 lethal Mystery Yorker per over! If the batter hits 4, 5, or 6 against a Yorker, they are instantly clean bowled. Batters must defend with 1, 2, or 3 to dig it out!",
+    },
+    {
       emoji: "🏆",
       title: "Chase it down",
       body: "Teams swap innings. The side that scores more runs across its innings wins the match.",

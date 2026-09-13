@@ -15,15 +15,15 @@ const HandCricketBoardMobile = lazy(() => import("./HandCricketBoardMobile"));
 const HandCricketBoardDesktop = lazy(() => import("./HandCricketBoardDesktop"));
 const HcBroadcastShell = lazy(() => import("./HcBroadcastShell"));
 const HcDoordarshanShell = lazy(() => import("./doordarshan/HcDoordarshanShell"));
+const HcCricbuzzShell = lazy(() => import("./cricbuzz/HcCricbuzzShell"));
 
 // Matches each theme's own shell background exactly (pro-kit.tsx's PRO.bg0
-// for Broadcast, doordarshan-kit.tsx's DD.bg0 for Doordarshan, the notebook
-// parchment cream for Classic) so a cold-cache chunk load never flashes the
-// wrong theme's color at the loading player — a dark-navy flash while
-// Classic's light paper shell is still downloading read as a bug, not a
-// loading state.
+// for Broadcast, doordarshan-kit.tsx's DD.bg0 for Doordarshan, Cricbuzz green
+// for Cricbuzz, the notebook parchment cream for Classic) so a cold-cache chunk
+// load never flashes the wrong theme's color at the loading player.
 const SHELL_LOADING_BG: Record<HcSkin, string> = {
   broadcast: "#070F1C",
+  cricbuzz: "#004838",
   doordarshan: "#120D08",
   nostalgia: "#FBF5E0",
 };
@@ -77,6 +77,13 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
 
   // Broadcast and Doordarshan are each a single responsive shell that mounts
   // its own themed innings-break overlay (see useInningsBreakCountdown.ts).
+  if (skin === "cricbuzz") {
+    return (
+      <Suspense fallback={<ShellLoading skin="cricbuzz" />}>
+        <HcCricbuzzShell {...props} compact={!isDesktop} />
+      </Suspense>
+    );
+  }
   if (skin === "doordarshan") {
     return (
       <Suspense fallback={<ShellLoading skin="doordarshan" />}>

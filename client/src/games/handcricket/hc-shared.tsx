@@ -33,6 +33,7 @@ import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import {
   RoughBorder,
   HcSketchHeading,
@@ -1302,6 +1303,75 @@ function TossCoinIllustration() {
   );
 }
 
+export function TossCallPhase({
+  state,
+  selfId,
+  players,
+}: {
+  state: HcState;
+  selfId: string;
+  players: Player[];
+}) {
+  const callerId = state.tossCallerId ?? state.playerOrder[0];
+  const callerName = players.find((p) => p.id === callerId)?.name ?? "Player 1";
+  const isCaller = callerId === selfId;
+
+  function call(choice: "odd" | "even") {
+    getSocket().emit("game:move", { type: "tossCall", data: { call: choice } });
+  }
+
+  return (
+    <div
+      className="relative mx-auto w-full my-auto select-none"
+      style={{
+        maxWidth: 580,
+      }}
+    >
+      <PaperPanel tone="legend" pad="lg" className="text-center space-y-4 font-notebook">
+        <div className="inline-block rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-3 py-1 text-[11px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300">
+          STEP 1 OF 2 · THE CALL
+        </div>
+        <SketchHeading>The Toss Call</SketchHeading>
+        <p className="text-[14.5px] text-hc-ink/80 font-kalam max-w-md mx-auto">
+          {isCaller
+            ? "Just like calling Heads or Tails! Choose ODD or EVEN. Next, both players will pick numbers (1–6) — their SUM determines who wins the toss."
+            : `Waiting for ${callerName} to make the toss call (ODD or EVEN). You will both pick numbers next.`}
+        </p>
+
+        {/* 3-Step Mini Guide */}
+        <div className="rounded-xl bg-amber-50/70 p-3 text-center border border-amber-200/80 max-w-md mx-auto space-y-1">
+          <div className="text-[12px] font-bold text-amber-900">
+            How The Gully Toss Works:
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-[11px] font-kalam text-amber-950">
+            <div className="rounded bg-white/80 p-1.5 border border-amber-200">1. Pick Call (Odd/Even)</div>
+            <div className="rounded bg-white/80 p-1.5 border border-amber-200">2. Both Pick (1–6)</div>
+            <div className="rounded bg-white/80 p-1.5 border border-amber-200">3. Total Sum Wins</div>
+          </div>
+          <div className="text-[11px] text-amber-800/90 font-kalam pt-0.5">
+            Example: You pick 3 + Opponent picks 4 = 7 (ODD)
+          </div>
+        </div>
+
+        {isCaller ? (
+          <div className="flex justify-center gap-4 pt-2">
+            <PaperButton variant="solidBlue" size="lg" onClick={() => call("odd")} className="px-6 py-2">
+              ODD (1,3,5,7,9,11)
+            </PaperButton>
+            <PaperButton variant="solidGreen" size="lg" onClick={() => call("even")} className="px-6 py-2">
+              EVEN (2,4,6,8,10,12)
+            </PaperButton>
+          </div>
+        ) : (
+          <div className="py-4 text-[13px] font-kalam text-hc-ink/60 animate-pulse">
+            Awaiting call from {callerName}…
+          </div>
+        )}
+      </PaperPanel>
+    </div>
+  );
+}
+
 export function TossPhase({
   state,
   selfId,
@@ -1342,6 +1412,11 @@ export function TossPhase({
       data: { pick: n },
     });
   }
+
+  const callerId = state.tossCallerId ?? state.playerOrder[0];
+  const callerName = players.find((p) => p.id === callerId)?.name ?? "Player 1";
+  const callerCall = state.tossCall ?? "even";
+  const myCall = selfId === callerId ? callerCall : callerCall === "even" ? "odd" : "even";
 
   return (
     <div
@@ -1393,7 +1468,7 @@ export function TossPhase({
         }}
       />
 
-      {/* ── TOP SECTION: Heads/Tails Doodle + 3D Coin + Sticky Note ── */}
+      {/* ── TOP SECTION: Odd/Even Doodle + 3D Coin + Sticky Note ── */}
       <div
         style={{
           display: "flex",
@@ -1403,7 +1478,7 @@ export function TossPhase({
           width: "100%",
         }}
       >
-        {/* Left Handwritten Doodle: "Heads or Tails?" */}
+        {/* Left Handwritten Doodle: "Odd or Even?" */}
         <div
           style={{
             transform: "rotate(-10deg)",
@@ -1422,9 +1497,20 @@ export function TossPhase({
               lineHeight: 1.15,
             }}
           >
-            Heads or
+            Odd or
             <br />
-            Tails?
+            Even?
+          </div>
+          <div
+            style={{
+              fontFamily: "'Kalam', cursive",
+              color: "#92400e",
+              fontSize: "11px",
+              fontWeight: 700,
+              marginTop: 1,
+            }}
+          >
+            (1-6 fingers sum)
           </div>
           <svg
             width={68}
@@ -1492,6 +1578,10 @@ export function TossPhase({
 
       {/* ── TITLE: "THE TOSS" ── */}
       <div style={{ textAlign: "center", marginTop: 8 }}>
+        <div className="inline-block rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-3 py-0.5 text-[10.5px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300 mb-1">
+          STEP 2 OF 2 · SHOW FINGERS
+        </div>
+        <br />
         <div
           className="font-sketch"
           style={{
@@ -1526,8 +1616,8 @@ export function TossPhase({
       {/* ── RULES EXPLANATION BOX ── */}
       <div
         style={{
-          background: "rgba(238, 228, 210, 0.65)",
-          border: "1px solid rgba(80, 50, 20, 0.14)",
+          background: "rgba(238, 228, 210, 0.85)",
+          border: "1px solid rgba(80, 50, 20, 0.2)",
           borderRadius: 14,
           padding: "10px 16px",
           textAlign: "center",
@@ -1544,9 +1634,11 @@ export function TossPhase({
             lineHeight: 1.35,
           }}
         >
-          <div>Both players pick a number between 1 and 6.</div>
-          <div style={{ opacity: 0.9, marginTop: 2, fontSize: 13 }}>
-            Even sum: first player wins <span style={{ opacity: 0.4 }}>|</span> Odd sum: second player wins.
+          <div style={{ color: "#92400e", fontWeight: 800 }}>
+            {callerId === selfId ? "You called" : `${callerName} called`} {callerCall.toUpperCase()}
+          </div>
+          <div style={{ marginTop: 2, fontSize: 13 }}>
+            Both pick 1 to 6 fingers · <strong>You WIN</strong> if Total Sum is <strong>{myCall.toUpperCase()}</strong> ({myCall === "even" ? "2, 4, 6, 8, 10, 12" : "1, 3, 5, 7, 9, 11"})
           </div>
         </div>
       </div>
@@ -2370,6 +2462,17 @@ export function InningsPhase({
   const bowlerRestricted = myRole === "bowler" && isRestrictedNow;
   const allowedBowlerPicks = bowlerRestricted ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
 
+  // Mystery Yorker: one per over, bowler-only, Powerplay-only. Mirrors the
+  // Cricbuzz skin's CricbuzzInnings.tsx — this UI existed there first and
+  // nowhere else, so a human bowler on the Classic skin had no way to ever
+  // declare one.
+  const yorkerUsedThisOver = Boolean(innings.yorkerUsedByOver?.[upcomingOver]);
+  const canBowlYorker = myRole === "bowler" && isPowerplayOver && !yorkerUsedThisOver;
+  const [isYorkerToggled, setIsYorkerToggled] = useState(false);
+  useEffect(() => {
+    if (myPick != null || yorkerUsedThisOver) setIsYorkerToggled(false);
+  }, [myPick, yorkerUsedThisOver, upcomingOver]);
+
   // Reveal last ball briefly when both lock in.
   const [reveal, setReveal] = useState<HcBall | null>(null);
   const lastBallCount = useRef(innings.history.length);
@@ -2423,10 +2526,11 @@ export function InningsPhase({
   const isBattingPlayer = innings.battingPlayerId === selfId;
   const [battingOrderOpen, setBattingOrderOpen] = useState(false);
 
-  function pick(n: number) {
+  function pick(n: number, isYorker: boolean = false) {
     if (myPick != null) return;
     if (innings.currentBowlerId == null) return; // wait for bowler
-    getSocket().emit("game:move", { type: "pick", data: { pick: n } });
+    if (isYorker && n > 3) return;
+    getSocket().emit("game:move", { type: "pick", data: { pick: n, isYorker: isYorker || undefined } });
   }
 
   const target = state.innings1 && state.phase === "innings2"
@@ -2437,6 +2541,10 @@ export function InningsPhase({
 
   return (
     <div className={isDesktop ? "space-y-2.5" : "space-y-3"}>
+      <TurnTimeWarning
+        deadline={state.turnDeadline}
+        active={!needsBowler && !innings.needsNextBatterPick && myPick == null && myRole != null}
+      />
       <Scoreboard
         state={state}
         innings={innings}
@@ -2540,12 +2648,59 @@ export function InningsPhase({
             big={isDesktop}
           />
 
+          {canBowlYorker && myPick == null && (
+            <div
+              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+              style={{ background: "rgba(153,27,27,0.08)", border: "1.5px dashed rgba(153,27,27,0.4)" }}
+            >
+              <div>
+                <div className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#991b1b" }}>
+                  🔥 Mystery Yorker available
+                </div>
+                <div className="text-[11px] font-bold text-hc-ink-lt">
+                  4, 5 or 6 against it = instant out
+                </div>
+              </div>
+              <button
+                onClick={() => setIsYorkerToggled((v) => !v)}
+                className="rounded-md px-3 py-1.5 text-xs font-extrabold uppercase tracking-wider transition"
+                style={
+                  isYorkerToggled
+                    ? { background: "#991b1b", color: "#FBF5E0" }
+                    : { background: "transparent", border: "1.5px solid #991b1b", color: "#991b1b" }
+                }
+              >
+                {isYorkerToggled ? "Armed" : "Arm Yorker"}
+              </button>
+            </div>
+          )}
+          {myRole === "batter" && isPowerplayOver && !yorkerUsedThisOver && myPick == null && (
+            <div
+              className="rounded-lg px-3 py-2 text-[11px] font-bold"
+              style={{ background: "rgba(153,27,27,0.08)", border: "1.5px dashed rgba(153,27,27,0.4)", color: "#991b1b" }}
+            >
+              🔥 Bowler has a Mystery Yorker ready — play 4, 5 or 6 against it and you're out. Defend with 1, 2 or 3.
+            </div>
+          )}
+
           <PickRow
             disabled={myPick != null || reveal !== null}
-            onPick={pick}
+            onPick={(n) => pick(n, isYorkerToggled)}
             selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
-            allowedPicks={myRole === "bowler" ? allowedBowlerPicks : [1, 2, 3, 4, 5, 6]}
-            restrictedNote={bowlerRestricted ? "Powerplay — bowler limited to 1, 2 or 3" : null}
+            allowedPicks={
+              myRole === "bowler"
+                ? isYorkerToggled
+                  ? [1, 2, 3]
+                  : allowedBowlerPicks
+                : [1, 2, 3, 4, 5, 6]
+            }
+            restrictedNote={
+              isYorkerToggled
+                ? "Mystery Yorker — line must be 1, 2 or 3"
+                : bowlerRestricted
+                ? "Powerplay — bowler limited to 1, 2 or 3"
+                : null
+            }
             big={isDesktop}
           />
 

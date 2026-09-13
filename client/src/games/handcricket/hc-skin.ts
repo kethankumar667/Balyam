@@ -15,10 +15,11 @@ import { useEffect, useState } from "react";
  * than a Context: read deep inside prop-driven presentational trees, and the
  * value changes roughly never, so a provider buys nothing.
  */
-export type HcSkin = "broadcast" | "doordarshan" | "nostalgia";
+export type HcSkin = "broadcast" | "doordarshan" | "nostalgia" | "cricbuzz";
 
 export const HC_SKINS: readonly { id: HcSkin; label: string }[] = [
   { id: "broadcast", label: "Broadcast" },
+  { id: "cricbuzz", label: "Cricbuzz" },
   { id: "doordarshan", label: "Rerun" },
   { id: "nostalgia", label: "Classic" },
 ];
@@ -27,7 +28,7 @@ const KEY = "mpg.hc.skin";
 const DEFAULT: HcSkin = "broadcast";
 
 function isHcSkin(v: unknown): v is HcSkin {
-  return v === "broadcast" || v === "doordarshan" || v === "nostalgia";
+  return v === "broadcast" || v === "doordarshan" || v === "nostalgia" || v === "cricbuzz";
 }
 
 function load(): HcSkin {

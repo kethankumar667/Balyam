@@ -34,6 +34,12 @@ describe("hc-skin", () => {
     expect(getHcSkin()).toBe("nostalgia");
   });
 
+  it("loads the 'cricbuzz' skin", async () => {
+    localStorage.setItem("mpg.hc.skin", "cricbuzz");
+    const { getHcSkin } = await import("../hc-skin");
+    expect(getHcSkin()).toBe("cricbuzz");
+  });
+
   it("persists a change and notifies subscribers", async () => {
     const { getHcSkin, setHcSkin, useHcSkin } = await import("../hc-skin");
     void useHcSkin; // referenced to keep the import graph honest; not rendered here

@@ -35,6 +35,7 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import { HcThemeSwitcher } from "./HcThemeSwitcher";
 import { useHcSkin } from "./hc-skin";
 import { useInningsBreakCountdown } from "./useInningsBreakCountdown";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 
 /**
  * HAND CRICKET — broadcast skin.
@@ -129,6 +130,7 @@ function ordinal(n: number): string {
 
 const PHASE_LABEL: Record<HcState["phase"], string> = {
   teamSelect: "Team selection",
+  tossCall: "Toss call",
   toss: "Toss",
   tossChoice: "Toss decision",
   innings1: "1st innings",
@@ -685,10 +687,78 @@ export function HcProWaiting({ state, selfId, players }: { state: HcState; selfI
 
 /* ── toss ────────────────────────────────────────────────────────────────── */
 
+export function HcProTossCall({ state, selfId, players }: { state: HcState; selfId: string; players: Player[] }) {
+  const callerId = state.tossCallerId ?? state.playerOrder[0];
+  const callerName = players.find((p) => p.id === callerId)?.name ?? "Player 1";
+  const isCaller = callerId === selfId;
+
+  function call(choice: "odd" | "even") {
+    getSocket().emit("game:move", { type: "tossCall", data: { call: choice } });
+  }
+
+  return (
+    <ProPanel className="text-center">
+      <div className="mb-2 flex justify-center">
+        <ProChip tone="info">Step 1 of 2 · The Call</ProChip>
+      </div>
+      <div className="text-[19px] font-black" style={{ color: PRO.ink }}>
+        {isCaller ? "Choose Odd or Even" : `Waiting for ${callerName} to make the call`}
+      </div>
+      <div className="mx-auto mt-1.5 max-w-md text-[12px] font-semibold" style={{ color: PRO.inkLo }}>
+        {isCaller
+          ? "Call ODD or EVEN. On the next screen, both players show numbers (1–6) — their SUM decides who wins!"
+          : `${callerName} will call ODD or EVEN. You will both pick hand numbers (1–6) next.`}
+      </div>
+
+      <div className="mx-auto mt-3 max-w-xs rounded-lg p-2 text-[11px] font-semibold" style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${PRO.line}`, color: PRO.inkMid }}>
+        Example: You pick 3 + Opponent picks 4 = 7 (ODD)
+      </div>
+
+      {isCaller ? (
+        <div className="mx-auto mt-5 flex max-w-[340px] justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => call("odd")}
+            className="flex-1 rounded-xl py-3.5 text-[15px] font-black uppercase tracking-wider transition active:scale-[0.96]"
+            style={{
+              background: `linear-gradient(168deg, ${PRO.gold}, ${PRO.goldDeep})`,
+              color: "#2A1D05",
+              border: "1px solid rgba(255,235,180,0.55)",
+            }}
+          >
+            ODD (1,3,5…)
+          </button>
+          <button
+            type="button"
+            onClick={() => call("even")}
+            className="flex-1 rounded-xl py-3.5 text-[15px] font-black uppercase tracking-wider transition active:scale-[0.96]"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              color: PRO.ink,
+              border: `1px solid ${PRO.line}`,
+            }}
+          >
+            EVEN (2,4,6…)
+          </button>
+        </div>
+      ) : (
+        <div className="py-6 text-[13px] font-bold" style={{ color: PRO.inkMid }}>
+          Awaiting call from {callerName}…
+        </div>
+      )}
+    </ProPanel>
+  );
+}
+
 export function HcProToss({ state, selfId, players }: { state: HcState; selfId: string; players: Player[] }) {
   const myPick = state.tossPicks[selfId];
   const oppId = state.playerOrder.find((id) => id !== selfId);
   const oppLocked = oppId ? state.tossPicks[oppId] != null : false;
+
+  const callerId = state.tossCallerId ?? state.playerOrder[0];
+  const callerName = players.find((p) => p.id === callerId)?.name ?? "Player 1";
+  const callerCall = state.tossCall ?? "even";
+  const myCall = selfId === callerId ? callerCall : callerCall === "even" ? "odd" : "even";
 
   function pick(n: number) {
     if (myPick != null) return;
@@ -697,17 +767,15 @@ export function HcProToss({ state, selfId, players }: { state: HcState; selfId: 
 
   return (
     <ProPanel className="text-center">
-      <ProLabel className="mb-2">The toss</ProLabel>
-      <div className="text-[19px] font-black" style={{ color: PRO.ink }}>
-        Pick a number
+      <div className="mb-2 flex justify-center">
+        <ProChip tone="info">Step 2 of 2 · Number Selection</ProChip>
       </div>
-      {/* Was "Odd total, you call it." — never said whose "you", and never
-          said what "call it" wins you. Both sides now read the same rule and
-          learn the stake before they commit to a number. */}
-      <div className="mt-1.5 text-[12px] font-semibold" style={{ color: PRO.inkLo }}>
-        You and your opponent each pick a number. If the two add up to an
-        <span style={{ color: PRO.gold }}> odd</span> total you win the toss and
-        choose whether to bat or bowl first.
+      <div className="text-[19px] font-black" style={{ color: PRO.ink }}>
+        Pick a number (1 to 6)
+      </div>
+
+      <div className="mx-auto mt-2 max-w-md rounded-lg p-2.5 text-[12px] font-bold" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: PRO.ink }}>
+        {callerId === selfId ? "You called" : `${callerName} called`} <span style={{ color: PRO.gold }}>{callerCall.toUpperCase()}</span> · You win if the sum is <span style={{ color: PRO.gold }}>{myCall.toUpperCase()}</span> ({myCall === "even" ? "2, 4, 6, 8, 10, 12" : "1, 3, 5, 7, 9, 11"})
       </div>
 
       <div className="mx-auto mt-5 grid max-w-[380px] grid-cols-3 gap-2.5">
@@ -1327,6 +1395,7 @@ export function HcProPickRow({
   myPick,
   allowed,
   restricted,
+  yorkerMode = false,
   role,
   onPick,
   compactRow = false,
@@ -1334,12 +1403,16 @@ export function HcProPickRow({
   myPick: number | null;
   allowed: number[];
   restricted: boolean;
+  /** True while the bowler has armed a Mystery Yorker for this delivery —
+   *  caps `allowed` to 1-3 same as `restricted`, but the chip/label read
+   *  differently since this is a chosen weapon, not a powerplay penalty. */
+  yorkerMode?: boolean;
   role: "batter" | "bowler" | null;
   onPick: (n: number) => void;
   /** Phone density — still above the 44px touch floor. */
   compactRow?: boolean;
 }) {
-  const verb = role === "bowler" ? "Bowl" : "Play";
+  const verb = yorkerMode ? "Yorker" : role === "bowler" ? "Bowl" : "Play";
 
   /**
    * Value ramp on the tiles.
@@ -1360,10 +1433,22 @@ export function HcProPickRow({
   return (
     <div>
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <ProLabel color={myPick != null ? PRO.inkLo : PRO.gold}>
-          {myPick != null ? "Locked in" : role === "batter" ? "Your shot" : role === "bowler" ? "Your delivery" : "Watching"}
+        <ProLabel color={myPick != null ? PRO.inkLo : yorkerMode ? PRO.loss : PRO.gold}>
+          {myPick != null
+            ? "Locked in"
+            : yorkerMode
+            ? "Deliver your Mystery Yorker"
+            : role === "batter"
+            ? "Your shot"
+            : role === "bowler"
+            ? "Your delivery"
+            : "Watching"}
         </ProLabel>
-        {restricted && <ProChip tone="gold">Powerplay · 1–3 only</ProChip>}
+        {yorkerMode ? (
+          <ProChip tone="loss">Mystery Yorker · 1–3 only</ProChip>
+        ) : (
+          restricted && <ProChip tone="gold">Powerplay · 1–3 only</ProChip>
+        )}
       </div>
 
       {/*
@@ -1379,7 +1464,7 @@ export function HcProPickRow({
             const ok = allowed.includes(n);
             const chosen = myPick === n;
             const disabled = !ok || myPick != null || role == null;
-            const capped = !ok && restricted;
+            const capped = !ok && (restricted || yorkerMode);
             return (
               <button
                 key={n}
@@ -1390,7 +1475,9 @@ export function HcProPickRow({
                 // with no indication of what they do or why one is unavailable.
                 aria-label={
                   capped
-                    ? `${n}. Unavailable — powerplay caps you at 1 to 3`
+                    ? yorkerMode
+                      ? `${n}. Unavailable — a Mystery Yorker line must be 1 to 3`
+                      : `${n}. Unavailable — powerplay caps you at 1 to 3`
                     : chosen
                     ? `${n} locked in`
                     : `${verb} ${n}`
@@ -2035,6 +2122,18 @@ export function HcProInnings({
   const bowlerRestricted = myRole === "bowler" && isRestrictedNow;
   const allowed = bowlerRestricted ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
 
+  const isPowerplayOver = upcomingOver <= innings.powerplayOvers;
+  // Mystery Yorker: one per over, bowler-only, Powerplay-only. Mirrors the
+  // Cricbuzz skin's CricbuzzInnings.tsx — this UI existed there first and
+  // nowhere else, so a human bowler on the default Broadcast skin had no way
+  // to ever declare one.
+  const yorkerUsedThisOver = Boolean(innings.yorkerUsedByOver?.[upcomingOver]);
+  const canBowlYorker = myRole === "bowler" && isPowerplayOver && !yorkerUsedThisOver;
+  const [isYorkerToggled, setIsYorkerToggled] = useState(false);
+  useEffect(() => {
+    if (myPick != null || yorkerUsedThisOver) setIsYorkerToggled(false);
+  }, [myPick, yorkerUsedThisOver, upcomingOver]);
+
   // Briefly hold the just-bowled ball on screen so the reveal is readable.
   const [reveal, setReveal] = useState<HcBall | null>(null);
   const lastCount = useRef(innings.history.length);
@@ -2048,17 +2147,17 @@ export function HcProInnings({
     lastCount.current = innings.history.length;
   }, [innings.history.length]);
 
-  function pick(n: number) {
+  function pick(n: number, isYorker: boolean = false) {
     if (myPick != null || myRole == null) return;
     // The server ignores a pick with no bowler set; bail early so the button
     // never looks like it worked.
     if (innings.currentBowlerId == null) return;
-    getSocket().emit("game:move", { type: "pick", data: { pick: n } });
+    if (isYorker && n > 3) return;
+    getSocket().emit("game:move", { type: "pick", data: { pick: n, isYorker: isYorker || undefined } });
   }
 
   const isBattingPlayer = innings.battingPlayerId === selfId;
   const needsBowler = innings.currentBowlerId == null;
-  const isPowerplayOver = upcomingOver <= innings.powerplayOvers;
   // Balls bowled in the over currently in progress. `upcomingOver` is the over
   // the NEXT ball belongs to, which is the same over these balls are in.
   const thisOver = innings.history.filter((b) => b.overNumber === upcomingOver);
@@ -2150,12 +2249,48 @@ export function HcProInnings({
             />
           </div>
         )}
+        {canBowlYorker && myPick == null && (
+          <div
+            className="mb-2 flex items-center justify-between gap-2 rounded-xl px-3 py-2"
+            style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)" }}
+          >
+            <div className="flex flex-col">
+              <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: PRO.loss }}>
+                🔥 Mystery Yorker available
+              </span>
+              <span className="text-[10px] font-bold" style={{ color: PRO.inkLo }}>
+                4, 5 or 6 against it = instant out
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsYorkerToggled((v) => !v)}
+              className="rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition active:scale-95"
+              style={
+                isYorkerToggled
+                  ? { background: PRO.loss, color: "#2A0A0A" }
+                  : { background: "transparent", border: `1px solid ${PRO.loss}`, color: PRO.loss }
+              }
+            >
+              {isYorkerToggled ? "Yorker armed" : "Arm yorker"}
+            </button>
+          </div>
+        )}
+        {myRole === "batter" && isPowerplayOver && !yorkerUsedThisOver && myPick == null && (
+          <div
+            className="mb-2 rounded-xl px-3 py-2 text-[11px] font-bold"
+            style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", color: PRO.loss }}
+          >
+            🔥 Bowler has a Mystery Yorker ready — play 4, 5 or 6 against it and you're out. Defend with 1, 2 or 3.
+          </div>
+        )}
         <HcProPickRow
           myPick={myPick}
-          allowed={allowed}
+          allowed={isYorkerToggled ? [1, 2, 3] : allowed}
           restricted={bowlerRestricted}
+          yorkerMode={isYorkerToggled}
           role={myRole}
-          onPick={pick}
+          onPick={(n) => pick(n, isYorkerToggled)}
           compactRow={compact}
         />
       </ProPanel>
@@ -2214,6 +2349,7 @@ export function HcProInnings({
     return (
       <div className="flex min-h-full flex-col gap-3">
         <p aria-live="polite" aria-atomic="true" className="sr-only">{spoken}</p>
+        <TurnTimeWarning deadline={state.turnDeadline} active={liveBall && myPick == null && myRole != null} />
         <HcProScoreBug
           state={state}
           innings={innings}
@@ -2297,6 +2433,7 @@ export function HcProInnings({
        */}
       <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden pr-0.5">
         <p aria-live="polite" aria-atomic="true" className="sr-only">{spoken}</p>
+        <TurnTimeWarning deadline={state.turnDeadline} active={liveBall && myPick == null && myRole != null} />
         <HcProScoreBug
           state={state}
           innings={innings}

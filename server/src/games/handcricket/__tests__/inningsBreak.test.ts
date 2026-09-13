@@ -68,6 +68,7 @@ function atEndOfInnings1() {
       viceCaptainId: "b1",
     },
   });
+  e.applyMove({ playerId: "p0", type: "tossCall", data: { call: "odd" } });
   e.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 1 } });
   e.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
   const winner = (e.getPublicState() as { tossWinnerId: string | null }).tossWinnerId!;

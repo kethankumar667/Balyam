@@ -8,6 +8,7 @@ import type {
   HcResult,
   HcState,
   HcTeamId,
+  HcTossCall,
   Player,
 } from "@shared/types.js";
 import {
@@ -76,6 +77,7 @@ function freshInnings(
     batterStats,
     bowlerStats,
     restrictedBallsByOver: {},
+    yorkerUsedByOver: {},
     powerplayOvers,
     needsNextBatterPick: false,
     pendingBatterSlot: null,
@@ -103,6 +105,7 @@ export class HandCricketEngine implements GameEngine {
 
   private state!: HcState;
   private pendingOptions: HcGameOptions = { ...DEFAULT_HC_OPTIONS };
+  private pendingBowlerYorker = false;
 
   setOptions(options: HcGameOptions): void {
     this.pendingOptions = { ...DEFAULT_HC_OPTIONS, ...options };
@@ -123,6 +126,8 @@ export class HandCricketEngine implements GameEngine {
         [order[0]]: null,
         [order[1]]: null,
       },
+      tossCallerId: order[0],
+      tossCall: null,
       tossPicks: { [order[0]]: null, [order[1]]: null },
       tossSum: null,
       tossWinnerId: null,
@@ -136,7 +141,9 @@ export class HandCricketEngine implements GameEngine {
       inningsBreakReady: [],
       oversPerInnings,
       startedAt: Date.now(),
+      turnDeadline: null,
     };
+    this.pendingBowlerYorker = false;
   }
 
   /** Galli mode bypasses the formal rules (composition, bowler role, quota, powerplay). */
@@ -166,6 +173,8 @@ export class HandCricketEngine implements GameEngine {
         return this.handleSelectTeam(move);
       case "confirmSquad":
         return this.handleConfirmSquad(move);
+      case "tossCall":
+        return this.handleTossCall(move);
       case "tossPick":
         return this.handleTossPick(move);
       case "tossChoice":
@@ -265,13 +274,29 @@ export class HandCricketEngine implements GameEngine {
       viceCaptainId,
     };
 
-    // Advance to toss once both players have confirmed their squad.
+    // Advance to tossCall once both players have confirmed their squad.
     const [p0, p1] = this.state.playerOrder;
     const s0 = this.state.teamSelections[p0];
     const s1 = this.state.teamSelections[p1];
     if (s0?.squadPlayerIds && s1?.squadPlayerIds) {
-      this.state.phase = "toss";
+      this.state.phase = "tossCall";
     }
+    return { ok: true };
+  }
+
+  private handleTossCall(move: MoveContext): MoveResult {
+    if (this.state.phase !== "tossCall") {
+      return { ok: false, error: "Not in toss call phase" };
+    }
+    if (move.playerId !== this.state.tossCallerId) {
+      return { ok: false, error: "Only the designated caller can make the toss call" };
+    }
+    const call = (move.data as { call?: HcTossCall } | undefined)?.call;
+    if (call !== "odd" && call !== "even") {
+      return { ok: false, error: "Call must be 'odd' or 'even'" };
+    }
+    this.state.tossCall = call;
+    this.state.phase = "toss";
     return { ok: true };
   }
 
@@ -294,7 +319,11 @@ export class HandCricketEngine implements GameEngine {
     if (v0 != null && v1 != null) {
       const sum = v0 + v1;
       this.state.tossSum = sum;
-      this.state.tossWinnerId = sum % 2 === 0 ? p0 : p1;
+      const outcome: HcTossCall = sum % 2 === 0 ? "even" : "odd";
+      const callerId = this.state.tossCallerId ?? p0;
+      const otherId = this.state.playerOrder.find((id) => id !== callerId) ?? p1;
+      const callerCall = this.state.tossCall ?? "even";
+      this.state.tossWinnerId = callerCall === outcome ? callerId : otherId;
       this.state.phase = "tossChoice";
     }
     return { ok: true };
@@ -426,15 +455,33 @@ export class HandCricketEngine implements GameEngine {
     ) {
       return { ok: false, error: "Not a player in this innings" };
     }
-    const pick = (move.data as { pick?: number } | undefined)?.pick;
+    const rawData = move.data as { pick?: number; isYorker?: boolean } | undefined;
+    const pick = rawData?.pick;
+    const isYorker = Boolean(rawData?.isYorker);
     if (!pick || !VALID_PICKS.includes(pick)) {
       return { ok: false, error: "Pick must be 1-6" };
     }
     if (this.state.pendingPicks[move.playerId] != null) {
       return { ok: false, error: "You already picked this ball" };
     }
+    const isBowler = move.playerId === innings.bowlingPlayerId;
+    if (isYorker) {
+      if (!isBowler) {
+        return { ok: false, error: "Only the bowler can deliver a Mystery Yorker" };
+      }
+      const upcomingOver = Math.floor(innings.balls / 6) + 1;
+      if (upcomingOver > innings.powerplayOvers) {
+        return { ok: false, error: "Mystery Yorker is only available during Powerplay overs" };
+      }
+      if (innings.yorkerUsedByOver[upcomingOver]) {
+        return { ok: false, error: `Mystery Yorker already used in Over ${upcomingOver}` };
+      }
+      if (pick > 3) {
+        return { ok: false, error: "Mystery Yorker line must be 1, 2, or 3" };
+      }
+    }
     // Powerplay restriction: bowler may only pick 1-3 on restricted balls.
-    if (move.playerId === innings.bowlingPlayerId && this.isUpcomingBallRestricted(innings)) {
+    if (isBowler && this.isUpcomingBallRestricted(innings)) {
       if (pick > 3) {
         return {
           ok: false,
@@ -442,12 +489,17 @@ export class HandCricketEngine implements GameEngine {
         };
       }
     }
+    if (isBowler) {
+      this.pendingBowlerYorker = isYorker;
+    }
     this.state.pendingPicks[move.playerId] = pick;
 
     const batterPick = this.state.pendingPicks[innings.battingPlayerId];
     const bowlerPick = this.state.pendingPicks[innings.bowlingPlayerId];
     if (batterPick != null && bowlerPick != null) {
-      this.resolveBall(innings, batterPick, bowlerPick);
+      const deliveredYorker = this.pendingBowlerYorker;
+      this.pendingBowlerYorker = false;
+      this.resolveBall(innings, batterPick, bowlerPick, deliveredYorker);
     }
     return { ok: true };
   }
@@ -547,8 +599,42 @@ export class HandCricketEngine implements GameEngine {
     return this.state.innings2!;
   }
 
-  private resolveBall(innings: HcInnings, batterPick: number, bowlerPick: number): void {
-    const wicket = batterPick === bowlerPick;
+  private resolveBall(
+    innings: HcInnings,
+    batterPick: number,
+    bowlerPick: number,
+    isYorker: boolean = false,
+  ): void {
+    // The delivery this deadline was timing just landed. `armDeliveryDeadline`
+    // only mints a new one when `turnDeadline` is `null` — without clearing it
+    // here, every ball after the over's first reused that first ball's
+    // deadline (and whatever time happened to be left on it) instead of
+    // getting its own 10s window, and once that shared budget ran out
+    // RoomManager stopped re-arming the timeout altogether for the rest of
+    // the over.
+    this.state.turnDeadline = null;
+
+    // Compute over/ball-in-over (1-based).
+    const overNumber = Math.floor(innings.balls / 6) + 1;
+    const ballInOver = (innings.balls % 6) + 1;
+
+    let wicket = false;
+    let yorkerDismissal = false;
+
+    if (isYorker) {
+      innings.yorkerUsedByOver[overNumber] = true;
+      if (batterPick >= 4) {
+        // Batter went for a boundary (4, 5, 6) against a lethal Mystery Yorker!
+        wicket = true;
+        yorkerDismissal = true;
+      } else {
+        // Batter defended with 1, 2, or 3. Out only if numbers match!
+        wicket = batterPick === bowlerPick;
+      }
+    } else {
+      wicket = batterPick === bowlerPick;
+    }
+
     const runs = wicket ? 0 : batterPick;
     const isBoundary = !wicket && (batterPick === 4 || batterPick === 6);
 
@@ -583,10 +669,6 @@ export class HandCricketEngine implements GameEngine {
     bowlStats.runs += runs;
     if (wicket) bowlStats.wickets += 1;
 
-    // Compute over/ball-in-over (1-based).
-    const overNumber = Math.floor((innings.balls - 1) / 6) + 1;
-    const ballInOver = ((innings.balls - 1) % 6) + 1;
-
     const restrictedThisOver = innings.restrictedBallsByOver[overNumber];
     const isRestrictedBall = !!restrictedThisOver && restrictedThisOver.includes(ballInOver);
 
@@ -600,6 +682,8 @@ export class HandCricketEngine implements GameEngine {
       wicket,
       isBoundary,
       isRestrictedBall,
+      isYorker: isYorker || undefined,
+      yorkerDismissal: yorkerDismissal || undefined,
       batterId,
       bowlerId,
       milestone,
@@ -802,9 +886,56 @@ export class HandCricketEngine implements GameEngine {
     this.state.result = opponent ? "win" : null;
   }
 
+  getTurnTimerSeconds(): number {
+    return 10;
+  }
+
+  armDeliveryDeadline(totalMs: number = 10_000): number {
+    if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
+      this.state.turnDeadline = null;
+      return 0;
+    }
+    const innings = this.currentInnings();
+    if (
+      !innings ||
+      innings.currentBowlerId == null ||
+      innings.needsNextBatterPick ||
+      innings.endedReason != null ||
+      this.inningsBreakActive()
+    ) {
+      this.state.turnDeadline = null;
+      return 0;
+    }
+    if (this.state.turnDeadline == null) {
+      this.state.turnDeadline = Date.now() + totalMs;
+    }
+    return Math.max(0, this.state.turnDeadline - Date.now());
+  }
+
+  clearTurnDeadline(): void {
+    this.state.turnDeadline = null;
+  }
+
+  pickersRemaining(): string[] {
+    if (this.state.phase !== "innings1" && this.state.phase !== "innings2") return [];
+    const innings = this.currentInnings();
+    if (
+      !innings ||
+      innings.currentBowlerId == null ||
+      innings.needsNextBatterPick ||
+      innings.endedReason != null ||
+      this.inningsBreakActive()
+    ) {
+      return [];
+    }
+    return [innings.battingPlayerId, innings.bowlingPlayerId].filter(
+      (id) => this.state.pendingPicks[id] == null,
+    );
+  }
+
   /* ── Bot support ──
    *
-   * Hand Cricket has 5 phases (teamSelect → toss → tossChoice → innings1 →
+   * Hand Cricket has 6 phases (teamSelect → tossCall → toss → tossChoice → innings1 →
    * innings2). The bot needs to make moves in every one. Decisions are
    * intentionally naïve — a bot here exists to keep the match flowing, not
    * to play well. Improve heuristics later.
@@ -818,6 +949,11 @@ export class HandCricketEngine implements GameEngine {
         for (const pid of this.state.playerOrder) {
           const sel = this.state.teamSelections[pid];
           if (!sel?.squadPlayerIds) out.push(pid);
+        }
+        return out;
+      case "tossCall":
+        if (this.state.tossCallerId && this.state.tossCall == null) {
+          out.push(this.state.tossCallerId);
         }
         return out;
       case "toss":
@@ -862,6 +998,8 @@ export class HandCricketEngine implements GameEngine {
     switch (this.state.phase) {
       case "teamSelect":
         return this.botTeamSelect(playerId);
+      case "tossCall":
+        return this.botTossCall(playerId);
       case "toss":
         return this.botTossPick(playerId);
       case "tossChoice":
@@ -872,6 +1010,11 @@ export class HandCricketEngine implements GameEngine {
       default:
         return { ok: false, error: "Nothing to do" };
     }
+  }
+
+  private botTossCall(playerId: string): MoveResult {
+    const call: HcTossCall = Math.random() < 0.5 ? "odd" : "even";
+    return this.applyMove({ playerId, type: "tossCall", data: { call } });
   }
 
   private botTeamSelect(playerId: string): MoveResult {
@@ -1004,10 +1147,26 @@ export class HandCricketEngine implements GameEngine {
     }
     // 2. Pick a number 1-6 with awareness of opponent patterns + match context.
     const isBowler = playerId === innings.bowlingPlayerId;
+    const currentOver = Math.floor(innings.balls / 6) + 1;
+    const isPowerplay = currentOver <= innings.powerplayOvers;
     const isPowerplayRestricted = isBowler && this.isUpcomingBallRestricted(innings);
-    const allowed = isPowerplayRestricted ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
+
+    let willUseYorker = false;
+    if (isBowler && isPowerplay && !innings.yorkerUsedByOver[currentOver]) {
+      const ballInOver = (innings.balls % 6) + 1;
+      // Bot bowler strategically unleashes Mystery Yorker on capped balls or mid-over
+      if ((isPowerplayRestricted || ballInOver >= 3) && Math.random() < 0.6) {
+        willUseYorker = true;
+      }
+    }
+
+    const allowed = (isPowerplayRestricted || willUseYorker) ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
     const pick = this.chooseSmartPick(playerId, innings, isBowler, allowed);
-    return this.applyMove({ playerId, type: "pick", data: { pick } });
+    return this.applyMove({
+      playerId,
+      type: "pick",
+      data: { pick, isYorker: willUseYorker },
+    });
   }
 
   /**
@@ -1063,6 +1222,15 @@ export class HandCricketEngine implements GameEngine {
       for (const v of allowed) {
         const c = freq.get(v) ?? 0;
         if (c === 0) weights.set(v, (weights.get(v) ?? 1) + 0.8);
+      }
+      // Powerplay Mystery Yorker awareness: if bowler still has a Yorker available,
+      // boost defensive weights (1, 2, 3) to survive toe-crushing yorkers.
+      const currentOver = Math.floor(innings.balls / 6) + 1;
+      const isPowerplay = currentOver <= innings.powerplayOvers;
+      if (isPowerplay && !innings.yorkerUsedByOver[currentOver]) {
+        if (allowed.includes(1)) weights.set(1, (weights.get(1) ?? 1) * 1.5);
+        if (allowed.includes(2)) weights.set(2, (weights.get(2) ?? 1) * 1.5);
+        if (allowed.includes(3)) weights.set(3, (weights.get(3) ?? 1) * 1.4);
       }
     }
 

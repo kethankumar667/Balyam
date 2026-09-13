@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { HcState, Player } from "@shared/types.js";
 import { HandCricketEngine } from "../HandCricketEngine.js";
 
@@ -101,7 +101,11 @@ function tossThen(
   a: number,
   b: number,
   choice: "bat" | "bowl",
+  tossCall: "odd" | "even" = "even",
 ) {
+  if (state(engine).phase === "tossCall") {
+    engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: tossCall } });
+  }
   engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: a } });
   engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: b } });
   const winner = state(engine).tossWinnerId!;
@@ -177,7 +181,8 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
       data: { playerIds: ["a", "b"], captainId: "a", viceCaptainId: "b" },
     });
     const s = state(engine);
-    expect(s.phase).toBe("toss");
+    expect(s.phase).toBe("tossCall");
+    expect(s.tossCallerId).toBe("p0");
     expect(s.teamSelections["p0"]?.teamId).toBe("bangladesh");
     expect(s.teamSelections["p0"]?.squadPlayerIds).toEqual(["x", "y"]);
     expect(s.teamSelections["p1"]?.squadPlayerIds).toEqual(["a", "b"]);
@@ -297,7 +302,8 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
       data: { playerIds: ausXI, captainId: "mitchell-marsh", viceCaptainId: "pat-cummins" },
     });
     expect(r1.ok).toBe(true);
-    // Sum 4 → even → p0 wins toss.
+    // Caller calls even. Sum 4 → even → p0 wins toss.
+    engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p0", type: "tossChoice", data: { choice: "bat" } });
@@ -478,6 +484,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
   it("only the toss winner can choose bat or bowl", () => {
     engine.init(makePlayers());
     bothSelectTeams(engine);
+    engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 1 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 1 } });
     const winner = state(engine).tossWinnerId!;
@@ -750,6 +757,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
       type: "confirmSquad",
       data: { playerIds: ausSquad, captainId: "mitchell-marsh", viceCaptainId: "travis-head" },
     }).ok).toBe(true);
+    engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p0", type: "tossChoice", data: { choice: "bat" } });
@@ -865,6 +873,111 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     // Bowler can pick 6 freely on the first ball.
     expect(engine.applyMove({ playerId: "p0", type: "pick", data: { pick: 1 } }).ok).toBe(true);
     expect(engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 6 } }).ok).toBe(true);
+  });
+
+  it("Mystery Yorker in Powerplay: dismisses batter immediately if batter plays 4, 5, or 6", () => {
+    engine.setOptions({ mode: "single", format: "t20", category: "international" });
+    engine.init(makePlayers());
+    bothSelectTeams(engine);
+    tossThen(engine, 2, 2, "bat");
+    selectBowler(engine, "b0");
+
+    // Bowler (p1) bowls a Mystery Yorker on line 2; Batter (p0) plays a big shot 6
+    const rBowler = engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 2, isYorker: true } });
+    expect(rBowler.ok).toBe(true);
+    const rBatter = engine.applyMove({ playerId: "p0", type: "pick", data: { pick: 6 } });
+    expect(rBatter.ok).toBe(true);
+
+    const innings = state(engine).innings1!;
+    expect(innings.wickets).toBe(1);
+    expect(innings.yorkerUsedByOver[1]).toBe(true);
+    const lastBall = innings.history[0];
+    expect(lastBall.isYorker).toBe(true);
+    expect(lastBall.yorkerDismissal).toBe(true);
+    expect(lastBall.wicket).toBe(true);
+    expect(lastBall.runs).toBe(0);
+  });
+
+  it("Mystery Yorker in Powerplay: batter successfully digs it out with 1, 2, or 3", () => {
+    engine.setOptions({ mode: "single", format: "t20", category: "international" });
+    engine.init(makePlayers());
+    bothSelectTeams(engine);
+    tossThen(engine, 2, 2, "bat");
+    selectBowler(engine, "b0");
+
+    // Bowler bowls Mystery Yorker on line 2; Batter defends with 3
+    engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 2, isYorker: true } });
+    engine.applyMove({ playerId: "p0", type: "pick", data: { pick: 3 } });
+
+    const innings = state(engine).innings1!;
+    expect(innings.wickets).toBe(0);
+    expect(innings.runs).toBe(3);
+    const lastBall = innings.history[0];
+    expect(lastBall.isYorker).toBe(true);
+    expect(lastBall.yorkerDismissal).toBeUndefined();
+    expect(lastBall.wicket).toBe(false);
+    expect(lastBall.runs).toBe(3);
+  });
+
+  it("Mystery Yorker constraints: max 1 per over, bowler only, line 1-3 only", () => {
+    engine.setOptions({ mode: "single", format: "t20", category: "international" });
+    engine.init(makePlayers());
+    bothSelectTeams(engine);
+    tossThen(engine, 2, 2, "bat");
+    selectBowler(engine, "b0");
+
+    // 1. Batter cannot deliver a Mystery Yorker
+    const badBatter = engine.applyMove({ playerId: "p0", type: "pick", data: { pick: 2, isYorker: true } });
+    expect(badBatter.ok).toBe(false);
+    expect(badBatter.error).toMatch(/only the bowler/i);
+
+    // 2. Bowler cannot pick > 3 for a Mystery Yorker
+    const badLine = engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 5, isYorker: true } });
+    expect(badLine.ok).toBe(false);
+    expect(badLine.error).toMatch(/1, 2, or 3/i);
+
+    // 3. Deliver valid yorker on ball 1
+    engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 1, isYorker: true } });
+    engine.applyMove({ playerId: "p0", type: "pick", data: { pick: 2 } });
+    expect(state(engine).innings1!.yorkerUsedByOver[1]).toBe(true);
+
+    // 4. Second yorker in the same over is rejected
+    const secondYorker = engine.applyMove({ playerId: "p1", type: "pick", data: { pick: 2, isYorker: true } });
+    expect(secondYorker.ok).toBe(false);
+    expect(secondYorker.error).toMatch(/already used/i);
+  });
+
+  it("re-arms a fresh ~10s deadline for every delivery, not just the over's first ball", () => {
+    // armDeliveryDeadline reads the real clock (unlike the innings-break
+    // logic elsewhere, which uses the injectable `setClock` seam), so this
+    // needs real fake timers rather than the beforeEach clock stub.
+    vi.useFakeTimers();
+    try {
+      engine.init(makePlayers());
+      bothSelectTeams(engine);
+      tossThen(engine, 2, 2, "bat");
+
+      // Ball 1 of the over: arm the delivery deadline as RoomManager would
+      // right after the move resolves.
+      ball(engine, 1, 2);
+      const firstBallMs = engine.armDeliveryDeadline(10_000);
+      expect(firstBallMs).toBeGreaterThan(9_000);
+
+      // Burn most of that window before the next delivery lands — this is
+      // the state a real, slow-to-pick player leaves behind.
+      vi.advanceTimersByTime(9_000);
+
+      // Ball 2 of the SAME over (same bowler, no wicket, no over boundary).
+      ball(engine, 1, 3);
+      const secondBallMs = engine.armDeliveryDeadline(10_000);
+
+      // Bug this guards: without clearing `turnDeadline` in resolveBall,
+      // this reused ball 1's now-nearly-expired deadline and returned ~1s
+      // instead of a fresh ~10s window for ball 2.
+      expect(secondBallMs).toBeGreaterThan(9_000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("removePlayer mid-game declares opponent the winner", () => {

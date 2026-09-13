@@ -12,6 +12,7 @@ import {
   HcProSummary,
   HcProTeamPicker,
   HcProToss,
+  HcProTossCall,
   HcProTossChoice,
   HcProWaiting,
 } from "./hc-broadcast";
@@ -78,6 +79,7 @@ export default function HcBroadcastShell({
       }
       return <HcProWaiting state={state} selfId={sid} players={players} />;
     }
+    if (state.phase === "tossCall") return <HcProTossCall state={state} selfId={sid} players={players} />;
     if (state.phase === "toss") return <HcProToss state={state} selfId={sid} players={players} />;
     if (state.phase === "tossChoice") return <HcProTossChoice state={state} selfId={sid} players={players} />;
     if (state.phase === "innings1" || state.phase === "innings2") {

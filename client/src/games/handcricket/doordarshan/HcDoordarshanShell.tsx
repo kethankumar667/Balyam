@@ -7,7 +7,7 @@ import { useHcCelebrationEvents } from "../useHcCelebrationEvents";
 import { DoordarshanShell } from "./doordarshan-kit";
 import { DoordarshanHeader } from "./DoordarshanHeader";
 import { DoordarshanTeamPicker, DoordarshanSquadPicker, DoordarshanWaiting } from "./DoordarshanTeamSquad";
-import { DoordarshanToss, DoordarshanTossChoice } from "./DoordarshanToss";
+import { DoordarshanToss, DoordarshanTossCall, DoordarshanTossChoice } from "./DoordarshanToss";
 import { DoordarshanInnings } from "./DoordarshanInnings";
 import { DoordarshanInningsBreak, DoordarshanSummary } from "./DoordarshanScorecard";
 import { DoordarshanCelebrationOverlay } from "./DoordarshanCelebration";
@@ -62,6 +62,7 @@ export default function HcDoordarshanShell({
       }
       return <DoordarshanWaiting state={state} selfId={sid} players={players} />;
     }
+    if (state.phase === "tossCall") return <DoordarshanTossCall state={state} selfId={sid} players={players} />;
     if (state.phase === "toss") return <DoordarshanToss state={state} selfId={sid} players={players} />;
     if (state.phase === "tossChoice") return <DoordarshanTossChoice state={state} selfId={sid} players={players} />;
     if (state.phase === "innings1" || state.phase === "innings2") {

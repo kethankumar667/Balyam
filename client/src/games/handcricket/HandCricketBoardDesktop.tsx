@@ -5,6 +5,7 @@ import {
   HcCelebrationLayer,
   SquadPicker,
   WaitingForOpponentSquad,
+  TossCallPhase,
   TossPhase,
   TossChoicePhase,
   InningsPhase,
@@ -53,11 +54,11 @@ export default function HandCricketBoardDesktop({
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   const reactions = useSeatReactions();
 
+  const mySelection = state.teamSelections[sid];
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
-  const mySelection = state.teamSelections[sid];
 
-  // Mirror TeamSelectPhase logic: allow user to go back to the team picker.
+  // Mirror TeamSelectPhase logic: local override so "Change team" goes back to picker.
   const [forceTeamPicker, setForceTeamPicker] = useState(false);
   const prevTeamIdRef = useRef<string | null | undefined>(mySelection?.teamId);
   useEffect(() => {
@@ -70,40 +71,43 @@ export default function HandCricketBoardDesktop({
   /** Derive which teamSelect sub-step we're on. */
   function teamSelectContent() {
     if (!mySelection?.teamId || forceTeamPicker) {
-      return isIpl ? (
-        <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
-      ) : (
-        <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+      return (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "12px 24px 20px" }}>
+          <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
+            {isIpl ? (
+              <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
+            ) : (
+              <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+            )}
+          </div>
+        </div>
       );
     }
     if (mySelection.squadPlayerIds == null) {
       // Squad picker: centred with a generous max-width so it never stretches
       // edge-to-edge on ultrawide displays. Doodles fill the outer margins.
       return (
-        <div style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <HcScrapbookDoodles />
-          <div
-            style={{
-              position: "relative",
-              height: "100%",
-              overflowY: "auto",
-              overflowX: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: "12px 24px 20px",
-            }}
-          >
-            <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
-              <SquadPicker
-                state={state}
-                selfId={sid}
-                players={players}
-                onChangeTeam={() => setForceTeamPicker(true)}
-                isDesktop
-              />
-            </div>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "12px 24px 20px",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
+            <SquadPicker
+              state={state}
+              selfId={sid}
+              players={players}
+              onChangeTeam={() => setForceTeamPicker(true)}
+              isDesktop
+            />
           </div>
         </div>
       );
@@ -132,6 +136,10 @@ export default function HandCricketBoardDesktop({
       {/* ── Phase content ── */}
       {isTeamSelect ? (
         teamSelectContent()
+      ) : state.phase === "tossCall" ? (
+        <PhaseStage centred maxWidth={620}>
+          <TossCallPhase state={state} selfId={sid} players={players} />
+        </PhaseStage>
       ) : state.phase === "toss" ? (
         <PhaseStage centred maxWidth={620}>
           <TossPhase state={state} selfId={sid} players={players} />

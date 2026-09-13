@@ -39,6 +39,7 @@ function DdTapeCounter({ since }: { since: number }) {
 
 const PHASE_LABEL: Record<HcState["phase"], string> = {
   teamSelect: "PRE-MATCH",
+  tossCall: "THE CALL (ODD/EVEN)",
   toss: "THE TOSS",
   tossChoice: "TOSS DECISION",
   innings1: "1ST INNINGS",

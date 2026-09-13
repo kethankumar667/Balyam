@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import type { HcBall, HcState, Player } from "@shared/types";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../../lib/socket";
 import { resolveTeamProfiles } from "../useHcSquad";
 import { oversFromBalls, strikeRate, economy, currentPartnership, fallOfWickets } from "../hc-stats";
+import { TurnTimeWarning } from "../../../components/TurnTimeWarning";
 import {
   DD, DoordarshanScreen, DdStat, DdLabel, DdChip, DdMeter,
   ddSideFor, DdAvatar, IconFlame,
@@ -51,12 +53,18 @@ export function DoordarshanInnings({
   const ballsLeft = innings.overs * 6 - innings.balls;
 
   const currentOver = Math.floor(innings.balls / 6) + 1;
-  const isPowerplayOver = (innings.restrictedBallsByOver[currentOver]?.length ?? 0) > 0;
+  const isPowerplayOver = currentOver <= innings.powerplayOvers;
   const partnership = currentPartnership(innings);
   const recent = innings.history.slice(-12);
+  const myPick = state.pendingPicks[selfId];
+  const myRole = isBatting ? "batter" : isBowling ? "bowler" : null;
 
   return (
     <div className={compact ? "space-y-3" : "grid gap-4 lg:grid-cols-[1fr_320px]"}>
+      <TurnTimeWarning
+        deadline={state.turnDeadline}
+        active={innings.currentBowlerId != null && !innings.needsNextBatterPick && myPick == null && myRole != null}
+      />
       <div className="space-y-3 min-w-0">
         {/* The analog scorebug. */}
         <DoordarshanScreen glow>
@@ -120,13 +128,29 @@ export function DoordarshanInnings({
           </DoordarshanScreen>
         )}
 
-        {bowlerId == null && isBowling ? (
-          <BowlerPicker innings={innings} bowlingProfiles={bowlingProfiles} bowlingXiIds={bowlingXiIds} format={state.options.format} />
-        ) : innings.needsNextBatterPick && isBatting ? (
-          <NextBatterPicker innings={innings} battingProfiles={battingProfiles} battingXiIds={battingXiIds} nonStrikerId={nonStrikerId} />
-        ) : bowlerId != null ? (
-          <HandPickRow state={state} innings={innings} selfId={selfId} isBatting={isBatting} isBowling={isBowling} isRestricted={!!innings.restrictedBallsByOver[currentOver]?.includes((innings.balls % 6) + 1)} />
-        ) : null}
+        {bowlerId == null ? (
+          isBowling ? (
+            <BowlerPicker innings={innings} bowlingProfiles={bowlingProfiles} bowlingXiIds={bowlingXiIds} format={state.options.format} />
+          ) : (
+            <DoordarshanScreen className="py-4 text-center">
+              <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
+                {nameOf(players, innings.bowlingPlayerId)} is choosing a bowler…
+              </div>
+            </DoordarshanScreen>
+          )
+        ) : innings.needsNextBatterPick ? (
+          isBatting ? (
+            <NextBatterPicker innings={innings} battingProfiles={battingProfiles} battingXiIds={battingXiIds} nonStrikerId={nonStrikerId} />
+          ) : (
+            <DoordarshanScreen className="py-4 text-center">
+              <div className="font-typewriter text-[13px]" style={{ color: DD.ink }}>
+                Wicket fallen. {nameOf(players, innings.battingPlayerId)} is selecting next batter…
+              </div>
+            </DoordarshanScreen>
+          )
+        ) : (
+          <HandPickRow state={state} innings={innings} selfId={selfId} isBatting={isBatting} isBowling={isBowling} isRestricted={!!innings.restrictedBallsByOver[currentOver]?.includes((innings.balls % 6) + 1)} isPowerplayOver={isPowerplayOver} />
+        )}
       </div>
 
       {!compact && (
@@ -245,7 +269,7 @@ function BowlerPicker({
   innings, bowlingProfiles, bowlingXiIds, format,
 }: {
   innings: NonNullable<HcState["innings1"]>;
-  bowlingProfiles: Map<string, { id: string; name: string }>;
+  bowlingProfiles: Map<string, { id: string; name: string; role?: string }>;
   bowlingXiIds: string[];
   format: HcState["options"]["format"];
 }) {
@@ -253,11 +277,26 @@ function BowlerPicker({
   function pick(playerId: string) {
     getSocket().emit("game:move", { type: "selectBowler", data: { playerId } });
   }
+
+  // Only bowlers and all-rounders may bowl
+  const bowlerCandidates = bowlingXiIds.filter((id) => {
+    const p = bowlingProfiles.get(id);
+    return p?.role === "bowler" || p?.role === "allrounder";
+  });
+  const displayBowlerIds = bowlerCandidates.length > 0 ? bowlerCandidates : bowlingXiIds;
+
   return (
     <DoordarshanScreen className="space-y-2">
-      <div className="font-typewriter text-[14px]" style={{ color: DD.ink }}>Select your bowler</div>
+      <div className="flex items-center justify-between">
+        <div className="font-typewriter text-[14px]" style={{ color: DD.ink }}>Select your bowler</div>
+        {cap != null && (
+          <div className="font-crt text-[11px]" style={{ color: DD.inkLo }}>
+            Max {cap} ov/bowler
+          </div>
+        )}
+      </div>
       <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(116px, 1fr))" }}>
-        {bowlingXiIds.map((id) => {
+        {displayBowlerIds.map((id) => {
           if (id === innings.lastBowlerId) return null;
           const p = bowlingProfiles.get(id);
           const overs = (innings.bowlerStats[id]?.balls ?? 0) / 6;
@@ -266,7 +305,7 @@ function BowlerPicker({
             <button key={id} onClick={() => !maxed && pick(id)} disabled={maxed} className="rounded px-2.5 py-2 text-left transition disabled:opacity-40" style={{ background: "rgba(232,198,140,0.04)", border: `1px solid ${DD.line}` }}>
               <div className="font-typewriter text-[12px] truncate" style={{ color: DD.ink }}>{p?.name ?? id}</div>
               <div className="font-crt text-[11px]" style={{ color: DD.inkLo }}>
-                {oversFromBalls(innings.bowlerStats[id]?.balls ?? 0)} OV{cap != null ? ` / ${cap} MAX` : ""}
+                {oversFromBalls(innings.bowlerStats[id]?.balls ?? 0)} OV{cap != null ? ` / ${cap} MAX` : ""} {p?.role === "allrounder" ? "• AR" : ""}
               </div>
             </button>
           );
@@ -303,19 +342,33 @@ function NextBatterPicker({
 }
 
 function HandPickRow({
-  state, innings, selfId, isBatting, isBowling, isRestricted,
+  state, innings, selfId, isBatting, isBowling, isRestricted, isPowerplayOver,
 }: {
   state: HcState; innings: NonNullable<HcState["innings1"]>; selfId: string;
-  isBatting: boolean; isBowling: boolean; isRestricted: boolean;
+  isBatting: boolean; isBowling: boolean; isRestricted: boolean; isPowerplayOver: boolean;
 }) {
   const myPick = state.pendingPicks[selfId];
   const oppId = isBatting ? innings.bowlingPlayerId : innings.battingPlayerId;
   const oppLockedIn = state.pendingPicks[oppId] != null;
   const canPlay = isBatting || isBowling;
-  const options = isBowling && isRestricted ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
 
-  function pick(n: number) {
-    getSocket().emit("game:move", { type: "pick", data: { pick: n } });
+  const currentOver = Math.floor(innings.balls / 6) + 1;
+  // Mystery Yorker: one per over, bowler-only, Powerplay-only. Mirrors the
+  // Cricbuzz skin's CricbuzzInnings.tsx — this UI existed there first and
+  // nowhere else, so a human bowler on the Doordarshan skin had no way to
+  // ever declare one.
+  const yorkerUsedThisOver = Boolean(innings.yorkerUsedByOver?.[currentOver]);
+  const canBowlYorker = isBowling && isPowerplayOver && !yorkerUsedThisOver;
+  const [isYorkerToggled, setIsYorkerToggled] = useState(false);
+  useEffect(() => {
+    if (myPick != null || yorkerUsedThisOver) setIsYorkerToggled(false);
+  }, [myPick, yorkerUsedThisOver, currentOver]);
+
+  const options = isBowling && (isRestricted || isYorkerToggled) ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
+
+  function pick(n: number, isYorker: boolean = false) {
+    if (isYorker && n > 3) return;
+    getSocket().emit("game:move", { type: "pick", data: { pick: n, isYorker: isYorker || undefined } });
   }
 
   if (!canPlay) {
@@ -325,13 +378,38 @@ function HandPickRow({
   return (
     <DoordarshanScreen className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="font-typewriter text-[14px]" style={{ color: DD.ink }}>{isBatting ? "Your shot" : "Your delivery"}</span>
-        {isRestricted && isBowling && <DdChip tone="amber">POWERPLAY: 1-3 ONLY</DdChip>}
+        <span className="font-typewriter text-[14px]" style={{ color: DD.ink }}>
+          {isYorkerToggled ? "Deliver Mystery Yorker" : isBatting ? "Your shot" : "Your delivery"}
+        </span>
+        {isYorkerToggled ? (
+          <DdChip tone="loss"><IconFlame size={11} /> YORKER: 1-3 ONLY</DdChip>
+        ) : (
+          isRestricted && isBowling && <DdChip tone="amber">POWERPLAY: 1-3 ONLY</DdChip>
+        )}
       </div>
+      {canBowlYorker && myPick == null && (
+        <div className="flex items-center justify-between gap-2 rounded px-2.5 py-2" style={{ background: "rgba(220,38,38,0.08)", border: `1px solid ${DD.line}` }}>
+          <div className="font-typewriter text-[11px]" style={{ color: DD.ink }}>
+            <IconFlame size={11} /> 1 Mystery Yorker ready — 4, 5, 6 against it = OUT
+          </div>
+          <button
+            onClick={() => setIsYorkerToggled((v) => !v)}
+            className="rounded px-2.5 py-1 font-typewriter text-[11px] transition"
+            style={isYorkerToggled ? { background: "#dc2626", color: "#fff" } : { background: "transparent", border: "1px solid #dc2626", color: "#dc2626" }}
+          >
+            {isYorkerToggled ? "ARMED" : "ARM YORKER"}
+          </button>
+        </div>
+      )}
+      {isBatting && isPowerplayOver && !yorkerUsedThisOver && myPick == null && (
+        <div className="font-typewriter text-[11px] rounded px-2.5 py-2" style={{ background: "rgba(220,38,38,0.08)", border: `1px solid ${DD.line}`, color: DD.ink }}>
+          <IconFlame size={11} /> Bowler has a Mystery Yorker ready. Play 4, 5 or 6 against it and you're out — defend with 1, 2 or 3.
+        </div>
+      )}
       {myPick == null ? (
         <div className="flex flex-wrap gap-2">
           {options.map((n) => (
-            <button key={n} onClick={() => pick(n)} className="w-11 h-11 rounded font-crt text-[20px] transition hover:brightness-125 active:scale-95" style={{ background: DD.screen, border: `1px solid ${DD.line}`, color: DD.ink }}>
+            <button key={n} onClick={() => pick(n, isYorkerToggled)} className="w-11 h-11 rounded font-crt text-[20px] transition hover:brightness-125 active:scale-95" style={{ background: DD.screen, border: `1px solid ${DD.line}`, color: DD.ink }}>
               {n}
             </button>
           ))}

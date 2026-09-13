@@ -5,6 +5,7 @@ import {
   HcCelebrationLayer,
   SquadPicker,
   WaitingForOpponentSquad,
+  TossCallPhase,
   TossPhase,
   TossChoicePhase,
   InningsPhase,
@@ -44,9 +45,9 @@ export default function HandCricketBoardMobile({
   const tut = useTutorialGate(HANDCRICKET_TUTORIAL.key);
   const reactions = useSeatReactions();
 
+  const mySelection = state.teamSelections[sid];
   const isTeamSelect = state.phase === "teamSelect";
   const isIpl = state.options.category === "ipl";
-  const mySelection = state.teamSelections[sid];
 
   // Mirror TeamSelectPhase logic: local override so "Change team" goes back to picker.
   const [forceTeamPicker, setForceTeamPicker] = useState(false);
@@ -111,11 +112,16 @@ export default function HandCricketBoardMobile({
             overflowX: "hidden",
             display: "flex",
             flexDirection: "column",
-            justifyContent: (state.phase === "toss" || state.phase === "tossChoice") ? "center" : "flex-start",
-            padding: (state.phase === "toss" || state.phase === "tossChoice") ? "12px 12px 24px" : "8px 12px 80px",
+            justifyContent: (state.phase === "tossCall" || state.phase === "toss" || state.phase === "tossChoice") ? "center" : "flex-start",
+            padding: (state.phase === "tossCall" || state.phase === "toss" || state.phase === "tossChoice") ? "12px 12px 24px" : "8px 12px 80px",
           }}
           className="space-y-3"
         >
+          {state.phase === "tossCall" && (
+            <div className="w-full my-auto">
+              <TossCallPhase state={state} selfId={sid} players={players} />
+            </div>
+          )}
           {state.phase === "toss" && (
             <div className="w-full my-auto">
               <TossPhase state={state} selfId={sid} players={players} />
