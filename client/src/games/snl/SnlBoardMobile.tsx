@@ -69,6 +69,7 @@ export default function SnlBoardMobile(props: SnlBoardProps) {
           myTurn={m.myTurn}
           phase={state.phase}
           turnName={m.turnPlayer?.name ?? "Player"}
+          skin={m.turnPlayer?.cosmetics?.diceSkin}
           onRoll={m.doRoll}
         />
         <SnlPlayerRail

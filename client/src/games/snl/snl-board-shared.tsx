@@ -6,6 +6,7 @@ import SeatAvatar from "../../components/profile/SeatAvatar";
 import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import { useRoomStore } from "../../store/roomStore";
+import { getTokenSkinConfig } from "../../lib/cosmeticsResolver";
 
 /**
  * Snakes & Ladders — shared presentational layer.
@@ -582,6 +583,8 @@ function TokensLayer({
   initialOf: Record<string, string>;
   squareGroups: Map<number, string[]>;
 }) {
+  const roomPlayers = useRoomStore((s) => s.roomState?.players ?? []);
+
   return (
     <>
       {playerOrder.map((id) => {
@@ -608,6 +611,66 @@ function TokensLayer({
         const isActive = id === turnPlayerId;
         const colorKey = coinColorOf[id];
         const palette = COIN_COLOR_HEX[colorKey];
+        const player = roomPlayers.find((p) => p.id === id);
+        const skinId = player?.cosmetics?.tokenSkin;
+        const skinConfig = skinId ? getTokenSkinConfig(skinId) : undefined;
+        const imageSrc = skinConfig?.imageSrc;
+
+        if (imageSrc) {
+          const imgW = r * 2.8;
+          const imgH = r * 3.8;
+          return (
+            <g
+              key={id}
+              style={{
+                transform: `translate(${cx}px, ${cy}px)`,
+                transition: "transform 520ms cubic-bezier(.34,1.56,.64,1)",
+              }}
+            >
+              {isActive && (
+                <circle
+                  r={r + 1.2}
+                  fill="none"
+                  stroke={palette.fill}
+                  strokeWidth={0.6}
+                  opacity={0.95}
+                  className="snl-token-pulse"
+                />
+              )}
+              {/* Contact Shadow */}
+              <ellipse cx={0} cy={r * 0.4} rx={r * 1.1} ry={r * 0.35} fill="rgba(0,0,0,0.5)" />
+              {/* Pedestal Base Ring tinted with player's coin color */}
+              <ellipse cx={0} cy={r * 0.3} rx={r * 1.0} ry={r * 0.3} fill={palette.dark} />
+              <ellipse cx={0} cy={r * 0.2} rx={r * 0.9} ry={r * 0.25} fill={palette.fill} />
+
+              {/* 3D Pawn Token miniature image */}
+              <image
+                href={imageSrc}
+                x={-imgW / 2}
+                y={-imgH + r * 0.3}
+                width={imgW}
+                height={imgH}
+                preserveAspectRatio="xMidYMid meet"
+              />
+
+              {/* Player initial badge on pawn base/chest for instant player identification */}
+              <circle cx={0} cy={-r * 0.4} r={r * 0.55} fill="rgba(0,0,0,0.7)" stroke={palette.fill} strokeWidth={0.3} />
+              <text
+                x={0}
+                y={-r * 0.4}
+                dominantBaseline="central"
+                fontSize={r * 0.7}
+                textAnchor="middle"
+                fill="#ffffff"
+                fontWeight="900"
+                fontFamily="ui-sans-serif, system-ui, sans-serif"
+                style={{ paintOrder: "stroke", stroke: palette.dark, strokeWidth: 0.2 }}
+              >
+                {initialOf[id]}
+              </text>
+            </g>
+          );
+        }
 
         return (
           <g
@@ -757,6 +820,7 @@ export function DiceTray({
   myTurn,
   phase,
   turnName,
+  skin,
   onRoll,
 }: {
   value: number | null;
@@ -765,6 +829,7 @@ export function DiceTray({
   myTurn: boolean;
   phase: SnlState["phase"];
   turnName: string;
+  skin?: string;
   onRoll: () => void;
 }) {
   const finished = phase === "finished";
@@ -782,7 +847,7 @@ export function DiceTray({
           <span className="text-[10px] uppercase tracking-wider font-bold text-amber-300">
             {myTurn ? "Your dice" : `${turnName}'s dice`}
           </span>
-          <Dice value={value} rolling={rolling} highlight={myTurn && canRoll && !finished} />
+          <Dice value={value} rolling={rolling} highlight={myTurn && canRoll && !finished} skin={skin} />
         </div>
 
         {myTurn ? (

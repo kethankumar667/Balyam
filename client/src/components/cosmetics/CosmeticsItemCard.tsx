@@ -46,6 +46,7 @@ import { resolveCosmeticPresentationState } from "./presentationState";
 import { getRarityTokensAdaptive } from "./designTokens";
 import {
   getDiceSkinConfig,
+  getTokenSkinConfig,
   getTableThemeConfig,
   getRummyCardBackConfig,
   getUnoCardBackConfig,
@@ -264,6 +265,18 @@ function CollectibleThumbnail({
 
   if (category === "DICE_SKIN") {
     const dice = getDiceSkinConfig(item.id);
+    if (dice.imageSrc) {
+      return (
+        <img
+          src={dice.imageSrc}
+          alt={item.name}
+          className={`w-10 h-10 rounded-xl border-2 border-stone-300 dark:border-zinc-700 object-cover shadow-md shrink-0 transition-transform ${isSelected ? "scale-105" : ""}`}
+          style={{
+            boxShadow: dice.glow ?? undefined,
+          }}
+        />
+      );
+    }
     return (
       <div
         className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shadow-md shrink-0 transition-transform ${isSelected ? "scale-105" : ""}`}
@@ -280,6 +293,18 @@ function CollectibleThumbnail({
   }
 
   if (category === "TOKEN_SKIN") {
+    const token = getTokenSkinConfig(item.id);
+    if (token.imageSrc) {
+      return (
+        <div className={`w-10 h-11 rounded-xl bg-stone-100 dark:bg-zinc-850/90 border border-stone-300 dark:border-zinc-700 flex items-center justify-center shrink-0 relative shadow-sm overflow-hidden p-1 transition-transform ${isSelected ? "scale-105" : ""}`}>
+          <img
+            src={token.imageSrc}
+            alt={item.name}
+            className="w-full h-full object-contain filter drop-shadow(0 2px 4px rgba(0,0,0,0.5))"
+          />
+        </div>
+      );
+    }
     return (
       <div className="w-10 h-11 rounded-xl bg-stone-100 dark:bg-zinc-850 border border-stone-300 dark:border-zinc-700 flex items-center justify-center shrink-0 relative shadow-sm">
         <CircleDot className="w-5 h-5 text-amber-600 dark:text-amber-400" />

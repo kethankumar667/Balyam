@@ -148,123 +148,191 @@ export function Token({
           </>
         )}
 
-        {/* Base (oval) */}
-        {tokenSkin.hasNeonRing && (
-          <ellipse cx="0" cy="48" rx="44" ry="15" fill="none" stroke="#06B6D4" strokeWidth="2.5" opacity="0.8">
-            <animate attributeName="opacity" values="0.5;1;0.5" dur="1.6s" repeatCount="indefinite" />
-          </ellipse>
-        )}
-        {tokenSkin.hasFireball && (
-          <ellipse cx="0" cy="48" rx="42" ry="16" fill="none" stroke="#F97316" strokeWidth="3" opacity="0.6">
-            <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.2s" repeatCount="indefinite" />
-            <animate attributeName="rx" values="40;46;40" dur="1.2s" repeatCount="indefinite" />
-          </ellipse>
-        )}
-        {tokenSkin.hasDiamond && (
-          <ellipse cx="0" cy="48" rx="40" ry="14" fill="none" stroke="#67E8F9" strokeWidth="2.5" opacity="0.7">
-            <animate attributeName="opacity" values="0.35;0.95;0.35" dur="2s" repeatCount="indefinite" />
-          </ellipse>
-        )}
-        {tokenSkin.hasPhoenixWing && (
-          <ellipse cx="0" cy="48" rx="44" ry="17" fill="none" stroke="#FB923C" strokeWidth="3" opacity="0.6">
-            <animate attributeName="opacity" values="0.3;0.95;0.3" dur="1s" repeatCount="indefinite" />
-            <animate attributeName="rx" values="40;48;40" dur="1s" repeatCount="indefinite" />
-          </ellipse>
-        )}
-        <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
-        <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
-        <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
+        {/* If luxury 3D token skin is equipped */}
+        {tokenSkin.imageSrc ? (
+          <>
+            {/* Radiant pedestal base glow reflecting team seat color */}
+            <ellipse cx="0" cy="48" rx="42" ry="14" fill={main} opacity="0.4" />
+            <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
+            <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
+            <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.6" />
 
-        {/* Body — pawn-shaped curve */}
-        <path
-          d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
-          fill={main}
-          stroke={dark}
-          strokeWidth="2"
-        />
-        <path
-          d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
-          fill={`url(#${bodyShine})`}
-          opacity="0.6"
-        />
+            {/* 3D Pawn Image Asset */}
+            <image
+              href={tokenSkin.imageSrc}
+              x="-40"
+              y="-62"
+              width="80"
+              height="112"
+              preserveAspectRatio="xMidYMid meet"
+            />
 
-        {/* Neck ring */}
-        <ellipse cx="0" cy="-18" rx="20" ry="6" fill={dark} />
-        <ellipse cx="0" cy="-19" rx="20" ry="6" fill={main} />
+            {/* Number badge on chest — high contrast backing for legibility on luxury textures */}
+            {label && (
+              <g transform="translate(0, 10)">
+                <rect
+                  x="-16"
+                  y="-14"
+                  width="32"
+                  height="22"
+                  rx="11"
+                  fill="rgba(0, 0, 0, 0.7)"
+                  stroke={main}
+                  strokeWidth="2"
+                />
+                <text
+                  x="0"
+                  y="2"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize="22"
+                  fontWeight="900"
+                  fill="white"
+                  stroke={dark}
+                  strokeWidth="1.5"
+                  style={{
+                    fontFamily: "'Fredoka','Poppins','Nunito',sans-serif",
+                    paintOrder: "stroke",
+                  }}
+                >
+                  {label}
+                </text>
+              </g>
+            )}
 
-        {/* Head — domed ball */}
-        <circle cx="0" cy="-36" r="20" fill={dark} />
-        <circle cx="0" cy="-37" r="19" fill={main} />
-        <circle cx="-6" cy="-43" r="7" fill="white" opacity="0.55" />
+            {/* Color-blind glyph badge on head */}
+            {cbMode && (
+              <g transform="translate(0, -42)">
+                <circle cx="0" cy="0" r="10" fill="rgba(0,0,0,0.75)" stroke={main} strokeWidth="1.5" />
+                <text
+                  x="0"
+                  y="1"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize="12"
+                  fontWeight="bold"
+                  fill="white"
+                >
+                  {CB_GLYPH[color]}
+                </text>
+              </g>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Base (oval) */}
+            {tokenSkin.hasNeonRing && (
+              <ellipse cx="0" cy="48" rx="44" ry="15" fill="none" stroke="#06B6D4" strokeWidth="2.5" opacity="0.8">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.6s" repeatCount="indefinite" />
+              </ellipse>
+            )}
+            {tokenSkin.hasFireball && (
+              <ellipse cx="0" cy="48" rx="42" ry="16" fill="none" stroke="#F97316" strokeWidth="3" opacity="0.6">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.2s" repeatCount="indefinite" />
+                <animate attributeName="rx" values="40;46;40" dur="1.2s" repeatCount="indefinite" />
+              </ellipse>
+            )}
+            {tokenSkin.hasDiamond && (
+              <ellipse cx="0" cy="48" rx="40" ry="14" fill="none" stroke="#67E8F9" strokeWidth="2.5" opacity="0.7">
+                <animate attributeName="opacity" values="0.35;0.95;0.35" dur="2s" repeatCount="indefinite" />
+              </ellipse>
+            )}
+            {tokenSkin.hasPhoenixWing && (
+              <ellipse cx="0" cy="48" rx="44" ry="17" fill="none" stroke="#FB923C" strokeWidth="3" opacity="0.6">
+                <animate attributeName="opacity" values="0.3;0.95;0.3" dur="1s" repeatCount="indefinite" />
+                <animate attributeName="rx" values="40;48;40" dur="1s" repeatCount="indefinite" />
+              </ellipse>
+            )}
+            <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
+            <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
+            <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
 
-        {/* Crown Accessory */}
-        {tokenSkin.hasCrown && (
-          <path
-            d="M -14 -46 L -10 -40 L 0 -52 L 10 -40 L 14 -46 L 11 -34 L -11 -34 Z"
-            fill="#F59E0B"
-            stroke="#78350F"
-            strokeWidth="1.5"
-          />
-        )}
+            {/* Body — pawn-shaped curve */}
+            <path
+              d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
+              fill={main}
+              stroke={dark}
+              strokeWidth="2"
+            />
+            <path
+              d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
+              fill={`url(#${bodyShine})`}
+              opacity="0.6"
+            />
 
-        {/* Diamond Gem Accessory */}
-        {tokenSkin.hasDiamond && (
-          <path
-            d="M -12 -47 L 12 -47 L 18 -41 L 0 -22 L -18 -41 Z"
-            fill="#A5F3FC"
-            stroke="#0E7490"
-            strokeWidth="1.5"
-          />
-        )}
+            {/* Neck ring */}
+            <ellipse cx="0" cy="-18" rx="20" ry="6" fill={dark} />
+            <ellipse cx="0" cy="-19" rx="20" ry="6" fill={main} />
 
-        {/* Phoenix Wing Accessory */}
-        {tokenSkin.hasPhoenixWing && (
-          <path
-            d="M -18 -44 Q -28 -32 -15 -21 L -6 -34 Z M 18 -44 Q 28 -32 15 -21 L 6 -34 Z"
-            fill="#FB923C"
-            stroke="#7C2D12"
-            strokeWidth="1.2"
-          />
-        )}
+            {/* Head — domed ball */}
+            <circle cx="0" cy="-36" r="20" fill={dark} />
+            <circle cx="0" cy="-37" r="19" fill={main} />
+            <circle cx="-6" cy="-43" r="7" fill="white" opacity="0.55" />
 
-        {/* Number badge on chest */}
-        {label && (
-          <text
-            x="0"
-            y="12"
-            textAnchor="middle"
-            // 22 → 26 with a 2.2 outline (was 0.8). On a phone each token is
-            // roughly 24px of real estate, so this numeral was rendering at
-            // about 6px against a saturated seat colour — the review called it
-            // unreadable and it was. `paintOrder: stroke` below already draws
-            // the outline behind the glyph, so a thicker one buys contrast
-            // without eating the letterform.
-            fontSize="26"
-            fontWeight="900"
-            fill="white"
-            stroke={dark}
-            strokeWidth="2.2"
-            style={{ fontFamily: "'Fredoka','Poppins','Nunito',sans-serif", letterSpacing: "0.01em", paintOrder: "stroke" } as React.CSSProperties}
-          >
-            {label}
-          </text>
-        )}
+            {/* Crown Accessory */}
+            {tokenSkin.hasCrown && (
+              <path
+                d="M -14 -46 L -10 -40 L 0 -52 L 10 -40 L 14 -46 L 11 -34 L -11 -34 Z"
+                fill="#F59E0B"
+                stroke="#78350F"
+                strokeWidth="1.5"
+              />
+            )}
 
-        {/* Color-blind glyph badge on head — supplements color with shape */}
-        {cbMode && (
-          <text
-            x="0"
-            y="-32"
-            textAnchor="middle"
-            fontSize="14"
-            fontWeight="bold"
-            fill="white"
-            stroke={dark}
-            strokeWidth="0.6"
-            style={{ paintOrder: "stroke" } as React.CSSProperties}
-          >
-            {CB_GLYPH[color]}
-          </text>
+            {/* Diamond Gem Accessory */}
+            {tokenSkin.hasDiamond && (
+              <path
+                d="M -12 -47 L 12 -47 L 18 -41 L 0 -22 L -18 -41 Z"
+                fill="#A5F3FC"
+                stroke="#0E7490"
+                strokeWidth="1.5"
+              />
+            )}
+
+            {/* Phoenix Wing Accessory */}
+            {tokenSkin.hasPhoenixWing && (
+              <path
+                d="M -18 -44 Q -28 -32 -15 -21 L -6 -34 Z M 18 -44 Q 28 -32 15 -21 L 6 -34 Z"
+                fill="#FB923C"
+                stroke="#7C2D12"
+                strokeWidth="1.2"
+              />
+            )}
+
+            {/* Number badge on chest */}
+            {label && (
+              <text
+                x="0"
+                y="12"
+                textAnchor="middle"
+                fontSize="26"
+                fontWeight="900"
+                fill="white"
+                stroke={dark}
+                strokeWidth="2.2"
+                style={{ fontFamily: "'Fredoka','Poppins','Nunito',sans-serif", letterSpacing: "0.01em", paintOrder: "stroke" } as React.CSSProperties}
+              >
+                {label}
+              </text>
+            )}
+
+            {/* Color-blind glyph badge on head — supplements color with shape */}
+            {cbMode && (
+              <text
+                x="0"
+                y="-32"
+                textAnchor="middle"
+                fontSize="14"
+                fontWeight="bold"
+                fill="white"
+                stroke={dark}
+                strokeWidth="0.6"
+                style={{ paintOrder: "stroke" } as React.CSSProperties}
+              >
+                {CB_GLYPH[color]}
+              </text>
+            )}
+          </>
         )}
 
         <defs>

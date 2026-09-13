@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { LudoColor, LudoState, Player } from "@shared/types";
 import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
+import { useRoomStore } from "../../store/roomStore";
 import type { CameraShakeOptions, CameraPunchOptions } from "../../animations/camera/useTableCamera";
 
 /** CSS custom-prop pair the global `.ludo-chip` glossy treatment reads. */
@@ -1323,6 +1324,9 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
   const activeColor = state.playerColors[m.displayTurnPlayerId] as LudoColor | undefined;
   const cupTint = !finished && activeColor ? COLOR_HEX[activeColor] : "#57B65B";
   const cupDark = !finished && activeColor ? COLOR_HEX_DARK[activeColor] : "#1B5E20";
+  const roomPlayers = useRoomStore((s) => s.roomState?.players ?? []);
+  const turnPlayerDiceSkin = roomPlayers.find((p) => p.id === m.displayTurnPlayerId)?.cosmetics?.diceSkin;
+
   return (
     <div className="flex flex-col items-center gap-1.5">
       <button
@@ -1361,7 +1365,14 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
             canRoll ? "ludo-cup-breathe" : settleKey > 0 ? "ludo-dice-impact" : ""
           }`}
         >
-          <Dice value={state.diceValue} rolling={m.rolling} highlight={canRoll} wooden={m.settings.woodenDice} size="56px" />
+          <Dice
+            value={state.diceValue}
+            rolling={m.rolling}
+            highlight={canRoll}
+            wooden={m.settings.woodenDice}
+            skin={turnPlayerDiceSkin}
+            size="56px"
+          />
         </div>
         {streak && (
           <span
@@ -1594,6 +1605,7 @@ export function LudoBoardArea({
               cbMode={m.settings.colorBlindMode}
               golden={m.settings.goldenTokens}
               celebrating={m.celebratingIds.has(token.id)}
+              skin={players.find((p) => p.id === pid)?.cosmetics?.tokenSkin}
               // Must track the board's step interval — a transition longer
               // than one step merges the whole walk into a single slide.
               hopMs={m.hopMsOf(token.id)}

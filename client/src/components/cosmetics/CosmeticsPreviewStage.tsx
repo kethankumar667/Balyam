@@ -44,7 +44,12 @@ import {
 } from "./presentationState";
 import { getRarityTokens } from "./designTokens";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { getRummyCardBackConfig, getUnoCardBackConfig } from "../../lib/cosmeticsResolver";
+import {
+  getRummyCardBackConfig,
+  getUnoCardBackConfig,
+  getDiceSkinConfig,
+  getTokenSkinConfig,
+} from "../../lib/cosmeticsResolver";
 
 interface CosmeticsPreviewStageProps {
   item: CosmeticCatalogItem | null;
@@ -615,6 +620,8 @@ function EnchantedDiceSkinPreview({
   };
 
   const mat = getDiceMaterial(skinId);
+  const diceConfig = getDiceSkinConfig(skinId);
+  const imageSrc = diceConfig.imageSrc ?? null;
 
   // Presentation-only roll preview trigger
   const triggerPresentationRoll = () => {
@@ -661,16 +668,27 @@ function EnchantedDiceSkinPreview({
           <div className="absolute bottom-3 right-3 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white shadow-md" />
 
           {/* Dice placed in center of felt */}
-          <div className="relative z-10 scale-75">
-            <div
-              className={`w-28 h-28 rounded-2xl flex items-center justify-center relative ${mat.container} ${mat.aura}`}
-            >
-              <DiceFacePipGrid
-                value={6}
-                skinId={skinId}
-                pipClass={mat.pip}
+          <div className="relative z-10">
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt=""
+                className="w-20 h-20 rounded-2xl object-cover shadow-2xl filter drop-shadow(0 10px 15px rgba(0,0,0,0.6))"
+                style={{ boxShadow: diceConfig.glow }}
               />
-            </div>
+            ) : (
+              <div className="scale-75">
+                <div
+                  className={`w-28 h-28 rounded-2xl flex items-center justify-center relative ${mat.container} ${mat.aura}`}
+                >
+                  <DiceFacePipGrid
+                    value={6}
+                    skinId={skinId}
+                    pipClass={mat.pip}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <span className="text-[10px] font-mono tracking-wider text-emerald-400/80 uppercase mt-2">
@@ -695,18 +713,26 @@ function EnchantedDiceSkinPreview({
               : { rotateX: 12, rotateY: -15 }
           }
           transition={{ duration: 0.8, ease: "easeInOut" }}
-          className={`w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none ${mat.container} ${mat.aura}`}
-          style={{ transformStyle: "preserve-3d" }}
+          className={`w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none overflow-hidden ${
+            imageSrc ? "bg-black/40 border border-zinc-700/60" : mat.container
+          } ${mat.aura}`}
+          style={{ transformStyle: "preserve-3d", boxShadow: diceConfig.glow }}
           onClick={triggerPresentationRoll}
         >
-          {mat.grain && (
-            <div className="absolute inset-0 rounded-3xl opacity-25 bg-[radial-gradient(circle_at_25%_25%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
+          {imageSrc ? (
+            <img src={imageSrc} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <>
+              {mat.grain && (
+                <div className="absolute inset-0 rounded-3xl opacity-25 bg-[radial-gradient(circle_at_25%_25%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
+              )}
+              <DiceFacePipGrid
+                value={rollFace}
+                skinId={skinId}
+                pipClass={mat.pip}
+              />
+            </>
           )}
-          <DiceFacePipGrid
-            value={rollFace}
-            skinId={skinId}
-            pipClass={mat.pip}
-          />
         </motion.div>
 
         {/* Contact Shadow */}
@@ -750,49 +776,57 @@ function EnchantedDiceSkinPreview({
           duration: 7,
           ease: "easeInOut",
         }}
-        className={`w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none ${mat.container} ${mat.aura}`}
-        style={{ transformStyle: "preserve-3d" }}
+        className={`w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none overflow-hidden ${
+          imageSrc ? "bg-black/40 border border-zinc-700/60" : mat.container
+        } ${mat.aura}`}
+        style={{ transformStyle: "preserve-3d", boxShadow: diceConfig.glow }}
       >
-        {/* Wood grain pattern overlay for Teak */}
-        {mat.grain && (
-          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none opacity-30 mix-blend-overlay">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <circle
-                cx="15"
-                cy="15"
-                r="30"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                opacity="0.4"
-              />
-              <circle
-                cx="15"
-                cy="15"
-                r="50"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="1"
-                opacity="0.3"
-              />
-              <circle
-                cx="15"
-                cy="15"
-                r="70"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="0.8"
-                opacity="0.2"
-              />
-            </svg>
-          </div>
-        )}
+        {imageSrc ? (
+          <img src={imageSrc} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <>
+            {/* Wood grain pattern overlay for Teak */}
+            {mat.grain && (
+              <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none opacity-30 mix-blend-overlay">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r="30"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    opacity="0.4"
+                  />
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r="50"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="1"
+                    opacity="0.3"
+                  />
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r="70"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="0.8"
+                    opacity="0.2"
+                  />
+                </svg>
+              </div>
+            )}
 
-        <DiceFacePipGrid
-          value={5}
-          skinId={skinId}
-          pipClass={mat.pip}
-        />
+            <DiceFacePipGrid
+              value={5}
+              skinId={skinId}
+              pipClass={mat.pip}
+            />
+          </>
+        )}
       </motion.div>
 
       {/* Ground Contact Shadow */}
@@ -969,6 +1003,8 @@ function EnchantedTokenSkinPreview({
   skinId: string;
   mode: PreviewMode;
 }) {
+  const tokenConfig = getTokenSkinConfig(skinId);
+  const imageSrc = tokenConfig.imageSrc ?? null;
   const isCrown = skinId === "token_golden_crown";
   const isFireball = skinId === "token_fireball_ludo";
   const isNeon = skinId === "token_neon_ring";
@@ -980,26 +1016,26 @@ function EnchantedTokenSkinPreview({
       <div className="flex flex-col items-center justify-center">
         {/* Yard Mockup */}
         <div className="w-44 h-44 rounded-full bg-amber-950/40 border-4 border-amber-500/40 p-3 grid grid-cols-2 grid-rows-2 gap-3 items-center justify-items-center shadow-2xl relative">
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
+          {[0, 1, 2, 3].map((idx) => (
+            <div
+              key={idx}
+              className="w-12 h-12 rounded-full bg-amber-500/25 border border-amber-400/50 flex items-center justify-center shadow-md relative overflow-hidden p-1"
+            >
+              {imageSrc ? (
+                <img
+                  src={imageSrc}
+                  alt=""
+                  className="w-full h-full object-contain filter drop-shadow(0 2px 4px rgba(0,0,0,0.6))"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
+                  {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+                  {isDiamond && <Gem className="w-4 h-4 text-white" />}
+                  {isPhoenix && <Flame className="w-4 h-4 text-white" />}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
         <span className="text-[10px] font-mono text-zinc-400 mt-2">
           Home Base Yard View
@@ -1016,14 +1052,33 @@ function EnchantedTokenSkinPreview({
           <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
             24
           </div>
-          <div className="w-14 h-14 rounded-xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center shadow-lg relative">
-            <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-md">
-              {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-              {isFireball && <div className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />}
-              {isNeon && <div className="w-5 h-5 rounded-full border border-cyan-300" />}
-              {isDiamond && <Gem className="w-4 h-4 text-cyan-100" />}
-              {isPhoenix && <Flame className="w-4 h-4 text-orange-100" />}
-            </div>
+          <div className="w-16 h-16 rounded-xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center shadow-lg relative p-1">
+            {imageSrc ? (
+              <div className="relative w-full h-full flex items-center justify-center">
+                {/* Radiant pedestal glow */}
+                <div
+                  className="absolute bottom-1 w-10 h-3 rounded-full blur-[2px]"
+                  style={{ background: tokenConfig.glowColor ?? "#F59E0B" }}
+                />
+                <img
+                  src={imageSrc}
+                  alt=""
+                  className="w-12 h-12 object-contain relative z-10 filter drop-shadow(0 4px 6px rgba(0,0,0,0.6))"
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-md">
+                {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
+                {isFireball && (
+                  <div className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />
+                )}
+                {isNeon && (
+                  <div className="w-5 h-5 rounded-full border border-cyan-300" />
+                )}
+                {isDiamond && <Gem className="w-4 h-4 text-cyan-100" />}
+                {isPhoenix && <Flame className="w-4 h-4 text-orange-100" />}
+              </div>
+            )}
           </div>
           <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
             26
@@ -1037,6 +1092,69 @@ function EnchantedTokenSkinPreview({
   }
 
   // INSPECT (Default)
+  if (imageSrc) {
+    const isSilver = tokenConfig.pedestalStyle === "silver";
+    const isChrome = tokenConfig.pedestalStyle === "chrome";
+    const isObsidian = tokenConfig.pedestalStyle === "obsidian";
+
+    return (
+      <div className="flex flex-col items-center justify-center relative">
+        <motion.div
+          animate={{
+            y: [-3, 3, -3],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 3,
+            ease: "easeInOut",
+          }}
+          className="relative flex flex-col items-center justify-center"
+        >
+          {/* Ambient Glow Aura */}
+          <div
+            className="absolute w-36 h-36 rounded-full blur-2xl pointer-events-none opacity-40"
+            style={{ background: tokenConfig.glowColor ?? "#F59E0B" }}
+          />
+
+          {/* High-res 3D Pawn Image */}
+          <img
+            src={imageSrc}
+            alt=""
+            className="w-32 h-44 object-contain relative z-10 filter drop-shadow(0 12px 20px rgba(0,0,0,0.75))"
+          />
+
+          {/* Illuminated Pedestal Base Ring */}
+          <div
+            className="w-28 h-5 rounded-[100%] border-2 relative -mt-3 z-0"
+            style={{
+              borderColor: isSilver
+                ? "#94A3B8"
+                : isChrome
+                ? "#CBD5E1"
+                : isObsidian
+                ? "#EA580C"
+                : "#D4AF37",
+              background: isSilver
+                ? "radial-gradient(ellipse at center, #E2E8F0 0%, #64748B 100%)"
+                : isChrome
+                ? "radial-gradient(ellipse at center, #FFFFFF 0%, #94A3B8 100%)"
+                : isObsidian
+                ? "radial-gradient(ellipse at center, #C2410C 0%, #18181B 100%)"
+                : "radial-gradient(ellipse at center, #FDE047 0%, #B45309 100%)",
+              boxShadow: `0 0 16px ${tokenConfig.glowColor ?? "#F59E0B"}`,
+            }}
+          />
+        </motion.div>
+
+        {/* Contact Shadow */}
+        <div className="w-32 h-4 rounded-[100%] bg-black/80 blur-md mt-2" />
+        <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase mt-1">
+          3D Pawn Artifact Inspection
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center relative">
       <div className="relative flex flex-col items-center justify-center">
