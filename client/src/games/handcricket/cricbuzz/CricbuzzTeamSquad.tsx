@@ -51,8 +51,12 @@ export function CricbuzzTeamPicker({
   selfId: string;
   players: Player[];
 }) {
-  const [tab, setTab] = useState<"international" | "franchise">("international");
   const [submitting, setSubmitting] = useState(false);
+  // The host fixes the team pool for the whole match (international vs IPL
+  // franchise) when configuring the room — this is not a free-flipping tab a
+  // player gets to override, matching Broadcast/Doordarshan/Classic, which
+  // all render a single list gated on `state.options.category`.
+  const isIpl = state.options.category === "ipl";
 
   const opponentId = state.playerOrder.find((id) => id !== selfId);
   const oppSelection = opponentId ? state.teamSelections[opponentId]?.teamId : null;
@@ -65,35 +69,16 @@ export function CricbuzzTeamPicker({
 
   return (
     <div className="space-y-4">
-      {/* Cricbuzz Subheader Tabs */}
+      {/* Cricbuzz Subheader */}
       <div className="flex border-b border-[#E3E6E8] bg-white px-3 dark:border-[#2C3533] dark:bg-[#1B2220] rounded-t-lg">
-        <button
-          type="button"
-          onClick={() => setTab("international")}
-          className={`px-4 py-3 text-[13px] font-bold uppercase tracking-wider transition-colors border-b-2 ${
-            tab === "international"
-              ? "border-[#009270] text-[#009270] dark:text-[#00B38A]"
-              : "border-transparent text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E]"
-          }`}
-        >
-          ICC International Teams
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("franchise")}
-          className={`px-4 py-3 text-[13px] font-bold uppercase tracking-wider transition-colors border-b-2 ${
-            tab === "franchise"
-              ? "border-[#009270] text-[#009270] dark:text-[#00B38A]"
-              : "border-transparent text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E]"
-          }`}
-        >
-          T20 Franchise League
-        </button>
+        <span className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider border-b-2 border-[#009270] text-[#009270] dark:text-[#00B38A]">
+          {isIpl ? "T20 Franchise League" : "ICC International Teams"}
+        </span>
       </div>
 
       {/* Team Cards Grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {tab === "international"
+        {!isIpl
           ? COUNTRIES.map((id) => {
               const meta = HC_COUNTRIES[id];
               const isOpponent = oppSelection === id;
@@ -223,7 +208,6 @@ export function CricbuzzSquadPicker({
         <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
           {s.xi.map((player, idx) => {
             const isCaptain = s.captainId === player.id;
-            const isViceCaptain = s.viceCaptainId === player.id;
             const style = s.styleMap.get(player.name.toLowerCase());
 
             return (
@@ -243,11 +227,6 @@ export function CricbuzzSquadPicker({
                       {isCaptain && (
                         <span className="rounded bg-[#009270] px-1 py-0.2 text-[10px] font-extrabold text-white">
                           C
-                        </span>
-                      )}
-                      {isViceCaptain && (
-                        <span className="rounded bg-[#035A46] px-1 py-0.2 text-[10px] font-extrabold text-white">
-                          VC
                         </span>
                       )}
                       <RoleBadge role={player.role} />
@@ -274,17 +253,6 @@ export function CricbuzzSquadPicker({
                   </button>
                   <button
                     type="button"
-                    onClick={() => s.setViceCaptain(player.id)}
-                    className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
-                      isViceCaptain
-                        ? "bg-[#035A46] text-white"
-                        : "bg-[#ECEEF2] text-[#555555] hover:bg-[#D0D4D9] dark:bg-[#2C3533] dark:text-[#CCCCCC]"
-                    }`}
-                  >
-                    Vice-C
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => s.toggle(player.id)}
                     className="rounded bg-[#FFEBEE] px-2 py-1 text-[10px] font-bold text-[#C62828] hover:bg-[#FFCDD2] transition"
                   >
@@ -305,6 +273,38 @@ export function CricbuzzSquadPicker({
           </div>
           <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
             {s.bench.map((player) => (
+              <div
+                key={player.id}
+                className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#151B19] transition"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-[13px] text-[#333333] dark:text-[#DDDDDD]">
+                    {player.name}
+                  </span>
+                  <RoleBadge role={player.role} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => s.toggle(player.id)}
+                  className="rounded bg-[#E8F5E9] px-2.5 py-1 text-[11px] font-bold text-[#00796B] hover:bg-[#009270] hover:text-white transition"
+                >
+                  + Add to XI
+                </button>
+              </div>
+            ))}
+          </div>
+        </CricbuzzCard>
+      )}
+
+      {/* Legends Pool Section — popular past players for this team,
+          reference: Broadcast's "Legends pool" / Doordarshan's "ARCHIVE XI". */}
+      {s.legendsBench.length > 0 && (
+        <CricbuzzCard className="overflow-hidden">
+          <div className="bg-[#F5F7F8] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:bg-[#151B19] dark:text-[#A0A5A8] border-b border-[#E3E6E8] dark:border-[#2C3533]">
+            ★ Legends ({s.legendsBench.length})
+          </div>
+          <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+            {s.legendsBench.map((player) => (
               <div
                 key={player.id}
                 className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#151B19] transition"

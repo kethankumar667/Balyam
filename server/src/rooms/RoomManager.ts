@@ -3717,6 +3717,31 @@ export class RoomManager {
     if (botActors.length === 0) return;
 
     /**
+     * Hand Cricket: a bot must not lock in its team/XI until every connected
+     * human has confirmed their own squad. `HandCricketEngine.pendingActors()`
+     * lists both seats symmetrically for `teamSelect` — it has no notion of
+     * who is a bot, by design, same as every other game's engine — so left
+     * alone the bot (armed after its ~1.2-2s "think" delay below) routinely
+     * finished team-select before the human had even read the team-picker
+     * screen. This is the one phase where a bot's readiness must trail a
+     * human's, so it is gated here rather than in the bot-unaware engine.
+     */
+    if (room.game === "handcricket") {
+      const hcState = room.engine?.getPublicState() as
+        | { phase?: string; teamSelections?: Record<string, { squadPlayerIds: string[] | null } | undefined> }
+        | undefined;
+      if (hcState?.phase === "teamSelect") {
+        const humanSeats = [...room.players.values()].filter(
+          (p) => !p.isBot && !this.isAutoDriven(room, p.id),
+        );
+        const allHumansConfirmed = humanSeats.every(
+          (p) => hcState.teamSelections?.[p.id]?.squadPlayerIds != null,
+        );
+        if (!allHumansConfirmed) return;
+      }
+    }
+
+    /**
      * Does a PRESENT human still have a clock of their own running?
      *
      * If so, keep it (RPS, where both players choose simultaneously, would

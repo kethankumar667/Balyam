@@ -437,20 +437,16 @@ function PlayerRow({
   p,
   inXI,
   isCaptain,
-  isVice,
   style,
   onToggle,
   onCaptain,
-  onVice,
 }: {
   p: HcPlayerProfile;
   inXI: boolean;
   isCaptain: boolean;
-  isVice: boolean;
   style?: { battingStyle: string; bowlingStyle: string };
   onToggle: () => void;
   onCaptain: () => void;
-  onVice: () => void;
 }) {
   const tag = ROLE_TAG[p.role];
   return (
@@ -499,19 +495,6 @@ function PlayerRow({
             }}
           >
             C
-          </button>
-          <button
-            type="button"
-            onClick={onVice}
-            title="Make vice-captain"
-            className="grid h-6 w-6 place-items-center rounded text-[9px] font-black transition"
-            style={{
-              background: isVice ? "rgba(90,169,240,0.22)" : "rgba(255,255,255,0.05)",
-              color: isVice ? PRO.info : PRO.inkLo,
-              border: `1px solid ${isVice ? "rgba(90,169,240,0.6)" : PRO.line}`,
-            }}
-          >
-            VC
           </button>
         </div>
       )}
@@ -583,11 +566,9 @@ export function HcProSquadPicker({
               p={p}
               inXI
               isCaptain={sq.captainId === p.id}
-              isVice={sq.viceCaptainId === p.id}
               style={sq.styleMap.get(p.name.toLowerCase())}
               onToggle={() => sq.toggle(p.id)}
               onCaptain={() => sq.setCaptain(p.id)}
-              onVice={() => sq.setViceCaptain(p.id)}
             />
           ))}
         </div>
@@ -633,11 +614,9 @@ export function HcProSquadPicker({
               p={p}
               inXI={false}
               isCaptain={false}
-              isVice={false}
               style={sq.styleMap.get(p.name.toLowerCase())}
               onToggle={() => sq.toggle(p.id)}
               onCaptain={() => {}}
-              onVice={() => {}}
             />
           ))}
         </div>
@@ -652,11 +631,9 @@ export function HcProSquadPicker({
                   p={p}
                   inXI={false}
                   isCaptain={false}
-                  isVice={false}
                   style={sq.styleMap.get(p.name.toLowerCase())}
                   onToggle={() => sq.toggle(p.id)}
                   onCaptain={() => {}}
-                  onVice={() => {}}
                 />
               ))}
             </div>

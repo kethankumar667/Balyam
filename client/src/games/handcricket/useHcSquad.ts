@@ -44,7 +44,6 @@ export interface HcSquadModel {
   legendsBench: HcPlayerProfile[];
   selected: Set<string>;
   captainId: string | null;
-  viceCaptainId: string | null;
   composition: HcCompositionReport;
   /** Batting/bowling style strings keyed by lowercase player name. */
   styleMap: Map<string, JsonPlayerStyle>;
@@ -53,7 +52,6 @@ export interface HcSquadModel {
   canConfirm: boolean;
   toggle: (id: string) => void;
   setCaptain: (id: string) => void;
-  setViceCaptain: (id: string) => void;
   confirm: () => void;
 }
 
@@ -166,7 +164,6 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [captainId, setCaptainId] = useState<string | null>(null);
-  const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
 
   /**
    * Seed the XI once the roster resolves. Runs as an effect rather than a lazy
@@ -191,28 +188,23 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
     setSeeded(true);
   }, [seeded, sortedSquad, jsonMeta, profilesByName]);
 
-  // Drop a captain/VC that just left the XI.
+  // Drop a captain that just left the XI.
   useEffect(() => {
     if (captainId && !selected.has(captainId)) setCaptainId(null);
-    if (viceCaptainId && !selected.has(viceCaptainId)) setViceCaptainId(null);
-  }, [selected, captainId, viceCaptainId]);
+  }, [selected, captainId]);
 
-  // Auto-derive captain + VC: JSON's declared pair when both are in the XI,
-  // otherwise the roster's tagged captain, otherwise the first all-rounder or
-  // batter by role order.
+  // Auto-derive captain: JSON's declared captain when in the XI, otherwise
+  // the roster's tagged captain, otherwise the first all-rounder or batter
+  // by role order.
   useEffect(() => {
-    if (captainId || viceCaptainId) return;
+    if (captainId) return;
     if (selected.size === 0) return;
 
-    if (jsonMeta) {
-      const cap = jsonMeta.captain ? profilesByName.get(jsonMeta.captain.toLowerCase()) : undefined;
-      const vc = jsonMeta.viceCaptain ? profilesByName.get(jsonMeta.viceCaptain.toLowerCase()) : undefined;
+    if (jsonMeta?.captain) {
+      const cap = profilesByName.get(jsonMeta.captain.toLowerCase());
       if (cap && selected.has(cap.id)) {
         setCaptainId(cap.id);
-        if (vc && selected.has(vc.id) && vc.id !== cap.id) {
-          setViceCaptainId(vc.id);
-          return;
-        }
+        return;
       }
     }
 
@@ -223,11 +215,8 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
     const arOrBat = (p: HcPlayerProfile) => p.role === "allrounder" || p.role === "batter";
     const cap = tagged ?? inXI.find(arOrBat) ?? inXI[0];
     if (!cap) return;
-    const vc = inXI.find((p) => p.id !== cap.id && arOrBat(p)) ?? inXI.find((p) => p.id !== cap.id);
-    if (!vc) return;
     setCaptainId(cap.id);
-    setViceCaptainId(vc.id);
-  }, [selected, profilesById, profilesByName, jsonMeta, captainId, viceCaptainId]);
+  }, [selected, profilesById, profilesByName, jsonMeta, captainId]);
 
   const xi = useMemo(
     () =>
@@ -243,8 +232,7 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
 
   if (!myTeamId || !rosterToUse) return null;
 
-  const canConfirm =
-    selected.size === 11 && !!captainId && !!viceCaptainId && captainId !== viceCaptainId;
+  const canConfirm = selected.size === 11 && !!captainId;
 
   return {
     ok: true,
@@ -257,7 +245,6 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
     legendsBench,
     selected,
     captainId,
-    viceCaptainId,
     composition,
     styleMap,
     coach: jsonMeta?.coach ?? "",
@@ -275,18 +262,12 @@ export function useHcSquad(state: HcState, selfId: string): HcSquadModel | null 
     setCaptain: (id: string) => {
       if (!selected.has(id)) return;
       setCaptainId(id);
-      if (viceCaptainId === id) setViceCaptainId(null);
-    },
-    setViceCaptain: (id: string) => {
-      if (!selected.has(id)) return;
-      setViceCaptainId(id);
-      if (captainId === id) setCaptainId(null);
     },
     confirm: () => {
-      if (!canConfirm) return;
+      if (!canConfirm || !captainId) return;
       getSocket().emit("game:move", {
         type: "confirmSquad",
-        data: { playerIds: [...selected], captainId, viceCaptainId },
+        data: { playerIds: [...selected], captainId },
       });
     },
   };

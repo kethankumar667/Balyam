@@ -56,7 +56,6 @@ function atEndOfInnings1() {
     data: {
       playerIds: ["a0","a1","a2","a3","a4","a5","a6","a7","a8","a9","a10"],
       captainId: "a0",
-      viceCaptainId: "a1",
     },
   });
   e.applyMove({
@@ -65,7 +64,6 @@ function atEndOfInnings1() {
     data: {
       playerIds: ["b0","b1","b2","b3","b4","b5","b6","b7","b8","b9","b10"],
       captainId: "b0",
-      viceCaptainId: "b1",
     },
   });
   e.applyMove({ playerId: "p0", type: "tossCall", data: { call: "odd" } });

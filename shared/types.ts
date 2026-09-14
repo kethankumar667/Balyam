@@ -1088,8 +1088,6 @@ export interface HcTeamSelection {
   squadPlayerIds: string[] | null;
   /** Profile id of the user-designated captain. Must be in squadPlayerIds. */
   captainId: string | null;
-  /** Profile id of the user-designated vice-captain. Must be in squadPlayerIds and != captainId. */
-  viceCaptainId: string | null;
 }
 
 export interface HcState {
@@ -1156,13 +1154,12 @@ export interface HcSelectTeamMove {
   type: "selectTeam";
   data: { teamId: HcTeamId };
 }
-/** Pre-game step 2: lock in your playing XI from the chosen team's roster, including captain + vice-captain. */
+/** Pre-game step 2: lock in your playing XI from the chosen team's roster, including captain. */
 export interface HcConfirmSquadMove {
   type: "confirmSquad";
   data: {
     playerIds: string[];
     captainId: string;
-    viceCaptainId: string;
   };
 }
 /** Pick the bowler for the upcoming over. Only the bowling player may issue this. */

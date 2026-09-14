@@ -57,10 +57,10 @@ export function DoordarshanTeamPicker({ state, selfId, players }: { state: HcSta
 }
 
 function SquadCard({
-  p, isSelected, isCaptain, isVC, onToggle, onCaptain, onVC, disabled,
+  p, isSelected, isCaptain, onToggle, onCaptain, disabled,
 }: {
-  p: HcPlayerProfile; isSelected: boolean; isCaptain: boolean; isVC: boolean;
-  onToggle: () => void; onCaptain: () => void; onVC: () => void; disabled: boolean;
+  p: HcPlayerProfile; isSelected: boolean; isCaptain: boolean;
+  onToggle: () => void; onCaptain: () => void; disabled: boolean;
 }) {
   return (
     <div
@@ -77,7 +77,6 @@ function SquadCard({
       {isSelected && (
         <div className="flex gap-1 mt-1.5">
           <button onClick={(e) => { e.stopPropagation(); onCaptain(); }} className="font-crt text-[11px] px-1.5 rounded-sm" style={{ background: isCaptain ? DD.amber : "rgba(217,138,61,0.12)", color: isCaptain ? "#1A0F04" : DD.amber, border: `1px solid ${DD.amber}` }}>C</button>
-          <button onClick={(e) => { e.stopPropagation(); onVC(); }} className="font-crt text-[11px] px-1.5 rounded-sm" style={{ background: isVC ? DD.teal : "rgba(74,140,130,0.12)", color: isVC ? "#0A0705" : DD.teal, border: `1px solid ${DD.teal}` }}>VC</button>
         </div>
       )}
     </div>
@@ -109,7 +108,7 @@ export function DoordarshanSquadPicker({ state, selfId, onChangeTeam }: { state:
         <DdLabel className="mb-1.5">PLAYING XI</DdLabel>
         <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(108px, 1fr))" }}>
           {m.xi.map((p) => (
-            <SquadCard key={p.id} p={p} isSelected isCaptain={m.captainId === p.id} isVC={m.viceCaptainId === p.id} onToggle={() => m.toggle(p.id)} onCaptain={() => m.setCaptain(p.id)} onVC={() => m.setViceCaptain(p.id)} disabled={false} />
+            <SquadCard key={p.id} p={p} isSelected isCaptain={m.captainId === p.id} onToggle={() => m.toggle(p.id)} onCaptain={() => m.setCaptain(p.id)} disabled={false} />
           ))}
         </div>
       </div>
@@ -119,7 +118,7 @@ export function DoordarshanSquadPicker({ state, selfId, onChangeTeam }: { state:
           <DdLabel className="mb-1.5">RESERVES</DdLabel>
           <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(108px, 1fr))" }}>
             {m.bench.map((p) => (
-              <SquadCard key={p.id} p={p} isSelected={false} isCaptain={false} isVC={false} onToggle={() => m.toggle(p.id)} onCaptain={() => {}} onVC={() => {}} disabled={m.selected.size >= 11} />
+              <SquadCard key={p.id} p={p} isSelected={false} isCaptain={false} onToggle={() => m.toggle(p.id)} onCaptain={() => {}} disabled={m.selected.size >= 11} />
             ))}
           </div>
         </div>
@@ -130,7 +129,7 @@ export function DoordarshanSquadPicker({ state, selfId, onChangeTeam }: { state:
           <DdLabel className="mb-1.5">ARCHIVE XI</DdLabel>
           <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(108px, 1fr))" }}>
             {m.legendsBench.map((p) => (
-              <SquadCard key={p.id} p={p} isSelected={false} isCaptain={false} isVC={false} onToggle={() => m.toggle(p.id)} onCaptain={() => {}} onVC={() => {}} disabled={m.selected.size >= 11} />
+              <SquadCard key={p.id} p={p} isSelected={false} isCaptain={false} onToggle={() => m.toggle(p.id)} onCaptain={() => {}} disabled={m.selected.size >= 11} />
             ))}
           </div>
         </div>
@@ -138,7 +137,7 @@ export function DoordarshanSquadPicker({ state, selfId, onChangeTeam }: { state:
 
       <DdButton variant="primary" disabled={!m.canConfirm} onClick={m.confirm} className="w-full">
         {!m.canConfirm
-          ? m.selected.size !== 11 ? `Select ${11 - m.selected.size} more` : !m.captainId || !m.viceCaptainId ? "Pick captain & VC" : "Fix squad"
+          ? m.selected.size !== 11 ? `Select ${11 - m.selected.size} more` : !m.captainId ? "Pick a captain" : "Fix squad"
           : "Confirm XI"}
       </DdButton>
 

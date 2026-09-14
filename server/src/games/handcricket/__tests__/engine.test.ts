@@ -35,7 +35,6 @@ function bothSelectTeams(
     data: {
       playerIds: ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10"],
       captainId: "a0",
-      viceCaptainId: "a1",
     },
   });
   engine.applyMove({
@@ -44,7 +43,6 @@ function bothSelectTeams(
     data: {
       playerIds: ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9", "b10"],
       captainId: "b0",
-      viceCaptainId: "b1",
     },
   });
 }
@@ -171,14 +169,14 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: ["x", "y"], captainId: "x", viceCaptainId: "y" },
+      data: { playerIds: ["x", "y"], captainId: "x" },
     });
     // Only one squad confirmed → still teamSelect
     expect(state(engine).phase).toBe("teamSelect");
     engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ["a", "b"], captainId: "a", viceCaptainId: "b" },
+      data: { playerIds: ["a", "b"], captainId: "a" },
     });
     const s = state(engine);
     expect(s.phase).toBe("tossCall");
@@ -194,7 +192,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: ["a", "b"], captainId: "a", viceCaptainId: "b" },
+      data: { playerIds: ["a", "b"], captainId: "a" },
     });
     expect(state(engine).teamSelections["p0"]?.squadPlayerIds).toEqual(["a", "b"]);
     // Switch country.
@@ -266,7 +264,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     const r = engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: validIds, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
+      data: { playerIds: validIds, captainId: "rohit-sharma" },
     });
     expect(r.ok).toBe(true);
   });
@@ -293,13 +291,13 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     const r0 = engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: indiaXI, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
+      data: { playerIds: indiaXI, captainId: "rohit-sharma" },
     });
     expect(r0.ok).toBe(true);
     const r1 = engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ausXI, captainId: "mitchell-marsh", viceCaptainId: "pat-cummins" },
+      data: { playerIds: ausXI, captainId: "mitchell-marsh" },
     });
     expect(r1.ok).toBe(true);
     // Caller calls even. Sum 4 → even → p0 wins toss.
@@ -750,12 +748,12 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     expect(engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: indiaSquad, captainId: "rohit-sharma", viceCaptainId: "virat-kohli" },
+      data: { playerIds: indiaSquad, captainId: "rohit-sharma" },
     }).ok).toBe(true);
     expect(engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ausSquad, captainId: "mitchell-marsh", viceCaptainId: "travis-head" },
+      data: { playerIds: ausSquad, captainId: "mitchell-marsh" },
     }).ok).toBe(true);
     engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });

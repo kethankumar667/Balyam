@@ -513,10 +513,8 @@ function PlayerCardMini({
   p,
   isSelected,
   isCaptain,
-  isVC,
   onToggle,
   onCaptain,
-  onVC,
   disabled,
   isLegend = false,
   big = false,
@@ -525,10 +523,8 @@ function PlayerCardMini({
   p: HcPlayerProfile;
   isSelected: boolean;
   isCaptain: boolean;
-  isVC: boolean;
   onToggle: () => void;
   onCaptain: () => void;
-  onVC: () => void;
   disabled: boolean;
   isLegend?: boolean;
   big?: boolean;
@@ -567,21 +563,6 @@ function PlayerCardMini({
                 lineHeight: 1,
               }}
             >C</span>
-          )}
-          {isVC && (
-            <span
-              style={{
-                border: `1.5px solid ${STAMP_A}`,
-                color: STAMP_A,
-                background: `${STAMP_A}18`,
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 800,
-                fontSize: big ? 8 : 7,
-                padding: big ? "2px 5px" : "1px 3px",
-                borderRadius: 2,
-                lineHeight: 1,
-              }}
-            >VC</span>
           )}
         </div>
 
@@ -629,27 +610,6 @@ function PlayerCardMini({
               }}
             >
               C
-              <svg width={5} height={4} viewBox="0 0 5 4" fill="none" aria-hidden>
-                <path d="M0.5 1 L2.5 3 L4.5 1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onVC(); }}
-              className="cursor-pointer inline-flex items-center"
-              style={{
-                gap: 2,
-                background: isVC ? STAMP_A : "rgba(146,64,14,0.10)",
-                color: isVC ? "#fff" : STAMP_A,
-                border: `1.5px solid ${STAMP_A}`,
-                borderRadius: 2,
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 800,
-                fontSize: leadSize,
-                padding: leadPad,
-                lineHeight: 1,
-              }}
-            >
-              VC
               <svg width={5} height={4} viewBox="0 0 5 4" fill="none" aria-hidden>
                 <path d="M0.5 1 L2.5 3 L4.5 1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -758,31 +718,21 @@ export function SquadPicker({
     return new Set(sortedSquad.slice(0, 11).map((p) => p.id));
   });
   const [captainId, setCaptainId] = useState<string | null>(null);
-  const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
 
   useEffect(() => {
     if (captainId && !selected.has(captainId)) setCaptainId(null);
-    if (viceCaptainId && !selected.has(viceCaptainId)) setViceCaptainId(null);
-  }, [selected, captainId, viceCaptainId]);
+  }, [selected, captainId]);
 
   useEffect(() => {
-    if (captainId || viceCaptainId) return;
+    if (captainId) return;
     if (selected.size === 0) return;
 
-    // Prefer the JSON-declared captain / VC when both are in the selected XI.
-    if (jsonMeta) {
-      const cap = jsonMeta.captain
-        ? profilesByName.get(jsonMeta.captain.toLowerCase())
-        : undefined;
-      const vc = jsonMeta.viceCaptain
-        ? profilesByName.get(jsonMeta.viceCaptain.toLowerCase())
-        : undefined;
+    // Prefer the JSON-declared captain when it's in the selected XI.
+    if (jsonMeta?.captain) {
+      const cap = profilesByName.get(jsonMeta.captain.toLowerCase());
       if (cap && selected.has(cap.id)) {
         setCaptainId(cap.id);
-        if (vc && selected.has(vc.id) && vc.id !== cap.id) {
-          setViceCaptainId(vc.id);
-          return;
-        }
+        return;
       }
     }
 
@@ -794,11 +744,8 @@ export function SquadPicker({
     const arOrBat = (p: HcPlayerProfile) => p.role === "allrounder" || p.role === "batter";
     const cap = tagged ?? inXI.find(arOrBat) ?? inXI[0];
     if (!cap) return;
-    const vc = inXI.find((p) => p.id !== cap.id && arOrBat(p)) ?? inXI.find((p) => p.id !== cap.id);
-    if (!vc) return;
     setCaptainId(cap.id);
-    setViceCaptainId(vc.id);
-  }, [selected, profilesById, profilesByName, jsonMeta, captainId, viceCaptainId]);
+  }, [selected, profilesById, profilesByName, jsonMeta, captainId]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -811,11 +758,10 @@ export function SquadPicker({
 
   function confirm() {
     if (selected.size !== 11) return;
-    if (!captainId || !viceCaptainId) return;
-    if (captainId === viceCaptainId) return;
+    if (!captainId) return;
     getSocket().emit("game:move", {
       type: "confirmSquad",
-      data: { playerIds: [...selected], captainId, viceCaptainId },
+      data: { playerIds: [...selected], captainId },
     });
   }
 
@@ -858,14 +804,14 @@ export function SquadPicker({
     ? "Picking squad…"
     : "Picking country…";
 
-  const hasLeaders = !!captainId && !!viceCaptainId && captainId !== viceCaptainId;
-  const ready = composition.isValid && hasLeaders;
+  const hasLeader = !!captainId;
+  const ready = composition.isValid && hasLeader;
   const confirmLabel = !composition.isValid
     ? selected.size !== 11
       ? `Select ${11 - selected.size} more player${11 - selected.size === 1 ? "" : "s"}`
       : "Fix squad composition"
-    : !hasLeaders
-    ? "Pick Captain & Vice-Captain"
+    : !hasLeader
+    ? "Pick a Captain"
     : "🖊 CONFIRM PLAYING XI";
 
   return (
@@ -938,7 +884,7 @@ export function SquadPicker({
                 🏏 Your XI ({xiPlayers.length}/11)
               </span>{" "}
               <span className="italic text-hc-ink-lt" style={{ fontSize: isDesktop ? 13 : 11 }}>
-                Click [C] / [VC] on a card to assign captain roles · Click card to drop to bench
+                Click [C] on a card to assign the captain · Click card to drop to bench
               </span>
             </div>
             {xiPlayers.length === 0 ? (
@@ -957,16 +903,8 @@ export function SquadPicker({
                     isSelected
                     big={isDesktop}
                     isCaptain={captainId === p.id}
-                    isVC={viceCaptainId === p.id}
                     onToggle={() => toggle(p.id)}
-                    onCaptain={() => {
-                      setCaptainId(p.id);
-                      if (viceCaptainId === p.id) setViceCaptainId(null);
-                    }}
-                    onVC={() => {
-                      setViceCaptainId(p.id);
-                      if (captainId === p.id) setCaptainId(null);
-                    }}
+                    onCaptain={() => setCaptainId(p.id)}
                     disabled={false}
                     style={styleMap.get(p.name.toLowerCase())}
                   />
@@ -1120,10 +1058,8 @@ export function SquadGroup({
                 p={p}
                 isSelected={isSel}
                 isCaptain={false}
-                isVC={false}
                 onToggle={() => onToggle(p.id)}
                 onCaptain={() => {}}
-                onVC={() => {}}
                 disabled={isDisabled}
                 isLegend={isLegend}
                 big={big}
