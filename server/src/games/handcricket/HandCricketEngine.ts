@@ -27,6 +27,7 @@ import {
 } from "@shared/hc-rosters.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { milestoneCrossed } from "./milestones.js";
+import { GAME_REACTIONS, pickReactionEmoji } from "@shared/reactions.js";
 
 const VALID_PICKS = [1, 2, 3, 4, 5, 6];
 
@@ -106,6 +107,11 @@ export class HandCricketEngine implements GameEngine {
   private state!: HcState;
   private pendingOptions: HcGameOptions = { ...DEFAULT_HC_OPTIONS };
   private pendingBowlerYorker = false;
+  // Tracks which ball `getBotReactionEmoji` has already considered, so a bot
+  // move that doesn't resolve a delivery (selectBowler, selectNextBatter)
+  // can't be mistaken for a fresh wicket/six from several balls ago.
+  private reactionCheckedInningsNumber = 0;
+  private reactionCheckedBallCount = 0;
 
   setOptions(options: HcGameOptions): void {
     this.pendingOptions = { ...DEFAULT_HC_OPTIONS, ...options };
@@ -983,6 +989,32 @@ export class HandCricketEngine implements GameEngine {
       }
     }
     return out;
+  }
+
+  /**
+   * A bot occasionally reacts to a wicket, a boundary, or a milestone it just
+   * caused/witnessed with its own last move — never every ball, and never a
+   * stale one. `reactionCheckedBallCount`/`reactionCheckedInningsNumber`
+   * distinguish "a fresh delivery just resolved" from "the bot's last move
+   * was selectBowler/selectNextBatter and `history`'s tail is unchanged" —
+   * without that check, a bowler-pick move right after a wicket would read
+   * the SAME already-reacted-to ball as new again.
+   */
+  getBotReactionEmoji(_botId: string): string | null {
+    if (this.state.phase !== "innings1" && this.state.phase !== "innings2") return null;
+    const innings = this.currentInnings();
+    const isFreshBall =
+      innings.number !== this.reactionCheckedInningsNumber ||
+      innings.history.length !== this.reactionCheckedBallCount;
+    this.reactionCheckedInningsNumber = innings.number;
+    this.reactionCheckedBallCount = innings.history.length;
+    if (!isFreshBall) return null;
+
+    const lastBall = innings.history[innings.history.length - 1];
+    if (!lastBall) return null;
+    if (!lastBall.wicket && !lastBall.isBoundary && !lastBall.milestone) return null;
+    if (Math.random() >= 0.5) return null;
+    return pickReactionEmoji(GAME_REACTIONS.handcricket);
   }
 
   applyAutoMove(playerId: string): MoveResult {

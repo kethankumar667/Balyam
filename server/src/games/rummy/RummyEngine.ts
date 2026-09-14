@@ -9,6 +9,7 @@ import type {
 } from "@shared/types.js";
 import { DEFAULT_RUMMY_OPTIONS } from "@shared/types.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { GAME_REACTIONS, pickReactionEmoji } from "@shared/reactions.js";
 import { deal } from "./deck.js";
 import { validateDeclare } from "./declare.js";
 import {
@@ -859,6 +860,18 @@ export class RummyEngine implements GameEngine {
     if (!current) return [];
     if (this.s.droppedPlayers.has(current) || this.s.quitPlayers.has(current)) return [];
     return [current];
+  }
+
+  /**
+   * A bot reacts, most of the time, to a winning declare it just made with
+   * its own last move. `winnerId` is a one-time transition — it starts null
+   * and is set exactly once by the declare that ends the match — so unlike
+   * Ludo's `lastEvent` there is no staleness window to guard against here.
+   */
+  getBotReactionEmoji(botId: string): string | null {
+    if (this.s.winnerId !== botId) return null;
+    if (Math.random() >= 0.8) return null;
+    return pickReactionEmoji(GAME_REACTIONS.rummy);
   }
 
   removePlayer(playerId: string): void {

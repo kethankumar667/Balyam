@@ -146,7 +146,10 @@ function playToNaturalCompletionAgainstAutoDrivenSeat(rooms: RoomManager, winner
   try {
     for (let round = 0; round < 10; round++) {
       rooms.applyMove(winnerSocketId, "choose", { choice: "rock" });
-      vi.advanceTimersByTime(2_100);
+      // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s,
+      // including its ~15% "long think" pause) — see the sibling comment in
+      // economyIntegration.test.ts's playToNaturalCompletion.
+      vi.advanceTimersByTime(6_000);
     }
   } finally {
     Math.random = originalRandom;

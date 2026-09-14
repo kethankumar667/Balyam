@@ -774,7 +774,11 @@ describe("RoomManager — disconnect takeover", () => {
 
       // Bob explicitly submits a real valid move
       rooms.applyMove("sockB", "choose", { choice: "rock" });
-      vi.advanceTimersByTime(2_000);
+      // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s,
+      // including its ~15% "long think" pause) so Alice's auto-play choice
+      // has definitely landed — 2000ms only covered the old flat
+      // 1200-2000ms platform default this test predates.
+      vi.advanceTimersByTime(6_000);
 
       // Verify that Bob is connected, not auto-playing, and his move was accepted
       expect(bob.isConnected).toBe(true);

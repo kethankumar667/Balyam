@@ -97,7 +97,10 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       // match against a bot who reacts second always finishes.
       for (let round = 0; round < 10; round++) {
         rm.applyMove("s_alice", "choose", { choice: "rock" });
-        vi.advanceTimersByTime(2100); // clears the bot's max ~2000ms "thinking" delay, stays well under the 30s round deadline
+        // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s,
+        // including its ~15% "long think" pause), stays well under the 30s
+        // round deadline.
+        vi.advanceTimersByTime(6000);
       }
     } finally {
       Math.random = originalRandom;

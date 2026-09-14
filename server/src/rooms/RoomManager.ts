@@ -80,6 +80,8 @@ import { createEngine, getGameLimits, getGameOrientationRequirement } from "../g
 import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
+import { genericBotThinkDelayMs } from "./botPacing.js";
+import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
 import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
 import {
   sanitizePublicPresentation,
@@ -3768,7 +3770,7 @@ export class RoomManager {
     const delayMs =
       typeof engine.getBotThinkDelayMs === "function"
         ? engine.getBotThinkDelayMs()
-        : 1200 + Math.random() * 800;
+        : genericBotThinkDelayMs();
     setTimeout(() => {
       void (async () => {
         if (room.phase !== "playing") return;
@@ -3843,7 +3845,31 @@ export class RoomManager {
           }
           apply.call(engine, botId);
         }
+
+        // A genuine bot (never a takeover of a disconnected/idle human, who
+        // must never appear to "react" on that real person's behalf) gets a
+        // chance to send an emoji reaction to what it just did — the engine
+        // decides if this specific moment deserves one, or the platform
+        // rolls a small ambient chance for engines with no bespoke hook.
+        const isGenuineBot = room.players.get(botId)?.isBot === true;
+        const reactionEmoji = isGenuineBot
+          ? typeof engine.getBotReactionEmoji === "function"
+            ? engine.getBotReactionEmoji(botId)
+            : maybeAmbientBotReactionEmoji(room.game)
+          : null;
+
         this.broadcastGameState(room);
+
+        if (reactionEmoji) {
+          // Lands a beat AFTER the move's own game-state broadcast — a real
+          // player sees the outcome, then reacts; not a simultaneous flourish.
+          const reactionDelayMs = 500 + Math.random() * 700;
+          setTimeout(() => {
+            if (!this.rooms.has(room.code)) return;
+            if (room.engine !== engine) return;
+            this.broadcastBotReaction(room, botId, reactionEmoji);
+          }, reactionDelayMs);
+        }
 
         if (engine.isOver()) {
           await this.finalizeMatch(room);
@@ -5475,6 +5501,31 @@ export class RoomManager {
       fromPlayerId: player.id,
       emoji,
       targetPlayerId: validTarget,
+      ts: Date.now(),
+    });
+  }
+
+  /**
+   * Bot-originated sibling of `sendReaction` above — same broadcast tail
+   * (validate against `ALLOWED_REACTIONS`, share the identical `reactionRate`
+   * bucket so a misbehaving engine still can't spam past the human cap, emit
+   * `room:reaction`), just skipping the socket-id lookup a real player's tap
+   * needs, since a bot has no socket. Rides the exact same wire event the
+   * client already renders for a real player — no client change needed for
+   * bots to "react."
+   */
+  private broadcastBotReaction(room: Room, botId: string, emoji: string): void {
+    if (!ALLOWED_REACTIONS.has(emoji)) return;
+    const now = Date.now();
+    const bucket = (this.reactionRate.get(botId) ?? []).filter((t) => now - t < 4000);
+    if (bucket.length >= 6) return;
+    bucket.push(now);
+    this.reactionRate.set(botId, bucket);
+    this.io.to(room.code).emit("room:reaction", {
+      id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      fromPlayerId: botId,
+      emoji,
+      targetPlayerId: undefined,
       ts: Date.now(),
     });
   }

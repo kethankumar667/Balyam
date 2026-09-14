@@ -80,3 +80,17 @@ export const ALLOWED_REACTIONS: ReadonlySet<string> = new Set<string>([
   ...LEGACY_REACTIONS,
   ...Object.values(GAME_REACTIONS).flatMap((set) => set ?? []),
 ]);
+
+/**
+ * Picks one emoji at random from `pool`, falling back to the generic
+ * `QUICK_REACTIONS` set when the pool is empty or undefined (e.g. a game
+ * with no `GAME_REACTIONS` entry of its own). `rng` is injectable so callers
+ * — bot-originated reactions included — stay deterministic under test.
+ */
+export function pickReactionEmoji(
+  pool: readonly string[] | undefined,
+  rng: () => number = Math.random,
+): string {
+  const options = pool && pool.length > 0 ? pool : QUICK_REACTIONS;
+  return options[Math.floor(rng() * options.length)];
+}

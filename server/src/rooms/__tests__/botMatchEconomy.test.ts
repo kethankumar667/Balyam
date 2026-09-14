@@ -220,7 +220,10 @@ describe("Free Bot Matches Economy Rule", () => {
     try {
       for (let round = 0; round < 10 && room.phase === "playing"; round++) {
         rooms.applyMove("s_host", "choose", { choice: "rock" });
-        vi.advanceTimersByTime(2100);
+        // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s,
+        // including its ~15% "long think" pause) — 2100ms only covered the
+        // old flat 1200-2000ms platform default this test predates.
+        vi.advanceTimersByTime(6000);
       }
     } finally {
       Math.random = originalRandom;

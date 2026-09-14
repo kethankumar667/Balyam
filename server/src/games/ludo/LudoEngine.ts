@@ -14,6 +14,7 @@ import {
   travelMsFor,
 } from "@shared/ludo-pacing.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { pickReactionEmoji } from "@shared/reactions.js";
 import {
   PLAYER_COLORS_ORDER,
   STRETCH_LENGTH,
@@ -789,6 +790,23 @@ export class LudoEngine implements GameEngine {
   pendingActors(): string[] {
     if (this.s.phase !== "playing") return [];
     return [this.currentPid()];
+  }
+
+  /**
+   * A bot occasionally reacts to a capture, a token reaching home, or a win
+   * it just caused with its own last move. `lastEvent` is NOT reset on a
+   * plain roll (only `forfeit`/`noMove`/a `move` set it — see `handleRoll`
+   * and `handleMove`), so it CAN be stale after that sub-move; the `ts`
+   * freshness window rules that out without needing a separate counter.
+   */
+  getBotReactionEmoji(_botId: string): string | null {
+    const event = this.s.lastEvent;
+    if (!event) return null;
+    if (Date.now() - event.ts > 250) return null;
+    const reactive = event.kind === "capture" || event.kind === "home" || event.kind === "win";
+    if (!reactive) return null;
+    if (Math.random() >= 0.5) return null;
+    return pickReactionEmoji(undefined);
   }
 
   applyAutoMove(playerId: string): MoveResult {

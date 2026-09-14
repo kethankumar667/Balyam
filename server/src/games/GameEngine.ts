@@ -61,9 +61,23 @@ export interface GameEngine {
    * next auto-move (RoomManager.scheduleBotMoveIfNeeded). Return a fresh
    * randomized ms value each call — RoomManager calls this once per
    * scheduled sub-move, not once per game. Omit to keep the platform
-   * default (1200-2000ms, RoomManager.ts).
+   * default (genericBotThinkDelayMs, botPacing.ts — ~1000-2800ms, with an
+   * occasional longer "considering" pause).
    */
   getBotThinkDelayMs?(): number;
+
+  /**
+   * Optional: does the bot's move it JUST made (via `applyAutoMove`) deserve
+   * an emoji reaction? Called once per bot sub-move, right after
+   * `applyAutoMove` returns, only for a genuine bot seat (never a takeover
+   * of a disconnected/idle human). Return null most of the time — a bot that
+   * reacts to everything is more suspicious than one that never does.
+   * Broadcast through the same `room:reaction` pipeline a real player's tap
+   * uses (RoomManager.broadcastBotReaction), so the client needs no changes
+   * to render it. Omit entirely to opt into the platform's generic
+   * low-probability ambient reaction instead (RoomManager.ts, botReactions.ts).
+   */
+  getBotReactionEmoji?(botId: string): string | null;
 
   /**
    * Real-time support (optional).

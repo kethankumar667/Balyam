@@ -1,4 +1,5 @@
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { pickReactionEmoji } from "@shared/reactions.js";
 import type {
   Player,
   UnoCard,
@@ -1123,6 +1124,22 @@ export class UnoEngine implements GameEngine {
     }
 
     return [...actors];
+  }
+
+  /**
+   * A bot occasionally reacts to a Skip/Draw-2/Draw-4 it just dealt with its
+   * own last move. `lastHit` is reset to `actionResult.hit ?? null` on every
+   * move (see `handlePlay`), so it never needs a staleness check the way
+   * Hand Cricket's ball history does — it is always fresh relative to
+   * whichever move (bot or human) most recently ran.
+   */
+  getBotReactionEmoji(_botId: string): string | null {
+    const hit = this.state.lastHit;
+    if (!hit) return null;
+    const reactive = hit.kind === "draw4" || hit.kind === "draw2" || hit.kind === "skip";
+    if (!reactive) return null;
+    if (Math.random() >= 0.5) return null;
+    return pickReactionEmoji(undefined);
   }
 
   applyAutoMove(playerId: string): MoveResult {

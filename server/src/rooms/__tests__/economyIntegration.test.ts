@@ -140,7 +140,13 @@ function playToNaturalCompletion(rooms: RoomManager, winnerSocketId: string): vo
   try {
     for (let round = 0; round < 10; round++) {
       rooms.applyMove(winnerSocketId, "choose", { choice: "rock" });
-      vi.advanceTimersByTime(2100);
+      // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s,
+      // including its ~15% "long think" pause) — 2100ms only covered the
+      // old flat 1200-2000ms platform default this helper predates. Also
+      // matters more here than usual: Math.random is pinned to 0.8 above,
+      // which this same pacing formula reads too, deterministically landing
+      // at 2440ms — already past the old 2100ms budget on its own.
+      vi.advanceTimersByTime(6000);
     }
   } finally {
     Math.random = originalRandom;
@@ -1219,7 +1225,9 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       try {
         for (let round = 0; round < 10; round++) {
           rooms.applyMove("s_a", "choose", { choice: "rock" });
-          vi.advanceTimersByTime(2100);
+          // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s) —
+          // see playToNaturalCompletion's comment above.
+          vi.advanceTimersByTime(6000);
         }
       } finally {
         Math.random = originalRandom;
@@ -1506,7 +1514,11 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       try {
         for (let round = 0; round < 10; round++) {
           rooms.applyMove("s_g", "choose", { choice: "rock" });
-          vi.advanceTimersByTime(2100);
+          // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s) —
+          // see playToNaturalCompletion's comment above for why 2100ms (and
+          // the pinned Math.random=0.8 this pacing formula also reads) is no
+          // longer enough on its own.
+          vi.advanceTimersByTime(6000);
         }
       } finally {
         Math.random = originalRandom;
