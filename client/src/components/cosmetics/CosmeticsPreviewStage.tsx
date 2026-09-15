@@ -10,20 +10,19 @@
  * - Full WAI-ARIA tablist/tabpanel accessibility and prefers-reduced-motion support
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
   Coins,
   Check,
   RotateCw,
+  RotateCcw,
   Eye,
   Gamepad2,
   Trophy,
   Star,
   Grid,
-  Gem,
-  Flame,
 } from "lucide-react";
 import {
   type CosmeticCatalogItem,
@@ -44,7 +43,15 @@ import {
 } from "./presentationState";
 import { getRarityTokens } from "./designTokens";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { getRummyCardBackConfig, getUnoCardBackConfig } from "../../lib/cosmeticsResolver";
+import { getRummyCardBackConfig, getUnoCardBackConfig, getTokenSkinConfig } from "../../lib/cosmeticsResolver";
+import { PawnGlyph } from "../../games/ludo/PawnGlyph";
+import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
+
+/** No real seat exists at shop-preview time — every token preview shows
+ *  this one fixed "showcase" seat color, matching CosmeticsItemCard's
+ *  thumbnail, so a finish's own technique is what's being compared. */
+const TOKEN_SHOWCASE_COLOR = COLOR_HEX.blue;
+const TOKEN_SHOWCASE_COLOR_DARK = COLOR_HEX_DARK.blue;
 
 interface CosmeticsPreviewStageProps {
   item: CosmeticCatalogItem | null;
@@ -60,6 +67,7 @@ interface CosmeticsPreviewStageProps {
   onPurchase: (item: CosmeticCatalogItem) => void;
   onEquip: (item: CosmeticCatalogItem) => void;
   onUnequip: () => void;
+  onRefund: (item: CosmeticCatalogItem) => void;
 }
 
 export function CosmeticsPreviewStage({
@@ -76,6 +84,7 @@ export function CosmeticsPreviewStage({
   onPurchase,
   onEquip,
   onUnequip,
+  onRefund,
 }: CosmeticsPreviewStageProps) {
   const { playerName, avatarId } = useRoomStore();
   const displayName = playerName.trim() || "Player";
@@ -440,6 +449,24 @@ export function CosmeticsPreviewStage({
               className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-extrabold text-xs bg-zinc-900 text-zinc-500 border border-zinc-800 flex items-center justify-center gap-2 cursor-not-allowed select-none"
             >
               <span>{presentation.ctaLabel}</span>
+            </button>
+          )}
+
+          {/* Self-service refund — server is the sole authority on whether
+              the 15-minute window has actually expired; this link just
+              offers the attempt, and a rejection (WINDOW_EXPIRED,
+              NOT_REFUNDABLE, ...) surfaces through the modal's existing
+              error banner. Never shown for admin free-access or for
+              STREAK_MILESTONE/DEFAULT items, which were never paid for. */}
+          {isOwned && !isAdminUser && previewItem.unlockMethod === "COIN_PURCHASE" && (
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onRefund(previewItem)}
+              className="w-full mt-2 py-1.5 text-[11px] font-semibold text-zinc-500 hover:text-rose-400 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Refund for {previewItem.priceCoins.toLocaleString()} Coins</span>
             </button>
           )}
         </div>
@@ -969,37 +996,28 @@ function EnchantedTokenSkinPreview({
   skinId: string;
   mode: PreviewMode;
 }) {
-  const isCrown = skinId === "token_golden_crown";
-  const isFireball = skinId === "token_fireball_ludo";
-  const isNeon = skinId === "token_neon_ring";
-  const isDiamond = skinId === "token_diamond_elite";
-  const isPhoenix = skinId === "token_phoenix_wing";
+  const uid = useId().replace(/:/g, "");
+  const tokenSkin = getTokenSkinConfig(skinId);
+  const pawn = (sizeClass: string) => (
+    <div className={sizeClass}>
+      <PawnGlyph
+        main={TOKEN_SHOWCASE_COLOR}
+        dark={TOKEN_SHOWCASE_COLOR_DARK}
+        tokenSkin={tokenSkin}
+        uid={uid}
+      />
+    </div>
+  );
 
   if (mode === "HOME_BASE") {
     return (
       <div className="flex flex-col items-center justify-center">
         {/* Yard Mockup */}
         <div className="w-44 h-44 rounded-full bg-amber-950/40 border-4 border-amber-500/40 p-3 grid grid-cols-2 grid-rows-2 gap-3 items-center justify-items-center shadow-2xl relative">
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-amber-500/80 border-2 border-white flex items-center justify-center shadow-md">
-            {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-            {isDiamond && <Gem className="w-4 h-4 text-white" />}
-            {isPhoenix && <Flame className="w-4 h-4 text-white" />}
-          </div>
+          {pawn("w-9 h-11")}
+          {pawn("w-9 h-11")}
+          {pawn("w-9 h-11")}
+          {pawn("w-9 h-11")}
         </div>
         <span className="text-[10px] font-mono text-zinc-400 mt-2">
           Home Base Yard View
@@ -1017,13 +1035,7 @@ function EnchantedTokenSkinPreview({
             24
           </div>
           <div className="w-14 h-14 rounded-xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center shadow-lg relative">
-            <div className="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-md">
-              {isCrown && <Crown className="w-4 h-4 text-amber-950" />}
-              {isFireball && <div className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />}
-              {isNeon && <div className="w-5 h-5 rounded-full border border-cyan-300" />}
-              {isDiamond && <Gem className="w-4 h-4 text-cyan-100" />}
-              {isPhoenix && <Flame className="w-4 h-4 text-orange-100" />}
-            </div>
+            {pawn("w-10 h-12")}
           </div>
           <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-500 text-xs font-mono font-bold">
             26
@@ -1039,32 +1051,7 @@ function EnchantedTokenSkinPreview({
   // INSPECT (Default)
   return (
     <div className="flex flex-col items-center justify-center relative">
-      <div className="relative flex flex-col items-center justify-center">
-        {isCrown && (
-          <Crown className="w-12 h-12 text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.9)] mb-1" />
-        )}
-        {isFireball && (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-600 via-orange-500 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(244,63,94,0.9)] mb-1" />
-        )}
-        {isNeon && (
-          <div className="w-12 h-12 rounded-full border-4 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,1)] mb-1" />
-        )}
-        {isDiamond && (
-          <div className="w-12 h-12 flex items-center justify-center mb-1">
-            <Gem className="w-11 h-11 text-cyan-200 drop-shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
-          </div>
-        )}
-        {isPhoenix && (
-          <div className="w-12 h-12 flex items-center justify-center mb-1">
-            <Flame className="w-11 h-11 text-orange-400 animate-pulse drop-shadow-[0_0_20px_rgba(251,146,60,0.9)]" />
-          </div>
-        )}
-
-        {/* Sculpted Pawn Base */}
-        <div className="w-20 h-28 bg-gradient-to-b from-amber-500 via-amber-600 to-amber-800 rounded-t-full rounded-b-2xl border-2 border-amber-300 shadow-2xl flex flex-col items-center justify-end pb-2">
-          <div className="w-16 h-3 rounded-full bg-amber-900/60" />
-        </div>
-      </div>
+      {pawn("w-24 h-32")}
       <div className="w-24 h-4 rounded-[100%] bg-black/60 blur-md mt-2" />
     </div>
   );

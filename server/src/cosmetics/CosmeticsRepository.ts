@@ -47,6 +47,16 @@ export class CosmeticsDebitUnsupportedError extends Error {
   }
 }
 
+/** Mirrors `CosmeticsDebitUnsupportedError` for the refund credit direction. */
+export class CosmeticsCreditUnsupportedError extends Error {
+  constructor(identityId: string) {
+    super(
+      `COSMETICS_CREDIT_UNSUPPORTED: the active economy repository has no creditWallet for ${identityId} — refusing to revoke a cosmetic without an authoritative coin credit.`,
+    );
+    this.name = "CosmeticsCreditUnsupportedError";
+  }
+}
+
 export interface PurchaseCosmeticInput {
   userId: string;
   cosmeticId: string;
@@ -56,6 +66,30 @@ export interface PurchaseCosmeticInput {
 export interface PurchaseCosmeticResult {
   applied: boolean;
   code: "PURCHASED" | "ALREADY_OWNED" | "INSUFFICIENT_FUNDS" | "INVALID_COSMETIC" | "IDEMPOTENCY_MISMATCH" | "ERROR";
+  cosmeticId: string;
+  walletBalance?: string;
+  message?: string;
+}
+
+/** How long after a coin purchase a self-service refund remains available. */
+export const REFUND_WINDOW_MS = 15 * 60 * 1000;
+
+export interface RefundCosmeticInput {
+  userId: string;
+  cosmeticId: string;
+  idempotencyKey: string;
+}
+
+export interface RefundCosmeticResult {
+  applied: boolean;
+  code:
+    | "REFUNDED"
+    | "NOT_OWNED"
+    | "NOT_REFUNDABLE"
+    | "WINDOW_EXPIRED"
+    | "INVALID_COSMETIC"
+    | "IDEMPOTENCY_MISMATCH"
+    | "ERROR";
   cosmeticId: string;
   walletBalance?: string;
   message?: string;
@@ -78,6 +112,15 @@ export interface CosmeticsRepository {
    * stores persistent entitlement and purchase record.
    */
   purchaseCosmetic(input: PurchaseCosmeticInput): Promise<PurchaseCosmeticResult>;
+
+  /**
+   * Executes atomic self-service cosmetic refund: verifies ownership and
+   * COIN_PURCHASE source, checks account-scoped idempotency, verifies the
+   * refund window has not expired, credits wallet, writes ledger, revokes
+   * the entitlement, and unequips the item from every scope it was equipped
+   * in. See docs/cosmetics/REFUND_RULES.md.
+   */
+  refundCosmetic(input: RefundCosmeticInput): Promise<RefundCosmeticResult>;
 
   /** Equips a cosmetic into a (category, game_scope) slot */
   equipCosmetic(

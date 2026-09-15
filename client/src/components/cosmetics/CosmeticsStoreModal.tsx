@@ -87,6 +87,7 @@ export function CosmeticsStoreModal() {
     selectScope,
     selectItem,
     purchaseItem,
+    refundItem,
     equipItem,
     unequipItem,
   } = useCosmeticsStore();
@@ -180,6 +181,16 @@ export function CosmeticsStoreModal() {
     if (result.success || result.code === "PURCHASED") {
       AudioManager.play(AUDIO.REWARD_COIN);
       HapticsManager.trigger("reward");
+    }
+  };
+
+  // Handle self-service refund with audio/haptics confirmation
+  const handleRefund = async (item: CosmeticCatalogItem) => {
+    HapticsManager.trigger("subtle");
+    const result = await refundItem(item.id);
+    if (result.success && result.code === "REFUNDED") {
+      AudioManager.play(AUDIO.UI_CLICK);
+      HapticsManager.trigger("subtle");
     }
   };
 
@@ -382,6 +393,7 @@ export function CosmeticsStoreModal() {
             onPurchase={handlePurchase}
             onEquip={handleEquip}
             onUnequip={handleUnequip}
+            onRefund={handleRefund}
           />
         </div>
 

@@ -112,6 +112,90 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     bundledAssetKey: "dice-dragon-scale",
     isDefault: false,
   },
+  {
+    id: "dice_rosewood_carved",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-rosewood-carved",
+    isDefault: false,
+  },
+  {
+    id: "dice_onyx_noir",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-onyx-noir",
+    isDefault: false,
+  },
+  {
+    id: "dice_brushed_platinum",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-brushed-platinum",
+    isDefault: false,
+  },
+  {
+    id: "dice_white_marble",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-white-marble",
+    isDefault: false,
+  },
+  {
+    id: "dice_electric_indigo",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-electric-indigo",
+    isDefault: false,
+  },
+  {
+    id: "dice_crystal_clear",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-crystal-clear",
+    isDefault: false,
+  },
+  {
+    id: "dice_ruby_glass",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-ruby-glass",
+    isDefault: false,
+  },
+  {
+    id: "dice_azure_glass",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-azure-glass",
+    isDefault: false,
+  },
+  {
+    id: "dice_amethyst_glass",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-amethyst-glass",
+    isDefault: false,
+  },
+  {
+    id: "dice_starlit_obsidian",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-starlit-obsidian",
+    isDefault: false,
+  },
+  {
+    id: "dice_gilded_marble",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-gilded-marble",
+    isDefault: false,
+  },
+  {
+    id: "dice_hammered_gold",
+    category: "DICE_SKIN",
+    supportedScopes: ["GLOBAL", "ludo", "snl"],
+    bundledAssetKey: "dice-hammered-gold",
+    isDefault: false,
+  },
 
   // ── Token Skins (Ludo) ──
   {
@@ -154,6 +238,100 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     category: "TOKEN_SKIN",
     supportedScopes: ["ludo"],
     bundledAssetKey: "token-phoenix-wing",
+    isDefault: false,
+  },
+
+  // ── Token Skins (Ludo) — premium craftsmanship finishes, 2026-09-15.
+  // Each renders in the player's own seat color; see TokenFinishOverlay. ──
+  {
+    id: "token_finish_polished_pearl",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-polished-pearl",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_carved_grain",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-carved-grain",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_matte_noir",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-matte-noir",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_rose_glass",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-rose-glass",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_crystal_facet",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-crystal-facet",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_chrome_mirror",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-chrome-mirror",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_ice_crystal",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-ice-crystal",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_veined_marble",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-veined-marble",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_gem_cut",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-gem-cut",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_molten_core",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-molten-core",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_engraved_lattice",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-engraved-lattice",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_nebula_swirl",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-nebula-swirl",
+    isDefault: false,
+  },
+  {
+    id: "token_finish_holographic_shift",
+    category: "TOKEN_SKIN",
+    supportedScopes: ["ludo"],
+    bundledAssetKey: "token-finish-holographic-shift",
     isDefault: false,
   },
 
@@ -396,6 +574,31 @@ export function sanitizeCosmeticId(
   return def.id;
 }
 
+/**
+ * Sanity bounds for a COIN_PURCHASE item's price, per its declared rarity.
+ * Derived from the actual spread of prices already shipped across every
+ * active catalog row (see docs/cosmetics/COSMETICS_TAXONOMY.md) — deliberately
+ * wide enough to never flag a real, already-approved price, so a violation
+ * always means a genuine authoring mistake (e.g. a LEGENDARY item priced
+ * like a RARE one), not a false positive against normal pricing variance.
+ * DEFAULT and STREAK_MILESTONE items are earned, not priced, and are exempt —
+ * see `isPriceWithinRarityBand`.
+ */
+export const RARITY_PRICE_BANDS: Record<CosmeticRarity, { readonly minCoins: number; readonly maxCoins: number }> = {
+  COMMON: { minCoins: 0, maxCoins: 1000 },
+  RARE: { minCoins: 1000, maxCoins: 3000 },
+  EPIC: { minCoins: 2000, maxCoins: 4500 },
+  LEGENDARY: { minCoins: 4000, maxCoins: 11000 },
+};
+
+export function isPriceWithinRarityBand(
+  item: Pick<CosmeticCatalogItem, "priceCoins" | "rarity" | "unlockMethod">,
+): boolean {
+  if (item.unlockMethod !== "COIN_PURCHASE") return true;
+  const band = RARITY_PRICE_BANDS[item.rarity];
+  return item.priceCoins >= band.minCoins && item.priceCoins <= band.maxCoins;
+}
+
 export function sanitizeEquippedLoadout(raw: unknown): EquippedCosmeticsLoadout {
   if (!raw || typeof raw !== "object") {
     return {
@@ -570,6 +773,27 @@ export interface PurchaseCosmeticResponsePayload {
   success: boolean;
   applied?: boolean;
   code: "PURCHASED" | "ALREADY_OWNED" | "INSUFFICIENT_FUNDS" | "INVALID_COSMETIC" | "IDEMPOTENCY_MISMATCH" | "ERROR";
+  message?: string;
+  cosmeticId: string;
+  walletBalance?: string;
+}
+
+export interface RefundCosmeticRequestPayload {
+  cosmeticId: string;
+  idempotencyKey: string;
+}
+
+export interface RefundCosmeticResponsePayload {
+  success: boolean;
+  applied?: boolean;
+  code:
+    | "REFUNDED"
+    | "NOT_OWNED"
+    | "NOT_REFUNDABLE"
+    | "WINDOW_EXPIRED"
+    | "INVALID_COSMETIC"
+    | "IDEMPOTENCY_MISMATCH"
+    | "ERROR";
   message?: string;
   cosmeticId: string;
   walletBalance?: string;

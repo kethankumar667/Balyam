@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CosmeticsService } from "../CosmeticsService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { EconomyService } from "../../economy/EconomyService.js";
@@ -467,6 +467,114 @@ describe("CosmeticsService", () => {
       });
       expect(resolved.cardBacks.rummy).toBe("cardback_classic_navy"); // falls back to the real rummy default
       expect(resolved.cardBacks.uno).toBe("cardback_classic_uno"); // valid id passes through unchanged
+    });
+  });
+
+  describe("Rarity price sanity check (Foundation exit-gate gap closure)", () => {
+    it("asserts rarity pricing against the real catalog without errors", async () => {
+      await expect(cosmeticsService.assertRarityPricing()).resolves.toBeUndefined();
+    });
+  });
+
+  describe("Self-Service Refunds (15-minute window)", () => {
+    it("refunds a coin purchase, credits the wallet, revokes the entitlement, and unequips it", async () => {
+      const walletBefore = await economyService.getWallet(USER_ID);
+      const balanceBefore = BigInt(walletBefore.balance);
+
+      const purchase = await cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_purchase_1");
+      expect(purchase.applied).toBe(true);
+
+      await cosmeticsService.equipCosmetic(USER_ID, "DICE_SKIN", "GLOBAL", "dice_wooden_teak");
+      let state = await cosmeticsService.getState(USER_ID);
+      expect(state.resolved.diceSkins.GLOBAL).toBe("dice_wooden_teak");
+
+      const refund = await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_1");
+      expect(refund.success).toBe(true);
+      expect(refund.applied).toBe(true);
+      expect(refund.code).toBe("REFUNDED");
+      expect(BigInt(refund.walletBalance!)).toBe(balanceBefore);
+
+      state = await cosmeticsService.getState(USER_ID);
+      expect(state.ownedIds).not.toContain("dice_wooden_teak");
+      // Auto-unequipped back to the category default, never left dangling
+      // on a now-unowned id.
+      expect(state.resolved.diceSkins.GLOBAL).toBe("dice_classic_ivory");
+
+      const ledger = await economyService.getLedger(USER_ID, { limit: 5 });
+      const refundEntry = ledger.find((e) => e.entryType === "COSMETIC_REFUND");
+      expect(refundEntry).toBeDefined();
+      expect(refundEntry?.amount).toBe("800");
+
+      const walletAfter = await economyService.getWallet(USER_ID);
+      expect(walletAfter.balance).toBe(walletBefore.balance);
+    });
+
+    it("returns the cached result on idempotent retry without double-crediting", async () => {
+      await cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_purchase_2");
+      const res1 = await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_retry_1");
+      expect(res1.applied).toBe(true);
+      const balanceAfterFirst = res1.walletBalance;
+
+      const res2 = await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_retry_1");
+      expect(res2.applied).toBe(false);
+      expect(res2.walletBalance).toBe(balanceAfterFirst);
+
+      const wallet = await economyService.getWallet(USER_ID);
+      expect(wallet.balance).toBe(balanceAfterFirst);
+    });
+
+    it("rejects replaying a refund idempotency key with a different cosmetic ID", async () => {
+      await cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_purchase_3");
+      await cosmeticsService.purchaseCosmetic(USER_ID, "token_golden_crown", "idem_refund_purchase_3b");
+
+      await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_conflict_1");
+      const conflict = await cosmeticsService.refundCosmetic(USER_ID, "token_golden_crown", "idem_refund_conflict_1");
+
+      expect(conflict.applied).toBe(false);
+      expect(conflict.code).toBe("IDEMPOTENCY_MISMATCH");
+    });
+
+    it("rejects refunding a cosmetic the user does not own", async () => {
+      const res = await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_not_owned");
+      expect(res.applied).toBe(false);
+      expect(res.code).toBe("NOT_OWNED");
+    });
+
+    it("rejects refunding an achievement-granted (STREAK_MILESTONE) cosmetic", async () => {
+      await cosmeticsService.grantCosmeticEntitlement({
+        userId: USER_ID,
+        cosmeticId: "title_early_bird",
+        sourceType: "STREAK_MILESTONE",
+        sourceReference: "streak:cycle-0:day-7",
+      });
+
+      const res = await cosmeticsService.refundCosmetic(USER_ID, "title_early_bird", "idem_refund_streak");
+      expect(res.applied).toBe(false);
+      expect(res.code).toBe("NOT_REFUNDABLE");
+    });
+
+    it("rejects an unknown cosmetic id", async () => {
+      const res = await cosmeticsService.refundCosmetic(USER_ID, "skin_that_does_not_exist", "idem_refund_invalid");
+      expect(res.applied).toBe(false);
+      expect(res.code).toBe("INVALID_COSMETIC");
+    });
+
+    it("rejects a refund attempted after the 15-minute window has expired", async () => {
+      vi.useFakeTimers();
+      try {
+        await cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_purchase_expiry");
+        vi.advanceTimersByTime(16 * 60 * 1000);
+
+        const res = await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_expired");
+        expect(res.applied).toBe(false);
+        expect(res.code).toBe("WINDOW_EXPIRED");
+
+        // Still owned — a rejected refund must not touch the entitlement.
+        const state = await cosmeticsService.getState(USER_ID);
+        expect(state.ownedIds).toContain("dice_wooden_teak");
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

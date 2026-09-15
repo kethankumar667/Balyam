@@ -68,7 +68,8 @@ export type WalletLedgerEntryType =
   | "MATCH_REFUND"
   | "ADMIN_ADJUSTMENT"
   | "DAILY_REWARD_CREDIT"
-  | "COSMETIC_PURCHASE";
+  | "COSMETIC_PURCHASE"
+  | "COSMETIC_REFUND";
 
 /* ═══════════════════════════ Output DTOs (repository models) ════════════ */
 
@@ -367,6 +368,17 @@ export interface AdminAdjustWalletInput {
 }
 
 export interface DebitWalletInput {
+  identityId: string;
+  amountCoins: string;
+  reason: string;
+  idempotencyKey: string;
+  entryType: WalletLedgerEntryType;
+  sourceKind?: string;
+  sourceId?: string;
+}
+
+/** Mirrors `DebitWalletInput` for the credit direction (e.g. a cosmetics refund). */
+export interface CreditWalletInput {
   identityId: string;
   amountCoins: string;
   reason: string;
@@ -845,6 +857,18 @@ export interface EconomyRepository {
    */
   debitWallet?(
     input: DebitWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /**
+   * Authoritative wallet credit with ledger auditing (e.g. for a cosmetics
+   * refund). Mirrors `debitWallet`'s optionality: `SupabaseEconomyRepository`
+   * never needs this because the Supabase cosmetics refund RPC credits
+   * `coin_wallets` directly inside its own transaction, same as its purchase
+   * RPC never calls `debitWallet`. Only `InMemoryCosmeticsRepository` calls
+   * this, for its dev/test refund path.
+   */
+  creditWallet?(
+    input: CreditWalletInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
   /**

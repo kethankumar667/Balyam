@@ -20,7 +20,7 @@
  * - Reduced-motion safe: all continuous animation is gated by `motion-safe:`.
  */
 
-import React from "react";
+import React, { useId } from "react";
 import {
   Coins,
   Check,
@@ -31,11 +31,8 @@ import {
   Layers,
   Dice5,
   Palette,
-  CircleDot,
   Eye,
   Award,
-  Flame,
-  Gem,
 } from "lucide-react";
 import {
   type CosmeticCatalogItem,
@@ -50,7 +47,16 @@ import {
   getRummyCardBackConfig,
   getUnoCardBackConfig,
   getAvatarAuraConfig,
+  getTokenSkinConfig,
 } from "../../lib/cosmeticsResolver";
+import { PawnGlyph } from "../../games/ludo/PawnGlyph";
+import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
+
+/** No real seat exists at shop-browse time — every token thumbnail/preview
+ *  shows this one fixed "showcase" seat color so a purchased finish's own
+ *  technique (not an arbitrary demo hue) is what the shopper compares. */
+const TOKEN_SHOWCASE_COLOR = COLOR_HEX.blue;
+const TOKEN_SHOWCASE_COLOR_DARK = COLOR_HEX_DARK.blue;
 
 interface CosmeticsItemCardProps {
   item: CosmeticCatalogItem;
@@ -280,20 +286,7 @@ function CollectibleThumbnail({
   }
 
   if (category === "TOKEN_SKIN") {
-    return (
-      <div className="w-10 h-11 rounded-xl bg-stone-100 dark:bg-zinc-850 border border-stone-300 dark:border-zinc-700 flex items-center justify-center shrink-0 relative shadow-sm">
-        <CircleDot className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-        {item.id === "token_golden_crown" && (
-          <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400 absolute -top-1" />
-        )}
-        {item.id === "token_phoenix_wing" && (
-          <Flame className="w-3 h-3 text-rose-600 dark:text-rose-400 absolute -top-1" />
-        )}
-        {item.id === "token_diamond_elite" && (
-          <Gem className="w-3 h-3 text-cyan-600 dark:text-cyan-300 absolute -top-1" />
-        )}
-      </div>
-    );
+    return <TokenSkinThumbnail skinId={item.id} isSelected={isSelected} />;
   }
 
   if (category === "CARD_BACK") {
@@ -367,6 +360,32 @@ function CollectibleThumbnail({
       ) : (
         <Award className="w-5 h-5 text-amber-400" />
       )}
+    </div>
+  );
+}
+
+/**
+ * Renders the real `PawnGlyph` at the fixed showcase seat color — sourced
+ * from the SAME registry Token.tsx renders from, so a premium finish's
+ * craftsmanship actually shows here instead of a flat neutral circle. A
+ * separate component (not a branch inline in `CollectibleThumbnail`) so
+ * `useId()` can be called unconditionally at its own top level.
+ */
+function TokenSkinThumbnail({ skinId, isSelected }: { skinId: string; isSelected: boolean }) {
+  const uid = useId().replace(/:/g, "");
+  const tokenSkin = getTokenSkinConfig(skinId);
+  return (
+    <div
+      className={`w-10 h-11 rounded-xl bg-stone-100 dark:bg-zinc-850 border border-stone-300 dark:border-zinc-700 flex items-center justify-center shrink-0 shadow-sm transition-transform ${isSelected ? "scale-105" : ""}`}
+    >
+      <div className="w-8 h-9">
+        <PawnGlyph
+          main={TOKEN_SHOWCASE_COLOR}
+          dark={TOKEN_SHOWCASE_COLOR_DARK}
+          tokenSkin={tokenSkin}
+          uid={uid}
+        />
+      </div>
     </div>
   );
 }

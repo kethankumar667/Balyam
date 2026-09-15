@@ -410,6 +410,7 @@ describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => 
         onPurchase={onPurchase}
         onEquip={onEquip}
         onUnequip={onUnequip}
+        onRefund={vi.fn()}
       />
     );
 
@@ -447,6 +448,7 @@ describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => 
         onPurchase={onPurchase}
         onEquip={vi.fn()}
         onUnequip={vi.fn()}
+        onRefund={vi.fn()}
       />
     );
 
@@ -476,6 +478,7 @@ describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => 
         onPurchase={vi.fn()}
         onEquip={vi.fn()}
         onUnequip={vi.fn()}
+        onRefund={vi.fn()}
       />
     );
 
@@ -501,6 +504,7 @@ describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => 
         onPurchase={vi.fn()}
         onEquip={vi.fn()}
         onUnequip={vi.fn()}
+        onRefund={vi.fn()}
       />
     );
 

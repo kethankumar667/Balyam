@@ -14,6 +14,8 @@ import {
   type CosmeticsRepository,
   type PurchaseCosmeticInput,
   type PurchaseCosmeticResult,
+  type RefundCosmeticInput,
+  type RefundCosmeticResult,
 } from "./CosmeticsRepository.js";
 import { type PostgrestClient } from "../persistence/postgrest.js";
 
@@ -104,6 +106,14 @@ export class SupabaseCosmeticsRepository implements CosmeticsRepository {
 
   async purchaseCosmetic(input: PurchaseCosmeticInput): Promise<PurchaseCosmeticResult> {
     return this.postgrest.rpc<PurchaseCosmeticResult>("purchase_cosmetic_internal", {
+      p_user_id: input.userId,
+      p_cosmetic_id: input.cosmeticId,
+      p_idempotency_key: input.idempotencyKey,
+    });
+  }
+
+  async refundCosmetic(input: RefundCosmeticInput): Promise<RefundCosmeticResult> {
+    return this.postgrest.rpc<RefundCosmeticResult>("refund_cosmetic_internal", {
       p_user_id: input.userId,
       p_cosmetic_id: input.cosmeticId,
       p_idempotency_key: input.idempotencyKey,
