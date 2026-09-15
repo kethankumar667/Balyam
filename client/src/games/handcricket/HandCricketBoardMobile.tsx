@@ -17,7 +17,6 @@ import {
   HcNotebookHeader,
   HcCountryPickerNotebook,
   HcFranchisePickerNotebook,
-  HcPhaseCard,
 } from "./hc-notebook";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
@@ -137,14 +136,14 @@ export default function HandCricketBoardMobile({
             </div>
           )}
           {(state.phase === "innings1" || state.phase === "innings2") && (
-            <HcPhaseCard>
+            <div className="w-full">
               <InningsPhase state={state} selfId={sid} players={players} registerCardRef={reactions.registerCardRef} />
-            </HcPhaseCard>
+            </div>
           )}
           {state.phase === "finished" && (
-            <HcPhaseCard>
+            <div className="w-full">
               <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
-            </HcPhaseCard>
+            </div>
           )}
         </div>
       )}

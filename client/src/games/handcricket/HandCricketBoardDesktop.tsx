@@ -13,32 +13,27 @@ import {
   type HandCricketBoardProps,
 } from "./hc-shared";
 import {
-  HcNotebookPage,
   HcNotebookHeader,
   HcCountryPickerNotebook,
   HcFranchisePickerNotebook,
-  HcPhaseCard,
   HcScrapbookDoodles,
 } from "./hc-notebook";
+import {
+  SpiralBinderRings,
+  PaperClipDoodle,
+} from "../dotsboxes/dotsboxes-theme";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 
 /**
  * Hand Cricket — desktop notebook shell.
  *
- * Every phase is a full-viewport ruled-parchment sheet (spiral binding on the
- * left) with a compact header across the top. Post-teamSelect phases render
- * their active content in a single centred column with a comfortable max-width;
- * the surrounding page margins are filled by a non-interactive scrapbook doodle
- * layer (stumps, ball, trophy, bat, backpack, stars) so the sheet reads like a
- * hand-decorated notebook page instead of a small card floating in dead space.
- *
- *  • teamSelect  — full-width parchment country/franchise/squad picker.
- *  • toss / tossChoice — small card, vertically centred on the sheet.
- *  • innings / finished — taller content, top-aligned and scrollable.
- *
- * The header ("HAND CRICKET" + format pills + matchup chips + room rail + Leave)
- * spans full width at the top of every phase.
+ * Designed with the nostalgic classroom desk ambience established in Dots & Boxes
+ * and Word Building:
+ *  - Rich wooden desk texture with ambient radial dots
+ *  - 96vh spiral-bound notebook book canvas with binder rings and paper clips
+ *  - Single-layer authentic parchment layout (zero nested box-in-a-box clutter)
+ *  - Controlled flex scrolling with zero page body overflow
  */
 export default function HandCricketBoardDesktop({
   state,
@@ -102,45 +97,66 @@ export default function HandCricketBoardDesktop({
   }
 
   return (
-    <HcNotebookPage className="font-['Architects_Daughter',cursive]">
-      {/* ── Full-width header ── */}
-      <HcNotebookHeader
-        state={state}
-        players={players}
-        selfId={sid}
-        roomCode={roomCode}
-        roomPhase={roomPhase}
-        messages={messages}
-        onHelp={() => tut.setOpen(true)}
-        onLeave={onLeave}
-      />
+    <div className="fixed inset-0 h-screen max-h-screen w-full bg-[#1C1814] text-stone-900 flex items-center justify-center p-2 sm:p-4 overflow-hidden select-none font-['Patrick_Hand',cursive]">
+      {/* Wooden Desk Texture Background */}
+      <div className="fixed inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#451A03_1px,transparent_1px)] [background-size:16px_16px]" />
 
-      {/* ── Phase content ── */}
-      {isTeamSelect ? (
-        teamSelectContent()
-      ) : state.phase === "tossCall" ? (
-        <PhaseStage centred maxWidth={620}>
-          <TossCallPhase state={state} selfId={sid} players={players} />
-        </PhaseStage>
-      ) : state.phase === "toss" ? (
-        <PhaseStage centred maxWidth={620}>
-          <TossPhase state={state} selfId={sid} players={players} />
-        </PhaseStage>
-      ) : state.phase === "tossChoice" ? (
-        <PhaseStage centred maxWidth={620}>
-          <TossChoicePhase state={state} selfId={sid} players={players} />
-        </PhaseStage>
-      ) : state.phase === "innings1" || state.phase === "innings2" ? (
-        <PhaseStage maxWidth={980} compact>
-          <HcPhaseCard>
-            <InningsPhase state={state} selfId={sid} players={players} isDesktop registerCardRef={reactions.registerCardRef} />
-          </HcPhaseCard>
-        </PhaseStage>
-      ) : state.phase === "finished" ? (
-        <PhaseStage maxWidth={1160}>
-          <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
-        </PhaseStage>
-      ) : null}
+      {/* ── Main Spiral Notebook Page ── */}
+      <div className="relative z-10 w-full max-w-[1440px] h-[96vh] bg-[#FCF8EE] rounded-3xl border-2 border-[#D7C9B1] shadow-[0_25px_60px_rgba(0,0,0,0.6)] flex overflow-hidden font-['Architects_Daughter',cursive]">
+        {/* Paper Clips on top edge */}
+        <PaperClipDoodle className="absolute -top-3 left-24 w-6 h-12 z-30 opacity-90 hidden sm:block pointer-events-none" />
+        <PaperClipDoodle className="absolute -top-3 right-44 w-6 h-12 z-30 opacity-90 hidden lg:block pointer-events-none" />
+
+        {/* Left Spiral Wire Ring Binder */}
+        <div className="w-10 sm:w-12 h-full bg-[#EFE9DA] border-r-2 border-[#D7C9B1] flex-shrink-0 flex items-center justify-center relative shadow-inner">
+          <SpiralBinderRings orientation="vertical" count={16} />
+        </div>
+
+        {/* Notebook Content Area */}
+        <div className="flex-1 h-full flex flex-col overflow-hidden relative">
+          {/* Red Margin Line */}
+          <div className="absolute top-0 bottom-0 left-4 sm:left-6 w-0.5 bg-rose-400/40 pointer-events-none z-0" />
+
+          {/* ── Full-width header ── */}
+          <HcNotebookHeader
+            state={state}
+            players={players}
+            selfId={sid}
+            roomCode={roomCode}
+            roomPhase={roomPhase}
+            messages={messages}
+            onHelp={() => tut.setOpen(true)}
+            onLeave={onLeave}
+          />
+
+          {/* ── Phase content ── */}
+          <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden">
+            {isTeamSelect ? (
+              teamSelectContent()
+            ) : state.phase === "tossCall" ? (
+              <PhaseStage centred maxWidth={620}>
+                <TossCallPhase state={state} selfId={sid} players={players} />
+              </PhaseStage>
+            ) : state.phase === "toss" ? (
+              <PhaseStage centred maxWidth={620}>
+                <TossPhase state={state} selfId={sid} players={players} />
+              </PhaseStage>
+            ) : state.phase === "tossChoice" ? (
+              <PhaseStage centred maxWidth={620}>
+                <TossChoicePhase state={state} selfId={sid} players={players} />
+              </PhaseStage>
+            ) : state.phase === "innings1" || state.phase === "innings2" ? (
+              <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden p-3 sm:p-5 font-notebook">
+                <InningsPhase state={state} selfId={sid} players={players} isDesktop registerCardRef={reactions.registerCardRef} />
+              </div>
+            ) : state.phase === "finished" ? (
+              <PhaseStage maxWidth={1160}>
+                <MatchSummary state={state} players={players} selfId={sid} onContinue={onScorecardClose} />
+              </PhaseStage>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       <HcCelebrationLayer state={state} players={players} selfId={sid} />
 
@@ -154,7 +170,7 @@ export default function HandCricketBoardDesktop({
       )}
 
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
-    </HcNotebookPage>
+    </div>
   );
 }
 

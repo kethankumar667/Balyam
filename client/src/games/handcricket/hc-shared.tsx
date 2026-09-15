@@ -531,93 +531,98 @@ function PlayerCardMini({
   /** Rich player metadata from the JSON files (batting/bowling style). */
   style?: JsonPlayerStyle;
 }) {
-  const nameSize = big ? 14 : 11;
-  const leadSize = big ? 10 : 8;
   const isDisabledLook = disabled && !isSelected;
-  const leadPad = big ? "2px 7px" : "1px 5px";
   return (
-    <PaperCard
-      tone={isSelected ? "selected" : isLegend ? "legend" : "default"}
-      disabled={isDisabledLook}
-      interactive={!isDisabledLook}
-      onClick={() => { if (!disabled || isSelected) onToggle(); }}
-      ariaPressed={isSelected}
-      ariaLabel={p.name}
-      className="min-w-0"
+    <div
+      onClick={() => {
+        if (!disabled || isSelected) onToggle();
+      }}
+      role="button"
+      tabIndex={isDisabledLook ? -1 : 0}
+      aria-pressed={isSelected}
+      aria-label={p.name}
+      className={cn(
+        "relative rounded-xl transition-all select-none text-left flex flex-col justify-between overflow-hidden",
+        big ? "p-3 min-h-[96px]" : "p-2 min-h-[80px]",
+        isDisabledLook
+          ? "opacity-40 bg-stone-100 border border-stone-200 cursor-not-allowed"
+          : isCaptain
+          ? "bg-gradient-to-br from-amber-50 to-amber-100/90 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/40 cursor-pointer hover:shadow-lg active:scale-98"
+          : isSelected
+          ? "bg-white/95 border-2 border-emerald-600/80 shadow-xs hover:border-emerald-600 cursor-pointer hover:shadow-sm active:scale-98"
+          : "bg-white/80 border border-stone-300 hover:border-stone-400 shadow-xs cursor-pointer hover:bg-white active:scale-98",
+      )}
     >
-      <div className={cn("relative", big ? "px-2.5 py-2" : "px-2 py-1.5")}>
-        {/* Badge row: sketch role square + captain/VC status indicators */}
-        <div className="flex items-center gap-1 flex-wrap" style={{ marginBottom: big ? 3 : 2 }}>
-          <SketchRoleBadge role={p.role} big={big} />
-          {isCaptain && (
-            <span
-              style={{
-                border: `1.5px solid ${GOLD}`,
-                color: GOLD,
-                background: `${GOLD}18`,
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 800,
-                fontSize: big ? 8 : 7,
-                padding: big ? "2px 5px" : "1px 3px",
-                borderRadius: 2,
-                lineHeight: 1,
-              }}
-            >C</span>
+      <div>
+        {/* Badge row: Role badge + Captain status */}
+        <div className="flex items-center justify-between gap-1 mb-1">
+          <div className="flex items-center gap-1 flex-wrap">
+            <SketchRoleBadge role={p.role} big={big} />
+            {isLegend && (
+              <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-700 bg-amber-100/90 border border-amber-300 px-1 py-0.5 rounded leading-none">
+                ★ Legend
+              </span>
+            )}
+          </div>
+          {isSelected && (
+            <div className="flex items-center gap-1">
+              {isCaptain ? (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-black tracking-wide text-white bg-amber-600 px-1.5 py-0.5 rounded-full shadow-xs">
+                  ★ C
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCaptain();
+                  }}
+                  className="text-[9px] font-bold text-amber-800 bg-amber-100/90 hover:bg-amber-200 border border-amber-400 px-1.5 py-0.5 rounded-full transition cursor-pointer"
+                  title="Make Captain"
+                >
+                  Make C
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Player name */}
-        <div className="font-hand font-bold text-hc-ink leading-tight" style={{ fontSize: nameSize }}>
-          {isLegend ? `★ ${p.name}` : p.name}
+        {/* Player Name */}
+        <div
+          className={cn(
+            "font-hand font-black text-stone-900 leading-snug tracking-tight",
+            big ? "text-sm sm:text-base" : "text-xs sm:text-sm",
+          )}
+        >
+          {p.name}
         </div>
 
-        {/* Batting / bowling style from JSON — compact ink-pencil metadata */}
+        {/* Batting / Bowling style */}
         {style && (style.battingStyle || style.bowlingStyle) && (
-          <div
-            className="text-hc-ink-lt mt-0.5 leading-tight truncate"
-            style={{ fontSize: big ? 9 : 7.5, fontFamily: "'Kalam', cursive" }}
-          >
+          <div className="text-[10px] sm:text-[11px] text-stone-500 font-['Kalam',cursive] leading-tight truncate mt-0.5">
             {style.battingStyle}
             {style.battingStyle && style.bowlingStyle ? " · " : ""}
             {style.bowlingStyle}
           </div>
         )}
+      </div>
 
-        {/* Pencil checkmark in top-right corner for XI members */}
+      {/* Bottom status / tap helper */}
+      <div className="flex items-center justify-between pt-1 mt-1.5 border-t border-stone-200/60 text-[10px] font-['Kalam',cursive]">
+        {isSelected ? (
+          <span className="text-emerald-700 font-bold flex items-center gap-1">
+            <PencilCheck size={10} color="#15803d" /> In XI
+          </span>
+        ) : (
+          <span className="text-stone-400 font-semibold">+ Tap to add</span>
+        )}
         {isSelected && (
-          <span className="absolute top-1 right-1">
-            <PencilCheck size={big ? 13 : 11} />
+          <span className="text-rose-600/70 hover:text-rose-700 text-[9px] font-semibold">
+            Drop
           </span>
         )}
-
-        {/* Captain / VC sketch-rectangle toggles with hand-drawn dropdown caret */}
-        {isSelected && (
-          <div className="flex gap-1" style={{ marginTop: big ? 4 : 3 }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); onCaptain(); }}
-              className="cursor-pointer inline-flex items-center"
-              style={{
-                gap: 2,
-                background: isCaptain ? GOLD : "rgba(197,150,58,0.10)",
-                color: isCaptain ? "#fff" : GOLD,
-                border: `1.5px solid ${GOLD}`,
-                borderRadius: 2,
-                fontFamily: "'Kalam', cursive",
-                fontWeight: 800,
-                fontSize: leadSize,
-                padding: leadPad,
-                lineHeight: 1,
-              }}
-            >
-              C
-              <svg width={5} height={4} viewBox="0 0 5 4" fill="none" aria-hidden>
-                <path d="M0.5 1 L2.5 3 L4.5 1" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        )}
       </div>
-    </PaperCard>
+    </div>
   );
 }
 
@@ -636,25 +641,10 @@ export function SquadPicker({
    *  wider cards — there's far more room than on a phone. */
   isDesktop?: boolean;
 }) {
-  // `myTeamId`/`roster` intentionally stay possibly-null here — the two
-  // guards that used to sit right here (`if (!mySelection?.teamId) return
-  // null;` / `if (!roster) return <Roster unavailable>`) ran BEFORE the hooks
-  // below, so the render where a team gets picked (0 hooks → many hooks), or
-  // one where the roster briefly fails to resolve (many hooks → 0 hooks),
-  // violated the Rules of Hooks and crashed React with "Rendered fewer/more
-  // hooks than during the previous render." Hooks must run unconditionally on
-  // every render, so the guards are now placed after all of them, with safe
-  // fallbacks feeding the hooks in between — the same shape `useHcSquad`
-  // (the broadcast skin's equivalent picker) already uses correctly.
   const mySelection = state.teamSelections[selfId];
   const myTeamId = mySelection?.teamId;
   const roster = myTeamId ? getRosterFor(myTeamId, state.options.format) : null;
 
-  // When the shared `HC_COUNTRIES` pool is empty (server-side), the canonical
-  // JSON files in `client/src/games/handcricket/data` are the source of truth
-  // for international teams such as Bangladesh and Afghanistan. If the
-  // shared roster is empty, build a client-side squad from the JSON players
-  // so the UI can present a selectable XI.
   const _jsonPlayersForTeam = myTeamId ? getJsonPlayers(myTeamId, state.options.format) : [];
   let rosterToUse = roster;
   if (roster && roster.squad.length === 0 && _jsonPlayersForTeam.length > 0) {
@@ -687,11 +677,6 @@ export function SquadPicker({
     return m;
   }, [sortedSquad, sortedExtras]);
 
-  /**
-   * Name-keyed index (lowercase) for matching the JSON's plain string lists
-   * (playingXI, captain, viceCaptain) to their typed HcPlayerProfile entries.
-   * Extras are included so legends listed as captain elsewhere can still match.
-   */
   const profilesByName = useMemo(() => {
     const m = new Map<string, HcPlayerProfile>();
     for (const p of sortedSquad) m.set(p.name.toLowerCase(), p);
@@ -699,15 +684,12 @@ export function SquadPicker({
     return m;
   }, [sortedSquad, sortedExtras]);
 
-  /** JSON player-style lookup keyed by lowercase name for card display. */
   const styleMap = useMemo(
     () => (myTeamId ? getJsonPlayerStyleMap(myTeamId, state.options.format) : new Map()),
     [myTeamId, state.options.format],
   );
 
   const [selected, setSelected] = useState<Set<string>>(() => {
-    // Pre-select the JSON's declared playing XI when available.
-    // Falls back to first 11 by role order if the JSON lookup yields < 11 matches.
     if (jsonMeta && jsonMeta.playingXI.length > 0) {
       const ids = jsonMeta.playingXI
         .map((name) => profilesByName.get(name.toLowerCase()))
@@ -727,7 +709,6 @@ export function SquadPicker({
     if (captainId) return;
     if (selected.size === 0) return;
 
-    // Prefer the JSON-declared captain when it's in the selected XI.
     if (jsonMeta?.captain) {
       const cap = profilesByName.get(jsonMeta.captain.toLowerCase());
       if (cap && selected.has(cap.id)) {
@@ -736,7 +717,6 @@ export function SquadPicker({
       }
     }
 
-    // Fallback: derive from role-sorted XI (existing logic).
     const inXI = [...selected]
       .map((id) => profilesById.get(id))
       .filter((p): p is HcPlayerProfile => p !== undefined);
@@ -781,7 +761,6 @@ export function SquadPicker({
   );
   const composition = useMemo(() => evaluateSquadComposition(xiPlayers), [xiPlayers]);
 
-  // All hooks have run — safe to branch now.
   if (!myTeamId) return null;
   if (!roster) return (
     <div style={{ color: "#991b1b", fontFamily: "'Kalam', cursive", fontSize: 14 }}>Roster unavailable.</div>
@@ -815,180 +794,139 @@ export function SquadPicker({
     : "🖊 CONFIRM PLAYING XI";
 
   return (
-    <div
-      className="relative rounded-sm overflow-visible font-notebook"
-      style={{
-        background: PAPER_L,
-        boxShadow: "5px 9px 28px rgba(74,44,18,0.22), 0 2px 6px rgba(74,44,18,0.10)",
-      }}
-    >
-      {/* Double-lined hand-sketched border: dual draws the outer ink stroke
-          plus a lighter inner pencil ghost line ~9px inside it. */}
-      <RoughBorder
-        dual
-        stroke="rgba(46,40,25,0.78)"
-        strokeWidth={2.8}
-        roughness={2.4}
-        bowing={1.5}
-        padding={3}
-        seed={99}
-      />
-      {/* Tape strips — mismatched tilts (-3° / +4°) sell the physical illusion */}
-      <TapeStrip />
-      <TapeStrip right />
-      <div className="relative z-[1] px-5 pt-5 pb-3.5">
-        {/* Change team — top-right */}
-        <PaperButton
-          variant="ghost"
-          size="sm"
-          onClick={onChangeTeam}
-          className="absolute -top-1 right-0 font-kalam normal-case tracking-normal"
-        >
-          ← Change Team
-        </PaperButton>
-
-        <HcSketchHeading size={isDesktop ? "26px" : "clamp(14px,1.8vw,20px)"}>
-          Pick Your XI — {teamDisplay}
-        </HcSketchHeading>
-
-        {/* Status + composition checklist */}
-        <div className="flex justify-center items-center flex-wrap gap-2.5 my-2.5 mb-3">
-          <span className="font-hand text-hc-ink-lt" style={{ fontSize: isDesktop ? 14 : 12 }}>
-            Selected <strong className="text-hc-ink">{selected.size}/11</strong>
-            {" · "}Format: <strong className="text-hc-ink">{state.options.format.toUpperCase()}</strong>
-            {" · "}{oppName}: <em>{oppStatus}</em>
-          </span>
-          <CompositionChecklist composition={composition} />
+    <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden px-4 md:px-8 py-3 md:py-4 font-notebook">
+      {/* ── Top Bar ── */}
+      <div className="flex items-center justify-between gap-3 mb-2 flex-shrink-0">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl font-black text-[#1E3A8A] font-['Architects_Daughter',cursive]">
+              Pick Your XI — {teamDisplay}
+            </span>
+          </div>
         </div>
 
-        {/* Sections — the shell owns the single scroll container, so this
-            block flows naturally (no nested scrollbar / double-scroll). */}
-        <div>
-          {/* YOUR XI — ruled-paper panel */}
-          <PaperPanel
-            pad="none"
-            className="mb-2.5 pl-12 pr-2.5 py-2.5"
-            style={{
-              backgroundImage: [
-                "repeating-linear-gradient(to bottom, transparent, transparent 26px, rgba(50,80,160,0.13) 26px, rgba(50,80,160,0.13) 27px)",
-                "linear-gradient(to right, rgba(180,30,30,0.32) 0px, rgba(180,30,30,0.32) 1.5px, transparent 1.5px)",
-              ].join(", "),
-              backgroundPosition: "0 15px, 48px 0",
-            }}
-          >
-            <div className="mb-2">
-              <span
-                className="font-sketch font-bold text-hc-ink tracking-[0.03em]"
-                style={{ fontSize: isDesktop ? 19 : 15 }}
-              >
-                🏏 Your XI ({xiPlayers.length}/11)
-              </span>{" "}
-              <span className="italic text-hc-ink-lt" style={{ fontSize: isDesktop ? 13 : 11 }}>
-                Click [C] on a card to assign the captain · Click card to drop to bench
+        <button
+          type="button"
+          onClick={onChangeTeam}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-300 bg-white/80 hover:bg-white text-stone-700 text-xs font-bold font-sans transition shadow-xs cursor-pointer active:scale-95 flex-shrink-0"
+        >
+          <span>← Change Team</span>
+        </button>
+      </div>
+
+      {/* ── Status & Composition Strip ── */}
+      <div className="flex items-center justify-between flex-wrap gap-2 py-2 px-3.5 mb-3 rounded-2xl border border-stone-200/90 bg-white/70 shadow-xs flex-shrink-0">
+        <div className="flex items-center gap-3 text-xs sm:text-sm font-hand text-stone-600">
+          <span>
+            Selected: <strong className="text-stone-900 font-bold">{selected.size}/11</strong>
+          </span>
+          <span>•</span>
+          <span>
+            Format: <strong className="text-stone-900 font-bold">{state.options.format.toUpperCase()}</strong>
+          </span>
+          <span>•</span>
+          <span>
+            {oppName}: <em className="text-stone-700 font-medium">{oppStatus}</em>
+          </span>
+        </div>
+
+        <CompositionChecklist composition={composition} />
+      </div>
+
+      {/* ── Main Scrollable Ledger Area ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-4 pb-20">
+        {/* Playing XI Section */}
+        <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3.5 sm:p-5 shadow-xs">
+          <div className="flex items-baseline justify-between gap-2 mb-3">
+            <div>
+              <span className="font-sketch font-bold text-[#1E3A8A] tracking-wide text-base sm:text-lg">
+                🏏 Your Playing XI ({xiPlayers.length}/11)
+              </span>
+              <span className="ml-2 text-xs text-stone-500 font-['Kalam',cursive] italic">
+                Click [Make C] to assign Captain · Tap card to drop to bench
               </span>
             </div>
-            {xiPlayers.length === 0 ? (
-              <div className="italic text-hc-ink-lt py-1" style={{ fontSize: isDesktop ? 13 : 11 }}>
-                No players selected yet.
-              </div>
-            ) : (
-              <div
-                className="grid"
-                style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${isDesktop ? 156 : 116}px, 1fr))`, gap: isDesktop ? 10 : 8 }}
-              >
-                {xiPlayers.map((p) => (
-                  <PlayerCardMini
-                    key={p.id}
-                    p={p}
-                    isSelected
-                    big={isDesktop}
-                    isCaptain={captainId === p.id}
-                    onToggle={() => toggle(p.id)}
-                    onCaptain={() => setCaptainId(p.id)}
-                    disabled={false}
-                    style={styleMap.get(p.name.toLowerCase())}
-                  />
-                ))}
-              </div>
-            )}
-          </PaperPanel>
+          </div>
 
-          {/* BENCH */}
-          {benchPlayers.length > 0 && (
-            <SquadGroup
-              title={`🪑 Bench (${benchPlayers.length})`}
-              subtitle="Current squad members not in your XI"
-              players={benchPlayers}
-              selected={selected}
-              onToggle={toggle}
-              disabledHint={selected.size >= 11}
-              big={isDesktop}
-              styleMap={styleMap}
-            />
+          {xiPlayers.length === 0 ? (
+            <div className="italic text-stone-400 py-3 text-center text-sm">
+              No players selected yet. Tap players from the bench below to add.
+            </div>
+          ) : (
+            <div
+              className="grid gap-2 sm:gap-3"
+              style={{
+                gridTemplateColumns: `repeat(auto-fill, minmax(${isDesktop ? 160 : 124}px, 1fr))`,
+              }}
+            >
+              {xiPlayers.map((p) => (
+                <PlayerCardMini
+                  key={p.id}
+                  p={p}
+                  isSelected
+                  big={isDesktop}
+                  isCaptain={captainId === p.id}
+                  onToggle={() => toggle(p.id)}
+                  onCaptain={() => setCaptainId(p.id)}
+                  disabled={false}
+                  style={styleMap.get(p.name.toLowerCase())}
+                />
+              ))}
+            </div>
           )}
-
-          {/* LEGENDS */}
-          {legendsBench.length > 0 && (
-            <SquadGroup
-              title={`★ Legends (${legendsBench.length})`}
-              subtitle="Popular past players from this team's history"
-              players={legendsBench}
-              selected={selected}
-              onToggle={toggle}
-              disabledHint={selected.size >= 11}
-              isLegend
-              big={isDesktop}
-              styleMap={styleMap}
-            />
-          )}
-
-          {/* Confirm button */}
-          {/* Captain's seal — the confirm button is the single most important
-              tap in the squad-building flow. When ready it gets a bold green
-              fill + larger shadow. motion.button + whileTap gives the
-              physical "signing the scorecard" press sensation. */}
-          <motion.button
-            onClick={confirm}
-            disabled={!ready}
-            whileTap={ready ? { scale: 0.965, y: 1 } : {}}
-            className={cn(
-              "relative mt-3 w-full inline-flex items-center justify-center gap-2.5 rounded-sm overflow-visible",
-              isDesktop ? "py-4 text-base" : "py-3 text-[15px]",
-            )}
-            style={{
-              fontFamily: "'Architects Daughter', 'Kalam', cursive",
-              fontWeight: 800,
-              letterSpacing: "0.09em",
-              background: ready
-                ? "linear-gradient(170deg, rgba(22,101,52,0.16) 0%, rgba(22,101,52,0.09) 100%)"
-                : "rgba(0,0,0,0.02)",
-              color: ready ? STAMP_G : "#9ca3af",
-              border: "none",
-              cursor: ready ? "pointer" : "not-allowed",
-              opacity: ready ? 1 : 0.45,
-              boxShadow: ready ? "0 3px 14px rgba(22,101,52,0.18)" : "none",
-            }}
-          >
-            <RoughBorder
-              stroke={ready ? "rgba(22,101,52,0.94)" : "rgba(0,0,0,0.18)"}
-              strokeWidth={ready ? 3.2 : 2.0}
-              roughness={2.2}
-              bowing={1.4}
-              padding={2}
-              seed={7}
-            />
-            <span className="relative z-[1] inline-flex items-center gap-2.5">
-              <BatDoodleInline color={ready ? STAMP_G : "#9ca3af"} />
-              {confirmLabel.replace("🖊 ", "")}
-            </span>
-          </motion.button>
         </div>
+
+        {/* Bench Section */}
+        {benchPlayers.length > 0 && (
+          <SquadGroup
+            title={`🪑 Bench (${benchPlayers.length})`}
+            subtitle="Available squad members not currently in your XI"
+            players={benchPlayers}
+            selected={selected}
+            onToggle={toggle}
+            disabledHint={selected.size >= 11}
+            big={isDesktop}
+            styleMap={styleMap}
+          />
+        )}
+
+        {/* Legends Section */}
+        {legendsBench.length > 0 && (
+          <SquadGroup
+            title={`★ Legends (${legendsBench.length})`}
+            subtitle="Iconic franchise & national legends"
+            players={legendsBench}
+            selected={selected}
+            onToggle={toggle}
+            disabledHint={selected.size >= 11}
+            isLegend
+            big={isDesktop}
+            styleMap={styleMap}
+          />
+        )}
+      </div>
+
+      {/* ── Fixed Bottom Tape Confirmation Bar ── */}
+      <div className="absolute bottom-3 left-4 right-4 md:left-8 md:right-8 z-20 flex justify-center pointer-events-none">
+        <motion.button
+          type="button"
+          onClick={confirm}
+          disabled={!ready}
+          whileTap={ready ? { scale: 0.97, y: 1 } : {}}
+          className={cn(
+            "pointer-events-auto w-full max-w-md py-3 px-6 rounded-2xl font-black text-base uppercase tracking-wider transition-all shadow-xl flex items-center justify-center gap-2.5 font-['Architects_Daughter',cursive]",
+            ready
+              ? "bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer active:scale-98 shadow-emerald-950/40 ring-2 ring-emerald-500/50"
+              : "bg-stone-300 text-stone-500 cursor-not-allowed opacity-80",
+          )}
+        >
+          <BatDoodleInline color={ready ? "#ffffff" : "#78716c"} />
+          <span>{confirmLabel.replace("🖊 ", "")}</span>
+        </motion.button>
       </div>
     </div>
   );
 }
-
-// LeadershipPicker removed — captain/VC are now set via [C]/[VC] buttons on XI cards.
 
 export function CompositionChecklist({
   composition,
@@ -996,8 +934,8 @@ export function CompositionChecklist({
   composition: ReturnType<typeof evaluateSquadComposition>;
 }) {
   const items = [
-    { label: "11 Players",      ok: composition.total === 11,        count: `${composition.total}/11` },
-    { label: "Keeper",          ok: composition.keepers >= 1,        count: `${composition.keepers}` },
+    { label: "11 Players", ok: composition.total === 11, count: `${composition.total}/11` },
+    { label: "Keeper", ok: composition.keepers >= 1, count: `${composition.keepers}` },
     { label: "Bowling options", ok: composition.bowlingOptions >= 4, count: `${composition.bowlingOptions}/4` },
   ];
   return (
@@ -1008,6 +946,7 @@ export function CompositionChecklist({
     </div>
   );
 }
+
 export function SquadGroup({
   title,
   subtitle,
@@ -1033,21 +972,23 @@ export function SquadGroup({
   styleMap?: Map<string, JsonPlayerStyle>;
 }) {
   return (
-    <PaperPanel tone={isLegend ? "legend" : "soft"} pad="sm" className="mb-2.5">
-      <div className="flex items-baseline justify-between gap-2 mb-2 pl-0.5">
-        <h4 className="font-sketch font-bold text-hc-ink m-0 tracking-[0.03em]" style={{ fontSize: big ? 19 : 15 }}>
+    <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/90 p-3.5 sm:p-4 shadow-xs">
+      <div className="flex items-baseline justify-between gap-2 mb-2.5">
+        <h4 className="font-sketch font-bold text-stone-800 m-0 tracking-wide text-sm sm:text-base">
           {title}
         </h4>
         {subtitle && (
-          <span className="italic text-hc-ink-lt" style={{ fontSize: big ? 13 : 11 }}>{subtitle}</span>
+          <span className="italic text-stone-500 text-xs font-['Kalam',cursive]">{subtitle}</span>
         )}
       </div>
       {players.length === 0 ? (
-        <div className="italic text-hc-ink-lt px-0.5 py-1" style={{ fontSize: big ? 13 : 11 }}>Empty.</div>
+        <div className="italic text-stone-400 py-2 text-xs">Empty.</div>
       ) : (
         <div
-          className="grid"
-          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${big ? 156 : 116}px, 1fr))`, gap: big ? 10 : 8 }}
+          className="grid gap-2 sm:gap-2.5"
+          style={{
+            gridTemplateColumns: `repeat(auto-fill, minmax(${big ? 160 : 124}px, 1fr))`,
+          }}
         >
           {players.map((p) => {
             const isSel = selected.has(p.id);
@@ -1069,7 +1010,7 @@ export function SquadGroup({
           })}
         </div>
       )}
-    </PaperPanel>
+    </div>
   );
 }
 
@@ -2367,6 +2308,137 @@ function NextBatterPicker({
   );
 }
 
+/** Format balls count into overs string (e.g. 7 balls -> "1.1"). */
+function oversFromBalls(balls: number): string {
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
+}
+
+/**
+ * Shown when an over ends or innings starts without a current bowler.
+ * Lets the fielding captain pick their bowler within format constraints.
+ */
+function BowlerPicker({
+  state,
+  innings,
+  selfId,
+  players: _players,
+  isDesktop = false,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  selfId: string;
+  players: Player[];
+  isDesktop?: boolean;
+}) {
+  const isBowlingPlayer = innings.bowlingPlayerId === selfId;
+  const sel = state.teamSelections[innings.bowlingPlayerId];
+  const squad = sel?.squadPlayerIds ?? [];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const allProfiles: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const profileOf = (id: string) => allProfiles.find((p) => p.id === id) ?? null;
+
+  const cap = HC_MAX_OVERS_PER_BOWLER[state.options.format] ?? 2;
+
+  function pick(playerId: string) {
+    getSocket().emit("game:move", { type: "selectBowler", data: { playerId } });
+  }
+
+  if (!isBowlingPlayer) {
+    return (
+      <div className="rounded-xl text-center py-4 font-notebook w-full bg-amber-50/80 border border-amber-200 shadow-xs">
+        <div className="text-2xl mb-1">🎯</div>
+        <div className="font-bold text-stone-800 text-sm font-hand">
+          Opponent is choosing their bowler…
+        </div>
+      </div>
+    );
+  }
+
+  const bowlerCandidates = squad.filter((id) => {
+    const p = profileOf(id);
+    return p?.role === "bowler" || p?.role === "allrounder";
+  });
+  const displayBowlerIds = bowlerCandidates.length > 0 ? bowlerCandidates : squad;
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden w-full"
+      style={{
+        background: "rgba(245,233,196,0.95)",
+        border: "2px solid rgba(46,40,25,0.55)",
+        boxShadow: "0 4px 16px rgba(74,44,18,0.18)",
+      }}
+    >
+      <div
+        className="px-4 py-2.5 flex items-center justify-between"
+        style={{ background: "rgba(30,58,138,0.08)", borderBottom: "1px solid rgba(46,40,25,0.22)" }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[20px]">🎯</span>
+          <div>
+            <div
+              className="font-extrabold text-hc-ink tracking-[0.04em]"
+              style={{ fontSize: isDesktop ? 16 : 14, fontFamily: "'Kalam', cursive" }}
+            >
+              Choose your next bowler
+            </div>
+            <div className="text-hc-ink-lt" style={{ fontSize: isDesktop ? 12 : 10, fontFamily: "'Kalam', cursive" }}>
+              Max {cap} ov/bowler • Cannot bowl consecutive overs
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="p-3 grid"
+        style={{
+          gridTemplateColumns: `repeat(auto-fill, minmax(${isDesktop ? 150 : 120}px, 1fr))`,
+          gap: isDesktop ? 10 : 8,
+        }}
+      >
+        {displayBowlerIds.map((profileId) => {
+          const isLastBowler = profileId === innings.lastBowlerId;
+          const p = profileOf(profileId);
+          if (!p) return null;
+          const overs = (innings.bowlerStats[profileId]?.balls ?? 0) / 6;
+          const maxed = cap != null && overs >= cap;
+          const disabled = isLastBowler || maxed;
+
+          return (
+            <button
+              key={profileId}
+              onClick={() => !disabled && pick(profileId)}
+              disabled={disabled}
+              className={cn(
+                "rounded-md text-left transition relative cursor-pointer",
+                disabled ? "opacity-40 cursor-not-allowed" : "hover:scale-[1.03] active:scale-[0.97]"
+              )}
+              style={{
+                background: "rgba(245,233,196,0.6)",
+                border: "1.5px solid rgba(46,40,25,0.35)",
+                padding: isDesktop ? "8px 10px" : "6px 8px",
+              }}
+            >
+              <SketchRoleBadge role={p.role} big={isDesktop} />
+              <div
+                className="font-bold text-hc-ink leading-tight mt-1 truncate"
+                style={{ fontSize: isDesktop ? 14 : 12, fontFamily: "'Kalam', cursive" }}
+              >
+                {p.name}
+              </div>
+              <div
+                className="text-hc-ink-lt mt-0.5 text-xs font-hand"
+              >
+                {oversFromBalls(innings.bowlerStats[profileId]?.balls ?? 0)} ov {isLastBowler ? "(just bowled)" : maxed ? "(maxed)" : ""}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function InningsPhase({
   state,
   selfId,
@@ -2478,215 +2550,176 @@ export function InningsPhase({
   const needsBowler = innings.currentBowlerId == null;
 
   return (
-    <div className={isDesktop ? "space-y-2.5" : "space-y-3"}>
-      <TurnTimeWarning
-        deadline={state.turnDeadline}
-        active={!needsBowler && !innings.needsNextBatterPick && myPick == null && myRole != null}
-      />
-      <Scoreboard
-        state={state}
-        innings={innings}
-        target={target}
-        players={players}
-        big={isDesktop}
-        registerCardRef={registerCardRef}
-      />
-
-      {isPowerplayOver && innings.currentBowlerId != null && (
-        <PowerplayBanner
-          overNumber={upcomingOver}
-          totalPowerplayOvers={innings.powerplayOvers}
-          restrictedBalls={restrictedThisOver}
-          currentBallInOver={upcomingBall}
-          bowlerRestricted={bowlerRestricted}
-          myRole={myRole}
+    <div className={cn("w-full", isDesktop ? "flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden" : "space-y-3")}>
+      {/* ── Left Column: Live Match Pitch & Duel Arena ── */}
+      <div className={cn("flex flex-col justify-between overflow-y-auto space-y-3", isDesktop ? "flex-1 min-h-0 pr-1" : "w-full")}>
+        <TurnTimeWarning
+          deadline={state.turnDeadline}
+          active={!needsBowler && !innings.needsNextBatterPick && myPick == null && myRole != null}
         />
-      )}
 
-      <CurrentPlayersBar state={state} innings={innings} selfId={selfId} players={players} big={isDesktop} registerCardRef={registerCardRef} />
-
-      {/* Wicket + new batter announcement — shows for 4 s when a wicket falls. */}
-      {wicketAnnounce && (
-        <WicketNotification
-          outName={wicketAnnounce.outName}
-          inName={wicketAnnounce.inName}
-          onDismiss={() => setWicketAnnounce(null)}
+        <Scoreboard
+          state={state}
+          innings={innings}
+          target={target}
+          players={players}
+          big={isDesktop}
+          registerCardRef={registerCardRef}
+          isPowerplayOver={isPowerplayOver}
+          upcomingOver={upcomingOver}
         />
-      )}
 
-      {/* Ripped-parchment ribbon — dynamically announces the local player's
-          role, floating between the scoreboard and the action card below. */}
-      {myRole && !needsBowler && (
-        <HcRibbonBanner tone={myRole === "batter" ? "batting" : "bowling"}>
-          You are {myRole === "batter" ? "Batting" : "Bowling"}
-        </HcRibbonBanner>
-      )}
+        <CurrentPlayersBar
+          state={state}
+          innings={innings}
+          selfId={selfId}
+          players={players}
+          big={isDesktop}
+          registerCardRef={registerCardRef}
+        />
 
-      {/* Batting order panel — batting player can shuffle upcoming batters. */}
-      {isBattingPlayer && !innings.endedReason && (
-        <div>
-          <button
-            onClick={() => setBattingOrderOpen((o) => !o)}
-            className="w-full flex items-center justify-between text-xs font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-lg transition"
-            style={{
-              background: battingOrderOpen ? "rgba(22,101,52,0.14)" : "rgba(22,101,52,0.07)",
-              border: "1px solid rgba(22,101,52,0.28)",
-              color: "#166534",
-            }}
-          >
-            <span>🏏 Batting Order</span>
-            <span style={{ fontSize: 10 }}>{battingOrderOpen ? "▲ hide" : "▼ show"}</span>
-          </button>
-          {battingOrderOpen && (
-            <BattingOrderPanel innings={innings} state={state} />
-          )}
-        </div>
-      )}
-
-      {/* ── Action area ─────────────────────────────────────────────────
-           Three mutually-exclusive states:
-           1. Wicket pending → show NextBatterPicker (batting) / waiting (bowling)
-           2. No bowler yet  → show BowlerPicker
-           3. Live ball      → show RevealStage + PickRow                       */}
-      {innings.needsNextBatterPick ? (
-        <>
-          {reveal && (
-            <RevealStage
-              reveal={reveal}
-              innings={innings}
-              myId={selfId}
-              oppLockedIn={oppLockedIn}
-              myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
-              big={isDesktop}
-            />
-          )}
-          {isBattingPlayer ? (
-            <NextBatterPicker state={state} innings={innings} big={isDesktop} />
-          ) : (
-            <div
-              className="rounded-lg text-center py-5 font-notebook"
-              style={{
-                background: "rgba(245,233,196,0.6)",
-                border: "1.5px dashed rgba(46,40,25,0.45)",
-                fontFamily: "'Kalam', cursive",
-              }}
-            >
-              <div className="text-[28px] mb-1">🏏</div>
-              <div className="font-bold text-hc-ink" style={{ fontSize: isDesktop ? 16 : 14 }}>
-                Opponent is selecting the next batter…
-              </div>
-            </div>
-          )}
-          {/* Concurrent: bowling player may also need to pick a bowler
-               if the wicket fell on the last ball of an over. */}
-          {needsBowler && (
-            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
-          )}
-        </>
-      ) : needsBowler ? (
-        <>
-          {reveal && (
-            <RevealStage
-              reveal={reveal}
-              innings={innings}
-              myId={selfId}
-              oppLockedIn={oppLockedIn}
-              myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
-              big={isDesktop}
-            />
-          )}
-          <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
-        </>
-      ) : (
-        <>
-          <RevealStage
-            reveal={reveal}
-            innings={innings}
-            myId={selfId}
-            oppLockedIn={oppLockedIn}
-            myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
-            big={isDesktop}
+        {/* Wicket Announcement */}
+        {wicketAnnounce && (
+          <WicketNotification
+            outName={wicketAnnounce.outName}
+            inName={wicketAnnounce.inName}
+            onDismiss={() => setWicketAnnounce(null)}
           />
+        )}
 
-          {canBowlYorker && myPick == null && (
-            <div
-              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
-              style={{ background: "rgba(153,27,27,0.08)", border: "1.5px dashed rgba(153,27,27,0.4)" }}
-            >
-              <div>
-                <div className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "#991b1b" }}>
-                  🔥 Mystery Yorker available
-                </div>
-                <div className="text-[11px] font-bold text-hc-ink-lt">
-                  4, 5 or 6 against it = instant out
-                </div>
-              </div>
-              <button
-                onClick={() => setIsYorkerToggled((v) => !v)}
-                className="rounded-md px-3 py-1.5 text-xs font-extrabold uppercase tracking-wider transition"
-                style={
-                  isYorkerToggled
-                    ? { background: "#991b1b", color: "#FBF5E0" }
-                    : { background: "transparent", border: "1.5px solid #991b1b", color: "#991b1b" }
-                }
+        {/* Duel & Action Arena */}
+        <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3 sm:p-4 shadow-xs relative flex flex-col items-center justify-center">
+          {/* Role Ribbon Tag */}
+          {myRole && !needsBowler && (
+            <div className="mb-2">
+              <span
+                className={cn(
+                  "px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider font-sketch border shadow-xs inline-flex items-center gap-1.5",
+                  myRole === "batter"
+                    ? "bg-blue-100/90 text-blue-900 border-blue-300"
+                    : "bg-amber-100/90 text-amber-900 border-amber-300",
+                )}
               >
-                {isYorkerToggled ? "Armed" : "Arm Yorker"}
-              </button>
-            </div>
-          )}
-          {myRole === "batter" && isPowerplayOver && !yorkerUsedThisOver && myPick == null && (
-            <div
-              className="rounded-lg px-3 py-2 text-[11px] font-bold"
-              style={{ background: "rgba(153,27,27,0.08)", border: "1.5px dashed rgba(153,27,27,0.4)", color: "#991b1b" }}
-            >
-              🔥 Bowler has a Mystery Yorker ready — play 4, 5 or 6 against it and you're out. Defend with 1, 2 or 3.
+                {myRole === "batter" ? "🏏 YOU ARE BATTING" : "⚾ YOU ARE BOWLING"}
+              </span>
             </div>
           )}
 
-          <PickRow
-            disabled={myPick != null || reveal !== null}
-            onPick={(n) => pick(n, isYorkerToggled)}
-            selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
-            allowedPicks={
-              myRole === "bowler"
-                ? isYorkerToggled
-                  ? [1, 2, 3]
-                  : allowedBowlerPicks
-                : [1, 2, 3, 4, 5, 6]
-            }
-            restrictedNote={
-              isYorkerToggled
-                ? "Mystery Yorker — line must be 1, 2 or 3"
-                : bowlerRestricted
-                ? "Powerplay — bowler limited to 1, 2 or 3"
-                : null
-            }
-            big={isDesktop}
-          />
+          {innings.needsNextBatterPick ? (
+            <>
+              {reveal && (
+                <RevealStage
+                  reveal={reveal}
+                  innings={innings}
+                  myId={selfId}
+                  oppLockedIn={oppLockedIn}
+                  myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                  big={isDesktop}
+                  players={players}
+                />
+              )}
+              {isBattingPlayer ? (
+                <NextBatterPicker state={state} innings={innings} big={isDesktop} />
+              ) : (
+                <div className="rounded-xl text-center py-4 font-notebook w-full bg-amber-50/80 border border-amber-200">
+                  <div className="text-2xl mb-1">🏏</div>
+                  <div className="font-bold text-stone-800 text-sm font-hand">
+                    Opponent is selecting the next batter…
+                  </div>
+                </div>
+              )}
+              {needsBowler && (
+                <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
+              )}
+            </>
+          ) : needsBowler ? (
+            <>
+              {reveal && (
+                <RevealStage
+                  reveal={reveal}
+                  innings={innings}
+                  myId={selfId}
+                  oppLockedIn={oppLockedIn}
+                  myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                  big={isDesktop}
+                  players={players}
+                />
+              )}
+              <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
+            </>
+          ) : (
+            <>
+              <RevealStage
+                reveal={reveal}
+                innings={innings}
+                myId={selfId}
+                oppLockedIn={oppLockedIn}
+                myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                big={isDesktop}
+                players={players}
+              />
 
-          <div
-            className="flex justify-center gap-6 text-hc-ink-lt"
-            style={{ fontSize: isDesktop ? 14 : 12 }}
-          >
-            <div>You: {myPick != null && typeof myPick === "number" && myPick > 0 ? "✓ locked" : "thinking…"}</div>
-            <div>Opp: {oppLockedIn ? "✓ locked" : "thinking…"}</div>
-          </div>
-        </>
-      )}
+              {canBowlYorker && myPick == null && (
+                <div className="my-2 flex items-center justify-between gap-3 w-full max-w-sm px-3 py-1.5 rounded-xl bg-red-50 border border-red-200">
+                  <span className="text-xs font-bold text-red-900">🔥 Mystery Yorker Available</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsYorkerToggled((v) => !v)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-black uppercase transition cursor-pointer",
+                      isYorkerToggled ? "bg-red-700 text-white" : "bg-red-100 text-red-800 border border-red-300",
+                    )}
+                  >
+                    {isYorkerToggled ? "Armed ✓" : "Arm Yorker"}
+                  </button>
+                </div>
+              )}
 
-      {target != null && (
-        <div
-          className="text-center text-hc-amber font-bold"
-          style={{ fontSize: isDesktop ? 15 : 13 }}
-        >
-          Target: <b>{target}</b> · Need {Math.max(0, target - innings.runs)} more from{" "}
-          {Math.max(0, innings.overs * 6 - innings.balls)} balls
+              {myRole === "batter" && isPowerplayOver && !yorkerUsedThisOver && myPick == null && (
+                <div className="my-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-amber-50 border border-amber-200 text-amber-900 text-center">
+                  ✨ Powerplay: Bowler can only pick 1-3. Pick 4, 5, or 6 to score big!
+                </div>
+              )}
+
+              <PickRow
+                disabled={myPick != null || reveal !== null}
+                onPick={(n) => pick(n, isYorkerToggled)}
+                selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                allowedPicks={myRole === "bowler" ? (isYorkerToggled ? [1, 2, 3] : allowedBowlerPicks) : [1, 2, 3, 4, 5, 6]}
+                restrictedNote={isYorkerToggled ? "Mystery Yorker — Line 1, 2 or 3" : bowlerRestricted ? "Powerplay — Bowler limited to 1, 2 or 3" : null}
+                big={isDesktop}
+              />
+            </>
+          )}
         </div>
-      )}
+      </div>
 
-      {innings.history.length > 0 && (
-        <RecentBalls history={innings.history.slice(-12)} />
-      )}
+      {/* ── Right Column (Desktop) / Bottom (Mobile): Match Scorecard Ledger & Timeline ── */}
+      <div className={cn("flex flex-col gap-3", isDesktop ? "w-80 lg:w-88 xl:w-96 flex-shrink-0 min-h-0 overflow-y-auto" : "w-full")}>
+        {/* Recent Balls / This Over */}
+        <RecentBalls history={innings.history} currentOver={upcomingOver} />
+
+        {/* Batting Scorecard Ledger */}
+        <BattingScorecardLedger state={state} innings={innings} players={players} />
+
+        {/* Batting Order Panel (when batting) */}
+        {isBattingPlayer && !innings.endedReason && (
+          <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3 shadow-xs">
+            <button
+              onClick={() => setBattingOrderOpen((o) => !o)}
+              className="w-full flex items-center justify-between text-xs font-black uppercase tracking-wider text-emerald-800 font-sketch cursor-pointer"
+            >
+              <span>🏏 Batting Order</span>
+              <span>{battingOrderOpen ? "▲" : "▼"}</span>
+            </button>
+            {battingOrderOpen && (
+              <div className="mt-2">
+                <BattingOrderPanel innings={innings} state={state} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2702,33 +2735,18 @@ export function CurrentPlayersBar({
   state: HcState;
   innings: HcInnings;
   selfId: string;
-  /** Real (human) players — used to resolve the controlling account's avatar
-   *  for the bowling seat. Striker/non-striker names come from the roster
-   *  (fictional cricketers), not from an account, so they don't get one. */
   players: Player[];
   big?: boolean;
-  /** From useSeatReactions() — registers the bowling seat (the one real
-   *  account shown here) as a reaction anchor. Striker/non-striker never get
-   *  one, same reasoning as the avatar note above. Optional so this still
-   *  renders fine anywhere reactions aren't wired up. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
 }) {
   const battingSelection = state.teamSelections[innings.battingPlayerId];
   const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
   const battingTeamId = battingSelection?.teamId;
   const bowlingTeamId = bowlingSelection?.teamId;
-  const battingRoster = battingTeamId
-    ? getRosterFor(battingTeamId, state.options.format)
-    : null;
-  const bowlingRoster = bowlingTeamId
-    ? getRosterFor(bowlingTeamId, state.options.format)
-    : null;
-  const allBattingPlayers: HcPlayerProfile[] = battingRoster
-    ? [...battingRoster.squad, ...battingRoster.extras]
-    : [];
-  const allBowlingPlayers: HcPlayerProfile[] = bowlingRoster
-    ? [...bowlingRoster.squad, ...bowlingRoster.extras]
-    : [];
+  const battingRoster = battingTeamId ? getRosterFor(battingTeamId, state.options.format) : null;
+  const bowlingRoster = bowlingTeamId ? getRosterFor(bowlingTeamId, state.options.format) : null;
+  const allBattingPlayers: HcPlayerProfile[] = battingRoster ? [...battingRoster.squad, ...battingRoster.extras] : [];
+  const allBowlingPlayers: HcPlayerProfile[] = bowlingRoster ? [...bowlingRoster.squad, ...bowlingRoster.extras] : [];
   const lookupBatter = (id: string) => allBattingPlayers.find((p) => p.id === id);
   const lookupBowler = (id: string) => allBowlingPlayers.find((p) => p.id === id);
 
@@ -2746,379 +2764,69 @@ export function CurrentPlayersBar({
 
   const batterStatSub = (stats: typeof strikerStats) =>
     stats
-      ? `${stats.runs}${stats.isOut ? "" : "*"} (${stats.balls})${
-          stats.fours ? ` · ${stats.fours}×4` : ""
-        }${stats.sixes ? ` · ${stats.sixes}×6` : ""}`
+      ? `${stats.runs}${stats.isOut ? "" : "*"} (${stats.balls}b)${stats.fours ? ` · ${stats.fours}x4` : ""}${stats.sixes ? ` · ${stats.sixes}x6` : ""}`
       : "Yet to face";
 
   const bowlingIsMine = innings.bowlingPlayerId === selfId;
   const waitingForBowler = !currentBowler;
-  const bowlingPlayer = players.find((p) => p.id === innings.bowlingPlayerId);
 
   return (
-    // One organic single-stroke sketch box holds all three columns — divided
-    // internally by hairlines rather than three separately-bordered cards.
-    <div className="relative rounded-lg bg-hc-paper-l/70">
-      <RoughBorder roughness={1.6} stroke="rgba(46,40,25,0.5)" strokeWidth={1.6} padding={3} />
-      <div className={cn("relative z-[1] grid grid-cols-1 sm:grid-cols-3", big ? "divide-y sm:divide-y-0 sm:divide-x" : "divide-y sm:divide-y-0 sm:divide-x")} style={{ borderColor: "rgba(46,40,25,0.22)" }}>
-        <PlayerCard
-          label="🏏 Striker ●"
-          name={striker?.name ?? "—"}
-          sub={batterStatSub(strikerStats)}
-          isMine={innings.battingPlayerId === selfId}
-          big={big}
-        />
-        <PlayerCard
-          label="🏃 Non-striker"
-          name={nonStriker?.name ?? "—"}
-          sub={batterStatSub(nonStrikerStats)}
-          isMine={innings.battingPlayerId === selfId}
-          dimmed
-          big={big}
-        />
-        {/* Bowling column — orange/red hand-inked flag + pulsing "waiting"
-            state and a detailed stitched ball while no bowler is picked yet. */}
-        <div
-          ref={registerCardRef?.(innings.bowlingPlayerId)}
-          className={cn("flex items-center justify-between gap-2", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")}
-        >
-          <div className="min-w-0 flex items-center gap-2">
-            {!waitingForBowler && (
-              <SeatAvatar
-                avatar={bowlingPlayer?.avatar}
-                name={bowlingPlayer?.name ?? "?"}
-                className={big ? "w-8 h-8" : "w-7 h-7"}
-                textClassName={big ? "text-[11px]" : "text-[10px]"}
-              />
-            )}
-            <div className="min-w-0">
-              <div
-                className="font-extrabold uppercase tracking-[0.12em]"
-                style={{ fontSize: big ? 11 : 9, color: waitingForBowler ? "#c2410c" : "#4a5a82" }}
-              >
-                ⚾ Bowling
-                {bowlingIsMine && (
-                  <span className="ml-1 font-extrabold" style={{ fontSize: big ? 11 : 9, color: "#c2410c" }}>· YOU</span>
-                )}
-              </div>
-              {waitingForBowler ? (
-                <div
-                  className="font-bold leading-tight animate-pulse"
-                  style={{ fontSize: big ? 15 : 12, color: "#c2410c" }}
-                >
-                  Waiting… Pick a bowler
-                </div>
-              ) : (
-                <>
-                  <div className="leading-tight font-bold text-hc-ink truncate" style={{ fontSize: big ? 18 : 13 }}>
-                    {currentBowler?.name}
-                  </div>
-                  <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>
-                    {bowlerStats
-                      ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6}-${bowlerStats.wickets}-${bowlerStats.runs}`
-                      : "0.0-0-0"}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          {waitingForBowler && (
-            <div className="flex-shrink-0" style={{ animation: "hc-glow-pulse 1.6s ease-in-out infinite" }}>
-              <CricketBallStitchSketch size={big ? 34 : 28} />
-            </div>
-          )}
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 font-notebook">
+      {/* Striker */}
+      <div className="rounded-xl border border-amber-300/80 bg-amber-50/80 p-2 sm:p-2.5 shadow-xs flex flex-col justify-between">
+        <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 flex items-center justify-between">
+          <span>🏏 Striker ●</span>
+          {innings.battingPlayerId === selfId && <span className="text-[9px] bg-amber-200 px-1 rounded">YOU</span>}
+        </div>
+        <div className="font-hand font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
+          {striker?.name ?? "—"}
+        </div>
+        <div className="text-[10px] sm:text-[11px] font-['Kalam',cursive] text-stone-600 tabular-nums">
+          {batterStatSub(strikerStats)}
         </div>
       </div>
-    </div>
-  );
-}
 
-export function PlayerCard({
-  label,
-  name,
-  sub,
-  isMine,
-  dimmed = false,
-  big = false,
-}: {
-  label: string;
-  name: string;
-  sub: string;
-  isMine: boolean;
-  dimmed?: boolean;
-  big?: boolean;
-}) {
-  return (
-    <div className={cn(big ? "px-3.5 py-2.5" : "px-2.5 py-1.5", dimmed && "opacity-80")}>
+      {/* Non-Striker */}
+      <div className="rounded-xl border border-stone-300/80 bg-white/70 p-2 sm:p-2.5 shadow-xs flex flex-col justify-between">
+        <div className="text-[10px] font-black uppercase tracking-wider text-stone-500">
+          🏃 Non-Striker
+        </div>
+        <div className="font-hand font-bold text-stone-800 text-xs sm:text-sm truncate mt-0.5">
+          {nonStriker?.name ?? "—"}
+        </div>
+        <div className="text-[10px] sm:text-[11px] font-['Kalam',cursive] text-stone-500 tabular-nums">
+          {batterStatSub(nonStrikerStats)}
+        </div>
+      </div>
+
+      {/* Bowler */}
       <div
-        className="font-extrabold uppercase tracking-[0.12em] text-hc-ink-lt"
-        style={{ fontSize: big ? 11 : 9 }}
+        ref={registerCardRef?.(innings.bowlingPlayerId)}
+        className={cn(
+          "rounded-xl border p-2 sm:p-2.5 shadow-xs flex flex-col justify-between",
+          waitingForBowler
+            ? "border-rose-400 bg-rose-50/80 animate-pulse"
+            : "border-stone-300/80 bg-white/70",
+        )}
       >
-        {label}
-        {isMine && <span className="ml-1 text-hc-stamp font-extrabold" style={{ fontSize: big ? 11 : 9 }}>· YOU</span>}
-      </div>
-      <div className="leading-tight font-bold text-hc-ink" style={{ fontSize: big ? 18 : 13 }}>{name}</div>
-      <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 14 : 11 }}>{sub}</div>
-    </div>
-  );
-}
-
-export function BowlerPicker({
-  state,
-  innings,
-  selfId,
-  players,
-  isDesktop = false,
-}: {
-  state: HcState;
-  innings: HcInnings;
-  selfId: string;
-  players: Player[];
-  isDesktop?: boolean;
-}) {
-  const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
-  const amBowling = innings.bowlingPlayerId === selfId;
-  const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
-  const bowlingTeamId = bowlingSelection?.teamId;
-  const roster = bowlingTeamId ? getRosterFor(bowlingTeamId, state.options.format) : null;
-  const allBowlingPlayers: HcPlayerProfile[] = roster
-    ? [...roster.squad, ...roster.extras]
-    : [];
-  const selectedSquadIds = bowlingSelection?.squadPlayerIds ?? [];
-  const candidates = selectedSquadIds
-    .map((id) => allBowlingPlayers.find((p) => p.id === id))
-    .filter((p): p is HcPlayerProfile => !!p);
-  const bowlingName = players.find((p) => p.id === innings.bowlingPlayerId)?.name ?? "Bowler";
-
-  const styleMap = useMemo(() => {
-    return bowlingTeamId ? getJsonPlayerStyleMap(bowlingTeamId, state.options.format) : new Map<string, JsonPlayerStyle>();
-  }, [bowlingTeamId, state.options.format]);
-
-  function pickBowler(profileId: string) {
-    setSelectedBowlerId(profileId);
-    getSocket().emit("game:move", { type: "selectBowler", data: { playerId: profileId } });
-  }
-
-  const maxOvers = HC_MAX_OVERS_PER_BOWLER[state.options.format] ?? 3;
-  const quotaLabel = maxOvers == null ? "no limit" : `${maxOvers} overs max`;
-  const overNumber = Math.floor(innings.balls / 6) + 1;
-
-  if (!amBowling) {
-    return (
-      <div className="relative w-full p-3 sm:p-5 bg-[#FAF6EA] rounded-2xl border border-[#4A3525]/30 shadow-md font-notebook text-center space-y-2 sm:space-y-3">
-        <div className="flex items-center justify-center gap-2">
-          <BallInMotionIcon size={22} />
-          <span className="font-sketch font-bold text-hc-ink text-[15px] sm:text-[18px]">
-            Waiting for {bowlingName} to pick the bowler for over {overNumber}…
-          </span>
+        <div className="text-[10px] font-black uppercase tracking-wider text-stone-500 flex items-center justify-between">
+          <span>⚾ Bowler</span>
+          {bowlingIsMine && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 rounded">YOU</span>}
         </div>
-        <div className="flex items-center justify-center gap-2 text-[#64748B] font-kalam text-[12px] sm:text-[13px]">
-          <motion.span
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
-            className="inline-block w-2.5 h-2.5 rounded-full bg-[#166534]"
-          />
-          <span>They are selecting who bowls this over.</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Only bowlers and all-rounders can bowl.
-  const bowlersOnly = candidates
-    .filter((p) => p.role === "bowler" || p.role === "allrounder")
-    .sort((a, b) => {
-      if (a.role === b.role) return a.name.localeCompare(b.name);
-      return a.role === "allrounder" ? -1 : 1;
-    });
-
-  return (
-    <div className={cn("relative w-full font-notebook", isDesktop ? "space-y-2" : "space-y-2.5")}>
-      {/* ── HEADER BANNER: Stumps on left, YOU ARE BOWLING in center, annotation on right ── */}
-      <div className="relative flex items-center justify-between gap-2 px-1 pt-0.5 pb-0.5">
-        {/* Left: Stumps in grass sketch */}
-        <div className="flex-shrink-0">
-          <StumpsInGrassSketch size={isDesktop ? 36 : 40} />
-        </div>
-
-        {/* Center: YOU ARE BOWLING ribbon + Pick your bowler sticky note */}
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          {/* Stamped Red Banner */}
-          <div className="relative">
-            {/* Left burst lines */}
-            <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg width={12} height={12} viewBox="0 0 14 14" fill="none">
-                <line x1={12} y1={7} x2={2} y2={3} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-                <line x1={12} y1={7} x2={3} y2={11} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-              </svg>
-            </div>
-            {/* Right burst lines */}
-            <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg width={12} height={12} viewBox="0 0 14 14" fill="none">
-                <line x1={2} y1={7} x2={12} y2={3} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-                <line x1={2} y1={7} x2={11} y2={11} stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-              </svg>
-            </div>
-
-            <div
-              className="px-3.5 sm:px-5 py-0.5 sm:py-1 rounded shadow-md transform -rotate-1"
-              style={{
-                background: "linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)",
-              }}
-            >
-              <span className="font-sketch font-black text-[14px] sm:text-[17px] tracking-wider text-white uppercase">
-                YOU ARE BOWLING
-              </span>
-            </div>
+        {waitingForBowler ? (
+          <div className="font-hand font-bold text-rose-700 text-xs sm:text-sm truncate mt-0.5">
+            Picking bowler…
           </div>
-
-          {/* Sticky tape subtext */}
-          <div className="mt-0.5 bg-[#FDF0D5] border border-[#D97706]/35 px-2.5 sm:px-3.5 py-0.5 rounded shadow-xs transform rotate-0.5">
-            <span className="font-kalam font-bold text-[11.5px] sm:text-[13px] text-[#78350F]">
-              Pick your bowler for over {overNumber}
-            </span>
-          </div>
-        </div>
-
-        {/* Right: Handwritten annotation arrow */}
-        <div className="hidden sm:flex items-center gap-1 text-[#64748B] font-kalam text-[10.5px] sm:text-[11.5px] leading-tight max-w-[125px] text-right">
-          <span>Only Bowlers & All-rounders can bowl!</span>
-          <svg width={16} height={20} viewBox="0 0 18 22" fill="none" stroke="#64748B" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-            <path d="M 3 2 Q 15 5 13 15 L 7 12 M 13 15 L 16 10" />
-          </svg>
-        </div>
-      </div>
-
-      {/* ── BOWLER CARDS (WITHOUT PLAYER AVATARS — 3 COLUMNS ON DESKTOP, 2 ON MOBILE) ── */}
-      {bowlersOnly.length === 0 ? (
-        <div className="text-center text-sm font-bold py-3 text-hc-amber bg-white/70 rounded-xl border border-dashed border-amber-300">
-          No bowlers or all-rounders in your XI.
-        </div>
-      ) : (
-        <div className={cn("grid gap-2 sm:gap-2.5 pt-0.5", isDesktop ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2")}>
-          {bowlersOnly.map((p) => {
-            const stats = innings.bowlerStats[p.id];
-            const completedOvers = stats ? Math.floor(stats.balls / 6) : 0;
-            const atQuota = maxOvers != null && completedOvers >= maxOvers;
-            const isConsecutive = innings.lastBowlerId === p.id;
-            const isDisabled = atQuota || isConsecutive;
-            const isSelected = selectedBowlerId === p.id || innings.currentBowlerId === p.id;
-            
-            const style = styleMap.get(p.name.toLowerCase());
-            const styleLabel = isConsecutive
-              ? "Bowled previous over (Resting)"
-              : style
-              ? [style.battingStyle, style.bowlingStyle].filter(Boolean).join(" • ")
-              : p.role === "bowler"
-              ? "RA Fast"
-              : "RHB • RA Medium";
-
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={isDisabled}
-                onClick={() => !isDisabled && pickBowler(p.id)}
-                className={cn(
-                  "relative rounded-xl p-2 sm:p-2.5 text-left transition-all duration-150 border-[1.5px] flex flex-col justify-between group",
-                  isSelected
-                    ? "bg-[#F4FAF2] border-[#166534] ring-2 ring-[#166534]/30 shadow-md -translate-y-0.5"
-                    : isDisabled
-                    ? "bg-[#F5EEDC]/40 border-[#4A3525]/15 opacity-50 cursor-not-allowed"
-                    : "bg-[#FFFDF7] border-[#4A3525]/25 hover:border-[#166534] hover:bg-[#FDFBF2] hover:shadow-xs hover:-translate-y-0.5 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
-                )}
-                style={{
-                  boxShadow: isSelected
-                    ? "0 3px 8px rgba(22,101,52,0.18)"
-                    : isDisabled
-                    ? "none"
-                    : "0 1px 4px rgba(46,40,25,0.08)",
-                }}
-              >
-                {/* Top Row: Role Badge on Left, Quota Chip or Checkmark on Right */}
-                <div className="flex items-center justify-between gap-1 w-full">
-                  <div className="flex items-center gap-1">
-                    {p.role === "allrounder" ? (
-                      <span className="px-1.5 py-0.2 rounded font-extrabold text-[9.5px] sm:text-[10px] bg-[#6D28D9] text-white shadow-xs tracking-wider">
-                        AR
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.2 rounded font-extrabold text-[9.5px] sm:text-[10px] bg-[#991B1B] text-white shadow-xs tracking-wider">
-                        BOWL
-                      </span>
-                    )}
-                    {p.isCaptain && (
-                      <span className="px-1 py-0.2 rounded font-extrabold text-[9px] bg-[#D97706] text-white shadow-xs">
-                        C
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Quota or Checkmark Badge */}
-                  <div className="flex items-center gap-1">
-                    {atQuota ? (
-                      <span className="px-1.5 py-0.2 rounded font-bold text-[9px] sm:text-[9.5px] bg-[#FEE2E2] text-[#991B1B] border border-[#FCA5A5]">
-                        MAX
-                      </span>
-                    ) : isConsecutive ? (
-                      <span className="px-1.5 py-0.2 rounded font-bold text-[9px] sm:text-[9.5px] bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D]">
-                        REST
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.2 rounded font-bold text-[9.5px] sm:text-[10.5px] bg-[#F0EAD6] text-[#1E3A8A] border border-[#D5C9A7] tabular-nums">
-                        {completedOvers}/{maxOvers}
-                      </span>
-                    )}
-
-                    {isSelected && (
-                      <div className="w-4 h-4 rounded-full bg-[#166534] text-white flex items-center justify-center text-[10px] font-black shadow-xs ml-0.5">
-                        ✓
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bowler Name */}
-                <div className="font-sketch font-bold text-[13.5px] sm:text-[15px] text-[#1A2952] leading-snug mt-1 truncate">
-                  {p.name}
-                </div>
-
-                {/* Bowler / Batter Style Subtext */}
-                <div className={cn("font-kalam text-[10px] sm:text-[11px] truncate mt-0.5", isConsecutive ? "text-[#92400E] font-semibold" : "text-[#556885] italic")}>
-                  {styleLabel}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── BOTTOM HELPER INFO PILL & LET'S PLAY DOODLE (COMPACT HORIZONTAL BAR ON DESKTOP) ── */}
-      <div className={cn("pt-1", isDesktop ? "flex items-center justify-between gap-2" : "space-y-1")}>
-        {/* Info pill */}
-        <div className="bg-[#F4EFE0] border border-[#4A3525]/15 rounded-full px-3 py-1 flex items-center justify-center gap-1.5 shadow-inner text-center mx-auto sm:mx-0">
-          <svg viewBox="0 0 24 24" fill="#2563EB" className="w-3.5 h-3.5 flex-shrink-0">
-            <circle cx={12} cy={12} r={10} />
-            <path d="M12 16v-4m0-4h.01" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" />
-          </svg>
-          <span className="font-kalam text-[11px] sm:text-[12px] text-[#4A3525]">
-            Only bowlers and all-rounders can bowl. Format quota: {quotaLabel}.
-          </span>
-        </div>
-
-        {/* Bottom-right Let's Play doodle */}
-        <div className="flex items-center justify-end gap-1 text-right pr-1 flex-shrink-0">
-          <span className="font-kalam font-extrabold text-[12px] sm:text-[13px] text-[#991B1B] -rotate-6">
-            Let's Play!
-          </span>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <path d="M 2 8 Q 8 6 12 7" stroke="#DC2626" strokeWidth={1.5} strokeLinecap="round" opacity={0.6} />
-            <path d="M 1 12 Q 7 12 11 12" stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-            <path d="M 3 16 Q 8 17 12 16" stroke="#DC2626" strokeWidth={1.5} strokeLinecap="round" opacity={0.6} />
-            <circle cx={16} cy={12} r={6} fill="#DC2626" stroke="#7F1D1D" strokeWidth={1} />
-            <path d="M 12 9 Q 16 12 20 15" stroke="#FFFFFF" strokeWidth={1} strokeDasharray="1.5 1" strokeLinecap="round" />
-          </svg>
-        </div>
+        ) : (
+          <>
+            <div className="font-hand font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
+              {currentBowler?.name}
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-['Kalam',cursive] text-stone-600 tabular-nums">
+              {bowlerStats ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6} ov · ${bowlerStats.wickets}w · ${bowlerStats.runs}r` : "0.0 ov · 0w · 0r"}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -3129,77 +2837,82 @@ export function Scoreboard({
   innings,
   target,
   players,
-  big = false,
+  big: _big = false,
   registerCardRef,
+  isPowerplayOver = false,
+  upcomingOver: _upcomingOver = 1,
 }: {
   state: HcState;
   innings: HcInnings;
   target: number | null;
   players: Player[];
   big?: boolean;
-  /** From useSeatReactions() — registers the batting player's identity block
-   *  (avatar + name) as a reaction anchor. Optional so this still renders
-   *  fine anywhere reactions aren't wired up. */
   registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+  isPowerplayOver?: boolean;
+  upcomingOver?: number;
 }) {
   const batterTeam = teamLabel(state, innings.battingPlayerId, players);
-  const battingPlayer = players.find((p) => p.id === innings.battingPlayerId);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
+  const crr = innings.balls > 0 ? ((innings.runs / innings.balls) * 6).toFixed(1) : "0.0";
+  const ballsRemaining = Math.max(0, innings.overs * 6 - innings.balls);
+  const runsNeeded = target != null ? Math.max(0, target - innings.runs) : null;
+  const rrr = runsNeeded != null && ballsRemaining > 0 ? ((runsNeeded / ballsRemaining) * 6).toFixed(1) : null;
+
   return (
-    <PaperPanel
-      tone="soft"
-      strong
-      pad="none"
-      className={cn("relative flex items-center justify-between gap-3 font-notebook", big ? "px-4 py-2 sm:py-2.5" : "px-3.5 py-2.5")}
+    <div
+      ref={registerCardRef?.(innings.battingPlayerId)}
+      className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3.5 sm:p-4 shadow-xs font-notebook flex items-center justify-between gap-4 flex-wrap"
     >
-      {/* "Taped down" corners — the scoreboard reads as a thick piece of
-          cardstock pinned onto the notebook page rather than a flat panel. */}
-      <MaskingTapeCorner side="left" />
-      <MaskingTapeCorner side="right" />
+      {/* Left: Team identity & Giant Score */}
+      <div className="flex items-center gap-3.5 min-w-0">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 flex items-center justify-center rounded-xl bg-white/80 border border-stone-200 shadow-xs">
+          <span className="text-2xl sm:text-3xl">{batterTeam.flag ?? "🏏"}</span>
+        </div>
 
-      <div ref={registerCardRef?.(innings.battingPlayerId)} className="flex items-center gap-3">
-        <span className={big ? "text-2xl sm:text-3xl" : "text-2xl"}>{batterTeam.flag}</span>
-        <SeatAvatar
-          avatar={battingPlayer?.avatar}
-          name={batterTeam.playerName}
-          className={big ? "w-7 h-7 sm:w-8 sm:h-8" : "w-7 h-7"}
-          textClassName={big ? "text-[10px] sm:text-[11px]" : "text-[10px]"}
-        />
-        <div>
-          <div
-            className="font-bold uppercase tracking-[0.12em] text-hc-ink-lt"
-            style={{ fontSize: big ? 12 : 11 }}
-          >
-            Innings {innings.number} · {batterTeam.short} ({batterTeam.playerName}) batting
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-sketch font-bold text-xs sm:text-sm text-stone-700 tracking-wide uppercase truncate">
+              {batterTeam.short ?? batterTeam.name} ({batterTeam.playerName})
+            </span>
+            <span className="text-[10px] font-bold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+              Inn {innings.number}
+            </span>
+            {isPowerplayOver && (
+              <span className="text-[10px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                🔥 PP
+              </span>
+            )}
           </div>
-          {/* Giant organic handwritten score — runs in ink, wickets in red pen. */}
-          <div
-            className="font-sketch tabular-nums leading-none text-hc-ink"
-            style={{ fontSize: big ? 50 : 44, fontWeight: 700 }}
-          >
-            {innings.runs}<span className="text-hc-ink-red">/{innings.wickets}</span>
-          </div>
-          <div className="tabular-nums text-hc-ink-lt" style={{ fontSize: big ? 13 : 12 }}>
-            Overs {oversBowled}.{ballsThisOver} / {innings.overs}
+
+          <div className="flex items-baseline gap-2">
+            <span className="font-sketch text-3xl sm:text-5xl font-black tracking-tight text-[#1E3A8A]">
+              {innings.runs}<span className="text-[#DC2626]">/{innings.wickets}</span>
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-stone-500 font-['Kalam',cursive] tabular-nums">
+              ({oversBowled}.{ballsThisOver}/{innings.overs} ov)
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Three stumps pitched in a scribbled patch of grass — sits between
-          the score and the target chip so the card reads as illustrated,
-          not just typeset. */}
-      <div className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.9 }}>
-        <StumpsInGrassSketch size={big ? 50 : 44} />
-      </div>
-
-      {target != null && (
-        <div className="text-right text-hc-amber flex-shrink-0">
-          <div className="uppercase tracking-wider font-bold" style={{ fontSize: big ? 12 : 10 }}>Target</div>
-          <div className="font-extrabold tabular-nums" style={{ fontSize: big ? 32 : 24 }}>{target}</div>
+      {/* Right: Target & Run Rates */}
+      <div className="flex items-center gap-3 ml-auto flex-shrink-0">
+        <div className="text-right">
+          <div className="text-[11px] font-bold text-stone-500 font-['Kalam',cursive]">
+            CRR: <strong className="text-stone-800">{crr}</strong>
+            {rrr != null && <> · RRR: <strong className="text-amber-700">{rrr}</strong></>}
+          </div>
+          {target != null ? (
+            <div className="text-xs sm:text-sm font-black font-sketch text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-xl border border-amber-300">
+              Target: {target} (Need {runsNeeded} off {ballsRemaining}b)
+            </div>
+          ) : (
+            <div className="text-xs font-bold text-stone-400">1st Innings</div>
+          )}
         </div>
-      )}
-    </PaperPanel>
+      </div>
+    </div>
   );
 }
 
@@ -3210,6 +2923,7 @@ export function RevealStage({
   oppLockedIn,
   myPick,
   big = false,
+  players = [],
 }: {
   reveal: HcBall | null;
   innings: HcInnings;
@@ -3217,58 +2931,155 @@ export function RevealStage({
   oppLockedIn: boolean;
   myPick: number | null;
   big?: boolean;
+  players?: Player[];
 }) {
   const meIsBatter = innings.battingPlayerId === myId;
+  const oppId = innings.battingPlayerId === myId ? innings.bowlingPlayerId : innings.battingPlayerId;
+  const me = players.find((p) => p.id === myId);
+  const opp = players.find((p) => p.id === oppId);
+
   if (reveal) {
     const myShown = meIsBatter ? reveal.batterPick : reveal.bowlerPick;
     const oppShown = meIsBatter ? reveal.bowlerPick : reveal.batterPick;
+
     return (
-      <div className={cn("flex items-center justify-center py-3", big ? "gap-10" : "gap-6")}>
-        <RevealHand label="You" pick={myShown} side="left" big={big} />
-        <div
-          className="font-extrabold"
-          style={{ fontSize: big ? 40 : 28, color: reveal.wicket ? "#f43f5e" : reveal.isBoundary ? "#d97706" : "#1a2952" }}
-        >
-          {reveal.wicket ? "WICKET!" : reveal.runs === 4 ? "FOUR!" : reveal.runs === 6 ? "SIX!" : `+${reveal.runs}`}
+      <div className="flex items-center justify-center gap-6 sm:gap-10 py-2.5 w-full">
+        {/* You Card */}
+        <RevealPlayerCard
+          name={me?.name ?? "You"}
+          avatar={me?.avatar}
+          role={meIsBatter ? "Batting" : "Bowling"}
+          pick={myShown}
+          big={big}
+        />
+
+        {/* Outcome Badge */}
+        <div className="flex flex-col items-center">
+          <motion.div
+            initial={{ scale: 0.7, rotate: -6 }}
+            animate={{ scale: 1, rotate: 0 }}
+            className={cn(
+              "px-4 py-2 rounded-2xl font-black font-sketch text-base sm:text-xl shadow-md uppercase tracking-wider",
+              reveal.wicket
+                ? "bg-rose-600 text-white shadow-rose-900/30"
+                : reveal.runs === 6
+                ? "bg-purple-600 text-white shadow-purple-900/30"
+                : reveal.runs === 4
+                ? "bg-amber-500 text-white shadow-amber-900/30"
+                : reveal.runs > 0
+                ? "bg-blue-600 text-white shadow-blue-900/30"
+                : "bg-stone-200 text-stone-700",
+            )}
+          >
+            {reveal.wicket
+              ? "💥 WICKET!"
+              : reveal.runs === 6
+              ? "🚀 MAXIMUM SIX!"
+              : reveal.runs === 4
+              ? "⚡ FOUR RUNS!"
+              : reveal.runs > 0
+              ? `+${reveal.runs} ${reveal.runs === 1 ? "RUN" : "RUNS"}`
+              : "DOT BALL"}
+          </motion.div>
         </div>
-        <RevealHand label="Opp" pick={oppShown} side="right" big={big} />
+
+        {/* Opponent Card */}
+        <RevealPlayerCard
+          name={opp?.name ?? "Opponent"}
+          avatar={opp?.avatar}
+          role={meIsBatter ? "Bowling" : "Batting"}
+          pick={oppShown}
+          big={big}
+        />
       </div>
     );
   }
+
   return (
-    <div className={cn("flex items-center justify-center py-3", big ? "gap-10" : "gap-6")}>
-      <RevealHand label="You" pick={myPick} side="left" pending={myPick == null} big={big} />
-      <div className="text-hc-ink-lt" style={{ fontSize: big ? 26 : 20 }}>vs</div>
-      <RevealHand label="Opp" pick={null} side="right" pending={!oppLockedIn} hidden={oppLockedIn} big={big} />
+    <div className="flex items-center justify-center gap-6 sm:gap-10 py-2.5 w-full">
+      {/* You Card */}
+      <RevealPlayerCard
+        name={me?.name ?? "You"}
+        avatar={me?.avatar}
+        role={meIsBatter ? "Batting" : "Bowling"}
+        pick={myPick}
+        pending={myPick == null}
+        big={big}
+      />
+
+      {/* VS Circle */}
+      <div className="w-9 h-9 rounded-full bg-stone-100 border border-stone-300 flex items-center justify-center font-black font-sketch text-stone-500 shadow-xs text-xs">
+        VS
+      </div>
+
+      {/* Opponent Card */}
+      <RevealPlayerCard
+        name={opp?.name ?? "Opponent"}
+        avatar={opp?.avatar}
+        role={meIsBatter ? "Bowling" : "Batting"}
+        pick={null}
+        pending={!oppLockedIn}
+        hidden={oppLockedIn}
+        big={big}
+      />
     </div>
   );
 }
 
-export function RevealHand({
-  label,
+function RevealPlayerCard({
+  name,
+  avatar,
+  role,
   pick,
-  side,
   pending,
   hidden,
-  big = false,
+  big: _big,
 }: {
-  label: string;
+  name: string;
+  avatar?: string;
+  role: string;
   pick: number | null;
-  side: "left" | "right";
   pending?: boolean;
   hidden?: boolean;
+  isOutcome?: boolean;
   big?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center">
-      <div
-        className={`${side === "left" ? "rps-slam-left" : "rps-slam-right"} text-hc-ink`}
-        key={pick ?? (hidden ? "h" : "p")}
-        style={{ fontSize: big ? 76 : 48 }}
-      >
-        {pick != null ? HAND_FACES[pick] ?? pick : hidden ? "🤐" : pending ? "❓" : "—"}
+    <div className="flex flex-col items-center min-w-[80px] sm:min-w-[100px]">
+      <div className="flex items-center gap-1.5 mb-1">
+        <SeatAvatar avatar={avatar} name={name} className="w-5 h-5" textClassName="text-[9px]" />
+        <span className="font-hand font-bold text-xs text-stone-800 truncate max-w-[70px] sm:max-w-[90px]">
+          {name}
+        </span>
       </div>
-      <div className="mt-1 text-hc-ink-lt" style={{ fontSize: big ? 15 : 12 }}>{label}{pick != null ? ` · ${pick}` : ""}</div>
+
+      <div
+        className={cn(
+          "w-14 h-16 sm:w-16 sm:h-20 rounded-2xl border-2 flex flex-col items-center justify-center transition-all shadow-xs",
+          pick != null
+            ? "bg-white border-emerald-600 shadow-sm text-emerald-800"
+            : hidden
+            ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+            : pending
+            ? "bg-stone-50 border-dashed border-stone-300 text-stone-400 animate-pulse"
+            : "bg-white border-stone-300",
+        )}
+      >
+        {pick != null ? (
+          <>
+            <span className="text-xl sm:text-2xl leading-none">{HAND_FACES[pick] ?? pick}</span>
+            <span className="font-sketch font-black text-sm sm:text-base mt-0.5">{pick}</span>
+          </>
+        ) : hidden ? (
+          <span className="text-xs font-black font-sketch text-emerald-700">✓ Ready</span>
+        ) : pending ? (
+          <span className="text-[10px] font-bold font-['Kalam',cursive] text-stone-400">Thinking…</span>
+        ) : (
+          <span className="text-stone-300 font-bold">—</span>
+        )}
+      </div>
+
+      <span className="text-[9px] font-bold text-stone-400 mt-1 uppercase tracking-wider">{role}</span>
     </div>
   );
 }
@@ -3288,30 +3099,19 @@ export function PickRow({
   restrictedNote?: string | null;
   big?: boolean;
 }) {
-  const side = big ? 60 : 44;
+  const side = big ? 56 : 46;
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5 w-full flex flex-col items-center">
       {restrictedNote && (
-        <div
-          className="text-center text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full mx-auto inline-block"
-          style={{
-            background: "rgba(180,120,0,0.12)",
-            color: "#b45309",
-            border: "1px solid rgba(180,120,0,0.4)",
-            display: "block",
-            maxWidth: "fit-content",
-            margin: "0 auto",
-          }}
-        >
+        <div className="text-center text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
           🔥 {restrictedNote}
         </div>
       )}
-      <div className={cn("flex flex-wrap justify-center", big ? "gap-3" : "gap-2")}>
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
         {[1, 2, 3, 4, 5, 6].map((n) => {
           const isAllowed = allowedPicks.includes(n);
           const isDisabled = disabled || !isAllowed;
           const isSelected = selected === n;
-          const base = { borderRadius: 12, width: side, height: side } as const;
           return (
             <button
               key={n}
@@ -3319,50 +3119,28 @@ export function PickRow({
               disabled={isDisabled}
               title={!isAllowed ? "Restricted during powerplay" : undefined}
               className={cn(
-                "relative flex flex-col items-center justify-center font-bold transition-all duration-150 active:scale-95 group",
+                "relative flex flex-col items-center justify-center font-bold transition-all duration-150 active:scale-95 group rounded-2xl",
                 isSelected
-                  ? "shadow-[0_4px_12px_rgba(22,101,52,0.25)] -translate-y-1"
+                  ? "bg-emerald-50 border-2 border-emerald-600 text-emerald-800 shadow-md -translate-y-1"
                   : isDisabled
-                  ? "cursor-not-allowed opacity-40"
-                  : "hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(46,40,25,0.15)] cursor-pointer"
+                  ? "bg-stone-100 border border-stone-200 text-stone-400 opacity-40 cursor-not-allowed"
+                  : "bg-white border border-stone-300 text-stone-900 hover:border-stone-400 hover:-translate-y-0.5 shadow-xs cursor-pointer",
               )}
-              style={
-                isSelected
-                  ? {
-                      ...base,
-                      background: "#F4FAF2",
-                      border: "2px solid #166534",
-                      color: "#166534",
-                    }
-                  : isDisabled
-                  ? {
-                      ...base,
-                      background: "#F2ECDA",
-                      border: "1.5px dashed rgba(46,40,25,0.35)",
-                      color: "#5A6A80",
-                    }
-                  : {
-                      ...base,
-                      background: "#FFFDF7",
-                      border: "1.5px solid rgba(46,40,25,0.45)",
-                      color: "#1A2952",
-                      boxShadow: "0 2px 5px rgba(46,40,25,0.08)",
-                    }
-              }
+              style={{ width: side, height: side }}
             >
-              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 22 : 18 }}>
+              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 20 : 17 }}>
                 {HAND_FACES[n] ?? n}
               </span>
-              <span className="mt-0.5 font-sketch font-extrabold" style={{ fontSize: big ? 14 : 12 }}>
+              <span className="mt-0.5 font-sketch font-extrabold text-xs sm:text-sm">
                 {n}
               </span>
               {!isAllowed && (
-                <span className="absolute top-1 right-1 text-[9px] font-black text-[#991B1B]">
+                <span className="absolute top-1 right-1 text-[8px] font-black text-red-600">
                   ✕
                 </span>
               )}
               {isSelected && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#166534] text-white flex items-center justify-center text-[9px] font-black shadow-xs">
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[8px] font-black shadow-xs">
                   ✓
                 </span>
               )}
@@ -3374,116 +3152,134 @@ export function PickRow({
   );
 }
 
-export function PowerplayBanner({
-  overNumber,
-  totalPowerplayOvers,
-  restrictedBalls,
-  currentBallInOver,
-  bowlerRestricted,
-  myRole,
-}: {
-  overNumber: number;
-  totalPowerplayOvers: number;
-  restrictedBalls: number[];
-  currentBallInOver: number;
-  bowlerRestricted: boolean;
-  myRole: "batter" | "bowler" | null;
-}) {
+export function RecentBalls({ history, currentOver }: { history: HcBall[]; currentOver?: number }) {
+  const thisOverBalls = history.filter((b) => currentOver != null && b.overNumber === currentOver);
+  const displayBalls = thisOverBalls.length > 0 ? thisOverBalls : history.slice(-6);
+
   return (
-    <div
-      className="rounded-lg p-2.5"
-      style={{
-        background: "linear-gradient(135deg, #7c2d12 0%, #b45309 50%, #ea580c 100%)",
-        border: "2px solid #fbbf24",
-        boxShadow: "0 0 18px rgba(251,191,36,0.35)",
-      }}
-    >
-      <div className="flex items-center justify-between flex-wrap gap-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🔥</span>
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-extrabold text-amber-100">
-              Powerplay
-            </div>
-            <div className="text-xs font-bold text-amber-50">
-              Over {overNumber} of {totalPowerplayOvers} · 3 random balls restrict the bowler to 1-3
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5, 6].map((b) => {
-            const isRestricted = restrictedBalls.includes(b);
-            const isCurrent = b === currentBallInOver;
-            return (
-              <span
-                key={b}
-                className="w-6 h-6 rounded text-[10px] font-extrabold flex items-center justify-center tabular-nums"
-                style={{
-                  background: isRestricted
-                    ? isCurrent
-                      ? "#fbbf24"
-                      : "rgba(251,191,36,0.55)"
-                    : "rgba(0,0,0,0.35)",
-                  color: isRestricted ? "#7c2d12" : "#fed7aa",
-                  border: isCurrent ? "2px solid #fef3c7" : "1px solid rgba(0,0,0,0.3)",
-                  boxShadow: isCurrent ? "0 0 6px #fbbf24" : undefined,
-                }}
-                title={
-                  isRestricted
-                    ? `Ball ${b}: bowler restricted to 1-3`
-                    : `Ball ${b}: no restriction`
-                }
-              >
-                {b}
-              </span>
-            );
-          })}
-        </div>
+    <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3 sm:p-3.5 shadow-xs font-notebook">
+      <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-stone-200/80">
+        <span className="font-sketch font-bold text-stone-800 text-xs sm:text-sm uppercase tracking-wide">
+          ⚾ This Over {currentOver ? `(Ov ${currentOver})` : ""}
+        </span>
+        <span className="text-[11px] font-bold text-stone-500 font-['Kalam',cursive]">
+          {displayBalls.length}/6 balls
+        </span>
       </div>
-      {bowlerRestricted && myRole === "bowler" && (
-        <div className="text-center mt-1 text-[11px] font-extrabold" style={{ color: "#92400e" }}>
-          ⚠ This ball is restricted — you may only pick 1, 2, or 3
-        </div>
-      )}
-      {bowlerRestricted && myRole === "batter" && (
-        <div className="text-center mt-1 text-[11px] font-extrabold" style={{ color: "#166534" }}>
-          ✨ This ball: bowler can only pick 1-3. Pick 4, 5, or 6 to score big risk-free!
-        </div>
-      )}
+
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-start">
+        {displayBalls.length === 0 ? (
+          <div className="text-xs text-stone-400 italic py-1">Over just started…</div>
+        ) : (
+          displayBalls.map((b, i) => (
+            <span
+              key={`${b.overNumber}-${b.ballInOver}-${i}`}
+              className={cn(
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black font-sketch text-xs shadow-xs border transition-all",
+                b.wicket
+                  ? "bg-rose-600 text-white border-rose-800"
+                  : b.runs === 6
+                  ? "bg-purple-600 text-white border-purple-800"
+                  : b.runs === 4
+                  ? "bg-amber-500 text-white border-amber-700"
+                  : b.runs > 0
+                  ? "bg-blue-600 text-white border-blue-800"
+                  : "bg-white text-stone-700 border-stone-300",
+              )}
+              title={`Ball ${b.ballInOver}: ${b.wicket ? "WICKET!" : `${b.runs} runs`}`}
+            >
+              {b.wicket ? "W" : b.runs}
+            </span>
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-export function RecentBalls({ history }: { history: HcBall[] }) {
+export function BattingScorecardLedger({
+  state,
+  innings,
+  players: _players,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  players: Player[];
+}) {
+  const sel = state.teamSelections[innings.battingPlayerId];
+  const squad = sel?.squadPlayerIds ?? [];
+  const roster = sel?.teamId ? getRosterFor(sel.teamId, state.options.format) : null;
+  const pool: HcPlayerProfile[] = roster ? [...roster.squad, ...roster.extras] : [];
+  const nameOf = (id: string) => pool.find((p) => p.id === id)?.name ?? id;
+  const roleOf = (id: string) => pool.find((p) => p.id === id)?.role ?? "batter";
+
+  const strikerId = squad[innings.strikerIdx];
+  const nonStrikerId = squad[innings.nonStrikerIdx];
+
   return (
-    <PaperPanel tone="soft" pad="sm" className="font-notebook">
-      <div className="text-[10px] uppercase tracking-[0.12em] text-hc-ink-lt mb-1 pl-1">
-        This over
+    <div className="rounded-2xl border border-stone-300/80 bg-[#FCF8EE]/95 p-3 sm:p-3.5 shadow-xs font-notebook flex flex-col">
+      <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-stone-200/80">
+        <span className="font-sketch font-bold text-stone-800 text-xs sm:text-sm uppercase tracking-wide">
+          📖 Batting Scorecard
+        </span>
+        <span className="text-[11px] font-bold text-stone-500 font-['Kalam',cursive]">
+          {innings.runs}/{innings.wickets} ({Math.floor(innings.balls / 6)}.{innings.balls % 6} ov)
+        </span>
       </div>
-      <div className="flex flex-wrap gap-1">
-        {history.map((b, i) => (
-          <span
-            key={`${b.overNumber}-${b.ballInOver}-${i}`}
-            className={cn(
-              "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-kalam border-[1.5px] border-dashed border-hc-border",
-              b.wicket
-                ? "bg-hc-ink-red/15 text-hc-ink-red"
-                : b.isBoundary
-                ? "bg-hc-gold/15 text-hc-amber"
-                : "bg-hc-paper/80 text-hc-ink",
-            )}
-            title={`Over ${b.overNumber}.${b.ballInOver}: batter ${b.batterPick} vs bowler ${b.bowlerPick}`}
-          >
-            {b.wicket ? "W" : b.runs}
-          </span>
-        ))}
+
+      <div className="space-y-1 text-xs max-h-48 sm:max-h-64 overflow-y-auto pr-1">
+        {squad.map((id, idx) => {
+          const stats = innings.batterStats[id];
+          const isStriker = id === strikerId && !stats?.isOut;
+          const isNonStriker = id === nonStrikerId && !stats?.isOut;
+          const hasBatted = Boolean(stats && (stats.balls > 0 || stats.isOut));
+
+          return (
+            <div
+              key={id}
+              className={cn(
+                "flex items-center justify-between py-1 px-1.5 rounded-lg transition-colors text-xs",
+                isStriker
+                  ? "bg-amber-100/70 border border-amber-300/60 font-bold"
+                  : isNonStriker
+                  ? "bg-emerald-50/70 border border-emerald-300/60 font-medium"
+                  : idx % 2 === 0
+                  ? "bg-stone-100/40"
+                  : "bg-transparent",
+              )}
+            >
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="text-[10px] text-stone-400 w-3">{idx + 1}</span>
+                <span className="truncate text-stone-900 font-hand">
+                  {nameOf(id)} {isStriker ? "🏏" : isNonStriker ? "🏃" : ""}
+                </span>
+                <SketchRoleBadge role={roleOf(id)} />
+              </div>
+
+              <div className="flex items-center gap-2 text-right flex-shrink-0 tabular-nums">
+                {hasBatted ? (
+                  <>
+                    <span className="font-bold text-stone-900 font-sketch text-xs">
+                      {stats?.runs}{stats?.isOut ? "" : "*"}
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-['Kalam',cursive]">
+                      ({stats?.balls}b {stats?.fours ? `${stats.fours}x4 ` : ""}{stats?.sixes ? `${stats.sixes}x6` : ""})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-stone-400 italic">yet to bat</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </PaperPanel>
+    </div>
   );
 }
 
 /** Aggregated match contribution for one cricketer, used to pick MoM. */
-interface MomAgg {
+interface CricketerContribution {
   id: string;
   name: string;
   teamPlayerId: string;
@@ -3496,6 +3292,7 @@ interface MomAgg {
   conceded: number;
   ballsBowled: number;
 }
+type MomAgg = CricketerContribution;
 
 export interface ManOfTheMatch {
   name: string;
