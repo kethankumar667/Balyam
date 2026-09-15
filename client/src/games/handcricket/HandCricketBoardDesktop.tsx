@@ -72,43 +72,25 @@ export default function HandCricketBoardDesktop({
   function teamSelectContent() {
     if (!mySelection?.teamId || forceTeamPicker) {
       return (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "12px 24px 20px" }}>
-          <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
-            {isIpl ? (
-              <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
-            ) : (
-              <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
-            )}
-          </div>
+        <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden">
+          {isIpl ? (
+            <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
+          ) : (
+            <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+          )}
         </div>
       );
     }
     if (mySelection.squadPlayerIds == null) {
-      // Squad picker: centred with a generous max-width so it never stretches
-      // edge-to-edge on ultrawide displays. Doodles fill the outer margins.
       return (
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-            overflowX: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "12px 24px 20px",
-          }}
-        >
-          <div style={{ width: "100%", maxWidth: 1180, margin: "auto" }}>
-            <SquadPicker
-              state={state}
-              selfId={sid}
-              players={players}
-              onChangeTeam={() => setForceTeamPicker(true)}
-              isDesktop
-            />
-          </div>
+        <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden">
+          <SquadPicker
+            state={state}
+            selfId={sid}
+            players={players}
+            onChangeTeam={() => setForceTeamPicker(true)}
+            isDesktop
+          />
         </div>
       );
     }

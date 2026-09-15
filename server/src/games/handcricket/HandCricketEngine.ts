@@ -887,10 +887,10 @@ export class HandCricketEngine implements GameEngine {
   }
 
   getTurnTimerSeconds(): number {
-    return 10;
+    return 15;
   }
 
-  armDeliveryDeadline(totalMs: number = 10_000): number {
+  armDeliveryDeadline(totalMs: number = 15_000): number {
     if (this.state.phase !== "innings1" && this.state.phase !== "innings2") {
       this.state.turnDeadline = null;
       return 0;

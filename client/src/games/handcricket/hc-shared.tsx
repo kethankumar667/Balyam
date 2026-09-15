@@ -2550,6 +2550,16 @@ export function InningsPhase({
            3. Live ball      → show RevealStage + PickRow                       */}
       {innings.needsNextBatterPick ? (
         <>
+          {reveal && (
+            <RevealStage
+              reveal={reveal}
+              innings={innings}
+              myId={selfId}
+              oppLockedIn={oppLockedIn}
+              myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+              big={isDesktop}
+            />
+          )}
           {isBattingPlayer ? (
             <NextBatterPicker state={state} innings={innings} big={isDesktop} />
           ) : (
@@ -2574,7 +2584,19 @@ export function InningsPhase({
           )}
         </>
       ) : needsBowler ? (
-        <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
+        <>
+          {reveal && (
+            <RevealStage
+              reveal={reveal}
+              innings={innings}
+              myId={selfId}
+              oppLockedIn={oppLockedIn}
+              myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+              big={isDesktop}
+            />
+          )}
+          <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={isDesktop} />
+        </>
       ) : (
         <>
           <RevealStage
@@ -2998,28 +3020,35 @@ export function BowlerPicker({
                 disabled={isDisabled}
                 onClick={() => !isDisabled && pickBowler(p.id)}
                 className={cn(
-                  "relative rounded-xl p-2 sm:p-2.5 text-left transition-all duration-150 border-2 shadow-xs flex flex-col justify-between",
+                  "relative rounded-xl p-2 sm:p-2.5 text-left transition-all duration-150 border-[1.5px] flex flex-col justify-between group",
                   isSelected
-                    ? "bg-[#F0FDF4] border-[#16A34A] shadow-[0_2px_10px_rgba(22,163,74,0.20)] -translate-y-0.5"
+                    ? "bg-[#F4FAF2] border-[#166534] ring-2 ring-[#166534]/30 shadow-md -translate-y-0.5"
                     : isDisabled
-                    ? "bg-[#F8FAFC] border-slate-200 opacity-55 cursor-not-allowed"
-                    : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1] hover:shadow-xs hover:-translate-y-0.5 cursor-pointer"
+                    ? "bg-[#F5EEDC]/40 border-[#4A3525]/15 opacity-50 cursor-not-allowed"
+                    : "bg-[#FFFDF7] border-[#4A3525]/25 hover:border-[#166534] hover:bg-[#FDFBF2] hover:shadow-xs hover:-translate-y-0.5 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
                 )}
+                style={{
+                  boxShadow: isSelected
+                    ? "0 3px 8px rgba(22,101,52,0.18)"
+                    : isDisabled
+                    ? "none"
+                    : "0 1px 4px rgba(46,40,25,0.08)",
+                }}
               >
                 {/* Top Row: Role Badge on Left, Quota Chip or Checkmark on Right */}
                 <div className="flex items-center justify-between gap-1 w-full">
                   <div className="flex items-center gap-1">
                     {p.role === "allrounder" ? (
-                      <span className="px-1.5 py-0.5 rounded font-bold text-[10px] sm:text-[10.5px] bg-[#9333EA] text-white shadow-xs">
+                      <span className="px-1.5 py-0.2 rounded font-extrabold text-[9.5px] sm:text-[10px] bg-[#6D28D9] text-white shadow-xs tracking-wider">
                         AR
                       </span>
                     ) : (
-                      <span className="px-1.5 py-0.5 rounded font-bold text-[10px] sm:text-[10.5px] bg-[#B91C1C] text-white shadow-xs">
+                      <span className="px-1.5 py-0.2 rounded font-extrabold text-[9.5px] sm:text-[10px] bg-[#991B1B] text-white shadow-xs tracking-wider">
                         BOWL
                       </span>
                     )}
                     {p.isCaptain && (
-                      <span className="px-1 py-0.5 rounded font-bold text-[9.5px] bg-[#D97706] text-white">
+                      <span className="px-1 py-0.2 rounded font-extrabold text-[9px] bg-[#D97706] text-white shadow-xs">
                         C
                       </span>
                     )}
@@ -3028,34 +3057,34 @@ export function BowlerPicker({
                   {/* Quota or Checkmark Badge */}
                   <div className="flex items-center gap-1">
                     {atQuota ? (
-                      <span className="px-1.5 py-0.5 rounded font-bold text-[9.5px] sm:text-[10px] bg-red-100 text-red-700">
+                      <span className="px-1.5 py-0.2 rounded font-bold text-[9px] sm:text-[9.5px] bg-[#FEE2E2] text-[#991B1B] border border-[#FCA5A5]">
                         MAX
                       </span>
                     ) : isConsecutive ? (
-                      <span className="px-1.5 py-0.5 rounded font-bold text-[9.5px] sm:text-[10px] bg-amber-100 text-amber-800 border border-amber-300/60">
+                      <span className="px-1.5 py-0.2 rounded font-bold text-[9px] sm:text-[9.5px] bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D]">
                         REST
                       </span>
                     ) : (
-                      <span className="px-1.5 py-0.5 rounded font-bold text-[10.5px] sm:text-[11.5px] bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] tabular-nums">
+                      <span className="px-1.5 py-0.2 rounded font-bold text-[9.5px] sm:text-[10.5px] bg-[#F0EAD6] text-[#1E3A8A] border border-[#D5C9A7] tabular-nums">
                         {completedOvers}/{maxOvers}
                       </span>
                     )}
 
                     {isSelected && (
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#166534] text-white flex items-center justify-center text-[10px] sm:text-[11px] font-black shadow-xs ml-0.5">
+                      <div className="w-4 h-4 rounded-full bg-[#166534] text-white flex items-center justify-center text-[10px] font-black shadow-xs ml-0.5">
                         ✓
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Bowler Name (WITHOUT AVATAR PHOTO) */}
-                <div className="font-sketch font-bold text-[14px] sm:text-[16px] text-[#0F172A] leading-snug mt-1 truncate">
+                {/* Bowler Name */}
+                <div className="font-sketch font-bold text-[13.5px] sm:text-[15px] text-[#1A2952] leading-snug mt-1 truncate">
                   {p.name}
                 </div>
 
                 {/* Bowler / Batter Style Subtext */}
-                <div className={cn("font-kalam text-[10.5px] sm:text-[11.5px] truncate mt-0.5", isConsecutive ? "text-amber-800 font-semibold" : "text-[#64748B] italic")}>
+                <div className={cn("font-kalam text-[10px] sm:text-[11px] truncate mt-0.5", isConsecutive ? "text-[#92400E] font-semibold" : "text-[#556885] italic")}>
                   {styleLabel}
                 </div>
               </button>
@@ -3281,26 +3310,60 @@ export function PickRow({
         {[1, 2, 3, 4, 5, 6].map((n) => {
           const isAllowed = allowedPicks.includes(n);
           const isDisabled = disabled || !isAllowed;
-          const base = { borderRadius: 8, width: side, height: side, fontWeight: 800, fontSize: big ? 22 : 18 } as const;
+          const isSelected = selected === n;
+          const base = { borderRadius: 12, width: side, height: side } as const;
           return (
             <button
               key={n}
               onClick={() => isAllowed && onPick(n)}
               disabled={isDisabled}
               title={!isAllowed ? "Restricted during powerplay" : undefined}
-              className="relative flex flex-col items-center justify-center font-bold transition hover:scale-[1.05]"
-              style={selected === n
-                ? { ...base, background: "rgba(22,101,52,0.15)", border: "1.5px solid #166534", color: "#166534" }
-                : isDisabled
-                ? { ...base, background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952", opacity: 0.45, cursor: "not-allowed" }
-                : { ...base, background: "#FBF5E0", border: "1.5px dashed rgba(46,40,25,0.55)", color: "#1a2952" }
+              className={cn(
+                "relative flex flex-col items-center justify-center font-bold transition-all duration-150 active:scale-95 group",
+                isSelected
+                  ? "shadow-[0_4px_12px_rgba(22,101,52,0.25)] -translate-y-1"
+                  : isDisabled
+                  ? "cursor-not-allowed opacity-40"
+                  : "hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(46,40,25,0.15)] cursor-pointer"
+              )}
+              style={
+                isSelected
+                  ? {
+                      ...base,
+                      background: "#F4FAF2",
+                      border: "2px solid #166534",
+                      color: "#166534",
+                    }
+                  : isDisabled
+                  ? {
+                      ...base,
+                      background: "#F2ECDA",
+                      border: "1.5px dashed rgba(46,40,25,0.35)",
+                      color: "#5A6A80",
+                    }
+                  : {
+                      ...base,
+                      background: "#FFFDF7",
+                      border: "1.5px solid rgba(46,40,25,0.45)",
+                      color: "#1A2952",
+                      boxShadow: "0 2px 5px rgba(46,40,25,0.08)",
+                    }
               }
             >
-              <span className="leading-none" style={{ fontSize: big ? 22 : 16 }}>{HAND_FACES[n] ?? n}</span>
-              <span className="mt-1 opacity-80" style={{ fontSize: big ? 13 : 11 }}>{n}</span>
+              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 22 : 18 }}>
+                {HAND_FACES[n] ?? n}
+              </span>
+              <span className="mt-0.5 font-sketch font-extrabold" style={{ fontSize: big ? 14 : 12 }}>
+                {n}
+              </span>
               {!isAllowed && (
-                <span className="absolute top-0.5 right-1 text-[8px] font-extrabold" style={{ color: "#991b1b" }}>
+                <span className="absolute top-1 right-1 text-[9px] font-black text-[#991B1B]">
                   ✕
+                </span>
+              )}
+              {isSelected && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#166534] text-white flex items-center justify-center text-[9px] font-black shadow-xs">
+                  ✓
                 </span>
               )}
             </button>

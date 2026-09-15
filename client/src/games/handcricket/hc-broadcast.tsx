@@ -2346,15 +2346,21 @@ export function HcProInnings({
           footer={powerplay}
         />
 
-        {/* Requested order: reveal → crease → log.
-            1. YOU ARE BATTING  — the live ball
-            2. PARTNERSHIP      — who is at the crease
-            3. THIS INNINGS     — the log
-            The pick row stays pinned to the bottom regardless, so the control
-            is still under the thumb even though the reveal now sits up top.
+        {/* Show delivery showdown on mobile if a ball just landed and we are picking bowler/batter */}
+        {!liveBall && reveal && (
+          <ProPanel dense>
+            <div className="mb-1.5 flex items-center justify-between">
+              <ProLabel>
+                {myRole === "batter" ? "You are batting" : myRole === "bowler" ? "You are bowling" : "Spectating"}
+              </ProLabel>
+              <span style={{ color: PRO.inkLo }}>
+                {myRole === "batter" ? <IconBat size={14} /> : myRole === "bowler" ? <IconBall size={14} /> : null}
+              </span>
+            </div>
+            <HcProReveal reveal={reveal} meIsBatter={myRole === "batter"} myPick={myPick} oppLockedIn={oppLockedIn} compact />
+          </ProPanel>
+        )}
 
-            The reveal is NOT rendered here any more — on a phone it lives
-            inside the pinned pick card, beside the tiles that produce it. */}
         {blocking}
 
         {crease}
@@ -2430,7 +2436,7 @@ export function HcProInnings({
         />
         {crease}
         {blocking}
-        {liveBall && revealPanel}
+        {revealPanel}
         {pickFooter}
       </div>
 

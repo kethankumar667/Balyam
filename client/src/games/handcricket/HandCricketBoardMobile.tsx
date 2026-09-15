@@ -61,15 +61,19 @@ export default function HandCricketBoardMobile({
 
   function teamSelectContent() {
     if (!mySelection?.teamId || forceTeamPicker) {
-      return isIpl ? (
-        <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
-      ) : (
-        <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+      return (
+        <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden">
+          {isIpl ? (
+            <HcFranchisePickerNotebook state={state} selfId={sid} players={players} />
+          ) : (
+            <HcCountryPickerNotebook state={state} selfId={sid} players={players} />
+          )}
+        </div>
       );
     }
     if (mySelection.squadPlayerIds == null) {
       return (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "8px 12px 80px" }}>
+        <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden">
           <SquadPicker
             state={state}
             selfId={sid}

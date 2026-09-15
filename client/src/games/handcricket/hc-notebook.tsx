@@ -2343,8 +2343,7 @@ export function HcCountryPickerNotebook({
 
   return (
     <div
-      className="flex-1 min-h-0"
-      style={{ position: "relative", overflow: "hidden" }}
+      className="flex-1 min-h-0 w-full h-full flex flex-col relative overflow-hidden"
     >
       {/* ══════════════════════════════════════════════════════
           ILLUSTRATION LAYER — mirrors IPL picker layout exactly.
@@ -2767,8 +2766,7 @@ export function HcFranchisePickerNotebook({
 
   return (
     <div
-      className="flex-1 min-h-0"
-      style={{ position: "relative", overflow: "hidden" }}
+      className="flex-1 min-h-0 w-full h-full flex flex-col relative overflow-hidden"
     >
       {/* ══════════════════════════════════════════════════════
           ILLUSTRATION LAYER — absolutely fills the whole paper

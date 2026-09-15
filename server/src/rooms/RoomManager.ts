@@ -5168,7 +5168,7 @@ export class RoomManager {
         this.broadcastGameState(room);
         return;
       }
-      const ms = engine.armDeliveryDeadline(10_000);
+      const ms = engine.armDeliveryDeadline(15_000);
       this.broadcastGameState(room);
       if (ms > 0) {
         this.armTurnTimer(room, ms);

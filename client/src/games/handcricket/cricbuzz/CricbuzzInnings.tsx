@@ -548,6 +548,11 @@ export function CricbuzzInnings({
     if (activeInnings.needsNextBatterPick) {
       return (
         <>
+          {reveal && (
+            <div className="mb-3">
+              <CricbuzzDeliveryReveal reveal={reveal} isBatting={isBatting} myPick={myPick} oppLockedIn={oppLockedIn} oppName={oppName} />
+            </div>
+          )}
           {renderNextBatterPicker()}
           {needsBowler && renderBowlerPicker()}
         </>
@@ -555,7 +560,16 @@ export function CricbuzzInnings({
     }
 
     if (needsBowler) {
-      return renderBowlerPicker();
+      return (
+        <>
+          {reveal && (
+            <div className="mb-3">
+              <CricbuzzDeliveryReveal reveal={reveal} isBatting={isBatting} myPick={myPick} oppLockedIn={oppLockedIn} oppName={oppName} />
+            </div>
+          )}
+          {renderBowlerPicker()}
+        </>
+      );
     }
 
     // `secondsLeft` comes from the hoisted `useTurnSecondsLeft` call at the
@@ -564,14 +578,14 @@ export function CricbuzzInnings({
     // Rules-of-Hooks violation that crashed the board on a phase change.
     const hasDeadline = state.turnDeadline != null;
     const timerTone = secondsLeft <= 2 ? "#CB0606" : secondsLeft <= 5 ? "#E65100" : "#009270";
-    const timerProgressPct = Math.min(100, Math.max(0, (secondsLeft / 10) * 100));
+    const timerProgressPct = Math.min(100, Math.max(0, (secondsLeft / 15) * 100));
 
     // Normal Delivery Action Pad (1 to 6)
     return (
       <CricbuzzCard className="p-4 bg-white dark:bg-[#1B2220] border-t-2 border-t-[#009270] relative overflow-hidden">
         <TurnTimeWarning deadline={state.turnDeadline} active={myPick == null && (isBatting || isBowling)} chipless />
 
-        {/* 10-Second Countdown Bar at the top of the card */}
+        {/* 15-Second Countdown Bar at the top of the card */}
         {hasDeadline && myPick == null && (
           <div className="absolute top-0 left-0 right-0 h-1 bg-[#E3E6E8] dark:bg-[#2C3533] overflow-hidden">
             <div

@@ -9,8 +9,8 @@ import { useHaptics } from "../hooks/useHaptics";
  * same affordance without duplicating CSS keyframes. The keyframe
  * `rummy-time-pulse` is defined in [index.css](../index.css).
  *
- *   • Fires only when `active` is true AND ≤ 10 s remain
- *   • Amber border + chip in the warning window, switching to red at ≤5 s
+ *   • Fires only when `active` is true AND ≤ 5 s remain
+ *   • Amber border + chip in the warning window, switching to red at ≤3 s
  *   • One-shot subtle haptic the moment we cross into the window
  *
  * Pointer-events disabled so the player can keep interacting underneath.
@@ -42,8 +42,8 @@ export function TurnTimeWarning({
   const haptics = useHaptics();
   const warned = useRef(false);
 
-  const showWarning = active && deadline != null && secondsLeft <= 10 && secondsLeft > 0;
-  const critical = active && deadline != null && secondsLeft <= 5 && secondsLeft > 0;
+  const showWarning = active && deadline != null && secondsLeft <= 5 && secondsLeft > 0;
+  const critical = active && deadline != null && secondsLeft <= 3 && secondsLeft > 0;
 
   useEffect(() => {
     if (!active || deadline == null) {
