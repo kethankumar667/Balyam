@@ -21,6 +21,7 @@ import {
   type ResolvedCosmeticsLoadout,
 } from "@shared/cosmetics";
 import type { TokenFinishId } from "../games/ludo/TokenFinishOverlay";
+import type { TokenThemeId } from "../games/ludo/TokenThemeOverlay";
 
 // ── 1. Table Themes ──
 
@@ -265,6 +266,12 @@ export interface TokenSkinConfig {
    * equipping a finish never overrides seat-color identity on the board.
    */
   finish?: TokenFinishId;
+  /**
+   * Character-themed accessory (see `TokenThemeOverlay`) — a fixed-color
+   * icon/badge on top of the seat-colored body, mutually exclusive with
+   * `finish`. Same "body stays seat-colored" rule applies.
+   */
+  theme?: TokenThemeId;
 }
 
 export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
@@ -383,6 +390,89 @@ export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
     id: "token_finish_holographic_shift",
     hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
     finish: "holographicShift",
+  },
+
+  // ── Character-themed accessories (2026-09-15) — fixed signature colors
+  // on the icon, seat color stays on the body underneath. ──
+  token_theme_ninja: {
+    id: "token_theme_ninja",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "ninja",
+  },
+  token_theme_thunder_hammer: {
+    id: "token_theme_thunder_hammer",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "thunderHammer",
+  },
+  token_theme_super_hero: {
+    id: "token_theme_super_hero",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "superHero",
+  },
+  token_theme_arcane_wizard: {
+    id: "token_theme_arcane_wizard",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "arcaneWizard",
+  },
+  token_theme_star_voyager: {
+    id: "token_theme_star_voyager",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "starVoyager",
+  },
+  token_theme_dragon_knight: {
+    id: "token_theme_dragon_knight",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "dragonKnight",
+  },
+  token_theme_pirate_captain: {
+    id: "token_theme_pirate_captain",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "pirateCaptain",
+  },
+  token_theme_cyber_bot: {
+    id: "token_theme_cyber_bot",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "cyberBot",
+  },
+  token_theme_samurai: {
+    id: "token_theme_samurai",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "samurai",
+  },
+  token_theme_vampire_count: {
+    id: "token_theme_vampire_count",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "vampireCount",
+  },
+  token_theme_desert_sultan: {
+    id: "token_theme_desert_sultan",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "desertSultan",
+  },
+  token_theme_arctic_ranger: {
+    id: "token_theme_arctic_ranger",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "arcticRanger",
+  },
+  token_theme_steam_inventor: {
+    id: "token_theme_steam_inventor",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "steamInventor",
+  },
+  token_theme_jungle_scout: {
+    id: "token_theme_jungle_scout",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "jungleScout",
+  },
+  token_theme_imperial_general: {
+    id: "token_theme_imperial_general",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "imperialGeneral",
+  },
+  token_theme_void_reaper: {
+    id: "token_theme_void_reaper",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    theme: "voidReaper",
   },
 };
 

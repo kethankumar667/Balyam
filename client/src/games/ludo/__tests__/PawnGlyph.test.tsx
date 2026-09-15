@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { PawnGlyph } from "../PawnGlyph";
 import type { TokenFinishId } from "../TokenFinishOverlay";
+import type { TokenThemeId } from "../TokenThemeOverlay";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../board-layout";
 import type { TokenSkinConfig } from "../../../lib/cosmeticsResolver";
 
@@ -81,5 +82,54 @@ describe("PawnGlyph — premium craftsmanship finishes", () => {
       </svg>,
     );
     expect(container.querySelector("svg")).toBeTruthy();
+  });
+});
+
+const ALL_THEMES: TokenThemeId[] = [
+  "ninja",
+  "thunderHammer",
+  "superHero",
+  "arcaneWizard",
+  "starVoyager",
+  "dragonKnight",
+  "pirateCaptain",
+  "cyberBot",
+  "samurai",
+  "vampireCount",
+  "desertSultan",
+  "arcticRanger",
+  "steamInventor",
+  "jungleScout",
+  "imperialGeneral",
+  "voidReaper",
+];
+
+function tokenSkinWithTheme(theme: TokenThemeId): TokenSkinConfig {
+  return {
+    id: `token_theme_test_${theme}`,
+    hasCrown: false,
+    hasFireball: false,
+    hasNeonRing: false,
+    hasDiamond: false,
+    hasPhoenixWing: false,
+    theme,
+  };
+}
+
+describe("PawnGlyph — character-themed accessories", () => {
+  it.each(ALL_THEMES)("renders the %s theme without throwing, body still in the player's own seat color", (theme) => {
+    const { container } = render(
+      <svg>
+        <PawnGlyph
+          main={COLOR_HEX.orange}
+          dark={COLOR_HEX_DARK.orange}
+          tokenSkin={tokenSkinWithTheme(theme)}
+          uid="test-uid-orange"
+        />
+      </svg>,
+    );
+    // The base body path is always painted with `main` — proves the theme
+    // badge never replaces the seat-color body paint.
+    expect(container.innerHTML).toContain(COLOR_HEX.orange);
   });
 });

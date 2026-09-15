@@ -1,6 +1,7 @@
 import type { LudoColor } from "@shared/types";
 import type { TokenSkinConfig } from "../../lib/cosmeticsResolver";
 import { TokenFinishOverlay } from "./TokenFinishOverlay";
+import { TokenThemeOverlay } from "./TokenThemeOverlay";
 
 /** Used by call sites that render a static pawn (previews, the picker, thumbnails). */
 const CB_GLYPH: Record<LudoColor, string> = {
@@ -140,6 +141,10 @@ export function PawnGlyph({
 
       {/* Premium craftsmanship finish — seat-colored, never a fixed hue */}
       <TokenFinishOverlay finish={tokenSkin.finish} main={main} dark={dark} />
+
+      {/* Character theme accessory — fixed signature colors, seat color
+       *  stays on the body underneath (mutually exclusive with `finish`). */}
+      <TokenThemeOverlay theme={tokenSkin.theme} />
 
       {/* Crown Accessory */}
       {tokenSkin.hasCrown && (
