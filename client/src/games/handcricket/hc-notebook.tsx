@@ -51,6 +51,7 @@ import {
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
 import Chat from "../../components/Chat";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 import { useVisualViewport } from "../../lib/useVisualViewport";
 
 /* ─── palette ─── */
@@ -559,29 +560,22 @@ function HcTeamCrest({
 
 function MatchupCard({
   team,
+  isSelf = false,
   style,
 }: {
   team: HcTeamDisplayInfo;
+  isSelf?: boolean;
   style?: React.CSSProperties;
 }) {
   const isSelected = Boolean(team.short);
-  const bgColor = team.color ?? "#e2e8f0";
-  const textColor = team.textColor ?? (isSelected ? "#ffffff" : INK);
-
   const cardBg = isSelected
-    ? team.id === "csk"
-      ? "linear-gradient(135deg, #fde047 0%, #eab308 100%)"
-      : team.id === "rcb"
-        ? "linear-gradient(135deg, #c5221f 0%, #881337 100%)"
-        : team.id === "mi"
-          ? "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)"
-          : `linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%)`
-    : "rgba(255,255,255,0.72)";
+    ? "linear-gradient(135deg, #184D3B 0%, #103B2C 100%)"
+    : "rgba(255,255,255,0.75)";
 
   const crestSize =
     style?.height && typeof style.height === "number" && style.height < 50
-      ? 32
-      : 36;
+      ? 28
+      : 32;
 
   return (
     <div
@@ -589,11 +583,11 @@ function MatchupCard({
         flex: 1,
         minWidth: 0,
         height: 52,
-        borderRadius: 12,
+        borderRadius: 14,
         background: cardBg,
-        border: isSelected ? "none" : "1.5px dashed rgba(80,50,20,0.22)",
+        border: isSelected ? "1.5px solid #246B52" : "1.5px dashed rgba(80,50,20,0.25)",
         boxShadow: isSelected
-          ? "0 3px 8px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.25)"
+          ? "0 4px 10px rgba(16,59,44,0.35), inset 0 1px 1px rgba(255,255,255,0.2)"
           : "none",
         display: "flex",
         alignItems: "center",
@@ -617,33 +611,21 @@ function MatchupCard({
       </div>
 
       <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
-        <div
-          className="font-sketch"
-          style={{
-            fontSize: "clamp(15px, 1.8vw, 19px)",
-            fontWeight: 900,
-            color: textColor,
-            lineHeight: 1.1,
-            letterSpacing: "0.03em",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {team.short ?? "Picking..."}
+        <div className="flex items-center gap-1.5">
+          <span
+            className="font-sketch font-black text-white leading-tight tracking-wide uppercase truncate"
+            style={{ fontSize: "clamp(14px, 1.6vw, 17px)" }}
+          >
+            {team.short ?? "Picking..."}
+          </span>
+          {isSelf && isSelected && (
+            <span className="bg-[#FACC15] text-[#713F12] font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-sketch shadow-xs">
+              YOU
+            </span>
+          )}
         </div>
         <div
-          style={{
-            fontSize: 11.5,
-            fontWeight: 600,
-            color: textColor,
-            opacity: 0.88,
-            lineHeight: 1.2,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "'Kalam', system-ui, sans-serif",
-          }}
+          className="text-emerald-100/90 font-hand font-bold text-xs truncate leading-tight mt-0.5"
         >
           {team.short ? `${team.short} (${team.playerName})` : team.playerName}
         </div>
@@ -659,7 +641,7 @@ function MatchupCard({
 export function HcNotebookHeader({
   state,
   players,
-  selfId: _selfId,
+  selfId,
   roomCode,
   roomPhase: _roomPhase,
   messages: _messages,
@@ -680,6 +662,7 @@ export function HcNotebookHeader({
   const [p0, p1] = state.playerOrder;
   const t0 = labelFor(state, p0, players);
   const t1 = labelFor(state, p1, players);
+  const me = players.find((p) => p.id === selfId);
 
   const formatLabel =
     state.options.format === "test"
@@ -764,13 +747,13 @@ export function HcNotebookHeader({
           style={{
             display: "inline-flex",
             alignItems: "center",
-            height: 36,
+            height: 32,
             padding: "0 12px",
             borderRadius: 9999,
-            border: `1px solid ${isActive ? "rgba(80,50,20,0.4)" : "rgba(80,50,20,0.18)"}`,
-            background: isActive ? "#F5E9C4" : "#FFFDF5",
-            boxShadow: "0 2px 5px rgba(50,20,5,0.08)",
-            color: INK,
+            border: `1px solid ${isActive ? "#C5963A" : "rgba(80,50,20,0.18)"}`,
+            background: isActive ? "#FDE047" : "#FFFDF5",
+            boxShadow: isActive ? "0 2px 6px rgba(197,150,58,0.25)" : "0 1px 3px rgba(50,20,5,0.06)",
+            color: isActive ? "#713F12" : INK,
             fontWeight: 800,
             fontSize: 12,
             fontFamily: "'Kalam', system-ui, sans-serif",
@@ -937,11 +920,11 @@ export function HcNotebookHeader({
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <span
         style={{
-          height: 25,
+          height: 26,
           padding: "0 12px",
           borderRadius: 9999,
           background: "#FFFDF5",
-          border: "1px solid rgba(80,50,20,0.14)",
+          border: "1px solid rgba(80,50,20,0.18)",
           boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
           color: INK,
           fontSize: 12,
@@ -956,11 +939,11 @@ export function HcNotebookHeader({
       </span>
       <span
         style={{
-          height: 25,
+          height: 26,
           padding: "0 12px",
           borderRadius: 9999,
           background: "#FFFDF5",
-          border: "1px solid rgba(80,50,20,0.14)",
+          border: "1px solid rgba(80,50,20,0.18)",
           boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
           color: INK,
           fontSize: 12,
@@ -987,200 +970,132 @@ export function HcNotebookHeader({
     >
       {/* ══════════════════════════════════════════════════════
           DESKTOP VIEW (≥ lg / 1024px):
-          Single streamlined widescreen bar.
-          Left: Back + Ball + Brand + Badges
-          Center: Matchup Fixture ([Card] VS [Card])
-          Right: Broadcast + Menu
+          Top navigation bar matching media_1789502369831.jpg
+          Left: Stamp Ball + Bat + Brand + Tagline
+          Center: Broadcast | Chichbaz | Rerun | [Classic]
+          Right: Sound + Settings + Profile Pill + Leave
       ══════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex items-center justify-between gap-4 w-full">
-        {/* Left Section */}
-        <div className="flex items-center gap-3 shrink-0">
-          {renderBackButton()}
-          <CricketBallIcon />
-          <div className="flex flex-col justify-center">
-            <div className="relative inline-block">
+      <div className="hidden lg:flex flex-col gap-3 w-full">
+        <div className="flex items-center justify-between gap-4 w-full">
+          {/* Left Brand Stamp */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-10 h-10 rounded-full bg-red-800 border-2 border-red-900 flex items-center justify-center text-white shadow-xs relative">
+              <span className="text-xl">🏏</span>
+            </div>
+            <div className="flex flex-col justify-center">
               <span
-                className="font-sketch"
-                style={{
-                  color: INK,
-                  fontSize: 20,
-                  fontWeight: 900,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  display: "block",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
+                className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none"
               >
                 Hand Cricket
               </span>
-              <RoughUnderline />
+              <span className="text-[11px] font-hand font-bold text-stone-500 mt-0.5">
+                Play • Friends • Relive 90s
+              </span>
             </div>
-            <span
-              style={{
-                fontFamily: "'Caveat', 'Kalam', cursive",
-                color: "#b91c1c",
-                fontSize: 12.5,
-                fontWeight: 700,
-                fontStyle: "italic",
-                lineHeight: 1.15,
-                marginTop: 2,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Same game. New stories!
-            </span>
           </div>
 
-          <div
-            style={{
-              width: 1.5,
-              height: 24,
-              background: "rgba(80,50,20,0.15)",
-              margin: "0 4px",
-            }}
-          />
-          {renderBadges()}
-        </div>
-
-        {/* Center Section: Matchup Banner */}
-        <div
-          className="flex items-center justify-center gap-3 flex-1 min-w-0"
-          style={{ maxWidth: 540 }}
-        >
-          <MatchupCard team={t0} style={{ maxWidth: 230, height: 46 }} />
-          <div
-            className="font-sketch"
-            style={{
-              color: INK,
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "0 2px",
-              userSelect: "none",
-              flexShrink: 0,
-            }}
-          >
-            VS
+          {/* Center Mode Switcher */}
+          <div className="flex items-center justify-center">
+            {renderBroadcastButton()}
           </div>
-          <MatchupCard team={t1} style={{ maxWidth: 230, height: 46 }} />
+
+          {/* Right Action Icons & User Badge */}
+          <div className="flex items-center gap-3 shrink-0">
+            {onHelp && (
+              <button
+                type="button"
+                onClick={onHelp}
+                className="w-8 h-8 rounded-full bg-[#FFFDF5] border border-stone-300 flex items-center justify-center text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                title="Tutorial"
+              >
+                ❓
+              </button>
+            )}
+
+            {/* User Profile Pill */}
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFDF5] border border-stone-300 shadow-xs">
+              <SeatAvatar avatar={me?.avatar} name={me?.name ?? "Player"} className="w-6 h-6" textClassName="text-[10px]" />
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-hand font-bold text-stone-800 leading-tight">
+                  Hey, {me?.name ?? "Player"}!
+                </span>
+                <span className="text-[9px] font-hand text-stone-400 leading-tight">
+                  Play. Laugh. Repeat!
+                </span>
+              </div>
+            </div>
+
+            {/* Leave Button */}
+            {onLeave && (
+              <button
+                type="button"
+                onClick={onLeave}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-sketch font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <span>→]</span>
+                <span>Leave</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Right Section */}
-        <div className="flex items-center gap-2 shrink-0">
-          {renderBroadcastButton()}
-          {renderMenu(desktopMenuRef)}
+        {/* Desktop Match Info & Matchup Cards */}
+        <div className="flex items-center justify-between gap-4 w-full pt-1 border-t border-stone-200/40">
+          {/* Match Chips */}
+          <div className="flex items-center gap-2 shrink-0">
+            {renderBadges()}
+          </div>
+
+          {/* Center Matchup Strip */}
+          <div className="flex items-center justify-center gap-3 flex-1 min-w-0 max-w-xl mx-auto">
+            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: 48 }} />
+            <div className="font-sketch font-black text-lg text-[#1a2952] px-1 select-none">
+              VS
+            </div>
+            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: 48 }} />
+          </div>
+
+          {/* Right Doodle Tag */}
+          <div className="hidden xl:flex items-center gap-1 text-stone-500 font-hand font-bold text-xs shrink-0 select-none">
+            <span>Good Matches Better Friends! 😊</span>
+          </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════
           MOBILE VIEW (< lg):
-          Classic 3-row layout matching mockup
+          Classic layout matching media_1789502371018.png
       ══════════════════════════════════════════════════════ */}
-      <div className="flex lg:hidden flex-col gap-2 w-full">
+      <div className="flex lg:hidden flex-col gap-2.5 w-full">
         {/* ROW 1: Back + Brand ... Broadcast + 3-dots */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-            flexWrap: "nowrap",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              minWidth: 0,
-            }}
-          >
-            {renderBackButton()}
-            <CricketBallIcon />
-            <div
-              style={{
-                minWidth: 0,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <div style={{ position: "relative", display: "inline-block" }}>
-                <span
-                  className="font-sketch"
-                  style={{
-                    color: INK,
-                    fontSize: "clamp(17px, 2.2vw, 22px)",
-                    fontWeight: 900,
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    display: "block",
-                    lineHeight: 1,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Hand Cricket
-                </span>
-                <RoughUnderline />
-              </div>
-              <span
-                style={{
-                  fontFamily: "'Caveat', 'Kalam', cursive",
-                  color: "#b91c1c",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  fontStyle: "italic",
-                  lineHeight: 1.15,
-                  marginTop: 2,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Same game. New stories!
-              </span>
-            </div>
+        <div className="flex items-center justify-between gap-3 w-full">
+          {renderBackButton()}
+
+          <div className="flex flex-col items-center">
+            <span className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none">
+              Hand Cricket
+            </span>
+            <div className="mt-1">{renderBroadcastButton()}</div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexShrink: 0,
-            }}
-          >
-            {renderBroadcastButton()}
-            {renderMenu(mobileMenuRef)}
-          </div>
+          {renderMenu(mobileMenuRef)}
         </div>
 
-        {/* ROW 2: Format & Category Badges */}
-        <div style={{ marginTop: 2 }}>{renderBadges()}</div>
+        {/* ROW 2: Format Chips & Crown Doodle */}
+        <div className="flex items-center justify-between w-full">
+          {renderBadges()}
+          <span className="text-[11px] font-hand font-bold text-stone-500 select-none">
+            👑 Play Friends Relive 90s
+          </span>
+        </div>
 
-        {/* ROW 3: Matchup Banner */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            marginTop: 4,
-            width: "100%",
-          }}
-        >
-          <MatchupCard team={t0} />
-          <div
-            className="font-sketch"
-            style={{
-              color: INK,
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "0 2px",
-              userSelect: "none",
-              flexShrink: 0,
-            }}
-          >
+        {/* ROW 3: Forest Green Matchup Cards */}
+        <div className="flex items-center justify-between gap-2.5 w-full">
+          <MatchupCard team={t0} isSelf={p0 === selfId} />
+          <div className="font-sketch font-black text-base text-[#1a2952] px-1 select-none">
             VS
           </div>
-          <MatchupCard team={t1} />
+          <MatchupCard team={t1} isSelf={p1 === selfId} />
         </div>
       </div>
     </div>
