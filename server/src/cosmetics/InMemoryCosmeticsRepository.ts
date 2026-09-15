@@ -80,6 +80,20 @@ const SEED_CATALOG: CosmeticCatalogItem[] = [
   { id: "dice_sapphire_frost", category: "DICE_SKIN", name: "Sapphire Frost", description: "Frosted sapphire crystal with a cold internal glacier glow.", priceCoins: 4200, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 50 },
   { id: "dice_dragon_scale", category: "DICE_SKIN", name: "Dragon Scale Ember", description: "Obsidian dragon-scale plating with molten crimson veins.", priceCoins: 6500, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 60 },
 
+  // Dice Skins — premium expansion (2026-09-15)
+  { id: "dice_rosewood_carved", category: "DICE_SKIN", name: "Rosewood Carved", description: "Hand-carved dark rosewood block with warm cream pips.", priceCoins: 1200, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 70 },
+  { id: "dice_onyx_noir", category: "DICE_SKIN", name: "Onyx Noir", description: "Glossy black onyx cube with gleaming gold pips.", priceCoins: 1400, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 80 },
+  { id: "dice_brushed_platinum", category: "DICE_SKIN", name: "Brushed Platinum", description: "Cool brushed platinum metal with sharp black pips.", priceCoins: 1600, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 90 },
+  { id: "dice_white_marble", category: "DICE_SKIN", name: "White Marble", description: "Pale veined marble block with polished gold pips.", priceCoins: 1800, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 100 },
+  { id: "dice_electric_indigo", category: "DICE_SKIN", name: "Electric Indigo", description: "Neon indigo glow outline on matte black, violet pips.", priceCoins: 2800, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 110 },
+  { id: "dice_crystal_clear", category: "DICE_SKIN", name: "Crystal Clear", description: "Flawless clear-cut crystal glass with golden pips.", priceCoins: 3000, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 120 },
+  { id: "dice_ruby_glass", category: "DICE_SKIN", name: "Ruby Glass", description: "Translucent deep ruby glass with a warm inner glow.", priceCoins: 3200, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 130 },
+  { id: "dice_azure_glass", category: "DICE_SKIN", name: "Azure Glass", description: "Translucent deep azure glass with a cool inner glow.", priceCoins: 3200, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 140 },
+  { id: "dice_amethyst_glass", category: "DICE_SKIN", name: "Amethyst Glass", description: "Translucent violet glass with a soft mystic glow.", priceCoins: 3400, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 150 },
+  { id: "dice_starlit_obsidian", category: "DICE_SKIN", name: "Starlit Obsidian", description: "Deep obsidian black flecked with tiny golden stars.", priceCoins: 4200, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 160 },
+  { id: "dice_gilded_marble", category: "DICE_SKIN", name: "Gilded Marble", description: "Black marble veined with molten gold, gold pips.", priceCoins: 4400, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 170 },
+  { id: "dice_hammered_gold", category: "DICE_SKIN", name: "Hammered Gold", description: "Textured hand-hammered gold frame with onyx pips.", priceCoins: 4800, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 180 },
+
   // Token Skins
   { id: "token_classic_pawn", category: "TOKEN_SKIN", name: "Standard Pawn", description: "Traditional 3D molded tournament pawn token.", priceCoins: 0, rarity: "COMMON", unlockMethod: "DEFAULT", isActive: true, displayOrder: 10 },
   { id: "token_golden_crown", category: "TOKEN_SKIN", name: "Golden Crown Pawn", description: "Crown-topped pawn adorned with royal gold trim.", priceCoins: 3000, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 20 },
@@ -87,6 +101,22 @@ const SEED_CATALOG: CosmeticCatalogItem[] = [
   { id: "token_neon_ring", category: "TOKEN_SKIN", name: "Cyber Pulse Ring", description: "Neon ring hovering around the base of the player token.", priceCoins: 1500, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 40 },
   { id: "token_diamond_elite", category: "TOKEN_SKIN", name: "Diamond Elite Pawn", description: "Faceted crystal pawn refracting prismatic sparkle at every step.", priceCoins: 3800, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 50 },
   { id: "token_phoenix_wing", category: "TOKEN_SKIN", name: "Phoenix Wing Token", description: "Rising phoenix silhouette wreathed in a trailing fire plume.", priceCoins: 5800, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 60 },
+
+  // Token Skins — premium craftsmanship finishes (2026-09-15). Every finish
+  // renders in the player's own seat color; see TokenFinishOverlay.tsx.
+  { id: "token_finish_polished_pearl", category: "TOKEN_SKIN", name: "Polished Pearl", description: "Ultra-glossy hand-polished pawn with a luminous sheen.", priceCoins: 1800, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 70 },
+  { id: "token_finish_carved_grain", category: "TOKEN_SKIN", name: "Carved Grain", description: "Fine hand-carved grain striations across a solid pawn.", priceCoins: 2000, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 80 },
+  { id: "token_finish_matte_noir", category: "TOKEN_SKIN", name: "Matte Noir", description: "Sleek low-gloss matte finish with a minimalist trim.", priceCoins: 1700, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 90 },
+  { id: "token_finish_rose_glass", category: "TOKEN_SKIN", name: "Rose Glass", description: "Soft translucent glass pawn with a gentle inner glow.", priceCoins: 2200, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 100 },
+  { id: "token_finish_crystal_facet", category: "TOKEN_SKIN", name: "Crystal Facet", description: "Diamond-cut faceted crown atop a glassy smooth body.", priceCoins: 3400, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 110 },
+  { id: "token_finish_chrome_mirror", category: "TOKEN_SKIN", name: "Chrome Mirror", description: "Mirror-polished metallic sheen with sharp specular streaks.", priceCoins: 3200, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 120 },
+  { id: "token_finish_ice_crystal", category: "TOKEN_SKIN", name: "Ice Crystal", description: "Frosted translucent glass etched with fine crack lines.", priceCoins: 3000, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 130 },
+  { id: "token_finish_veined_marble", category: "TOKEN_SKIN", name: "Veined Marble", description: "Polished stone finish threaded with fine natural veins.", priceCoins: 3600, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 140 },
+  { id: "token_finish_gem_cut", category: "TOKEN_SKIN", name: "Gem Cut", description: "Full diamond-cut facets with a brilliant specular flash.", priceCoins: 4400, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 150 },
+  { id: "token_finish_molten_core", category: "TOKEN_SKIN", name: "Molten Core", description: "Dark cracked shell glowing with a pulsing molten core.", priceCoins: 4600, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 160 },
+  { id: "token_finish_engraved_lattice", category: "TOKEN_SKIN", name: "Engraved Lattice", description: "Hand-engraved gold lattice pattern with a capped crown.", priceCoins: 4800, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 170 },
+  { id: "token_finish_nebula_swirl", category: "TOKEN_SKIN", name: "Nebula Swirl", description: "Deep cosmic gradient scattered with twinkling sparkle dust.", priceCoins: 5000, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 180 },
+  { id: "token_finish_holographic_shift", category: "TOKEN_SKIN", name: "Holographic Shift", description: "Shimmering iridescent bands that shift as it catches the light.", priceCoins: 5400, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: true, displayOrder: 190 },
 
   // Card Backs
   { id: "cardback_classic_navy", category: "CARD_BACK", name: "Classic Navy Mandala", description: "Traditional Indian card room navy back with geometric mandala.", priceCoins: 0, rarity: "COMMON", unlockMethod: "DEFAULT", isActive: true, displayOrder: 10 },

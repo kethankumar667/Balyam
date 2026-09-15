@@ -20,6 +20,7 @@ import {
   type CosmeticGameScope,
   type ResolvedCosmeticsLoadout,
 } from "@shared/cosmetics";
+import type { TokenFinishId } from "../games/ludo/TokenFinishOverlay";
 
 // ── 1. Table Themes ──
 
@@ -134,6 +135,112 @@ export const DICE_SKINS: Record<string, DiceSkinConfig> = {
     pipBorder: "inset 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(239,68,68,0.9)",
     glow: "0 0 20px rgba(239,68,68,0.6)",
   },
+
+  // ── Premium expansion (2026-09-15) ──
+  dice_rosewood_carved: {
+    id: "dice_rosewood_carved",
+    wooden: true,
+    faceBg: "linear-gradient(135deg, #7C4A2D 0%, #5A2E17 55%, #33170A 100%)",
+    faceBorder: "#26120A",
+    pipBg: "linear-gradient(135deg, #FDF3E1 0%, #E7CDA0 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.35)",
+  },
+  dice_onyx_noir: {
+    id: "dice_onyx_noir",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #2A2A2E 0%, #121214 60%, #000000 100%)",
+    faceBorder: "#3F3F46",
+    pipBg: "linear-gradient(135deg, #F5C542 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.7), 0 1px 1px rgba(245,197,66,0.5)",
+  },
+  dice_brushed_platinum: {
+    id: "dice_brushed_platinum",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #F1F5F9 0%, #CBD5E1 50%, #94A3B8 100%)",
+    faceBorder: "#64748B",
+    pipBg: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+    pipBorder: "inset 0 1.5px 2px rgba(0,0,0,0.85), inset 0 -1px 1px rgba(255,255,255,0.3)",
+  },
+  dice_white_marble: {
+    id: "dice_white_marble",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #FAFAFA 0%, #E4E4E7 55%, #D4D4D8 100%)",
+    faceBorder: "#A1A1AA",
+    pipBg: "linear-gradient(135deg, #F5C542 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(245,197,66,0.6)",
+  },
+  dice_electric_indigo: {
+    id: "dice_electric_indigo",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #1E1B2E 0%, #0A0812 100%)",
+    faceBorder: "#818CF8",
+    pipBg: "linear-gradient(135deg, #A5B4FC 0%, #6366F1 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.8), 0 0 6px rgba(129,140,248,0.9)",
+    glow: "0 0 16px rgba(129,140,248,0.65)",
+  },
+  dice_crystal_clear: {
+    id: "dice_crystal_clear",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #FFFFFF 0%, #E8F2FF 45%, #C7DEFF 100%)",
+    faceBorder: "#DCEBFF",
+    pipBg: "linear-gradient(135deg, #F5C542 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.3), 0 0 6px rgba(255,255,255,0.9)",
+    glow: "0 0 14px rgba(199,222,255,0.55)",
+  },
+  dice_ruby_glass: {
+    id: "dice_ruby_glass",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #FCA5A5 0%, #DC2626 55%, #7F1D1D 100%)",
+    faceBorder: "#991B1B",
+    pipBg: "linear-gradient(135deg, #FDE68A 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.5), 0 0 6px rgba(252,165,165,0.8)",
+    glow: "0 0 18px rgba(220,38,38,0.55)",
+  },
+  dice_azure_glass: {
+    id: "dice_azure_glass",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #93C5FD 0%, #2563EB 55%, #1E3A8A 100%)",
+    faceBorder: "#1D4ED8",
+    pipBg: "linear-gradient(135deg, #FDE68A 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.5), 0 0 6px rgba(147,197,253,0.8)",
+    glow: "0 0 18px rgba(37,99,235,0.55)",
+  },
+  dice_amethyst_glass: {
+    id: "dice_amethyst_glass",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #D8B4FE 0%, #9333EA 55%, #4C1D95 100%)",
+    faceBorder: "#6B21A8",
+    pipBg: "linear-gradient(135deg, #FDE68A 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.5), 0 0 6px rgba(216,180,254,0.8)",
+    glow: "0 0 18px rgba(147,51,234,0.55)",
+  },
+  dice_starlit_obsidian: {
+    id: "dice_starlit_obsidian",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #18181B 0%, #09090B 70%, #000000 100%)",
+    faceBorder: "#F5C542",
+    pipBg: "linear-gradient(135deg, #F5C542 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.8), 0 0 6px rgba(245,197,66,0.7)",
+    glow: "0 0 14px rgba(245,197,66,0.4)",
+  },
+  dice_gilded_marble: {
+    id: "dice_gilded_marble",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #27272A 0%, #0C0A09 45%, #18181B 100%)",
+    faceBorder: "#F5C542",
+    pipBg: "linear-gradient(135deg, #F5C542 0%, #B8860B 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.7), 0 0 6px rgba(245,197,66,0.8)",
+    glow: "0 0 16px rgba(245,197,66,0.45)",
+  },
+  dice_hammered_gold: {
+    id: "dice_hammered_gold",
+    wooden: false,
+    faceBg: "linear-gradient(135deg, #FBBF24 0%, #D97706 55%, #78350F 100%)",
+    faceBorder: "#451A03",
+    pipBg: "linear-gradient(135deg, #1C1917 0%, #000000 100%)",
+    pipBorder: "inset 0 1px 2px rgba(0,0,0,0.7), 0 1px 1px rgba(254,240,138,0.5)",
+    glow: "0 0 14px rgba(217,119,6,0.4)",
+  },
 };
 
 export function getDiceSkinConfig(skinId?: string): DiceSkinConfig {
@@ -152,6 +259,12 @@ export interface TokenSkinConfig {
   hasNeonRing: boolean;
   hasDiamond: boolean;
   hasPhoenixWing: boolean;
+  /**
+   * Premium craftsmanship finish (see `TokenFinishOverlay`). Always
+   * rendered in the player's own seat color — never a fixed hue — so
+   * equipping a finish never overrides seat-color identity on the board.
+   */
+  finish?: TokenFinishId;
 }
 
 export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
@@ -202,6 +315,74 @@ export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
     hasNeonRing: false,
     hasDiamond: false,
     hasPhoenixWing: true,
+  },
+
+  // ── Premium craftsmanship finishes (2026-09-15) — always rendered in the
+  // player's own seat color; see TokenSkinConfig.finish's doc comment. ──
+  token_finish_polished_pearl: {
+    id: "token_finish_polished_pearl",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "polishedPearl",
+  },
+  token_finish_carved_grain: {
+    id: "token_finish_carved_grain",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "carvedGrain",
+  },
+  token_finish_matte_noir: {
+    id: "token_finish_matte_noir",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "matteNoir",
+  },
+  token_finish_rose_glass: {
+    id: "token_finish_rose_glass",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "roseGlass",
+  },
+  token_finish_crystal_facet: {
+    id: "token_finish_crystal_facet",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "crystalFacet",
+  },
+  token_finish_chrome_mirror: {
+    id: "token_finish_chrome_mirror",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "chromeMirror",
+  },
+  token_finish_ice_crystal: {
+    id: "token_finish_ice_crystal",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "iceCrystal",
+  },
+  token_finish_veined_marble: {
+    id: "token_finish_veined_marble",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "veinedMarble",
+  },
+  token_finish_gem_cut: {
+    id: "token_finish_gem_cut",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "gemCut",
+  },
+  token_finish_molten_core: {
+    id: "token_finish_molten_core",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "moltenCore",
+  },
+  token_finish_engraved_lattice: {
+    id: "token_finish_engraved_lattice",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "engravedLattice",
+  },
+  token_finish_nebula_swirl: {
+    id: "token_finish_nebula_swirl",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "nebulaSwirl",
+  },
+  token_finish_holographic_shift: {
+    id: "token_finish_holographic_shift",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    finish: "holographicShift",
   },
 };
 
