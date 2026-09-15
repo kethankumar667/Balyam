@@ -6,6 +6,7 @@ import {
   type CommitMatchEntryInput,
   type CreateTerminalIntentInput,
   type CreateTerminalIntentResult,
+  type CreditWalletInput,
   type DebitWalletInput,
   type EconomyConfigurationRecord,
   type EconomyOperationResult,
@@ -684,6 +685,14 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     );
   }
 
+  async creditWallet(
+    input: CreditWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${input.identityId}`, () =>
+      this.withRollback(() => this.creditWalletLocked(input)),
+    );
+  }
+
   async resolveIdentityId(query: string): Promise<string | null> {
     return query.trim();
   }
@@ -741,7 +750,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     const grantAmount = toBig(
       wallet.identityKind === "guest" ? this.configuration.guestStarterCoins : this.configuration.memberStarterCoins,
     );
-    const updated = this.creditWallet(wallet, grantAmount, {
+    const updated = this.applyWalletCredit(wallet, grantAmount, {
       entryType: "STARTER_GRANT",
       sourceKind: "starter_grant",
       sourceId: identityId,
@@ -1058,7 +1067,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         if (prize > 0n) {
           this.ensureWalletLocked(participant.identityId);
           const wallet = this.wallets.get(participant.identityId)!;
-          const credited = this.creditWallet(wallet, prize, {
+          const credited = this.applyWalletCredit(wallet, prize, {
             entryType: "MATCH_PRIZE_CREDIT",
             sourceKind: "match",
             sourceId: input.matchId,
@@ -1338,7 +1347,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         const wallet = this.wallets.get(p.identityId);
         if (wallet) {
           const cost = toBig(p.amountCoins);
-          const credited = this.creditWallet(wallet, cost, {
+          const credited = this.applyWalletCredit(wallet, cost, {
             entryType: "MATCH_REFUND",
             sourceKind: "match",
             sourceId: settlement.matchId,
@@ -1355,7 +1364,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       if (!hostWallet) {
         throw new WalletNotFoundError(`Host wallet ${settlement.hostIdentityId} does not exist`);
       }
-      const credited = this.creditWallet(hostWallet, refundAmount, {
+      const credited = this.applyWalletCredit(hostWallet, refundAmount, {
         entryType: "MATCH_REFUND",
         sourceKind: "match",
         sourceId: settlement.matchId,
@@ -1490,7 +1499,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     }
 
     const amount = toBig(voucher.coinAmount);
-    const credited = this.creditWallet(memberWallet, amount, {
+    const credited = this.applyWalletCredit(memberWallet, amount, {
       entryType: "VOUCHER_REDEMPTION",
       sourceKind: "voucher",
       sourceId: voucher.id,
@@ -1551,7 +1560,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new WalletFrozenError(`Wallet for ${input.identityId} is frozen`);
     }
 
-    const updated = this.creditWallet(wallet, amountBn, {
+    const updated = this.applyWalletCredit(wallet, amountBn, {
       entryType: input.entryType ?? "ADMIN_ADJUSTMENT",
       sourceKind: "admin",
       sourceId: input.adminPrincipalId,
@@ -1622,9 +1631,57 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     };
   }
 
+  private creditWalletLocked(
+    input: CreditWalletInput,
+  ): EconomyOperationResult<CoinWalletRecord> {
+    if (!input.identityId || input.identityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.identityId);
+    }
+    const amountBn = toBig(input.amountCoins);
+    if (amountBn <= 0n) {
+      throw new Error("INVALID_AMOUNT: credit amount must be strictly greater than 0");
+    }
+
+    this.ensureWalletLocked(input.identityId);
+
+    const existing = this.idempotencyLog.get(input.idempotencyKey);
+    if (existing) {
+      const wallet = this.wallets.get(input.identityId)!;
+      return {
+        applied: false,
+        operation: "credit_wallet",
+        idempotencyKey: input.idempotencyKey,
+        result: clone(wallet),
+      };
+    }
+
+    const wallet = this.wallets.get(input.identityId)!;
+    if (wallet.isFrozen) {
+      throw new WalletFrozenError(`Wallet for ${input.identityId} is frozen`);
+    }
+
+    const updated = this.applyWalletCredit(wallet, amountBn, {
+      entryType: input.entryType,
+      sourceKind: input.sourceKind ?? "cosmetics",
+      sourceId: input.sourceId ?? "refund",
+      idempotencyKey: input.idempotencyKey,
+      description: input.reason || "Cosmetic refund credit",
+      lifetimeField: "lifetimeRefunded",
+    });
+
+    this.wallets.set(input.identityId, updated);
+    this.logIdempotency(input.idempotencyKey, "credit_wallet");
+    return {
+      applied: true,
+      operation: "credit_wallet",
+      idempotencyKey: input.idempotencyKey,
+      result: clone(updated),
+    };
+  }
+
   /* ═══════════════════════════ shared mutation primitives ═══════════════ */
 
-  private creditWallet(
+  private applyWalletCredit(
     wallet: CoinWalletRecord,
     amount: bigint,
     ledger: {

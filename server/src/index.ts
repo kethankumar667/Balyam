@@ -285,6 +285,7 @@ const cosmeticsService = new CosmeticsService(
     : { economyRepository: economyService?.getRepository() },
 );
 await cosmeticsService.assertCatalogIntegrity();
+await cosmeticsService.assertRarityPricing();
 
 const roomManager = new RoomManager(io, economyService, cosmeticsService);
 // Blocker 06: startup recovery. Discovers and processes any PENDING,

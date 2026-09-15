@@ -396,6 +396,31 @@ export function sanitizeCosmeticId(
   return def.id;
 }
 
+/**
+ * Sanity bounds for a COIN_PURCHASE item's price, per its declared rarity.
+ * Derived from the actual spread of prices already shipped across every
+ * active catalog row (see docs/cosmetics/COSMETICS_TAXONOMY.md) — deliberately
+ * wide enough to never flag a real, already-approved price, so a violation
+ * always means a genuine authoring mistake (e.g. a LEGENDARY item priced
+ * like a RARE one), not a false positive against normal pricing variance.
+ * DEFAULT and STREAK_MILESTONE items are earned, not priced, and are exempt —
+ * see `isPriceWithinRarityBand`.
+ */
+export const RARITY_PRICE_BANDS: Record<CosmeticRarity, { readonly minCoins: number; readonly maxCoins: number }> = {
+  COMMON: { minCoins: 0, maxCoins: 1000 },
+  RARE: { minCoins: 1000, maxCoins: 3000 },
+  EPIC: { minCoins: 2000, maxCoins: 4500 },
+  LEGENDARY: { minCoins: 4000, maxCoins: 11000 },
+};
+
+export function isPriceWithinRarityBand(
+  item: Pick<CosmeticCatalogItem, "priceCoins" | "rarity" | "unlockMethod">,
+): boolean {
+  if (item.unlockMethod !== "COIN_PURCHASE") return true;
+  const band = RARITY_PRICE_BANDS[item.rarity];
+  return item.priceCoins >= band.minCoins && item.priceCoins <= band.maxCoins;
+}
+
 export function sanitizeEquippedLoadout(raw: unknown): EquippedCosmeticsLoadout {
   if (!raw || typeof raw !== "object") {
     return {
@@ -570,6 +595,27 @@ export interface PurchaseCosmeticResponsePayload {
   success: boolean;
   applied?: boolean;
   code: "PURCHASED" | "ALREADY_OWNED" | "INSUFFICIENT_FUNDS" | "INVALID_COSMETIC" | "IDEMPOTENCY_MISMATCH" | "ERROR";
+  message?: string;
+  cosmeticId: string;
+  walletBalance?: string;
+}
+
+export interface RefundCosmeticRequestPayload {
+  cosmeticId: string;
+  idempotencyKey: string;
+}
+
+export interface RefundCosmeticResponsePayload {
+  success: boolean;
+  applied?: boolean;
+  code:
+    | "REFUNDED"
+    | "NOT_OWNED"
+    | "NOT_REFUNDABLE"
+    | "WINDOW_EXPIRED"
+    | "INVALID_COSMETIC"
+    | "IDEMPOTENCY_MISMATCH"
+    | "ERROR";
   message?: string;
   cosmeticId: string;
   walletBalance?: string;

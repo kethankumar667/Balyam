@@ -4,6 +4,7 @@
  *   GET  /api/cosmetics/catalog  — Public catalog listing
  *   GET  /api/cosmetics/loadout  — Current user's inventory & equipped slots
  *   POST /api/cosmetics/purchase — Atomic idempotent coin purchase
+ *   POST /api/cosmetics/refund   — Atomic idempotent self-service refund (15-min window)
  *   POST /api/cosmetics/equip    — Equip owned/default cosmetic
  *   POST /api/cosmetics/unequip  — Restore category default
  */
@@ -160,6 +161,62 @@ export function createCosmeticsRouter(cosmeticsService: CosmeticsService): Route
         success: false,
         code: "ERROR",
         message: "Internal server error completing purchase.",
+      });
+    }
+  });
+
+  /**
+   * POST /api/cosmetics/refund
+   * Executes atomic self-service refund of a coin-purchased cosmetic,
+   * within a 15-minute window of purchase. See docs/cosmetics/REFUND_RULES.md.
+   */
+  router.post("/refund", requireIdentity, async (req: Request, res: Response) => {
+    try {
+      const userId = callerId(req);
+      const { cosmeticId, idempotencyKey } = req.body as { cosmeticId?: unknown; idempotencyKey?: unknown };
+
+      if (typeof cosmeticId !== "string" || !isKnownCosmeticId(cosmeticId)) {
+        res.status(400).json({
+          success: false,
+          code: "INVALID_COSMETIC",
+          message: "A valid cosmetic identifier is required.",
+        });
+        return;
+      }
+
+      if (typeof idempotencyKey !== "string" || idempotencyKey.trim().length === 0) {
+        res.status(400).json({
+          success: false,
+          code: "ERROR",
+          message: "A valid idempotencyKey is required.",
+        });
+        return;
+      }
+
+      // Admins never actually purchased anything (see /purchase above), so
+      // there is nothing to refund.
+      if (isCallerAdmin(req)) {
+        res.json({
+          success: false,
+          applied: false,
+          code: "NOT_OWNED",
+          cosmeticId,
+          message: "Admins do not purchase cosmetics, so there is nothing to refund.",
+        });
+        return;
+      }
+
+      const result = await cosmeticsService.refundCosmetic(userId, cosmeticId, idempotencyKey);
+      res.json(result);
+    } catch (err) {
+      logger.error({
+        message: `POST /api/cosmetics/refund failed: ${String(err)}`,
+        module: "COSMETICS_API",
+      });
+      res.status(500).json({
+        success: false,
+        code: "ERROR",
+        message: "Internal server error completing refund.",
       });
     }
   });

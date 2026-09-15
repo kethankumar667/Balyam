@@ -17,9 +17,13 @@ import {
   type CosmeticsRepository,
   type PurchaseCosmeticInput,
   type PurchaseCosmeticResult,
+  type RefundCosmeticInput,
+  type RefundCosmeticResult,
+  REFUND_WINDOW_MS,
   UnownedCosmeticError,
   InvalidCosmeticError,
   CosmeticsDebitUnsupportedError,
+  CosmeticsCreditUnsupportedError,
 } from "./CosmeticsRepository.js";
 import {
   type EconomyRepository,
@@ -151,10 +155,20 @@ export class InMemoryCosmeticsRepository implements CosmeticsRepository {
   private readonly catalog = new Map<string, CosmeticCatalogItem>();
   // user_id -> Set of non-default cosmetic_id
   private readonly entitlements = new Map<string, Set<string>>();
+  // user_id -> cosmetic_id -> how/when it was acquired — mirrors
+  // user_cosmetics.source_type/acquired_at in the Supabase schema, needed
+  // here so refundCosmetic can enforce "only COIN_PURCHASE entitlements,
+  // only within the refund window" the same way the real RPC will.
+  private readonly entitlementMeta = new Map<
+    string,
+    Map<string, { sourceType: "COIN_PURCHASE" | "STREAK_MILESTONE" | "ADMIN_GRANT"; acquiredAt: number }>
+  >();
   // user_id -> Map of "category:scope" -> cosmetic_id
   private readonly equipped = new Map<string, Map<string, string>>();
   // user_id -> Map of idempotencyKey -> { cosmeticId, result }
   private readonly purchaseRequests = new Map<string, Map<string, { cosmeticId: string; result: PurchaseCosmeticResult }>>();
+  // user_id -> Map of idempotencyKey -> { cosmeticId, result }
+  private readonly refundRequests = new Map<string, Map<string, { cosmeticId: string; result: RefundCosmeticResult }>>();
 
   constructor(private readonly economyRepository: EconomyRepository) {
     for (const item of SEED_CATALOG) {
@@ -324,6 +338,12 @@ export class InMemoryCosmeticsRepository implements CosmeticsRepository {
 
       // 6. Grant persistent entitlement
       userEnts.add(input.cosmeticId);
+      let userMeta = this.entitlementMeta.get(input.userId);
+      if (!userMeta) {
+        userMeta = new Map();
+        this.entitlementMeta.set(input.userId, userMeta);
+      }
+      userMeta.set(input.cosmeticId, { sourceType: "COIN_PURCHASE", acquiredAt: Date.now() });
 
       // 7. Store purchase request record
       const successResult: PurchaseCosmeticResult = {
@@ -403,6 +423,131 @@ export class InMemoryCosmeticsRepository implements CosmeticsRepository {
       this.entitlements.set(userId, userEnts);
     }
     userEnts.add(cosmeticId);
+    let userMeta = this.entitlementMeta.get(userId);
+    if (!userMeta) {
+      userMeta = new Map();
+      this.entitlementMeta.set(userId, userMeta);
+    }
+    // Achievement grants are earned, not bought — recorded as STREAK_MILESTONE
+    // regardless of the caller's own sourceType string, so refundCosmetic's
+    // "only COIN_PURCHASE is refundable" check can never be bypassed by an
+    // internal caller passing an unexpected sourceType value.
+    userMeta.set(cosmeticId, { sourceType: "STREAK_MILESTONE", acquiredAt: Date.now() });
     return true;
+  }
+
+  async refundCosmetic(input: RefundCosmeticInput): Promise<RefundCosmeticResult> {
+    return this.mutex.runExclusive(`wallet:${input.userId}`, async () => {
+      // 1. Account-scoped idempotency check
+      let userRequests = this.refundRequests.get(input.userId);
+      if (!userRequests) {
+        userRequests = new Map();
+        this.refundRequests.set(input.userId, userRequests);
+      }
+
+      const existingReq = userRequests.get(input.idempotencyKey);
+      if (existingReq) {
+        if (existingReq.cosmeticId !== input.cosmeticId) {
+          return {
+            applied: false,
+            code: "IDEMPOTENCY_MISMATCH",
+            cosmeticId: input.cosmeticId,
+            message: "Idempotency key replayed with a different cosmetic ID.",
+          };
+        }
+        return {
+          ...existingReq.result,
+          applied: false,
+        };
+      }
+
+      // 2. Validate cosmetic in catalog
+      const item = this.catalog.get(input.cosmeticId);
+      if (!item) {
+        return {
+          applied: false,
+          code: "INVALID_COSMETIC",
+          cosmeticId: input.cosmeticId,
+          message: "Cosmetic item does not exist.",
+        };
+      }
+
+      // 3. Ownership + source-type check
+      const userEnts = this.entitlements.get(input.userId);
+      const meta = this.entitlementMeta.get(input.userId)?.get(input.cosmeticId);
+      if (!userEnts?.has(input.cosmeticId) || !meta) {
+        return {
+          applied: false,
+          code: "NOT_OWNED",
+          cosmeticId: input.cosmeticId,
+          message: "You do not own this cosmetic.",
+        };
+      }
+
+      if (meta.sourceType !== "COIN_PURCHASE") {
+        return {
+          applied: false,
+          code: "NOT_REFUNDABLE",
+          cosmeticId: input.cosmeticId,
+          message: "Only coin-purchased cosmetics can be refunded.",
+        };
+      }
+
+      // 4. Refund window check
+      if (Date.now() - meta.acquiredAt > REFUND_WINDOW_MS) {
+        return {
+          applied: false,
+          code: "WINDOW_EXPIRED",
+          cosmeticId: input.cosmeticId,
+          message: "The refund window for this purchase has expired.",
+        };
+      }
+
+      // 5. Credit wallet atomically — refuse rather than silently faking a
+      // credited balance if the active economy repository cannot actually
+      // perform one, mirroring purchaseCosmetic's debitWallet guard.
+      if (!this.economyRepository.creditWallet) {
+        throw new CosmeticsCreditUnsupportedError(input.userId);
+      }
+      const creditOp = await this.economyRepository.creditWallet({
+        identityId: input.userId,
+        amountCoins: String(item.priceCoins),
+        idempotencyKey: input.idempotencyKey,
+        entryType: "COSMETIC_REFUND",
+        reason: `Refunded cosmetic: ${item.name}`,
+        sourceKind: "cosmetics",
+        sourceId: input.cosmeticId,
+      });
+      const newBalance = creditOp.result.balance;
+
+      // 6. Revoke entitlement
+      userEnts.delete(input.cosmeticId);
+      this.entitlementMeta.get(input.userId)?.delete(input.cosmeticId);
+
+      // 7. Unequip from every (category, scope) slot it currently occupies
+      const userEquipped = this.equipped.get(input.userId);
+      if (userEquipped) {
+        for (const [key, cosmeticId] of Array.from(userEquipped.entries())) {
+          if (cosmeticId === input.cosmeticId) {
+            userEquipped.delete(key);
+          }
+        }
+      }
+
+      // 8. Store refund request record
+      const successResult: RefundCosmeticResult = {
+        applied: true,
+        code: "REFUNDED",
+        cosmeticId: input.cosmeticId,
+        walletBalance: newBalance,
+      };
+
+      userRequests.set(input.idempotencyKey, {
+        cosmeticId: input.cosmeticId,
+        result: successResult,
+      });
+
+      return successResult;
+    });
   }
 }

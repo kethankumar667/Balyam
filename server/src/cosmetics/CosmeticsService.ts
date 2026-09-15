@@ -12,9 +12,11 @@ import {
   type CosmeticsStateResponsePayload,
   type EquipCosmeticResponsePayload,
   type PurchaseCosmeticResponsePayload,
+  type RefundCosmeticResponsePayload,
   type UnequipCosmeticResponsePayload,
   BHALYAM_COSMETIC_REGISTRY,
   isKnownCosmeticId,
+  isPriceWithinRarityBand,
   sanitizeCosmeticId,
   resolveEffectiveLoadout,
   getDefaultCosmetic,
@@ -65,6 +67,23 @@ export class CosmeticsService {
     for (const item of catalog) {
       if (!isKnownCosmeticId(item.id)) {
         throw new Error(`CATALOG_INTEGRITY_VIOLATION: Database item ${item.id} not in BHALYAM_COSMETIC_REGISTRY`);
+      }
+    }
+  }
+
+  /**
+   * Asserts every active catalog item's price falls within its rarity's
+   * documented sanity band (see `RARITY_PRICE_BANDS`). Closes the
+   * "rarity has documented meaning" Foundation exit-gate item — see
+   * docs/cosmetics/ACCEPTANCE_CRITERIA.md.
+   */
+  async assertRarityPricing(): Promise<void> {
+    const catalog = await this.repository.getCatalog();
+    for (const item of catalog) {
+      if (!isPriceWithinRarityBand(item)) {
+        throw new Error(
+          `RARITY_PRICE_VIOLATION: ${item.id} is priced ${item.priceCoins} coins, outside the documented ${item.rarity} band.`,
+        );
       }
     }
   }
@@ -173,6 +192,71 @@ export class CosmeticsService {
         code: "ERROR",
         cosmeticId,
         message: "Purchase failed due to an internal server error.",
+      };
+    }
+  }
+
+  async refundCosmetic(
+    userId: string,
+    cosmeticId: string,
+    idempotencyKey: string,
+  ): Promise<RefundCosmeticResponsePayload> {
+    if (!userId || userId.trim().length === 0) {
+      return {
+        success: false,
+        applied: false,
+        code: "ERROR",
+        cosmeticId,
+        message: "Authentication required to refund cosmetics.",
+      };
+    }
+
+    if (!isKnownCosmeticId(cosmeticId)) {
+      return {
+        success: false,
+        applied: false,
+        code: "INVALID_COSMETIC",
+        cosmeticId,
+        message: `Unknown cosmetic item: ${cosmeticId}`,
+      };
+    }
+
+    if (!idempotencyKey || idempotencyKey.trim().length === 0) {
+      return {
+        success: false,
+        applied: false,
+        code: "ERROR",
+        cosmeticId,
+        message: "An idempotency key is required.",
+      };
+    }
+
+    try {
+      const result = await this.repository.refundCosmetic({
+        userId,
+        cosmeticId,
+        idempotencyKey,
+      });
+
+      return {
+        success: result.applied,
+        applied: result.applied,
+        code: result.code,
+        cosmeticId: result.cosmeticId,
+        walletBalance: result.walletBalance,
+        message: result.message,
+      };
+    } catch (err) {
+      logger.error({
+        message: `Refund cosmetic error for ${userId} (item: ${cosmeticId}): ${String(err)}`,
+        module: "COSMETICS",
+      });
+      return {
+        success: false,
+        applied: false,
+        code: "ERROR",
+        cosmeticId,
+        message: "Refund failed due to an internal server error.",
       };
     }
   }

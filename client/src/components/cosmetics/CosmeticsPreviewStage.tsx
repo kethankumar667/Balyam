@@ -17,6 +17,7 @@ import {
   Coins,
   Check,
   RotateCw,
+  RotateCcw,
   Eye,
   Gamepad2,
   Trophy,
@@ -60,6 +61,7 @@ interface CosmeticsPreviewStageProps {
   onPurchase: (item: CosmeticCatalogItem) => void;
   onEquip: (item: CosmeticCatalogItem) => void;
   onUnequip: () => void;
+  onRefund: (item: CosmeticCatalogItem) => void;
 }
 
 export function CosmeticsPreviewStage({
@@ -76,6 +78,7 @@ export function CosmeticsPreviewStage({
   onPurchase,
   onEquip,
   onUnequip,
+  onRefund,
 }: CosmeticsPreviewStageProps) {
   const { playerName, avatarId } = useRoomStore();
   const displayName = playerName.trim() || "Player";
@@ -440,6 +443,24 @@ export function CosmeticsPreviewStage({
               className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-extrabold text-xs bg-zinc-900 text-zinc-500 border border-zinc-800 flex items-center justify-center gap-2 cursor-not-allowed select-none"
             >
               <span>{presentation.ctaLabel}</span>
+            </button>
+          )}
+
+          {/* Self-service refund — server is the sole authority on whether
+              the 15-minute window has actually expired; this link just
+              offers the attempt, and a rejection (WINDOW_EXPIRED,
+              NOT_REFUNDABLE, ...) surfaces through the modal's existing
+              error banner. Never shown for admin free-access or for
+              STREAK_MILESTONE/DEFAULT items, which were never paid for. */}
+          {isOwned && !isAdminUser && previewItem.unlockMethod === "COIN_PURCHASE" && (
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onRefund(previewItem)}
+              className="w-full mt-2 py-1.5 text-[11px] font-semibold text-zinc-500 hover:text-rose-400 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Refund for {previewItem.priceCoins.toLocaleString()} Coins</span>
             </button>
           )}
         </div>

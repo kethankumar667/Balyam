@@ -20,6 +20,7 @@ import {
   type ResolvedCosmeticsLoadout,
   type CosmeticsStateResponsePayload,
   type PurchaseCosmeticResponsePayload,
+  type RefundCosmeticResponsePayload,
   type EquipCosmeticResponsePayload,
   type UnequipCosmeticResponsePayload,
   COSMETIC_CATEGORIES,
@@ -54,6 +55,7 @@ export interface CosmeticsStore {
   selectScope: (scope: CosmeticGameScope) => void;
   selectItem: (itemId: string | null) => void;
   purchaseItem: (cosmeticId: string) => Promise<PurchaseCosmeticResponsePayload>;
+  refundItem: (cosmeticId: string) => Promise<RefundCosmeticResponsePayload>;
   equipItem: (category: CosmeticCategory, scope: CosmeticGameScope, cosmeticId: string) => Promise<boolean>;
   unequipItem: (category: CosmeticCategory, scope: CosmeticGameScope) => Promise<boolean>;
 }
@@ -210,6 +212,53 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
       return data;
     } catch (err) {
       const errorPayload: PurchaseCosmeticResponsePayload = {
+        success: false,
+        applied: false,
+        code: "ERROR",
+        cosmeticId,
+        message: "Failed to connect to cosmetics boutique.",
+      };
+      set({ errorMessage: errorPayload.message });
+      return errorPayload;
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
+  refundItem: async (cosmeticId: string): Promise<RefundCosmeticResponsePayload> => {
+    if (get().isSubmitting) {
+      return {
+        success: false,
+        applied: false,
+        code: "ERROR",
+        cosmeticId,
+        message: "A request is currently in progress.",
+      };
+    }
+
+    set({ isSubmitting: true, errorMessage: null });
+    const idempotencyKey = crypto.randomUUID ? crypto.randomUUID() : `refund_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    try {
+      const res = await apiFetch("/api/cosmetics/refund", {
+        method: "POST",
+        body: JSON.stringify({ cosmeticId, idempotencyKey }),
+      });
+
+      const data = (await res.json()) as RefundCosmeticResponsePayload;
+
+      if (data && data.success && data.code === "REFUNDED") {
+        // The server may also have auto-unequipped this item, so re-fetch
+        // the full loadout rather than trying to reconstruct it locally.
+        await get().fetchCosmetics();
+        void refreshCurrentWallet();
+      } else if (data?.message) {
+        set({ errorMessage: data.message });
+      }
+
+      return data;
+    } catch (err) {
+      const errorPayload: RefundCosmeticResponsePayload = {
         success: false,
         applied: false,
         code: "ERROR",
