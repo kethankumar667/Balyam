@@ -242,7 +242,7 @@ export function CosmeticsItemCard({
 // material registries the live game boards render from.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CollectibleThumbnail({
+export function CollectibleThumbnail({
   item,
   category,
   isSelected,
@@ -371,7 +371,7 @@ function CollectibleThumbnail({
  * separate component (not a branch inline in `CollectibleThumbnail`) so
  * `useId()` can be called unconditionally at its own top level.
  */
-function TokenSkinThumbnail({ skinId, isSelected }: { skinId: string; isSelected: boolean }) {
+export function TokenSkinThumbnail({ skinId, isSelected }: { skinId: string; isSelected: boolean }) {
   const uid = useId().replace(/:/g, "");
   const tokenSkin = getTokenSkinConfig(skinId);
   return (

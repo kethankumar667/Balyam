@@ -55,6 +55,8 @@ import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 import { bhalyamSpring } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
+import { useViewport } from "../../lib/useViewport";
+import { CosmeticsStoreMobile } from "./CosmeticsStoreMobile";
 
 // Tables, Auras, and Titles are removed from the shop (2026-09-10) — their
 // catalog rows are deactivated server-side (see InMemoryCosmeticsRepository's
@@ -95,6 +97,8 @@ export function CosmeticsStoreModal() {
   const { balance: walletBalance } = useWallet();
   const { isAdmin, isSuperAdmin } = useAuthStore();
   const isAdminUser = isAdmin || isSuperAdmin;
+  const viewport = useViewport();
+  const isMobile = viewport === "mobile";
 
   // Shop chrome (shell, header/footer bars, tab strip, item-grid container)
   // follows the app's real light/dark toggle — see designTokens.ts's own
@@ -247,6 +251,45 @@ export function CosmeticsStoreModal() {
         return "CUSTOMIZATIONS";
     }
   }, [selectedCategory]);
+
+  if (isMobile) {
+    return (
+      <Modal
+        open={isOpen}
+        onClose={handleClose}
+        mobileSheet={true}
+        ariaLabelledBy="cosmetics-boutique-title"
+        className="p-0 sm:p-4"
+        panelClassName="w-full max-w-lg mx-auto border border-stone-300 dark:border-zinc-800 rounded-t-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] relative"
+        panelStyle={{
+          background: surface.base,
+          boxShadow: `${surface.edgeLight}, 0 24px 60px -12px rgba(0,0,0,0.65)`,
+        }}
+      >
+        <CosmeticsStoreMobile
+          catalog={catalog}
+          ownedIds={ownedIds}
+          equipped={equipped}
+          selectedCategory={selectedCategory}
+          selectedScope={selectedScope}
+          selectedItemId={selectedItemId}
+          isLoading={isLoading}
+          isSubmitting={isSubmitting}
+          errorMessage={errorMessage}
+          walletBalance={walletBalance ?? "0"}
+          isAdminUser={isAdminUser}
+          onClose={handleClose}
+          onSelectCategory={selectCategory}
+          onSelectScope={selectScope}
+          onSelectItem={selectItem}
+          onPurchase={handlePurchase}
+          onRefund={handleRefund}
+          onEquip={handleEquip}
+          onUnequip={handleUnequip}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

@@ -114,7 +114,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
 
           <div className="min-w-0">
             <h2 className="text-xs font-black uppercase tracking-wider text-[#2B3550] dark:text-slate-200 flex items-center gap-1.5">
-              <span>{isFreePractice ? "BOT PRACTICE TABLE" : "MATCH ENTRY & PRIZE POOL"}</span>
+              <span>{isFreePractice ? "Bot Practice Table" : "Match Entry & Prize Pool"}</span>
             </h2>
             <p className="text-xs text-stone-500 dark:text-slate-400 font-medium truncate">
               {isFreePractice
