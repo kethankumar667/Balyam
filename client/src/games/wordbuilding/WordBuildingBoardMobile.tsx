@@ -11,7 +11,10 @@ import {
 } from "./wordbuilding-shared";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
-import { WordBuildingWordBurst, WordBuildingWinnerCelebration } from "./WordBuildingAnimations";
+import {
+  WordBuildingWinnerCelebration,
+  WordBuildingComboBanner,
+} from "./WordBuildingAnimations";
 
 /**
  * Viewport-fitted cell size. The original board hard-coded 44/38/28px by board
@@ -98,14 +101,14 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
         />
       </div>
 
-      {/* GAL Animations */}
-      {m.activeWordBurst && (
-        <WordBuildingWordBurst
-          word={m.activeWordBurst.word}
-          points={m.activeWordBurst.points}
-          playerName={m.activeWordBurst.playerName}
-        />
+      {/* Combo streak banner */}
+      {m.comboBanner && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40">
+          <WordBuildingComboBanner text={m.comboBanner} />
+        </div>
       )}
+
+      {/* End Game Celebration */}
       {state.phase === "finished" && state.winnerId && !m.reportDismissed && (
         <WordBuildingWinnerCelebration
           winnerName={m.nameOf(state.winnerId)}

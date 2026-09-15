@@ -4,25 +4,36 @@ import ComicBurstText from "../../animations/comic/ComicBurstText";
 import { fireStarSparkleBurst, fireFireworksBurst } from "../../animations/particles/comicBursts";
 
 /**
- * Word Valid / Scored — Animation.
+ * Word Valid / Scored — Snappy, Non-blocking Burst (Parity with Dots & Boxes).
  */
 export function WordBuildingWordBurst({
   word,
   points,
   playerName,
+  penColor,
   onComplete,
 }: {
   word: string;
   points: number;
   playerName: string;
+  penColor?: string;
   onComplete?: () => void;
 }) {
   useEffect(() => {
-    fireStarSparkleBurst({ left: "50%", top: "42%" }, { intensity: points >= 5 ? 0.9 : 0.6 });
+    fireStarSparkleBurst({ left: "50%", top: "40%" }, { intensity: points >= 5 ? 0.85 : 0.65 });
     const timer = setTimeout(() => {
       onComplete?.();
-    }, 1300);
-    return () => clearTimeout(timer);
+    }, 750);
+
+    const dismissEarly = () => onComplete?.();
+    window.addEventListener("pointerdown", dismissEarly, { once: true });
+    window.addEventListener("keydown", dismissEarly, { once: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointerdown", dismissEarly);
+      window.removeEventListener("keydown", dismissEarly);
+    };
   }, [points, onComplete]);
 
   const isLong = word.length >= 5;
@@ -30,26 +41,45 @@ export function WordBuildingWordBurst({
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
       <motion.div
-        initial={{ scale: 0, y: 30 }}
+        initial={{ scale: 0.2, opacity: 0, y: 15 }}
         animate={{
-          scale: [0, 1.25, 1],
+          scale: [0.2, 1.15, 1],
+          opacity: 1,
           y: 0,
         }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ duration: 0.38, ease: "backOut" }}
+        exit={{ scale: 0.8, opacity: 0, y: -10 }}
+        transition={{ duration: 0.28, ease: "backOut" }}
         className="flex flex-col items-center gap-1.5"
       >
-        <div className="text-4xl">{isLong ? "🌟 📚 ✨" : "✨ 📖 ✨"}</div>
+        <div className="text-4xl sm:text-5xl">{isLong ? "🌟 📚 ✨" : "✨ 📖 ✨"}</div>
         <ComicBurstText
           text={isLong ? "BRILLIANT!" : "NICE WORD!"}
-          accent="#1E3A8A"
+          accent={penColor ?? (isLong ? "#1E3A8A" : "#0F172A")}
           fill={isLong ? "#FEF08A" : "#BAE6FD"}
           seed={31}
         />
-        <div className="px-4 py-1 rounded-full text-xs font-black text-white bg-indigo-700 border-2 border-indigo-950 shadow-xl tracking-wider uppercase">
+        <div
+          className="px-4 py-1 rounded-full text-xs font-black text-white shadow-xl tracking-wider uppercase"
+          style={{ background: penColor ?? "#1e3a8a" }}
+        >
           {playerName} made &quot;{word}&quot; (+{points} pts)
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Multi-Word or Long Word Combo Banner — Floating at top of matrix.
+ */
+export function WordBuildingComboBanner({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="absolute top-2 z-30 px-6 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400 border border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.6)] text-slate-950 font-black text-base sm:text-lg tracking-wider animate-bounce pointer-events-none">
+      {text}
     </div>
   );
 }
@@ -64,13 +94,6 @@ export function WordBuildingWinnerCelebration({
 }) {
   useEffect(() => {
     fireFireworksBurst({ intensity: 0.95 });
-    // Bounded — an unbounded interval kept firing bursts (and the idle
-    // bounce/pulse below kept looping) for as long as this stayed mounted.
-    // Six more bursts (~5s) reads as a proper fireworks finale, not a
-    // stuck animation. (Already gated by `reportDismissed` on the board
-    // side, so this couldn't loop forever in practice — bounded here too
-    // for consistency with every other celebration in this batch, so the
-    // safety doesn't depend on that gate being wired correctly everywhere.)
     let burstCount = 0;
     const maxBursts = 6;
     const interval = setInterval(() => {

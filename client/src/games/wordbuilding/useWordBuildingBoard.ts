@@ -44,7 +44,8 @@ export interface WordBuildingBoardModel {
   cellOverlays: Map<string, WordBuildingScoredWord[]>;
   activeAnnotation: WordBuildingScoredWord | null;
   activePulse: WordBuildingScoredWord | null;
-  activeWordBurst: { word: string; points: number; playerName: string } | null;
+  activeWordBurst: { word: string; points: number; playerName: string; scorerId: string } | null;
+  comboBanner: string | null;
   selected: { r: number; c: number } | null;
   setSelected: (cell: { r: number; c: number } | null) => void;
   error: string | null;
@@ -140,7 +141,8 @@ export function useWordBuildingBoard({
    */
   const [activeAnnotation, setActiveAnnotation] = useState<WordBuildingScoredWord | null>(null);
   const [activePulse, setActivePulse] = useState<WordBuildingScoredWord | null>(null);
-  const [activeWordBurst, setActiveWordBurst] = useState<{ word: string; points: number; playerName: string } | null>(null);
+  const [activeWordBurst, setActiveWordBurst] = useState<{ word: string; points: number; playerName: string; scorerId: string } | null>(null);
+  const [comboBanner, setComboBanner] = useState<string | null>(null);
   const seenWordIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     // First mount: seed the set so we don't fire a burst of annotations
@@ -152,24 +154,34 @@ export function useWordBuildingBoard({
     const fresh = state.scoredWords.filter((w) => !seenWordIdsRef.current.has(w.id));
     if (fresh.length === 0) return;
     for (const w of fresh) seenWordIdsRef.current.add(w.id);
-    // If two fire in the same render (rare — a single placement closes
-    // both a row and column word), prefer the higher-scoring one for
-    // the annotation slot.
+    
     const top = fresh.reduce((a, b) => (a.points >= b.points ? a : b));
     setActiveAnnotation(top);
     setActivePulse(top);
     const pName = nameOf(top.scorerId);
-    setActiveWordBurst({ word: top.word, points: top.points, playerName: pName });
+    setActiveWordBurst({ word: top.word, points: top.points, playerName: pName, scorerId: top.scorerId });
+
+    if (fresh.length > 1) {
+      const totalPts = fresh.reduce((sum, w) => sum + w.points, 0);
+      setComboBanner(`🔥 MULTI-WORD COMBO! (+${totalPts} PTS)`);
+    } else if (top.points >= 5) {
+      setComboBanner(`🌟 BRILLIANT WORD! (+${top.points} PTS)`);
+    }
+
     const aT = window.setTimeout(() => {
       setActiveAnnotation((cur) => (cur?.id === top.id ? null : cur));
       setActiveWordBurst(null);
-    }, 1200);
+    }, 750);
     const pT = window.setTimeout(() => {
       setActivePulse((cur) => (cur?.id === top.id ? null : cur));
-    }, 1400);
+    }, 1000);
+    const bT = window.setTimeout(() => {
+      setComboBanner(null);
+    }, 1800);
     return () => {
       window.clearTimeout(aT);
       window.clearTimeout(pT);
+      window.clearTimeout(bT);
     };
   }, [state.scoredWords, nameOf]);
 
@@ -260,6 +272,7 @@ export function useWordBuildingBoard({
     activeAnnotation,
     activePulse,
     activeWordBurst,
+    comboBanner,
     selected,
     setSelected,
     error,

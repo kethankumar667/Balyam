@@ -243,40 +243,72 @@ const MAX_LUDO_HISTORY = 20;
  * to comfortably cover the per-game max (Ludo 8, SnL 10, Rummy 6, others 2).
  */
 const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
-  handcricket: ["Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid"],
-  // Chess seats two, so one opponent name is enough; the rest are spares.
-  chess: ["Vishy", "Gukesh", "Praggnanandhaa", "Humpy"],
-  ludo: ["Pintu", "Chintu", "Bunty", "Babli", "Raju", "Munna", "Golu", "Tinku"],
-  snl: ["Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma", "Kiran", "Mounika"],
-  rummy: ["Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi"],
-  rps: ["Rocky", "Bhola", "Chotu", "Dolly"],
-  uno: [
-    "Jugadu",
-    "Baazi",
-    "Chikki",
-    "Gabbar",
-    "Khatarnak",
-    "Raftaar",
-    "Bijli",
-    "Sikandar",
-    "Toofan",
-    "Sultan",
-    "Sheru",
-    "Ustaad",
+  handcricket: [
+    "Sachin", "Dhoni", "Kohli", "Yuvraj", "Sehwag", "Dravid", "Rohit",
+    "Kapil", "Ganguly", "Bumrah", "Ashwin", "Raina", "Gavaskar", "Kumble",
   ],
-  wordbuilding: ["Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna"],
-  dotsboxes: ["Pencil", "Eraser", "Sharpener", "Ruler"],
-  stargame: ["Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu"],
-  bingo: ["Kanakam", "Padma", "Rajyam", "Saroja", "Venkat", "Nagesh", "Prasad", "Vani"],
-  namesplaceanimal: ["Abhi", "Balu", "Chandu", "Divya", "Esha", "Farhan", "Gita", "Hari"],
-  tambola: ["Annapurna", "Bhaskar", "Chintamani", "Devi", "Eluru", "Ganga", "Hema", "Indra"],
-  snake: ["Python", "Viper", "Cobra", "Mamba"],
-  blockblast: ["Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino"],
-  // "Striker" was dropped: it is the name of a piece on the board, so the
-  // player list read "Striker · 9 left" next to a striker the player aims.
-  carrom: ["Breaker", "Rebound", "Cutshot", "Thumbi"],
-  roadrash: ["Rider", "Speedy", "Biker", "Racer"],
-  spacewar: ["Ace", "Blaster", "Cosmo", "Defender"],
+  // Chess seats two, so one opponent name is enough; the rest are spares.
+  chess: [
+    "Vishy", "Gukesh", "Praggnanandhaa", "Humpy", "Vidit", "Harikrishna",
+    "Erigaisi", "Tania", "Karpov", "Kasparov",
+  ],
+  ludo: [
+    "Pintu", "Chintu", "Bunty", "Babli", "Raju", "Munna", "Golu", "Tinku",
+    "Sonu", "Monu", "Pinky", "Guddu", "Kittu", "Bittu",
+  ],
+  snl: [
+    "Sneha", "Lalita", "Babu", "Chiklu", "Anu", "Gopi", "Ravi", "Suma",
+    "Kiran", "Mounika", "Pooja", "Deepak", "Suresh", "Radha",
+  ],
+  rummy: [
+    "Anand", "Babji", "Chinna", "Damodar", "Eswari", "Lakshmi", "Govind",
+    "Mallesh", "Narasimha", "Padmavati", "Rajesh", "Sujatha",
+  ],
+  rps: ["Rocky", "Bhola", "Chotu", "Dolly", "Sheru", "Badshah", "Veeru", "Gabbar"],
+  uno: [
+    "Jugadu", "Baazi", "Chikki", "Gabbar", "Khatarnak", "Raftaar", "Bijli",
+    "Sikandar", "Toofan", "Sultan", "Sheru", "Ustaad", "Jadoo", "Kalandar",
+    "Shaitan", "Jholer",
+  ],
+  wordbuilding: [
+    "Teacher Padma", "Master Ravi", "Miss Lakshmi", "Sir Krishna", "Prof Sharma",
+    "Headmaster Rao", "Principal Gupta", "Monitor Sneha", "Scholar Anand",
+    "Librarian Geeta", "Topper Ananya", "Grammar Guru", "Poet Vikram",
+    "Scribe Meera", "Essayist Aditya", "Lecturer Swathi", "Reader Arjun",
+    "Author Pranav",
+  ],
+  dotsboxes: [
+    "Pencil", "Eraser", "Sharpener", "Ruler", "Compass", "Protractor",
+    "Highlighter", "Fountain Pen", "Sketch Pen", "Paper Clip", "Stapler",
+    "Crayon", "Chalk", "Duster", "Palette", "Marker",
+  ],
+  stargame: [
+    "Pinky", "Chinnu", "Guddu", "Sweety", "Bujji", "Chitti", "Lucky", "Appu",
+    "Bittu", "Dimple", "Honey", "Kanna",
+  ],
+  bingo: [
+    "Kanakam", "Padma", "Rajyam", "Saroja", "Venkat", "Nagesh", "Prasad", "Vani",
+    "Anasuya", "Subbarao", "Mangamma", "Kameswari",
+  ],
+  namesplaceanimal: [
+    "Abhi", "Balu", "Chandu", "Divya", "Esha", "Farhan", "Gita", "Hari",
+    "Ishaan", "Jaya", "Kavya", "Lokesh",
+  ],
+  tambola: [
+    "Annapurna", "Bhaskar", "Chintamani", "Devi", "Eluru", "Ganga", "Hema", "Indra",
+    "Janaki", "Kalyani", "Lata", "Manohar",
+  ],
+  snake: ["Python", "Viper", "Cobra", "Mamba", "Anaconda", "Boa", "Taipan", "Krait"],
+  blockblast: [
+    "Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino",
+    "Matrix", "Prism", "Voxel", "Nexus",
+  ],
+  carrom: [
+    "Breaker", "Rebound", "Cutshot", "Thumbi", "Pocket", "Striker Pro",
+    "Queen Chaser", "Carrom King",
+  ],
+  roadrash: ["Rider", "Speedy", "Biker", "Racer", "Nitro", "Drifter", "Burnout", "Throttle"],
+  spacewar: ["Ace", "Blaster", "Cosmo", "Defender", "Nova", "Starlight", "Galaxy", "Pulsar"],
 };
 
 /**
@@ -298,9 +330,27 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
  */
 export const PREFLIGHT_TIMEOUT_MS = 10_000;
 
-function pickBotName(game: GameKind, idx: number): string {
-  const pool = BOT_NAMES_BY_GAME[game];
-  return pool[idx % pool.length] ?? `Bot ${idx + 1}`;
+function pickBotName(game: GameKind, existingNames: Set<string> | Iterable<string> | number): string {
+  const pool = BOT_NAMES_BY_GAME[game] ?? ["Bot 1", "Bot 2", "Bot 3", "Bot 4"];
+  if (typeof existingNames === "number") {
+    return pool[existingNames % pool.length] ?? `Bot ${existingNames + 1}`;
+  }
+  const used = existingNames instanceof Set ? existingNames : new Set(existingNames);
+  for (const name of pool) {
+    if (!used.has(name)) {
+      return name;
+    }
+  }
+  let suffix = 2;
+  while (true) {
+    for (const name of pool) {
+      const candidate = `${name} ${suffix}`;
+      if (!used.has(candidate)) {
+        return candidate;
+      }
+    }
+    suffix++;
+  }
 }
 
 /**
@@ -1912,10 +1962,10 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Room is full");
       return;
     }
-    const botCount = [...room.players.values()].filter((p) => p.isBot).length;
+    const existingNames = new Set([...room.players.values()].map((p) => p.name));
     const botId = `bot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const cleaned = customName?.trim().slice(0, 20);
-    const botName = cleaned && cleaned.length > 0 ? cleaned : pickBotName(room.game, botCount);
+    const botName = cleaned && cleaned.length > 0 ? cleaned : pickBotName(room.game, existingNames);
     const bot: Player = {
       id: botId,
       name: botName,

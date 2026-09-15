@@ -5,7 +5,7 @@ import type {
   WordBuildingPublicState,
   WordBuildingScoredWord,
 } from "@shared/types";
-import type { Ink } from "./inks";
+import { getInkDisplayColor, type Ink } from "./inks";
 import type { WordBuildingBoardModel } from "./useWordBuildingBoard";
 import CoachHintButton, { type CoachState } from "../../components/CoachHintButton";
 import SeatAvatar from "../../components/profile/SeatAvatar";
@@ -56,7 +56,7 @@ export function WorkbookPaper({ children, isNeon }: { children: React.ReactNode;
           style={{ fontSize: 13, color: "#38bdf8", opacity: 0.6 }}
           aria-hidden
         >
-          [CYBER // LEXICON 47]
+          [WORDS // BUILDING]
         </div>
         {children}
       </div>
@@ -189,7 +189,6 @@ export function Grid({
   canPlay,
   cellOverlays,
   inkOf,
-  activeAnnotation,
   activePulse,
   hintCells,
   onPickCell,
@@ -202,8 +201,6 @@ export function Grid({
   canPlay: boolean;
   cellOverlays: Map<string, WordBuildingScoredWord[]>;
   inkOf: Record<string, Ink>;
-  /** Word whose teacher-tick annotation is currently visible (or null). */
-  activeAnnotation: WordBuildingScoredWord | null;
   /** Word whose cells should pulse-highlight right now (or null). */
   activePulse: WordBuildingScoredWord | null;
   /** Cells the AI Coach is pointing at, as "r,c" keys. */
@@ -221,11 +218,13 @@ export function Grid({
   const pulseInk = activePulse ? inkOf[activePulse.scorerId] : null;
   return (
     <div
-      className="relative inline-block rounded-sm transition-colors duration-300"
+      className="relative inline-block rounded-2xl transition-colors duration-300"
       style={{
-        background: isNeon ? "rgba(15, 23, 42, 0.75)" : "rgba(255,255,255,0.45)",
-        padding: 6,
-        boxShadow: isNeon ? "inset 0 0 0 1px rgba(56, 189, 248, 0.25)" : "inset 0 0 0 1px rgba(120,82,40,0.18)",
+        background: isNeon ? "#ffffff" : "rgba(255,255,255,0.45)",
+        padding: 8,
+        boxShadow: isNeon
+          ? "0 14px 35px -5px rgba(0,0,0,0.4), 0 0 20px rgba(56, 189, 248, 0.25), inset 0 0 0 1px rgba(226, 232, 240, 0.8)"
+          : "inset 0 0 0 1px rgba(120,82,40,0.18)",
       }}
     >
       <div
@@ -256,39 +255,31 @@ export function Grid({
                   width: cellPx,
                   height: cellPx,
                   background: isSel
-                    ? isNeon ? "rgba(56, 189, 248, 0.35)" : "rgba(251,191,36,0.55)"
+                    ? isNeon ? "rgba(224, 242, 254, 0.95)" : "rgba(251,191,36,0.55)"
                     : filled
                     ? isNeon
-                      ? inkOwner ? `${inkOwner.inkColor}2c` : "rgba(30, 41, 59, 0.85)"
+                      ? inkOwner ? inkOwner.highlight : "rgba(241, 245, 249, 0.95)"
                       : inkOwner?.highlight ?? "transparent"
                     : isNeon
-                    ? "rgba(15, 23, 42, 0.85)"
+                    ? "rgba(255, 255, 255, 0.95)"
                     : "rgba(255,255,255,0.55)",
                   border: isSel
-                    ? isNeon ? "1.5px dashed #38bdf8" : "1.5px dashed #b45309"
+                    ? isNeon ? "2px dashed #0284c7" : "1.5px dashed #b45309"
                     : isNeon
-                    ? "1px solid rgba(56, 189, 248, 0.22)"
+                    ? "1px solid rgba(203, 213, 225, 0.8)"
                     : "1px solid rgba(120,82,40,0.18)",
                   cursor: canPlay && !filled ? "pointer" : "default",
-                  // Coach ring sits OUTSIDE the cell border so it reads as an
-                  // annotation over the sheet rather than as a new cell state.
-                  outline: isHint ? (isNeon ? "2.5px solid #38bdf8" : "2.5px solid #E6A11E") : undefined,
+                  outline: isHint ? (isNeon ? "2.5px solid #0284c7" : "2.5px solid #E6A11E") : undefined,
                   outlineOffset: isHint ? 1 : undefined,
                   fontFamily: "'Caveat', 'Patrick Hand', cursive",
                   fontSize: cellPx * 0.62,
                   lineHeight: 1,
                   color: filled
-                    ? isNeon
-                      ? overlays.length > 0 && lastOverlay?.scorerId
-                        ? inkOf[lastOverlay.scorerId]?.inkColor || "#38bdf8"
-                        : "#f8fafc"
-                      : overlays.length > 0
-                      ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkColor) || "#1e293b"
-                      : "#1e293b"
+                    ? overlays.length > 0
+                      ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkColor) || "#0f172a"
+                      : "#0f172a"
                     : "transparent",
-                  textShadow: isNeon && filled
-                    ? `0 0 8px ${overlays.length > 0 && lastOverlay?.scorerId ? inkOf[lastOverlay.scorerId]?.inkColor || "#38bdf8" : "#38bdf8"}`
-                    : filled && overlays.length > 0
+                  textShadow: filled && overlays.length > 0
                     ? (lastOverlay?.scorerId && inkOf[lastOverlay.scorerId]?.inkShadow) || "0 0 0.4px rgba(0,0,0,0.5)"
                     : "0 0 0.4px rgba(0,0,0,0.5)",
                   transform: filled ? `rotate(${(((r * 7 + c * 13) % 5) - 2) * 0.6}deg)` : "none",
@@ -354,73 +345,7 @@ export function Grid({
           }),
         )}
       </div>
-
-      {/* Teacher annotation — auto-dismisses after ~2.2s via the parent's
-          timer (sets activeAnnotation to null), AnimatePresence handles the
-          fade-out. */}
-      <AnimatePresence>
-        {activeAnnotation && (
-          <TeacherTickFor
-            key={activeAnnotation.id}
-            word={activeAnnotation}
-            cellPx={cellPx}
-            ink={inkOf[activeAnnotation.scorerId]}
-          />
-        )}
-      </AnimatePresence>
     </div>
-  );
-}
-
-// Annotation tiers are static — hoisted out of TeacherTickFor's render.
-const TICK_TIERS: Record<number, { label: string; stars: number }> = {
-  3: { label: "Good!", stars: 3 },
-  4: { label: "Well done!", stars: 4 },
-  5: { label: "Very Good!", stars: 5 },
-  6: { label: "Excellent!", stars: 5 },
-};
-
-function TeacherTickFor({
-  word,
-  cellPx,
-  ink,
-}: {
-  word: WordBuildingScoredWord;
-  cellPx: number;
-  ink?: Ink;
-}) {
-  const tier = (word.points >= 6 ? TICK_TIERS[6] : TICK_TIERS[word.points]) ?? TICK_TIERS[3]!;
-
-  const last = word.cells[word.cells.length - 1];
-  if (!last) return null;
-  const left = (last.c + 1) * (cellPx + 2) + 8; // +2 for grid gap
-  const top = last.r * (cellPx + 2) + 2;
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -10, rotate: -8 }}
-      animate={{ opacity: 1, x: 0, rotate: -6 }}
-      exit={{ opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 22 }}
-      style={{
-        position: "absolute",
-        left,
-        top,
-        color: ink?.inkColor ?? "#9b1c1c",
-        textShadow: ink?.inkShadow ?? "0 0 0.4px rgba(155,28,28,0.55)",
-        fontFamily: "'Caveat', 'Patrick Hand', cursive",
-        fontSize: 22,
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-        zIndex: 5,
-      }}
-    >
-      <span className="mr-1">✓</span>
-      <span>{tier.label}</span>{" "}
-      <span style={{ color: "#b45309", fontSize: 16 }}>
-        {"★".repeat(tier.stars)}{" "}
-        <span style={{ color: ink?.inkColor }}>+{word.points}</span>
-      </span>
-    </motion.div>
   );
 }
 
@@ -506,10 +431,10 @@ export function StudentBar({
                 ? isNeon ? "rgba(56,189,248,0.22)" : "rgba(251,191,36,0.22)"
                 : isNeon ? "rgba(15,23,42,0.8)" : "rgba(255,255,255,0.55)",
               border: isTurn
-                ? `2px solid ${isNeon ? "#38bdf8" : ink.inkColor}`
+                ? `2px solid ${getInkDisplayColor(ink, isNeon)}`
                 : isNeon ? "1px solid rgba(56,189,248,0.25)" : "1px solid rgba(120,82,40,0.22)",
               boxShadow: isTurn
-                ? isNeon ? "0 0 16px rgba(56,189,248,0.35)" : `0 0 0 2px ${ink.inkColor}22 inset`
+                ? isNeon ? `0 0 16px ${ink.neonColor}66` : `0 0 0 2px ${ink.inkColor}22 inset`
                 : undefined,
               fontFamily: "'Caveat', 'Patrick Hand', cursive",
             }}
@@ -525,7 +450,7 @@ export function StudentBar({
             )}
             <div className="flex items-center gap-1.5">
               <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
-              <span className="font-black text-[17px] sm:text-[22px]" style={{ color: ink.inkColor }}>
+              <span className="font-black text-[17px] sm:text-[22px]" style={{ color: getInkDisplayColor(ink, isNeon) }}>
                 {nameOf(pid)}{me ? " (you)" : ""}
               </span>
             </div>
@@ -533,7 +458,7 @@ export function StudentBar({
               <span style={{ fontSize: 14, color: isNeon ? "#94a3b8" : "#6b5b48" }}>Marks</span>
               <span
                 className="font-black text-[22px] sm:text-[28px]"
-                style={{ color: ink.inkColor, lineHeight: 1 }}
+                style={{ color: getInkDisplayColor(ink, isNeon), lineHeight: 1 }}
               >
                 {state.scores[pid] ?? 0}
               </span>
@@ -610,45 +535,281 @@ export function LetterPad({
   onPick,
   onCancel,
   isNeon,
+  selectedCell,
+  disabled,
+  alwaysOpen,
 }: {
   onPick: (letter: string) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
+  isNeon?: boolean;
+  selectedCell?: { r: number; c: number } | null;
+  disabled?: boolean;
+  alwaysOpen?: boolean;
+}) {
+  const isCellPicked = !!selectedCell;
+
+  return (
+    <div className="mt-3 w-full flex flex-col items-center gap-1.5 select-none">
+      <div
+        className={`text-xs sm:text-sm font-bold tracking-wide flex items-center gap-2 ${
+          isNeon ? (isCellPicked ? "text-cyan-300" : "text-slate-400") : isCellPicked ? "text-[#1e3a8a]" : "text-[#6b5b48]"
+        }`}
+      >
+        {isCellPicked ? (
+          <span>
+            Cell ({selectedCell.r + 1}, {selectedCell.c + 1}) selected — Click a letter or type on keyboard:
+          </span>
+        ) : (
+          <span>Click an empty cell on the grid to write</span>
+        )}
+        {isCellPicked && onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className={`px-2 py-0.5 rounded text-xs font-black uppercase tracking-wider transition ${
+              isNeon
+                ? "bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60"
+                : "bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300"
+            }`}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5">
+        {LETTER_PAD_ROWS.map((row) => (
+          <div key={row} className="flex gap-1.5 justify-center">
+            {row.split("").map((L) => (
+              <button
+                key={L}
+                type="button"
+                onClick={() => onPick(L)}
+                disabled={disabled}
+                className={`font-black transition-all active:scale-95 ${
+                  isCellPicked
+                    ? "hover:scale-105 hover:brightness-110 cursor-pointer shadow-md"
+                    : "opacity-85 hover:opacity-100 cursor-pointer"
+                }`}
+                style={{
+                  width: 34,
+                  height: 38,
+                  background: isNeon
+                    ? isCellPicked
+                      ? "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)"
+                      : "rgba(15,23,42,0.85)"
+                    : isCellPicked
+                    ? "#ffffff"
+                    : "rgba(255,255,255,0.9)",
+                  border: isNeon
+                    ? isCellPicked
+                      ? "1.5px solid #38bdf8"
+                      : "1px solid rgba(56,189,248,0.28)"
+                    : isCellPicked
+                    ? "1.5px solid #1e3a8a"
+                    : "1px solid #c2a578",
+                  borderRadius: 6,
+                  color: isNeon ? (isCellPicked ? "#38bdf8" : "#94a3b8") : isCellPicked ? "#1e3a8a" : "#475569",
+                  fontFamily: "'Caveat', 'Patrick Hand', cursive",
+                  fontSize: 22,
+                  boxShadow: isNeon
+                    ? isCellPicked
+                      ? "0 0 10px rgba(56,189,248,0.35)"
+                      : "none"
+                    : isCellPicked
+                    ? "0 2px 4px rgba(30,58,138,0.2)"
+                    : "0 1px 0 rgba(120,82,40,0.18)",
+                }}
+              >
+                {L}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Vocabulary Feed Card ─────────────────────────── */
+
+export function VocabularyFoundCard({
+  state,
+  inkOf,
+  nameOf,
+  isNeon,
+  maxHeight = 220,
+}: {
+  state: WordBuildingPublicState;
+  inkOf: Record<string, Ink>;
+  nameOf: (id: string) => string;
+  isNeon?: boolean;
+  maxHeight?: number | string;
+}) {
+  const vocab = state.scoredWords.slice(-16).reverse();
+
+  return (
+    <div
+      className="rounded-2xl p-4 transition-colors duration-300 flex flex-col"
+      style={{
+        background: isNeon
+          ? "linear-gradient(180deg, #0B0E28, #070919)"
+          : "linear-gradient(180deg, #fbf3df, #f0e3c2)",
+        border: isNeon ? "1px solid rgba(56, 189, 248, 0.25)" : "1.5px solid rgba(120,82,40,0.25)",
+        boxShadow: isNeon ? "0 10px 25px -5px rgba(0,0,0,0.5), 0 0 15px rgba(56, 189, 248, 0.08)" : "0 4px 12px rgba(120,82,40,0.08)",
+        fontFamily: "'Caveat', 'Patrick Hand', cursive",
+      }}
+    >
+      <div
+        className="mb-2 pb-2 flex items-center justify-between"
+        style={{
+          borderBottom: isNeon ? "1px dashed rgba(56, 189, 248, 0.3)" : "1px dashed rgba(120,82,40,0.4)",
+        }}
+      >
+        <h2 className="text-xl font-black" style={{ color: isNeon ? "#38bdf8" : "#7c2d12" }}>
+          Vocabulary Found
+        </h2>
+        <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: isNeon ? "rgba(56,189,248,0.15)" : "rgba(120,82,40,0.15)", color: isNeon ? "#38bdf8" : "#7c2d12" }}>
+          {state.scoredWords.length} words
+        </span>
+      </div>
+
+      {vocab.length === 0 ? (
+        <div className="py-4 text-center text-sm font-semibold" style={{ color: isNeon ? "#64748b" : "#7a6651" }}>
+          No words yet. Complete a row, column or diagonal word to score!
+        </div>
+      ) : (
+        <ul className="space-y-1.5 overflow-y-auto no-scrollbar pr-1 flex-1" style={{ maxHeight }}>
+          {vocab.map((w) => {
+            const ink = inkOf[w.scorerId];
+            return (
+              <li
+                key={w.id}
+                className="flex items-center justify-between px-2.5 py-1 rounded-xl transition"
+                style={{
+                  background: isNeon ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.6)",
+                  border: isNeon ? "1px solid rgba(56,189,248,0.15)" : "1px solid rgba(120,82,40,0.12)",
+                }}
+              >
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span
+                    className="font-black text-xl truncate"
+                    style={{ color: getInkDisplayColor(ink, isNeon) }}
+                  >
+                    {w.word}
+                  </span>
+                  <span className="text-xs truncate" style={{ color: isNeon ? "#94a3b8" : "#7a6651" }}>
+                    — {nameOf(w.scorerId)} ({w.orientation})
+                  </span>
+                </div>
+                <span
+                  className="font-black text-lg px-2 py-0.2 rounded-md"
+                  style={{
+                    color: isNeon ? "#38bdf8" : "#b45309",
+                    background: isNeon ? "rgba(56,189,248,0.15)" : "rgba(180,83,9,0.1)",
+                  }}
+                >
+                  +{w.points}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Class Standings Card ─────────────────────────── */
+
+export function ClassStandingsCard({
+  state,
+  inkOf,
+  nameOf,
+  selfId,
+  isNeon,
+}: {
+  state: WordBuildingPublicState;
+  inkOf: Record<string, Ink>;
+  nameOf: (id: string) => string;
+  selfId: string | null;
   isNeon?: boolean;
 }) {
+  const standings = state.playerOrder
+    .map((pid) => ({ pid, score: state.scores[pid] ?? 0 }))
+    .sort((a, b) => b.score - a.score);
+
   return (
-    <div className="mt-4 flex flex-col items-center gap-2">
-      <div className={isNeon ? "text-slate-300" : "text-[#6b5b48]"} style={{ fontSize: 18 }}>
-        Pick a letter — or just type on your keyboard. <button
-          type="button"
-          onClick={onCancel}
-          className={`ml-2 underline ${isNeon ? "text-cyan-400 hover:text-cyan-300" : "text-[#7c2d12]"}`}
-        >Cancel</button>
+    <div
+      className="rounded-2xl p-4 transition-colors duration-300 flex flex-col"
+      style={{
+        background: isNeon
+          ? "linear-gradient(180deg, #0B0E28, #070919)"
+          : "linear-gradient(180deg, #fbf3df, #f0e3c2)",
+        border: isNeon ? "1px solid rgba(56, 189, 248, 0.25)" : "1.5px solid rgba(120,82,40,0.25)",
+        boxShadow: isNeon ? "0 10px 25px -5px rgba(0,0,0,0.5), 0 0 15px rgba(56, 189, 248, 0.08)" : "0 4px 12px rgba(120,82,40,0.08)",
+        fontFamily: "'Caveat', 'Patrick Hand', cursive",
+      }}
+    >
+      <div
+        className="mb-2 pb-2 flex items-center justify-between"
+        style={{
+          borderBottom: isNeon ? "1px dashed rgba(56, 189, 248, 0.3)" : "1px dashed rgba(120,82,40,0.4)",
+        }}
+      >
+        <h2 className="text-xl font-black" style={{ color: isNeon ? "#38bdf8" : "#7c2d12" }}>
+          Class Standings
+        </h2>
+        <span className="text-xs font-bold" style={{ color: isNeon ? "#94a3b8" : "#7a6651" }}>
+          {state.filledCells}/{state.totalCells} cells filled
+        </span>
       </div>
-      {LETTER_PAD_ROWS.map((row) => (
-        <div key={row} className="flex gap-1.5">
-          {row.split("").map((L) => (
-            <button
-              key={L}
-              type="button"
-              onClick={() => onPick(L)}
-              className="font-black transition active:translate-y-px"
+
+      <ol className="space-y-1.5">
+        {standings.map((row, i) => {
+          const me = row.pid === selfId;
+          const ink = inkOf[row.pid];
+          return (
+            <li
+              key={row.pid}
+              className="flex items-center justify-between px-2.5 py-1 rounded-xl transition"
               style={{
-                width: 30, height: 36,
-                background: isNeon ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.85)",
-                border: isNeon ? "1px solid rgba(56,189,248,0.35)" : "1px solid #c2a578",
-                borderRadius: 4,
-                color: isNeon ? "#38bdf8" : "#1e3a8a",
-                fontFamily: "'Caveat', 'Patrick Hand', cursive",
-                fontSize: 22,
-                cursor: "pointer",
-                boxShadow: isNeon ? "0 0 8px rgba(56,189,248,0.2)" : "0 1px 0 rgba(120,82,40,0.18)",
+                background: isNeon ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.6)",
+                border: isNeon ? "1px solid rgba(56,189,248,0.15)" : "1px solid rgba(120,82,40,0.12)",
               }}
             >
-              {L}
-            </button>
-          ))}
-        </div>
-      ))}
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-bold w-4" style={{ color: isNeon ? "#64748b" : "#7a6651" }}>
+                  {i + 1}.
+                </span>
+                <span
+                  className="font-bold text-lg truncate"
+                  style={{ color: getInkDisplayColor(ink, isNeon) }}
+                >
+                  {nameOf(row.pid)}
+                </span>
+                {me && (
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.2 rounded"
+                    style={{
+                      background: isNeon ? "rgba(56,189,248,0.2)" : "rgba(30,58,138,0.12)",
+                      color: isNeon ? "#38bdf8" : "#1e3a8a",
+                    }}
+                  >
+                    You
+                  </span>
+                )}
+              </div>
+              <span
+                className="font-black text-xl"
+                style={{ color: getInkDisplayColor(ink, isNeon) }}
+              >
+                {row.score}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
@@ -667,104 +828,13 @@ export function FooterRow({
   inkOf: Record<string, Ink>;
   nameOf: (id: string) => string;
   selfId: string | null;
-  /** Layout shells override the grid arrangement (stacked vs side-by-side). */
   className?: string;
   isNeon?: boolean;
 }) {
-  // Most recent 12 words newest first.
-  const vocab = state.scoredWords.slice(-12).reverse();
-  const standings = state.playerOrder
-    .map((pid) => ({ pid, score: state.scores[pid] ?? 0 }))
-    .sort((a, b) => b.score - a.score);
   return (
     <div className={className}>
-      {/* Vocabulary feed */}
-      <div
-        className="rounded-md px-4 py-3 transition-colors duration-300"
-        style={{
-          background: isNeon ? "linear-gradient(180deg, #0f172a, #0b0f19)" : "linear-gradient(180deg,#fbf3df,#f0e3c2)",
-          border: isNeon ? "1px solid rgba(56, 189, 248, 0.25)" : "1px solid rgba(120,82,40,0.22)",
-          boxShadow: isNeon ? "0 0 15px rgba(56, 189, 248, 0.08)" : undefined,
-          fontFamily: "'Caveat', 'Patrick Hand', cursive",
-        }}
-      >
-        <div
-          className="mb-2"
-          style={{
-            fontSize: 22,
-            color: isNeon ? "#38bdf8" : "#7c2d12",
-            borderBottom: isNeon ? "1px dashed rgba(56, 189, 248, 0.3)" : "1px dashed rgba(120,82,40,0.45)",
-            paddingBottom: 4,
-          }}
-        >
-          Vocabulary Found
-        </div>
-        {vocab.length === 0 && (
-          <div style={{ color: isNeon ? "#94a3b8" : "#7a6651", fontSize: 18 }}>
-            No words yet. Open a row or column with a letter and watch it light up.
-          </div>
-        )}
-        <ul className="space-y-1" style={{ maxHeight: 90, overflowY: "auto" }}>
-          {vocab.map((w) => (
-            <li key={w.id} className="flex items-baseline justify-between" style={{ fontSize: 20 }}>
-              <span>
-                <span style={{ color: inkOf[w.scorerId]?.inkColor ?? (isNeon ? "#38bdf8" : "#1e293b"), fontWeight: 700 }}>
-                  {w.word}
-                </span>
-                <span className="ml-2" style={{ fontSize: 14, color: isNeon ? "#94a3b8" : "#7a6651" }}>
-                  — {nameOf(w.scorerId)} ({w.orientation})
-                </span>
-              </span>
-              <span style={{ color: isNeon ? "#38bdf8" : "#b45309", fontWeight: 700 }}>+{w.points}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Leaderboard styled like the attendance register */}
-      <div
-        className="rounded-md px-4 py-3 transition-colors duration-300"
-        style={{
-          background: isNeon ? "linear-gradient(180deg, #0f172a, #0b0f19)" : "linear-gradient(180deg,#fbf3df,#f0e3c2)",
-          border: isNeon ? "1px solid rgba(56, 189, 248, 0.25)" : "1px solid rgba(120,82,40,0.22)",
-          boxShadow: isNeon ? "0 0 15px rgba(56, 189, 248, 0.08)" : undefined,
-          fontFamily: "'Caveat', 'Patrick Hand', cursive",
-        }}
-      >
-        <div
-          className="mb-2 flex items-baseline justify-between"
-          style={{
-            fontSize: 22,
-            color: isNeon ? "#38bdf8" : "#7c2d12",
-            borderBottom: isNeon ? "1px dashed rgba(56, 189, 248, 0.3)" : "1px dashed rgba(120,82,40,0.45)",
-            paddingBottom: 4,
-          }}
-        >
-          <span>Class Standings</span>
-          <span style={{ fontSize: 14, color: isNeon ? "#94a3b8" : "#7a6651" }}>
-            {state.filledCells}/{state.totalCells} cells filled
-          </span>
-        </div>
-        <ol className="space-y-1">
-          {standings.map((row, i) => {
-            const me = row.pid === selfId;
-            return (
-              <li key={row.pid} className="flex items-baseline justify-between" style={{ fontSize: 20 }}>
-                <span>
-                  <span style={{ color: isNeon ? "#94a3b8" : "#7a6651", marginRight: 8 }}>{i + 1}.</span>
-                  <span style={{ color: inkOf[row.pid]?.inkColor ?? (isNeon ? "#38bdf8" : "#1e293b"), fontWeight: 700 }}>
-                    {nameOf(row.pid)}
-                  </span>
-                  {me && <span style={{ fontSize: 14, color: isNeon ? "#94a3b8" : "#7a6651" }}> (you)</span>}
-                </span>
-                <span style={{ color: inkOf[row.pid]?.inkColor ?? (isNeon ? "#38bdf8" : "#1e293b"), fontWeight: 800 }}>
-                  {row.score}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+      <VocabularyFoundCard state={state} inkOf={inkOf} nameOf={nameOf} isNeon={isNeon} maxHeight={120} />
+      <ClassStandingsCard state={state} inkOf={inkOf} nameOf={nameOf} selfId={selfId} isNeon={isNeon} />
     </div>
   );
 }
@@ -970,7 +1040,7 @@ export function WorkbookBoard({
         <div>
           <span style={{ fontWeight: 700, letterSpacing: 1 }}>{m.isNeon ? "TERMINAL:" : "Subject:"}</span>{" "}
           <span style={{ borderBottom: m.isNeon ? "1px dotted #38bdf866" : "1px dotted #7c2d1255" }}>
-            {m.isNeon ? "CYBER LEXICON // MATRIX" : "English Vocabulary"}
+            {m.isNeon ? "WORDS BUILDING // MATRIX" : "English Vocabulary"}
           </span>
         </div>
         <div>
@@ -989,7 +1059,6 @@ export function WorkbookBoard({
           canPlay={m.canPlay}
           cellOverlays={m.cellOverlays}
           inkOf={m.inkOf}
-          activeAnnotation={m.activeAnnotation}
           activePulse={m.activePulse}
           hintCells={m.coach.highlight}
           onPickCell={m.pickCell}
@@ -1003,7 +1072,7 @@ export function WorkbookBoard({
         {!m.myTurn && state.phase === "playing" && (
           <div className="mt-3 transition-colors duration-300" style={{ color: m.isNeon ? "#94a3b8" : "#7a6651", fontSize: 22 }}>
             Waiting for{" "}
-            <span style={{ color: m.inkOf[state.turnPlayerId]?.inkColor ?? (m.isNeon ? "#38bdf8" : "#7c2d12") }}>
+            <span style={{ color: getInkDisplayColor(m.inkOf[state.turnPlayerId], m.isNeon, m.isNeon ? "#38bdf8" : "#7c2d12") }}>
               {m.nameOf(state.turnPlayerId)}
             </span>{" "}
             to write…
