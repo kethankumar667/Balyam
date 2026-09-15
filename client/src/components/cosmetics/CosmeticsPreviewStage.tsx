@@ -43,7 +43,7 @@ import {
 } from "./presentationState";
 import { getRarityTokens } from "./designTokens";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { getRummyCardBackConfig, getUnoCardBackConfig, getTokenSkinConfig } from "../../lib/cosmeticsResolver";
+import { getRummyCardBackConfig, getUnoCardBackConfig, getTokenSkinConfig, getDiceSkinConfig } from "../../lib/cosmeticsResolver";
 import { PawnGlyph } from "../../games/ludo/PawnGlyph";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
 
@@ -482,10 +482,10 @@ export function CosmeticsPreviewStage({
 interface DiceFaceProps {
   value: number;
   skinId: string;
-  pipClass: string;
+  pipStyle: React.CSSProperties;
 }
 
-function DiceFacePipGrid({ value, skinId, pipClass }: DiceFaceProps) {
+function DiceFacePipGrid({ value, skinId, pipStyle }: DiceFaceProps) {
   // Return standard pip positions for 1-6
   const pips = [];
   const isOne = value === 1;
@@ -498,68 +498,50 @@ function DiceFacePipGrid({ value, skinId, pipClass }: DiceFaceProps) {
   // Dot 1: Top-Left
   if (isTwo || isThree || isFour || isFive || isSix) {
     pips.push(
-      <span
-        key="tl"
-        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-1 ${pipClass}`}
-      />,
+      <span key="tl" className="w-3.5 h-3.5 rounded-full col-start-1 row-start-1" style={pipStyle} />,
     );
   }
   // Dot 2: Top-Right
   if (isFour || isFive || isSix) {
     pips.push(
-      <span
-        key="tr"
-        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-1 ${pipClass}`}
-      />,
+      <span key="tr" className="w-3.5 h-3.5 rounded-full col-start-3 row-start-1" style={pipStyle} />,
     );
   }
   // Dot 3: Center-Left
   if (isSix) {
     pips.push(
-      <span
-        key="cl"
-        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-2 ${pipClass}`}
-      />,
+      <span key="cl" className="w-3.5 h-3.5 rounded-full col-start-1 row-start-2" style={pipStyle} />,
     );
   }
-  // Dot 4: Center
+  // Dot 4: Center — the classic ivory die's traditional red ace pip, a fixed
+  // override on top of the config since it's a naming convention (an "ace"),
+  // not a material property.
   if (isOne || isThree || isFive) {
+    const isIvoryAce = isOne && skinId === "dice_classic_ivory";
     pips.push(
       <span
         key="cc"
-        className={`w-3.5 h-3.5 rounded-full col-start-2 row-start-2 ${pipClass} ${
-          isOne && skinId === "dice_classic_ivory"
-            ? "scale-125 !bg-red-600"
-            : ""
-        }`}
+        className="w-3.5 h-3.5 rounded-full col-start-2 row-start-2"
+        style={isIvoryAce ? { ...pipStyle, background: "#DC2626", transform: "scale(1.25)" } : pipStyle}
       />,
     );
   }
   // Dot 5: Center-Right
   if (isSix) {
     pips.push(
-      <span
-        key="cr"
-        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-2 ${pipClass}`}
-      />,
+      <span key="cr" className="w-3.5 h-3.5 rounded-full col-start-3 row-start-2" style={pipStyle} />,
     );
   }
   // Dot 6: Bottom-Left
   if (isFour || isFive || isSix) {
     pips.push(
-      <span
-        key="bl"
-        className={`w-3.5 h-3.5 rounded-full col-start-1 row-start-3 ${pipClass}`}
-      />,
+      <span key="bl" className="w-3.5 h-3.5 rounded-full col-start-1 row-start-3" style={pipStyle} />,
     );
   }
   // Dot 7: Bottom-Right
   if (isTwo || isThree || isFour || isFive || isSix) {
     pips.push(
-      <span
-        key="br"
-        className={`w-3.5 h-3.5 rounded-full col-start-3 row-start-3 ${pipClass}`}
-      />,
+      <span key="br" className="w-3.5 h-3.5 rounded-full col-start-3 row-start-3" style={pipStyle} />,
     );
   }
 
@@ -586,62 +568,33 @@ function EnchantedDiceSkinPreview({
   // replaced (computed once per render, never updated again).
   const prefersReducedMotion = useReducedMotion();
 
-  // Dice visual material styles
-  const getDiceMaterial = (id: string) => {
-    switch (id) {
-      case "dice_wooden_teak":
-        return {
-          container:
-            "bg-gradient-to-br from-[#8B4513] via-[#5C2E0B] to-[#3B1E08] border-[3.5px] border-[#2A1406] shadow-[inset_0_2px_4px_rgba(255,255,255,0.22),inset_0_-3px_6px_rgba(0,0,0,0.85),0_16px_35px_rgba(0,0,0,0.75)]",
-          pip: "bg-[#1A0A02] shadow-[inset_0_2px_3px_rgba(0,0,0,0.95)] border border-[#3A1804]",
-          grain: true,
-          aura: "shadow-[0_0_25px_rgba(180,83,9,0.3)]",
-        };
-      case "dice_golden_ember":
-        return {
-          container:
-            "bg-gradient-to-br from-[#FDE047] via-[#D97706] to-[#78350F] border-[3px] border-[#FEF08A] shadow-[inset_0_3px_6px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.6),0_0_35px_rgba(245,158,11,0.5)]",
-          pip: "bg-[#451A03] shadow-[0_0_8px_rgba(245,158,11,0.8)] border border-amber-950",
-          grain: false,
-          aura: "shadow-[0_0_35px_rgba(245,158,11,0.6)]",
-        };
-      case "dice_cyber_neon":
-        return {
-          container:
-            "bg-gradient-to-br from-[#18181B] via-[#09090B] to-[#000000] border-[2.5px] border-cyan-400 shadow-[inset_0_1px_4px_rgba(6,182,212,0.6),0_0_30px_rgba(6,182,212,0.4)]",
-          pip: "bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,1),0_0_18px_rgba(6,182,212,0.6)] border border-cyan-200",
-          grain: false,
-          aura: "shadow-[0_0_35px_rgba(6,182,212,0.4)]",
-        };
-      case "dice_sapphire_frost":
-        return {
-          container:
-            "bg-gradient-to-br from-[#DBEAFE] via-[#3B82F6] to-[#1E3A8A] border-[3px] border-[#93C5FD] shadow-[inset_0_3px_6px_rgba(255,255,255,0.6),inset_0_-3px_6px_rgba(0,0,0,0.4),0_0_35px_rgba(59,130,246,0.5)]",
-          pip: "bg-[#EFF6FF] shadow-[0_0_8px_rgba(191,219,254,0.9)] border border-blue-200",
-          grain: false,
-          aura: "shadow-[0_0_35px_rgba(59,130,246,0.55)]",
-        };
-      case "dice_dragon_scale":
-        return {
-          container:
-            "bg-gradient-to-br from-[#292524] via-[#0C0A09] to-[#000000] border-[3px] border-[#B91C1C] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-3px_6px_rgba(0,0,0,0.9),0_0_35px_rgba(239,68,68,0.5)]",
-          pip: "bg-gradient-to-br from-orange-500 to-red-800 shadow-[0_0_10px_rgba(239,68,68,0.9)] border border-red-950",
-          grain: false,
-          aura: "shadow-[0_0_40px_rgba(239,68,68,0.6)]",
-        };
-      default:
-        // dice_classic_ivory
-        return {
-          container:
-            "bg-gradient-to-br from-[#FFFFFF] via-[#F4F4F5] to-[#D4D4D8] border-[3px] border-[#A1A1AA] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-2px_4px_rgba(0,0,0,0.25),0_16px_32px_rgba(0,0,0,0.5)]",
-          pip: "bg-[#18181B] shadow-[inset_0_1.5px_2px_rgba(0,0,0,0.8)]",
-          grain: false,
-          aura: "shadow-[0_8px_25px_rgba(0,0,0,0.4)]",
-        };
-    }
+  // Dice visual material — built directly from the real DiceSkinConfig
+  // (the same registry Dice.tsx renders from in actual gameplay) instead of
+  // a hand-authored per-id switch. That switch used to only recognize the
+  // original 6 dice ids and silently fall back to plain ivory for any
+  // id it didn't know — exactly what broke the preview for every one of
+  // the 12 newer dice skins (their small shop-list thumbnails, driven by
+  // CosmeticsItemCard's already-generic branch, rendered correctly all
+  // along; only this big Inspect panel had the stale switch).
+  // Tailwind's arbitrary-value classes can't be built from a JS variable at
+  // build time, so this is inline `style`, not a className string.
+  const dice = getDiceSkinConfig(skinId);
+  const mat = {
+    containerStyle: {
+      background: dice.faceBg,
+      border: `3px solid ${dice.faceBorder}`,
+      boxShadow: [
+        "inset 0 2px 4px rgba(255,255,255,0.35)",
+        "inset 0 -3px 6px rgba(0,0,0,0.35)",
+        dice.glow ?? "0 16px 32px rgba(0,0,0,0.5)",
+      ].join(", "),
+    } as React.CSSProperties,
+    pipStyle: {
+      background: dice.pipBg,
+      boxShadow: dice.pipBorder,
+    } as React.CSSProperties,
+    grain: dice.wooden,
   };
-
-  const mat = getDiceMaterial(skinId);
 
   // Presentation-only roll preview trigger
   const triggerPresentationRoll = () => {
@@ -690,12 +643,13 @@ function EnchantedDiceSkinPreview({
           {/* Dice placed in center of felt */}
           <div className="relative z-10 scale-75">
             <div
-              className={`w-28 h-28 rounded-2xl flex items-center justify-center relative ${mat.container} ${mat.aura}`}
+              className="w-28 h-28 rounded-2xl flex items-center justify-center relative"
+              style={mat.containerStyle}
             >
               <DiceFacePipGrid
                 value={6}
                 skinId={skinId}
-                pipClass={mat.pip}
+                pipStyle={mat.pipStyle}
               />
             </div>
           </div>
@@ -722,8 +676,8 @@ function EnchantedDiceSkinPreview({
               : { rotateX: 12, rotateY: -15 }
           }
           transition={{ duration: 0.8, ease: "easeInOut" }}
-          className={`w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none ${mat.container} ${mat.aura}`}
-          style={{ transformStyle: "preserve-3d" }}
+          className="w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none"
+          style={{ ...mat.containerStyle, transformStyle: "preserve-3d" }}
           onClick={triggerPresentationRoll}
         >
           {mat.grain && (
@@ -732,7 +686,7 @@ function EnchantedDiceSkinPreview({
           <DiceFacePipGrid
             value={rollFace}
             skinId={skinId}
-            pipClass={mat.pip}
+            pipStyle={mat.pipStyle}
           />
         </motion.div>
 
@@ -777,8 +731,8 @@ function EnchantedDiceSkinPreview({
           duration: 7,
           ease: "easeInOut",
         }}
-        className={`w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none ${mat.container} ${mat.aura}`}
-        style={{ transformStyle: "preserve-3d" }}
+        className="w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none"
+        style={{ ...mat.containerStyle, transformStyle: "preserve-3d" }}
       >
         {/* Wood grain pattern overlay for Teak */}
         {mat.grain && (
@@ -818,7 +772,7 @@ function EnchantedDiceSkinPreview({
         <DiceFacePipGrid
           value={5}
           skinId={skinId}
-          pipClass={mat.pip}
+          pipStyle={mat.pipStyle}
         />
       </motion.div>
 
