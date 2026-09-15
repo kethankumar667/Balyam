@@ -55,9 +55,15 @@ export function PawnGlyph({
   // preview panel) never collide either.
   const baseShine = `tkbase${uid}`;
   const bodyShine = `tkbody${uid}`;
+  const headGloss = `tkhead${uid}`;
+  const softShadow = `tkshadow${uid}`;
 
   return (
     <svg viewBox="-50 -65 100 130" width="100%" height="100%" overflow="visible">
+      {/* Cast shadow — grounds the piece the way every reference pawn is
+       *  photographed with one, instead of looking like a cut-out sticker. */}
+      <ellipse cx="0" cy="55" rx="28" ry="6" fill="black" opacity="0.32" filter={`url(#${softShadow})`} />
+
       {/* Movable highlight ring (expanding pulse) */}
       {movable && (
         <>
@@ -95,6 +101,9 @@ export function PawnGlyph({
       <ellipse cx="0" cy="50" rx="38" ry="12" fill={dark} />
       <ellipse cx="0" cy="48" rx="38" ry="12" fill={main} />
       <ellipse cx="0" cy="46" rx="32" ry="8" fill={`url(#${baseShine})`} opacity="0.5" />
+      {/* Thin bright rim on the base's front edge — a cheap but real cue
+       *  that this is a lit, physical object rather than a flat sticker. */}
+      <path d="M -30 44 Q 0 54 30 44" fill="none" stroke="white" strokeWidth="1.2" opacity="0.35" strokeLinecap="round" />
 
       {/* Body — pawn-shaped curve */}
       <path
@@ -106,17 +115,28 @@ export function PawnGlyph({
       <path
         d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
         fill={`url(#${bodyShine})`}
-        opacity="0.6"
+        opacity="0.7"
       />
+
+      {/* Gold trim ring — the one signature "hand-finished piece" cue every
+       *  reference pawn shares regardless of its own color or material,
+       *  the base game shape never had it. Sits right where the body meets
+       *  the base, same footprint as the neck ring below. */}
+      <ellipse cx="0" cy="40" rx="25" ry="5.5" fill="none" stroke="#F5C542" strokeWidth="2.2" opacity="0.9" />
+      <ellipse cx="0" cy="39.3" rx="25" ry="5.5" fill="none" stroke="#FEF3C7" strokeWidth="0.8" opacity="0.6" />
 
       {/* Neck ring */}
       <ellipse cx="0" cy="-18" rx="20" ry="6" fill={dark} />
       <ellipse cx="0" cy="-19" rx="20" ry="6" fill={main} />
+      <ellipse cx="0" cy="-19" rx="20" ry="6" fill="none" stroke="#F5C542" strokeWidth="1.4" opacity="0.7" />
 
-      {/* Head — domed ball */}
+      {/* Head — domed ball. A soft ambient wash for the sphere's roundness,
+       *  topped with one crisp specular hotspot — a flat blurry blob read
+       *  as plastic, this reads as polished glass/gem. */}
       <circle cx="0" cy="-36" r="20" fill={dark} />
       <circle cx="0" cy="-37" r="19" fill={main} />
-      <circle cx="-6" cy="-43" r="7" fill="white" opacity="0.55" />
+      <circle cx="-4" cy="-42" r="14" fill={`url(#${headGloss})`} opacity="0.8" />
+      <circle cx="-7" cy="-45" r="3.2" fill="white" opacity="0.9" />
 
       {/* Premium craftsmanship finish — seat-colored, never a fixed hue */}
       <TokenFinishOverlay finish={tokenSkin.finish} main={main} dark={dark} />
@@ -191,10 +211,18 @@ export function PawnGlyph({
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
         <linearGradient id={bodyShine} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="white" stopOpacity="0.5" />
-          <stop offset="40%" stopColor="white" stopOpacity="0" />
-          <stop offset="100%" stopColor="black" stopOpacity="0.2" />
+          <stop offset="0%" stopColor="white" stopOpacity="0.65" />
+          <stop offset="35%" stopColor="white" stopOpacity="0" />
+          <stop offset="100%" stopColor="black" stopOpacity="0.25" />
         </linearGradient>
+        <radialGradient id={headGloss} cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.85" />
+          <stop offset="55%" stopColor="white" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </radialGradient>
+        <filter id={softShadow} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2.4" />
+        </filter>
       </defs>
     </svg>
   );

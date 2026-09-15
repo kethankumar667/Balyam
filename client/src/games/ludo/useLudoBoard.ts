@@ -19,6 +19,7 @@ import { computeStepPath, isSameTokenState } from "./animation";
 import { getPrintBoard, type PrintBoardGeometry } from "./print-board";
 import { DICE_ROLL_MS } from "./Dice";
 import { ROLL_COOLDOWN_MS, hopMsFor, stepMsFor } from "@shared/ludo-pacing";
+import { getDefaultCosmetic } from "@shared/cosmetics";
 import {
   COLOR_HEX,
   HOME_SLOTS,
@@ -166,6 +167,17 @@ export interface LudoBoardModel {
    *  flash. Handovers used to be a silent one-frame swap. */
   turnPulse: number;
   nameOf: (id: string) => string;
+  /**
+   * This SEAT's own equipped dice/token skin — never the local viewer's.
+   * Every seat on a shared board must render its OWN purchased cosmetics,
+   * not whichever skin the person currently looking at the screen has
+   * equipped. Bots never have `player.cosmetics` set (no wallet, no
+   * `room:setCosmetics` socket to emit it from), so they — and any human
+   * who hasn't equipped anything — resolve to the real default id here,
+   * never left `undefined` for a hook downstream to guess at.
+   */
+  tokenSkinOf: (id: string) => string;
+  diceSkinOf: (id: string) => string;
   roll: () => void;
   move: (tokenId: string) => void;
   onLeave?: () => void;
@@ -791,6 +803,12 @@ export function useLudoBoard({
   function nameOf(id: string): string {
     return players.find((p) => p.id === id)?.name ?? "?";
   }
+  function tokenSkinOf(id: string): string {
+    return players.find((p) => p.id === id)?.cosmetics?.tokenSkin ?? getDefaultCosmetic("TOKEN_SKIN", "ludo").id;
+  }
+  function diceSkinOf(id: string): string {
+    return players.find((p) => p.id === id)?.cosmetics?.diceSkin ?? getDefaultCosmetic("DICE_SKIN", "ludo").id;
+  }
   function roll() {
     if (!canRoll) return;
     if (soundOn) sfx.diceRoll();
@@ -1310,6 +1328,8 @@ export function useLudoBoard({
       reduceMotion ? 0 : hopMs[tokenId] ?? hopMsFor(1),
     turnPulse,
     nameOf,
+    tokenSkinOf,
+    diceSkinOf,
     roll,
     move,
     onLeave,

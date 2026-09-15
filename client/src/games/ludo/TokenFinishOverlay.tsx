@@ -69,24 +69,25 @@ export function TokenFinishOverlay({
           <path
             d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
             fill="black"
-            opacity="0.12"
+            opacity="0.22"
           />
-          <ellipse cx="-5" cy="-40" rx="4" ry="5" fill="white" opacity="0.2" />
+          <ellipse cx="-5" cy="-40" rx="4" ry="5" fill="white" opacity="0.22" />
+          <path d="M -20 40 Q -28 0 -14 -18" stroke="black" strokeWidth="1.5" opacity="0.3" fill="none" strokeLinecap="round" />
         </>
       );
 
     case "roseGlass":
       return (
         <>
-          <circle cx="0" cy="-10" r="34" fill="white" opacity="0.06" />
-          <ellipse cx="-6" cy="-8" rx="14" ry="22" fill="white" opacity="0.3" />
-          <ellipse cx="-6" cy="-40" rx="7" ry="9" fill="white" opacity="0.45" />
+          <circle cx="0" cy="-10" r="34" fill="white" opacity="0.1" />
+          <ellipse cx="-6" cy="-8" rx="14" ry="22" fill="white" opacity="0.38" />
+          <ellipse cx="-6" cy="-40" rx="7" ry="9" fill="white" opacity="0.55" />
         </>
       );
 
     case "crystalFacet":
       return (
-        <g stroke="white" strokeWidth="0.8" opacity="0.55" fill="none">
+        <g stroke="white" strokeWidth="1.3" opacity="0.65" fill="none">
           <path d="M 0 -56 L -14 -37 L 0 -18" />
           <path d="M 0 -56 L 14 -37 L 0 -18" />
           <path d="M -14 -37 L 0 -37 L 14 -37" />
@@ -160,11 +161,11 @@ export function TokenFinishOverlay({
 
     case "engravedLattice":
       return (
-        <g stroke={GOLD} strokeWidth="0.8" opacity="0.75" fill="none">
+        <g stroke={GOLD} strokeWidth="1.4" opacity="0.85" fill="none">
           <path d="M -10 30 L 0 22 L 10 30 L 0 38 Z" />
           <path d="M -10 8 L 0 0 L 10 8 L 0 16 Z" />
           <path d="M -8 -14 L 0 -20 L 8 -14 L 0 -8 Z" />
-          <circle cx="0" cy="-48" r="6" fill="none" strokeWidth="1.2" />
+          <circle cx="0" cy="-48" r="6" fill="none" strokeWidth="1.6" />
         </g>
       );
 
@@ -174,19 +175,23 @@ export function TokenFinishOverlay({
           <path
             d="M -22 46 Q -32 0 -16 -20 Q 0 -32 16 -20 Q 32 0 22 46 Z"
             fill="black"
-            opacity="0.2"
+            opacity="0.32"
           />
-          <path d="M -16 20 Q 0 4 14 -10" stroke="white" strokeWidth="1" opacity="0.35" fill="none" />
+          <path d="M -18 22 Q 0 2 16 -12" stroke="white" strokeWidth="1.4" opacity="0.4" fill="none" strokeLinecap="round" />
+          <path d="M -14 -4 Q 4 -18 8 -38" stroke={main} strokeWidth="2" opacity="0.5" fill="none" strokeLinecap="round" />
           {[
-            [-10, 30],
-            [8, 22],
-            [-6, 6],
-            [12, -4],
-            [-2, -30],
-            [6, -44],
+            [-12, 32],
+            [9, 26],
+            [-16, 12],
+            [7, 8],
+            [-4, -12],
+            [13, -18],
+            [-8, -32],
+            [4, -46],
+            [-14, -40],
           ].map(([cx, cy], i) => (
-            <circle key={i} cx={cx} cy={cy} r={i % 2 === 0 ? 1.1 : 0.7} fill={i % 3 === 0 ? GOLD : "white"} opacity="0.85">
-              <animate attributeName="opacity" values="0.2;1;0.2" dur={`${1.4 + i * 0.3}s`} repeatCount="indefinite" />
+            <circle key={i} cx={cx} cy={cy} r={i % 3 === 0 ? 1.9 : 1.3} fill={i % 3 === 0 ? GOLD : "white"} opacity="0.95">
+              <animate attributeName="opacity" values="0.25;1;0.25" dur={`${1.4 + i * 0.25}s`} repeatCount="indefinite" />
             </circle>
           ))}
         </>
@@ -194,11 +199,11 @@ export function TokenFinishOverlay({
 
     case "holographicShift":
       return (
-        <g opacity="0.5">
-          <path d="M -20 36 L -6 -6" stroke="white" strokeWidth="3" opacity="0.3" />
-          <path d="M -6 44 L 8 -14" stroke="white" strokeWidth="2.2" opacity="0.4" />
-          <path d="M 10 40 L 20 4" stroke="white" strokeWidth="1.6" opacity="0.3" />
-          <animate attributeName="opacity" values="0.35;0.65;0.35" dur="2.4s" repeatCount="indefinite" />
+        <g opacity="0.65">
+          <path d="M -20 36 L -6 -6" stroke="white" strokeWidth="3.5" opacity="0.4" strokeLinecap="round" />
+          <path d="M -6 44 L 8 -14" stroke={GOLD} strokeWidth="2.6" opacity="0.5" strokeLinecap="round" />
+          <path d="M 10 40 L 20 4" stroke="white" strokeWidth="2" opacity="0.4" strokeLinecap="round" />
+          <animate attributeName="opacity" values="0.45;0.8;0.45" dur="2.4s" repeatCount="indefinite" />
         </g>
       );
 

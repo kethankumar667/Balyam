@@ -1361,7 +1361,17 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
             canRoll ? "ludo-cup-breathe" : settleKey > 0 ? "ludo-dice-impact" : ""
           }`}
         >
-          <Dice value={state.diceValue} rolling={m.rolling} highlight={canRoll} wooden={m.settings.woodenDice} size="56px" />
+          <Dice
+            value={state.diceValue}
+            rolling={m.rolling}
+            highlight={canRoll}
+            wooden={m.settings.woodenDice}
+            size="56px"
+            // The shared die shows whoever's TURN it currently is own
+            // equipped skin — same "this seat's own cosmetics, never the
+            // local viewer's" fix as the tokens above.
+            skin={m.diceSkinOf(m.displayTurnPlayerId)}
+          />
         </div>
         {streak && (
           <span
@@ -1567,6 +1577,12 @@ export function LudoBoardArea({
               color={state.playerColors[pid]}
               hex={armIdx >= 0 ? seatColor(armIdx) : undefined}
               hexDark={armIdx >= 0 ? seatColorDark(armIdx) : undefined}
+              // This SEAT's own equipped skin — never the local viewer's own
+              // (that was the bug: every token on the board used to render
+              // in whichever skin the person looking at the screen had
+              // equipped, human or bot). Bots and anyone who hasn't
+              // purchased anything resolve to the real default here.
+              skin={m.tokenSkinOf(pid)}
               left={pos.left}
               top={pos.top}
               // `pos.scale` shrinks tokens that are sharing a cell so the

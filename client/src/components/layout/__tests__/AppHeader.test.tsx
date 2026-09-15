@@ -20,12 +20,8 @@ vi.mock("../../../hooks/useEconomy", () => ({
   }),
 }));
 
-function renderHeader() {
-  // A distinct player name so `displayName` (playerName || identity.label)
-  // never coincidentally equals the identity badge text under test —
-  // otherwise a blank name would render "Offline Demo Mode" or "Guest"
-  // TWICE (once as the name, once as the badge) for unrelated reasons.
-  useRoomStore.setState({ playerName: "TestPlayer" });
+function renderHeader(playerName = "TestPlayer") {
+  useRoomStore.setState({ playerName });
   return render(
     <BrowserRouter>
       <AppHeader />
@@ -47,37 +43,42 @@ function asVerifiedMember(): void {
 }
 
 /**
- * Consumer-wiring regression (Phase C3): the header's profile chip used to
- * fall back to a hardcoded "Guest" label for anything that wasn't a
- * verified member (`!isMember`), so a local-fallback session — which
- * genuinely is not a verified member — was mislabeled "Guest" instead of
- * "Offline Demo Mode". The chip now reads `identity.isLocalFallback`
- * (the same centralized `useIdentityPresentation()` the rest of the app
- * uses) before falling back to the guest label.
+ * The header's profile chip has no standalone "Guest"/"Offline Demo Mode"
+ * badge of its own — that badge lives in ProfileSheet.tsx (see its own
+ * "Offline Demo Mode consumer-wiring fix" describe block in
+ * ProfileSheet.test.tsx, which owns that coverage). What AppHeader itself
+ * is responsible for is `displayName = playerName.trim() || identity.label`
+ * — the profile button's visible name and accessible label fall back to
+ * the centralized `useIdentityPresentation()` label only when no room
+ * player name is set.
  */
-describe("AppHeader — identity-mode presentation (Offline Demo Mode consumer-wiring fix)", () => {
+describe("AppHeader — identity label fallback when no player name is set", () => {
   afterEach(() => {
     setAccessToken(null);
   });
 
-  it("guest: shows the Guest label", () => {
+  it("guest: falls back to the Guest label", () => {
     asGuest();
-    renderHeader();
+    renderHeader("");
     expect(screen.getByText("Guest")).toBeDefined();
-    expect(screen.queryByText("Offline Demo Mode")).toBeNull();
   });
 
-  it("local fallback: shows Offline Demo Mode, not Guest", () => {
+  it("local fallback: falls back to the Offline Demo Mode label", () => {
     asLocalFallback();
-    renderHeader();
+    renderHeader("");
     expect(screen.getByText("Offline Demo Mode")).toBeDefined();
-    expect(screen.queryByText("Guest")).toBeNull();
   });
 
-  it("verified member: shows neither the Guest nor the Offline Demo Mode chip (existing member presentation is unaffected)", () => {
+  it("verified member: falls back to the Member label", () => {
     asVerifiedMember();
-    renderHeader();
-    expect(screen.queryByText("Guest")).toBeNull();
+    renderHeader("");
+    expect(screen.getByText("Member")).toBeDefined();
+  });
+
+  it("a real player name always wins over the identity label fallback", () => {
+    asLocalFallback();
+    renderHeader("TestPlayer");
+    expect(screen.getByText("TestPlayer")).toBeDefined();
     expect(screen.queryByText("Offline Demo Mode")).toBeNull();
   });
 });

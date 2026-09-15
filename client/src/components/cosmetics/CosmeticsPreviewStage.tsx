@@ -923,7 +923,7 @@ function EnchantedAvatarAuraPreview({
               className="w-full h-full"
             />
           </div>
-          <Star className="w-5 h-5 text-amber-300 fill-amber-300 absolute -top-1 -right-2 animate-bounce z-20" />
+          <Star className="w-5 h-5 text-amber-300 fill-amber-300 absolute -top-1 -right-2 motion-safe:animate-pulse z-20" />
         </div>
         <div className="w-32 py-1.5 mt-1 rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-400 text-black text-center font-black text-xs shadow-lg shadow-amber-500/30">
           #1 WINNER
