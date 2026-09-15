@@ -21,7 +21,7 @@
  * replacing the old teleporting dash under the active category.
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Store,
@@ -113,6 +113,20 @@ export function CosmeticsStoreModal() {
   const handleClose = () => {
     AudioManager.play(AUDIO.UI_POPUP_CLOSE);
     closeStore();
+  };
+
+  // On mobile the preview panel and the item grid stack vertically (the
+  // panel sits ABOVE the grid — see the layout below), sharing one scroll
+  // container. Tapping an item while scrolled down to browse the grid used
+  // to update the preview off-screen above the fold, with no visual cue it
+  // had even changed — exactly "clicked an item, can't see its design."
+  // Desktop shows both side by side already, so this is a no-op there.
+  const previewPanelRef = useRef<HTMLDivElement>(null);
+  const handleSelectItem = (itemId: string) => {
+    selectItem(itemId);
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      previewPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   // Filter catalog items for selected category AND the active game-variant
@@ -378,7 +392,7 @@ export function CosmeticsStoreModal() {
       {/* ── Main Boutique Body: Responsive 2-Column Layout ── */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col md:flex-row gap-6 min-h-0 relative z-10">
         {/* Left Column (Desktop) / Top Card (Mobile): Enchanted Display Vault Preview Stage */}
-        <div className="w-full md:w-5/12 flex-shrink-0 flex flex-col gap-3">
+        <div ref={previewPanelRef} className="w-full md:w-5/12 flex-shrink-0 flex flex-col gap-3">
           <CosmeticsPreviewStage
             item={previewItem}
             category={selectedCategory}
@@ -449,7 +463,7 @@ export function CosmeticsStoreModal() {
                       isSubmitting={isSubmitting}
                       walletBalance={walletBalance ?? "0"}
                       isAdminUser={isAdminUser}
-                      onSelect={() => selectItem(item.id)}
+                      onSelect={() => handleSelectItem(item.id)}
                     />
                   </div>
                 );
