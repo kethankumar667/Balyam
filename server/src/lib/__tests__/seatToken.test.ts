@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { mintSeatToken, verifySeatToken } from "../seatToken.js";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { mintSeatToken, verifySeatToken, assertSeatTokenConfigured } from "../seatToken.js";
+import { logger } from "../logger.js";
 
 const CODE = "AB12CD";
 const ALICE = "p_1700000000000_aaaaaa";
@@ -63,5 +64,37 @@ describe("seat tokens", () => {
     for (const guess of guesses) {
       expect(verifySeatToken(CODE, ALICE, guess)).toBe(false);
     }
+  });
+});
+
+/**
+ * Security-audit regression: `seat-token-no-production-hardfail-guard`.
+ * This test file (and this process) loads with no SESSION_SECRET set, so
+ * `usingEphemeralSecret` is `true` for its whole lifetime (it's a module-load-
+ * time constant, unlike `guestToken.ts`'s function-based equivalent) — which
+ * lets both reachable states below be exercised without a module reimport.
+ */
+describe("assertSeatTokenConfigured — production startup guard", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    vi.restoreAllMocks();
+  });
+
+  it("development with an ephemeral key: allowed, with an explicit warning", () => {
+    process.env.NODE_ENV = "development";
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    expect(() => assertSeatTokenConfigured()).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]![0]).toMatchObject({ module: "AUTH" });
+  });
+
+  it("production with an ephemeral key: fails closed (previously had no such guard at all)", () => {
+    process.env.NODE_ENV = "production";
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+    expect(() => assertSeatTokenConfigured()).toThrow(/Refusing to start in production/);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 });

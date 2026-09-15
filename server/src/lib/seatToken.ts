@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logger } from "./logger.js";
 
 /**
  * Proof that you are the person sitting in a seat.
@@ -50,6 +51,43 @@ const secret = process.env.SESSION_SECRET?.trim() || crypto.randomBytes(32).toSt
 
 /** True when the key is ephemeral, i.e. seats will not survive a restart. */
 export const usingEphemeralSecret = !process.env.SESSION_SECRET?.trim();
+
+function isProduction(): boolean {
+  return (process.env.NODE_ENV ?? "").trim().toLowerCase() === "production";
+}
+
+/**
+ * Boot-time symmetry check with `guestToken.ts`'s
+ * `assertGuestTokenDurabilityConfigured()` and `voucherCrypto.ts`'s
+ * `assertVoucherHmacConfigured()`. An ephemeral seat-signing key is coherent
+ * today — see the "On expiry" note above: a restart destroys every room a
+ * seat token could reference at the same moment it invalidates the key, so
+ * this alone doesn't hard-fail production like its two siblings do. It only
+ * warns outside production, matching the ephemeral case being the normal,
+ * harmless local-dev default; SESSION_SECRET is already mandatory in
+ * production via `assertGuestTokenDurabilityConfigured()`, so in a correctly
+ * configured deployment this is a no-op. It exists so the day this
+ * architecture gains room-state persistence or horizontal scaling — at which
+ * point per-process ephemeral keys would desync seat reclaim across
+ * instances in a way room lifetimes no longer bound — a missing
+ * SESSION_SECRET is loud, not silent.
+ */
+export function assertSeatTokenConfigured(): void {
+  if (!usingEphemeralSecret) return;
+
+  const reason =
+    "SESSION_SECRET is not set, so seat tokens are signed with a per-process key. " +
+    "Harmless today (a restart destroys the rooms those tokens referred to), but silently " +
+    "unreclaimable seats the moment room state ever outlives one process.";
+
+  if (!isProduction()) {
+    logger.warn({ message: reason, module: "AUTH" });
+    return;
+  }
+
+  logger.error({ message: `Refusing to start in production: ${reason}`, module: "AUTH" });
+  throw new Error(`Refusing to start in production: ${reason}`);
+}
 
 /**
  * Normalised subject line. Room codes are matched case-insensitively

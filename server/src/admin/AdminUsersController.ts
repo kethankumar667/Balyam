@@ -192,6 +192,22 @@ export function createAdminUsersRouter(): Router {
       return;
     }
 
+    // Only super_admin (or the machine ops-key) may change platform roles —
+    // otherwise a caller holding only the lesser "admin" tier could grant
+    // itself super_admin with no further check, defeating the whole point
+    // of having a separate lesser tier.
+    const callerRole =
+      req.operationalPrincipal?.kind === "admin-user"
+        ? getUserRole(req.operationalPrincipal.userId, req.operationalPrincipal.email)
+        : null;
+    if (req.operationalPrincipal?.kind !== "ops-key" && callerRole !== "super_admin") {
+      res.status(403).json({
+        error: "Forbidden",
+        message: "Only super_admin may change platform roles.",
+      });
+      return;
+    }
+
     const assignedBy =
       req.operationalPrincipal?.kind === "admin-user"
         ? req.operationalPrincipal.email || req.operationalPrincipal.userId

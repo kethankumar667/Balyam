@@ -643,6 +643,29 @@ describe("GET /api/economy/vouchers/:voucherId", () => {
   });
 });
 
+describe("POST /api/economy/admin/vouchers/issue", () => {
+  it("security regression: refuses an anonymous caller with no credential (previously had no auth guard at all)", async () => {
+    const res = await server.request("/api/economy/admin/vouchers/issue", {
+      method: "POST",
+      body: JSON.stringify({ coinAmount: "999999", code: "SHOULD-NOT-BE-MINTED" }),
+    });
+    expect(res.status).toBe(401);
+
+    // The voucher must never have been created.
+    const status = await server.request("/api/economy/vouchers/SHOULD-NOT-BE-MINTED");
+    expect(status.status).toBe(404);
+  });
+
+  it("allows a caller presenting the operational key", async () => {
+    const res = await server.request("/api/economy/admin/vouchers/issue", {
+      method: "POST",
+      headers: { "x-operational-key": OPS_KEY },
+      body: JSON.stringify({ coinAmount: "250" }),
+    });
+    expect(res.status).toBe(200);
+  });
+});
+
 /* ═══════════════════════ bigint boundary values ═══════════════════════════ */
 
 describe("Economy API — bigint boundary values over HTTP", () => {

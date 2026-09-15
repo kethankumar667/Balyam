@@ -8,6 +8,8 @@ import {
   assertOperationalAuthConfigured,
   operationalConfigProblems,
   operationalAuthStatus,
+  operationalAuthConfig,
+  setUserRole,
 } from "../operationalAuth.js";
 import { createOperationalRouter } from "../../observability/OperationalController.js";
 import { RoomManager } from "../../rooms/RoomManager.js";
@@ -348,6 +350,51 @@ describe("P0-1 — admin authorization from a verified session", () => {
       token: mintSessionToken(ADMIN_ID),
     });
     expect(res.status).toBe(401);
+  });
+});
+
+/**
+ * Security-audit regression: `admin-role-privilege-not-enforced`. A caller
+ * dynamically granted only the lesser "admin" tier must NOT be admitted to
+ * the operational/admin surface the same way a "super_admin" grant is —
+ * before the fix, `operationalAuthConfig().adminUserIds` folded every
+ * non-member role into one allowlist with no distinction.
+ */
+describe("P0-1 — admin/super_admin dynamic-role tier is actually enforced", () => {
+  afterEach(() => {
+    setUserRole(ADMIN_ID, "member"); // clears the dynamic grant between tests
+  });
+
+  it("a plain 'admin' dynamic grant is excluded from adminUserIds", () => {
+    setUserRole(ADMIN_ID, "admin");
+    expect(operationalAuthConfig().adminUserIds).not.toContain(ADMIN_ID);
+  });
+
+  it("a 'super_admin' dynamic grant IS included in adminUserIds", () => {
+    setUserRole(ADMIN_ID, "super_admin");
+    expect(operationalAuthConfig().adminUserIds).toContain(ADMIN_ID);
+  });
+
+  it("a session verified for a plain 'admin' grant is refused by requireOperationalAuth", async () => {
+    process.env.SUPABASE_JWT_SECRET = JWT_SECRET;
+    process.env.SUPABASE_URL = PROJECT_URL;
+    setUserRole(ADMIN_ID, "admin");
+    server = await startOperationalServer();
+    const res = await server.request("/api/operational/metrics", {
+      token: mintSessionToken(ADMIN_ID),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("the SAME session is admitted once granted 'super_admin' instead", async () => {
+    process.env.SUPABASE_JWT_SECRET = JWT_SECRET;
+    process.env.SUPABASE_URL = PROJECT_URL;
+    setUserRole(ADMIN_ID, "super_admin");
+    server = await startOperationalServer();
+    const res = await server.request("/api/operational/metrics", {
+      token: mintSessionToken(ADMIN_ID),
+    });
+    expect(res.status).toBe(200);
   });
 });
 

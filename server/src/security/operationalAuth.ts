@@ -131,8 +131,14 @@ export function operationalAuthConfig(): OperationalAuthConfig {
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  const dynamicAdmins = Array.from(dynamicUserRoles.keys());
-  const adminUserIds = Array.from(new Set([...envAdminUserIds, ...dynamicAdmins]));
+  // Only a super_admin grant admits the holder to the full operational/admin
+  // surface. A plain "admin" grant exists as a lesser tier and must not be
+  // folded into this allowlist — see the security-audit fix for
+  // admin-role-privilege-not-enforced.
+  const dynamicSuperAdmins = Array.from(dynamicUserRoles.entries())
+    .filter(([, assignment]) => assignment.role === "super_admin")
+    .map(([userId]) => userId);
+  const adminUserIds = Array.from(new Set([...envAdminUserIds, ...dynamicSuperAdmins]));
   return { secret, adminUserIds, configured: secret.length > 0 || adminUserIds.length > 0 };
 }
 

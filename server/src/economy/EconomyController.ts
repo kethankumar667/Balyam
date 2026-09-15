@@ -636,7 +636,7 @@ export function createEconomyRouter(service: EconomyService): Router {
   /**
    * POST /admin/vouchers/issue — operational test endpoint to issue test vouchers for verification.
    */
-  router.post("/admin/vouchers/issue", async (req: Request, res: Response) => {
+  router.post("/admin/vouchers/issue", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const body = (req.body ?? {}) as Record<string, unknown>;
     const amount = typeof body.coinAmount === "string" && /^\d+$/.test(body.coinAmount.trim())

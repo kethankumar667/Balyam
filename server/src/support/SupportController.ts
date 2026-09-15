@@ -78,6 +78,15 @@ const communityReports: CommunityReportRecord[] = [];
 const supportTickets: SupportTicketRecord[] = [];
 const feedbackSubmissions: FeedbackRecord[] = [];
 
+/** Defense-in-depth cap on the in-memory stores below — these are already
+ * documented as throwaway, non-durable state; this just stops an anonymous
+ * caller from growing them without bound. Oldest entries are evicted first. */
+const MAX_IN_MEMORY_RECORDS = 5000;
+function pushBounded<T>(arr: T[], record: T): void {
+  arr.push(record);
+  if (arr.length > MAX_IN_MEMORY_RECORDS) arr.shift();
+}
+
 /** Exposed for tests — not a public read API (these can carry PII). */
 export function _allCommunityReports(): readonly CommunityReportRecord[] {
   return communityReports;
@@ -103,8 +112,12 @@ function trimmedOrNull(v: unknown, max = 200): string | null {
 
 export const supportRouter = Router();
 
+/** Open to anonymous callers, so keyed by IP rather than identity — mirrors feedbackRateLimit below. */
+const reportsRateLimit = rateLimitByCaller({ capacity: 10, refillPerSec: 10 / 3600, keyOf: callerIp });
+const ticketsRateLimit = rateLimitByCaller({ capacity: 10, refillPerSec: 10 / 3600, keyOf: callerIp });
+
 /** POST /api/support/reports — Community Rules "Report an Issue" form. */
-supportRouter.post("/reports", (req, res) => {
+supportRouter.post("/reports", reportsRateLimit, (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const details = trimmedOrNull(body.details, 2000);
   if (!details) {
@@ -122,14 +135,14 @@ supportRouter.post("/reports", (req, res) => {
     reporterId: req.player?.playerId ?? null,
     createdAt: Date.now(),
   };
-  communityReports.push(record);
+  pushBounded(communityReports, record);
   logger.info({ message: "Community report submitted", module: "support", playerId: record.reporterId ?? undefined, ticket: record.ticket, category: record.category });
 
   res.status(201).json({ ticket: record.ticket });
 });
 
 /** POST /api/support/tickets — Support & FAQs "Contact Support" form. */
-supportRouter.post("/tickets", (req, res) => {
+supportRouter.post("/tickets", ticketsRateLimit, (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const email = trimmedOrNull(body.email, 200);
   const message = trimmedOrNull(body.message, 2000);
@@ -148,7 +161,7 @@ supportRouter.post("/tickets", (req, res) => {
     submitterId: req.player?.playerId ?? null,
     createdAt: Date.now(),
   };
-  supportTickets.push(record);
+  pushBounded(supportTickets, record);
   logger.info({ message: "Support ticket submitted", module: "support", playerId: record.submitterId ?? undefined, ticket: record.ticket, category: record.category });
 
   res.status(201).json({ ticket: record.ticket });
@@ -178,7 +191,7 @@ supportRouter.post("/feedback", feedbackRateLimit, (req, res) => {
     submitterId: req.player?.playerId ?? null,
     createdAt: Date.now(),
   };
-  feedbackSubmissions.push(record);
+  pushBounded(feedbackSubmissions, record);
   logger.info({ message: "Feedback submitted", module: "support", playerId: record.submitterId ?? undefined, category: record.category });
 
   res.status(201).json({ id: record.id });

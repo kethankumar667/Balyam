@@ -26,6 +26,7 @@ import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
 import { assertVoucherHmacConfigured, voucherHmacDurability } from "./economy/voucherCrypto.js";
+import { assertSeatTokenConfigured } from "./lib/seatToken.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
@@ -64,6 +65,7 @@ try {
   assertOperationalAuthConfigured();
   assertVoucherHmacConfigured();
   assertGuestTokenDurabilityConfigured();
+  assertSeatTokenConfigured();
 } catch (err) {
   logger.error({
     message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,

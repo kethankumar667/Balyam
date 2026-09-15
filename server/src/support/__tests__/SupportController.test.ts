@@ -32,6 +32,18 @@ describe("POST /api/support/reports", () => {
     const res = await server.request("/api/support/reports", { method: "POST", body: JSON.stringify({}) });
     expect(res.status).toBe(400);
   });
+
+  it("security regression: 429s once the per-IP rate limit is exhausted (previously unauthenticated and unbounded)", async () => {
+    let lastStatus = 0;
+    for (let i = 0; i < 11; i++) {
+      const res = await server.request("/api/support/reports", {
+        method: "POST",
+        body: JSON.stringify({ details: `Report ${i}` }),
+      });
+      lastStatus = res.status;
+    }
+    expect(lastStatus).toBe(429);
+  });
 });
 
 describe("POST /api/support/tickets", () => {
@@ -44,6 +56,18 @@ describe("POST /api/support/tickets", () => {
     const body = res.body as { ticket: string };
     expect(body.ticket).toMatch(/^BHAL-TKT-\d{6}$/);
     expect(_allSupportTickets().some((t) => t.ticket === body.ticket)).toBe(true);
+  });
+
+  it("security regression: 429s once the per-IP rate limit is exhausted (previously unauthenticated and unbounded)", async () => {
+    let lastStatus = 0;
+    for (let i = 0; i < 11; i++) {
+      const res = await server.request("/api/support/tickets", {
+        method: "POST",
+        body: JSON.stringify({ email: "player@example.com", message: `Ticket ${i}` }),
+      });
+      lastStatus = res.status;
+    }
+    expect(lastStatus).toBe(429);
   });
 });
 
