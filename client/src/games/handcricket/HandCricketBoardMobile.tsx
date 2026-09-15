@@ -87,7 +87,7 @@ export default function HandCricketBoardMobile({
   }
 
   return (
-    <HcNotebookPage>
+    <HcNotebookPage className="font-['Architects_Daughter',cursive]">
       {/* ── Header ── */}
       <HcNotebookHeader
         state={state}

@@ -120,7 +120,7 @@ export default function HandCricketBoardDesktop({
   }
 
   return (
-    <HcNotebookPage>
+    <HcNotebookPage className="font-['Architects_Daughter',cursive]">
       {/* ── Full-width header ── */}
       <HcNotebookHeader
         state={state}

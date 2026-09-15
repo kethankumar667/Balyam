@@ -229,6 +229,7 @@ export function HcNotebookPage({
 }) {
   return (
     <div
+      className="font-['Architects_Daughter',cursive]"
       style={{
         position: "fixed",
         inset: 0,
@@ -240,6 +241,7 @@ export function HcNotebookPage({
         padding: "10px",
         boxShadow:
           "0 0 100px rgba(0,0,0,0.85), inset 0 0 24px rgba(0,0,0,0.35)",
+        fontFamily: "'Architects Daughter', 'Caveat', 'Patrick Hand', 'Kalam', cursive",
       }}
     >
       <NotebookSvgFilters />
@@ -261,6 +263,7 @@ export function HcNotebookPage({
           // Dual-layer inset: top-edge stain + ambient depth
           boxShadow:
             "inset 0 6px 16px rgba(50,20,5,0.14), inset 0 0 70px rgba(90,55,15,0.16)",
+          fontFamily: "'Architects Daughter', 'Caveat', 'Patrick Hand', 'Kalam', cursive",
         }}
       >
         {children}
