@@ -26,9 +26,8 @@ describe("LobbyPrizePool Component (Phase 7F)", () => {
   it("renders the authoritative server quote for 2 seats — never a locally computed value", () => {
     render(<LobbyPrizePool seatCount={2} readyCount={1} allReady={false} quote={makeQuote()} />);
 
-    expect(screen.getByText(/MATCH PRIZE POOL/i)).toBeDefined();
-    expect(screen.getByText("200")).toBeDefined();
-    expect(screen.getByText("1/2 Ready")).toBeDefined();
+    expect(screen.getByLabelText("Match prize pool: 200 coins")).toBeDefined();
+    expect(screen.getByText("200 coins")).toBeDefined();
     expect(screen.getByLabelText("First place prize: 150 coins")).toBeDefined();
   });
 
@@ -36,7 +35,7 @@ describe("LobbyPrizePool Component (Phase 7F)", () => {
     const { rerender } = render(
       <LobbyPrizePool seatCount={2} readyCount={1} allReady={false} quote={makeQuote()} />,
     );
-    expect(screen.getByText("200")).toBeDefined();
+    expect(screen.getByText("200 coins")).toBeDefined();
 
     rerender(
       <LobbyPrizePool
@@ -51,28 +50,34 @@ describe("LobbyPrizePool Component (Phase 7F)", () => {
         })}
       />,
     );
-    expect(screen.getByText("400")).toBeDefined();
-    expect(screen.getByText("3/4 Ready")).toBeDefined();
+    expect(screen.getByText("400 coins")).toBeDefined();
     expect(screen.getByLabelText("First place prize: 175 coins")).toBeDefined();
     expect(screen.getByLabelText("Second place prize: 125 coins")).toBeDefined();
     expect(screen.getByLabelText("Third place prize: 50 coins")).toBeDefined();
     expect(screen.getByLabelText("Platform reserve cut: 50 coins")).toBeDefined();
   });
 
-  it("displays ALL READY state when all players are ready", () => {
-    render(<LobbyPrizePool seatCount={3} readyCount={3} allReady={true} quote={makeQuote({ seatCount: 3 })} />);
+  it("announces the all-ready state via the screen reader live region (no visible badge in the redesigned card)", () => {
+    const { container } = render(
+      <LobbyPrizePool seatCount={3} readyCount={3} allReady={true} quote={makeQuote({ seatCount: 3 })} />,
+    );
 
-    expect(screen.getByText(/ALL READY/i)).toBeDefined();
-    expect(screen.getByText("All players ready for launch")).toBeDefined();
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toContain(
+      "All 3 players are ready. Projected match prize pool is 200 coins.",
+    );
   });
 
   it("shows UNAVAILABLE — never a fabricated number — when no quote exists (e.g. unsupported seat count)", () => {
-    render(<LobbyPrizePool seatCount={7} readyCount={2} allReady={false} quote={null} isQuoteLoading={false} />);
+    const { container } = render(
+      <LobbyPrizePool seatCount={7} readyCount={2} allReady={false} quote={null} isQuoteLoading={false} />,
+    );
 
-    expect(screen.getAllByText(/UNAVAILABLE/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/No approved payout schedule/i)).toBeDefined();
+    expect(screen.getByLabelText("Match prize pool: unavailable")).toBeDefined();
+    // The pot figure renders as a loading-style skeleton placeholder, never
+    // an invented total.
+    expect(container.querySelector(".animate-pulse")).toBeTruthy();
     expect(screen.queryByLabelText(/First place prize/i)).toBeNull();
-    expect(screen.queryByRole("button", { name: /Toggle prize schedule breakdown/i })).toBeNull();
   });
 
   it("shows a loading state, not a stale or invented number, while the quote is in flight", () => {
@@ -82,24 +87,42 @@ describe("LobbyPrizePool Component (Phase 7F)", () => {
     expect(screen.queryByText("200")).toBeNull();
   });
 
-  it("shows SECURING TABLE (pending), not LOCKED, while a commit is in flight but not yet confirmed", () => {
-    render(
-      <LobbyPrizePool seatCount={4} readyCount={4} allReady={true} quote={makeQuote({ seatCount: 4, totalCommitment: "400" })} lockPhase="securing" />,
+  it("announces SECURING (pending), not LOCKED, via the live region while a commit is in flight but not yet confirmed", () => {
+    const { container } = render(
+      <LobbyPrizePool
+        seatCount={4}
+        readyCount={4}
+        allReady={true}
+        isHost={true}
+        quote={makeQuote({ seatCount: 4, totalCommitment: "400" })}
+        lockPhase="securing"
+      />,
     );
 
-    expect(screen.getAllByText(/Securing Table/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Confirming table commitment/i)).toBeDefined();
-    expect(screen.queryByText(/Locked In Play/i)).toBeNull();
-    expect(screen.queryByText("Authoritative table stakes secured")).toBeNull();
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toContain("Securing table commitment. Please wait.");
+    // Host stake notice is suppressed while securing — never presented as a
+    // confirmed success before the server actually confirms it.
+    expect(screen.queryByText(/Host sponsors table commitment/i)).toBeNull();
   });
 
-  it("displays LOCKED IN PLAY only once lockPhase is explicitly 'locked' (caller-confirmed success)", () => {
-    render(
-      <LobbyPrizePool seatCount={4} readyCount={4} allReady={true} quote={makeQuote({ seatCount: 4, totalCommitment: "400" })} lockPhase="locked" />,
+  it("announces the match prize pool as locked via the live region only once lockPhase is explicitly 'locked' (caller-confirmed success)", () => {
+    const { container } = render(
+      <LobbyPrizePool
+        seatCount={4}
+        readyCount={4}
+        allReady={true}
+        isHost={true}
+        quote={makeQuote({ seatCount: 4, totalCommitment: "400" })}
+        lockPhase="locked"
+      />,
     );
 
-    expect(screen.getByText(/Locked In Play/i)).toBeDefined();
-    expect(screen.getByText("Authoritative table stakes secured")).toBeDefined();
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toContain("Match prize pool locked at 400 coins. Starting game.");
+    // Host stake notice is also suppressed once locked — the match has
+    // already started, sponsoring it is no longer a pending action.
+    expect(screen.queryByText(/Host sponsors table commitment/i)).toBeNull();
   });
 
   it("renders host sponsorship note using the quote's own totalCommitment when isHost is true", () => {
@@ -111,10 +134,10 @@ describe("LobbyPrizePool Component (Phase 7F)", () => {
     expect(screen.getByText("🪙 400")).toBeDefined();
   });
 
-  it("toggles payout details breakdown when Payouts button is clicked", () => {
+  it("toggles payout details breakdown when the Payouts row is clicked", () => {
     render(<LobbyPrizePool seatCount={4} readyCount={2} allReady={false} quote={makeQuote({ seatCount: 4, totalCommitment: "400" })} />);
 
-    const payoutsBtn = screen.getByRole("button", { name: /Toggle prize schedule breakdown/i });
+    const payoutsBtn = screen.getByRole("button", { name: /Payouts/i });
     expect(payoutsBtn).toBeDefined();
 
     fireEvent.click(payoutsBtn);

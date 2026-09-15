@@ -250,6 +250,13 @@ describe("Production UX Resilience Audit Suite", () => {
         }
       });
 
+      // GameRoomSheet only renders an editable "Your name" input when no
+      // name is stored yet — a stored name (this suite's beforeEach sets
+      // "Tester") instead renders a static "Playing as ..." row with no
+      // input to query. This test is about the timeout/stale-ack lifecycle,
+      // not name persistence, so start from a guest with no name.
+      useRoomStore.setState({ playerName: "" });
+
       render(
         <MemoryRouter>
           <GameRoomSheet game="ludo" onClose={vi.fn()} />

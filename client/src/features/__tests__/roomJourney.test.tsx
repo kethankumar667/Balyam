@@ -221,12 +221,8 @@ describe("Priority 2: Room Lifecycle & Host Controls User Journey", () => {
         />
       );
 
-      // Open three dots menu for bot
-      const actionBtn = screen.getByRole("button", { name: /Actions for Sikandar/i });
-      fireEvent.click(actionBtn);
-
-      // Click Remove Bot
-      const removeBtn = screen.getByRole("menuitem", { name: /Remove Bot/i });
+      // Bot actions are direct inline icon buttons on the row (no overflow menu)
+      const removeBtn = screen.getByRole("button", { name: /Remove Sikandar/i });
       fireEvent.click(removeBtn);
 
       // Verify direct 1-tap call with NO confirmation prompt
@@ -253,12 +249,8 @@ describe("Priority 2: Room Lifecycle & Host Controls User Journey", () => {
         />
       );
 
-      // Open three dots menu for bot
-      const actionBtn = screen.getByRole("button", { name: /Actions for Sikandar/i });
-      fireEvent.click(actionBtn);
-
-      // Click Rename Bot
-      const renameBtn = screen.getByRole("menuitem", { name: /Rename Bot/i });
+      // Bot actions are direct inline icon buttons on the row (no overflow menu)
+      const renameBtn = screen.getByRole("button", { name: /Rename Sikandar/i });
       fireEvent.click(renameBtn);
 
       // Type new bot name

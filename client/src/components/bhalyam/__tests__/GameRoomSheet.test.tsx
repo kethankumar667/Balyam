@@ -231,7 +231,7 @@ describe("GameRoomSheet — join-room flow remains unchanged (regression guard)"
     fireEvent.change(nameInput, { target: { value: "Krishna" } });
     const codeInput = screen.getByPlaceholderText(/room code/i);
     fireEvent.change(codeInput, { target: { value: "NEWCD1" } });
-    const joinButton = screen.getByRole("button", { name: /join room/i });
+    const joinButton = screen.getByRole("button", { name: /join table/i });
     fireEvent.click(joinButton);
 
     // `joinRoom` now awaits `ensureGuestToken()` before emitting.
@@ -326,7 +326,7 @@ describe("GameRoomSheet — guest token failure prevents room creation & joining
     fireEvent.change(nameInput, { target: { value: "Krishna" } });
     const codeInput = screen.getByPlaceholderText(/room code/i);
     fireEvent.change(codeInput, { target: { value: "NEWCD1" } });
-    const joinButton = screen.getByRole("button", { name: /join room/i });
+    const joinButton = screen.getByRole("button", { name: /join table/i });
     fireEvent.click(joinButton);
 
     await waitFor(() => {
