@@ -18,3 +18,7 @@ client/public/audio/themes/**/*.wav
 
 # AI agent harness & local state
 .agents/
+
+# Generated test reports
+reports/
+client/reports/

@@ -44,11 +44,11 @@ export interface CosmeticSurfaceTokens {
 }
 
 export const COSMETIC_SURFACE: CosmeticSurfaceTokens = {
-  base: "linear-gradient(180deg, #0f1526 0%, #0a0e1a 45%, #050710 100%)",
-  raised: "linear-gradient(180deg, #131a2e 0%, #0d1322 100%)",
-  overlay: "rgba(19, 26, 46, 0.92)",
-  inset: "rgba(2, 4, 10, 0.55)",
-  edgeLight: "inset 0 1px 0 rgba(255,255,255,0.06)",
+  base: "linear-gradient(180deg, #0d1322 0%, #080c16 48%, #03050a 100%)",
+  raised: "linear-gradient(180deg, rgba(19, 27, 46, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%)",
+  overlay: "rgba(22, 32, 54, 0.94)",
+  inset: "rgba(2, 4, 10, 0.7)",
+  edgeLight: "inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 20px rgba(245,158,11,0.04)",
 };
 
 /**
@@ -63,11 +63,11 @@ export const COSMETIC_SURFACE: CosmeticSurfaceTokens = {
  * comment on why the preview stage stays a fixed dark "display case").
  */
 export const COSMETIC_SURFACE_LIGHT: CosmeticSurfaceTokens = {
-  base: "linear-gradient(180deg, #FFFDF7 0%, #FBF5E9 55%, #F3E7D3 100%)",
-  raised: "linear-gradient(180deg, #FFFFFF 0%, #FBF5E9 100%)",
-  overlay: "rgba(255, 253, 247, 0.92)",
-  inset: "rgba(230, 212, 181, 0.35)",
-  edgeLight: "inset 0 1px 0 rgba(255,255,255,0.9)",
+  base: "linear-gradient(180deg, #FFFDF7 0%, #FAF2E3 55%, #F0E1C6 100%)",
+  raised: "linear-gradient(180deg, #FFFFFF 0%, #FAF3E5 100%)",
+  overlay: "rgba(255, 253, 247, 0.96)",
+  inset: "rgba(216, 194, 158, 0.4)",
+  edgeLight: "inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 16px rgba(245,158,11,0.06)",
 };
 
 export function getCosmeticSurface(theme: "light" | "dark"): CosmeticSurfaceTokens {
@@ -95,10 +95,7 @@ export interface RarityVisualTokens {
   /** Tile border classes, resting (unselected) state. */
   readonly border: string;
   readonly borderHover: string;
-  /** Tile border + background wash when this tile IS the active preview
-   *  selection — the rarity hue is kept; selection itself is signaled by
-   *  the separate, constant amber ring applied by the caller, never by
-   *  recoloring the border away from its rarity hue. */
+  /** Tile border + background wash when this tile IS the active preview selection. */
   readonly borderSelected: string;
   readonly surfaceSelected: string;
   /** Small rarity-label pill (catalog card top-left chip). */
@@ -123,11 +120,11 @@ export const RARITY_TOKENS: Record<CosmeticRarity, RarityVisualTokens> = {
     borderHover: "hover:border-zinc-600",
     borderSelected: "border-zinc-400/80",
     surfaceSelected: "bg-[#141824]",
-    badge: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    eyebrowPill: "bg-gradient-to-r from-zinc-500 to-zinc-600 text-white font-bold",
+    badge: "bg-zinc-800/90 text-zinc-300 border-zinc-700 shadow-sm",
+    eyebrowPill: "bg-gradient-to-r from-zinc-500 via-zinc-600 to-zinc-700 text-white font-black tracking-wider shadow-sm",
     accentText: "text-zinc-300",
-    glowShadow: "0 0 14px rgba(161,161,170,0.18)",
-    ambientGlow: "from-zinc-400/10 via-zinc-700/5 to-transparent",
+    glowShadow: "0 0 18px rgba(161,161,170,0.22)",
+    ambientGlow: "from-zinc-400/12 via-zinc-700/6 to-transparent",
     runeStroke: "#a1a1aa",
     particleTier: 0,
   },
@@ -138,11 +135,11 @@ export const RARITY_TOKENS: Record<CosmeticRarity, RarityVisualTokens> = {
     borderHover: "hover:border-sky-400/60",
     borderSelected: "border-sky-400/80",
     surfaceSelected: "bg-[#0f1c2e]",
-    badge: "bg-sky-500/20 text-sky-300 border-sky-500/40",
-    eyebrowPill: "bg-gradient-to-r from-sky-400 to-blue-500 text-white font-bold",
+    badge: "bg-sky-500/25 text-sky-300 border-sky-400/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]",
+    eyebrowPill: "bg-gradient-to-r from-sky-400 via-cyan-500 to-blue-600 text-white font-black tracking-wider shadow-[0_4px_14px_rgba(56,189,248,0.4)]",
     accentText: "text-sky-300",
-    glowShadow: "0 0 20px rgba(56,189,248,0.28)",
-    ambientGlow: "from-sky-500/25 via-blue-900/10 to-transparent",
+    glowShadow: "0 0 24px rgba(56,189,248,0.35)",
+    ambientGlow: "from-sky-400/30 via-cyan-800/15 to-transparent",
     runeStroke: "#38bdf8",
     particleTier: 1,
   },
@@ -153,12 +150,12 @@ export const RARITY_TOKENS: Record<CosmeticRarity, RarityVisualTokens> = {
     borderHover: "hover:border-purple-400/60",
     borderSelected: "border-purple-400/80",
     surfaceSelected: "bg-[#160f2e]",
-    badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
-    eyebrowPill: "bg-gradient-to-r from-purple-400 to-fuchsia-500 text-white font-black",
+    badge: "bg-purple-500/25 text-purple-200 border-purple-400/50 shadow-[0_0_12px_rgba(168,85,247,0.25)]",
+    eyebrowPill: "bg-gradient-to-r from-purple-400 via-fuchsia-500 to-indigo-600 text-white font-black tracking-wider shadow-[0_4px_16px_rgba(168,85,247,0.45)]",
     accentText: "text-purple-300",
-    glowShadow: "0 0 24px rgba(168,85,247,0.32)",
-    ambientGlow: "from-purple-500/28 via-fuchsia-900/12 to-transparent",
-    runeStroke: "#a855f7",
+    glowShadow: "0 0 28px rgba(168,85,247,0.4)",
+    ambientGlow: "from-purple-500/32 via-fuchsia-900/15 to-transparent",
+    runeStroke: "#c084fc",
     particleTier: 2,
   },
   LEGENDARY: {
@@ -168,12 +165,12 @@ export const RARITY_TOKENS: Record<CosmeticRarity, RarityVisualTokens> = {
     borderHover: "hover:border-amber-400/70",
     borderSelected: "border-amber-400/80",
     surfaceSelected: "bg-[#221a0c]",
-    badge: "bg-amber-500/20 text-amber-400 border-amber-500/40",
-    eyebrowPill: "bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400 text-black font-black",
+    badge: "bg-gradient-to-r from-amber-500/30 to-yellow-500/20 text-amber-300 border-amber-400/60 shadow-[0_0_14px_rgba(245,158,11,0.35)]",
+    eyebrowPill: "bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-black font-black tracking-wider shadow-[0_4px_18px_rgba(245,158,11,0.55)]",
     accentText: "text-amber-300",
-    glowShadow: "0 0 32px rgba(245,158,11,0.4)",
-    ambientGlow: "from-amber-400/35 via-amber-700/14 to-transparent",
-    runeStroke: "#f59e0b",
+    glowShadow: "0 0 38px rgba(245,158,11,0.48)",
+    ambientGlow: "from-amber-400/40 via-amber-600/18 to-transparent",
+    runeStroke: "#fbbf24",
     particleTier: 3,
   },
 };
@@ -246,9 +243,9 @@ export function getRarityTokensAdaptive(rarity: CosmeticRarity): RarityVisualTok
 // ─────────────────────────────────────────────────────────────────────────
 
 export const COSMETIC_GLOW = {
-  soft: "0 0 12px rgba(245,158,11,0.18)",
-  medium: "0 0 22px rgba(245,158,11,0.32)",
-  intense: "0 0 34px rgba(245,158,11,0.5)",
+  soft: "0 0 14px rgba(245,158,11,0.22)",
+  medium: "0 0 26px rgba(245,158,11,0.38)",
+  intense: "0 0 42px rgba(245,158,11,0.58)",
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────

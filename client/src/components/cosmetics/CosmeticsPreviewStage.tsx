@@ -272,8 +272,15 @@ export function CosmeticsPreviewStage({
         role="tabpanel"
         id={`preview-panel-${previewMode}`}
         aria-labelledby={`preview-tab-${previewMode}`}
-        className="flex-1 flex flex-col items-center justify-center my-4 relative z-10 min-h-[230px] rounded-[24px] border border-white/10 bg-black/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        className="flex-1 flex flex-col items-center justify-center my-3.5 relative z-10 min-h-[235px] rounded-[24px] border border-amber-400/20 bg-gradient-to-b from-[#0e1526]/90 via-[#080d19]/95 to-[#03050a] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_50px_-24px_rgba(0,0,0,0.9)] overflow-hidden"
       >
+        {/* Volumetric Overhead Spotlight Beam */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-44 bg-gradient-to-b from-amber-300/18 via-yellow-400/5 to-transparent blur-xl pointer-events-none" />
+
+        {/* 3D Exhibition Pedestal Platform */}
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-48 h-10 rounded-[100%] border-2 border-amber-400/35 bg-gradient-to-b from-amber-400/20 via-black/70 to-black/90 shadow-[0_0_30px_rgba(245,158,11,0.35)] pointer-events-none" />
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-56 h-8 rounded-[100%] bg-amber-400/15 blur-md pointer-events-none" />
+
         <AnimatePresence mode="wait">
           <motion.div
             key={`${previewItem.id}-${previewMode}`}
@@ -281,7 +288,7 @@ export function CosmeticsPreviewStage({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.94 }}
             transition={bhalyamSpring}
-            className="flex flex-col items-center justify-center"
+            className="flex flex-col items-center justify-center relative z-10"
           >
             {category === "DICE_SKIN" && (
               <EnchantedDiceSkinPreview
@@ -336,14 +343,14 @@ export function CosmeticsPreviewStage({
       {/* ── Lore Narrative & Single Unified CTA ── */}
       <div className="flex flex-col gap-3 z-10">
         {/* Lore Typography */}
-        <div className="flex flex-col gap-1.5 border-t border-white/10 pt-4">
+        <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3">
           <div className="flex items-center justify-between gap-2">
             <span
               className={`text-[10px] font-black uppercase tracking-wider ${rarityTheme.accent}`}
             >
               {rarity} • {category.replace("_", " ")}
             </span>
-            <span className="text-[11px] text-amber-200/85 font-mono font-bold">
+            <span className="text-[11px] text-amber-300 font-mono font-black">
               {previewItem.priceCoins > 0
                 ? `${previewItem.priceCoins.toLocaleString()} Coins`
                 : "Free Default"}
@@ -358,25 +365,25 @@ export function CosmeticsPreviewStage({
         </div>
 
         {/* Financial Context & Deficit Calculation */}
-        <div className="flex flex-col gap-2 bg-black/[0.35] border border-white/10 rounded-2xl p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm">
+        <div className="flex flex-col gap-2 bg-black/[0.45] border border-amber-400/20 rounded-2xl p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <div className="flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
+              <Coins className="w-3.5 h-3.5 text-amber-400 fill-amber-300/30" />
               <span>Balance:</span>
-              <strong className="font-mono text-zinc-200">
+              <strong className="font-mono text-zinc-100 font-black">
                 {presentation.safeBalance.toLocaleString()} Coins
               </strong>
             </div>
 
             {/* Exactly ONE full shortfall sentence (Deduplication Rule) */}
             {presentation.state === "INSUFFICIENT_BALANCE" && (
-              <span className="text-rose-400 font-bold text-xs">
+              <span className="text-rose-400 font-black text-xs">
                 Need {presentation.shortfall.toLocaleString()} more Coins
               </span>
             )}
 
             {presentation.state === "AVAILABLE" && (
-              <span className="text-emerald-400 font-bold text-xs">
+              <span className="text-emerald-400 font-black text-xs">
                 Sufficient funds
               </span>
             )}
@@ -387,7 +394,7 @@ export function CosmeticsPreviewStage({
             !isAdminUser &&
             previewItem.unlockMethod !== "DEFAULT" && (
               <div className="w-full flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/10">
+                <div className="flex-1 h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
                   <div
                     className={`h-full rounded-full transition-all duration-300 ${
                       presentation.state === "INSUFFICIENT_BALANCE"
@@ -397,14 +404,14 @@ export function CosmeticsPreviewStage({
                     style={{ width: `${presentation.progressPercent}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                <span className="text-[10px] font-mono text-zinc-400 shrink-0 font-bold">
                   {presentation.progressText}
                 </span>
               </div>
             )}
         </div>
 
-        {/* ── Single Decisive Action Button ── */}
+        {/* ── Single Decisive 3D Gold Action Button ── */}
         <div className="w-full">
           {presentation.state === "EQUIPPED" ? (
             presentation.canEquip || isEquipped ? (
@@ -413,13 +420,13 @@ export function CosmeticsPreviewStage({
                   type="button"
                   disabled={isSubmitting}
                   onClick={onUnequip}
-                  className="w-full min-h-[46px] py-3 px-4 rounded-2xl font-black text-xs bg-white/[0.07] hover:bg-white/[0.11] text-zinc-100 border border-white/10 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  className="w-full min-h-[46px] py-2.5 px-4 rounded-2xl font-black text-xs bg-white/[0.08] hover:bg-white/[0.14] text-zinc-100 border border-white/15 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
                 >
                   <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
                   <span>EQUIPPED (Click to Reset Default)</span>
                 </button>
               ) : (
-                <div className="w-full min-h-[46px] py-3 px-4 rounded-2xl font-black text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-400/30 flex items-center justify-center gap-2 select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <div className="w-full min-h-[46px] py-2.5 px-4 rounded-2xl font-black text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 flex items-center justify-center gap-2 select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>EQUIPPED AS DEFAULT</span>
                 </div>
@@ -430,7 +437,7 @@ export function CosmeticsPreviewStage({
               type="button"
               disabled={isSubmitting}
               onClick={() => onEquip(previewItem)}
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 hover:from-amber-100 hover:to-yellow-400 active:scale-[0.99] text-black shadow-[0_20px_44px_-24px_rgba(245,158,11,0.9)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-yellow-300 via-amber-400 to-amber-500 hover:from-yellow-200 hover:to-amber-400 active:scale-[0.985] text-stone-950 border border-amber-200/90 shadow-[0_14px_32px_-10px_rgba(245,158,11,0.8),inset_0_1px_0_rgba(255,255,255,0.8)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>{presentation.ctaLabel}</span>
@@ -440,33 +447,28 @@ export function CosmeticsPreviewStage({
               type="button"
               disabled={isSubmitting}
               onClick={() => onPurchase(previewItem)}
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-amber-300 via-amber-500 to-yellow-500 hover:from-amber-200 hover:to-yellow-400 active:scale-[0.99] text-black shadow-[0_20px_44px_-24px_rgba(245,158,11,0.9)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-yellow-300 via-amber-400 to-amber-600 hover:from-yellow-200 hover:to-amber-500 active:scale-[0.985] text-stone-950 border border-amber-200/90 shadow-[0_16px_36px_-10px_rgba(245,158,11,0.85),inset_0_1px_0_rgba(255,255,255,0.85)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <Coins className="w-4 h-4" />
+              <Coins className="w-4 h-4 fill-amber-900/30" />
               <span>{presentation.ctaLabel}</span>
             </button>
           ) : (
             <button
               type="button"
               disabled
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-black/[0.45] text-zinc-500 border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed select-none"
+              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-black/[0.5] text-zinc-500 border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed select-none"
             >
               <span>{presentation.ctaLabel}</span>
             </button>
           )}
 
-          {/* Self-service refund — server is the sole authority on whether
-              the 15-minute window has actually expired; this link just
-              offers the attempt, and a rejection (WINDOW_EXPIRED,
-              NOT_REFUNDABLE, ...) surfaces through the modal's existing
-              error banner. Never shown for admin free-access or for
-              STREAK_MILESTONE/DEFAULT items, which were never paid for. */}
+          {/* Self-service refund */}
           {isOwned && !isAdminUser && previewItem.unlockMethod === "COIN_PURCHASE" && (
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => onRefund(previewItem)}
-              className="w-full mt-2 py-1.5 text-[11px] font-semibold text-zinc-500 hover:text-rose-400 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="w-full mt-2 py-1.5 text-[11px] font-bold text-zinc-400 hover:text-rose-400 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Refund for {previewItem.priceCoins.toLocaleString()} Coins</span>

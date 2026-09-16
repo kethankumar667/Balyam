@@ -297,58 +297,61 @@ export function CosmeticsStoreModal() {
       onClose={handleClose}
       mobileSheet={true}
       ariaLabelledBy="cosmetics-boutique-title"
-      panelClassName="w-full max-w-5xl border border-stone-300/80 dark:border-white/10 rounded-t-3xl md:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative motion-safe:animate-cosmetic-modal-in motion-reduce:animate-cosmetic-fade-in"
+      panelClassName="w-full max-w-5xl border border-amber-500/30 dark:border-amber-400/20 rounded-t-3xl md:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative motion-safe:animate-cosmetic-modal-in motion-reduce:animate-cosmetic-fade-in"
       panelStyle={{
-        background: theme === "light" ? surface.base : "linear-gradient(180deg, #111827 0%, #070a12 48%, #03050a 100%)",
-        boxShadow: `${surface.edgeLight}, 0 34px 92px -26px rgba(0,0,0,0.88), 0 0 60px rgba(180,118,32,0.16)`,
+        background: theme === "light" ? surface.base : "linear-gradient(180deg, #0d1322 0%, #070b14 50%, #03050a 100%)",
+        boxShadow: `${surface.edgeLight}, 0 34px 92px -26px rgba(0,0,0,0.95), 0 0 80px rgba(245,158,11,0.18)`,
       }}
     >
-      {/* ── Surface Reflections: Warm Top-Left & Cool Bottom-Right ── */}
-      <div className="absolute -top-24 left-8 w-[30rem] h-[30rem] bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-8rem] right-[-5rem] w-[28rem] h-[28rem] bg-cyan-300/[0.08] rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+      {/* ── Surface Reflections: Multi-Point Luxury Volumetric Glow ── */}
+      <div className="absolute -top-20 -left-10 w-[32rem] h-[32rem] bg-gradient-to-br from-amber-400/20 via-yellow-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 -right-20 w-[28rem] h-[28rem] bg-gradient-to-bl from-purple-500/15 via-indigo-600/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-16 left-1/4 w-[30rem] h-[20rem] bg-gradient-to-t from-cyan-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(135deg,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      {/* ── Modal Header: Boutique Marquee ── */}
+      {/* ── Modal Header: Luxury Boutique Marquee ── */}
       <div
-        className="flex-shrink-0 px-5 py-4 border-b border-stone-200 dark:border-white/10 flex items-center justify-between gap-3 relative z-10"
-        style={{ background: theme === "light" ? "rgba(255, 253, 247, 0.92)" : "rgba(7, 10, 18, 0.88)", boxShadow: surface.edgeLight }}
+        className="flex-shrink-0 px-5 py-3.5 border-b border-stone-200/80 dark:border-white/10 flex items-center justify-between gap-3 relative z-10"
+        style={{ background: theme === "light" ? "rgba(255, 253, 247, 0.94)" : "rgba(7, 11, 20, 0.92)", backdropFilter: "blur(16px)", boxShadow: surface.edgeLight }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_14px_28px_-14px_rgba(245,158,11,0.9)] shrink-0 border border-amber-100/60">
-            <Store className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-yellow-300 via-amber-400 to-amber-600 text-black flex items-center justify-center shadow-[0_0_24px_rgba(245,158,11,0.65)] shrink-0 border border-amber-200/80">
+            <Store className="w-5 h-5 drop-shadow-sm" />
           </div>
           <div className="min-w-0">
             <h3
               id="cosmetics-boutique-title"
-              className="text-xl font-black tracking-tight flex items-center gap-2 bg-clip-text text-transparent bg-gradient-to-r from-stone-950 via-amber-800 to-stone-950 dark:from-white dark:via-amber-100 dark:to-zinc-300"
+              className="text-xl font-black tracking-tight flex items-center gap-2 bg-clip-text text-transparent bg-gradient-to-r from-amber-900 via-amber-700 to-amber-950 dark:from-yellow-100 dark:via-amber-300 dark:to-yellow-500"
             >
               <span>Cosmetics Boutique</span>
               {isAdminUser && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40 border flex items-center gap-1 shrink-0">
-                  <Crown className="w-3 h-3" />
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-gradient-to-r from-amber-500/25 to-yellow-500/15 text-amber-800 dark:text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)] flex items-center gap-1 shrink-0">
+                  <Crown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                   ADMIN PASS
                 </span>
               )}
             </h3>
             <p className="text-xs text-stone-500 dark:text-zinc-400 truncate font-semibold">
-              {isAdminUser ? "All cosmetics unlocked for free" : "Curated finishes for dice, cards, and tokens."}
+              {isAdminUser ? "All finishes unlocked for free" : "Curated collectible finishes for dice, cards & tokens."}
             </p>
           </div>
         </div>
 
-        {/* Right Header Area: Balance chip + Close button */}
+        {/* Right Header Area: Balance capsule + Close button */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Wallet Coin Balance — refined chip with soft inner glow */}
+          {/* Wallet Coin Balance — 24K gold capsule */}
           <div
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border border-amber-400/50 dark:border-amber-300/25 text-amber-800 dark:text-amber-200 font-mono font-bold text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-amber-400/60 dark:border-amber-400/40 text-amber-900 dark:text-amber-200 font-mono font-black text-xs"
             style={{
-              background: theme === "light" ? "rgba(255,255,255,0.74)" : "rgba(0,0,0,0.38)",
+              background: theme === "light"
+                ? "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(254,243,199,0.8))"
+                : "linear-gradient(135deg, rgba(30,22,8,0.7), rgba(12,16,28,0.85))",
               boxShadow: theme === "light"
-                ? "inset 0 1px 0 rgba(255,255,255,0.7), 0 0 18px rgba(245,158,11,0.16)"
-                : "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 22px rgba(245,158,11,0.18)",
+                ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 0 20px rgba(245,158,11,0.2)"
+                : "inset 0 1px 0 rgba(255,255,255,0.1), 0 0 24px rgba(245,158,11,0.25)",
             }}
           >
-            <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <Coins className="w-4 h-4 text-amber-500 fill-amber-300/40" />
             <span>{Number(walletBalance || 0).toLocaleString()}</span>
           </div>
 
@@ -357,19 +360,19 @@ export function CosmeticsStoreModal() {
             type="button"
             onClick={handleClose}
             aria-label="Close Cosmetics Boutique"
-            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300 dark:border-white/10 bg-white dark:bg-white/[0.04] hover:bg-stone-100 dark:hover:bg-white/[0.08] hover:border-amber-500/50 active:scale-95 text-stone-500 dark:text-zinc-300 hover:text-amber-700 dark:hover:text-amber-200 transition flex items-center justify-center cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#070a12]"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300/80 dark:border-white/15 bg-white/80 dark:bg-white/[0.06] hover:bg-amber-100/50 dark:hover:bg-amber-400/15 hover:border-amber-500/60 active:scale-95 text-stone-600 dark:text-zinc-200 hover:text-amber-800 dark:hover:text-amber-300 transition flex items-center justify-center cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#070a12]"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* ── Category Navigation: Dimensional Segmented Control ── */}
+      {/* ── Category Navigation: Gilded Segmented Control ── */}
       <div
         role="tablist"
         aria-label="Cosmetic categories"
-        className="flex-shrink-0 px-4 py-3 border-b border-stone-200 dark:border-white/10 overflow-x-auto scrollbar-none flex items-center gap-2 relative z-10"
-        style={{ background: theme === "light" ? "rgba(251, 245, 233, 0.88)" : "rgba(4, 7, 13, 0.72)" }}
+        className="flex-shrink-0 px-5 py-2.5 border-b border-stone-200/80 dark:border-white/10 overflow-x-auto scrollbar-none flex items-center gap-2 relative z-10"
+        style={{ background: theme === "light" ? "rgba(251, 245, 233, 0.9)" : "rgba(4, 7, 13, 0.82)" }}
       >
         {CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
@@ -381,23 +384,20 @@ export function CosmeticsStoreModal() {
               onClick={() => selectCategory(tab.category)}
               aria-selected={isActive}
               role="tab"
-              className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer select-none relative focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer select-none relative focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 isActive
-                  ? "bg-gradient-to-b from-amber-200/25 to-amber-600/10 text-amber-800 dark:text-amber-200 border border-amber-400/60 font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
-                  : "bg-white/60 dark:bg-white/[0.04] text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-white/[0.07] border border-stone-300 dark:border-white/10"
+                  ? "bg-gradient-to-b from-amber-300/25 via-amber-500/15 to-transparent text-amber-900 dark:text-amber-200 border border-amber-400/80 font-black shadow-[0_0_16px_rgba(245,158,11,0.28)]"
+                  : "bg-white/60 dark:bg-white/[0.04] text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-white/[0.07] border border-stone-300/80 dark:border-white/10 font-bold"
               }`}
-              style={isActive ? { boxShadow: theme === "light" ? "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 12px rgba(245,158,11,0.12)" : "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(245,158,11,0.18)" } : undefined}
+              style={isActive ? { boxShadow: theme === "light" ? "inset 0 1px 0 rgba(255,255,255,0.7), 0 0 16px rgba(245,158,11,0.2)" : "inset 0 1px 0 rgba(255,255,255,0.12), 0 0 18px rgba(245,158,11,0.28)" } : undefined}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-700 dark:text-amber-400" : ""}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-600 dark:text-amber-400 drop-shadow-sm" : ""}`} />
               <span>{tab.label}</span>
-              {/* Sliding indicator — a shared layoutId animates it between
-                  tabs instead of teleporting; framer-motion measures both
-                  positions and tweens the difference automatically. */}
               {isActive && (
                 <motion.span
                   layoutId="cosmetic-category-indicator"
                   transition={bhalyamSpring}
-                  className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.95)]"
                 />
               )}
             </button>
@@ -405,18 +405,18 @@ export function CosmeticsStoreModal() {
         })}
       </div>
 
-      {/* ── Scope Switcher (for Card Backs & Table Themes) ── */}
+      {/* ── Scope Switcher (for Card Backs) ── */}
       {selectedCategory === "CARD_BACK" && (
-        <div className="flex-shrink-0 px-5 py-2 bg-white/70 dark:bg-black/20 border-b border-stone-200 dark:border-white/10 flex items-center gap-2 relative z-10">
+        <div className="flex-shrink-0 px-5 py-2 bg-white/70 dark:bg-black/30 border-b border-stone-200 dark:border-white/10 flex items-center gap-2 relative z-10">
           <span className="text-xs text-stone-500 dark:text-zinc-400 font-semibold mr-1">Game variant</span>
           {(["rummy", "uno"] as const).map((scope) => (
             <button
               key={scope}
               type="button"
               onClick={() => selectScope(scope)}
-              className={`min-h-[36px] px-3.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer uppercase focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`min-h-[36px] px-3.5 py-1 rounded-xl text-xs font-black transition cursor-pointer uppercase focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 selectedScope === scope
-                  ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-400 dark:border-amber-500/40 font-black"
+                  ? "bg-gradient-to-r from-amber-400/25 to-yellow-500/15 text-amber-900 dark:text-amber-300 border border-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
                   : "text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-white"
               }`}
             >

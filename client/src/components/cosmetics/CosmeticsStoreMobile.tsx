@@ -329,14 +329,15 @@ export function CosmeticsStoreMobile({
           <div
             className={`w-full rounded-[22px] p-3.5 border ${rarityTokens.border} shadow-2xl relative overflow-hidden flex items-center justify-between gap-3 transition-all duration-300`}
             style={{
-              background: "linear-gradient(135deg, rgba(17,24,39,0.96) 0%, rgba(5,8,15,0.98) 100%)",
-              boxShadow: `${rarityTokens.glowShadow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+              background: "linear-gradient(135deg, #111827 0%, #080c16 60%, #03050a 100%)",
+              boxShadow: `${rarityTokens.glowShadow}, inset 0 1px 0 rgba(255,255,255,0.12)`,
             }}
           >
-            {/* Ambient Rarity Glow */}
+            {/* Ambient Rarity & Warm Gold Glow */}
             <div
-              className={`absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--tw-gradient-stops))] ${rarityTokens.ambientGlow} pointer-events-none opacity-40`}
+              className={`absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--tw-gradient-stops))] ${rarityTokens.ambientGlow} pointer-events-none opacity-50`}
             />
+            <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:12px_12px]" />
 
             {/* Left: Artifact Preview with Interactive Touch */}
             <div className="relative z-10 flex items-center gap-3 min-w-0">
@@ -349,11 +350,11 @@ export function CosmeticsStoreMobile({
               {/* Title & Rarity Details */}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-[0.14em] border ${rarityTokens.badge}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-[0.14em] border shadow-xs ${rarityTokens.badge}`}>
                     {selectedItem.rarity}
                   </span>
                   {isPreviewEquipped && (
-                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-400/15 text-emerald-300 border border-emerald-300/30 flex items-center gap-0.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-0.5 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.3)]">
                       <Check className="w-2.5 h-2.5 stroke-[3]" /> EQUIPPED
                     </span>
                   )}
@@ -361,7 +362,7 @@ export function CosmeticsStoreMobile({
                 <h3 className="text-sm font-black text-white tracking-tight truncate leading-tight">
                   {selectedItem.name}
                 </h3>
-                <p className="text-[11px] text-zinc-300/80 line-clamp-1 mt-0.5">
+                <p className="text-[11px] text-zinc-300/80 line-clamp-1 mt-0.5 font-medium">
                   {selectedItem.description}
                 </p>
               </div>
@@ -377,10 +378,10 @@ export function CosmeticsStoreMobile({
                   setIs3DDrawerOpen(true);
                 }}
                 aria-label={`Inspect ${selectedItem.name} in 3D multi-mode vault`}
-                className="min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-2xl border border-amber-300/35 bg-amber-300/10 hover:bg-amber-300/[0.16] active:scale-95 text-amber-200 text-[11px] font-black flex flex-col items-center justify-center gap-0.5 cursor-pointer transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
+                className="min-h-[44px] min-w-[48px] px-3.5 py-1.5 rounded-2xl border border-amber-400/40 bg-gradient-to-b from-amber-400/20 to-yellow-500/10 hover:from-amber-400/30 hover:to-yellow-500/20 active:scale-95 text-amber-200 text-[11px] font-black flex flex-col items-center justify-center gap-0.5 cursor-pointer transition shadow-[0_4px_12px_-2px_rgba(245,158,11,0.25)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
               >
                 <Eye className="w-4 h-4 text-amber-300" />
-                <span className="text-[9px] tracking-tight">Inspect</span>
+                <span className="text-[9px] tracking-tight font-extrabold uppercase">3D Vault</span>
               </button>
             </div>
           </div>
@@ -388,12 +389,12 @@ export function CosmeticsStoreMobile({
       )}
 
       {/* ── Main 2-Column Catalog Grid (Scrollable Body) ── */}
-      <div className="flex-1 overflow-y-auto px-3.5 pt-2.5 pb-24 min-h-0 relative z-10">
-        <div className="flex items-center justify-between mb-2 px-0.5">
+      <div className="flex-1 overflow-y-auto px-3.5 pt-2.5 pb-28 min-h-0 relative z-10">
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500 dark:text-zinc-400">
             {selectedCategory === "DICE_SKIN" ? "Dice skins" : selectedCategory === "TOKEN_SKIN" ? "Token finishes" : "Card designs"}
           </span>
-          <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-semibold">
+          <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-bold">
             Tap to preview
           </span>
         </div>
@@ -438,37 +439,37 @@ export function CosmeticsStoreMobile({
       {/* ── Sticky Bottom Action Bar (Thumb-Zone CTA) ── */}
       {selectedItem && presentation && (
         <div
-          className="sticky bottom-0 left-0 right-0 z-20 px-4 pt-3 border-t border-amber-200/20 dark:border-white/10 shadow-[0_-18px_42px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+          className="sticky bottom-0 left-0 right-0 z-20 px-4 pt-3.5 border-t border-amber-400/30 dark:border-amber-400/20 shadow-[0_-20px_48px_-16px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
           style={{
-            background: theme === "light" ? "rgba(255, 253, 247, 0.96)" : "rgba(5, 8, 15, 0.94)",
-            paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+            background: theme === "light" ? "rgba(255, 253, 247, 0.98)" : "rgba(6, 9, 18, 0.96)",
+            paddingBottom: "max(0.85rem, env(safe-area-inset-bottom))",
           }}
         >
           <div className="flex items-center justify-between gap-3">
             {/* Left: Price & Status Information */}
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-stone-900 dark:text-white truncate">
+              <div className="text-xs font-black text-stone-900 dark:text-white truncate">
                 {selectedItem.name}
               </div>
-              <div className="text-[11px] mt-0.5">
+              <div className="text-[11px] mt-0.5 font-bold">
                 {presentation.state === "EQUIPPED" ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     <Check className="w-3 h-3 stroke-[3]" /> Currently equipped
                   </span>
                 ) : presentation.state === "INSUFFICIENT_BALANCE" ? (
-                  <span className="text-rose-600 dark:text-rose-400 font-bold">
+                  <span className="text-rose-600 dark:text-rose-400">
                     Need {presentation.shortfall.toLocaleString()} more Coins
                   </span>
                 ) : presentation.state === "AVAILABLE" ? (
-                  <span className="text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1">
-                    <Coins className="w-3 h-3" /> {selectedItem.priceCoins.toLocaleString()} Coins
+                  <span className="text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                    <Coins className="w-3 h-3 text-amber-500" /> {selectedItem.priceCoins.toLocaleString()} Coins
                   </span>
                 ) : presentation.state === "OWNED" ? (
-                  <span className="text-sky-600 dark:text-sky-400 font-bold">
+                  <span className="text-sky-600 dark:text-sky-400">
                     Ready to equip
                   </span>
                 ) : isAdminUser ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-bold">
+                  <span className="text-amber-600 dark:text-amber-300">
                     Unlocked via Admin Pass
                   </span>
                 ) : (
@@ -479,7 +480,7 @@ export function CosmeticsStoreMobile({
               </div>
             </div>
 
-            {/* Right: Primary Thumb Action Button (min 44px height) */}
+            {/* Right: Primary Thumb Action Button (min 44px height) with 3D Embossed Finish */}
             <div className="shrink-0 flex items-center gap-2">
               {presentation.state === "EQUIPPED" ? (
                 selectedItem.unlockMethod !== "DEFAULT" ? (
@@ -487,13 +488,13 @@ export function CosmeticsStoreMobile({
                     type="button"
                     disabled={isSubmitting}
                     onClick={onUnequip}
-                    className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold bg-stone-200 dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 border border-stone-300 dark:border-zinc-700 hover:bg-stone-300 dark:hover:bg-zinc-700 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="min-h-[46px] px-4 py-2 rounded-2xl text-xs font-black bg-stone-200 dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 border border-stone-300 dark:border-zinc-700 hover:bg-stone-300 dark:hover:bg-zinc-700 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3]" />
                     <span>EQUIPPED</span>
                   </button>
                 ) : (
-                  <div className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center gap-1.5 select-none">
+                  <div className="min-h-[46px] px-4 py-2 rounded-2xl text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center gap-1.5 select-none shadow-[0_2px_12px_-2px_rgba(16,185,129,0.3)]">
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
                     <span>DEFAULT</span>
                   </div>
@@ -503,7 +504,7 @@ export function CosmeticsStoreMobile({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => onEquip(selectedItem)}
-                  className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/25 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="min-h-[46px] px-6 py-2.5 rounded-2xl text-xs font-black bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 text-stone-950 border-t border-amber-200/80 shadow-[0_8px_20px_-4px_rgba(245,158,11,0.55),inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-2px_0_rgba(180,83,9,0.5)] active:translate-y-0.5 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>EQUIP</span>
@@ -513,7 +514,7 @@ export function CosmeticsStoreMobile({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => onPurchase(selectedItem)}
-                  className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/25 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="min-h-[46px] px-6 py-2.5 rounded-2xl text-xs font-black bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 text-stone-950 border-t border-amber-200/80 shadow-[0_8px_20px_-4px_rgba(245,158,11,0.55),inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-2px_0_rgba(180,83,9,0.5)] active:translate-y-0.5 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Coins className="w-4 h-4" />
                   <span>UNLOCK</span>
@@ -522,7 +523,7 @@ export function CosmeticsStoreMobile({
                 <button
                   type="button"
                   disabled
-                  className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold bg-stone-200 dark:bg-zinc-900 text-stone-400 dark:text-zinc-600 border border-stone-300 dark:border-zinc-800 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
+                  className="min-h-[46px] px-4 py-2.5 rounded-2xl text-xs font-black bg-stone-200 dark:bg-zinc-900 text-stone-400 dark:text-zinc-600 border border-stone-300 dark:border-zinc-800 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
                 >
                   <span>{presentation.ctaLabel}</span>
                 </button>
@@ -532,12 +533,12 @@ export function CosmeticsStoreMobile({
 
           {/* Refund action link if eligible */}
           {isPreviewOwned && !isAdminUser && selectedItem.unlockMethod === "COIN_PURCHASE" && (
-            <div className="pt-1 flex justify-center">
+            <div className="pt-1.5 flex justify-center">
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => onRefund(selectedItem)}
-                className="py-1 text-[11px] font-semibold text-stone-400 dark:text-zinc-500 hover:text-rose-500 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="py-1 text-[11px] font-bold text-stone-400 dark:text-zinc-500 hover:text-rose-500 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
               >
                 <RotateCcw className="w-2.5 h-2.5" />
                 <span>Refund for {selectedItem.priceCoins.toLocaleString()} Coins</span>
@@ -555,11 +556,11 @@ export function CosmeticsStoreMobile({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 280 }}
-            className="fixed inset-0 z-50 bg-[#080c16] flex flex-col overflow-y-auto"
+            className="fixed inset-0 z-50 bg-[#060912] flex flex-col overflow-y-auto"
             style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
           >
             {/* Drawer Top Header */}
-            <div className="flex-shrink-0 px-4 py-3 flex items-center justify-between border-b border-zinc-800 bg-[#0a0f1d]">
+            <div className="flex-shrink-0 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-[#0a0f1d]">
               <div className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-amber-400" />
                 <span className="text-sm font-black text-white">3D Inspection Vault</span>
@@ -643,8 +644,8 @@ function MobileCosmeticsCard({
   const rarity = getRarityTokensAdaptive(item.rarity);
 
   const cardBorderClass = isSelected
-    ? `${rarity.borderSelected} ring-2 ring-amber-400/90 shadow-md ${rarity.surfaceSelected}`
-    : `${rarity.border} bg-white dark:bg-[#0d1322]/90 hover:border-amber-400/50`;
+    ? `${rarity.borderSelected} ring-2 ring-amber-400/90 shadow-lg ${rarity.surfaceSelected}`
+    : `${rarity.border} bg-gradient-to-br from-white via-stone-50 to-amber-50/[0.2] dark:from-[#0d1322] dark:via-[#080d19] dark:to-[#04060d] hover:border-amber-400/50 shadow-sm`;
 
   return (
     <div
@@ -658,60 +659,62 @@ function MobileCosmeticsCard({
         }
       }}
       aria-label={`Inspect ${item.name}, ${rarity.label} rarity`}
-      className={`relative p-2.5 rounded-xl border flex flex-col justify-between gap-2 min-h-[135px] cursor-pointer select-none transition-all duration-150 active:scale-98 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${cardBorderClass}`}
+      className={`relative p-3 rounded-2xl border flex flex-col justify-between gap-2 min-h-[142px] cursor-pointer select-none transition-all duration-150 active:scale-98 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${cardBorderClass}`}
     >
       {/* Top Bar: Rarity + Status Pill */}
       <div className="flex items-center justify-between gap-1">
-        <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider border ${rarity.badge}`}>
+        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-xs ${rarity.badge}`}>
           {item.rarity}
         </span>
 
         {/* State Badge */}
         {pres.state === "EQUIPPED" ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-0.5 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-0.5 shrink-0 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.3)]">
             <Check className="w-2.5 h-2.5 stroke-[3]" /> EQUIPPED
           </span>
         ) : isAdminUser ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-0.5 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-500/30 to-yellow-500/20 text-amber-300 border border-amber-400/50 flex items-center gap-0.5 shrink-0 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.3)]">
             <Crown className="w-2.5 h-2.5" /> FREE
           </span>
         ) : pres.state === "OWNED" ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 shrink-0">
             OWNED
           </span>
         ) : pres.state === "DEFAULT" ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-stone-200 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400 border border-stone-300 dark:border-zinc-700 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-stone-200 text-stone-700 dark:bg-zinc-800 dark:text-zinc-300 border border-stone-300 dark:border-zinc-700 shrink-0">
             DEFAULT
           </span>
         ) : pres.state === "LOCKED" ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-0.5 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 shrink-0">
             <Lock className="w-2.5 h-2.5" /> Day 7
           </span>
         ) : pres.state === "AVAILABLE" ? (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-0.5 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-900 dark:text-amber-200 border border-amber-500/35 flex items-center gap-1 shrink-0 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.2)]">
             <Coins className="w-2.5 h-2.5 text-amber-500" />
             {item.priceCoins.toLocaleString()}
           </span>
         ) : (
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 shrink-0">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/40 shrink-0">
             {pres.shortfall.toLocaleString()} SHORT
           </span>
         )}
       </div>
 
-      {/* Center: Visual Thumbnail */}
+      {/* Center: Visual Thumbnail in Velvet Display Well */}
       <div className="flex items-center justify-center my-0.5">
-        <CollectibleThumbnail
-          item={item}
-          category={category}
-          isSelected={isSelected}
-          rarity={item.rarity}
-        />
+        <div className="p-1 rounded-xl bg-black/30 dark:bg-black/50 border border-stone-200/60 dark:border-white/10 shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)] flex items-center justify-center">
+          <CollectibleThumbnail
+            item={item}
+            category={category}
+            isSelected={isSelected}
+            rarity={item.rarity}
+          />
+        </div>
       </div>
 
       {/* Bottom: Item Name */}
       <div className="min-w-0">
-        <div className="text-xs font-bold text-stone-900 dark:text-white leading-tight break-words line-clamp-2 min-h-[1.75rem] flex items-center">
+        <div className="text-xs font-black text-stone-900 dark:text-white leading-tight break-words line-clamp-2 min-h-[1.75rem] flex items-center">
           {item.name}
         </div>
       </div>
@@ -768,7 +771,7 @@ function MobileArtifactShowcase({
   if (category === "TOKEN_SKIN") {
     const tokenSkin = getTokenSkinConfig(item.id);
     return (
-      <div className="w-14 h-14 rounded-2xl bg-stone-900/60 border border-zinc-700/80 flex items-center justify-center shrink-0 shadow-md">
+      <div className="w-14 h-14 rounded-2xl bg-stone-900/80 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-md">
         <div className="w-10 h-11">
           <PawnGlyph
             main={COLOR_HEX.blue}
@@ -782,7 +785,7 @@ function MobileArtifactShowcase({
   }
 
   return (
-    <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-700/80 flex items-center justify-center shrink-0 shadow-md">
+    <div className="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-md">
       <CollectibleThumbnail
         item={item}
         category={category}
@@ -792,3 +795,4 @@ function MobileArtifactShowcase({
     </div>
   );
 }
+

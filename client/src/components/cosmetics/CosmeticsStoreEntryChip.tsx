@@ -41,15 +41,15 @@ export function CosmeticsStoreEntryChip() {
                    transition-all duration-300 cursor-pointer flex-shrink-0 focus-visible:outline-hidden focus-visible:ring-2
                    focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f172a]
                    bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink)]
-                   hover:border-amber-500/50 hover:bg-[var(--chrome-control-hi)] shadow-xs"
+                   hover:border-amber-400/70 hover:bg-amber-500/10 hover:shadow-[0_4px_16px_-4px_rgba(245,158,11,0.35)] shadow-xs"
       >
         {/* Store Icon */}
         <div className="relative flex items-center justify-center">
-          <Store className="w-4 h-4 text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform duration-300" />
+          <Store className="w-4 h-4 text-amber-500 dark:text-amber-400 group-hover:scale-110 group-hover:text-amber-300 transition-all duration-300" />
         </div>
 
         {/* Label */}
-        <span className="hidden sm:inline text-[13px] font-bold tracking-tight">
+        <span className="hidden sm:inline text-[13px] font-extrabold tracking-tight group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
           Shop
         </span>
       </motion.button>
