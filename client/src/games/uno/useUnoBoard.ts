@@ -9,6 +9,7 @@ import type {
   UnoRoundRecap,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { useRecovery } from "../../core/recovery/useRecovery";
 import { useAudio } from "../../hooks/useAudio";
 import { useTurnHaptics } from "../../hooks/useHaptics";
 import { AUDIO } from "../../constants/audio";
@@ -120,6 +121,7 @@ export function useUnoBoard({
   onScorecardClose,
 }: UnoBoardProps): UnoBoardModel {
   const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
+  const { isOnline } = useRecovery();
 
   // Haptic cue on turn
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
@@ -248,9 +250,9 @@ export function useUnoBoard({
   const needsColorChoice = selectedCard ? requiresColorChoice(selectedCard) : false;
   const colorChosen = !needsColorChoice || selectedWildColor !== null;
 
-  const canSubmitPlay = Boolean(canPlaySelectedCard && colorChosen && !isSubmitting);
-  const canDraw = myTurn && !drewThisTurn && !isSubmitting;
-  const canPassTurn = myTurn && drewThisTurn && !isSubmitting;
+  const canSubmitPlay = Boolean(canPlaySelectedCard && colorChosen && !isSubmitting && isOnline);
+  const canDraw = myTurn && !drewThisTurn && !isSubmitting && isOnline;
+  const canPassTurn = myTurn && drewThisTurn && !isSubmitting && isOnline;
 
   // Sorted hand for display
   const sortedHand = useMemo(() => sortHand(state.myHand), [state.myHand]);

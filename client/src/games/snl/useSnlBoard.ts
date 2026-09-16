@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, CoinColor, Player, SnlState } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { useRecovery } from "../../core/recovery/useRecovery";
 import { useTurnHaptics } from "../../hooks/useHaptics";
 import { resolveCoinColors, toastForEvent, cellInfo } from "./snl-board-shared";
 
@@ -66,11 +67,14 @@ export function useSnlBoard({ state, players, selfId }: SnlBoardProps): SnlBoard
     }
   }, [state.turnPlayerId]);
 
+  const { isOnline } = useRecovery();
+
   const canRoll =
     myTurn &&
     state.turnPhase === "rolling" &&
     state.phase === "playing" &&
-    !rollCooldown;
+    !rollCooldown &&
+    isOnline;
   useTurnHaptics(state.phase === "playing" ? state.turnPlayerId : null, selfId);
 
   const coinColorOf = useMemo(

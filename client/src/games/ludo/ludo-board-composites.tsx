@@ -22,6 +22,7 @@ import SettingsMenu from "./SettingsMenu";
 import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
+import { useRecovery } from "../../core/recovery/useRecovery";
 import { COLOR_HEX, COLOR_HEX_DARK, HOME_TOKEN_PCT, PLAYER_COLORS_ORDER } from "./board-layout";
 import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
@@ -1304,7 +1305,8 @@ export function LudoTurnTower({
 
 export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState }) {
   const streak = state.consecutiveSixes > 0 && state.consecutiveSixes < 3;
-  const canRoll = m.myTurn && m.canRoll && !m.rolling;
+  const { isOnline } = useRecovery();
+  const canRoll = m.myTurn && m.canRoll && !m.rolling && isOnline;
   const settleKey = useSettleKey(m.rolling);
   const finished = state.phase === "finished";
   // Name who we're waiting on — "Waiting…" alone leaves the player guessing,
@@ -1330,17 +1332,21 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
         onClick={canRoll ? m.roll : undefined}
         disabled={!canRoll}
         aria-label={
-          finished
-            ? "Game over"
-            : canRoll
-              ? "Roll the dice"
-              : m.myTurn
-                ? "Pick a token to move"
-                : `Waiting for ${waitingFor ?? "the next player"}`
+          !isOnline
+            ? "Reconnecting — dice roll unavailable while offline"
+            : finished
+              ? "Game over"
+              : canRoll
+                ? "Roll the dice"
+                : m.myTurn
+                  ? "Pick a token to move"
+                  : `Waiting for ${waitingFor ?? "the next player"}`
         }
         // Outline (not ring): this button sets an inline box-shadow, which
         // would beat the global `*:focus-visible` box-shadow ring.
-        className="relative rounded-2xl flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+        className={`relative rounded-2xl flex items-center justify-center active:scale-95 transition disabled:cursor-default focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+          !isOnline ? "opacity-50 grayscale-[0.4]" : ""
+        }`}
         style={{
           width: 116,
           height: 116,

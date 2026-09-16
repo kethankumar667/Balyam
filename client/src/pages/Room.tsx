@@ -623,41 +623,6 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
-  /**
-   * Refresh/close-tab guard during an active match. Native browsers ignore
-   * any custom `returnValue` text and show their own generic prompt, but the
-   * prompt itself is the point — without `preventDefault()`+`returnValue` a
-   * mid-match refresh or tab close drops the player's seat with zero warning.
-   */
-  useEffect(() => {
-    if (roomState?.phase !== "playing") return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [roomState?.phase]);
-
-  /**
-   * Back-button / swipe-back guard during an active match. This app mounts a
-   * plain `BrowserRouter` (not a data router), so React Router's `useBlocker`
-   * isn't available — the only cross-browser way to intercept history
-   * navigation here is to plant an extra entry and, on `popstate`, immediately
-   * re-plant it (cancelling the back nav) while surfacing the same
-   * `LeaveRoomModal` every other in-game Leave control uses.
-   */
-  useEffect(() => {
-    if (roomState?.phase !== "playing") return;
-    window.history.pushState(null, "", window.location.href);
-    const handlePopState = () => {
-      window.history.pushState(null, "", window.location.href);
-      requestLeaveConfirmation();
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [roomState?.phase, requestLeaveConfirmation]);
-
   /** The one moment a guest's raw voucher code exists in plaintext client-side — see `economy:voucherIssued`'s own doc comment. Never persisted. */
   const [wonVoucher, setWonVoucher] = useState<{ coinAmount: string; rawCode: string } | null>(null);
 
@@ -939,6 +904,53 @@ export default function Room() {
     economyMotion.phase === "game_starting";
 
   const isGameStartingCeremony = matchStartCeremonyActive || showMatchCountdown || isEconomyGameStarting;
+
+  /**
+   * Covers both the active match AND the coin-commitment window that
+   * precedes it: `isEconomyGameStarting` can be true while `roomState.phase`
+   * is still "lobby" (players have already locked stake into the pot, the
+   * server just hasn't flipped phase yet), and a back-swipe there would
+   * abandon a room whose economy motion is already underway. RoomPhase has
+   * no "starting" value of its own — the whole countdown/ceremony overlay
+   * (`isGameStartingCeremony`) fires only once phase is already "playing",
+   * so it needs no separate branch here.
+   */
+  const isMatchActiveForNavGuard = roomState?.phase === "playing" || isEconomyGameStarting;
+
+  /**
+   * Refresh/close-tab guard during an active match. Native browsers ignore
+   * any custom `returnValue` text and show their own generic prompt, but the
+   * prompt itself is the point — without `preventDefault()`+`returnValue` a
+   * mid-match refresh or tab close drops the player's seat with zero warning.
+   */
+  useEffect(() => {
+    if (!isMatchActiveForNavGuard) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isMatchActiveForNavGuard]);
+
+  /**
+   * Back-button / swipe-back guard during an active match. This app mounts a
+   * plain `BrowserRouter` (not a data router), so React Router's `useBlocker`
+   * isn't available — the only cross-browser way to intercept history
+   * navigation here is to plant an extra entry and, on `popstate`, immediately
+   * re-plant it (cancelling the back nav) while surfacing the same
+   * `LeaveRoomModal` every other in-game Leave control uses.
+   */
+  useEffect(() => {
+    if (!isMatchActiveForNavGuard) return;
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      requestLeaveConfirmation();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isMatchActiveForNavGuard, requestLeaveConfirmation]);
 
   // Resilience safety timer: countdown must never block game board indefinitely if animations fail or cancel
   useEffect(() => {
