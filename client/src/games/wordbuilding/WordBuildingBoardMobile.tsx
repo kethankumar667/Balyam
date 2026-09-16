@@ -6,7 +6,7 @@ import { useWordBuildingBoard, type WordBuildingBoardProps } from "./useWordBuil
 import {
   StudentBar,
   WorkbookBoard,
-  FooterRow,
+  VocabularyFoundCard,
   ReportCardOverlay,
 } from "./wordbuilding-shared";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
@@ -79,14 +79,15 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
 
       <WorkbookBoard m={m} state={state} cellPx={cellPx} roomCode={roomCode} />
 
-      <FooterRow
-        state={state}
-        inkOf={m.inkOf}
-        nameOf={m.nameOf}
-        selfId={selfId}
-        className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 px-1"
-        isNeon={m.isNeon}
-      />
+      <div className="mt-4 px-1">
+        <VocabularyFoundCard
+          state={state}
+          inkOf={m.inkOf}
+          nameOf={m.nameOf}
+          isNeon={m.isNeon}
+          maxHeight={140}
+        />
+      </div>
 
       {/* In-board chat / players / voice / reactions rail — parity with the
           other games (was missing; see REFACTOR_AUDIT.md B9/C1). */}
