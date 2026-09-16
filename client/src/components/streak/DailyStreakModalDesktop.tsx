@@ -4,15 +4,11 @@ import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import {
-  ConsistencyCard,
   CountdownPill,
-  ExpeditionFooter,
-  ExpeditionSpoils,
-  FinalRewardCard,
+  ExpeditionCompactFooter,
   MilestoneRail,
   NextMilestoneCard,
   TodayRewardCard,
-  UpcomingRewards,
   useStreakExpedition,
 } from "./StreakExpeditionShared";
 
@@ -38,87 +34,70 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.97, opacity: 0, y: 16 }}
       transition={bhalyamSpring}
-      className="streak-expedition relative z-50 flex max-h-[calc(100dvh-2rem)] w-[min(96vw,1480px)] flex-col overflow-hidden rounded-[30px] border border-[var(--streak-border)] text-[var(--streak-ink)] shadow-[0_30px_100px_-28px_rgba(0,0,0,0.8)]"
+      className="streak-expedition relative z-50 flex max-h-[min(92vh,620px)] w-[min(92vw,820px)] flex-col overflow-hidden rounded-[24px] border border-[var(--streak-border)] text-[var(--streak-ink)] shadow-[0_24px_80px_-20px_rgba(0,0,0,0.85)]"
     >
-      <header className="streak-header relative flex items-center justify-between gap-4 border-b border-[var(--streak-border)] px-5 py-4 lg:px-7">
-        <div className="flex min-w-0 items-center gap-4">
+      <header className="streak-header relative flex items-center justify-between gap-3 border-b border-[var(--streak-border)] px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-3">
           {onBack ? (
             <button
               type="button"
               onClick={handleBack}
               aria-label="Back to today's reward"
-              className="streak-icon-button grid h-12 w-12 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="streak-icon-button grid h-9 w-9 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
-              <ArrowLeft className="h-6 w-6" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
           ) : (
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-300 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/30">
-              <Gift className="h-6 w-6" />
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-300 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/30">
+              <Gift className="h-4 w-4" />
             </div>
           )}
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 id="streak-expedition-title" className="truncate font-hand text-3xl font-black leading-none text-[var(--streak-ink)] lg:text-4xl">
+            <div className="flex items-center gap-1.5">
+              <h2 id="streak-expedition-title" className="truncate font-hand text-xl font-black leading-none text-[var(--streak-ink)]">
                 Rewards Expedition
               </h2>
-              <Crown className="h-7 w-7 shrink-0 -rotate-6 text-amber-600 dark:text-amber-300" />
+              <Crown className="h-4 w-4 shrink-0 -rotate-6 text-amber-600 dark:text-amber-300" />
             </div>
-            <p className="mt-1 text-sm font-semibold text-[var(--streak-muted)]">
-              Play daily. Keep your streak. Unlock bigger rewards.
+            <p className="text-[11px] font-semibold text-[var(--streak-muted)] leading-tight">
+              Play daily to unlock 4 grand chests & perks
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="hidden min-h-[48px] items-center gap-2 rounded-2xl border border-[var(--streak-border)] bg-[var(--streak-control)] px-4 text-sm font-black text-[var(--streak-ink)] lg:flex">
-            <Gift className="h-5 w-5 text-amber-600 dark:text-amber-300" />
-            Today’s reward: +{model.todayReward.coins.toLocaleString()}
-          </div>
-          <CountdownPill model={model} />
+        <div className="flex shrink-0 items-center gap-2">
+          <CountdownPill model={model} compact />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close streak rewards"
-            className="streak-icon-button grid h-12 w-12 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="streak-icon-button grid h-9 w-9 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
-            <X className="h-6 w-6" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      <div className="streak-scrollbar overflow-y-auto px-5 py-5 lg:px-7 lg:py-6">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-4">
-            <TodayRewardCard model={model} />
+      <div className="streak-scrollbar flex-1 overflow-y-auto p-3.5 space-y-3">
+        {/* Top Split: Today Status + Next Milestone Showcase */}
+        <div className="grid grid-cols-12 gap-3 items-stretch">
+          <div className="col-span-5 flex flex-col">
+            <TodayRewardCard model={model} compact />
           </div>
-          <div className="col-span-7 lg:col-span-5">
-            <NextMilestoneCard model={model} />
-          </div>
-          <div className="col-span-5 lg:col-span-3">
-            <FinalRewardCard />
+          <div className="col-span-7 flex flex-col">
+            <NextMilestoneCard model={model} compact />
           </div>
         </div>
 
-        <div className="mt-4">
-          <MilestoneRail model={model} />
+        {/* Middle Waypoint Rail Track */}
+        <div>
+          <MilestoneRail model={model} compact />
         </div>
 
-        <div className="mt-4 grid grid-cols-12 gap-4">
-          <div className="col-span-7">
-            <UpcomingRewards rewards={model.upcomingRewards} />
-          </div>
-          <div className="col-span-5">
-            <ConsistencyCard />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <ExpeditionSpoils totalCoins={model.totalCoins} />
-        </div>
-
-        <div className="mt-4">
-          <ExpeditionFooter model={model} />
+        {/* Bottom Streamlined Summary Bar */}
+        <div>
+          <ExpeditionCompactFooter model={model} />
         </div>
       </div>
     </motion.div>
@@ -126,3 +105,4 @@ export function DailyStreakModalDesktop({ onClose, onBack }: DailyStreakModalDes
 }
 
 export default DailyStreakModalDesktop;
+

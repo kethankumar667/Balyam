@@ -16,6 +16,7 @@ import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { bhalyamSpring } from "../../lib/motion";
 import CountUp from "../CountUp";
+import { getChestImageUrl, PremiumRewardChest } from "./PremiumRewardChest";
 
 interface StreakClaimCelebrationProps {
   result: DailyStreakClaimResult;
@@ -49,6 +50,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
 
   const isMilestone = Boolean(result.reward?.milestoneChest);
   const isGrandCycle = Boolean(result.cycleCompleted);
+  const milestoneChestType = result.reward?.milestoneChest ?? (result.claimedDay === 30 ? "diamond" : undefined);
 
   // Compute tomorrow's teaser reward
   const nextDayNum = (result.claimedDay % 30) + 1;
@@ -110,7 +112,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl select-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none">
         {/* Confetti Explosion Layer (Active in revealed stage) */}
         {stage === "revealed" && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
@@ -158,7 +160,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
                      overflow-hidden"
         >
           {/* Ambient Radiant Glow */}
-          <div className="absolute -top-28 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-amber-300/20 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-white/25 blur-3xl pointer-events-none" />
 
           <div aria-hidden="true" className="absolute inset-x-6 top-4 h-px bg-gradient-to-r from-transparent via-amber-100/40 to-transparent" />
           <div aria-hidden="true" className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:18px_18px]" />
@@ -176,7 +178,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 pointer-events-none -z-10"
               style={{
                 background:
-                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(251,191,36,0.20) 20deg 40deg, transparent 40deg 60deg, rgba(251,191,36,0.20) 60deg 80deg, transparent 80deg 100deg, rgba(251,191,36,0.20) 100deg 120deg, transparent 120deg 140deg, rgba(251,191,36,0.20) 140deg 160deg, transparent 160deg 180deg, rgba(251,191,36,0.20) 180deg 200deg, transparent 200deg 220deg, rgba(251,191,36,0.20) 220deg 240deg, transparent 240deg 260deg, rgba(251,191,36,0.20) 260deg 280deg, transparent 280deg 300deg, rgba(251,191,36,0.20) 300deg 320deg, transparent 320deg 340deg, rgba(251,191,36,0.20) 340deg 360deg)",
+                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(255,255,255,0.25) 20deg 40deg, transparent 40deg 60deg, rgba(255,255,255,0.25) 60deg 80deg, transparent 80deg 100deg, rgba(255,255,255,0.25) 100deg 120deg, transparent 120deg 140deg, rgba(255,255,255,0.25) 140deg 160deg, transparent 160deg 180deg, rgba(255,255,255,0.25) 180deg 200deg, transparent 200deg 220deg, rgba(255,255,255,0.25) 220deg 240deg, transparent 240deg 260deg, rgba(255,255,255,0.25) 260deg 280deg, transparent 280deg 300deg, rgba(255,255,255,0.25) 300deg 320deg, transparent 320deg 340deg, rgba(255,255,255,0.25) 340deg 360deg)",
               }}
             />
           )}
@@ -199,15 +201,19 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               duration: stage === "rumble" ? 0.35 : 0.6,
               ease: "easeOut",
             }}
-            className="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-3
-                       bg-white/30 border-2 border-white/60 shadow-inner backdrop-blur-sm"
+            className="mx-auto w-24 h-24 rounded-2xl flex items-center justify-center mb-3
+                       bg-white/30 border-2 border-white/60 shadow-inner backdrop-blur-sm overflow-hidden"
           >
-            {isGrandCycle || result.claimedDay === 30 ? (
-              <Crown className="w-10 h-10 text-black animate-bounce" />
-            ) : isMilestone ? (
-              <Gift className="w-10 h-10 text-black animate-pulse" />
+            {milestoneChestType ? (
+              <PremiumRewardChest
+                type={milestoneChestType}
+                size={82}
+                className="drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+              />
+            ) : isGrandCycle || result.claimedDay === 30 ? (
+              <Crown className="w-12 h-12 text-white animate-bounce" />
             ) : (
-              <Coins className="w-10 h-10 text-black animate-pulse" />
+              <Coins className="w-12 h-12 text-white animate-pulse" />
             )}
           </motion.div>
 
@@ -284,9 +290,13 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             className="mb-4 p-3 rounded-2xl bg-black/[0.32] border border-white/10 text-left flex items-center justify-between gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-amber-300/10 border border-amber-200/20 flex items-center justify-center shrink-0">
-                {isTomorrowMilestone ? (
-                  <Gift className="w-4 h-4 text-amber-200 animate-pulse" />
+              <div className="w-9 h-9 rounded-xl bg-amber-300/10 border border-amber-200/20 flex items-center justify-center shrink-0 p-0.5">
+                {isTomorrowMilestone && nextReward.milestoneChest ? (
+                  <img
+                    src={getChestImageUrl(nextReward.milestoneChest)}
+                    alt="Tomorrow's Chest"
+                    className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                  />
                 ) : (
                   <Flame className="w-4 h-4 text-orange-200" />
                 )}

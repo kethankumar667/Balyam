@@ -1,53 +1,47 @@
 import type { StreakMilestoneChest } from "@shared/streak-types";
+import { getChestImageUrl, CHEST_IMAGES } from "./StreakHeroArtwork";
+export { getChestImageUrl, CHEST_IMAGES };
 
 interface PremiumRewardChestProps {
   type: StreakMilestoneChest;
   size?: number;
+  scale?: number;
   className?: string;
 }
-
-const SPRITE_POSITION: Record<StreakMilestoneChest, string> = {
-  bronze: "0% 0%",
-  silver: "100% 0%",
-  gold: "0% 100%",
-  diamond: "100% 100%",
-};
 
 const CHEST_LABEL: Record<StreakMilestoneChest, string> = {
   bronze: "Bronze reward chest",
   silver: "Silver reward chest",
   gold: "Gold reward chest",
-  diamond: "Ultimate diamond reward vault",
+  diamond: "Legendary diamond reward chest",
 };
 
-/**
- * Crops one quadrant from the generated premium reward-chest sprite sheet.
- * A single source file keeps material, perspective, and lighting consistent
- * across all four milestone tiers and avoids four extra network requests.
- */
 export function PremiumRewardChest({
   type,
   size = 112,
+  scale = 1.38,
   className = "",
 }: PremiumRewardChestProps) {
+  const imgSrc = getChestImageUrl(type);
+
   return (
     <div
       role="img"
       aria-label={CHEST_LABEL[type]}
-      className={`relative shrink-0 ${className}`}
+      className={`relative shrink-0 flex items-center justify-center select-none overflow-visible ${className}`}
       style={{ width: size, height: size }}
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-no-repeat drop-shadow-[0_12px_16px_rgba(3,8,20,0.42)]"
-        style={{
-          backgroundImage: "url('/assets/streak/reward-chests-premium.webp')",
-          backgroundPosition: SPRITE_POSITION[type],
-          backgroundSize: "200% 200%",
-        }}
+      <img
+        src={imgSrc}
+        alt={CHEST_LABEL[type]}
+        className="w-full h-full object-contain filter drop-shadow-[0_3px_8px_rgba(0,0,0,0.4)]"
+        style={{ transform: `scale(${scale}) translateY(-3%)` }}
+        loading="eager"
+        draggable={false}
       />
     </div>
   );
 }
 
 export default PremiumRewardChest;
+

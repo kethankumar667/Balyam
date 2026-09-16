@@ -8,6 +8,7 @@ import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 import { PremiumRewardChest } from "./PremiumRewardChest";
+import { StreakHeroArtwork } from "./StreakHeroArtwork";
 
 interface DailyStreakRewardScreenProps {
   onClose: () => void;
@@ -78,89 +79,120 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
       role="dialog"
       aria-modal="true"
       aria-label="Login Streak Reward"
-      initial={{ scale: 0.94, opacity: 0, y: 22 }}
+      initial={{ scale: 0.94, opacity: 0, y: 16 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
-      exit={{ scale: 0.96, opacity: 0, y: 14 }}
+      exit={{ scale: 0.96, opacity: 0, y: 12 }}
       transition={bhalyamSpring}
-      className="streak-claim-modal relative z-10 mx-2 flex max-h-[calc(100dvh-16px)] w-full max-w-[680px] select-none flex-col overflow-hidden rounded-[28px] border sm:mx-4 sm:max-h-[calc(100dvh-32px)] sm:rounded-[36px]"
+      className="streak-claim-modal relative z-10 mx-2 flex max-h-[min(94vh,600px)] w-full max-w-[460px] select-none flex-col overflow-hidden rounded-[24px] border"
     >
-      <div className="pointer-events-none absolute inset-px rounded-[27px] border border-white/10 sm:rounded-[35px]" />
-      <div className="streak-claim-scroll relative overflow-y-auto px-3 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-5">
-        <header className="flex items-center gap-3">
-          <div className="streak-claim-streak flex min-h-[48px] min-w-0 items-center gap-2 rounded-full border px-4 sm:min-h-[54px] sm:px-6">
-            <Flame className={`h-6 w-6 shrink-0 fill-orange-400 text-orange-500 ${reduceMotion ? "" : "animate-pulse"}`} />
-            <span className="truncate font-display text-lg font-black sm:text-2xl">{displayStreak} Day Streak</span>
+      <div className="pointer-events-none absolute inset-px rounded-[23px] border border-white/10" />
+      <div className="streak-claim-scroll relative flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-2.5">
+        {/* Header */}
+        <header className="flex items-center justify-between gap-2">
+          <div className="streak-claim-streak flex min-h-[36px] items-center gap-1.5 rounded-full border px-3">
+            <Flame className={`h-4 w-4 shrink-0 fill-orange-400 text-orange-500 ${reduceMotion ? "" : "animate-pulse"}`} />
+            <span className="truncate font-display text-sm font-black">{displayStreak} Day Streak</span>
           </div>
-          <p className="hidden flex-1 -rotate-2 text-center font-script text-xl leading-5 text-[var(--claim-muted)] sm:block sm:text-2xl">
-            Keep playing<br />to unlock bigger rewards!
+          <p className="hidden flex-1 -rotate-1 text-center font-script text-sm leading-tight text-[var(--claim-muted)] xs:block">
+            Keep playing to unlock bigger rewards!
           </p>
-          <button type="button" onClick={onClose} aria-label="Close" className="streak-claim-close ml-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-transform hover:scale-105 active:scale-95 sm:h-14 sm:w-14">
-            <X className="h-6 w-6 sm:h-7 sm:w-7" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="streak-claim-close flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-transform hover:scale-105 active:scale-95"
+          >
+            <X className="h-4 w-4" />
           </button>
         </header>
 
-        <section className="streak-claim-hero relative mt-3 flex h-[180px] items-center justify-center overflow-hidden rounded-[24px] border sm:mt-4 sm:h-[228px] sm:rounded-[28px]">
+        {/* Hero Artwork Box */}
+        <section className="streak-claim-hero relative flex h-[115px] sm:h-[125px] items-center justify-center overflow-hidden rounded-[18px] border">
           <div className="streak-claim-rays pointer-events-none absolute inset-0" />
-          <div className="streak-claim-stage pointer-events-none absolute bottom-3 left-1/2 h-10 w-64 -translate-x-1/2 rounded-[50%] blur-md" />
-          <motion.img
-            src="/assets/streak/premium-coin-pile.webp"
-            alt="A pile of golden reward coins"
-            initial={reduceMotion ? false : { scale: 0.76, y: 14, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            transition={{ delay: 0.12, ...bhalyamSpring }}
-            className="relative z-10 h-[174px] w-[174px] object-contain drop-shadow-[0_18px_18px_rgba(0,0,0,0.5)] sm:h-[224px] sm:w-[224px]"
-          />
-          <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2 -rotate-6 whitespace-pre-line text-center font-script text-xl leading-5 text-[#b9cdf0] sm:right-7 sm:text-3xl sm:leading-7">
-            {isClaimable ? "Your reward\nawaits!" : "Great\nstart!"}
-            <span className="mt-2 block text-3xl text-amber-300">☺</span>
+          <div className="streak-claim-stage pointer-events-none absolute bottom-2 left-1/2 h-8 w-48 -translate-x-1/2 rounded-[50%] blur-sm" />
+          <div className="relative z-10 flex items-center justify-center">
+            <StreakHeroArtwork
+              type={todayReward.milestoneChest ? todayReward.milestoneChest : "coins"}
+              size={100}
+            />
+          </div>
+          <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2 -rotate-6 whitespace-pre-line text-center font-script text-base leading-4 text-[#b9cdf0] sm:text-lg">
+            {isClaimable ? (todayReward.milestoneChest ? "Chest\nunlocked!" : "Your reward\nawaits!") : "Great\nstart!"}
+            <span className="mt-1 block text-xl text-amber-300">☺</span>
           </div>
         </section>
 
-        <div className="mt-2 text-center sm:mt-3">
-          <div className="streak-claim-amount font-display text-[3.5rem] font-black leading-none tracking-tight sm:text-[5rem]">
-            +{todayReward.coins.toLocaleString()}<span className="ml-2 text-2xl sm:text-4xl">coins</span>
+        {/* Grant Amount & Status */}
+        <div className="text-center">
+          <div className="streak-claim-amount font-display text-3xl sm:text-4xl font-black leading-none tracking-tight">
+            +{todayReward.coins.toLocaleString()}<span className="ml-1.5 text-lg sm:text-xl">coins</span>
           </div>
-          <div className={`mx-auto mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-full border px-5 font-black sm:text-lg ${isClaimable ? "streak-claim-ready" : "streak-claim-complete"}`}>
-            {isClaimable ? <Flame className="h-5 w-5" /> : <Check className="h-5 w-5 stroke-[3]" />}
-            Day {currentDay} {isClaimable ? "Ready to Claim" : "Complete!"}
+          <div className="mt-1.5 flex items-center justify-center gap-1.5">
+            <div className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-3 text-xs font-black ${isClaimable ? "streak-claim-ready" : "streak-claim-complete"}`}>
+              {isClaimable ? <Flame className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5 stroke-[3]" />}
+              Day {currentDay} {isClaimable ? "Ready to Claim" : "Complete!"}
+            </div>
+            {shieldsRemaining > 0 && (
+              <span className="inline-flex min-h-[28px] items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 text-[11px] font-black text-sky-800" title="Streak shields remaining">
+                <Shield className="h-3 w-3 text-sky-600" /> {shieldsRemaining}
+              </span>
+            )}
           </div>
-          <p className="mt-2 text-sm font-bold text-[var(--claim-muted)] sm:text-base">
-            {isClaimable ? "Claim today to keep your expedition moving." : "Come back tomorrow for more rewards!"}
+          <p className="mt-1 text-xs font-bold text-[var(--claim-muted)]">
+            {isClaimable ? (todayReward.specialRewardTitle ? `Claim today to receive ${todayReward.specialRewardTitle}!` : "Claim today to keep your expedition moving.") : "Come back tomorrow for more rewards!"}
           </p>
         </div>
 
-        <section className="streak-claim-panel mt-4 rounded-[24px] border p-4 sm:px-5">
-          <div className="flex items-center justify-between font-display text-lg font-black sm:text-2xl">
-            <span>Day {currentDay} of 30</span><span className="text-amber-500">{progress}%</span>
+        {/* 30-Day Expedition Progress Bar */}
+        <section className="streak-claim-panel rounded-[16px] border p-2.5">
+          <div className="flex items-center justify-between text-xs font-black">
+            <div className="flex items-center gap-2">
+              <span className="font-display">Day {currentDay} of 30</span>
+              <span className="text-[10px] text-[var(--claim-muted)] font-bold">
+                (Best: {longestStreak}d)
+              </span>
+            </div>
+            <span className="text-amber-500 font-display">{progress}%</span>
           </div>
-          <div className="streak-claim-track mt-2 h-3 overflow-hidden rounded-full border p-[2px]">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={reduceMotion ? { duration: 0 } : { duration: 0.85, ease: "easeOut" }} className="streak-claim-progress h-full min-w-3 rounded-full" />
+          <div className="streak-claim-track mt-1.5 h-2 overflow-hidden rounded-full border p-[1px]">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={reduceMotion ? { duration: 0 } : { duration: 0.85, ease: "easeOut" }} className="streak-claim-progress h-full min-w-2 rounded-full" />
           </div>
         </section>
 
-        <div className="mt-3 flex items-center justify-center gap-2 text-sm font-bold text-[var(--claim-muted)] sm:text-base">
-          <Crown className="h-5 w-5 fill-amber-300 text-amber-500" /><span>Best streak:</span>
-          <strong className="text-[var(--claim-ink)]">{longestStreak} {longestStreak === 1 ? "day" : "days"}</strong>
-          {shieldsRemaining > 0 && <span className="ml-2 inline-flex items-center gap-1" title="Streak shields remaining"><Shield className="h-4 w-4 text-sky-500" /> {shieldsRemaining}</span>}
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <article className="streak-claim-preview streak-claim-preview-tomorrow flex min-h-[112px] items-center gap-3 rounded-[22px] border p-3">
-            <img src="/assets/streak/premium-coin-pile.webp" alt="" className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_10px_10px_rgba(0,0,0,0.35)]" />
-            <div className="min-w-0"><div className="text-xs font-black uppercase tracking-wide text-emerald-500">Tomorrow</div><div className="mt-1 font-mono text-xl font-black text-amber-500">+{nextReward.coins.toLocaleString()} coins</div><div className="mt-0.5 text-sm font-bold text-[var(--claim-muted)]">Day {nextDay} Reward</div></div>
+        {/* Tomorrow & Next Chest Teasers */}
+        <div className="grid grid-cols-2 gap-2">
+          <article className="streak-claim-preview streak-claim-preview-tomorrow flex items-center gap-2 rounded-[14px] border p-2">
+            <div className="h-10 w-10 shrink-0 flex items-center justify-center">
+              {nextReward.milestoneChest ? (
+                <PremiumRewardChest type={nextReward.milestoneChest} size={36} scale={1.35} />
+              ) : (
+                <StreakHeroArtwork type="coins" size={38} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-wide text-emerald-500 leading-none">Tomorrow</div>
+              <div className="mt-0.5 font-mono text-xs font-black text-amber-500 leading-tight">+{nextReward.coins.toLocaleString()}</div>
+              <div className="text-[10px] font-bold text-[var(--claim-muted)] truncate">Day {nextDay}</div>
+            </div>
           </article>
-          <article className="streak-claim-preview streak-claim-preview-chest flex min-h-[112px] items-center gap-2 rounded-[22px] border p-3">
-            <PremiumRewardChest type={nextMilestone.chest} size={82} />
-            <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2 text-xs font-black uppercase tracking-wide text-indigo-500"><span>Next chest</span><CalendarDays className="h-4 w-4 text-amber-500" /></div><div className="mt-1 font-display text-xl font-black">in {nextMilestone.daysAway} {nextMilestone.daysAway === 1 ? "day" : "days"}</div><div className="mt-0.5 truncate text-sm font-bold text-[var(--claim-muted)]">Day {nextMilestone.day} · {nextMilestone.name}</div></div>
+          <article className="streak-claim-preview streak-claim-preview-chest flex items-center gap-2 rounded-[14px] border p-2">
+            <div className="h-10 w-10 shrink-0 flex items-center justify-center">
+              <PremiumRewardChest type={nextMilestone.chest} size={42} scale={1.38} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-indigo-500 leading-none">
+                <span>Next chest</span>
+              </div>
+              <div className="mt-0.5 font-display text-xs font-black leading-tight">in {nextMilestone.daysAway}d</div>
+              <div className="text-[10px] font-bold text-[var(--claim-muted)] truncate">{nextMilestone.name}</div>
+            </div>
           </article>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm font-bold text-[var(--claim-muted)] sm:text-base">
-          <Clock3 className="h-5 w-5 text-amber-500" /><span>{isClaimable ? "Claim before reset:" : "Next reward unlocks in:"}</span><strong className="font-mono text-lg text-amber-500">{timeLeft}</strong>
-        </div>
+        {/* Claim Error */}
+        {claimError && <div role="alert" className="rounded-lg border border-rose-500/35 bg-rose-500/10 p-2 text-center text-xs font-bold text-rose-500">{claimError}</div>}
 
-        {claimError && <div role="alert" className="mt-3 rounded-xl border border-rose-500/35 bg-rose-500/10 p-3 text-center text-sm font-bold text-rose-500">{claimError}</div>}
-
+        {/* Primary Action Button */}
         <motion.button
           type="button"
           whileHover={isClaiming ? undefined : { scale: 1.01 }}
@@ -168,14 +200,35 @@ export function DailyStreakRewardScreen({ onClose, onOpenJourney }: DailyStreakR
           onClick={isClaimable ? handleClaim : onClose}
           disabled={isClaiming}
           aria-busy={isClaiming}
-          className="streak-claim-primary group relative mt-4 flex min-h-[62px] w-full items-center justify-center gap-3 overflow-hidden rounded-full border px-6 font-display text-xl font-black sm:min-h-[72px] sm:text-2xl"
+          className="streak-claim-primary group relative flex min-h-[44px] sm:min-h-[48px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl border px-4 font-display text-base font-black"
         >
-          {isClaiming ? <><span className="h-5 w-5 animate-spin rounded-full border-[3px] border-current border-t-transparent" />CLAIMING...</> : <>{isClaimable ? <Gift className="h-6 w-6" /> : <Check className="h-6 w-6 stroke-[3]" />}<span>{isClaimable ? `CLAIM +${todayReward.coins.toLocaleString()} COINS` : "CONTINUE"}</span><ChevronRight className="absolute right-6 h-6 w-6 transition-transform group-hover:translate-x-1" /></>}
+          {isClaiming ? (
+            <><span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />CLAIMING...</>
+          ) : (
+            <>
+              {isClaimable ? <Gift className="h-4 w-4" /> : <Check className="h-4 w-4 stroke-[3]" />}
+              <span>{isClaimable ? `CLAIM +${todayReward.coins.toLocaleString()} COINS` : "CONTINUE"}</span>
+              <ChevronRight className="absolute right-4 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </>
+          )}
         </motion.button>
 
-        <button type="button" onClick={onOpenJourney} className="mx-auto mt-3 flex min-h-[48px] items-center justify-center gap-3 px-4 font-bold text-[var(--claim-muted)] transition-colors hover:text-amber-500 sm:mt-4">
-          <Gift className="h-5 w-5 text-amber-500" /><span className="border-b border-current pb-1">View 30-Day Rewards</span><ArrowRight className="h-5 w-5" />
-        </button>
+        {/* Compact Footer Line */}
+        <div className="flex items-center justify-between pt-0.5 text-xs font-bold text-[var(--claim-muted)]">
+          <div className="flex items-center gap-1">
+            <Clock3 className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-[11px]">{isClaimable ? "Reset:" : "Next:"}</span>
+            <strong className="font-mono text-xs text-amber-500">{timeLeft}</strong>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenJourney}
+            className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline"
+          >
+            <span>View 30-Day Rewards</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </motion.div>
   );

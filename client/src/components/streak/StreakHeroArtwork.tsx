@@ -5,100 +5,91 @@ import {
 } from "lucide-react";
 import { type StreakMilestoneChest } from "@shared/streak-types";
 
-interface StreakHeroArtworkProps {
-  type: "coins" | StreakMilestoneChest;
-  size?: number;
+export const CHEST_IMAGES: Record<StreakMilestoneChest | "legendary", string> = {
+  bronze: "/bronze chest.png",
+  silver: "/silver chest.png",
+  gold: "/Gold chest.png",
+  diamond: "/legendary chest.png",
+  legendary: "/legendary chest.png",
+};
+
+export function getChestImageUrl(type: StreakMilestoneChest | "legendary" | string): string {
+  if (type === "bronze") return CHEST_IMAGES.bronze;
+  if (type === "silver") return CHEST_IMAGES.silver;
+  if (type === "gold") return CHEST_IMAGES.gold;
+  if (type === "diamond" || type === "legendary") return CHEST_IMAGES.diamond;
+  return CHEST_IMAGES.bronze;
 }
 
-export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) {
-  if (type === "diamond") {
+interface StreakHeroArtworkProps {
+  type: "coins" | StreakMilestoneChest | "legendary";
+  size?: number;
+  showCrown?: boolean;
+}
+
+export function StreakHeroArtwork({ type, size = 110, showCrown = true }: StreakHeroArtworkProps) {
+  if (type === "diamond" || type === "legendary") {
     return (
-      <div className="relative flex items-center justify-center select-none" style={{ width: size, height: size }}>
-        {/* Ambient Halo — the biggest, richest glow of any tier; this is
-            the destination reward, it should out-shine every milestone
-            leading up to it, not just match them. */}
-        <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-cyan-500/40 via-violet-500/40 to-amber-400/40 blur-2xl animate-pulse" />
+      <div
+        className="relative flex items-center justify-center select-none"
+        style={{ width: size, height: size }}
+      >
+        {/* Ambient Halo — the biggest, richest glow for the climax tier */}
+        <div className="absolute inset-[-12px] rounded-full bg-gradient-to-tr from-cyan-500/40 via-violet-500/40 to-amber-400/35 blur-2xl animate-pulse" />
 
         {/* Rotating Sunburst Halo */}
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="absolute inset-[-14px] pointer-events-none rounded-full"
           style={{
             background:
-              "conic-gradient(from 0deg, transparent 0deg, rgba(56,189,248,0.2) 30deg, transparent 60deg, rgba(234,179,8,0.25) 90deg, transparent 120deg, rgba(168,85,247,0.2) 150deg, transparent 180deg, rgba(56,189,248,0.2) 210deg, transparent 240deg, rgba(234,179,8,0.25) 270deg, transparent 300deg, rgba(168,85,247,0.2) 330deg, transparent 360deg)",
+              "conic-gradient(from 0deg, transparent 0deg, rgba(56,189,248,0.25) 30deg, transparent 60deg, rgba(234,179,8,0.3) 90deg, transparent 120deg, rgba(168,85,247,0.25) 150deg, transparent 180deg, rgba(56,189,248,0.25) 210deg, transparent 240deg, rgba(234,179,8,0.3) 270deg, transparent 300deg, rgba(168,85,247,0.25) 330deg, transparent 360deg)",
           }}
         />
 
         {/* Floating Crown above Chest */}
+        {showCrown && (
+          <motion.div
+            animate={{ y: [-4, -9, -4], rotate: [-2, 2, -2] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-3.5 z-10"
+          >
+            <Crown className="w-8 h-8 text-amber-300 fill-amber-400/80 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
+          </motion.div>
+        )}
+
+        {/* Floating Twinkle Accents */}
         <motion.div
-          animate={{ y: [-4, -9, -4], rotate: [-2, 2, -2] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-3 z-10"
+          animate={{ scale: [0.8, 1.25, 0.8], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-1 -right-2 text-cyan-300 pointer-events-none z-10"
         >
-          <Crown className="w-8 h-8 text-amber-300 fill-amber-400/70 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]" />
+          <Star className="w-4 h-4 fill-cyan-300 drop-shadow-[0_0_8px_rgba(56,189,248,0.9)]" />
+        </motion.div>
+        <motion.div
+          animate={{ scale: [1, 0.75, 1], opacity: [0.8, 0.4, 0.8] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+          className="absolute -bottom-1 -left-2 text-amber-300 pointer-events-none z-10"
+        >
+          <Star className="w-3.5 h-3.5 fill-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
         </motion.div>
 
-        {/* Diamond Chest SVG */}
+        {/* 3D Legendary Chest Image */}
         <motion.div
-          animate={{ y: [-2, 2, -2] }}
+          animate={{ y: [-3, 3, -3] }}
           transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-0 flex items-center justify-center overflow-visible"
+          style={{ width: size, height: size }}
         >
-          <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="diaBody" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#38bdf8" />
-                <stop offset="50%" stopColor="#818cf8" />
-                <stop offset="100%" stopColor="#c084fc" />
-              </linearGradient>
-              <linearGradient id="diaLid" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7dd3fc" />
-                <stop offset="50%" stopColor="#a855f7" />
-                <stop offset="100%" stopColor="#ec4899" />
-              </linearGradient>
-              <linearGradient id="goldTrim" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fef08a" />
-                <stop offset="50%" stopColor="#f59e0b" />
-                <stop offset="100%" stopColor="#b45309" />
-              </linearGradient>
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {/* Chest Shadow */}
-            <ellipse cx="60" cy="104" rx="44" ry="10" fill="black" fillOpacity="0.4" />
-
-            {/* Chest Body */}
-            <rect x="24" y="58" width="72" height="42" rx="8" fill="url(#diaBody)" stroke="url(#goldTrim)" strokeWidth="3" />
-
-            {/* Chest Lid Curved */}
-            <path
-              d="M20 58 C20 40, 100 40, 100 58 Z"
-              fill="url(#diaLid)"
-              stroke="url(#goldTrim)"
-              strokeWidth="3"
-            />
-
-            {/* Gold Corner Straps */}
-            <path d="M24 58 L24 96 M96 58 L96 96" stroke="url(#goldTrim)" strokeWidth="4" strokeLinecap="round" />
-            <path d="M42 58 L42 100 M78 58 L78 100" stroke="url(#goldTrim)" strokeWidth="3" />
-
-            {/* Glowing Diamond Center Keyhole */}
-            <polygon
-              points="60,62 69,72 60,82 51,72"
-              fill="#ffffff"
-              stroke="#38bdf8"
-              strokeWidth="2"
-              filter="url(#glow)"
-            />
-            <circle cx="60" cy="72" r="2.5" fill="#0284c7" />
-
-            {/* Sparkle Glints */}
-            <circle cx="34" cy="46" r="2" fill="#ffffff" />
-            <circle cx="86" cy="48" r="1.5" fill="#ffffff" />
-          </svg>
+          <img
+            src={CHEST_IMAGES.diamond}
+            alt="Legendary Diamond Milestone Chest"
+            className="w-full h-full object-contain filter drop-shadow-[0_14px_28px_rgba(0,0,0,0.75)] drop-shadow-[0_0_22px_rgba(56,189,248,0.5)]"
+            style={{ transform: "scale(1.38)" }}
+            loading="eager"
+            draggable={false}
+          />
         </motion.div>
       </div>
     );
@@ -108,52 +99,34 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
     const isGold = type === "gold";
     const isSilver = type === "silver";
 
-    // Authentic Rarity Palettes: Bronze #CD7F32, Silver #C0C0C0, Gold #FFD700
-    const bodyGradient = isGold
-      ? ["#fde047", "#eab308", "#92400e"]
-      : isSilver
-      ? ["#f8fafc", "#cbd5e1", "#475569"]
-      : ["#f97316", "#cd7f32", "#7c2d12"];
-
-    const trimGradient = isGold
-      ? ["#fef9c3", "#facc15", "#854d0e"]
-      : isSilver
-      ? ["#ffffff", "#e2e8f0", "#64748b"]
-      : ["#ffedd5", "#ea580c", "#831843"];
-
     const glowColor = isGold
-      ? "rgba(250,204,21,0.6)"
+      ? "rgba(250,204,21,0.55)"
       : isSilver
-      ? "rgba(203,213,225,0.5)"
+      ? "rgba(56,189,248,0.45)"
       : "rgba(205,127,50,0.5)";
 
-    // Each rarity should read as a step up, not a recolor of the same box:
-    // Bronze stays a plain travel chest (no extra hardware). Silver adds
-    // riveted corner studs. Gold adds both the rivets AND a glowing center
-    // gem on the lid, plus a richer ambient aura — genuinely more going on
-    // visually the higher the tier, mirroring the actual reward jump
-    // (1,000 -> 2,500 -> 5,000 coins).
-    const hasRivets = isSilver || isGold;
-    const hasLidGem = isGold;
+    const starColor = isGold ? "#fde047" : isSilver ? "#38bdf8" : "#fb923c";
 
     return (
-      <div className="relative flex items-center justify-center select-none" style={{ width: size, height: size }}>
-        {/* Soft Radial Ambient Aura — richer for higher tiers */}
+      <div
+        className="relative flex items-center justify-center select-none overflow-visible"
+        style={{ width: size, height: size }}
+      >
+        {/* Soft Radial Ambient Aura */}
         <div
           className={`absolute rounded-full blur-xl animate-pulse pointer-events-none ${
-            isGold ? "inset-[-10px] opacity-90" : isSilver ? "inset-[-8px] opacity-80" : "inset-[-6px] opacity-65"
+            isGold ? "inset-[-10px] opacity-90" : isSilver ? "inset-[-8px] opacity-80" : "inset-[-6px] opacity-70"
           }`}
           style={{ backgroundColor: glowColor }}
         />
 
-        {/* Floating sparkle accents — absent on Bronze (the "starter" tier),
-            one on Silver, two on Gold, matching the escalating ceremony. */}
+        {/* Floating sparkle accents */}
         {(isSilver || isGold) && (
           <motion.div
-            animate={{ scale: [0.8, 1.15, 0.8], opacity: [0.5, 1, 0.5] }}
+            animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-1.5 -right-0.5 pointer-events-none"
-            style={{ color: isGold ? "#fde047" : "#e2e8f0" }}
+            className="absolute -top-1.5 -right-1 pointer-events-none z-10"
+            style={{ color: starColor }}
           >
             <Star className="w-4 h-4 fill-current drop-shadow-[0_0_6px_rgba(250,204,21,0.7)]" />
           </motion.div>
@@ -162,98 +135,33 @@ export function StreakHeroArtwork({ type, size = 110 }: StreakHeroArtworkProps) 
           <motion.div
             animate={{ scale: [1, 0.7, 1], opacity: [0.8, 0.35, 0.8] }}
             transition={{ duration: 2.3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-            className="absolute bottom-1 -left-1 text-amber-200 pointer-events-none"
+            className="absolute bottom-0 -left-1.5 text-amber-300 pointer-events-none z-10"
           >
-            <Star className="w-3.5 h-3.5 fill-current drop-shadow-[0_0_5px_rgba(253,224,71,0.8)]" />
+            <Star className="w-3.5 h-3.5 fill-current drop-shadow-[0_0_6px_rgba(253,224,71,0.8)]" />
           </motion.div>
         )}
 
+        {/* 3D Chest Image */}
         <motion.div
-          animate={{ y: [-2, 2, -2] }}
-          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ y: [-2.5, 2.5, -2.5] }}
+          transition={{ duration: isGold ? 2.6 : 2.8, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-0 flex items-center justify-center overflow-visible"
+          style={{ width: size, height: size }}
         >
-          <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id={`chestBody_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={bodyGradient[0]} />
-                <stop offset="50%" stopColor={bodyGradient[1]} />
-                <stop offset="100%" stopColor={bodyGradient[2]} />
-              </linearGradient>
-              <linearGradient id={`chestTrim_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={trimGradient[0]} />
-                <stop offset="50%" stopColor={trimGradient[1]} />
-                <stop offset="100%" stopColor={trimGradient[2]} />
-              </linearGradient>
-              {hasLidGem && (
-                <radialGradient id="lidGem" cx="35%" cy="35%" r="65%">
-                  <stop offset="0%" stopColor="#fffbeb" />
-                  <stop offset="55%" stopColor="#fbbf24" />
-                  <stop offset="100%" stopColor="#b45309" />
-                </radialGradient>
-              )}
-            </defs>
-
-            {/* Shadow */}
-            <ellipse cx="60" cy="102" rx="42" ry="9" fill="black" fillOpacity="0.4" />
-
-            {/* Base */}
-            <rect
-              x="26"
-              y="58"
-              width="68"
-              height="40"
-              rx="8"
-              fill={`url(#chestBody_${type})`}
-              stroke={`url(#chestTrim_${type})`}
-              strokeWidth="3"
-            />
-
-            {/* Lid */}
-            <path
-              d="M22 58 C22 42, 98 42, 98 58 Z"
-              fill={`url(#chestBody_${type})`}
-              stroke={`url(#chestTrim_${type})`}
-              strokeWidth="3"
-            />
-
-            {/* Metal Bands */}
-            <path d="M42 58 L42 98 M78 58 L78 98" stroke={`url(#chestTrim_${type})`} strokeWidth="4" />
-
-            {/* Riveted corner studs — Silver and Gold only, the plainer
-                Bronze chest has none, so the step up in hardware is visible
-                at a glance. */}
-            {hasRivets && (
-              <>
-                <circle cx="30" cy="66" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
-                <circle cx="90" cy="66" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
-                <circle cx="30" cy="90" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
-                <circle cx="90" cy="90" r="2.2" fill={`url(#chestTrim_${type})`} stroke="#1e293b" strokeWidth="0.6" />
-              </>
-            )}
-
-            {/* Center Lock / Keyplate */}
-            <rect
-              x="54"
-              y="62"
-              width="12"
-              height="14"
-              rx="3"
-              fill={`url(#chestTrim_${type})`}
-              stroke="#ffffff"
-              strokeWidth="1"
-            />
-            <circle cx="60" cy="67" r="2" fill="#1e293b" />
-            <path d="M60 69 L60 73" stroke="#1e293b" strokeWidth="1.5" strokeLinecap="round" />
-
-            {/* Glowing lid gem — Gold only, the one visual flourish neither
-                Bronze nor Silver has. */}
-            {hasLidGem && (
-              <>
-                <circle cx="60" cy="49" r="6" fill="url(#lidGem)" stroke="#fef3c7" strokeWidth="1" />
-                <circle cx="58" cy="47" r="1.6" fill="#ffffff" fillOpacity="0.85" />
-              </>
-            )}
-          </svg>
+          <img
+            src={getChestImageUrl(type)}
+            alt={`${type.toUpperCase()} Milestone Chest`}
+            className={`w-full h-full object-contain filter drop-shadow-[0_12px_22px_rgba(0,0,0,0.7)] ${
+              isGold
+                ? "drop-shadow-[0_0_18px_rgba(250,204,21,0.45)]"
+                : isSilver
+                ? "drop-shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+                : "drop-shadow-[0_0_14px_rgba(205,127,50,0.4)]"
+            }`}
+            style={{ transform: "scale(1.35)" }}
+            loading="eager"
+            draggable={false}
+          />
         </motion.div>
       </div>
     );
