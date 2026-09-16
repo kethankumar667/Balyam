@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ChatMessage,
   Player,
+  WordBuildingPendingClaim,
   WordBuildingPublicState,
   WordBuildingScoredWord,
 } from "@shared/types";
@@ -55,6 +56,21 @@ export interface WordBuildingBoardModel {
   toggleTheme: () => void;
   isNotebook: boolean;
   isNeon: boolean;
+  /** claimToScoreMode only — mirrors state.pendingClaim, undefined/null otherwise. */
+  pendingClaim: WordBuildingPendingClaim | null;
+  /** True while I placed the anchor letter and still need to identify my word. */
+  isClaimant: boolean;
+  /** True while I'm an opponent with an outstanding vote on the current claim. */
+  isVoter: boolean;
+  /** Cells I've tapped so far, in order, while building my claim. */
+  claimPath: Array<{ r: number; c: number }>;
+  /** Adds a cell to the claim path if it's a filled cell that extends a straight line from what's tapped so far (silently ignored otherwise — the server is the real authority). */
+  tapClaimCell: (r: number, c: number) => void;
+  undoLastClaimCell: () => void;
+  clearClaimPath: () => void;
+  submitClaim: () => void;
+  skipClaim: () => void;
+  castVote: (decision: "accept" | "reject") => void;
 }
 
 /**
@@ -218,6 +234,93 @@ export function useWordBuildingBoard({
     setError(null);
   }
 
+  /* ─── Claim-to-score: identify + submit the claimed word, and vote ───
+   * claimToScoreMode only (state.pendingClaim stays null in legacy mode).
+   * Straight-line validation here purely mirrors the server's for instant
+   * feedback while tapping — the server remains the sole authority and
+   * re-validates the submitted path from scratch. */
+  const pendingClaim = state.pendingClaim;
+  const isClaimant = pendingClaim?.status === "collecting" && pendingClaim.claimantId === selfId;
+  const isVoter = Boolean(
+    pendingClaim?.status === "voting" &&
+      selfId &&
+      pendingClaim.voters.includes(selfId) &&
+      !(selfId in pendingClaim.votes),
+  );
+  const [claimPath, setClaimPath] = useState<Array<{ r: number; c: number }>>([]);
+
+  // Reset the in-progress path whenever the claim changes identity (a new
+  // claim opened) or closes (resolved/skipped) — never carry a stale path
+  // into the next placement's claim.
+  useEffect(() => {
+    setClaimPath([]);
+  }, [pendingClaim?.id]);
+
+  function isUnitAxisDelta(dr: number, dc: number): boolean {
+    if (dr === 0 && Math.abs(dc) === 1) return true;
+    if (Math.abs(dr) === 1 && dc === 0) return true;
+    if (dr === dc && Math.abs(dr) === 1) return true;
+    if (dr === -dc && Math.abs(dr) === 1) return true;
+    return false;
+  }
+
+  function tapClaimCell(r: number, c: number) {
+    if (!isClaimant) return;
+    if (state.board[r]?.[c] === "") return;
+    setClaimPath((prev) => {
+      if (prev.some((cell) => cell.r === r && cell.c === c)) return prev;
+      if (prev.length === 0) return [{ r, c }];
+      if (prev.length === 1) {
+        if (!isUnitAxisDelta(r - prev[0].r, c - prev[0].c)) return prev;
+        return [...prev, { r, c }];
+      }
+      // Axis is locked from the first two taps — only accept the cell that
+      // continues it in the same direction.
+      const dr = prev[1].r - prev[0].r;
+      const dc = prev[1].c - prev[0].c;
+      const last = prev[prev.length - 1];
+      if (last.r + dr !== r || last.c + dc !== c) return prev;
+      return [...prev, { r, c }];
+    });
+  }
+
+  function undoLastClaimCell() {
+    setClaimPath((prev) => prev.slice(0, -1));
+  }
+
+  function clearClaimPath() {
+    setClaimPath([]);
+  }
+
+  function submitClaim() {
+    if (!isClaimant || claimPath.length < state.options.minWordLength) return;
+    getSocket().emit("game:move", {
+      type: "claimWord",
+      data: { cells: claimPath },
+      playerId: selfId ?? undefined,
+    });
+    setClaimPath([]);
+    setError(null);
+  }
+
+  function skipClaim() {
+    if (!isClaimant) return;
+    getSocket().emit("game:move", {
+      type: "skipClaim",
+      playerId: selfId ?? undefined,
+    });
+    setClaimPath([]);
+  }
+
+  function castVote(decision: "accept" | "reject") {
+    if (!isVoter) return;
+    getSocket().emit("game:move", {
+      type: "voteClaim",
+      data: { decision },
+      playerId: selfId ?? undefined,
+    });
+  }
+
   // Keyboard input: when a cell is selected, A–Z places the letter.
   useEffect(() => {
     if (!selected) return;
@@ -276,5 +379,15 @@ export function useWordBuildingBoard({
     toggleTheme,
     isNotebook,
     isNeon,
+    pendingClaim: pendingClaim ?? null,
+    isClaimant,
+    isVoter,
+    claimPath,
+    tapClaimCell,
+    undoLastClaimCell,
+    clearClaimPath,
+    submitClaim,
+    skipClaim,
+    castVote,
   };
 }

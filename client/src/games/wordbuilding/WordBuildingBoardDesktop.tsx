@@ -12,6 +12,7 @@ import {
   VocabularyFoundCard,
   ReportCardOverlay,
 } from "./wordbuilding-shared";
+import { ClaimBuilderBar, ClaimVotePrompt, ClaimWaitingBadge } from "./wordbuilding-claim";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
@@ -462,46 +463,48 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                   size={m.size}
                   cellPx={cellPx}
                   selected={m.selected}
-                  canPlay={m.canPlay}
+                  canPlay={m.isClaimant ? true : m.canPlay}
                   cellOverlays={m.cellOverlays}
                   inkOf={m.inkOf}
                   activePulse={m.activePulse}
-                  onPickCell={m.pickCell}
+                  onPickCell={m.isClaimant ? m.tapClaimCell : m.pickCell}
                   isNeon={m.isNeon}
                 />
               </div>
 
-              {/* Always-Open Desktop Letter Pad (Keyboard) */}
-              <div
-                className={`w-full rounded-2xl p-2 sm:p-2.5 border mt-1.5 flex flex-col items-center shadow-md flex-shrink-0 ${
-                  m.isNeon
-                    ? "bg-[#0B0E28]/95 border-slate-800/90"
-                    : "bg-white/90 border border-[#D7C9B1]"
-                }`}
-              >
-                <LetterPad
-                  onPick={m.placeLetter}
-                  onCancel={() => m.setSelected(null)}
-                  isNeon={m.isNeon}
-                  selectedCell={m.selected}
-                  disabled={!m.canPlay || !m.selected}
-                  alwaysOpen
-                />
+              {/* Always-Open Desktop Letter Pad (Keyboard) — hidden while a word claim is being identified or voted on. */}
+              {!m.pendingClaim && (
+                <div
+                  className={`w-full rounded-2xl p-2 sm:p-2.5 border mt-1.5 flex flex-col items-center shadow-md flex-shrink-0 ${
+                    m.isNeon
+                      ? "bg-[#0B0E28]/95 border-slate-800/90"
+                      : "bg-white/90 border border-[#D7C9B1]"
+                  }`}
+                >
+                  <LetterPad
+                    onPick={m.placeLetter}
+                    onCancel={() => m.setSelected(null)}
+                    isNeon={m.isNeon}
+                    selectedCell={m.selected}
+                    disabled={!m.canPlay || !m.selected}
+                    alwaysOpen
+                  />
 
-                {/* Error or Turn Guidance */}
-                {m.error ? (
-                  <div className="mt-1 text-xs sm:text-sm font-bold text-rose-500 animate-shake">
-                    {m.error}
-                  </div>
-                ) : !m.myTurn && state.phase === "playing" ? (
-                  <div
-                    className="mt-1 text-xs sm:text-sm font-semibold opacity-75"
-                    style={{ color: getInkDisplayColor(turnPlayerInk, m.isNeon, m.isNeon ? "#94a3b8" : "#7a6651") }}
-                  >
-                    Waiting for {turnPlayerName} to write a letter…
-                  </div>
-                ) : null}
-              </div>
+                  {/* Error or Turn Guidance */}
+                  {m.error ? (
+                    <div className="mt-1 text-xs sm:text-sm font-bold text-rose-500 animate-shake">
+                      {m.error}
+                    </div>
+                  ) : !m.myTurn && state.phase === "playing" ? (
+                    <div
+                      className="mt-1 text-xs sm:text-sm font-semibold opacity-75"
+                      style={{ color: getInkDisplayColor(turnPlayerInk, m.isNeon, m.isNeon ? "#94a3b8" : "#7a6651") }}
+                    >
+                      Waiting for {turnPlayerName} to write a letter…
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </main>
 
             {/* ── Right Column: Vocabulary Found & In-Game Chat (3 Cols) ── */}
@@ -565,6 +568,41 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
 
       {/* Floating Reactions */}
       <FloatingReactionsLayer reactions={reactions.items} anchorOf={reactions.anchorOf} />
+
+      {/* claimToScoreMode: identify my word, or vote on someone else's claim, or wait */}
+      {m.isClaimant && (
+        <ClaimBuilderBar
+          claimPath={m.claimPath}
+          board={state.board}
+          minWordLength={state.options.minWordLength}
+          onSubmit={m.submitClaim}
+          onUndo={m.undoLastClaimCell}
+          onClear={m.clearClaimPath}
+          onSkip={m.skipClaim}
+          isNeon={m.isNeon}
+        />
+      )}
+      {m.isVoter && m.pendingClaim?.word && (
+        <ClaimVotePrompt
+          claimantName={m.nameOf(m.pendingClaim.claimantId)}
+          word={m.pendingClaim.word}
+          onAccept={() => m.castVote("accept")}
+          onReject={() => m.castVote("reject")}
+          isNeon={m.isNeon}
+        />
+      )}
+      {m.pendingClaim && !m.isClaimant && !m.isVoter && (
+        <ClaimWaitingBadge
+          label={
+            m.pendingClaim.status === "collecting"
+              ? `Waiting for ${m.nameOf(m.pendingClaim.claimantId)} to identify their word…`
+              : m.pendingClaim.claimantId === selfId
+                ? "Waiting for an opponent to accept or reject your word…"
+                : "Vote submitted — waiting for the table…"
+          }
+          isNeon={m.isNeon}
+        />
+      )}
     </div>
   );
 }

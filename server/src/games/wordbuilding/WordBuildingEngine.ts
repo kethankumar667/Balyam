@@ -3,6 +3,7 @@ import type {
   Player,
   WordBuildingMoveRecord,
   WordBuildingOptions,
+  WordBuildingPendingClaim,
   WordBuildingPublicState,
   WordBuildingScoredWord,
 } from "@shared/types.js";
@@ -42,6 +43,8 @@ interface InternalState {
   winnerId: string | null;
   filledCells: number;
   totalCells: number;
+  /** claimToScoreMode only — non-null while a word claim awaits submission or votes. */
+  pendingClaim: WordBuildingPendingClaim | null;
 }
 
 export class WordBuildingEngine implements GameEngine {
@@ -93,6 +96,7 @@ export class WordBuildingEngine implements GameEngine {
       winnerId: null,
       filledCells: 0,
       totalCells: size * size,
+      pendingClaim: null,
     };
   }
 
@@ -100,6 +104,30 @@ export class WordBuildingEngine implements GameEngine {
     if (this.s.phase !== "playing") {
       return { ok: false, error: "Game is over" };
     }
+    if (!this.s.options.claimToScoreMode) {
+      return this.applyPlaceLegacy(move);
+    }
+    switch (move.type) {
+      case "place":
+        return this.applyPlaceClaim(move);
+      case "claimWord":
+        return this.handleClaimWord(move);
+      case "skipClaim":
+        return this.handleSkipClaim(move);
+      case "voteClaim":
+        return this.handleVoteClaim(move);
+      default:
+        return { ok: false, error: `Unknown move type: ${move.type}` };
+    }
+  }
+
+  /**
+   * Today's behavior, untouched: place a letter, silently auto-score any
+   * dictionary word it completes, always advance the turn. Kept exactly
+   * as-is (only extracted out of `applyMove`) so `claimToScoreMode: false`
+   * — the default — carries zero regression risk from this feature.
+   */
+  private applyPlaceLegacy(move: MoveContext): MoveResult {
     if (move.type !== "place") {
       return { ok: false, error: `Unknown move type: ${move.type}` };
     }
@@ -152,6 +180,263 @@ export class WordBuildingEngine implements GameEngine {
 
     this.advanceTurn();
     return { ok: true };
+  }
+
+  /**
+   * claimToScoreMode: place a letter with NO dictionary auto-scan. If the
+   * placement completes a straight run >= minWordLength through the
+   * anchor cell, a claim opens and the turn holds until it resolves;
+   * otherwise the turn advances immediately, same as a placement that
+   * doesn't complete anything today.
+   */
+  private applyPlaceClaim(move: MoveContext): MoveResult {
+    if (this.s.pendingClaim) {
+      return { ok: false, error: "Resolve the pending word claim first" };
+    }
+    const currentPid = this.s.playerOrder[this.s.turnIndex];
+    if (move.playerId !== currentPid) {
+      return { ok: false, error: "Not your turn" };
+    }
+    const data = move.data as { r?: number; c?: number; letter?: string } | undefined;
+    const r = data?.r;
+    const c = data?.c;
+    const rawLetter = data?.letter;
+    const size = this.s.options.boardSize;
+    if (
+      typeof r !== "number" || typeof c !== "number" ||
+      r < 0 || c < 0 || r >= size || c >= size
+    ) {
+      return { ok: false, error: "Cell out of range" };
+    }
+    if (this.s.board[r][c] !== "") {
+      return { ok: false, error: "Cell already filled" };
+    }
+    const letter = (rawLetter ?? "").toUpperCase().slice(0, 1);
+    if (!letter || !/^[A-Z]$/.test(letter)) {
+      return { ok: false, error: "Letter must be A–Z" };
+    }
+
+    this.s.board[r][c] = letter;
+    this.s.filledCells += 1;
+    const record: WordBuildingMoveRecord = {
+      playerId: move.playerId,
+      r, c, letter,
+      scored: [],
+      ts: Date.now(),
+    };
+    this.s.recentMoves.push(record);
+    if (this.s.recentMoves.length > RECENT_MOVES_CAP) {
+      this.s.recentMoves.splice(0, this.s.recentMoves.length - RECENT_MOVES_CAP);
+    }
+
+    if (this.hasQualifyingRun(r, c)) {
+      this.s.pendingClaim = {
+        id: `claim_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        claimantId: move.playerId,
+        anchor: { r, c },
+        status: "collecting",
+        word: null,
+        cells: null,
+        orientation: null,
+        points: 0,
+        voters: [],
+        votes: {},
+        ts: Date.now(),
+      };
+      return { ok: true };
+    }
+    return this.concludeTurn();
+  }
+
+  /** claimToScoreMode: the claimant identifies their word as a straight-line cell path through the anchor. */
+  private handleClaimWord(move: MoveContext): MoveResult {
+    const pc = this.s.pendingClaim;
+    if (!pc || pc.status !== "collecting") {
+      return { ok: false, error: "No pending claim to submit" };
+    }
+    if (move.playerId !== pc.claimantId) {
+      return { ok: false, error: "Not your claim" };
+    }
+    const data = move.data as { cells?: Array<{ r?: number; c?: number }> } | undefined;
+    const rawCells = data?.cells;
+    const minLen = this.s.options.minWordLength;
+    if (!Array.isArray(rawCells) || rawCells.length < minLen) {
+      return { ok: false, error: `Word must be at least ${minLen} letters` };
+    }
+    const size = this.s.options.boardSize;
+    const cells: Array<{ r: number; c: number }> = [];
+    for (const cell of rawCells) {
+      const r = cell?.r;
+      const c = cell?.c;
+      if (
+        typeof r !== "number" || typeof c !== "number" ||
+        r < 0 || c < 0 || r >= size || c >= size
+      ) {
+        return { ok: false, error: "Cells must be on the board" };
+      }
+      if (this.s.board[r][c] === "") {
+        return { ok: false, error: "Cells must all be filled" };
+      }
+      cells.push({ r, c });
+    }
+
+    const dr = cells[1].r - cells[0].r;
+    const dc = cells[1].c - cells[0].c;
+    const orientation = this.axisFromDelta(dr, dc);
+    if (!orientation) {
+      return { ok: false, error: "Selection must be a single straight line" };
+    }
+    for (let i = 1; i < cells.length; i++) {
+      if (cells[i].r !== cells[0].r + dr * i || cells[i].c !== cells[0].c + dc * i) {
+        return { ok: false, error: "Selection must be a single straight line" };
+      }
+    }
+    const includesAnchor = cells.some((cell) => cell.r === pc.anchor.r && cell.c === pc.anchor.c);
+    if (!includesAnchor) {
+      return { ok: false, error: "Word must include the letter you just placed" };
+    }
+    const word = cells.map((cell) => this.s.board[cell.r][cell.c]).join("");
+    if (this.s.scoredWordSet.has(word.toLowerCase())) {
+      return { ok: false, error: "That word was already scored this match" };
+    }
+
+    pc.word = word;
+    pc.cells = cells;
+    pc.orientation = orientation;
+    pc.points = cells.length;
+    pc.status = "voting";
+    pc.voters = this.s.playerOrder.filter((id) => id !== pc.claimantId);
+    pc.votes = {};
+    return { ok: true };
+  }
+
+  /** claimToScoreMode: the claimant declines to claim a word for this placement. */
+  private handleSkipClaim(move: MoveContext): MoveResult {
+    const pc = this.s.pendingClaim;
+    if (!pc || pc.status !== "collecting") {
+      return { ok: false, error: "No pending claim to skip" };
+    }
+    if (move.playerId !== pc.claimantId) {
+      return { ok: false, error: "Not your claim" };
+    }
+    this.s.pendingClaim = null;
+    return this.concludeTurn();
+  }
+
+  /**
+   * claimToScoreMode: an opponent's vote on the current pending claim.
+   * A single "accept" resolves the claim ACCEPTED immediately — the direct
+   * reading of "anyone of opponents needs to accept... otherwise it's not
+   * valid." A "reject" only resolves the claim (REJECTED) once every
+   * voter has explicitly rejected; a timeout can only push toward
+   * acceptance (see resolvePendingClaimOnTimeout), so it never
+   * contributes to this all-reject tally.
+   */
+  private handleVoteClaim(move: MoveContext): MoveResult {
+    const pc = this.s.pendingClaim;
+    if (!pc || pc.status !== "voting") {
+      return { ok: false, error: "No pending claim to vote on" };
+    }
+    if (!pc.voters.includes(move.playerId)) {
+      return { ok: false, error: "You're not eligible to vote on this claim" };
+    }
+    if (move.playerId in pc.votes) {
+      return { ok: false, error: "You already voted on this claim" };
+    }
+    const data = move.data as { decision?: string } | undefined;
+    const decision = data?.decision;
+    if (decision !== "accept" && decision !== "reject") {
+      return { ok: false, error: "Vote must be accept or reject" };
+    }
+    pc.votes[move.playerId] = decision;
+    if (decision === "accept") {
+      return this.resolveClaim(true);
+    }
+    if (pc.voters.every((id) => pc.votes[id] === "reject")) {
+      return this.resolveClaim(false);
+    }
+    return { ok: true };
+  }
+
+  /** Credits the claim's word (if accepted) and closes it, then ends the turn or the match. */
+  private resolveClaim(accepted: boolean): MoveResult {
+    const pc = this.s.pendingClaim;
+    if (pc && accepted && pc.word && pc.cells && pc.orientation) {
+      const wordKey = pc.word.toLowerCase();
+      if (!this.s.scoredWordSet.has(wordKey)) {
+        this.s.scoredWordSet.add(wordKey);
+        const scoredWord: WordBuildingScoredWord = {
+          id: pc.id,
+          word: pc.word,
+          cells: pc.cells,
+          scorerId: pc.claimantId,
+          points: pc.points,
+          ts: Date.now(),
+          orientation: pc.orientation,
+        };
+        this.s.scoredWords.push(scoredWord);
+        this.s.scores[pc.claimantId] += pc.points;
+      }
+    }
+    this.s.pendingClaim = null;
+    return this.concludeTurn();
+  }
+
+  /** Finalizes the match if the board is now full, else advances the turn. Deferring the fill check to here (rather than at placement time) lets a claim on the last cell still get its vote before the match ends. */
+  private concludeTurn(): MoveResult {
+    if (this.s.filledCells >= this.s.totalCells) {
+      this.finalizeGame();
+      return { ok: true, isOver: true, winnerId: this.s.winnerId };
+    }
+    this.advanceTurn();
+    return { ok: true };
+  }
+
+  /** True if any of the 4 axes through (r,c) has a run of filled cells long enough to possibly contain a claimable word — no dictionary check, just length. */
+  private hasQualifyingRun(r: number, c: number): boolean {
+    const minLen = this.s.options.minWordLength;
+    const axes: Array<[number, number]> = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (const [dr, dc] of axes) {
+      if (this.expandRun(r, c, dr, dc).length >= minLen) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Maps a cell-to-cell delta to one of the 4 word axes, treating a
+   * direction and its exact opposite as the same axis (e.g. left-to-right
+   * and right-to-left are both "row"). Returns null for anything that
+   * isn't a single unit step along one of the 4 axes (a bend, a diagonal
+   * knight-move, a zero-length step, etc.).
+   */
+  private axisFromDelta(dr: number, dc: number): WordBuildingScoredWord["orientation"] | null {
+    if (dr === 0 && Math.abs(dc) === 1) return "row";
+    if (Math.abs(dr) === 1 && dc === 0) return "col";
+    if (dr === dc && Math.abs(dr) === 1) return "diag-down";
+    if (dr === -dc && Math.abs(dr) === 1) return "diag-up";
+    return null;
+  }
+
+  /**
+   * Bot-only: the strongest dictionary-verified word available through
+   * (r,c), reusing the exact same expand+best-substring machinery
+   * `detectNewWords`/`dryRunPlacementScore` already use. A bot never
+   * claims a word it can't itself verify.
+   */
+  private bestDictionaryClaimForAnchor(
+    r: number,
+    c: number,
+  ): { cells: Array<{ r: number; c: number }> } | null {
+    const axes: Array<[number, number]> = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    let best: { letters: string; cells: Array<{ r: number; c: number }> } | null = null;
+    for (const [dr, dc] of axes) {
+      const run = this.expandRun(r, c, dr, dc);
+      if (run.length < this.s.options.minWordLength) continue;
+      const match = this.bestDictionaryWordCovering(run, r, c);
+      if (!match) continue;
+      if (best == null || match.letters.length > best.letters.length) best = match;
+    }
+    return best ? { cells: best.cells } : null;
   }
 
   /**
@@ -357,6 +642,15 @@ export class WordBuildingEngine implements GameEngine {
       winnerId: this.s.winnerId,
       filledCells: this.s.filledCells,
       totalCells: this.s.totalCells,
+      pendingClaim: this.s.pendingClaim
+        ? {
+            ...this.s.pendingClaim,
+            anchor: { ...this.s.pendingClaim.anchor },
+            cells: this.s.pendingClaim.cells ? this.s.pendingClaim.cells.map((cell) => ({ ...cell })) : null,
+            voters: [...this.s.pendingClaim.voters],
+            votes: { ...this.s.pendingClaim.votes },
+          }
+        : null,
     };
   }
 
@@ -371,7 +665,34 @@ export class WordBuildingEngine implements GameEngine {
 
   pendingActors(): string[] {
     if (this.s.phase !== "playing") return [];
+    if (!this.s.options.claimToScoreMode) return [this.s.playerOrder[this.s.turnIndex]];
+    const pc = this.s.pendingClaim;
+    if (pc?.status === "collecting") return [pc.claimantId];
+    if (pc?.status === "voting") return pc.voters.filter((id) => !(id in pc.votes));
     return [this.s.playerOrder[this.s.turnIndex]];
+  }
+
+  /**
+   * Where the shared per-turn timer should point right now. Legacy mode:
+   * unchanged, the current turn player. claimToScoreMode: the claimant
+   * while a claim awaits submission (a timeout forces a skip); null while
+   * votes are outstanding, since there's no single actor to force — see
+   * `resolvePendingClaimOnTimeout` for that systemic resolution instead.
+   */
+  getTimeoutActor(): string | null {
+    if (this.s.phase !== "playing") return null;
+    if (!this.s.options.claimToScoreMode) return this.s.playerOrder[this.s.turnIndex];
+    const pc = this.s.pendingClaim;
+    if (pc?.status === "collecting") return pc.claimantId;
+    if (pc?.status === "voting") return null;
+    return this.s.playerOrder[this.s.turnIndex];
+  }
+
+  /** Silence = accept (decision #3): called when the turn timer expires while a claim is awaiting votes. No-op otherwise. */
+  resolvePendingClaimOnTimeout(): void {
+    const pc = this.s.pendingClaim;
+    if (!pc || pc.status !== "voting") return;
+    this.resolveClaim(true);
   }
 
   /**
@@ -400,6 +721,30 @@ export class WordBuildingEngine implements GameEngine {
    */
   applyAutoMove(playerId: string): MoveResult {
     if (this.s.phase !== "playing") return { ok: false, error: "Game over" };
+
+    // This method serves double duty (a bot's real move, and a forced move
+    // when a human's timer expires) exactly like the placement logic below
+    // already does — so both a bot claimant/voter and a human whose claim
+    // window ran out resolve through the same dictionary-gated logic. The
+    // dictionary is the bot's judge (design decision #1); reusing it here
+    // for a timed-out human is the same "silence leans generous" spirit as
+    // decision #3, not a special case.
+    if (this.s.options.claimToScoreMode) {
+      const pc = this.s.pendingClaim;
+      if (pc?.status === "collecting" && pc.claimantId === playerId) {
+        const claim = this.bestDictionaryClaimForAnchor(pc.anchor.r, pc.anchor.c);
+        if (claim) {
+          return this.applyMove({ playerId, type: "claimWord", data: { cells: claim.cells } });
+        }
+        return this.applyMove({ playerId, type: "skipClaim" });
+      }
+      if (pc?.status === "voting" && pc.voters.includes(playerId) && !(playerId in pc.votes)) {
+        const decision: "accept" | "reject" =
+          pc.word && isDictionaryWord(pc.word, this.s.options.dictionaryMode) ? "accept" : "reject";
+        return this.applyMove({ playerId, type: "voteClaim", data: { decision } });
+      }
+    }
+
     const size = this.s.options.boardSize;
     const empties: Array<{ r: number; c: number }> = [];
     for (let r = 0; r < size; r++) {
@@ -618,6 +963,7 @@ export class WordBuildingEngine implements GameEngine {
       this.s.winnerId = this.s.playerOrder[0] ?? null;
       this.s.phase = "finished";
       this.s.turnDeadline = null;
+      this.s.pendingClaim = null;
       return;
     }
     // Re-anchor the turn index if the removed player was at or before it.
@@ -625,6 +971,27 @@ export class WordBuildingEngine implements GameEngine {
       if (this.s.turnIndex >= this.s.playerOrder.length) this.s.turnIndex = 0;
     } else if (this.s.turnIndex >= this.s.playerOrder.length) {
       this.s.turnIndex = 0;
+    }
+
+    // Claim cleanup runs AFTER the reindex above, so playerOrder/turnIndex
+    // are already correct for anything this triggers (resolveClaim's
+    // concludeTurn -> advanceTurn reads both).
+    if (this.s.options.claimToScoreMode && this.s.pendingClaim) {
+      const pc = this.s.pendingClaim;
+      if (pc.claimantId === playerId) {
+        // No one left to own this claim — drop it, no score. The turn has
+        // already moved on via the reindex above (the claimant was
+        // `wasCurrent`, so whoever now sits at `turnIndex` is next).
+        this.s.pendingClaim = null;
+      } else if (pc.status === "voting" && pc.voters.includes(playerId)) {
+        pc.voters = pc.voters.filter((id) => id !== playerId);
+        if (pc.voters.length === 0) {
+          // No one left to vote — treat like a timeout (silence = accept).
+          this.resolveClaim(true);
+        } else if (pc.voters.every((id) => pc.votes[id] === "reject")) {
+          this.resolveClaim(false);
+        }
+      }
     }
   }
 }
