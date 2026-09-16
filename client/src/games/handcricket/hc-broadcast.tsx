@@ -444,7 +444,7 @@ export function HcProInningsBreak({ state, players, selfId }: { state: HcState; 
             type="button"
             disabled={countdown.iAmReady}
             onClick={countdown.continueInnings}
-            className="w-full rounded-xl px-4 py-3 text-base font-black transition-transform active:scale-95 disabled:cursor-default bg-amber-400 text-slate-900 disabled:bg-slate-700 disabled:text-slate-200"
+            className="w-full rounded-xl px-4 py-3 text-base font-black transition-transform active:scale-95 disabled:cursor-default bg-amber-400 text-slate-900 disabled:bg-slate-700 disabled:text-white"
           >
             {countdown.iAmReady ? "Waiting…" : "Continue"}
           </button>
