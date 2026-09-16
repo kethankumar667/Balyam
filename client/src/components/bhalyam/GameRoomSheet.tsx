@@ -263,6 +263,11 @@ const WB_BOARD_SIZES: { id: "8" | "10"; label: string; blurb: string }[] = [
   { id: "10", label: "10 × 10", blurb: "Balanced — the default workbook page." },
 ];
 
+const WB_CLAIM_MODES: { id: "off" | "on"; label: string; blurb: string }[] = [
+  { id: "off", label: "Auto-score",    blurb: "The dictionary silently credits any word your letter completes." },
+  { id: "on",  label: "Claim & vote",  blurb: "Tap out your word after placing a letter — an opponent must accept it to score." },
+];
+
 // Dots & Boxes — dot-grid size. Box count = (n-1)^2 so 5→16, 7→36, 9→64.
 const DB_BOARD_SIZES: { id: "5" | "7" | "9"; label: string; blurb: string }[] = [
   { id: "5", label: "5 × 5 dots", blurb: "16 boxes — quick recess round." },
@@ -378,6 +383,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [wbDictMode, setWbDictMode] =
     useState<"common" | "tournament">("common");
   const [wbBoardSize, setWbBoardSize] = useState<8 | 10>(10);
+  // Word Building: off (default) keeps today's silent auto-dictionary
+  // scoring; on requires the placer to claim their word and an opponent
+  // to accept it before it scores.
+  const [wbClaimToScoreMode, setWbClaimToScoreMode] = useState<"off" | "on">("off");
   // Dots & Boxes: dot-grid edge length. Box count = (n-1)^2.
   const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
   const [starTheme, setStarTheme] = useState<string>("colors");
@@ -634,7 +643,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               : undefined,
           wordBuildingOptions:
             game === "wordbuilding"
-              ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
+              ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize, claimToScoreMode: wbClaimToScoreMode === "on" }
               : undefined,
           dotsBoxesOptions:
             game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
@@ -800,7 +809,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
         snlOptions: game === "snl" ? { difficulty } : undefined,
         wordBuildingOptions:
           game === "wordbuilding"
-            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize }
+            ? { dictionaryMode: wbDictMode, boardSize: wbBoardSize, claimToScoreMode: wbClaimToScoreMode === "on" }
             : undefined,
         dotsBoxesOptions:
           game === "dotsboxes" ? { boardSize: dbBoardSize } : undefined,
@@ -1445,6 +1454,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     items={WB_BOARD_SIZES}
                     value={String(wbBoardSize) as "8" | "10"}
                     onChange={(v) => setWbBoardSize(Number(v) as 8 | 10)}
+                    cols={2}
+                  />
+                </Field>
+                <Field label="Scoring">
+                  <OptionGrid
+                    items={WB_CLAIM_MODES}
+                    value={wbClaimToScoreMode}
+                    onChange={setWbClaimToScoreMode}
                     cols={2}
                   />
                 </Field>

@@ -5439,13 +5439,19 @@ export class RoomManager {
     }
     if (room.engine instanceof WordBuildingEngine) {
       const engine = room.engine;
-      const state = engine.getPublicState();
-      if (state.phase !== "playing") return;
-      if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
-        await this.afterAutoMove(room, false);
-        return;
+      if (engine.isOver()) return;
+      // getTimeoutActor(), not the turn player directly — in
+      // claimToScoreMode a claim awaiting SUBMISSION forces the claimant
+      // (skip/auto-claim), but a claim awaiting VOTES has no single actor
+      // to force: resolvePendingClaimOnTimeout() resolves it systemically
+      // instead (silence = accept). Mirrors UnoEngine's pendingChallenge
+      // dispatch below.
+      const actorId = engine.getTimeoutActor();
+      if (actorId) {
+        if (this.canApplyTimeoutMove(room, actorId)) engine.applyAutoMove(actorId);
+      } else {
+        engine.resolvePendingClaimOnTimeout();
       }
-      engine.applyAutoMove(state.turnPlayerId);
       await this.afterAutoMove(room, engine.isOver());
       return;
     }

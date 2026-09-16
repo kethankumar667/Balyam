@@ -145,6 +145,7 @@ export function HcProHeader({
   state,
   players,
   selfId,
+  roomCode,
   onHelp,
   onLeave,
   rail,
@@ -152,6 +153,7 @@ export function HcProHeader({
   state: HcState;
   players: Player[];
   selfId: string;
+  roomCode?: string;
   onHelp?: () => void;
   onLeave?: () => void;
   /** Room rail slot — the shells pass InlineRoomRail so this file stays
@@ -169,16 +171,31 @@ export function HcProHeader({
   const overs = state.oversPerInnings;
   const live = state.phase === "innings1" || state.phase === "innings2";
 
+  const [copied, setCopied] = useState(false);
+  function handleCopyRoomCode() {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  const formatLabel =
+    opts.format === "test"
+      ? "Test · 30 Overs"
+      : opts.format === "odi"
+      ? "ODI · 15 Overs"
+      : `T20 · ${overs ?? 10} Overs`;
+  const categoryLabel = opts.category === "ipl" ? "IPL" : "International";
+
   return (
     <div
-      className="shrink-0 px-4 py-2.5"
-      style={{ borderBottom: `1px solid ${PRO.line}`, background: "rgba(4,10,20,0.55)" }}
+      className="shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 flex flex-col gap-2 select-none"
+      style={{ borderBottom: `1px solid ${PRO.line}`, background: "rgba(4,10,20,0.75)" }}
     >
-      {/* Wraps rather than clipping: at 390px the wordmark, matchup, context
-          chips and three actions do not fit on one line, and `shrink-0` on the
-          action cluster meant Leave fell off the right edge entirely. */}
-      <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+      {/* Row 1: Brand Wordmark + Phase + Actions */}
+      <div className="flex items-center justify-between gap-x-3 gap-y-1.5 w-full">
+        <div className="flex min-w-0 items-center gap-2">
           <div
             className="grid h-7 w-7 shrink-0 place-items-center rounded-md"
             style={{ background: `linear-gradient(150deg, ${PRO.gold}, ${PRO.goldDeep})`, color: "#2A1D05" }}
@@ -187,69 +204,179 @@ export function HcProHeader({
           </div>
           <div className="min-w-0">
             <div
-              className="truncate text-[12px] font-black uppercase leading-none"
-              style={{ letterSpacing: "0.18em", color: PRO.ink }}
+              className="truncate text-[11px] sm:text-[13px] font-black uppercase leading-none"
+              style={{ letterSpacing: "0.14em", color: PRO.ink }}
             >
               Hand&nbsp;Cricket
             </div>
             <div
-              className="mt-1 truncate text-[9px] font-bold uppercase leading-none"
-              style={{ letterSpacing: "0.14em", color: PRO.inkLo }}
+              className="mt-1 truncate text-[8.5px] sm:text-[9.5px] font-bold uppercase leading-none"
+              style={{ letterSpacing: "0.1em", color: PRO.inkLo }}
             >
               {PHASE_LABEL[state.phase]}
             </div>
           </div>
         </div>
 
-        {/* Matchup. Was `hidden sm:flex`, so on a phone you played a whole
-            match with no persistent answer to "who am I, and who am I
-            playing?" — the score bug only ever shows the batting side. */}
-        <div className="flex items-center gap-2">
-          <TeamPlate team={a} size="sm" />
-          <span className="text-[10px] font-black" style={{ color: PRO.inkLo, letterSpacing: "0.12em" }}>
-            V
-          </span>
-          <TeamPlate team={b} size="sm" />
-        </div>
-
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
           {live && <ProLive />}
-          {/* Format and overs now survive on a phone as one merged chip
-              ("T20 · 10 ov") rather than being hidden outright — the match
-              length is the frame for every decision in a chase, and it was
-              invisible for the entire match on the platform most people
-              play on. Two chips became one so the header still fits. */}
-          {opts.mode === "galli" && <ProChip tone="gold">Galli</ProChip>}
-          <ProChip>
-            {opts.format.toUpperCase()}
-            {overs != null ? ` · ${overs} ov` : ""}
-          </ProChip>
           <HcThemeSwitcher
             current={skin}
             onChange={setSkin}
             renderOption={(opt, isActive) => (
               <span
-                className="inline-block rounded-lg px-2 py-1.5 text-[10px] font-extrabold uppercase"
+                className="inline-block rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-[9px] sm:text-[10px] font-extrabold uppercase transition-all"
                 style={{
-                  letterSpacing: "0.12em",
+                  letterSpacing: "0.08em",
                   background: isActive ? "rgba(245,196,81,0.16)" : "rgba(255,255,255,0.06)",
                   color: isActive ? PRO.gold : PRO.inkMid,
                   border: `1px solid ${isActive ? "rgba(245,196,81,0.5)" : PRO.line}`,
                 }}
               >
-                {opt.label}
+                <span className="hidden sm:inline">{opt.label}</span>
+                <span className="sm:hidden">
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                </span>
               </span>
             )}
           />
           {isFullscreenSupported() && (
-            <HeaderBtn label={isFullscreen ? "Exit FS" : "Fullscreen"} onClick={toggleFullscreen} />
+            <HeaderBtn label={isFullscreen ? "Exit" : "FS"} onClick={toggleFullscreen} />
           )}
           {onHelp && <HeaderBtn label="Help" onClick={onHelp} />}
           {onLeave && <HeaderBtn label="Leave" onClick={onLeave} danger />}
         </div>
       </div>
 
-      {rail && <div className="mt-2.5">{rail}</div>}
+      {/* Row 2: Format / Category Badges + Room Code Stamp */}
+      <div className="flex items-center justify-between gap-1.5 w-full">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <span
+            className="rounded px-2 py-0.5 text-[9.5px] sm:text-[10.5px] font-extrabold uppercase tracking-wide shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              color: PRO.ink,
+              border: `1px solid ${PRO.line}`,
+            }}
+          >
+            {formatLabel}
+          </span>
+          <span
+            className="rounded px-2 py-0.5 text-[9.5px] sm:text-[10.5px] font-extrabold uppercase tracking-wide shrink-0"
+            style={{
+              background: "rgba(245,196,81,0.12)",
+              color: PRO.gold,
+              border: "1px solid rgba(245,196,81,0.3)",
+            }}
+          >
+            {categoryLabel}
+          </span>
+          {opts.mode === "galli" && (
+            <span
+              className="rounded px-2 py-0.5 text-[9.5px] sm:text-[10.5px] font-extrabold uppercase tracking-wide shrink-0"
+              style={{
+                background: "rgba(248,113,113,0.14)",
+                color: "#FCA5A5",
+                border: "1px solid rgba(248,113,113,0.3)",
+              }}
+            >
+              Galli
+            </span>
+          )}
+        </div>
+
+        {roomCode && (
+          <button
+            type="button"
+            onClick={handleCopyRoomCode}
+            title={copied ? "Copied" : `Copy room code ${roomCode}`}
+            className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[9.5px] sm:text-[10.5px] font-black uppercase tracking-wider transition hover:brightness-125 cursor-pointer shrink-0"
+            style={{
+              background: copied ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.08)",
+              color: copied ? "#34D399" : PRO.gold,
+              border: `1px dashed ${copied ? "rgba(52,211,153,0.6)" : "rgba(245,196,81,0.4)"}`,
+            }}
+          >
+            <span className="text-[8.5px] text-stone-400 font-bold">ROOM</span>
+            <span className="font-mono">{copied ? "COPIED ✓" : roomCode}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Row 3: Broadcast Matchup Cards */}
+      <div className="flex items-center justify-between gap-2 w-full">
+        {/* Team A */}
+        <div
+          className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 min-w-0"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${PRO.line}`,
+          }}
+        >
+          <TeamPlate team={a} size="sm" />
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-xs uppercase tracking-wide truncate" style={{ color: PRO.ink }}>
+                {a.short}
+              </span>
+              {p0 === selfId && (
+                <span
+                  className="rounded px-1 py-0.2 text-[8px] font-black uppercase shrink-0"
+                  style={{ background: "rgba(245,196,81,0.25)", color: PRO.gold }}
+                >
+                  YOU
+                </span>
+              )}
+            </div>
+            <span className="text-[9.5px] font-medium truncate" style={{ color: PRO.inkLo }}>
+              {a.playerName}
+            </span>
+          </div>
+        </div>
+
+        {/* VS Badge */}
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center font-black text-[9px] shrink-0"
+          style={{
+            background: "rgba(245,196,81,0.18)",
+            color: PRO.gold,
+            border: "1px solid rgba(245,196,81,0.4)",
+          }}
+        >
+          VS
+        </div>
+
+        {/* Team B */}
+        <div
+          className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 min-w-0"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${PRO.line}`,
+          }}
+        >
+          <TeamPlate team={b} size="sm" />
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-xs uppercase tracking-wide truncate" style={{ color: PRO.ink }}>
+                {b.short}
+              </span>
+              {p1 === selfId && (
+                <span
+                  className="rounded px-1 py-0.2 text-[8px] font-black uppercase shrink-0"
+                  style={{ background: "rgba(245,196,81,0.25)", color: PRO.gold }}
+                >
+                  YOU
+                </span>
+              )}
+            </div>
+            <span className="text-[9.5px] font-medium truncate" style={{ color: PRO.inkLo }}>
+              {b.playerName}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {rail && <div className="mt-1">{rail}</div>}
     </div>
   );
 }
@@ -317,7 +444,7 @@ export function HcProInningsBreak({ state, players, selfId }: { state: HcState; 
             type="button"
             disabled={countdown.iAmReady}
             onClick={countdown.continueInnings}
-            className="w-full rounded-xl px-4 py-3 text-base font-black transition-transform active:scale-95 disabled:cursor-default bg-amber-400 text-slate-900 disabled:bg-slate-700 disabled:text-slate-200"
+            className="w-full rounded-xl px-4 py-3 text-base font-black transition-transform active:scale-95 disabled:cursor-default bg-amber-400 text-slate-900 disabled:bg-slate-700 disabled:text-white"
           >
             {countdown.iAmReady ? "Waiting…" : "Continue"}
           </button>
@@ -1306,16 +1433,16 @@ export function HcProPowerplay({
         </div>
         <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5, 6].map((b) => {
-            const restricted = restrictedBalls.includes(b);
+            const isBowled = b < currentBallInOver;
             const current = b === currentBallInOver;
             return (
               <span
                 key={b}
-                title={restricted ? `Ball ${b}: bowler capped at 1–3` : `Ball ${b}: no cap`}
+                title={`Ball ${b}`}
                 className="grid h-6 w-6 place-items-center rounded text-[10px] font-black tabular-nums"
                 style={{
-                  background: restricted ? (current ? PRO.gold : `${PRO.gold}66`) : "rgba(255,255,255,0.06)",
-                  color: restricted ? "#2A1D05" : PRO.inkLo,
+                  background: current ? PRO.gold : isBowled ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
+                  color: current ? "#2A1D05" : isBowled ? PRO.inkLo : PRO.inkMid,
                   border: current ? `2px solid ${PRO.ink}` : `1px solid ${PRO.line}`,
                 }}
               >

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Server } from "socket.io";
 import { RoomManager } from "../RoomManager.js";
+import type { LudoEngine } from "../../games/ludo/LudoEngine.js";
 import type {
   ClientToServerEvents,
   Player,
@@ -154,6 +155,15 @@ describe("RoomManager — mid-game departure", () => {
      * The reaping BEHAVIOUR under test here is unchanged — only when it fires.
      */
     const { rooms, code, bobId } = seatThree();
+    // Pin the dice to always roll a 1: standard Ludo rules require a 6 to
+    // bring a token out of the yard, so this guarantees the match can never
+    // finish on its own. Without this, real Math.random() rolls let bot
+    // autoplay occasionally win the whole match inside the 11-minute
+    // advance below (observed: MATCH COMPLETED at ~7m30s in about 1 run in
+    // 4), which starves the reap path this test exists to pin and makes
+    // the very next assertion flaky for a reason that has nothing to do
+    // with reaping.
+    (peek(rooms, code).engine as unknown as LudoEngine).setRng(() => 0);
     expect(advanceToTurnOf(rooms, code, bobId)).toBe(true);
 
     rooms.handleDisconnect("sB");

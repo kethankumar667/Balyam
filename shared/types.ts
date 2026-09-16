@@ -1271,6 +1271,15 @@ export interface WordBuildingOptions {
   minWordLength: number;
   /** See WordBuildingDictionaryMode. Defaults to "common". */
   dictionaryMode: WordBuildingDictionaryMode;
+  /**
+   * true = the placing player must explicitly claim the straight-line word
+   * their letter completed, and an opponent must accept it before it
+   * scores (the dictionary only judges for bot seats). false (default) =
+   * today's behavior, an automatic dictionary scan silently credits any
+   * word the placement completes. Off by default so existing rooms are
+   * unaffected; a host opts in per match.
+   */
+  claimToScoreMode: boolean;
 }
 
 export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
@@ -1278,6 +1287,7 @@ export const DEFAULT_WORDBUILDING_OPTIONS: WordBuildingOptions = {
   turnTimerSeconds: 30,
   minWordLength: 3,
   dictionaryMode: "common",
+  claimToScoreMode: false,
 };
 
 /** A scored word with the cells it occupies and who placed it. */
@@ -1304,6 +1314,38 @@ export interface WordBuildingScoredWord {
    *   diag-up    — bottom-left ↗ top-right
    */
   orientation: "row" | "col" | "diag-down" | "diag-up";
+}
+
+/**
+ * Open from the instant a placement completes a straight-line run of
+ * `>= minWordLength` filled cells through the just-placed cell (in
+ * claimToScoreMode), until the claim is resolved one way or the other.
+ * Fully public — unlike a hidden server verdict, opponents must see the
+ * claimed word and cells to vote on it, and there's no dictionary secret
+ * to keep from humans since the dictionary no longer judges their votes.
+ * (A bot's own not-yet-cast internal verdict is simply never written
+ * here before that bot's vote actually lands.)
+ */
+export interface WordBuildingPendingClaim {
+  /** Stable id for this claim (react-key/animation use). */
+  id: string;
+  /** Player who placed the anchor letter and must identify the word. */
+  claimantId: string;
+  /** The just-placed cell every claimed word must run through. */
+  anchor: { r: number; c: number };
+  /** "collecting" = waiting on the claimant's cell path; "voting" = opponents deciding. */
+  status: "collecting" | "voting";
+  /** Populated once the claimant submits a path (status -> "voting"). */
+  word: string | null;
+  cells: Array<{ r: number; c: number }> | null;
+  orientation: WordBuildingScoredWord["orientation"] | null;
+  /** Points that would be awarded on acceptance (= word length). */
+  points: number;
+  /** Opponent ids obligated to vote — playerOrder minus the claimant, snapshotted when voting opens. */
+  voters: string[];
+  /** Votes cast so far, keyed by voter id. */
+  votes: Record<string, "accept" | "reject">;
+  ts: number;
 }
 
 /** A single placement move recorded for history + move log. */
@@ -1341,13 +1383,32 @@ export interface WordBuildingPublicState {
   /** Cells filled count, for endgame check + UI progress. */
   filledCells: number;
   totalCells: number;
+  /** Non-null while a word claim (claimToScoreMode) is awaiting submission or votes. */
+  pendingClaim: WordBuildingPendingClaim | null;
 }
 
-export type WordBuildingMoveType = "place";
+export type WordBuildingMoveType = "place" | "claimWord" | "skipClaim" | "voteClaim";
 
 export interface WordBuildingPlaceMove {
   type: "place";
   data: { r: number; c: number; letter: string };
+}
+
+/** claimToScoreMode only: the claimant identifies their word as an ordered straight-line cell path through the anchor. */
+export interface WordBuildingClaimWordMove {
+  type: "claimWord";
+  data: { cells: Array<{ r: number; c: number }> };
+}
+
+/** claimToScoreMode only: the claimant declines to claim a word for this placement (0 points, turn still passes). */
+export interface WordBuildingSkipClaimMove {
+  type: "skipClaim";
+}
+
+/** claimToScoreMode only: an opponent's accept/reject vote on the current pending claim. */
+export interface WordBuildingVoteClaimMove {
+  type: "voteClaim";
+  data: { decision: "accept" | "reject" };
 }
 
 // ---- Dots & Boxes (Rough Notebook Edition) ----

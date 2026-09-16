@@ -96,7 +96,7 @@ const VINTAGE_BG = [
 ].join(", ");
 
 /** Country display code + ink colour */
-const COUNTRY_META: Record<HcCountry, { code: string; color: string }> = {
+export const COUNTRY_META: Record<HcCountry, { code: string; color: string }> = {
   india: { code: "IN", color: "#166534" },
   australia: { code: "AU", color: "#92400e" },
   england: { code: "ENG", color: "#991b1b" },
@@ -111,11 +111,11 @@ const COUNTRY_META: Record<HcCountry, { code: string; color: string }> = {
   zimbabwe: { code: "ZW", color: "#166534" },
 };
 
-type FlagComponent = ComponentType<
+export type FlagComponent = ComponentType<
   SVGProps<SVGSVGElement> & { title?: string }
 >;
 
-const FLAG_COMPONENTS: Partial<Record<HcCountry, FlagComponent>> = {
+export const FLAG_COMPONENTS: Partial<Record<HcCountry, FlagComponent>> = {
   india: IN as FlagComponent,
   australia: AU as FlagComponent,
   england: GB as FlagComponent,
@@ -372,111 +372,329 @@ function labelFor(
   };
 }
 
-/** RCB Golden Lion Crest matching reference */
-function RcbLionCrest({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" aria-hidden>
-      {/* Crown */}
-      <path
-        d="M16 8 L18.5 11 L22 7 L25.5 11 L28 8 L27 13 L17 13 Z"
-        fill="#ffd700"
-        stroke="#b45309"
-        strokeWidth="0.8"
-      />
-      {/* Lion head with open roar and mane */}
-      <path
-        d="M20 14 C18 16 16 19 17 22 C18 24 20 25 22 25 C21 23 21 21 23 20 C25 19 26 16 24 14 Z"
-        fill="#ffd700"
-        stroke="#b45309"
-        strokeWidth="0.8"
-      />
-      {/* Rampant torso and hind leg */}
-      <path
-        d="M22 23 C24 25 25 29 23 33 C22 35 19 37 20 38 L26 38 C26 35 28 33 28 30 C28 26 26 24 24 23 Z"
-        fill="#ffd700"
-        stroke="#b45309"
-        strokeWidth="0.8"
-      />
-      {/* Front paws clawing */}
-      <path
-        d="M24 19 L30 17 M24 21 L31 21"
-        stroke="#ffd700"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      {/* Tail curving up */}
-      <path
-        d="M20 35 C16 34 14 29 16 25 C17 23 19 24 18 26"
-        stroke="#ffd700"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <circle cx="18" cy="26" r="1.6" fill="#ffd700" />
-      {/* Golden RCB lettering */}
-      <text
-        x="22"
-        y="42"
-        textAnchor="middle"
-        fill="#ffd700"
-        fontSize="7"
-        fontWeight="900"
-        fontFamily="sans-serif"
-        letterSpacing="0.08em"
-      >
-        RCB
-      </text>
-    </svg>
-  );
+/** Comprehensive vector emblems for all 10 IPL Franchises */
+export function FranchiseEmblem({
+  id,
+  className = "",
+  size = 34,
+}: {
+  id: HcFranchise | string;
+  className?: string;
+  size?: number;
+}) {
+  const width = size;
+  const height = Math.round(size * 0.82); // 34x28 matching 3x2 country flag proportions
+
+  switch (id) {
+    case "csk":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#FACC15" stroke="#CA8A04" strokeWidth="1.2" />
+          {/* Blue bottom stripe */}
+          <path d="M0 24 L40 24 L40 32 L0 32 Z" fill="#0284C7" />
+          <rect width="40" height="32" rx="4" fill="none" stroke="#CA8A04" strokeWidth="1.2" />
+          {/* Crown */}
+          <path d="M15 5 L17.5 8 L20 4 L22.5 8 L25 5 L24 9 L16 9 Z" fill="#B45309" />
+          {/* Roaring Lion Head */}
+          <path
+            d="M13 13 C12 10 15 8 20 8 C25 8 28 10 27 13 C28 15 27 17 24 17 C23 19 20 20 17 19 C14 18 13 15 13 13 Z"
+            fill="#B45309"
+          />
+          <circle cx="18" cy="12" r="1" fill="#FFFFFF" />
+          <path d="M19 15 L23 15 L21 17 Z" fill="#0284C7" />
+          {/* Bottom text */}
+          <text x="20" y="30" textAnchor="middle" fill="#FFFFFF" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.05em">
+            CSK
+          </text>
+        </svg>
+      );
+
+    case "mi":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#1E40AF" stroke="#1D4ED8" strokeWidth="1.2" />
+          {/* Gold accent stripes */}
+          <path d="M0 0 L10 0 L5 32 L0 32 Z" fill="#F59E0B" opacity="0.4" />
+          <path d="M30 0 L40 0 L40 32 L35 32 Z" fill="#F59E0B" opacity="0.4" />
+          {/* Sudarshan Chakra / Cyclone Vortex */}
+          <g transform="translate(20, 13)">
+            <circle cx="0" cy="0" r="7" fill="#1E3A8A" stroke="#F59E0B" strokeWidth="1" />
+            <path d="M0 -7 C3 -3.5 4.5 -1 7 0 C3.5 3.5 1 4.5 0 7 C-3.5 3.5 -4.5 1 -7 0 C-3.5 -3.5 -1 -4.5 0 -7 Z" fill="#F59E0B" />
+            <circle cx="0" cy="0" r="2.8" fill="#FFFFFF" />
+            <circle cx="0" cy="0" r="1.4" fill="#1E40AF" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FBBF24" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            MI
+          </text>
+        </svg>
+      );
+
+    case "rcb":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#DC2626" stroke="#991B1B" strokeWidth="1.2" />
+          {/* Black & Gold header strip */}
+          <path d="M0 0 L40 0 L40 7 L0 7 Z" fill="#1C1917" />
+          <line x1="0" y1="7" x2="40" y2="7" stroke="#FBBF24" strokeWidth="1" />
+          {/* Royal Lion with Crown */}
+          <g transform="translate(20, 17)">
+            {/* Crown */}
+            <path d="M-5 -8 L-3 -5 L0 -9 L3 -5 L5 -8 L4 -3 L-4 -3 Z" fill="#FBBF24" />
+            {/* Rampant Lion Silhouette */}
+            <path
+              d="M-3 -2 C-4 0 -5 3 -3 5 C-2 6 0 6 2 4 C3 2 4 0 2 -2 Z"
+              fill="#FBBF24"
+            />
+            <path d="M-1 4 L2 9 L4 9 L2 5 Z" fill="#FBBF24" />
+            <path d="M1 0 L5 -1 M1 2 L6 2" stroke="#FBBF24" strokeWidth="1.2" strokeLinecap="round" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FEE2E2" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            RCB
+          </text>
+        </svg>
+      );
+
+    case "kkr":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#581C87" stroke="#3B0764" strokeWidth="1.2" />
+          {/* Knight Shield frame */}
+          <path d="M12 4 L28 4 C28 14 20 18 20 20 C20 18 12 14 12 4 Z" fill="#7E22CE" stroke="#FBBF24" strokeWidth="0.9" />
+          {/* Golden Corinthian Knight Helmet */}
+          <path d="M17 7 L23 7 L24 12 L20 14 L16 12 Z" fill="#FBBF24" />
+          <path d="M19 5 L21 5 L21 8 L19 8 Z" fill="#EF4444" />
+          <line x1="18" y1="10" x2="22" y2="10" stroke="#581C87" strokeWidth="0.8" />
+          {/* Bottom text */}
+          <text x="20" y="29" textAnchor="middle" fill="#FDE047" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            KKR
+          </text>
+        </svg>
+      );
+
+    case "srh":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#EA580C" stroke="#C2410C" strokeWidth="1.2" />
+          {/* Dark bottom bar */}
+          <path d="M0 23 L40 23 L40 32 L0 32 Z" fill="#1C1917" />
+          {/* Rising Sun Rays */}
+          <g transform="translate(20, 12)">
+            <circle cx="0" cy="0" r="4.5" fill="#FDE047" />
+            <path d="M0 -6.5 L0 -8.5 M4.5 -4.5 L6.5 -6.5 M6.5 0 L8.5 0 M4.5 4.5 L6.5 6.5 M0 6.5 L0 8.5 M-4.5 4.5 L-6.5 6.5 M-6.5 0 L-8.5 0 M-4.5 -4.5 L-6.5 -6.5" stroke="#FDE047" strokeWidth="0.9" strokeLinecap="round" />
+            {/* Eagle Wings Silhouette */}
+            <path d="M-8 2 C-4 -1 0 1 0 3 C0 1 4 -1 8 2 C4 4 0 5 0 5 C0 5 -4 4 -8 2 Z" fill="#1C1917" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FB923C" fontSize="6.2" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            SRH
+          </text>
+        </svg>
+      );
+
+    case "dc":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="1.2" />
+          {/* Red split shield */}
+          <path d="M20 0 L40 0 L40 32 L20 32 Z" fill="#DC2626" opacity="0.4" />
+          {/* Roaring Tiger Face */}
+          <g transform="translate(20, 12)">
+            <circle cx="0" cy="0" r="6" fill="#DC2626" stroke="#FEF08A" strokeWidth="0.8" />
+            <polygon points="-3.5,-5.5 -1.5,-2.5 -4.5,-1.5" fill="#FEF08A" />
+            <polygon points="3.5,-5.5 1.5,-2.5 4.5,-1.5" fill="#FEF08A" />
+            <circle cx="-1.8" cy="-1" r="0.7" fill="#FFFFFF" />
+            <circle cx="1.8" cy="-1" r="0.7" fill="#FFFFFF" />
+            <polygon points="0,0.8 -1.2,2.5 1.2,2.5" fill="#1E3A8A" />
+            <line x1="-4.5" y1="0.8" x2="-1.8" y2="0.8" stroke="#FEF08A" strokeWidth="0.7" />
+            <line x1="4.5" y1="0.8" x2="1.8" y2="0.8" stroke="#FEF08A" strokeWidth="0.7" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            DC
+          </text>
+        </svg>
+      );
+
+    case "pbks":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#B91C1C" stroke="#991B1B" strokeWidth="1.2" />
+          {/* Gold Shield */}
+          <path d="M12 4 L28 4 L28 15 C28 20 20 23 20 23 C20 23 12 20 12 15 Z" fill="#DC2626" stroke="#FBBF24" strokeWidth="1" />
+          {/* Golden Crown / Lion head */}
+          <g transform="translate(20, 11)">
+            <path d="M-4 -4 L-2 -2 L0 -5 L2 -2 L4 -4 L3 0 L-3 0 Z" fill="#FDE047" />
+            <circle cx="0" cy="3" r="2.8" fill="#FDE047" />
+            <circle cx="-1" cy="2.5" r="0.5" fill="#991B1B" />
+            <circle cx="1" cy="2.5" r="0.5" fill="#991B1B" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FEF08A" fontSize="5.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            PBKS
+          </text>
+        </svg>
+      );
+
+    case "rr":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#DB2777" stroke="#BE185D" strokeWidth="1.2" />
+          {/* Navy Blue bottom accent */}
+          <path d="M0 23 L40 23 L40 32 L0 32 Z" fill="#1E3A8A" />
+          {/* Royal Palace Crown */}
+          <g transform="translate(20, 11)">
+            <path d="M-6 -4 L-3.5 0 L0 -5.5 L3.5 0 L6 -4 L5 3.5 L-5 3.5 Z" fill="#FDE047" stroke="#CA8A04" strokeWidth="0.6" />
+            <circle cx="-3.5" cy="1.8" r="0.8" fill="#DB2777" />
+            <circle cx="0" cy="1.8" r="0.9" fill="#1E3A8A" />
+            <circle cx="3.5" cy="1.8" r="0.8" fill="#DB2777" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            RR
+          </text>
+        </svg>
+      );
+
+    case "gt":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#0F172A" stroke="#334155" strokeWidth="1.2" />
+          {/* Electric Teal / Cyan triangle apex */}
+          <path d="M20 3 L32 22 L8 22 Z" fill="#1E293B" stroke="#06B6D4" strokeWidth="1" />
+          {/* Golden Lightning bolt */}
+          <path d="M21 5 L17 13 L21 13 L19 20 L24 11 L20 11 Z" fill="#FDE047" />
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#22D3EE" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            GT
+          </text>
+        </svg>
+      );
+
+    case "lsg":
+      return (
+        <svg
+          width={width}
+          height={height}
+          viewBox="0 0 40 32"
+          className={className}
+          fill="none"
+          aria-hidden
+        >
+          {/* Badge base */}
+          <rect width="40" height="32" rx="4" fill="#0284C7" stroke="#0369A1" strokeWidth="1.2" />
+          {/* Wings & Tri-color cricket ball */}
+          <g transform="translate(20, 11)">
+            {/* Wings */}
+            <path d="M-8 -1 C-5 -4.5 -2 -3.5 0 0 C2 -3.5 5 -4.5 8 -1 C5 2.5 2 3.5 0 3.5 C-2 3.5 -5 2.5 -8 -1 Z" fill="#F59E0B" />
+            <path d="M-6 0 C-3.5 -2.5 -1 -1.5 0 1 C1 -1.5 3.5 -2.5 6 0 C3.5 1.5 1 2.5 0 2.5 C-1 2.5 -3.5 1.5 -6 0 Z" fill="#FFFFFF" />
+            {/* Center core */}
+            <circle cx="0" cy="1" r="2.2" fill="#EA580C" />
+          </g>
+          {/* Bottom text */}
+          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
+            LSG
+          </text>
+        </svg>
+      );
+
+    default:
+      return (
+        <div
+          style={{
+            width,
+            height,
+            borderRadius: 4,
+            background: "#475569",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 800,
+            fontSize: 9,
+          }}
+          className={className}
+        >
+          {String(id).slice(0, 3).toUpperCase()}
+        </div>
+      );
+  }
 }
 
-/** CSK Roaring Lion Crest matching reference */
-function CskLionCrest({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" aria-hidden>
-      {/* Roaring mane silhouette */}
-      <path
-        d="M10 26 C8 22 9 16 14 11 C19 6 26 6 32 9 C36 11 39 15 38 19 C37 21 35 22 33 21 C31 20 30 17 27 16 C24 15 21 15 18 17 C16 18 15 21 16 24 C13 23 12 25 13 27 C11 27 10 29 11 31 C8 30 7 34 10 36 C13 38 18 37 21 35 C23 34 25 31 27 31 C31 31 34 34 32 38 C28 41 21 42 15 40 C11 38 8 33 10 26 Z"
-        fill="#b45309"
-        opacity="0.88"
-      />
-      {/* Roaring open jaws */}
-      <path
-        d="M20 19 C22 18 26 18 28 20 C30 22 30 25 28 27 C26 29 23 29 21 28 L26 24 Z"
-        fill="#0284c7"
-      />
-      {/* Eye */}
-      <circle cx="23" cy="18" r="1.3" fill="#ffffff" />
-      {/* CSK text */}
-      <text
-        x="22"
-        y="30"
-        textAnchor="middle"
-        fill="#0284c7"
-        fontSize="7"
-        fontWeight="900"
-        fontFamily="sans-serif"
-        letterSpacing="0.05em"
-      >
-        CSK
-      </text>
-      <text
-        x="22"
-        y="36"
-        textAnchor="middle"
-        fill="#0369a1"
-        fontSize="4"
-        fontWeight="800"
-        fontFamily="sans-serif"
-        letterSpacing="0.08em"
-      >
-        CHENNAI
-      </text>
-    </svg>
-  );
-}
-
-function HcTeamCrest({
+export function HcTeamCrest({
   id,
   flag,
   size = 36,
@@ -505,32 +723,8 @@ function HcTeamCrest({
     );
   }
 
-  if (id === "rcb") return <RcbLionCrest size={size} />;
-  if (id === "csk") return <CskLionCrest size={size} />;
-
   if (id in HC_FRANCHISES) {
-    const f = HC_FRANCHISES[id as HcFranchise];
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.22)",
-          border: "1.5px solid rgba(255,255,255,0.45)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#ffffff",
-          fontWeight: 900,
-          fontSize: 13,
-          fontFamily: "'Kalam', system-ui, sans-serif",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.20)",
-        }}
-      >
-        {f?.short?.slice(0, 3) ?? id.toUpperCase()}
-      </div>
-    );
+    return <FranchiseEmblem id={id} size={size} />;
   }
 
   const FlagComp = COUNTRY_FLAGS[id];
@@ -558,7 +752,7 @@ function HcTeamCrest({
   return <span>🏏</span>;
 }
 
-function MatchupCard({
+export function MatchupCard({
   team,
   isSelf = false,
   style,
@@ -569,30 +763,28 @@ function MatchupCard({
 }) {
   const isSelected = Boolean(team.short);
   const cardBg = isSelected
-    ? "linear-gradient(135deg, #184D3B 0%, #103B2C 100%)"
-    : "rgba(255,255,255,0.75)";
+    ? "#FFFDF7"
+    : "rgba(255, 253, 245, 0.6)";
 
-  const crestSize =
-    style?.height && typeof style.height === "number" && style.height < 50
-      ? 28
-      : 32;
+  const crestSize = 34;
 
   return (
     <div
       style={{
         flex: 1,
-        minWidth: 0,
+        minWidth: 125,
+        maxWidth: 240,
         height: 52,
-        borderRadius: 14,
+        borderRadius: 12,
         background: cardBg,
-        border: isSelected ? "1.5px solid #246B52" : "1.5px dashed rgba(80,50,20,0.25)",
+        border: isSelected ? "1.5px solid #D7C9B1" : "1.5px dashed rgba(80,50,20,0.25)",
         boxShadow: isSelected
-          ? "0 4px 10px rgba(16,59,44,0.35), inset 0 1px 1px rgba(255,255,255,0.2)"
+          ? "0 2px 6px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"
           : "none",
         display: "flex",
         alignItems: "center",
-        padding: "6px 12px",
-        gap: 10,
+        padding: "4px 10px",
+        gap: 8,
         overflow: "hidden",
         ...style,
       }}
@@ -611,23 +803,23 @@ function MatchupCard({
       </div>
 
       <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span
-            className="font-sketch font-black text-white leading-tight tracking-wide uppercase truncate"
-            style={{ fontSize: "clamp(14px, 1.6vw, 17px)" }}
+            className="font-sketch font-black text-stone-900 leading-tight tracking-wide uppercase shrink-0"
+            style={{ fontSize: "14px" }}
           >
             {team.short ?? "Picking..."}
           </span>
           {isSelf && isSelected && (
-            <span className="bg-[#FACC15] text-[#713F12] font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-sketch shadow-xs">
+            <span className="shrink-0 bg-amber-200 text-amber-950 font-black text-[9px] px-1.5 py-0.2 rounded font-['Patrick_Hand',cursive] border border-amber-300 shadow-2xs">
               YOU
             </span>
           )}
         </div>
         <div
-          className="text-emerald-100/90 font-hand font-bold text-xs truncate leading-tight mt-0.5"
+          className="text-stone-500 font-['Patrick_Hand',cursive] font-semibold text-xs truncate leading-tight mt-0.5"
         >
-          {team.short ? `${team.short} (${team.playerName})` : team.playerName}
+          {team.playerName}
         </div>
       </div>
     </div>
@@ -946,17 +1138,17 @@ export function HcNotebookHeader({
   );
 
   const renderBadges = () => (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       <span
         style={{
-          minHeight: 28,
-          padding: "5px 12px",
-          borderRadius: 10,
+          minHeight: 24,
+          padding: "3px 8px",
+          borderRadius: 8,
           background: "linear-gradient(180deg, #FFFDF5 0%, #F8EFD8 100%)",
           border: "1px solid rgba(80,50,20,0.16)",
           boxShadow: "0 2px 7px rgba(50,20,5,0.05)",
           color: INK,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 900,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
@@ -970,14 +1162,14 @@ export function HcNotebookHeader({
       </span>
       <span
         style={{
-          minHeight: 28,
-          padding: "5px 12px",
-          borderRadius: 10,
+          minHeight: 24,
+          padding: "3px 8px",
+          borderRadius: 8,
           background: "linear-gradient(180deg, #FFFDF5 0%, #F8EFD8 100%)",
           border: "1px solid rgba(80,50,20,0.16)",
           boxShadow: "0 2px 7px rgba(50,20,5,0.05)",
           color: INK,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 900,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
@@ -1002,10 +1194,10 @@ export function HcNotebookHeader({
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: 8,
-          minHeight: 30,
-          padding: "6px 12px",
-          borderRadius: 8,
+          gap: 6,
+          minHeight: 24,
+          padding: "3px 8px",
+          borderRadius: 6,
           border: "1px dashed rgba(139,26,26,0.32)",
           background: copied ? "rgba(22,101,52,0.10)" : "rgba(255,248,231,0.92)",
           color: copied ? "#166534" : INK_RED,
@@ -1016,19 +1208,19 @@ export function HcNotebookHeader({
       >
         <span
           style={{
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: 900,
-            letterSpacing: "0.12em",
+            letterSpacing: "0.1em",
             textTransform: "uppercase",
           }}
         >
-          {copied ? "Copied" : "Room Code"}
+          {copied ? "Copied" : "Room"}
         </span>
         <span
           style={{
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: 900,
-            letterSpacing: "0.18em",
+            letterSpacing: "0.14em",
           }}
         >
           {roomCode}
@@ -1098,9 +1290,10 @@ export function HcNotebookHeader({
               <button
                 type="button"
                 onClick={onLeave}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-sketch font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-[#FFF5F5] hover:bg-[#FFEAE8] text-[#991B1B] border border-[#F87171]/40 font-sketch font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition cursor-pointer"
+                title="Leave match"
               >
-                <span>→]</span>
+                <span>🚪</span>
                 <span>Leave</span>
               </button>
             )}
@@ -1113,16 +1306,13 @@ export function HcNotebookHeader({
           </div>
 
           <div className="flex items-center justify-center gap-3 flex-1 min-w-0 max-w-3xl mx-auto">
-            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: isLiveMatch ? 46 : 56 }} />
-            <div className="flex flex-col items-center px-1 select-none">
-              <span className="font-sketch font-black text-lg text-[#1a2952] leading-none">
-                VS
-              </span>
-              <span className="text-[10px] font-hand font-bold uppercase tracking-[0.18em] text-stone-500 mt-1">
-                Live Page
-              </span>
+            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: isLiveMatch ? 46 : 52 }} />
+            <div className="flex items-center justify-center px-1 select-none shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#EFE7D2] border-2 border-[#8B1A1A]/40 flex items-center justify-center shadow-2xs">
+                <span className="font-sketch font-black text-xs text-[#8B1A1A]">VS</span>
+              </div>
             </div>
-            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: isLiveMatch ? 46 : 56 }} />
+            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: isLiveMatch ? 46 : 52 }} />
           </div>
 
           <div className="flex items-center justify-end shrink-0">
@@ -1135,45 +1325,57 @@ export function HcNotebookHeader({
         </div>
       </div>
 
-      <div className="flex lg:hidden flex-col gap-2.5 w-full">
-        <div className="flex items-center justify-between gap-3 w-full">
+      <div className="flex lg:hidden flex-col gap-1.5 w-full">
+        {/* Row 1: Back, Title, Theme Switcher, Menu */}
+        <div className="flex items-center justify-between gap-1.5 w-full">
           {renderBackButton()}
 
           <div className="flex flex-col items-center min-w-0 flex-1 px-1">
-            <span className="text-[9px] font-black tracking-[0.2em] uppercase text-[#8B1A1A] font-hand">
-              Classic Notebook Edition
+            <span className="text-[8px] font-black tracking-[0.16em] uppercase text-[#8B1A1A] font-hand leading-none">
+              Classic Notebook
             </span>
-            <span className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none truncate max-w-full">
+            <span className="font-sketch text-base font-black tracking-wide uppercase text-[#1a2952] leading-tight truncate max-w-full">
               Hand Cricket
-            </span>
-            <span className="text-[10px] font-hand font-bold text-stone-500 mt-1 text-center leading-tight max-w-full">
-              Sharp paper, old-school thrill, fast rematch flow.
             </span>
           </div>
 
-          {renderMenu(mobileMenuRef)}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Theme switcher on mobile */}
+            <HcThemeSwitcher
+              current={skin}
+              onChange={setSkin}
+              renderOption={(opt, isActive) => (
+                <span
+                  className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-tight transition-all ${
+                    isActive
+                      ? "bg-[#8B1A1A] text-white shadow-2xs border border-red-900"
+                      : "bg-[#FFFDF5] text-stone-700 hover:bg-stone-100 border border-stone-300"
+                  }`}
+                  style={{ fontFamily: "'Kalam', cursive" }}
+                >
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                </span>
+              )}
+            />
+            {renderMenu(mobileMenuRef)}
+          </div>
         </div>
 
-        <div className="flex items-center justify-center w-full">
-          {renderBroadcastButton()}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+        {/* Row 2: Badges + Room code (compact) */}
+        <div className="flex items-center justify-between gap-1.5 w-full">
           {renderBadges()}
           {renderRoomCodeStamp()}
         </div>
 
-        <div className="flex items-center justify-between gap-2.5 w-full">
-          <MatchupCard team={t0} isSelf={p0 === selfId} />
-          <div className="flex flex-col items-center px-1 select-none">
-            <span className="font-sketch font-black text-base text-[#1a2952] leading-none">
-              VS
-            </span>
-            <span className="text-[9px] font-hand font-bold uppercase tracking-[0.16em] text-stone-500 mt-1">
-              Live
-            </span>
+        {/* Row 3: Compact Matchup Cards */}
+        <div className="flex items-center justify-between gap-1.5 w-full">
+          <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: 40, minWidth: 90, padding: "2px 8px" }} />
+          <div className="flex items-center justify-center px-0.5 select-none shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[#EFE7D2] border border-[#8B1A1A]/40 flex items-center justify-center shadow-2xs">
+              <span className="font-sketch font-black text-[10px] text-[#8B1A1A]">VS</span>
+            </div>
           </div>
-          <MatchupCard team={t1} isSelf={p1 === selfId} />
+          <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: 40, minWidth: 90, padding: "2px 8px" }} />
         </div>
       </div>
     </div>
@@ -2477,37 +2679,18 @@ export function HcCountryPickerNotebook({
           layer bleeds through the side margins.
       ══════════════════════════════════════════════════════ */}
       <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "20px 0 16px",
-          zIndex: 10,
-        }}
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden flex flex-col items-center pt-2 sm:pt-3 pb-6 z-10"
       >
-        <PaperPanel
-          tone="sheet"
-          strong
-          pad="none"
-          className="w-full max-w-[920px] m-auto flex flex-col px-[18px] pt-[18px] pb-3.5"
-          style={{ marginTop: 42, marginBottom: 6 }}
+        <div
+          className="w-full max-w-[800px] mx-auto flex flex-col px-3 pt-1 pb-2 mb-1"
         >
-          <CornerTick corner="tl" />
-          <CornerTick corner="tr" />
-          <CornerTick corner="bl" />
-          <CornerTick corner="br" />
-
-          <div className="mb-2.5">
-            <HcSketchHeading size="clamp(15px,2vw,22px)">
+          <div className="mb-2">
+            <HcSketchHeading size="clamp(15px,1.8vw,20px)">
               Pick Your Nation
             </HcSketchHeading>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {COUNTRY_ORDER.map((id, idx) => {
               const profile = HC_COUNTRIES[id];
               const meta = COUNTRY_META[id];
@@ -2536,8 +2719,8 @@ export function HcCountryPickerNotebook({
                     duration: 0.32,
                     ease: [0.16, 1, 0.3, 1],
                   }}
-                  whileHover={hasRoster ? { y: -5, scale: 1.04 } : {}}
-                  whileTap={hasRoster ? { scale: 0.96 } : {}}
+                  whileHover={hasRoster ? { y: -3, scale: 1.03 } : {}}
+                  whileTap={hasRoster ? { scale: 0.97 } : {}}
                   style={{ transformOrigin: "center bottom" }}
                 >
                   <button
@@ -2545,12 +2728,12 @@ export function HcCountryPickerNotebook({
                     disabled={!hasRoster}
                     aria-pressed={isSelected}
                     aria-label={profile.name}
-                    className="relative w-full min-h-[162px] rounded-none border bg-[#fffdf5]"
+                    className="relative w-full min-h-[108px] rounded-none border bg-[#fffdf5]"
                     style={{
                       borderColor: "rgba(70,60,40,0.75)",
                       boxShadow: isSelected
                         ? "0 0 0 2px rgba(30,58,138,0.20), 0 3px 8px rgba(0,0,0,0.20)"
-                        : "0 2px 7px rgba(0,0,0,0.16)",
+                        : "0 2px 5px rgba(0,0,0,0.14)",
                       opacity: hasRoster ? 1 : 0.48,
                       cursor: hasRoster ? "pointer" : "not-allowed",
                     }}
@@ -2560,19 +2743,19 @@ export function HcCountryPickerNotebook({
                         className="font-notebook"
                         style={{
                           position: "absolute",
-                          top: -10,
+                          top: -8,
                           left: "50%",
                           transform: "translateX(-50%)",
                           background: "#2563eb",
                           color: "#fff",
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: 900,
                           letterSpacing: "0.03em",
-                          padding: "2px 7px",
+                          padding: "1px 6px",
                           borderRadius: 2,
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.22)",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.20)",
                           textTransform: "uppercase",
-                          maxWidth: "82%",
+                          maxWidth: "85%",
                           overflow: "hidden",
                           whiteSpace: "nowrap",
                           textOverflow: "ellipsis",
@@ -2586,15 +2769,15 @@ export function HcCountryPickerNotebook({
                         className="font-notebook"
                         style={{
                           position: "absolute",
-                          top: 8,
-                          right: 8,
+                          top: 5,
+                          right: 5,
                           background: "rgba(22,101,52,0.12)",
                           border: "1px solid rgba(22,101,52,0.45)",
                           color: "#166534",
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: 800,
-                          padding: "1px 5px",
-                          borderRadius: 10,
+                          padding: "1px 4px",
+                          borderRadius: 6,
                           letterSpacing: "0.03em",
                         }}
                       >
@@ -2602,15 +2785,15 @@ export function HcCountryPickerNotebook({
                       </span>
                     )}
 
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-0.5 px-2 py-2 text-center">
                       {FlagSvg ? (
                         <FlagSvg
                           title={profile.name}
-                          className="shrink-0 rounded-[3px] shadow-[0_1px_4px_rgba(0,0,0,0.28)]"
-                          style={{ width: 48, height: "auto", marginBottom: 2 }}
+                          className="shrink-0 rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.24)]"
+                          style={{ width: 34, height: "auto", marginBottom: 1 }}
                         />
                       ) : (
-                        <span className="text-[36px] leading-tight">
+                        <span className="text-[24px] leading-tight">
                           {profile.flag}
                         </span>
                       )}
@@ -2619,11 +2802,11 @@ export function HcCountryPickerNotebook({
                         className="font-hand"
                         style={{
                           color: meta.color,
-                          fontSize: 38,
+                          fontSize: 26,
                           lineHeight: 1,
                           fontWeight: 900,
-                          letterSpacing: "-0.03em",
-                          marginTop: 2,
+                          letterSpacing: "-0.02em",
+                          marginTop: 1,
                         }}
                       >
                         {meta.code}
@@ -2632,13 +2815,13 @@ export function HcCountryPickerNotebook({
                       <span
                         aria-hidden
                         style={{
-                          width: 48,
-                          height: 2,
+                          width: 32,
+                          height: 1.5,
                           background: meta.color,
                           opacity: 0.8,
                           borderRadius: 99,
-                          marginTop: -1,
-                          marginBottom: 2,
+                          marginTop: 0,
+                          marginBottom: 1,
                         }}
                       />
 
@@ -2646,9 +2829,9 @@ export function HcCountryPickerNotebook({
                         className="font-notebook"
                         style={{
                           color: INK,
-                          fontSize: 10,
+                          fontSize: 10.5,
                           fontWeight: 700,
-                          lineHeight: 1.2,
+                          lineHeight: 1.15,
                         }}
                       >
                         {profile.name}
@@ -2657,7 +2840,7 @@ export function HcCountryPickerNotebook({
                       {!hasRoster && (
                         <span
                           style={{
-                            fontSize: 9,
+                            fontSize: 8.5,
                             color: "#b45309",
                             fontFamily: "'Kalam', cursive",
                             fontWeight: 700,
@@ -2687,7 +2870,7 @@ export function HcCountryPickerNotebook({
             </span>
             .
           </div>
-        </PaperPanel>
+        </div>
 
         <p
           className="font-hand text-center px-5"
@@ -2980,38 +3163,6 @@ export function HcFranchisePickerNotebook({
             opacity: 0.95,
           }}
         />
-
-        {/* Star shower for champions cup */}
-        <img
-          src="/illustrations/Handcricket/stars.png"
-          alt=""
-          style={{
-            position: "absolute",
-            left: "48%",
-            bottom: "22%",
-            width: 220,
-            maxWidth: 300,
-            objectFit: "contain",
-            opacity: 0.95,
-            transform: "translateX(-40%) rotate(-8deg)",
-            filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.26))",
-          }}
-        />
-        <img
-          src="/illustrations/Handcricket/stars.png"
-          alt=""
-          style={{
-            position: "absolute",
-            left: "56%",
-            bottom: "12%",
-            width: 160,
-            maxWidth: 240,
-            objectFit: "contain",
-            opacity: 0.95,
-            transform: "translateX(-60%) rotate(14deg)",
-            filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.26))",
-          }}
-        />
       </div>
 
       {/* ══════════════════════════════════════════════════════
@@ -3020,42 +3171,20 @@ export function HcFranchisePickerNotebook({
           z:10 puts it above the illustrations.
       ══════════════════════════════════════════════════════ */}
       <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "20px 0 16px",
-          zIndex: 10,
-        }}
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden flex flex-col items-center pt-2 sm:pt-3 pb-6 z-10"
       >
-        <PaperPanel
-          tone="sheet"
-          strong
-          pad="none"
-          className="w-full max-w-[920px] m-auto flex flex-col px-[18px] pt-[18px] pb-3.5"
-          style={{
-            marginTop: 42,
-            marginBottom: 6,
-          }}
+        <div
+          className="w-full max-w-[800px] mx-auto flex flex-col px-3 pt-1 pb-2 mb-1"
         >
-          <CornerTick corner="tl" />
-          <CornerTick corner="tr" />
-          <CornerTick corner="bl" />
-          <CornerTick corner="br" />
-
           {/* Heading with radiating arrows */}
-          <div className="mb-2.5">
-            <HcSketchHeading size="clamp(15px,2vw,22px)">
+          <div className="mb-2">
+            <HcSketchHeading size="clamp(15px,1.8vw,20px)">
               Pick Your IPL Franchise
             </HcSketchHeading>
           </div>
 
-          {/* 5 × 2 franchise grid — stagger-in + hover lift */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {/* Franchise grid — 4 per row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {franchises.map((id, idx) => {
               const f = HC_FRANCHISES[id];
               const isOpp = oppPick === id;
@@ -3071,20 +3200,20 @@ export function HcFranchisePickerNotebook({
                     duration: 0.32,
                     ease: [0.16, 1, 0.3, 1],
                   }}
-                  whileHover={{ y: -5, scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ y: -3, scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   style={{ transformOrigin: "center bottom" }}
                 >
                   <button
                     onClick={() => pick(id)}
                     aria-pressed={isSelected}
                     aria-label={f.name}
-                    className="relative w-full min-h-[162px] rounded-none border bg-[#fffdf5]"
+                    className="relative w-full min-h-[108px] rounded-none border bg-[#fffdf5]"
                     style={{
                       borderColor: "rgba(70,60,40,0.75)",
                       boxShadow: isSelected
                         ? "0 0 0 2px rgba(30,58,138,0.20), 0 3px 8px rgba(0,0,0,0.20)"
-                        : "0 2px 7px rgba(0,0,0,0.16)",
+                        : "0 2px 5px rgba(0,0,0,0.14)",
                     }}
                   >
                     {isOpp && (
@@ -3092,19 +3221,19 @@ export function HcFranchisePickerNotebook({
                         className="font-notebook"
                         style={{
                           position: "absolute",
-                          top: -10,
+                          top: -8,
                           left: "50%",
                           transform: "translateX(-50%)",
                           background: "#2563eb",
                           color: "#fff",
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: 900,
                           letterSpacing: "0.03em",
-                          padding: "2px 7px",
+                          padding: "1px 6px",
                           borderRadius: 2,
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.22)",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.20)",
                           textTransform: "uppercase",
-                          maxWidth: "82%",
+                          maxWidth: "85%",
                           overflow: "hidden",
                           whiteSpace: "nowrap",
                           textOverflow: "ellipsis",
@@ -3119,15 +3248,15 @@ export function HcFranchisePickerNotebook({
                         className="font-notebook"
                         style={{
                           position: "absolute",
-                          top: 8,
-                          right: 8,
+                          top: 5,
+                          right: 5,
                           background: "rgba(22,101,52,0.12)",
                           border: "1px solid rgba(22,101,52,0.45)",
                           color: "#166534",
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: 800,
-                          padding: "1px 5px",
-                          borderRadius: 10,
+                          padding: "1px 4px",
+                          borderRadius: 6,
                           letterSpacing: "0.03em",
                         }}
                       >
@@ -3135,29 +3264,22 @@ export function HcFranchisePickerNotebook({
                       </span>
                     )}
 
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-2 py-4 text-center">
-                      <div
-                        aria-hidden
-                        className="rounded-full"
-                        style={{
-                          width: 48,
-                          height: 48,
-                          background: f.color,
-                          boxShadow:
-                            "inset 0 1px 4px rgba(255,255,255,0.32), 0 2px 6px rgba(0,0,0,0.20)",
-                          border: "1.3px solid rgba(255,255,255,0.22)",
-                        }}
+                    <div className="flex h-full flex-col items-center justify-center gap-0.5 px-2 py-2 text-center">
+                      <FranchiseEmblem
+                        id={id}
+                        size={34}
+                        className="shrink-0 rounded-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.24)] mb-0.5"
                       />
 
                       <span
                         className="font-hand"
                         style={{
                           color: f.color,
-                          fontSize: 46,
+                          fontSize: 26,
                           lineHeight: 1,
                           fontWeight: 900,
-                          letterSpacing: "-0.03em",
-                          marginTop: 3,
+                          letterSpacing: "-0.02em",
+                          marginTop: 1,
                         }}
                       >
                         {f.short}
@@ -3166,13 +3288,13 @@ export function HcFranchisePickerNotebook({
                       <span
                         aria-hidden
                         style={{
-                          width: 52,
-                          height: 2,
+                          width: 32,
+                          height: 1.5,
                           background: f.color,
                           opacity: 0.8,
                           borderRadius: 99,
-                          marginTop: -1,
-                          marginBottom: 2,
+                          marginTop: 0,
+                          marginBottom: 1,
                         }}
                       />
 
@@ -3180,9 +3302,9 @@ export function HcFranchisePickerNotebook({
                         className="font-notebook"
                         style={{
                           color: INK,
-                          fontSize: 10,
+                          fontSize: 10.5,
                           fontWeight: 700,
-                          lineHeight: 1.2,
+                          lineHeight: 1.15,
                         }}
                       >
                         {fullNames[id]}
@@ -3211,7 +3333,7 @@ export function HcFranchisePickerNotebook({
           </div>
 
           {/* Removed inline bottom props strip to keep the board clean. */}
-        </PaperPanel>
+        </div>
       </div>
     </div>
   );

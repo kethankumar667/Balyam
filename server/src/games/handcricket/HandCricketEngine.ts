@@ -2,6 +2,8 @@ import type {
   HcBall,
   HcBatterStats,
   HcBowlerStats,
+  HcCountry,
+  HcFranchise,
   HcGameOptions,
   HcInnings,
   HcInningsEndReason,
@@ -212,6 +214,12 @@ export class HandCricketEngine implements GameEngine {
       squadPlayerIds: null,
       captainId: null,
     };
+    // If opponent was already holding this team (e.g. bot auto-picked first),
+    // clear opponent selection so the bot re-selects an unpicked team.
+    const otherId = this.state.playerOrder.find((id) => id !== move.playerId);
+    if (otherId && this.state.teamSelections[otherId]?.teamId === teamId) {
+      this.state.teamSelections[otherId] = null;
+    }
     return { ok: true };
   }
 
@@ -1043,23 +1051,67 @@ export class HandCricketEngine implements GameEngine {
     return this.applyMove({ playerId, type: "tossCall", data: { call } });
   }
 
+  private pickRandomAvailableTeam(excludedTeams: Iterable<HcTeamId>): HcTeamId {
+    const excluded = new Set(excludedTeams);
+    if (this.state.options.category === "ipl") {
+      const iplTeams: HcFranchise[] = [
+        "csk",
+        "mi",
+        "rcb",
+        "kkr",
+        "srh",
+        "dc",
+        "pbks",
+        "rr",
+        "gt",
+        "lsg",
+      ];
+      const available = iplTeams.filter((t) => !excluded.has(t));
+      return available.length > 0
+        ? available[Math.floor(Math.random() * available.length)]!
+        : (iplTeams.find((t) => !excluded.has(t)) ?? "mi");
+    } else {
+      const countryTeams: HcCountry[] = [
+        "australia",
+        "england",
+        "southafrica",
+        "newzealand",
+        "pakistan",
+        "westindies",
+        "srilanka",
+        "afghanistan",
+        "bangladesh",
+        "ireland",
+        "zimbabwe",
+        "india",
+      ];
+      const available = countryTeams.filter((t) => !excluded.has(t));
+      return available.length > 0
+        ? available[Math.floor(Math.random() * available.length)]!
+        : (countryTeams.find((t) => !excluded.has(t)) ?? "australia");
+    }
+  }
+
   private botTeamSelect(playerId: string): MoveResult {
+    const otherId = this.state.playerOrder.find((id) => id !== playerId);
+    const otherTeam = otherId ? this.state.teamSelections[otherId]?.teamId : null;
+    const excluded = otherTeam ? [otherTeam] : [];
+
     const sel = this.state.teamSelections[playerId];
-    if (!sel) {
-      // Pick a default team based on category. Galli mode treats any team
-      // as fine — we use India here too, the squad pool is shared.
-      const defaultTeam: HcTeamId =
-        this.state.options.category === "ipl" ? "csk" : "india";
+    if (!sel || !sel.teamId || (otherTeam && sel.teamId === otherTeam)) {
+      const chosenTeam = this.pickRandomAvailableTeam(excluded);
       const r = this.applyMove({
         playerId,
         type: "selectTeam",
-        data: { teamId: defaultTeam },
+        data: { teamId: chosenTeam },
       });
       if (!r.ok) return r;
     }
     const final = this.state.teamSelections[playerId];
     if (!final?.teamId) return { ok: false, error: "Team picker failed" };
-    if (final.squadPlayerIds) return { ok: false, error: "Squad already confirmed" };
+    if (final.squadPlayerIds && (!otherTeam || final.teamId !== otherTeam)) {
+      return { ok: false, error: "Squad already confirmed" };
+    }
     const squad = this.pickDefaultSquad(final.teamId);
     // Pick captain. Prefer roster-tagged captain (isCaptain).
     // Fallbacks: first all-rounder, then first batter, then first in squad.

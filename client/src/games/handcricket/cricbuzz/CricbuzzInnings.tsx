@@ -131,27 +131,18 @@ export function CricbuzzPowerplayBanner({
             Over Balls:
           </span>
           {[1, 2, 3, 4, 5, 6].map((b) => {
-            const isCapped = restrictedBalls.includes(b);
             const isCurrent = b === currentBallInOver;
             const isDelivered = b < currentBallInOver;
 
             return (
               <div
                 key={b}
-                title={
-                  isCapped
-                    ? `Ball ${b}: Bowler capped at 1–3`
-                    : `Ball ${b}: Uncapped (1–6)`
-                }
+                title={`Ball ${b}`}
                 className={`flex h-6 w-6 items-center justify-center rounded text-[11px] font-black tabular-nums transition-all ${
                   isCurrent
-                    ? isCapped
-                      ? "border-2 border-[#D97706] bg-[#F59E0B] text-white shadow-sm ring-2 ring-[#F59E0B]/50 scale-105"
-                      : "border-2 border-[#009270] bg-[#009270] text-white shadow-sm ring-2 ring-[#009270]/50 scale-105"
-                    : isCapped
-                    ? "border border-[#F59E0B] bg-[#FDE68A] text-[#92400E] dark:bg-[#78350F]/70 dark:text-[#FDE68A]"
+                    ? "border-2 border-[#D97706] bg-[#F59E0B] text-white shadow-sm ring-2 ring-[#F59E0B]/50 scale-105"
                     : "border border-[#D1D5DB] bg-white text-[#4B5563] dark:border-[#374151] dark:bg-[#1F2937] dark:text-[#9CA3AF]"
-                } ${isDelivered ? "opacity-45" : ""}`}
+                } ${isDelivered ? "opacity-45 bg-[#E5E7EB] dark:bg-[#374151]" : ""}`}
               >
                 {b}
               </div>
