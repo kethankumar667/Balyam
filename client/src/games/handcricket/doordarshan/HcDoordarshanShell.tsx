@@ -16,6 +16,7 @@ import { Hc3DCelebrationLayer } from "../animations3d/Hc3DCelebrationLayer";
 import { DoordarshanBumper, DoordarshanGlitchWipe, usePhaseGlitch } from "./DoordarshanTransientFX";
 import FloatingReactionsLayer from "../../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../../components/reactions/useSeatReactions";
+import { HcMatchLayout } from "../HcMatchLayout";
 
 /**
  * Hand Cricket — "Doordarshan Rerun" shell. Same skeleton as
@@ -49,9 +50,6 @@ export default function HcDoordarshanShell({
     if (forceTeamPicker && next && next !== prev) setForceTeamPicker(false);
     prevTeamIdRef.current = next;
   }, [mySelection?.teamId, forceTeamPicker]);
-
-  const maxWidth = compact ? 560 : state.phase === "teamSelect" ? 1320 : 1500;
-  const isLive = !compact && (state.phase === "innings1" || state.phase === "innings2");
 
   function content(): ReactNode {
     if (isTeamSelect) {
@@ -89,12 +87,10 @@ export default function HcDoordarshanShell({
         }
       />
 
-      <div className={`relative min-h-0 flex-1 overflow-x-hidden px-3 py-4 sm:px-5 ${isLive ? "overflow-hidden" : "overflow-y-auto"}`}>
-        <div className={`mx-auto w-full ${isLive ? "h-full" : ""}`} style={{ maxWidth }}>
-          {content()}
-        </div>
+      <HcMatchLayout state={state} compact={compact}>
+        {content()}
         {glitching && <DoordarshanGlitchWipe />}
-      </div>
+      </HcMatchLayout>
 
       <DoordarshanCaptionTicker active={celebration} />
       <DoordarshanInningsBreak state={state} players={players} selfId={sid} />

@@ -19,6 +19,8 @@ import {
 import { useAudio } from "../../hooks/useAudio";
 import Modal from "../../components/Modal";
 import Chat from "../../components/Chat";
+import VoicePanel from "../../components/VoicePanel";
+import { useVoiceSession } from "../../lib/voice-session";
 import {
   BookOpen,
   Zap,
@@ -29,8 +31,9 @@ import {
   Target,
   Timer,
   Flag,
-  LogOut,
   ArrowLeft,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { getPlayerInitials, SpiralBinderRings } from "../dotsboxes/dotsboxes-theme";
 
@@ -74,18 +77,13 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
 
   const [showChat, setShowChat] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
+  const voice = useVoiceSession(selfId);
 
   const isFinished = state.phase === "finished";
   const turnPlayerName = m.nameOf(state.turnPlayerId);
   const turnPlayerInk = m.inkOf[state.turnPlayerId];
   const winner = state.winnerId ? { pid: state.winnerId, name: m.nameOf(state.winnerId) } : null;
-
-  // Ranked players for scorecard & turn sequence
-  const rankedPlayers = useMemo(() => {
-    return state.playerOrder
-      .map((pid) => ({ pid, score: state.scores[pid] ?? 0, name: m.nameOf(pid) }))
-      .sort((a, b) => b.score - a.score);
-  }, [state.playerOrder, state.scores, m.nameOf]);
 
   return (
     <div
@@ -432,7 +430,8 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
               onCancel={() => m.setSelected(null)}
               isNeon={m.isNeon}
               selectedCell={m.selected}
-              disabled={!m.canPlay || !m.selected}
+              myTurn={m.myTurn}
+              disabled={!m.canPlay}
               alwaysOpen
             />
 
@@ -525,73 +524,63 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
               </button>
             )}
 
-            {/* Leave Game Button */}
+            {/* Voice Chat Button */}
             <button
               type="button"
-              onClick={onLeave}
-              className={`flex flex-col items-center justify-center w-14 h-13 rounded-2xl border active:scale-95 transition-all cursor-pointer shadow-sm ${
+              onClick={() => setShowVoice(true)}
+              className={`relative flex flex-col items-center justify-center w-14 h-13 rounded-2xl border active:scale-95 transition-all cursor-pointer shadow-sm ${
                 m.isNeon
-                  ? "bg-rose-950/40 border-rose-900/50 text-rose-300 hover:text-rose-100"
-                  : "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100"
+                  ? voice.status === "live"
+                    ? "bg-emerald-950/60 border-emerald-500/60 text-emerald-300 hover:text-emerald-100"
+                    : "bg-slate-900/90 border-slate-800 text-slate-300 hover:text-white"
+                  : voice.status === "live"
+                    ? "bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100"
+                    : "bg-white border-stone-300 text-stone-700 hover:text-stone-950"
               }`}
-              title="Leave Game"
+              aria-label="Voice Chat"
+              title="Voice Chat"
             >
-              <LogOut className="w-4 h-4 mb-0.5 text-rose-600" />
-              <span className="text-[10px] font-semibold">Leave</span>
+              {voice.status === "live" ? (
+                <Mic className="w-4 h-4 mb-0.5 text-emerald-500 animate-pulse" />
+              ) : (
+                <MicOff className="w-4 h-4 mb-0.5 opacity-60" />
+              )}
+              <span className="text-[10px] font-semibold">Voice</span>
+              {voice.status === "live" && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              )}
             </button>
-          </div>
-
-          {/* ── 7. Turn Order Sequence Footer ── */}
-          <div
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-2xl border text-xs overflow-x-auto no-scrollbar ${
-              m.isNeon
-                ? "bg-slate-900/60 border-slate-800/80 text-slate-400"
-                : "bg-white/80 border-stone-200 text-stone-500"
-            }`}
-          >
-            <span className="font-semibold whitespace-nowrap">
-              {isFinished ? "Standings >" : "Turn Order >"}
-            </span>
-            <div className="flex items-center gap-1.5">
-              {(isFinished ? rankedPlayers.map((p) => p.pid) : state.playerOrder).map((pid, idx, arr) => {
-                const ink = m.inkOf[pid];
-                const isTurn = !isFinished && state.turnPlayerId === pid;
-                const isWinner = isFinished && state.winnerId === pid;
-                const avatar = m.avatarOf(pid);
-                const name = m.nameOf(pid);
-
-                return (
-                  <React.Fragment key={`seq-${pid}`}>
-                    <div
-                      className={`relative w-6 h-6 rounded-full p-0.5 flex items-center justify-center transition-all ${
-                        isWinner
-                          ? "ring-2 ring-amber-400 scale-110 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
-                          : isTurn
-                          ? "ring-2 ring-blue-400 scale-110 shadow-[0_0_8px_rgba(59,130,246,0.6)]"
-                          : "opacity-80"
-                      }`}
-                      style={{ backgroundColor: getInkDisplayColor(ink, m.isNeon) }}
-                    >
-                      <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 flex items-center justify-center">
-                        {avatar ? (
-                          <SeatAvatar avatar={avatar} name={name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="font-bold text-[9px] text-white">
-                            {getPlayerInitials(name)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {idx < arr.length - 1 && (
-                      <span className="text-stone-400 dark:text-slate-600 text-xs">&gt;</span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
           </div>
         </footer>
       </div>
+
+      {/* ── 7. Voice Chat Modal (Bottom Sheet) ── */}
+      {showVoice && (
+        <Modal
+          open={showVoice}
+          onClose={() => setShowVoice(false)}
+          ariaLabel="Voice Chat"
+          mobileSheet
+          panelClassName={`w-full max-w-lg rounded-t-3xl shadow-2xl overflow-hidden p-4 ${
+            m.isNeon ? "bg-[#0B0E28] border-2 border-slate-700 text-slate-100" : "bg-[#FCF8EE] border-2 border-[#D7C9B1] text-stone-900"
+          }`}
+        >
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-200 dark:border-slate-800">
+            <h3 className="text-base font-bold text-stone-900 dark:text-slate-200 flex items-center gap-2">
+              <Mic className="w-4 h-4 text-emerald-500" />
+              <span>Voice Lounge</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowVoice(false)}
+              className="text-stone-500 hover:text-stone-900 dark:text-slate-400 dark:hover:text-white text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+          <VoicePanel players={props.players} selfId={selfId} restoreOrientation="portrait" />
+        </Modal>
+      )}
 
       {/* ── 8. Chat Modal (Bottom Sheet) ── */}
       {showChat && (

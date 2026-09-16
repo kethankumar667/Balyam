@@ -3317,10 +3317,7 @@ export function PickRow({
               )}
               style={{ width: side, height: side * 1.2 }}
             >
-              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 28 : 21 }}>
-                {HAND_GESTURES[n]?.emoji ?? n}
-              </span>
-              <span className="mt-1 font-sketch font-black text-base sm:text-lg">
+              <span className="leading-none font-sketch font-black transition-transform group-hover:scale-110" style={{ fontSize: big ? 34 : 29, lineHeight: 1 }}>
                 {n}
               </span>
               {!isAllowed && (

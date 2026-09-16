@@ -18,6 +18,7 @@ import {
 } from "./hc-broadcast";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { HcMatchLayout } from "./HcMatchLayout";
 
 /**
  * Hand Cricket — broadcast shell, shared by desktop and mobile.
@@ -60,14 +61,6 @@ export default function HcBroadcastShell({
     if (forceTeamPicker && next && next !== prev) setForceTeamPicker(false);
     prevTeamIdRef.current = next;
   }, [mySelection?.teamId, forceTeamPicker]);
-
-  // Wide enough for the innings screen's action column + rail to sit side by
-  // side on a laptop, and capped so a 2560px monitor doesn't stretch the score
-  // bug into a letterbox. Team selection gets more room for its card grid.
-  const maxWidth = compact ? 560 : state.phase === "teamSelect" ? 1320 : 1500;
-  // Only the desktop innings screen takes the fill-the-height treatment; on a
-  // phone the column is taller than the viewport and must scroll.
-  const isLive = !compact && (state.phase === "innings1" || state.phase === "innings2");
 
   function content(): ReactNode {
     if (isTeamSelect) {
@@ -140,15 +133,9 @@ export default function HcBroadcastShell({
        * content-sized and scrolls the whole area normally — forcing those to
        * full height would stretch a small toss card across the viewport.
        */}
-      <div
-        className={`min-h-0 flex-1 overflow-x-hidden px-3 py-4 sm:px-5 ${
-          isLive ? "overflow-hidden" : "overflow-y-auto"
-        }`}
-      >
-        <div className={`mx-auto w-full ${isLive ? "h-full" : ""}`} style={{ maxWidth }}>
-          {content()}
-        </div>
-      </div>
+      <HcMatchLayout state={state} compact={compact}>
+        {content()}
+      </HcMatchLayout>
 
       <HcProInningsBreak state={state} players={players} selfId={sid} />
       <HcCelebrationLayer state={state} players={players} selfId={sid} />

@@ -19,6 +19,7 @@ import {
 import { CricbuzzSummary } from "./CricbuzzSummary";
 import FloatingReactionsLayer from "../../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../../components/reactions/useSeatReactions";
+import { HcMatchLayout } from "../HcMatchLayout";
 
 /**
  * Hand Cricket — Cricbuzz Theme Shell.
@@ -50,9 +51,6 @@ export default function HcCricbuzzShell({
     if (forceTeamPicker && next && next !== prev) setForceTeamPicker(false);
     prevTeamIdRef.current = next;
   }, [mySelection?.teamId, forceTeamPicker]);
-
-  const maxWidth = compact ? 580 : state.phase === "teamSelect" ? 1320 : 1500;
-  const isLive = !compact && (state.phase === "innings1" || state.phase === "innings2");
 
   function content(): ReactNode {
     if (isTeamSelect) {
@@ -125,25 +123,9 @@ export default function HcCricbuzzShell({
         }
       />
 
-      <div
-        className={`min-h-0 flex-1 overflow-x-hidden px-3 pt-4 sm:px-5 ${
-          // Every non-live phase (toss, team select, finished) scrolls, and
-          // FullscreenGatePrompt's dismissible pill floats fixed at
-          // `bottom-[~1rem]` while the player hasn't yet granted fullscreen —
-          // exactly the window team-select/toss/toss-call runs in. A flat
-          // `py-4` (1rem) left no clearance for that ~48-60px pill, so it sat
-          // directly on top of "Lock In Call" / "Opt to Bat" / "Opt to Bowl"
-          // on any viewport short enough that those buttons rendered near the
-          // bottom. `pb-24` reserves real room below the last card instead.
-          // The live innings view manages its own fixed-height layout and
-          // sticky pick footer, so it keeps the original thin clearance.
-          isLive ? "overflow-hidden pb-4" : "overflow-y-auto pb-24"
-        }`}
-      >
-        <div className={`mx-auto w-full ${isLive ? "h-full" : ""}`} style={{ maxWidth }}>
-          {content()}
-        </div>
-      </div>
+      <HcMatchLayout state={state} compact={compact}>
+        {content()}
+      </HcMatchLayout>
 
       <CricbuzzInningsBreak state={state} players={players} selfId={sid} />
       <HcCelebrationLayer state={state} players={players} selfId={sid} />

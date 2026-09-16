@@ -567,6 +567,7 @@ export function LetterPad({
   onCancel,
   isNeon,
   selectedCell,
+  myTurn = true,
   disabled,
   alwaysOpen,
 }: {
@@ -574,87 +575,121 @@ export function LetterPad({
   onCancel?: () => void;
   isNeon?: boolean;
   selectedCell?: { r: number; c: number } | null;
+  myTurn?: boolean;
   disabled?: boolean;
   alwaysOpen?: boolean;
 }) {
-  const isCellPicked = !!selectedCell;
+  const isCellPicked = myTurn && !!selectedCell;
+  const isOpponentTurn = !myTurn || disabled;
+  const isAwaitingCell = myTurn && !isCellPicked && !disabled;
 
   return (
-    <div className="mt-3 w-full flex flex-col items-center gap-1.5 select-none">
-      <div
-        className={`text-xs sm:text-sm font-bold tracking-wide flex items-center gap-2 ${
-          isNeon ? (isCellPicked ? "text-cyan-300" : "text-slate-400") : isCellPicked ? "text-[#1e3a8a]" : "text-[#6b5b48]"
-        }`}
-      >
-        {isCellPicked ? (
-          <span>
-            Cell ({selectedCell.r + 1}, {selectedCell.c + 1}) selected — Click a letter or type on keyboard:
+    <div className="w-full flex flex-col items-center gap-1.5 select-none">
+      {/* Header Guidance Banner */}
+      <div className="text-xs sm:text-sm font-bold tracking-wide flex items-center justify-between w-full px-1">
+        {isOpponentTurn ? (
+          <span className={isNeon ? "text-slate-500" : "text-stone-400"}>
+            🔒 Opponent's Turn — Waiting for move...
           </span>
+        ) : isCellPicked ? (
+          <div className="flex items-center justify-between w-full">
+            <span className={isNeon ? "text-cyan-300 font-extrabold" : "text-[#1E3A8A] font-extrabold"}>
+              🎯 Cell ({selectedCell.r + 1}, {selectedCell.c + 1}) selected — Tap a letter to write:
+            </span>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className={`px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider transition active:scale-95 cursor-pointer ${
+                  isNeon
+                    ? "bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60"
+                    : "bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300"
+                }`}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         ) : (
-          <span>Click an empty cell on the grid to write</span>
-        )}
-        {isCellPicked && onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className={`px-2 py-0.5 rounded text-xs font-black uppercase tracking-wider transition ${
-              isNeon
-                ? "bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60"
-                : "bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300"
-            }`}
-          >
-            Cancel
-          </button>
+          <span className={isNeon ? "text-amber-300" : "text-amber-800"}>
+            ✏️ Your Turn — Pick an empty cell on the grid to write
+          </span>
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-1.5">
+      {/* Keyboard Grid */}
+      <div className="flex flex-col items-center gap-1.5 w-full">
         {LETTER_PAD_ROWS.map((row) => (
-          <div key={row} className="flex gap-1.5 justify-center">
-            {row.split("").map((L) => (
-              <button
-                key={L}
-                type="button"
-                onClick={() => onPick(L)}
-                disabled={disabled}
-                className={`font-black transition-all active:scale-95 ${
-                  isCellPicked
-                    ? "hover:scale-105 hover:brightness-110 cursor-pointer shadow-md"
-                    : "opacity-85 hover:opacity-100 cursor-pointer"
-                }`}
-                style={{
-                  width: 34,
-                  height: 38,
-                  background: isNeon
-                    ? isCellPicked
-                      ? "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)"
-                      : "rgba(15,23,42,0.85)"
-                    : isCellPicked
-                    ? "#ffffff"
-                    : "rgba(255,255,255,0.9)",
-                  border: isNeon
-                    ? isCellPicked
-                      ? "1.5px solid #38bdf8"
-                      : "1px solid rgba(56,189,248,0.28)"
-                    : isCellPicked
-                    ? "1.5px solid #1e3a8a"
-                    : "1px solid #c2a578",
-                  borderRadius: 6,
-                  color: isNeon ? (isCellPicked ? "#38bdf8" : "#94a3b8") : isCellPicked ? "#1e3a8a" : "#475569",
-                  fontFamily: "'Caveat', 'Patrick Hand', cursive",
-                  fontSize: 22,
-                  boxShadow: isNeon
-                    ? isCellPicked
-                      ? "0 0 10px rgba(56,189,248,0.35)"
-                      : "none"
-                    : isCellPicked
-                    ? "0 2px 4px rgba(30,58,138,0.2)"
-                    : "0 1px 0 rgba(120,82,40,0.18)",
-                }}
-              >
-                {L}
-              </button>
-            ))}
+          <div key={row} className="flex gap-1 sm:gap-1.5 justify-center w-full">
+            {row.split("").map((L) => {
+              // 3 distinct color states:
+              // 1. Opponent turn: muted disabled styling
+              // 2. Player turn (awaiting cell pick): enabled awaiting color
+              // 3. Cell picked: vibrant high-contrast active color
+              let btnBg = "";
+              let btnBorder = "";
+              let btnColor = "";
+              let btnShadow = "none";
+              let btnOpacity = "1";
+              let btnCursor = "cursor-pointer";
+
+              if (isOpponentTurn) {
+                btnCursor = "cursor-not-allowed";
+                btnOpacity = "0.45";
+                btnBg = isNeon ? "#090D1A" : "#ECE5D8";
+                btnBorder = isNeon ? "1px solid rgba(51, 65, 85, 0.4)" : "1px solid #D1C4AF";
+                btnColor = isNeon ? "#475569" : "#A89F91";
+              } else if (isCellPicked) {
+                btnBg = isNeon
+                  ? "linear-gradient(180deg, #1E1B4B 0%, #0F172A 100%)"
+                  : "#FFFFFF";
+                btnBorder = isNeon ? "2px solid #00F0FF" : "2px solid #1E3A8A";
+                btnColor = isNeon ? "#00F0FF" : "#1E3A8A";
+                btnShadow = isNeon
+                  ? "0 0 10px rgba(0, 240, 255, 0.45)"
+                  : "0 2px 6px rgba(30, 58, 138, 0.25)";
+              } else {
+                // isAwaitingCell
+                btnBg = isNeon
+                  ? "linear-gradient(180deg, #131E38 0%, #0B132B 100%)"
+                  : "#FFFBEB";
+                btnBorder = isNeon ? "1.5px solid rgba(56, 189, 248, 0.5)" : "1.5px solid #F59E0B";
+                btnColor = isNeon ? "#38BDF8" : "#B45309";
+                btnShadow = isNeon
+                  ? "0 0 4px rgba(56, 189, 248, 0.2)"
+                  : "0 1px 2px rgba(217, 119, 6, 0.15)";
+              }
+
+              return (
+                <button
+                  key={L}
+                  type="button"
+                  onClick={() => !isOpponentTurn && onPick(L)}
+                  disabled={isOpponentTurn || !selectedCell}
+                  className={`font-black transition-all active:scale-95 ${btnCursor} ${
+                    isCellPicked
+                      ? "hover:scale-110 hover:brightness-110"
+                      : isAwaitingCell
+                      ? "hover:scale-105"
+                      : ""
+                  }`}
+                  style={{
+                    width: 34,
+                    height: 38,
+                    background: btnBg,
+                    border: btnBorder,
+                    borderRadius: 6,
+                    color: btnColor,
+                    fontFamily: "'Caveat', 'Patrick Hand', cursive",
+                    fontSize: 22,
+                    boxShadow: btnShadow,
+                    opacity: btnOpacity,
+                  }}
+                >
+                  {L}
+                </button>
+              );
+            })}
           </div>
         ))}
       </div>
