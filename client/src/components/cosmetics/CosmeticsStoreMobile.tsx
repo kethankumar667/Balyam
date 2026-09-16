@@ -14,7 +14,7 @@
  * 5. On-Demand 3D Inspection Sheet: preserves full 3D interactive multi-mode previews
  *    (Inspect, Roll Simulation, In-Game) via an accessible drawer.
  *
- * WCAG 2.1 AA compliant: >=44x44px touch targets, focus rings, no Sparkles iconography.
+ * WCAG 2.1 AA compliant: >=44x44px touch targets, focus rings, approved iconography.
  */
 
 import React, { useState, useMemo } from "react";
@@ -195,25 +195,28 @@ export function CosmeticsStoreMobile({
   return (
     <div
       className="w-full flex flex-col h-[92vh] max-h-[92dvh] relative overflow-hidden select-none"
-      style={{ background: surface.base }}
+      style={{ background: theme === "light" ? surface.base : "linear-gradient(180deg, #101827 0%, #060912 56%, #03050a 100%)" }}
     >
-      {/* ── Top Drag Handle ── */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:18px_18px]" />
+      <div className="absolute -top-24 left-8 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
+
+      {/* Top Drag Handle */}
       <div className="flex-shrink-0 pt-2.5 pb-1 flex justify-center">
         <span
           aria-hidden
-          className="w-10 h-1 rounded-full bg-stone-300 dark:bg-zinc-700"
+          className="w-10 h-1 rounded-full bg-stone-300 dark:bg-white/20"
         />
       </div>
 
       {/* ── Mobile Header: Boutique Wordmark & Quick Actions ── */}
-      <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80">
+      <div className="flex-shrink-0 px-4 py-2.5 flex items-center justify-between border-b border-stone-200/80 dark:border-white/10 relative z-10">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-400 text-black flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_12px_24px_-14px_rgba(245,158,11,0.95)] shrink-0 border border-amber-100/60">
             <Store className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-black tracking-tight text-stone-900 dark:text-white truncate">
+              <h2 className="text-base font-black tracking-tight text-stone-950 dark:text-white truncate">
                 Boutique
               </h2>
               {isAdminUser && (
@@ -222,8 +225,8 @@ export function CosmeticsStoreMobile({
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-stone-500 dark:text-zinc-400 truncate">
-              {categoryItems.length} styles available
+            <p className="text-[10px] text-stone-500 dark:text-zinc-400 truncate font-semibold">
+              {categoryItems.length} curated styles
             </p>
           </div>
         </div>
@@ -231,7 +234,7 @@ export function CosmeticsStoreMobile({
         {/* Right Header Area: Balance Chip & Close Button */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Coin Balance Chip */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs">
+          <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200 font-mono font-bold text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <Coins className="w-3.5 h-3.5 text-amber-500" />
             <span>{Number(walletBalance || 0).toLocaleString()}</span>
           </div>
@@ -241,7 +244,7 @@ export function CosmeticsStoreMobile({
             type="button"
             onClick={onClose}
             aria-label="Close Boutique"
-            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] text-stone-500 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
           >
             <X className="w-5 h-5" />
           </button>
@@ -252,7 +255,7 @@ export function CosmeticsStoreMobile({
       <div
         role="tablist"
         aria-label="Cosmetic categories"
-        className="flex-shrink-0 px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none border-b border-stone-200/60 dark:border-zinc-800/60"
+        className="flex-shrink-0 px-3 py-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none border-b border-stone-200/60 dark:border-white/10 relative z-10"
       >
         {CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
@@ -267,10 +270,10 @@ export function CosmeticsStoreMobile({
                 HapticsManager.trigger("subtle");
                 onSelectCategory(tab.category);
               }}
-              className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 relative cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`min-h-[44px] flex-1 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 isActive
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/50 shadow-xs"
-                  : "bg-stone-100/70 dark:bg-zinc-900/60 text-stone-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800/60"
+                  ? "bg-amber-300/15 text-amber-800 dark:text-amber-200 border border-amber-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                  : "bg-stone-100/70 dark:bg-white/[0.04] text-stone-500 dark:text-zinc-400 border border-stone-200 dark:border-white/10"
               }`}
             >
               <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-600 dark:text-amber-400" : ""}`} />
@@ -289,8 +292,8 @@ export function CosmeticsStoreMobile({
 
       {/* ── Sub-Scope Switcher (for Card Backs: Rummy / Uno) ── */}
       {selectedCategory === "CARD_BACK" && (
-        <div className="flex-shrink-0 px-4 py-1.5 bg-amber-500/5 border-b border-stone-200/40 dark:border-zinc-800/40 flex items-center justify-between">
-          <span className="text-[11px] text-stone-500 dark:text-zinc-400 font-medium">Game Variant:</span>
+        <div className="flex-shrink-0 px-4 py-2 bg-amber-500/5 border-b border-stone-200/40 dark:border-white/10 flex items-center justify-between relative z-10">
+          <span className="text-[11px] text-stone-500 dark:text-zinc-400 font-semibold">Game variant</span>
           <div className="flex items-center gap-1">
             {(["rummy", "uno"] as const).map((scope) => (
               <button
@@ -315,19 +318,19 @@ export function CosmeticsStoreMobile({
 
       {/* ── Error Banner ── */}
       {errorMessage && (
-        <div className="px-4 py-2 bg-rose-50 dark:bg-rose-950/80 border-b border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-center justify-between shrink-0">
+        <div className="px-4 py-2 bg-rose-50 dark:bg-rose-950/80 border-b border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center justify-between shrink-0 relative z-10">
           <span>{errorMessage}</span>
         </div>
       )}
 
       {/* ── Hero Quick-Showcase Card (~150px height) ── */}
       {selectedItem && (
-        <div className="flex-shrink-0 px-3.5 pt-2.5 pb-1">
+        <div className="flex-shrink-0 px-3.5 pt-3 pb-1">
           <div
-            className={`w-full rounded-2xl p-3 border ${rarityTokens.border} shadow-lg relative overflow-hidden flex items-center justify-between gap-3 transition-all duration-300`}
+            className={`w-full rounded-[22px] p-3.5 border ${rarityTokens.border} shadow-2xl relative overflow-hidden flex items-center justify-between gap-3 transition-all duration-300`}
             style={{
-              background: "linear-gradient(135deg, #0e1424 0%, #080c16 100%)",
-              boxShadow: rarityTokens.glowShadow,
+              background: "linear-gradient(135deg, rgba(17,24,39,0.96) 0%, rgba(5,8,15,0.98) 100%)",
+              boxShadow: `${rarityTokens.glowShadow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
             }}
           >
             {/* Ambient Rarity Glow */}
@@ -346,11 +349,11 @@ export function CosmeticsStoreMobile({
               {/* Title & Rarity Details */}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${rarityTokens.badge}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-[0.14em] border ${rarityTokens.badge}`}>
                     {selectedItem.rarity}
                   </span>
                   {isPreviewEquipped && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-0.5">
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-400/15 text-emerald-300 border border-emerald-300/30 flex items-center gap-0.5">
                       <Check className="w-2.5 h-2.5 stroke-[3]" /> EQUIPPED
                     </span>
                   )}
@@ -358,7 +361,7 @@ export function CosmeticsStoreMobile({
                 <h3 className="text-sm font-black text-white tracking-tight truncate leading-tight">
                   {selectedItem.name}
                 </h3>
-                <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5">
+                <p className="text-[11px] text-zinc-300/80 line-clamp-1 mt-0.5">
                   {selectedItem.description}
                 </p>
               </div>
@@ -374,10 +377,10 @@ export function CosmeticsStoreMobile({
                   setIs3DDrawerOpen(true);
                 }}
                 aria-label={`Inspect ${selectedItem.name} in 3D multi-mode vault`}
-                className="min-h-[44px] min-w-[44px] px-2.5 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 text-amber-300 text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-2xl border border-amber-300/35 bg-amber-300/10 hover:bg-amber-300/[0.16] active:scale-95 text-amber-200 text-[11px] font-black flex flex-col items-center justify-center gap-0.5 cursor-pointer transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-300"
               >
-                <Eye className="w-4 h-4 text-amber-400" />
-                <span className="text-[9px] tracking-tight">3D Mode</span>
+                <Eye className="w-4 h-4 text-amber-300" />
+                <span className="text-[9px] tracking-tight">Inspect</span>
               </button>
             </div>
           </div>
@@ -385,12 +388,12 @@ export function CosmeticsStoreMobile({
       )}
 
       {/* ── Main 2-Column Catalog Grid (Scrollable Body) ── */}
-      <div className="flex-1 overflow-y-auto px-3.5 pt-2 pb-24 min-h-0">
+      <div className="flex-1 overflow-y-auto px-3.5 pt-2.5 pb-24 min-h-0 relative z-10">
         <div className="flex items-center justify-between mb-2 px-0.5">
-          <span className="text-[11px] font-black uppercase tracking-wider text-stone-500 dark:text-zinc-400">
-            {selectedCategory === "DICE_SKIN" ? "DICE SKINS" : selectedCategory === "TOKEN_SKIN" ? "TOKEN FINISHES" : "CARD DESIGNS"}
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500 dark:text-zinc-400">
+            {selectedCategory === "DICE_SKIN" ? "Dice skins" : selectedCategory === "TOKEN_SKIN" ? "Token finishes" : "Card designs"}
           </span>
-          <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-medium">
+          <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-semibold">
             Tap to preview
           </span>
         </div>
@@ -401,7 +404,7 @@ export function CosmeticsStoreMobile({
             <span className="text-xs font-medium">Loading collection...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-3">
             {categoryItems.map((item) => {
               const isSelected = selectedItem?.id === item.id;
               const isItemOwned =
@@ -435,9 +438,9 @@ export function CosmeticsStoreMobile({
       {/* ── Sticky Bottom Action Bar (Thumb-Zone CTA) ── */}
       {selectedItem && presentation && (
         <div
-          className="sticky bottom-0 left-0 right-0 z-20 px-4 pt-2.5 border-t border-stone-200/80 dark:border-zinc-800/90 shadow-[0_-8px_24px_rgba(0,0,0,0.3)] backdrop-blur-md"
+          className="sticky bottom-0 left-0 right-0 z-20 px-4 pt-3 border-t border-amber-200/20 dark:border-white/10 shadow-[0_-18px_42px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl"
           style={{
-            background: theme === "light" ? "rgba(255, 253, 247, 0.95)" : "rgba(8, 12, 22, 0.95)",
+            background: theme === "light" ? "rgba(255, 253, 247, 0.96)" : "rgba(5, 8, 15, 0.94)",
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
           }}
         >

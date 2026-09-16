@@ -3054,3 +3054,339 @@ body, #root, .bhalyam-paper {
   --room-btn: #1E2738;
   --room-btn-hover: #26334A;
 }
+
+/* Daily streak expedition --------------------------------------------------
+ * A single semantic palette drives the dedicated mobile and desktop layouts.
+ * The paper reward card intentionally stays warm in both modes so the current
+ * claim remains the visual anchor from the approved expedition reference. */
+.streak-claim-modal {
+  --claim-shell: #fff8e9;
+  --claim-shell-deep: #f4e5c8;
+  --claim-panel: rgba(255, 252, 244, 0.88);
+  --claim-panel-edge: rgba(127, 91, 42, 0.27);
+  --claim-ink: #16284a;
+  --claim-muted: #6f6253;
+  --claim-track: #ded0b8;
+  color: var(--claim-ink);
+  border-color: rgba(203, 143, 27, 0.78);
+  background:
+    radial-gradient(circle at 52% -4%, rgba(255, 197, 72, 0.26), transparent 26%),
+    radial-gradient(circle at 12% 86%, rgba(32, 116, 168, 0.1), transparent 28%),
+    linear-gradient(150deg, var(--claim-shell), var(--claim-shell-deep));
+  box-shadow:
+    0 30px 90px -24px rgba(50, 31, 12, 0.72),
+    0 0 0 1px rgba(255, 211, 101, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+:root[data-theme="dark"] .streak-claim-modal {
+  --claim-shell: #08172c;
+  --claim-shell-deep: #050e1c;
+  --claim-panel: rgba(20, 32, 51, 0.82);
+  --claim-panel-edge: rgba(139, 160, 191, 0.27);
+  --claim-ink: #f7f1e6;
+  --claim-muted: #9fb0c9;
+  --claim-track: #071120;
+  border-color: rgba(245, 173, 39, 0.82);
+  background:
+    radial-gradient(circle at 52% -4%, rgba(246, 180, 52, 0.16), transparent 27%),
+    radial-gradient(circle at 13% 86%, rgba(24, 111, 170, 0.16), transparent 30%),
+    linear-gradient(150deg, var(--claim-shell), var(--claim-shell-deep));
+  box-shadow:
+    0 34px 110px -24px rgba(0, 0, 0, 0.92),
+    0 0 42px rgba(228, 177, 40, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.streak-claim-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(210, 150, 38, 0.6) transparent;
+}
+
+.streak-claim-streak {
+  color: #7a4e08;
+  border-color: rgba(199, 136, 22, 0.7);
+  background: linear-gradient(110deg, rgba(255, 218, 116, 0.4), rgba(255, 249, 231, 0.52));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px -18px rgba(117, 72, 7, 0.8);
+}
+
+:root[data-theme="dark"] .streak-claim-streak {
+  color: #fff1a8;
+  border-color: #dfa426;
+  background: linear-gradient(110deg, rgba(127, 86, 10, 0.38), rgba(58, 46, 25, 0.42));
+  box-shadow: inset 0 1px 0 rgba(255, 242, 184, 0.15), 0 0 20px rgba(235, 164, 32, 0.1);
+}
+
+.streak-claim-close {
+  color: var(--claim-ink);
+  border-color: var(--claim-panel-edge);
+  background: var(--claim-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 8px 20px -14px rgba(0, 0, 0, 0.7);
+}
+
+.streak-claim-hero {
+  border-color: rgba(116, 134, 161, 0.4);
+  background:
+    linear-gradient(180deg, rgba(8, 17, 34, 0.28), rgba(3, 10, 22, 0.5)),
+    #0c182a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11), inset 0 -28px 60px rgba(1, 6, 15, 0.38);
+}
+
+.streak-claim-rays {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(255, 189, 45, 0.52) 0, rgba(255, 171, 24, 0.13) 31%, transparent 63%),
+    conic-gradient(from 6deg at 50% 52%, transparent 0deg, rgba(255, 200, 76, 0.15) 9deg, transparent 21deg, transparent 42deg, rgba(255, 200, 76, 0.1) 51deg, transparent 64deg);
+}
+
+.streak-claim-stage {
+  background: rgba(255, 178, 26, 0.58);
+  box-shadow: 0 0 58px 22px rgba(255, 174, 24, 0.32);
+}
+
+.streak-claim-amount {
+  color: #d28d12;
+  text-shadow: 0 8px 24px rgba(183, 114, 9, 0.16);
+}
+
+:root[data-theme="dark"] .streak-claim-amount {
+  color: #ffe276;
+  text-shadow: 0 0 30px rgba(247, 184, 45, 0.36);
+}
+
+.streak-claim-ready,
+.streak-claim-complete {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 22px rgba(18, 194, 157, 0.1);
+}
+
+.streak-claim-ready {
+  color: #9a5b05;
+  border-color: rgba(218, 145, 24, 0.58);
+  background: rgba(246, 179, 46, 0.12);
+}
+
+.streak-claim-complete {
+  color: #087c66;
+  border-color: rgba(13, 188, 150, 0.72);
+  background: rgba(14, 194, 154, 0.1);
+}
+
+:root[data-theme="dark"] .streak-claim-ready { color: #ffd86f; }
+:root[data-theme="dark"] .streak-claim-complete { color: #77f3da; }
+
+.streak-claim-panel,
+.streak-claim-preview {
+  color: var(--claim-ink);
+  border-color: var(--claim-panel-edge);
+  background: var(--claim-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 16px 28px -26px rgba(0, 0, 0, 0.72);
+}
+
+.streak-claim-track {
+  border-color: var(--claim-panel-edge);
+  background: var(--claim-track);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.26);
+}
+
+.streak-claim-progress {
+  background: linear-gradient(90deg, #ffbb2e, #ffdf5c, #f29a13);
+  box-shadow: 0 0 13px rgba(242, 160, 22, 0.7);
+}
+
+.streak-claim-preview-tomorrow {
+  background:
+    radial-gradient(circle at 16% 50%, rgba(240, 178, 36, 0.16), transparent 38%),
+    var(--claim-panel);
+}
+
+.streak-claim-preview-chest {
+  background:
+    radial-gradient(circle at 18% 52%, rgba(105, 107, 236, 0.14), transparent 42%),
+    var(--claim-panel);
+}
+
+.streak-claim-primary {
+  color: #17130a;
+  border-color: #f2a814;
+  background: linear-gradient(110deg, #ffbf2f 0%, #fff08a 50%, #ffc43c 100%);
+  box-shadow:
+    0 17px 34px -14px rgba(213, 136, 12, 0.8),
+    0 0 22px rgba(246, 179, 45, 0.28),
+    inset 0 2px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -2px 0 rgba(169, 98, 2, 0.24);
+}
+
+.streak-claim-primary:hover {
+  filter: brightness(1.04) saturate(1.06);
+}
+
+.streak-claim-primary:focus-visible,
+.streak-claim-close:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (max-width: 639px) {
+  .streak-claim-modal {
+    border-radius: 24px;
+  }
+
+  .streak-claim-preview {
+    min-height: 96px;
+  }
+}
+
+.streak-expedition {
+  --streak-shell: #f8efdf;
+  --streak-shell-raised: #fffaf0;
+  --streak-panel: rgba(255, 253, 247, 0.9);
+  --streak-control: rgba(255, 248, 234, 0.92);
+  --streak-ink: #10254b;
+  --streak-muted: #6d5b47;
+  --streak-border: rgba(161, 124, 78, 0.42);
+  --streak-track: #ded3c0;
+  --streak-paper: #fff4d9;
+  --streak-paper-edge: #d8bd88;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(228, 177, 40, 0.14), transparent 28%),
+    radial-gradient(circle at 90% 36%, rgba(49, 117, 176, 0.09), transparent 24%),
+    var(--streak-shell);
+}
+
+:root[data-theme="dark"] .streak-expedition {
+  --streak-shell: #07152b;
+  --streak-shell-raised: #0c203f;
+  --streak-panel: rgba(9, 29, 56, 0.88);
+  --streak-control: rgba(20, 45, 78, 0.86);
+  --streak-ink: #f8f0db;
+  --streak-muted: #a8b8cf;
+  --streak-border: rgba(102, 121, 154, 0.42);
+  --streak-track: #273c5d;
+  --streak-paper: #fff0cc;
+  --streak-paper-edge: #c99b52;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(228, 177, 40, 0.11), transparent 30%),
+    radial-gradient(circle at 86% 38%, rgba(29, 78, 140, 0.2), transparent 28%),
+    linear-gradient(155deg, #0a1d38 0%, var(--streak-shell) 60%, #061126 100%);
+}
+
+.streak-header {
+  background: color-mix(in srgb, var(--streak-shell-raised) 92%, transparent);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.streak-panel {
+  border: 1px solid var(--streak-border);
+  border-radius: 20px;
+  background: var(--streak-panel);
+  box-shadow: 0 14px 34px -28px rgba(27, 24, 18, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+:root[data-theme="dark"] .streak-panel {
+  box-shadow: 0 18px 44px -30px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.streak-paper {
+  border: 1px solid var(--streak-paper-edge);
+  border-radius: 18px 24px 16px 22px;
+  color: #10254b;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(145, 96, 40, 0.08) 0 1px, transparent 1.5px),
+    repeating-linear-gradient(0deg, transparent 0 25px, rgba(67, 91, 128, 0.09) 25px 26px),
+    linear-gradient(145deg, #fff9e8, var(--streak-paper));
+  background-size: 18px 18px, auto, auto;
+  box-shadow: 4px 7px 20px rgba(74, 44, 18, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.streak-eyebrow {
+  color: #b45309;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+:root[data-theme="dark"] .streak-eyebrow {
+  color: #fbbf24;
+}
+
+.streak-icon-button {
+  border: 1px solid var(--streak-border);
+  color: var(--streak-ink);
+  background: var(--streak-control);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px -14px rgba(0, 0, 0, 0.7);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.streak-icon-button:hover {
+  background: var(--streak-panel);
+  transform: translateY(-1px);
+}
+
+.streak-icon-button:active {
+  transform: scale(0.96);
+}
+
+.streak-countdown,
+.streak-reward-tile {
+  border: 1px solid var(--streak-border);
+  background: var(--streak-control);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.streak-art-well {
+  min-height: 120px;
+  background:
+    radial-gradient(circle at center, rgba(245, 158, 11, 0.18), transparent 62%),
+    var(--streak-control);
+  border: 1px solid var(--streak-border);
+}
+
+.streak-final-card {
+  min-height: 100%;
+  border: 2px solid #f59e0b;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(168, 85, 247, 0.3), transparent 34%),
+    linear-gradient(155deg, #291837 0%, #111f3d 58%, #07152b 100%);
+  box-shadow: 0 16px 40px -24px rgba(245, 158, 11, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.streak-spoils {
+  border: 1px solid #d6a62a;
+  background:
+    linear-gradient(90deg, rgba(228, 177, 40, 0.12), rgba(139, 92, 246, 0.08), rgba(228, 177, 40, 0.12)),
+    var(--streak-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.streak-claim-button {
+  color: #182033;
+  background: linear-gradient(135deg, #fde68a 0%, #fbbf24 52%, #f59e0b 100%);
+  box-shadow: 0 12px 26px -14px rgba(180, 83, 9, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.streak-claim-button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.streak-claim-button:active {
+  transform: scale(0.985);
+}
+
+.streak-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--streak-border) 85%, transparent) transparent;
+}
+
+.streak-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.streak-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--streak-border) 85%, transparent);
+}

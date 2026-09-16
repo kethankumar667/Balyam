@@ -15,8 +15,8 @@ export function DailyStreakModal() {
   useStreakAutoOpen();
 
   const {
-    state,
     isOpen,
+    state,
     viewMode,
     setViewMode,
     closeModal,
@@ -42,7 +42,6 @@ export function DailyStreakModal() {
     closeModal();
   };
 
-  // Handle Escape key with hierarchical dismissal
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -58,7 +57,7 @@ export function DailyStreakModal() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, showCelebration, clearCelebration, viewMode, state?.isClaimableToday]);
+  }, [isOpen, showCelebration, clearCelebration, setViewMode, state?.isClaimableToday, viewMode]);
 
   return (
     <>
@@ -75,25 +74,21 @@ export function DailyStreakModal() {
               className="fixed inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
             />
 
-            {/* SCREEN 1: Focused Reward Moment (Default) */}
             {viewMode === "reward" ? (
               <DailyStreakRewardScreen
                 onClose={handleClose}
                 onOpenJourney={() => setViewMode("journey")}
               />
+            ) : isMobile ? (
+              <DailyStreakModalMobile
+                onClose={handleClose}
+                onBack={() => setViewMode("reward")}
+              />
             ) : (
-              /* SCREEN 2: Full 30-Day Journey / Calendar (On Demand) */
-              isMobile ? (
-                <DailyStreakModalMobile
-                  onClose={handleClose}
-                  onBack={() => setViewMode("reward")}
-                />
-              ) : (
-                <DailyStreakModalDesktop
-                  onClose={handleClose}
-                  onBack={() => setViewMode("reward")}
-                />
-              )
+              <DailyStreakModalDesktop
+                onClose={handleClose}
+                onBack={() => setViewMode("reward")}
+              />
             )}
           </div>
         )}

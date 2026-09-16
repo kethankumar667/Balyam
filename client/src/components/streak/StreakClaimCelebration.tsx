@@ -110,7 +110,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl select-none">
         {/* Confetti Explosion Layer (Active in revealed stage) */}
         {stage === "revealed" && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
@@ -158,7 +158,10 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
                      overflow-hidden"
         >
           {/* Ambient Radiant Glow */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-white/25 blur-3xl pointer-events-none" />
+          <div className="absolute -top-28 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-amber-300/20 blur-3xl pointer-events-none" />
+
+          <div aria-hidden="true" className="absolute inset-x-6 top-4 h-px bg-gradient-to-r from-transparent via-amber-100/40 to-transparent" />
+          <div aria-hidden="true" className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:18px_18px]" />
 
           {/* Rotating Sunburst Rays */}
           {stage !== "rumble" && (
@@ -173,7 +176,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 pointer-events-none -z-10"
               style={{
                 background:
-                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(255,255,255,0.25) 20deg 40deg, transparent 40deg 60deg, rgba(255,255,255,0.25) 60deg 80deg, transparent 80deg 100deg, rgba(255,255,255,0.25) 100deg 120deg, transparent 120deg 140deg, rgba(255,255,255,0.25) 140deg 160deg, transparent 160deg 180deg, rgba(255,255,255,0.25) 180deg 200deg, transparent 200deg 220deg, rgba(255,255,255,0.25) 220deg 240deg, transparent 240deg 260deg, rgba(255,255,255,0.25) 260deg 280deg, transparent 280deg 300deg, rgba(255,255,255,0.25) 300deg 320deg, transparent 320deg 340deg, rgba(255,255,255,0.25) 340deg 360deg)",
+                  "conic-gradient(from 0deg, transparent 0deg 20deg, rgba(251,191,36,0.20) 20deg 40deg, transparent 40deg 60deg, rgba(251,191,36,0.20) 60deg 80deg, transparent 80deg 100deg, rgba(251,191,36,0.20) 100deg 120deg, transparent 120deg 140deg, rgba(251,191,36,0.20) 140deg 160deg, transparent 160deg 180deg, rgba(251,191,36,0.20) 180deg 200deg, transparent 200deg 220deg, rgba(251,191,36,0.20) 220deg 240deg, transparent 240deg 260deg, rgba(251,191,36,0.20) 260deg 280deg, transparent 280deg 300deg, rgba(251,191,36,0.20) 300deg 320deg, transparent 320deg 340deg, rgba(251,191,36,0.20) 340deg 360deg)",
               }}
             />
           )}
@@ -200,11 +203,11 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
                        bg-white/30 border-2 border-white/60 shadow-inner backdrop-blur-sm"
           >
             {isGrandCycle || result.claimedDay === 30 ? (
-              <Crown className="w-10 h-10 text-white animate-bounce" />
+              <Crown className="w-10 h-10 text-black animate-bounce" />
             ) : isMilestone ? (
-              <Gift className="w-10 h-10 text-white animate-pulse" />
+              <Gift className="w-10 h-10 text-black animate-pulse" />
             ) : (
-              <Coins className="w-10 h-10 text-white animate-pulse" />
+              <Coins className="w-10 h-10 text-black animate-pulse" />
             )}
           </motion.div>
 
@@ -214,7 +217,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/90 text-white border border-emerald-300 shadow-md mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-[0.16em] uppercase bg-emerald-400/[0.14] text-emerald-200 border border-emerald-300/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] mb-2">
               <Flame className="w-3.5 h-3.5" />
               Day {result.claimedDay} Complete!
             </div>
@@ -232,14 +235,14 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.28 }}
-            className="my-3 p-4 rounded-2xl bg-black/25 border-2 border-amber-300/60 shadow-lg relative overflow-hidden"
+            className="my-4 p-4 rounded-[24px] bg-black/[0.34] border border-amber-200/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_18px_44px_-32px_rgba(245,158,11,0.9)] relative overflow-hidden"
           >
             {/* Shimmer line */}
             <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
-            <div className="text-[11px] font-black uppercase tracking-widest text-amber-200">
+            <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-100/85">
               Reward Awarded
             </div>
-            <div className="flex items-center justify-center gap-2 text-4xl sm:text-5xl font-black text-amber-300 font-mono tracking-tight drop-shadow-md my-1">
+            <div className="flex items-center justify-center gap-2 text-4xl sm:text-5xl font-black text-amber-300 font-mono tracking-tight drop-shadow-[0_8px_24px_rgba(245,158,11,0.35)] my-1">
               <Coins className="w-9 h-9 text-amber-300 animate-pulse shrink-0" />
               <span>+</span>
               <CountUp end={result.coinsAwarded} duration={1.2} />
@@ -255,7 +258,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.42 }}
-              className="mb-3 p-2.5 rounded-xl bg-black/20 border border-white/25 flex items-center justify-center gap-2"
+              className="mb-3 p-3 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
             >
               {result.reward.specialRewardType === "shield" ? (
                 <Shield className="w-5 h-5 text-white fill-white/20 shrink-0" />
@@ -278,10 +281,10 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mb-4 p-3 rounded-xl bg-black/30 border border-white/20 text-left flex items-center justify-between gap-2"
+            className="mb-4 p-3 rounded-2xl bg-black/[0.32] border border-white/10 text-left flex items-center justify-between gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-300/10 border border-amber-200/20 flex items-center justify-center shrink-0">
                 {isTomorrowMilestone ? (
                   <Gift className="w-4 h-4 text-amber-200 animate-pulse" />
                 ) : (
@@ -298,7 +301,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
                     +{nextReward.coins.toLocaleString()} Coins
                   </span>
                   {isTomorrowMilestone && (
-                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-400/30 text-amber-200 border border-amber-300/40">
+                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-400/[0.30] text-amber-200 border border-amber-300/40">
                       {nextReward.milestoneChest?.toUpperCase()} CHEST
                     </span>
                   )}
