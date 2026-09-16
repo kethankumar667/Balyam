@@ -75,7 +75,7 @@ export default function RecoveryBanner() {
             <button
               type="button"
               onClick={retryRecovery}
-              className="ml-1 px-2.5 py-1 bg-white/20 hover:bg-white/30 active:scale-95 rounded-full text-xs font-bold transition min-h-[32px] cursor-pointer"
+              className="ml-1 px-4 py-2.5 bg-white/20 hover:bg-white/30 active:scale-95 rounded-full text-xs font-bold transition min-h-[44px] cursor-pointer"
             >
               Retry
             </button>

@@ -190,7 +190,7 @@ export default function SignUpPage() {
   const chosenAvatarObj = findAvatar(selectedAvatar) || AVATARS[0];
 
   return (
-    <div className="relative min-h-screen w-full bg-[#FAF6EE] text-[#2E2419] flex flex-col lg:flex-row overflow-x-hidden selection:bg-amber-200 font-sans">
+    <div className="relative min-h-screen w-full bg-[#FAF6EE] dark:bg-[#0B0F17] text-[#2E2419] dark:text-slate-100 flex flex-col lg:flex-row overflow-x-hidden selection:bg-amber-200 font-sans">
       {/* ════════════════════════════════════════════════════════════
           LEFT FULL-SCREEN PAGE: BRANDING & NOSTALGIA STORYTELLING
          ════════════════════════════════════════════════════════════ */}
@@ -285,7 +285,7 @@ export default function SignUpPage() {
       {/* ════════════════════════════════════════════════════════════
           RIGHT FULL-SCREEN PAGE: INTERACTIVE SIGNUP EXPERIENCE
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
+      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] dark:bg-[#0B0F17] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
         {/* Vertically centers as ONE block when there's room; degrades to a
             plain top-aligned, scrollable column when content is taller than
             the viewport (short mobile screens, or step 3's avatar grid) —
@@ -317,7 +317,7 @@ export default function SignUpPage() {
               <span className="font-script text-[#A82020] text-2xl font-bold tracking-widest">
                 ≡
               </span>
-              <h1 className="font-script text-[36px] sm:text-[44px] font-black text-[#162A3B] leading-none tracking-tight">
+              <h1 className="font-script text-[36px] sm:text-[44px] font-black text-[#162A3B] dark:text-slate-100 leading-none tracking-tight">
                 Create Your Account {' '}
               </h1>
               <span className="font-script text-[#A82020] text-2xl font-bold tracking-widest">
@@ -348,7 +348,7 @@ export default function SignUpPage() {
                 </div>
                 <span
                   className={`text-[11.5px] font-bold mt-1 tracking-tight ${
-                    step === 1 ? "text-[#881337]" : "text-[#7A5B3E]/80"
+                    step === 1 ? "text-[#881337]" : "text-[#7A5B3E]/80 dark:text-slate-500"
                   }`}
                 >
                   About You
@@ -370,7 +370,7 @@ export default function SignUpPage() {
                 </div>
                 <span
                   className={`text-[11.5px] font-bold mt-1 tracking-tight ${
-                    step === 2 ? "text-[#881337]" : "text-[#7A5B3E]/80"
+                    step === 2 ? "text-[#881337]" : "text-[#7A5B3E]/80 dark:text-slate-500"
                   }`}
                 >
                   Secure Account
@@ -390,7 +390,7 @@ export default function SignUpPage() {
                 </div>
                 <span
                   className={`text-[11.5px] font-bold mt-1 tracking-tight ${
-                    step === 3 ? "text-[#881337]" : "text-[#7A5B3E]/80"
+                    step === 3 ? "text-[#881337]" : "text-[#7A5B3E]/80 dark:text-slate-500"
                   }`}
                 >
                   Choose Avatar
@@ -441,7 +441,7 @@ export default function SignUpPage() {
                     <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 space-y-1">
                         <div className="relative">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                           <input
                             id="signup-first-name"
                             type="text"
@@ -453,10 +453,10 @@ export default function SignUpPage() {
                             aria-label="First Name"
                             aria-invalid={Boolean(firstNameError)}
                             aria-describedby={firstNameError ? "signup-first-name-error" : undefined}
-                            className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                            className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                               firstNameError
                                 ? "border-[#A82020]"
-                                : "border-[#CBD5E1]"
+                                : "border-[#CBD5E1] dark:border-slate-700"
                             }`}
                             required
                           />
@@ -470,7 +470,7 @@ export default function SignUpPage() {
 
                       <div className="flex-1 space-y-1">
                         <div className="relative">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                           <input
                             id="signup-last-name"
                             type="text"
@@ -482,10 +482,10 @@ export default function SignUpPage() {
                             aria-label="Last Name"
                             aria-invalid={Boolean(lastNameError)}
                             aria-describedby={lastNameError ? "signup-last-name-error" : undefined}
-                            className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                            className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                               lastNameError
                                 ? "border-[#A82020]"
-                                : "border-[#CBD5E1]"
+                                : "border-[#CBD5E1] dark:border-slate-700"
                             }`}
                             required
                           />
@@ -501,7 +501,7 @@ export default function SignUpPage() {
                     {/* Row 2: Display Name */}
                     <div className="space-y-1">
                       <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                         <input
                           id="signup-display-name"
                           type="text"
@@ -515,10 +515,10 @@ export default function SignUpPage() {
                           aria-label="Display Name"
                           aria-invalid={Boolean(displayNameError)}
                           aria-describedby={displayNameError ? "signup-display-name-error" : undefined}
-                          className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-10 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                          className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-10 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             displayNameError
                               ? "border-[#A82020]"
-                              : "border-[#CBD5E1]"
+                              : "border-[#CBD5E1] dark:border-slate-700"
                           }`}
                           required
                         />
@@ -529,7 +529,7 @@ export default function SignUpPage() {
                             </div>
                           )}
                       </div>
-                      <p className="text-[11px] text-[#7A5B3E] font-medium pl-3">
+                      <p className="text-[11px] text-[#7A5B3E] dark:text-slate-400 font-medium pl-3">
                         This is how your name will appear in Bhalyam.
                       </p>
                       {displayNameError && (
@@ -560,12 +560,12 @@ export default function SignUpPage() {
                               if (dobError) setDobError(null);
                               clearNotices();
                             }}
-                            className={`w-full bg-[#FAF6EE] border rounded-full pl-4 pr-10 py-2.5 text-sm font-medium text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
-                              dobError ? "border-[#A82020]" : "border-[#CBD5E1]"
+                            className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-4 pr-10 py-2.5 text-sm font-medium text-[#1E293B] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                              dobError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
                             }`}
                             required
                           />
-                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                         </div>
                         {dobError && (
                           <span id="signup-dob-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
@@ -595,10 +595,10 @@ export default function SignUpPage() {
                               );
                               if (genderError) setGenderError(null);
                             }}
-                            className={`w-full bg-[#FAF6EE] border rounded-full pl-4 pr-9 py-2.5 text-sm font-medium text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs appearance-none cursor-pointer ${
+                            className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-4 pr-9 py-2.5 text-sm font-medium text-[#1E293B] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs appearance-none cursor-pointer ${
                               genderError
                                 ? "border-[#A82020]"
-                                : "border-[#CBD5E1]"
+                                : "border-[#CBD5E1] dark:border-slate-700"
                             }`}
                             required
                           >
@@ -626,7 +626,7 @@ export default function SignUpPage() {
                         type="button"
                         onClick={withGoogle}
                         disabled={loading}
-                        className="flex items-center justify-center gap-2.5 py-3 px-4 bg-white hover:bg-slate-50 border border-[#CBD5E1] rounded-full text-[13px] font-bold text-[#334155] transition shadow-2xs cursor-pointer active:scale-95 w-full"
+                        className="flex items-center justify-center gap-2.5 py-3 px-4 min-h-[44px] bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-[#CBD5E1] dark:border-slate-700 rounded-full text-[13px] font-bold text-[#334155] dark:text-slate-200 transition shadow-2xs cursor-pointer active:scale-95 w-full"
                       >
                         <GoogleMark className="w-4 h-4" />
                         <span>Google</span>
@@ -660,7 +660,7 @@ export default function SignUpPage() {
                     {/* Email Field */}
                     <div className="space-y-1">
                       <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                         <input
                           id="signup-email"
                           type="email"
@@ -674,8 +674,8 @@ export default function SignUpPage() {
                           aria-label="Email Address"
                           aria-invalid={Boolean(emailError)}
                           aria-describedby={emailError ? "signup-email-error" : undefined}
-                          className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
-                            emailError ? "border-[#A82020]" : "border-[#CBD5E1]"
+                          className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-4 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                            emailError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
                           }`}
                           required
                         />
@@ -690,7 +690,7 @@ export default function SignUpPage() {
                     {/* Password Field */}
                     <div className="space-y-1">
                       <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                         <input
                           id="signup-password"
                           type={showPassword ? "text" : "password"}
@@ -704,10 +704,10 @@ export default function SignUpPage() {
                           aria-label="Create Password"
                           aria-invalid={Boolean(passwordError)}
                           aria-describedby={passwordError ? "signup-password-error" : undefined}
-                          className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                          className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             passwordError
                               ? "border-[#A82020]"
-                              : "border-[#CBD5E1]"
+                              : "border-[#CBD5E1] dark:border-slate-700"
                           }`}
                           required
                         />
@@ -736,7 +736,7 @@ export default function SignUpPage() {
                     {/* Confirm Password Field */}
                     <div className="space-y-1">
                       <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                         <input
                           id="signup-confirm-password"
                           type={showConfirmPassword ? "text" : "password"}
@@ -751,10 +751,10 @@ export default function SignUpPage() {
                           aria-label="Confirm Password"
                           aria-invalid={Boolean(confirmPasswordError)}
                           aria-describedby={confirmPasswordError ? "signup-confirm-password-error" : undefined}
-                          className={`w-full bg-[#FAF6EE] border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
+                          className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-10 pr-11 py-3 text-sm font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
                             confirmPasswordError
                               ? "border-[#A82020]"
-                              : "border-[#CBD5E1]"
+                              : "border-[#CBD5E1] dark:border-slate-700"
                           }`}
                           required
                         />
@@ -967,18 +967,18 @@ export default function SignUpPage() {
             </div>
 
             {/* Bottom Footer: Sign In Link */}
-            <div className="text-center text-[13px] text-[#7A5B3E] pt-3 border-t border-[#D8C2A0]/50 mt-1">
+            <div className="text-center text-[13px] text-[#7A5B3E] dark:text-slate-400 pt-3 border-t border-[#D8C2A0]/50 dark:border-slate-800 mt-1">
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="font-bold text-[#881337] hover:underline inline-flex items-center ml-0.5 min-h-[44px] py-2 px-1"
+                className="font-bold text-[#881337] dark:text-rose-400 hover:underline inline-flex items-center ml-0.5 min-h-[44px] py-2 px-1"
               >
                 Sign In
               </Link>
             </div>
 
             {/* Childhood Friends Pencil Sketch Illustration Banner */}
-            <div className="flex items-center justify-center pt-1.5 text-[13.5px] font-script text-[#7A5B3E] font-bold select-none pointer-events-none">
+            <div className="flex items-center justify-center pt-1.5 text-[13.5px] font-script text-[#7A5B3E] dark:text-slate-400 font-bold select-none pointer-events-none">
               <span>♡ Made with love for the 90&apos;s kids ⭐️</span>
             </div>
           </div>
@@ -1018,7 +1018,7 @@ export default function SignUpPage() {
                   className={`w-14 h-14 rounded-full border-2 overflow-hidden hover:scale-105 transition cursor-pointer ${
                     selectedAvatar === av.id
                       ? "border-[#881337] ring-3 ring-[#881337]/30"
-                      : "border-[#CBD5E1]"
+                      : "border-[#CBD5E1] dark:border-slate-700"
                   }`}
                 >
                   <img

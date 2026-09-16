@@ -156,33 +156,38 @@ export default function ProfileFamilyLayout() {
   }, [identityReady, effectivePlayerId]);
 
   const handleSaveProfile = async (data: { displayName: string; bio: string; region: string }) => {
+    // bio/region have no backing column in ProfileController's PUT handler
+    // (server/src/profile/ProfileController.ts only reads displayName/avatar)
+    // — they stay device-local via roomStore's own localStorage persistence
+    // (see EditProfileModal's "saved on this device" note). Only displayName
+    // is a real server round-trip, so it's the only field whose failure must
+    // surface: a swallowed non-ok response used to look identical to success,
+    // silently reverting on the next reload/device.
+    const res = await apiFetch(`/api/profile/${effectivePlayerId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: data.displayName }),
+    });
+    if (!res.ok) {
+      throw new Error("Could not save your display name. Please try again.");
+    }
     setPlayerName(data.displayName);
     setBio(data.bio);
     setRegion(data.region);
-    try {
-      await apiFetch(`/api/profile/${effectivePlayerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: data.displayName }),
-      });
-      setProfile((prev) => (prev ? { ...prev, displayName: data.displayName } : prev));
-    } finally {
-      setIsEditModalOpen(false);
-    }
+    setProfile((prev) => (prev ? { ...prev, displayName: data.displayName } : prev));
+    setIsEditModalOpen(false);
   };
 
   const handleSelectAvatar = async (av: string | null) => {
+    const res = await apiFetch(`/api/profile/${effectivePlayerId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatar: av || undefined }),
+    });
+    if (!res.ok) return;
     setAvatarId(av);
-    try {
-      await apiFetch(`/api/profile/${effectivePlayerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: av || undefined }),
-      });
-      setProfile((prev) => (prev ? { ...prev, avatar: av || undefined } : prev));
-    } finally {
-      setIsAvatarModalOpen(false);
-    }
+    setProfile((prev) => (prev ? { ...prev, avatar: av || undefined } : prev));
+    setIsAvatarModalOpen(false);
   };
 
   const favoriteGame = stats?.favoriteGame && stats.favoriteGame !== "none" ? stats.favoriteGame : undefined;

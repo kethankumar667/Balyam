@@ -11,6 +11,13 @@ export interface RoomConnectingLoaderProps {
   onRetry?: () => void;
   /** Optional custom return-home handler */
   onReturnHome?: () => void;
+  /**
+   * A join failure message (e.g. "Room not found"). When set, the Retry /
+   * Return to Lounge card shows immediately instead of waiting for the 10s
+   * cold-start grace period — there is nothing left to wait for once the
+   * server has already rejected the join.
+   */
+  error?: string | null;
   className?: string;
 }
 
@@ -71,6 +78,7 @@ export default function RoomConnectingLoader({
   code,
   onRetry,
   onReturnHome,
+  error,
   className = "",
 }: RoomConnectingLoaderProps) {
   const navigate = useNavigate();
@@ -377,15 +385,16 @@ export default function RoomConnectingLoader({
           </motion.div>
         )}
 
-        {/* ── Layer 4: Taking Long Cold-Start Recovery Card (Grace Period > 10s) ── */}
+        {/* ── Layer 4: Taking Long Cold-Start Recovery Card (Grace Period > 10s), OR immediately on a join error ── */}
         <AnimatePresence>
-          {takingLong && (
+          {(takingLong || !!error) && (
             <motion.div
               initial={{ opacity: 0, y: 12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="mt-6 sm:mt-7 w-full max-w-sm mx-auto space-y-3 bg-gradient-to-b from-amber-100/90 to-amber-50/90 dark:from-[#1E2738]/95 dark:to-[#131B2A]/95 border border-amber-300/80 dark:border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-[0_8px_24px_rgba(217,119,6,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-md"
+              role={error ? "alert" : undefined}
             >
               <div className="flex items-start gap-2.5 text-left">
                 <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
@@ -404,7 +413,8 @@ export default function RoomConnectingLoader({
                   </svg>
                 </div>
                 <p className="text-xs text-[#6A533E] dark:text-slate-300 font-medium leading-relaxed">
-                  Connecting is taking longer than usual — the game server may be waking up from cold sleep or your network is slow.
+                  {error ??
+                    "Connecting is taking longer than usual — the game server may be waking up from cold sleep or your network is slow."}
                 </p>
               </div>
 

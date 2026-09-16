@@ -33,6 +33,7 @@ export default function EditProfileModal({
   const [bio, setBio] = useState(initialBio);
   const [region, setRegion] = useState(initialRegion);
   const [nameError, setNameError] = useState<FieldError | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +43,7 @@ export default function EditProfileModal({
       setBio(initialBio);
       setRegion(initialRegion);
       setNameError(null);
+      setSaveError(null);
     }
   }, [isOpen, initialDisplayName, initialBio, initialRegion]);
 
@@ -59,6 +61,7 @@ export default function EditProfileModal({
     }
 
     setSaving(true);
+    setSaveError(null);
     try {
       await onSave({
         displayName: displayName.trim(),
@@ -67,8 +70,9 @@ export default function EditProfileModal({
       });
       setSaving(false);
       onClose();
-    } catch {
+    } catch (err) {
       setSaving(false);
+      setSaveError(err instanceof Error ? err.message : "Could not save changes. Please try again.");
     }
   };
 
@@ -98,6 +102,12 @@ export default function EditProfileModal({
 
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {saveError && (
+            <p role="alert" className="text-xs text-rose-500 font-mono flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3.5 py-2.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {saveError}
+            </p>
+          )}
           {/* Display Name */}
           <div className="space-y-1.5">
             <label
@@ -173,6 +183,12 @@ export default function EditProfileModal({
               placeholder="Tell other players about your favorite childhood games..."
               className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 transition resize-none"
             />
+            {/* Bio/Region have no server-side column yet (see ProfileFamilyLayout's
+                handleSaveProfile) — honest disclosure beats a silent revert the
+                next time this profile loads on another device or a cleared browser. */}
+            <p className="text-[10px] font-mono text-[var(--auth-ink-soft)]">
+              Saved on this device only — not yet synced to your account.
+            </p>
           </div>
 
           {/* Action Buttons */}

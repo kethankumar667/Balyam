@@ -48,7 +48,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-[#FAF6EE] text-[#2E2419] flex flex-col lg:flex-row overflow-x-hidden selection:bg-amber-200 font-sans">
+    <div className="relative min-h-screen w-full bg-[#FAF6EE] dark:bg-[#0B0F17] text-[#2E2419] dark:text-slate-100 flex flex-col lg:flex-row overflow-x-hidden selection:bg-amber-200 font-sans">
       {/* ════════════════════════════════════════════════════════════
           LEFT FULL-SCREEN PAGE: NOSTALGIC SCHOOL PLAYGROUND SPREAD
          ════════════════════════════════════════════════════════════ */}
@@ -147,7 +147,7 @@ export default function LoginPage() {
       {/* ════════════════════════════════════════════════════════════
           RIGHT FULL-SCREEN PAGE: SPIRAL NOTEBOOK LOGIN FORM
          ════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
+      <div className="w-full lg:w-[52%] xl:w-[52%] min-h-screen bg-[#FAF6EE] dark:bg-[#0B0F17] flex flex-col items-center p-6 sm:p-10 lg:p-12 xl:p-16 relative overflow-y-auto">
         {/* Top Right Taped Sticky Note */}
         <div className="absolute top-4 right-4 sm:top-6 sm:right-8 bg-[#FBF0B5] px-3.5 py-2.5 rounded-md border border-[#E6DC9E] shadow-sm rotate-2 z-20 max-w-[200px] text-right pointer-events-none hidden sm:block">
           <div className="w-10 h-3 bg-[#E0D48A]/80 absolute -top-1.5 left-1/2 -translate-x-1/2 shadow-2xs" />
@@ -182,17 +182,17 @@ export default function LoginPage() {
           {/* Top Header */}
           <div className="text-center space-y-1.5 max-w-[460px] mx-auto w-full">
             <div className="flex items-center justify-center gap-2">
-              <span className="font-script text-[#0F172A] text-2xl font-bold tracking-widest">
+              <span className="font-script text-[#0F172A] dark:text-slate-100 text-2xl font-bold tracking-widest">
                 ≡
               </span>
-              <h1 className="font-script text-[36px] sm:text-[46px] font-black text-[#0F172A] leading-none tracking-tight">
+              <h1 className="font-script text-[36px] sm:text-[46px] font-black text-[#0F172A] dark:text-slate-100 leading-none tracking-tight">
                 Welcome Back!{' '}
               </h1>
-              <span className="font-script text-[#0F172A] text-2xl font-bold tracking-widest">
+              <span className="font-script text-[#0F172A] dark:text-slate-100 text-2xl font-bold tracking-widest">
                 ≡
               </span>
             </div>
-            <p className="text-[13px] sm:text-[14px] text-[#5C4A32] font-medium pt-1 leading-relaxed max-w-[380px] mx-auto">
+            <p className="text-[13px] sm:text-[14px] text-[#5C4A32] dark:text-slate-400 font-medium pt-1 leading-relaxed max-w-[380px] mx-auto">
               Log in to continue your nostalgic journey and play your favorite
               games ⭐️
             </p>
@@ -224,7 +224,7 @@ export default function LoginPage() {
               {/* Email / Phone Field */}
               <div className="space-y-1">
                 <div className="relative">
-                  <User className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] pointer-events-none" />
+                  <User className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                   <input
                     id="login-email"
                     type="text"
@@ -238,8 +238,8 @@ export default function LoginPage() {
                     aria-label="Email or phone number"
                     aria-invalid={Boolean(emailError)}
                     aria-describedby={emailError ? "login-email-error" : undefined}
-                    className={`w-full bg-[#EEF2F6]/75 border rounded-full pl-11 pr-4 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 focus:border-[#0F172A] transition-all shadow-2xs ${
-                      emailError ? "border-[#A82020]" : "border-[#CBD5E1]"
+                    className={`w-full bg-[#EEF2F6]/75 dark:bg-slate-800/75 border rounded-full pl-11 pr-4 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 dark:focus:ring-amber-400/30 focus:border-[#0F172A] dark:focus:border-amber-400 transition-all shadow-2xs ${
+                      emailError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
                     }`}
                     required
                   />
@@ -254,7 +254,7 @@ export default function LoginPage() {
               {/* Password Field */}
               <div className="space-y-1">
                 <div className="relative">
-                  <Lock className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] pointer-events-none" />
+                  <Lock className="absolute left-4.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#64748B] dark:text-slate-400 pointer-events-none" />
                   <input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
@@ -268,15 +268,15 @@ export default function LoginPage() {
                     aria-label="Password"
                     aria-invalid={Boolean(passwordError)}
                     aria-describedby={passwordError ? "login-password-error" : undefined}
-                    className={`w-full bg-[#EEF2F6]/75 border rounded-full pl-11 pr-11 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 focus:border-[#0F172A] transition-all shadow-2xs ${
-                      passwordError ? "border-[#A82020]" : "border-[#CBD5E1]"
+                    className={`w-full bg-[#EEF2F6]/75 dark:bg-slate-800/75 border rounded-full pl-11 pr-11 py-3.5 text-[14px] sm:text-[15px] font-medium text-[#1E293B] dark:text-slate-100 placeholder-[#94A3B8] dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0F172A]/20 dark:focus:ring-amber-400/30 focus:border-[#0F172A] dark:focus:border-amber-400 transition-all shadow-2xs ${
+                      passwordError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
                     }`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2.5 text-[#64748B] hover:text-[#0F172A] cursor-pointer transition touch-manipulation rounded-full"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2.5 text-[#64748B] dark:text-slate-400 hover:text-[#0F172A] dark:hover:text-slate-100 cursor-pointer transition touch-manipulation rounded-full"
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }
@@ -297,19 +297,19 @@ export default function LoginPage() {
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between pt-1 px-1">
-                <label className="flex items-center gap-2.5 min-h-[44px] text-[13px] font-semibold text-[#5C3E21] cursor-pointer select-none touch-manipulation">
+                <label className="flex items-center gap-2.5 min-h-[44px] text-[13px] font-semibold text-[#5C3E21] dark:text-slate-300 cursor-pointer select-none touch-manipulation">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-5 h-5 rounded border-[#CBD5E1] text-[#0F172A] focus:ring-[#0F172A] accent-[#0F172A] cursor-pointer"
+                    className="w-5 h-5 rounded border-[#CBD5E1] dark:border-slate-600 text-[#0F172A] focus:ring-[#0F172A] accent-[#0F172A] cursor-pointer"
                   />
                   <span>Remember me</span>
                 </label>
 
                 <Link
                   to="/forgot-password"
-                  className="font-script text-[15px] font-bold text-[#2563EB] hover:underline min-h-[44px] inline-flex items-center px-2 touch-manipulation"
+                  className="font-script text-[15px] font-bold text-[#2563EB] dark:text-sky-400 hover:underline min-h-[44px] inline-flex items-center px-2 touch-manipulation"
                 >
                   Forgot Password?
                 </Link>
@@ -319,7 +319,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#0B1728] hover:bg-[#1E293B] text-white font-bold py-3.5 px-6 rounded-full text-[15px] shadow-sm hover:shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full bg-[#0B1728] hover:bg-[#1E293B] dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-900 font-bold py-3.5 px-6 rounded-full text-[15px] shadow-sm hover:shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>{loading ? "Logging in..." : "Log In"}</span>
                 <ArrowRight className="w-4.5 h-4.5" />
@@ -327,11 +327,11 @@ export default function LoginPage() {
 
               {/* Divider: or continue with */}
               <div className="flex items-center gap-3 my-3.5">
-                <span className="h-px flex-1 bg-[#D8C2A0]/70" />
-                <span className="text-[12px] font-semibold text-[#8C6D4F] whitespace-nowrap">
+                <span className="h-px flex-1 bg-[#D8C2A0]/70 dark:bg-slate-700" />
+                <span className="text-[12px] font-semibold text-[#8C6D4F] dark:text-slate-400 whitespace-nowrap">
                   or continue with
                 </span>
-                <span className="h-px flex-1 bg-[#D8C2A0]/70" />
+                <span className="h-px flex-1 bg-[#D8C2A0]/70 dark:bg-slate-700" />
               </div>
 
               {/* Social Login Buttons: Google & Guest */}
@@ -340,7 +340,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={withGoogle}
                   disabled={loading}
-                  className="flex items-center justify-center gap-2.5 py-2.5 px-4 bg-white hover:bg-slate-50 border border-[#CBD5E1] rounded-full text-[13px] font-bold text-[#334155] transition shadow-2xs cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-2.5 py-2.5 px-4 min-h-[44px] bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-[#CBD5E1] dark:border-slate-700 rounded-full text-[13px] font-bold text-[#334155] dark:text-slate-200 transition shadow-2xs cursor-pointer active:scale-95"
                 >
                   <GoogleMark className="w-4 h-4" />
                   <span>Google</span>
@@ -349,7 +349,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/")}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white hover:bg-slate-50 border border-[#CBD5E1] rounded-full text-[13px] font-bold text-[#475569] transition shadow-2xs cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 min-h-[44px] bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-[#CBD5E1] dark:border-slate-700 rounded-full text-[13px] font-bold text-[#475569] dark:text-slate-200 transition shadow-2xs cursor-pointer active:scale-95"
                 >
                   <span>🎮 Guest</span>
                 </button>
@@ -372,12 +372,12 @@ export default function LoginPage() {
                 </button>
 
                 {showTestAccounts && (
-                  <div className="mt-2.5 p-3 rounded-2xl bg-[#FFF9EE] border-2 border-amber-300/60 shadow-inner space-y-2">
+                  <div className="mt-2.5 p-3 rounded-2xl bg-[#FFF9EE] dark:bg-slate-800/60 border-2 border-amber-300/60 dark:border-amber-500/30 shadow-inner space-y-2">
                     <div className="flex items-center justify-between px-1">
-                      <p className="text-[11px] text-[#8C6D4F] font-bold">
+                      <p className="text-[11px] text-[#8C6D4F] dark:text-slate-400 font-bold">
                         1-Tap Fast Login:
                       </p>
-                      <span className="text-[10px] text-amber-800 font-semibold">
+                      <span className="text-[10px] text-amber-800 dark:text-amber-400 font-semibold">
                         Password: {TEST_ACCOUNTS[0]?.password}
                       </span>
                     </div>
@@ -388,21 +388,21 @@ export default function LoginPage() {
                           type="button"
                           disabled={loading}
                           onClick={() => handleSelectTestAccount(acc)}
-                          className="flex items-center gap-2 p-2 rounded-xl bg-white hover:bg-amber-100/70 border border-[#E0CCAC] hover:border-amber-400 text-left transition active:scale-95 cursor-pointer disabled:opacity-50 shadow-2xs group"
+                          className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-amber-100/70 dark:hover:bg-slate-700 border border-[#E0CCAC] dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 text-left transition active:scale-95 cursor-pointer disabled:opacity-50 shadow-2xs group"
                         >
                           <img
                             src={`/Avatars/${acc.avatarFile}`}
                             alt={acc.name}
-                            className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0 group-hover:scale-105 transition"
+                            className="w-8 h-8 rounded-full object-cover border border-amber-300 dark:border-amber-500/50 shrink-0 group-hover:scale-105 transition"
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = "none";
                             }}
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-[#1E293B] truncate leading-tight group-hover:text-amber-900">
+                            <div className="text-xs font-bold text-[#1E293B] dark:text-slate-100 truncate leading-tight group-hover:text-amber-900 dark:group-hover:text-amber-300">
                               {acc.name}
                             </div>
-                            <div className="text-[10px] text-[#7A5B3E] truncate font-medium">
+                            <div className="text-[10px] text-[#7A5B3E] dark:text-slate-400 truncate font-medium">
                               {acc.role}
                             </div>
                           </div>
@@ -416,12 +416,12 @@ export default function LoginPage() {
           </div>
 
           {/* Bottom Footer: Signup prompt & friends doodle */}
-          <div className="pt-4 border-t border-[#D8C2A0]/60 space-y-2 max-w-[460px] mx-auto w-full">
-            <div className="text-center text-[13px] sm:text-[14px] text-[#7A5B3E]">
+          <div className="pt-4 border-t border-[#D8C2A0]/60 dark:border-slate-800 space-y-2 max-w-[460px] mx-auto w-full">
+            <div className="text-center text-[13px] sm:text-[14px] text-[#7A5B3E] dark:text-slate-400">
               New to Bhalyam?{" "}
               <Link
                 to="/signup"
-                className="font-bold text-[#A82020] underline ml-0.5 inline-flex items-center gap-1 min-h-[44px] py-2 px-1"
+                className="font-bold text-[#A82020] dark:text-rose-400 underline ml-0.5 inline-flex items-center gap-1 min-h-[44px] py-2 px-1"
               >
                 <span>Create an account</span>
                 <span>→</span>
@@ -429,7 +429,7 @@ export default function LoginPage() {
             </div>
 
             {/* Childhood Friends Pencil Sketch Illustration Banner */}
-            <div className="flex items-center justify-center pt-1 text-[13.5px] font-script text-[#7A5B3E] font-bold select-none pointer-events-none">
+            <div className="flex items-center justify-center pt-1 text-[13.5px] font-script text-[#7A5B3E] dark:text-slate-400 font-bold select-none pointer-events-none">
               <span>⭐️ Best Friends Forever ⭐️</span>
             </div>
           </div>

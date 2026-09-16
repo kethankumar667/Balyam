@@ -156,7 +156,7 @@ export default function RejoinBanner() {
           type="button"
           onClick={handleRejoin}
           disabled={isRejoining}
-          className="px-3 py-1 bg-white/25 hover:bg-white/40 active:scale-95 rounded-full text-xs font-bold transition min-h-[32px] cursor-pointer disabled:opacity-50"
+          className="px-4 py-2.5 bg-white/25 hover:bg-white/40 active:scale-95 rounded-full text-xs font-bold transition min-h-[44px] cursor-pointer disabled:opacity-50"
         >
           {isRejoining ? "Checking..." : "Rejoin Room"}
         </button>

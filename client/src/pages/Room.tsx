@@ -246,8 +246,9 @@ function BotControls({
               <button
                 type="button"
                 onClick={() => removeBot(b.id)}
-                className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 ml-1 font-bold cursor-pointer text-xs"
+                className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 ml-1 font-bold cursor-pointer text-xs p-2 -m-2"
                 title="Remove bot"
+                aria-label={`Remove bot ${b.name}`}
               >
                 ✕
               </button>
@@ -622,6 +623,41 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
+  /**
+   * Refresh/close-tab guard during an active match. Native browsers ignore
+   * any custom `returnValue` text and show their own generic prompt, but the
+   * prompt itself is the point — without `preventDefault()`+`returnValue` a
+   * mid-match refresh or tab close drops the player's seat with zero warning.
+   */
+  useEffect(() => {
+    if (roomState?.phase !== "playing") return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [roomState?.phase]);
+
+  /**
+   * Back-button / swipe-back guard during an active match. This app mounts a
+   * plain `BrowserRouter` (not a data router), so React Router's `useBlocker`
+   * isn't available — the only cross-browser way to intercept history
+   * navigation here is to plant an extra entry and, on `popstate`, immediately
+   * re-plant it (cancelling the back nav) while surfacing the same
+   * `LeaveRoomModal` every other in-game Leave control uses.
+   */
+  useEffect(() => {
+    if (roomState?.phase !== "playing") return;
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      requestLeaveConfirmation();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [roomState?.phase, requestLeaveConfirmation]);
+
   /** The one moment a guest's raw voucher code exists in plaintext client-side — see `economy:voucherIssued`'s own doc comment. Never persisted. */
   const [wonVoucher, setWonVoucher] = useState<{ coinAmount: string; rawCode: string } | null>(null);
 
@@ -676,12 +712,17 @@ export default function Room() {
             res.error === "Room not found"
               ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
               : res.error ?? "Could not join room";
-          setError(msg);
+          // reset() clears lastError along with the rest of the room store,
+          // so it must run BEFORE setError — otherwise the message we just
+          // set is wiped in the same tick and ConnectingScreen shows a bare
+          // spinner with no explanation of what went wrong. No auto-redirect
+          // here: the error card below gives the player a manual Retry /
+          // Return to Lounge choice instead of yanking them home mid-read.
           reset();
+          setError(msg);
           clearActiveSession();
           clearRoomSession(joinCode);
           useRoomStore.getState().forgetSeat(joinCode);
-          setTimeout(() => navigate("/"), 4000);
           return;
         }
         if (res.state) {
@@ -1441,7 +1482,7 @@ export default function Room() {
   if (!roomState) {
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
-        <ConnectingScreen code={code} onRetry={handleRetryConnection} />
+        <ConnectingScreen code={code} onRetry={handleRetryConnection} error={lastError} />
       </AppLayout>
     );
   }
@@ -2078,7 +2119,7 @@ export default function Room() {
  * rather than "stuck". Pure Tailwind animations (spin / ping / bounce) — no
  * extra keyframes or libraries.
  */
-function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => void }) {
+function ConnectingScreen({ code, onRetry, error }: { code?: string; onRetry?: () => void; error?: string | null }) {
   const navigate = useNavigate();
 
   const handleRetry = () => {
@@ -2095,7 +2136,36 @@ function ConnectingScreen({ code, onRetry }: { code?: string; onRetry?: () => vo
       code={code}
       onRetry={handleRetry}
       onReturnHome={() => navigate("/")}
+      error={error}
     />
+  );
+}
+
+/**
+ * Skeleton shown while RoomNameEntryChamber's chunk downloads — mirrors its
+ * amber "chamber card" shape (avatar dice slot + name input + CTA bar) so a
+ * guest opening a shared link over a slow connection sees a branded loading
+ * state instead of a blank screen that reads as a broken link.
+ */
+function NameEntryChamberFallback() {
+  return (
+    <div
+      className="relative w-full flex-1 min-h-[600px] flex items-center justify-center p-4 sm:p-6"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading name entry"
+    >
+      <div className="relative w-full max-w-md rounded-3xl p-2 sm:p-2.5 bg-gradient-to-b from-amber-400/40 via-amber-200/20 to-amber-500/30 dark:from-amber-500/25 dark:via-slate-800/40 dark:to-amber-500/20 border border-amber-300/80 dark:border-amber-400/30 animate-pulse">
+        <div className="rounded-[22px] bg-gradient-to-b from-white/95 via-amber-50/90 to-[#F9F4E8]/95 dark:from-[#151D2F]/95 dark:via-[#101726]/95 dark:to-[#0B101D]/98 p-5 sm:p-7 space-y-5 border border-white/60 dark:border-slate-700/60">
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 dark:bg-amber-400/15" />
+            <div className="h-3 w-24 rounded-full bg-amber-500/15 dark:bg-amber-400/10" />
+          </div>
+          <div className="h-11 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300/50 dark:border-amber-400/20" />
+          <div className="h-11 rounded-xl bg-amber-500/25 dark:bg-amber-400/20" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2115,7 +2185,7 @@ function NameEntryForRoom({
   guest?: boolean;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<NameEntryChamberFallback />}>
       <RoomNameEntryChamber
         code={code}
         onSubmit={onSubmit}
