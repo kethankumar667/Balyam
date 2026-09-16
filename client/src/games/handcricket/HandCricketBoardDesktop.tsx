@@ -90,7 +90,7 @@ export default function HandCricketBoardDesktop({
       );
     }
     return (
-      <PhaseStage centred maxWidth={560}>
+      <PhaseStage centred maxWidth={740}>
         <WaitingForOpponentSquad state={state} selfId={sid} players={players} />
       </PhaseStage>
     );

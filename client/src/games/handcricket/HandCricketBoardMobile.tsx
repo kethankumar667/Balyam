@@ -115,23 +115,23 @@ export default function HandCricketBoardMobile({
             overflowX: "hidden",
             display: "flex",
             flexDirection: "column",
-            justifyContent: (state.phase === "tossCall" || state.phase === "toss" || state.phase === "tossChoice") ? "center" : "flex-start",
-            padding: (state.phase === "tossCall" || state.phase === "toss" || state.phase === "tossChoice") ? "12px 12px 24px" : "8px 12px 80px",
+            justifyContent: "flex-start",
+            padding: "4px 8px 12px",
           }}
-          className="space-y-3"
+          className="space-y-1.5"
         >
           {state.phase === "tossCall" && (
-            <div className="w-full my-auto">
+            <div className="w-full">
               <TossCallPhase state={state} selfId={sid} players={players} />
             </div>
           )}
           {state.phase === "toss" && (
-            <div className="w-full my-auto">
+            <div className="w-full">
               <TossPhase state={state} selfId={sid} players={players} />
             </div>
           )}
           {state.phase === "tossChoice" && (
-            <div className="w-full my-auto">
+            <div className="w-full">
               <TossChoicePhase state={state} selfId={sid} players={players} />
             </div>
           )}

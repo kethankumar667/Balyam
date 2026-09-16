@@ -24,6 +24,14 @@ import {
   getJsonPlayers,
   type JsonPlayerStyle,
 } from "./hc-json-data";
+import {
+  currentPartnership,
+  fallOfWickets,
+  overBreakdown,
+  oversFromBalls,
+  strikeRate,
+  economy,
+} from "./hc-stats";
 import { HC_MAX_OVERS_PER_BOWLER } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { motion } from "framer-motion";
@@ -33,7 +41,7 @@ import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
-import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import {
   RoughBorder,
   HcSketchHeading,
@@ -44,6 +52,9 @@ import {
   PaperclipGraphic,
   CurledCornerFold,
   HcRibbonBanner,
+  FLAG_COMPONENTS,
+  FranchiseEmblem,
+  HcTeamCrest,
 } from "./hc-notebook";
 import {
   PaperPanel,
@@ -95,6 +106,7 @@ const ROLE_ORDER: Record<HcPlayerProfile["role"], number> = {
 };
 
 export function teamLabel(state: HcState, playerId: string, players: Player[]): {
+  id?: string;
   flag: string;
   short: string;
   name: string;
@@ -103,14 +115,15 @@ export function teamLabel(state: HcState, playerId: string, players: Player[]): 
 } {
   const teamId = state.teamSelections[playerId]?.teamId;
   const playerName = players.find((p) => p.id === playerId)?.name ?? useRoomStore.getState().knownPlayers[playerId]?.name ?? "?";
-  if (!teamId) return { flag: "❓", short: "?", name: "Choosing…", playerName };
+  if (!teamId) return { id: undefined, flag: "❓", short: "?", name: "Choosing…", playerName };
   const country = (HC_COUNTRIES as Record<string, typeof HC_COUNTRIES.india | undefined>)[teamId];
   if (country) {
-    return { flag: country.flag, short: country.short, name: country.name, playerName };
+    return { id: teamId, flag: country.flag, short: country.short, name: country.name, playerName };
   }
   const franchise = (HC_FRANCHISES as Record<string, typeof HC_FRANCHISES.csk | undefined>)[teamId];
   if (franchise) {
     return {
+      id: teamId,
       flag: "🏟️",
       short: franchise.short,
       name: franchise.name,
@@ -118,7 +131,7 @@ export function teamLabel(state: HcState, playerId: string, players: Player[]): 
       color: franchise.color,
     };
   }
-  return { flag: "🏳️", short: String(teamId).slice(0, 3).toUpperCase(), name: String(teamId), playerName };
+  return { id: teamId, flag: "🏳️", short: String(teamId).slice(0, 3).toUpperCase(), name: String(teamId), playerName };
 }
 
 export function MatchHeader({
@@ -251,7 +264,7 @@ export function TeamPicker({
         <div className="text-center text-emerald-100 font-bold">
           Pick your IPL franchise (2026 season)
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {FRANCHISE_LIST.map((id) => {
             const f = HC_FRANCHISES[id];
             const meta = getJsonTeamMeta(id, state.options.format);
@@ -301,7 +314,7 @@ export function TeamPicker({
       <div className="text-center text-emerald-100 font-bold">
         Pick the country you'll represent
       </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {COUNTRY_LIST.map((id, idx) => {
           const profile = HC_COUNTRIES[id];
           const jsonPlayers = getJsonPlayers(id, state.options.format);
@@ -1025,8 +1038,49 @@ export function WaitingForOpponentSquad({
 }) {
   const oppId = state.playerOrder.find((id) => id !== selfId)!;
   const oppSelection = state.teamSelections[oppId];
-  const oppName = players.find((p) => p.id === oppId)?.name ?? "Opponent";
+  const oppPlayer = players.find((p) => p.id === oppId);
+  const oppName = oppPlayer?.name ?? "Opponent";
+
+  const selfSelection = state.teamSelections[selfId];
+  const myTeamId = selfSelection?.teamId;
+  const mySquadIds = selfSelection?.squadPlayerIds ?? [];
+  const myCaptainId = selfSelection?.captainId;
+
   const t0 = teamLabel(state, selfId, players);
+  const t1 = teamLabel(state, oppId, players);
+
+  const format = state.options.format;
+  const formatBadge =
+    format === "test"
+      ? "Test · 30 Overs"
+      : format === "odi"
+      ? "ODI · 15 Overs"
+      : "T20 · 10 Overs";
+
+  // Fetch complete squad list for self
+  const allTeamPlayers = useMemo((): HcPlayerProfile[] => {
+    if (!myTeamId) return [];
+    const roster = getRosterFor(myTeamId, format);
+    if (!roster) return [];
+    return [...roster.squad, ...(roster.extras ?? [])];
+  }, [myTeamId, format]);
+
+  const styleMap = useMemo(() => {
+    return myTeamId ? getJsonPlayerStyleMap(myTeamId, format) : new Map<string, JsonPlayerStyle>();
+  }, [myTeamId, format]);
+
+  const squadPlayers = useMemo((): HcPlayerProfile[] => {
+    const idSet = new Set(mySquadIds);
+    return allTeamPlayers.filter((p) => idSet.has(p.id));
+  }, [allTeamPlayers, mySquadIds]);
+
+  const captain = useMemo(() => {
+    return squadPlayers.find((p) => p.id === myCaptainId) ?? squadPlayers[0];
+  }, [squadPlayers, myCaptainId]);
+
+  const composition = useMemo(() => {
+    return evaluateSquadComposition(squadPlayers);
+  }, [squadPlayers]);
 
   function reopen() {
     if (state.teamSelections[selfId]?.teamId) {
@@ -1037,44 +1091,245 @@ export function WaitingForOpponentSquad({
     }
   }
 
+  const MyFlag = myTeamId && (myTeamId in FLAG_COMPONENTS) ? FLAG_COMPONENTS[myTeamId as HcCountry] : null;
+  const isMyFranchise = Boolean(myTeamId && myTeamId in HC_FRANCHISES);
+
+  const OppFlag = oppSelection?.teamId && (oppSelection.teamId in FLAG_COMPONENTS) ? FLAG_COMPONENTS[oppSelection.teamId as HcCountry] : null;
+  const isOppFranchise = Boolean(oppSelection?.teamId && oppSelection.teamId in HC_FRANCHISES);
+
+  const isOppTeamChosen = Boolean(oppSelection?.teamId);
+
   return (
-    <PaperPanel tone="soft" strong pad="lg" className="text-center font-notebook">
-      <div className="text-[2.4rem] mb-1">{t0.flag}</div>
-      <div className="font-sketch font-bold text-[18px] text-hc-ink mb-0.5">{t0.name}</div>
-      <div className="text-xs text-hc-ink-lt mb-2.5">
-        XI confirmed · {state.teamSelections[selfId]?.squadPlayerIds?.length ?? 0} players
+    <div className="w-full relative font-['Architects_Daughter',cursive] select-none my-auto">
+      {/* ── Outer Notebook Parchment Card ── */}
+      <div className="relative rounded-2xl sm:rounded-3xl border-2 border-[#D7C9B1] bg-[#FCF8EE] p-4 sm:p-6 shadow-[0_12px_36px_rgba(0,0,0,0.18)] overflow-hidden">
+        {/* Subtle red margin line */}
+        <div className="absolute top-0 bottom-0 left-4 sm:left-6 w-0.5 bg-rose-400/30 pointer-events-none" />
+
+        {/* Decorative corner paperclips/tapes */}
+        <div className="absolute -top-1.5 right-6 w-10 h-3 bg-amber-200/60 rotate-2 rounded-xs border border-amber-300/40 pointer-events-none" />
+        <div className="absolute -top-1.5 left-10 w-8 h-3 bg-amber-200/60 -rotate-3 rounded-xs border border-amber-300/40 pointer-events-none" />
+
+        {/* ── Section Header ── */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3.5 mb-3.5 border-b border-[#D7C9B1]/70">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/90 border border-emerald-500/50 text-emerald-900 font-bold text-xs uppercase tracking-wider shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping inline-block" />
+              Playing XI Locked
+            </span>
+            <span className="text-xs px-2.5 py-0.5 rounded-md bg-[#EDE0C0] text-stone-700 font-bold tracking-wide font-['Patrick_Hand',cursive]">
+              {formatBadge}
+            </span>
+          </div>
+
+          <div className="text-center sm:text-right">
+            <span className="text-xs font-bold text-stone-500 tracking-wide font-['Patrick_Hand',cursive]">
+              Category: <strong className="text-stone-800 uppercase">{state.options.category}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* ── Head to Head Matchup Banner ── */}
+        <div className="rounded-xl border border-[#D7C9B1] bg-[#F7F1DF]/90 p-3 sm:p-4 mb-4 shadow-inner">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4">
+            {/* Player's Team (Left) */}
+            <div className="flex items-center gap-3.5 bg-[#FCF8EE] rounded-lg p-3 border border-[#D7C9B1]/60 shadow-xs">
+              <div className="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg bg-[#EFE7D2] border border-[#D7C9B1] shadow-xs overflow-hidden">
+                {MyFlag ? (
+                  <MyFlag className="w-9 h-auto rounded-[2px] shadow-xs" />
+                ) : isMyFranchise && myTeamId ? (
+                  <FranchiseEmblem id={myTeamId} size={38} className="rounded-[2px] shadow-xs" />
+                ) : (
+                  <span className="text-2xl">{t0.flag}</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-sketch font-bold text-base sm:text-lg text-stone-900 leading-tight truncate m-0">
+                    {t0.name}
+                  </h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-['Patrick_Hand',cursive]">
+                    YOU
+                  </span>
+                </div>
+                {captain && (
+                  <div className="text-xs text-stone-600 flex items-center gap-1 mt-0.5 truncate">
+                    <span className="text-amber-600 font-bold">👑 C:</span>
+                    <span className="font-semibold text-stone-800">{captain.name}</span>
+                  </div>
+                )}
+                <div className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5 font-['Patrick_Hand',cursive]">
+                  <span>✓ 11 Players Confirmed</span>
+                </div>
+              </div>
+            </div>
+
+            {/* VS Badge (Center) */}
+            <div className="flex md:flex-col items-center justify-center gap-1 my-0.5 md:my-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E5D7BC] border-2 border-[#8B1A1A]/40 flex items-center justify-center shadow-xs">
+                <span className="font-sketch font-black text-xs sm:text-sm text-[#8B1A1A]">VS</span>
+              </div>
+            </div>
+
+            {/* Opponent's Team (Right) */}
+            <div className="flex items-center gap-3.5 bg-[#FCF8EE] rounded-lg p-3 border border-[#D7C9B1]/60 shadow-xs">
+              <div className="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg bg-[#EFE7D2] border border-[#D7C9B1] shadow-xs overflow-hidden">
+                {OppFlag ? (
+                  <OppFlag className="w-9 h-auto rounded-[2px] shadow-xs" />
+                ) : isOppFranchise && oppSelection?.teamId ? (
+                  <FranchiseEmblem id={oppSelection.teamId} size={38} className="rounded-[2px] shadow-xs" />
+                ) : (
+                  <span className="text-2xl">{isOppTeamChosen ? t1.flag : "❓"}</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-sketch font-bold text-base sm:text-lg text-stone-900 leading-tight truncate m-0">
+                    {isOppTeamChosen ? t1.name : "Choosing Team..."}
+                  </h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200 text-stone-700 font-bold font-['Patrick_Hand',cursive]">
+                    {oppName}
+                  </span>
+                </div>
+                <div className="text-xs text-amber-800 font-bold flex items-center gap-1.5 mt-1 font-['Patrick_Hand',cursive]">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>
+                    {isOppTeamChosen ? "Selecting Playing XI..." : "Selecting Nation/Franchise..."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Official Playing XI Squad Sheet ── */}
+        <div className="mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1.5 mb-2.5 px-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-sketch font-bold text-stone-900 text-sm sm:text-base m-0 tracking-wide">
+                📋 Official Playing XI
+              </h4>
+              <span className="text-xs text-stone-500 font-bold font-['Patrick_Hand',cursive]">
+                ({squadPlayers.length}/11)
+              </span>
+            </div>
+            <div className="text-xs text-stone-600 font-['Patrick_Hand',cursive] flex items-center gap-2 flex-wrap">
+              <span>{composition.batters} Bat</span>
+              <span>•</span>
+              <span>{composition.keepers} WK</span>
+              <span>•</span>
+              <span>{composition.allrounders} AR</span>
+              <span>•</span>
+              <span>{composition.bowlers} Bowl</span>
+            </div>
+          </div>
+
+          {/* Player Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2">
+            {squadPlayers.map((p) => {
+              const isCap = p.id === myCaptainId;
+              const roleIcon =
+                p.role === "batter"
+                  ? "🏏"
+                  : p.role === "keeper"
+                  ? "🧤"
+                  : p.role === "allrounder"
+                  ? "⚡"
+                  : "🎯";
+              const styleInfo = styleMap.get(p.name.toLowerCase());
+              const roleStyleText =
+                p.role === "bowler" || p.role === "allrounder"
+                  ? styleInfo?.bowlingStyle || (p.role === "allrounder" ? "All-Rounder" : "Bowler")
+                  : styleInfo?.battingStyle || (p.role === "keeper" ? "Wicketkeeper" : "Batter");
+
+              return (
+                <div
+                  key={p.id}
+                  className={cn(
+                    "flex items-center justify-between gap-2 px-2.5 py-1.5 sm:py-2 rounded-xl border transition-all",
+                    isCap
+                      ? "bg-amber-50/90 border-amber-300 shadow-xs ring-1 ring-amber-400/40"
+                      : "bg-[#FFFDF7] border-[#D7C9B1] hover:border-stone-400/80 shadow-2xs"
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0 select-none" title={p.role}>
+                      {roleIcon}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-stone-900 font-bold text-xs sm:text-sm truncate leading-tight">
+                          {p.name}
+                        </span>
+                        {isCap && (
+                          <span className="shrink-0 bg-amber-200 text-amber-900 border border-amber-400 text-[9px] font-black px-1 rounded">
+                            👑 C
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-stone-500 font-['Kalam',cursive] truncate leading-tight">
+                        {roleStyleText}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0">
+                    <PaperBadge tone={ROLE_BADGE_TONE[p.role]} size="sm">
+                      {ROLE_BADGE_LABEL[p.role]}
+                    </PaperBadge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Waiting Status & Action Footer ── */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 border-t border-[#D7C9B1]/70 bg-[#FBF7EC]/60 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 p-3.5 sm:p-4 rounded-b-2xl sm:rounded-b-3xl">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm text-stone-700 font-['Patrick_Hand',cursive] text-center sm:text-left">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+            </span>
+            <span>
+              Waiting for <strong>{oppName}</strong> to finalize squad. Match begins automatically...
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={reopen}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#EDE0C0] hover:bg-[#E2D2AD] active:bg-[#D7C399] border-2 border-stone-600/30 text-stone-800 font-['Architects_Daughter',cursive] font-bold text-xs uppercase tracking-wider transition-transform active:scale-95 shadow-xs cursor-pointer"
+          >
+            <span>✏️</span>
+            <span>Edit Playing XI</span>
+          </button>
+        </div>
       </div>
-      <div className="text-[13px] text-hc-ink mb-3.5">
-        Waiting for <strong>{oppName}</strong>
-        {oppSelection?.teamId ? " to confirm their XI…" : " to pick a team…"}
-      </div>
-      <PaperButton variant="ghost" size="sm" onClick={reopen} className="font-kalam normal-case tracking-normal">
-        ← Edit my XI
-      </PaperButton>
-    </PaperPanel>
+    </div>
   );
 }
 
-function TossCoinIllustration() {
+function TossCoinIllustration({ size = 70 }: { size?: number }) {
   return (
     <div
       style={{
         position: "relative",
-        width: 120,
-        height: 120,
+        width: size,
+        height: size,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
       }}
     >
-      {/* 3D Gold Tossing Coin — enlarged, completely clean without any background lines */}
+      {/* 3D Gold Tossing Coin — clean without any background lines */}
       <motion.div
-        animate={{ y: [0, -8, 0], rotate: [-4, 4, -4] }}
+        animate={{ y: [0, -6, 0], rotate: [-4, 4, -4] }}
         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-        style={{ width: 110, height: 110, position: "relative" }}
+        style={{ width: size, height: size, position: "relative" }}
       >
-        <svg width="110" height="110" viewBox="0 0 100 100">
+        <svg width={size} height={size} viewBox="0 0 100 100">
           <defs>
             <linearGradient
               id="hcTossRimGrad"
@@ -1192,8 +1447,26 @@ export function TossCallPhase({
   players: Player[];
 }) {
   const callerId = state.tossCallerId ?? state.playerOrder[0];
+  return <TossCall callerId={callerId} selfId={selfId} players={players} state={state} />;
+}
+
+export function TossCall({
+  callerId,
+  selfId,
+  players,
+  state,
+}: {
+  callerId: string;
+  selfId: string;
+  players: Player[];
+  state: HcState;
+}) {
   const callerName = players.find((p) => p.id === callerId)?.name ?? "Player 1";
   const isCaller = callerId === selfId;
+
+  const [p0, p1] = state.playerOrder;
+  const t0 = teamLabel(state, p0, players);
+  const t1 = teamLabel(state, p1, players);
 
   function call(choice: "odd" | "even") {
     getSocket().emit("game:move", { type: "tossCall", data: { call: choice } });
@@ -1201,54 +1474,110 @@ export function TossCallPhase({
 
   return (
     <div
-      className="relative mx-auto w-full my-auto select-none"
+      className="relative mx-auto w-full my-auto select-none font-['Architects_Daughter',cursive]"
       style={{
-        maxWidth: 760,
+        maxWidth: 680,
       }}
     >
-      <PaperPanel tone="legend" pad="lg" className="text-center space-y-4 font-notebook">
-        <div className="inline-flex items-center gap-2 rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-4 py-1.5 text-[11px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300">
-          <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" aria-hidden />
-          YOUR CALL · STEP 1 OF 2
-        </div>
-        <SketchHeading>The Toss Call</SketchHeading>
-        <p className="text-[14.5px] text-hc-ink/80 font-kalam max-w-md mx-auto">
-          {isCaller
-            ? "Just like calling Heads or Tails! Choose ODD or EVEN. Next, both players will pick numbers (1–6) — their SUM determines who wins the toss."
-            : `Waiting for ${callerName} to make the toss call (ODD or EVEN). You will both pick numbers next.`}
-        </p>
+      {/* ── Outer Notebook Parchment Card ── */}
+      <div className="relative rounded-2xl sm:rounded-3xl border-2 border-[#D7C9B1] bg-[#FCF8EE] p-3.5 sm:p-6 shadow-[0_12px_36px_rgba(0,0,0,0.18)] overflow-hidden">
+        {/* Washi tape decorations on top corners */}
+        <div className="absolute -top-1.5 left-8 sm:left-10 w-10 sm:w-12 h-3 sm:h-3.5 bg-amber-200/70 -rotate-3 rounded-xs border border-amber-300/50 pointer-events-none" />
+        <div className="absolute -top-1.5 right-8 sm:right-10 w-10 sm:w-12 h-3 sm:h-3.5 bg-amber-200/70 rotate-2 rounded-xs border border-amber-300/50 pointer-events-none" />
 
-        {/* 3-Step Mini Guide */}
-        <div className="rounded-xl bg-amber-50/70 p-3 text-center border border-amber-200/80 max-w-md mx-auto space-y-1">
-          <div className="text-[12px] font-bold text-amber-900">
-            How The Gully Toss Works:
+        {/* ── Top Matchup & Step Ribbon ── */}
+        <div className="flex items-center justify-between gap-2 pb-2 mb-2 sm:mb-4 border-b border-[#D7C9B1]/70">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/90 px-2.5 py-0.5 sm:px-3.5 sm:py-1 text-[10px] sm:text-xs font-bold tracking-wider text-amber-900 border border-amber-300 shadow-2xs font-['Patrick_Hand',cursive]">
+            <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-red-600 animate-pulse" aria-hidden />
+            THE TOSS · STEP 1 OF 2
           </div>
-          <div className="grid grid-cols-3 gap-1.5 text-[11px] font-kalam text-amber-950">
-            <div className="rounded bg-white/80 p-1.5 border border-amber-200">1. Pick Call (Odd/Even)</div>
-            <div className="rounded bg-white/80 p-1.5 border border-amber-200">2. Both Pick (1–6)</div>
-            <div className="rounded bg-white/80 p-1.5 border border-amber-200">3. Total Sum Wins</div>
-          </div>
-          <div className="text-[11px] text-amber-800/90 font-kalam pt-0.5">
-            Example: You pick 3 + Opponent picks 4 = 7 (ODD)
+
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-stone-600 font-['Patrick_Hand',cursive]">
+            <span>{t0.short} ({t0.playerName})</span>
+            <span className="text-[#8B1A1A] font-black">VS</span>
+            <span>{t1.short} ({t1.playerName})</span>
           </div>
         </div>
 
+        {/* ── Center Coin Flip & Title ── */}
+        <div className="flex flex-col items-center text-center mb-2.5 sm:mb-4">
+          <div className="mb-0.5">
+            <TossCoinIllustration size={60} />
+          </div>
+
+          <h2 className="font-sketch font-bold text-xl sm:text-3xl text-stone-900 m-0 tracking-wide">
+            The Toss Call
+          </h2>
+
+          <p className="text-xs sm:text-base text-stone-600 font-['Patrick_Hand',cursive] max-w-lg mt-0.5 sm:mt-1 mb-0 leading-snug sm:leading-relaxed">
+            {isCaller
+              ? "Call ODD or EVEN! Both players will next pick 1–6. If the sum matches your call, you win the toss."
+              : `Waiting for ${callerName} to call ODD or EVEN. You will both pick numbers next.`}
+          </p>
+        </div>
+
+        {/* ── Interactive Choice Cards (Caller) or Waiting State ── */}
         {isCaller ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 justify-center gap-3 pt-2 max-w-2xl mx-auto w-full">
-            <PaperButton variant="solidBlue" size="lg" onClick={() => call("odd")} className="min-h-16 px-6 py-3 text-base sm:text-lg tracking-wide">
-              ODD (1,3,5,7,9,11)
-            </PaperButton>
-            <PaperButton variant="solidGreen" size="lg" onClick={() => call("even")} className="min-h-16 px-6 py-3 text-base sm:text-lg tracking-wide">
-              EVEN (2,4,6,8,10,12)
-            </PaperButton>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3.5 mb-2.5 sm:mb-4">
+            {/* ODD CARD */}
+            <button
+              type="button"
+              onClick={() => call("odd")}
+              className="group relative flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-amber-500/70 bg-[#FFFDF7] hover:bg-amber-50/80 active:scale-97 transition-all shadow-xs hover:shadow-md cursor-pointer text-center"
+            >
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-sm sm:text-lg mb-1 group-hover:scale-110 transition-transform">
+                🎲
+              </div>
+              <span className="font-sketch font-black text-base sm:text-2xl text-amber-900 tracking-wide">
+                CALL ODD
+              </span>
+              <span className="text-[10px] sm:text-xs font-['Patrick_Hand',cursive] font-bold text-amber-700 mt-0.5">
+                1, 3, 5, 7, 9, 11
+              </span>
+              <span className="text-[9.5px] sm:text-[11px] font-['Kalam',cursive] text-stone-500 mt-0.5 hidden xs:inline sm:inline">
+                Wins on odd sum
+              </span>
+            </button>
+
+            {/* EVEN CARD */}
+            <button
+              type="button"
+              onClick={() => call("even")}
+              className="group relative flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-emerald-600/70 bg-[#FFFDF7] hover:bg-emerald-50/80 active:scale-97 transition-all shadow-xs hover:shadow-md cursor-pointer text-center"
+            >
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-sm sm:text-lg mb-1 group-hover:scale-110 transition-transform">
+                🎯
+              </div>
+              <span className="font-sketch font-black text-base sm:text-2xl text-emerald-900 tracking-wide">
+                CALL EVEN
+              </span>
+              <span className="text-[10px] sm:text-xs font-['Patrick_Hand',cursive] font-bold text-emerald-700 mt-0.5">
+                2, 4, 6, 8, 10, 12
+              </span>
+              <span className="text-[9.5px] sm:text-[11px] font-['Kalam',cursive] text-stone-500 mt-0.5 hidden xs:inline sm:inline">
+                Wins on even sum
+              </span>
+            </button>
           </div>
         ) : (
-          <div className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-sm font-kalam font-bold text-blue-900 animate-pulse">
-            <span aria-hidden>⏳</span>
-            Waiting for {callerName} to call odd or even…
+          <div className="flex items-center justify-center gap-2 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-[#D7C9B1] bg-[#F7F1DF]/90 text-stone-800 font-['Patrick_Hand',cursive] text-xs sm:text-base font-bold shadow-inner mb-2.5 sm:mb-4 animate-pulse">
+            <span className="text-base sm:text-xl">⏳</span>
+            <span>Waiting for <strong>{callerName}</strong> to call Odd or Even...</span>
           </div>
         )}
-      </PaperPanel>
+
+        {/* ── How It Works Strip ── */}
+        <div className="rounded-xl border border-[#D7C9B1] bg-[#F7F1DF]/80 p-2 sm:p-3 text-center">
+          <div className="text-[11px] sm:text-xs font-bold text-stone-800 mb-1 font-['Patrick_Hand',cursive]">
+            📖 How The Gully Toss Works:
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-[9.5px] sm:text-[11px] font-['Patrick_Hand',cursive] text-stone-700">
+            <div className="rounded-lg bg-[#FFFDF7] p-1 sm:p-1.5 border border-[#D7C9B1]/60">1. Call Odd / Even</div>
+            <div className="rounded-lg bg-[#FFFDF7] p-1 sm:p-1.5 border border-[#D7C9B1]/60">2. Both Pick (1–6)</div>
+            <div className="rounded-lg bg-[#FFFDF7] p-1 sm:p-1.5 border border-[#D7C9B1]/60">3. Sum Decides Winner</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1301,15 +1630,15 @@ export function TossPhase({
 
   return (
     <div
-      className="relative mx-auto w-full my-auto select-none"
+      className="relative mx-auto w-full my-auto select-none font-['Architects_Daughter',cursive]"
       style={{
-        maxWidth: 580,
-        background: "#FFFDF8",
-        border: "2px solid #2e1d0f",
-        borderRadius: 16,
+        maxWidth: 620,
+        background: "#FCF8EE",
+        border: "2px solid #D7C9B1",
+        borderRadius: 20,
         boxShadow:
-          "0 8px 24px rgba(46, 29, 15, 0.09), inset 0 0 0 1px rgba(80, 50, 20, 0.12)",
-        padding: "24px 22px 24px",
+          "0 12px 36px rgba(0, 0, 0, 0.16)",
+        padding: "12px 14px 14px",
         position: "relative",
       }}
     >
@@ -1319,8 +1648,8 @@ export function TossPhase({
           position: "absolute",
           top: -9,
           left: 20,
-          width: 68,
-          height: 22,
+          width: 50,
+          height: 18,
           background: "rgba(220, 195, 155, 0.75)",
           transform: "rotate(-32deg)",
           borderRadius: 2,
@@ -1336,8 +1665,8 @@ export function TossPhase({
           position: "absolute",
           top: -9,
           right: 20,
-          width: 68,
-          height: 22,
+          width: 50,
+          height: 18,
           background: "rgba(220, 195, 155, 0.75)",
           transform: "rotate(32deg)",
           borderRadius: 2,
@@ -1365,7 +1694,7 @@ export function TossPhase({
             transform: "rotate(-10deg)",
             textAlign: "center",
             flexShrink: 0,
-            width: 105,
+            width: 85,
             userSelect: "none",
           }}
         >
@@ -1373,7 +1702,7 @@ export function TossPhase({
             style={{
               fontFamily: "'Caveat', 'Kalam', cursive",
               color: "#2e1d0f",
-              fontSize: "clamp(18px, 3vw, 21px)",
+              fontSize: "clamp(15px, 2.5vw, 18px)",
               fontWeight: 700,
               lineHeight: 1.15,
             }}
@@ -1386,7 +1715,7 @@ export function TossPhase({
             style={{
               fontFamily: "'Kalam', cursive",
               color: "#92400e",
-              fontSize: "11px",
+              fontSize: "9.5px",
               fontWeight: 700,
               marginTop: 1,
             }}
@@ -1394,8 +1723,8 @@ export function TossPhase({
             (1-6 fingers sum)
           </div>
           <svg
-            width={68}
-            height={6}
+            width={55}
+            height={5}
             viewBox="0 0 68 6"
             style={{ margin: "2px auto 0", display: "block" }}
           >
@@ -1410,20 +1739,20 @@ export function TossPhase({
         </div>
 
         {/* Center: 3D Gold Tossing Coin with crown & spin arcs */}
-        <TossCoinIllustration />
+        <TossCoinIllustration size={54} />
 
         {/* Right Sticky Note: "Toss decides who bats first!" */}
         <div
           style={{
             transform: "rotate(6deg)",
-            background: "linear-gradient(135deg, #fef9c3 0%, #fef08a 100%)",
-            border: "1px solid rgba(234, 179, 8, 0.4)",
-            boxShadow: "0 3px 10px rgba(60, 40, 10, 0.12)",
+            background: "#F5EDD8",
+            border: "1.2px solid #D7C9B1",
+            boxShadow: "0 3px 10px rgba(60, 40, 10, 0.08)",
             borderRadius: 4,
-            padding: "8px 12px",
+            padding: "5px 8px",
             textAlign: "center",
             flexShrink: 0,
-            maxWidth: 135,
+            maxWidth: 110,
             userSelect: "none",
           }}
         >
@@ -1431,7 +1760,7 @@ export function TossPhase({
             style={{
               fontFamily: "'Caveat', 'Kalam', cursive",
               color: "#2e1d0f",
-              fontSize: "clamp(14px, 2.4vw, 16px)",
+              fontSize: "clamp(12px, 2vw, 14px)",
               fontWeight: 700,
               lineHeight: 1.15,
             }}
@@ -1441,10 +1770,10 @@ export function TossPhase({
             who bats first!
           </div>
           <svg
-            width={72}
-            height={6}
+            width={58}
+            height={5}
             viewBox="0 0 72 6"
-            style={{ margin: "3px auto 0", display: "block" }}
+            style={{ margin: "2px auto 0", display: "block" }}
           >
             <path
               d="M 2 3 Q 24 5, 48 3 T 70 4"
@@ -1458,8 +1787,8 @@ export function TossPhase({
       </div>
 
       {/* ── TITLE: "THE TOSS" ── */}
-      <div style={{ textAlign: "center", marginTop: 8 }}>
-        <div className="inline-block rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-3 py-0.5 text-[10.5px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300 mb-1">
+      <div style={{ textAlign: "center", marginTop: 4 }}>
+        <div className="inline-block rounded-full bg-[#EDE0C0] px-2.5 py-0.5 text-[9.5px] font-bold tracking-widest text-stone-800 border border-[#D7C9B1] mb-0.5 font-['Patrick_Hand',cursive]">
           STEP 2 OF 2 · SHOW FINGERS
         </div>
         <br />
@@ -1467,7 +1796,7 @@ export function TossPhase({
           className="font-sketch"
           style={{
             color: "#1e293b",
-            fontSize: "clamp(28px, 4.5vw, 34px)",
+            fontSize: "clamp(22px, 3.8vw, 28px)",
             fontWeight: 900,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -1478,10 +1807,10 @@ export function TossPhase({
           THE TOSS
           <svg
             width="100%"
-            height="8"
+            height="6"
             viewBox="0 0 120 8"
             preserveAspectRatio="none"
-            style={{ display: "block", marginTop: 2 }}
+            style={{ display: "block", marginTop: 1 }}
           >
             <path
               d="M 2 4 Q 30 7, 60 4 T 118 5"
@@ -1497,12 +1826,12 @@ export function TossPhase({
       {/* ── RULES EXPLANATION BOX ── */}
       <div
         style={{
-          background: "rgba(238, 228, 210, 0.85)",
-          border: "1px solid rgba(80, 50, 20, 0.2)",
-          borderRadius: 14,
-          padding: "10px 16px",
+          background: "#F5EDD8",
+          border: "1.5px solid #D7C9B1",
+          borderRadius: 12,
+          padding: "6px 12px",
           textAlign: "center",
-          marginTop: 14,
+          marginTop: 6,
           width: "100%",
         }}
       >
@@ -1510,26 +1839,27 @@ export function TossPhase({
           style={{
             fontFamily: "'Kalam', system-ui, sans-serif",
             color: "#2e1d0f",
-            fontSize: 13.5,
+            fontSize: 12,
             fontWeight: 700,
-            lineHeight: 1.35,
+            lineHeight: 1.3,
           }}
         >
           <div style={{ color: "#92400e", fontWeight: 800 }}>
             {callerId === selfId ? "You called" : `${callerName} called`} {callerCall.toUpperCase()}
           </div>
-          <div style={{ marginTop: 2, fontSize: 13 }}>
-            Both pick 1 to 6 fingers · <strong>You WIN</strong> if Total Sum is <strong>{myCall.toUpperCase()}</strong> ({myCall === "even" ? "2, 4, 6, 8, 10, 12" : "1, 3, 5, 7, 9, 11"})
+          <div style={{ marginTop: 1, fontSize: 11.5 }}>
+            Pick 1 to 6 · <strong>You WIN</strong> if Total Sum is <strong>{myCall.toUpperCase()}</strong> ({myCall === "even" ? "2, 4, 6, 8, 10, 12" : "1, 3, 5, 7, 9, 11"})
           </div>
         </div>
       </div>
 
-      {/* ── SECTION HEADER: "PICK YOUR NUMBER" (yellow marker) ── */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+      {/* ── SECTION HEADER: "PICK YOUR NUMBER" (parchment marker) ── */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
         <div
           style={{
-            background: "rgba(254, 240, 138, 0.9)",
-            padding: "4px 20px",
+            background: "#EDE0C0",
+            border: "1px solid #D7C9B1",
+            padding: "2px 14px",
             borderRadius: 6,
             display: "inline-block",
           }}
@@ -1538,7 +1868,7 @@ export function TossPhase({
             className="font-sketch"
             style={{
               color: "#1e293b",
-              fontSize: 16,
+              fontSize: 13,
               fontWeight: 900,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -1549,13 +1879,13 @@ export function TossPhase({
         </div>
       </div>
 
-      {/* ── NUMBER CARDS (1 to 6) — Extra Bold Numbers ── */}
+      {/* ── NUMBER CARDS (1 to 6) — Warm Paper Chips ── */}
       <div
         style={{
           display: "flex",
           justifyContent: "center",
-          gap: "clamp(6px, 2vw, 12px)",
-          marginTop: 14,
+          gap: "clamp(4px, 1.5vw, 10px)",
+          marginTop: 8,
           width: "100%",
         }}
       >
@@ -1570,46 +1900,47 @@ export function TossPhase({
               onClick={() => handlePick(num)}
               style={{
                 flex: 1,
-                maxWidth: 64,
-                minWidth: 44,
-                height: 68,
+                maxWidth: 58,
+                minWidth: 38,
+                height: 52,
                 borderRadius: 12,
-                background: isSelected ? "#f0fdf4" : "#ffffff",
+                background: isSelected ? "#DCFCE7" : "#F7F1DF",
                 border: isSelected
-                  ? "2.5px solid #16a34a"
-                  : "1.5px solid rgba(80, 50, 20, 0.22)",
+                  ? "2px solid #166534"
+                  : "1.5px solid #D7C9B1",
                 boxShadow: isSelected
-                  ? "0 4px 12px rgba(22, 163, 74, 0.25)"
-                  : "0 2px 6px rgba(50, 20, 5, 0.08)",
+                  ? "0 3px 10px rgba(22, 163, 74, 0.25)"
+                  : "0 1px 4px rgba(60, 40, 15, 0.08)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: isLocked ? "default" : "pointer",
                 transition: "all 140ms ease",
-                transform: isSelected ? "translateY(-3px) scale(1.04)" : "none",
+                transform: isSelected ? "translateY(-2px) scale(1.04)" : "none",
               }}
               onMouseEnter={(e) => {
                 if (!isLocked && !isSelected) {
                   e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.borderColor = "rgba(80, 50, 20, 0.4)";
+                  e.currentTarget.style.background = "#EDE0C0";
+                  e.currentTarget.style.borderColor = "#B8A383";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
                   e.currentTarget.style.transform = "none";
-                  e.currentTarget.style.borderColor = "rgba(80, 50, 20, 0.22)";
+                  e.currentTarget.style.background = "#F7F1DF";
+                  e.currentTarget.style.borderColor = "#D7C9B1";
                 }
               }}
             >
               <span
                 className="font-sketch"
                 style={{
-                  fontSize: "clamp(26px, 5.5vw, 34px)",
+                  fontSize: "clamp(22px, 4.5vw, 28px)",
                   fontWeight: 900,
-                  color: isSelected ? "#15803d" : "#0f172a",
+                  color: isSelected ? "#15803d" : "#1a2952",
                   lineHeight: 1,
-                  WebkitTextStroke: isSelected ? "0.6px #15803d" : "0.6px #0f172a",
                 }}
               >
                 {num}
@@ -1625,8 +1956,8 @@ export function TossPhase({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 10,
-          marginTop: 14,
+          gap: 8,
+          marginTop: 8,
           width: "100%",
         }}
       >
@@ -1634,31 +1965,31 @@ export function TossPhase({
         <div
           style={{
             flex: 1,
-            background: "#FFFDF9",
-            border: "1.5px solid rgba(80, 50, 20, 0.16)",
-            borderRadius: 14,
-            padding: "10px 12px",
-            boxShadow: "0 2px 6px rgba(50, 20, 5, 0.05)",
+            background: "#F7F1DF",
+            border: "1.5px solid #D7C9B1",
+            borderRadius: 12,
+            padding: "6px 8px",
+            boxShadow: "0 2px 5px rgba(60, 40, 15, 0.06)",
             minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            gap: 6,
+            gap: 4,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <div style={{ width: 34, height: 34, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
                 avatar={myAvatar}
                 name={myName}
                 className="w-full h-full object-cover rounded-full"
-                textClassName="text-[11px]"
+                textClassName="text-[10px]"
               />
             </div>
             <div
               style={{
                 fontFamily: "'Kalam', system-ui, sans-serif",
                 fontWeight: 800,
-                fontSize: 13.5,
+                fontSize: 12,
                 color: "#1e293b",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1666,45 +1997,45 @@ export function TossPhase({
                 lineHeight: 1.2,
               }}
             >
-              {myName} <span style={{ opacity: 0.75, fontSize: 12 }}>(You)</span>
+              {myName} <span style={{ opacity: 0.75, fontSize: 10.5 }}>(You)</span>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 20 }}>
             {myPick != null ? (
               <span
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "2px 10px",
+                  gap: 3,
+                  padding: "1px 8px",
                   borderRadius: 9999,
-                  background: "rgba(22, 101, 52, 0.12)",
+                  background: "#DCFCE7",
                   border: "1px solid #166534",
                   color: "#166534",
                   fontWeight: 800,
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontFamily: "'Kalam', system-ui, sans-serif",
                 }}
               >
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Ready
               </span>
             ) : (
-              <span className="inline-flex gap-1.5 items-center" aria-label="waiting">
+              <span className="inline-flex gap-1 items-center" aria-label="waiting">
                 {[0, 1, 2].map((i) => (
                   <motion.span
                     key={i}
                     style={{
                       display: "inline-block",
-                      width: 6,
-                      height: 6,
+                      width: 5,
+                      height: 5,
                       borderRadius: "50%",
                       background: "#94a3b8",
                     }}
-                    animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+                    animate={{ y: [0, -3, 0], opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 0.85, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
                   />
                 ))}
@@ -1715,13 +2046,13 @@ export function TossPhase({
           <div
             style={{
               fontFamily: "'Kalam', system-ui, sans-serif",
-              fontSize: 11,
+              fontSize: 10,
               color: "#64748b",
               textAlign: "center",
-              lineHeight: 1.2,
+              lineHeight: 1.1,
             }}
           >
-            {myPick != null ? "Locked in!" : "Waiting for your choice..."}
+            {myPick != null ? "Locked in!" : "Waiting..."}
           </div>
         </div>
 
@@ -1733,11 +2064,11 @@ export function TossPhase({
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            padding: "0 2px",
+            padding: "0 1px",
           }}
         >
           {/* Top burst ticks */}
-          <svg width={18} height={8} viewBox="0 0 18 8">
+          <svg width={14} height={6} viewBox="0 0 18 8">
             <line x1="3" y1="7" x2="1" y2="1" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
             <line x1="9" y1="7" x2="9" y2="0" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
             <line x1="15" y1="7" x2="17" y2="1" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
@@ -1746,16 +2077,16 @@ export function TossPhase({
             className="font-sketch"
             style={{
               color: "#2e1d0f",
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: 900,
-              padding: "2px 0",
+              padding: "1px 0",
               userSelect: "none",
             }}
           >
             VS
           </div>
           {/* Bottom burst ticks */}
-          <svg width={18} height={8} viewBox="0 0 18 8">
+          <svg width={14} height={6} viewBox="0 0 18 8">
             <line x1="3" y1="1" x2="1" y2="7" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
             <line x1="9" y1="1" x2="9" y2="8" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
             <line x1="15" y1="1" x2="17" y2="7" stroke="#b91c1c" strokeWidth={1.5} strokeLinecap="round" />
@@ -1766,31 +2097,31 @@ export function TossPhase({
         <div
           style={{
             flex: 1,
-            background: "#FFFDF9",
-            border: "1.5px solid rgba(80, 50, 20, 0.16)",
-            borderRadius: 14,
-            padding: "10px 12px",
-            boxShadow: "0 2px 6px rgba(50, 20, 5, 0.05)",
+            background: "#F7F1DF",
+            border: "1.5px solid #D7C9B1",
+            borderRadius: 12,
+            padding: "6px 8px",
+            boxShadow: "0 2px 5px rgba(60, 40, 15, 0.06)",
             minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            gap: 6,
+            gap: 4,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <div style={{ width: 34, height: 34, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
                 avatar={oppAvatar}
                 name={oppName}
                 className="w-full h-full object-cover rounded-full"
-                textClassName="text-[11px]"
+                textClassName="text-[10px]"
               />
             </div>
             <div
               style={{
                 fontFamily: "'Kalam', system-ui, sans-serif",
                 fontWeight: 800,
-                fontSize: 13.5,
+                fontSize: 12,
                 color: "#1e293b",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1802,24 +2133,24 @@ export function TossPhase({
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 20 }}>
             {oppLockedIn ? (
               <span
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "2px 10px",
+                  gap: 3,
+                  padding: "1px 8px",
                   borderRadius: 9999,
-                  background: "rgba(22, 101, 52, 0.12)",
+                  background: "#DCFCE7",
                   border: "1px solid #166534",
                   color: "#166534",
                   fontWeight: 800,
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontFamily: "'Kalam', system-ui, sans-serif",
                 }}
               >
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Ready
@@ -1853,7 +2184,7 @@ export function TossPhase({
               lineHeight: 1.2,
             }}
           >
-            {oppLockedIn ? "Waiting for your call..." : "Thinking..."}
+            {oppLockedIn ? "Locked in!" : "Waiting for their pick..."}
           </div>
         </div>
       </div>
@@ -2310,11 +2641,6 @@ function NextBatterPicker({
   );
 }
 
-/** Format balls count into overs string (e.g. 7 balls -> "1.1"). */
-function oversFromBalls(balls: number): string {
-  return `${Math.floor(balls / 6)}.${balls % 6}`;
-}
-
 /**
  * Shown when an over ends or innings starts without a current bowler.
  * Lets the fielding captain pick their bowler within format constraints.
@@ -2528,6 +2854,16 @@ export function InningsPhase({
   }, [wicketAnnounce]);
 
   const isBattingPlayer = innings.battingPlayerId === selfId;
+  const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
+
+  const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
+  const bowlingTeamId = bowlingSelection?.teamId;
+  const bowlingRoster = bowlingTeamId ? getRosterFor(bowlingTeamId, state.options.format) : null;
+  const allBowlingPlayers: HcPlayerProfile[] = bowlingRoster ? [...bowlingRoster.squad, ...bowlingRoster.extras] : [];
+  const currentBowler = innings.currentBowlerId ? allBowlingPlayers.find((p) => p.id === innings.currentBowlerId) : null;
+  const bowlingStyleMap = bowlingTeamId ? getJsonPlayerStyleMap(bowlingTeamId, state.options.format) : null;
+  const jsonBowlerStyle = currentBowler ? bowlingStyleMap?.get(currentBowler.name.toLowerCase()) : null;
+  const isSpinner = isSpinnerBowler(currentBowler?.name, jsonBowlerStyle?.bowlingStyle, currentBowler?.role);
 
   function pick(n: number, isYorker: boolean = false) {
     if (myPick != null) return;
@@ -2563,17 +2899,24 @@ export function InningsPhase({
         role="status"
         aria-live="polite"
         className={cn(
-        "mb-3 rounded-full border px-4 py-1.5 text-center text-[11px] font-black uppercase tracking-[0.12em]",
+        "mb-3 rounded-full border px-4 py-1.5 text-center text-[11px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-2",
         myPick != null
           ? "border-emerald-300 bg-emerald-50 text-emerald-800"
           : "border-red-200 bg-red-50 text-red-800",
         )}
       >
-        {myPick != null
-          ? "Your move is locked · waiting for the reveal"
-          : oppLockedIn
-          ? "Your move · opponent is locked in"
-          : "Your move · choose a number"}
+        <span>
+          {myPick != null
+            ? "Your move is locked · waiting for the reveal"
+            : oppLockedIn
+            ? "Your move · opponent is locked in"
+            : "Your move · choose a number"}
+        </span>
+        {myPick == null && secondsLeft != null && secondsLeft <= 15 && secondsLeft > 0 && (
+          <span className="font-sans font-black bg-red-600 text-white px-1.5 py-0.2 rounded-full text-[10px] animate-pulse">
+            ⏱ {secondsLeft}s
+          </span>
+        )}
       </div>
 
       {innings.needsNextBatterPick ? (
@@ -2656,6 +2999,9 @@ export function InningsPhase({
               allowedPicks={myRole === "bowler" ? (isYorkerToggled ? [1, 2, 3] : allowedBowlerPicks) : [1, 2, 3, 4, 5, 6]}
               restrictedNote={isYorkerToggled ? "Mystery Yorker — Line 1, 2 or 3" : bowlerRestricted ? "Powerplay — Bowler limited to 1, 2 or 3" : null}
               big={isDesktop}
+              role={myRole}
+              isSpinner={isSpinner}
+              isYorker={isYorkerToggled}
             />
           </div>
 
@@ -2673,10 +3019,11 @@ export function InningsPhase({
     return (
       <div className="w-full flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
         {/* ── Left Column: Live Match Pitch & Duel Arena ── */}
-        <div className="flex flex-col justify-between overflow-y-auto space-y-3 flex-1 min-h-0 pr-1">
+        <div className="flex flex-col justify-start gap-3 sm:gap-3.5 overflow-y-auto flex-1 min-h-0 pr-1">
           <TurnTimeWarning
             deadline={state.turnDeadline}
             active={!needsBowler && !innings.needsNextBatterPick && myPick == null && myRole != null}
+            chipless={true}
           />
 
           {/* Scoreboard Card */}
@@ -2691,16 +3038,6 @@ export function InningsPhase({
             upcomingOver={upcomingOver}
           />
 
-          {/* Powerplay Card */}
-          {isPowerplayOver && (
-            <PowerplayBanner
-              upcomingOver={upcomingOver}
-              powerplayOvers={innings.powerplayOvers}
-              restrictedThisOver={restrictedThisOver}
-              upcomingBall={upcomingBall}
-            />
-          )}
-
           {/* Wicket Announcement */}
           {wicketAnnounce && (
             <WicketNotification
@@ -2711,7 +3048,7 @@ export function InningsPhase({
           )}
 
           {/* Active Match Arena (White Taped Paper Card) */}
-          <div className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-4 shadow-sm relative overflow-hidden flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="rounded-2xl border-2 border-[#D7C9B1] bg-[#FFFDF8] p-4 shadow-[0_4px_16px_rgba(46,25,8,0.06)] relative overflow-hidden flex flex-col md:flex-row gap-4 items-center justify-between">
             {/* Left half: Crease Figures */}
             <div className="w-full md:w-5/12 border-b md:border-b-0 md:border-r border-stone-200/70 pb-3 md:pb-0 md:pr-4">
               <CurrentPlayersBar
@@ -2729,6 +3066,16 @@ export function InningsPhase({
               {renderActionArea()}
             </div>
           </div>
+
+          {/* Powerplay Card (Placed below Active Match Arena) */}
+          {isPowerplayOver && (
+            <PowerplayBanner
+              upcomingOver={upcomingOver}
+              powerplayOvers={innings.powerplayOvers}
+              restrictedThisOver={restrictedThisOver}
+              upcomingBall={upcomingBall}
+            />
+          )}
         </div>
 
         {/* ── Right Column: Match Info Stack & Post-it Notes ── */}
@@ -2746,37 +3093,266 @@ export function InningsPhase({
     );
   }
 
-  // ── Mobile Portrait View matching media_1789502371018.png ──
+  // ── Mobile Portrait View matching Cricbuzz structure in Classic Notebook skin ──
   return (
-    <div className="w-full space-y-3 font-notebook pb-12">
+    <div className="w-full space-y-2 font-notebook">
       <TurnTimeWarning
         deadline={state.turnDeadline}
         active={!needsBowler && !innings.needsNextBatterPick && myPick == null && myRole != null}
+        chipless={true}
       />
 
-      {/* 1. Scoreboard Card */}
-      <Scoreboard
+      <NotebookMobileMatchCentre
         state={state}
         innings={innings}
         target={target}
         players={players}
-        big={false}
-        registerCardRef={registerCardRef}
+        selfId={selfId}
+        myRole={myRole}
+        myPick={myPick}
+        oppLockedIn={oppLockedIn}
+        secondsLeft={secondsLeft}
+        isBattingPlayer={isBattingPlayer}
         isPowerplayOver={isPowerplayOver}
         upcomingOver={upcomingOver}
+        upcomingBall={upcomingBall}
+        restrictedThisOver={restrictedThisOver}
+        bowlerRestricted={bowlerRestricted}
+        allowedBowlerPicks={allowedBowlerPicks}
+        canBowlYorker={canBowlYorker}
+        isYorkerToggled={isYorkerToggled}
+        setIsYorkerToggled={setIsYorkerToggled}
+        isSpinner={isSpinner}
+        pick={pick}
+        reveal={reveal}
+        wicketAnnounce={wicketAnnounce}
+        setWicketAnnounce={setWicketAnnounce}
+        needsBowler={needsBowler}
+        registerCardRef={registerCardRef}
       />
+    </div>
+  );
+}
 
-      {/* 2. Powerplay Banner */}
-      {isPowerplayOver && (
-        <PowerplayBanner
-          upcomingOver={upcomingOver}
-          powerplayOvers={innings.powerplayOvers}
-          restrictedThisOver={restrictedThisOver}
-          upcomingBall={upcomingBall}
-        />
-      )}
+export function NotebookMobileMatchCentre({
+  state,
+  innings,
+  target,
+  players,
+  selfId,
+  myRole,
+  myPick,
+  oppLockedIn,
+  secondsLeft,
+  isBattingPlayer,
+  isPowerplayOver,
+  upcomingOver,
+  upcomingBall,
+  restrictedThisOver: _restrictedThisOver,
+  bowlerRestricted,
+  allowedBowlerPicks,
+  canBowlYorker,
+  isYorkerToggled,
+  setIsYorkerToggled,
+  isSpinner,
+  pick,
+  reveal,
+  wicketAnnounce,
+  setWicketAnnounce,
+  needsBowler,
+  registerCardRef,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  target: number | null;
+  players: Player[];
+  selfId: string;
+  myRole: "batter" | "bowler" | null;
+  myPick: number | null | undefined;
+  oppLockedIn: boolean;
+  secondsLeft: number | null;
+  isBattingPlayer: boolean;
+  isPowerplayOver: boolean;
+  upcomingOver: number;
+  upcomingBall: number;
+  restrictedThisOver: number[];
+  bowlerRestricted: boolean;
+  allowedBowlerPicks: number[];
+  canBowlYorker: boolean;
+  isYorkerToggled: boolean;
+  setIsYorkerToggled: React.Dispatch<React.SetStateAction<boolean>>;
+  isSpinner: boolean;
+  pick: (n: number, isYorker?: boolean) => void;
+  reveal: HcBall | null;
+  wicketAnnounce: { outName: string; inName: string } | null;
+  setWicketAnnounce: React.Dispatch<React.SetStateAction<{ outName: string; inName: string } | null>>;
+  needsBowler: boolean;
+  registerCardRef?: (playerId: string | null) => (el: HTMLElement | null) => void;
+}) {
+  const batterTeam = teamLabel(state, innings.battingPlayerId, players);
+  const oversBowled = Math.floor(innings.balls / 6);
+  const ballsThisOver = innings.balls % 6;
+  const totalBallsBowled = innings.balls;
+  const crr = totalBallsBowled > 0 ? (innings.runs / totalBallsBowled) * 6 : 0;
+  const ballsRemaining = Math.max(0, innings.overs * 6 - innings.balls);
+  const runsNeeded = target != null ? Math.max(0, target - innings.runs) : null;
+  const rrr = runsNeeded != null && ballsRemaining > 0 ? (runsNeeded / ballsRemaining) * 6 : null;
 
-      {/* Wicket Announcement */}
+  // Striker, non-striker, bowler data
+  const battingSelection = state.teamSelections[innings.battingPlayerId];
+  const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
+  const battingTeamId = battingSelection?.teamId;
+  const bowlingTeamId = bowlingSelection?.teamId;
+  const battingRoster = battingTeamId ? getRosterFor(battingTeamId, state.options.format) : null;
+  const bowlingRoster = bowlingTeamId ? getRosterFor(bowlingTeamId, state.options.format) : null;
+  const allBattingPlayers: HcPlayerProfile[] = battingRoster ? [...battingRoster.squad, ...battingRoster.extras] : [];
+  const allBowlingPlayers: HcPlayerProfile[] = bowlingRoster ? [...bowlingRoster.squad, ...bowlingRoster.extras] : [];
+  const lookupBatter = (id: string) => allBattingPlayers.find((p) => p.id === id);
+  const lookupBowler = (id: string) => allBowlingPlayers.find((p) => p.id === id);
+
+  const battingSquad = battingSelection?.squadPlayerIds ?? [];
+  const strikerId = battingSquad[innings.strikerIdx];
+  const nonStrikerId = battingSquad[innings.nonStrikerIdx];
+  const striker = strikerId ? lookupBatter(strikerId) : null;
+  const nonStriker = nonStrikerId ? lookupBatter(nonStrikerId) : null;
+  const strikerStats = strikerId ? innings.batterStats[strikerId] : null;
+  const nonStrikerStats = nonStrikerId ? innings.batterStats[nonStrikerId] : null;
+
+  const currentBowlerId = innings.currentBowlerId;
+  const currentBowler = currentBowlerId ? lookupBowler(currentBowlerId) : null;
+  const bowlerStats = currentBowlerId ? innings.bowlerStats[currentBowlerId] : null;
+  const bowlerBalls = bowlerStats?.balls ?? 0;
+  const bowlerOvers = `${Math.floor(bowlerBalls / 6)}.${bowlerBalls % 6}`;
+  const bowlerEcon = bowlerStats && bowlerStats.balls > 0 ? ((bowlerStats.runs / bowlerStats.balls) * 6).toFixed(2) : "0.00";
+
+  const strikerSr = strikerStats && strikerStats.balls > 0 ? ((strikerStats.runs / strikerStats.balls) * 100).toFixed(0) : "0";
+  const nonStrikerSr = nonStrikerStats && nonStrikerStats.balls > 0 ? ((nonStrikerStats.runs / nonStrikerStats.balls) * 100).toFixed(0) : "0";
+
+  // Recent balls from history (last 8)
+  const recentBalls = innings.history.slice(-8);
+
+  const isMyTurn = myPick == null && myRole != null && !needsBowler && !innings.needsNextBatterPick;
+
+  return (
+    <div className="w-full flex flex-col gap-2 select-none font-notebook">
+      {/* ── 1. Compact Cricbuzz-style Notebook Scoreboard & Player Ledger ── */}
+      <div
+        ref={registerCardRef?.(innings.battingPlayerId)}
+        className="rounded-xl border-2 border-[#D7C9B1] bg-[#FCF8EE] p-2.5 shadow-xs relative overflow-hidden"
+      >
+        {/* Top Header Row: Score, Overs, CRR, PP */}
+        <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-[#D7C9B1]/60">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-sketch font-black text-[9.5px] uppercase bg-[#EFE7D2] text-[#8B1A1A] px-1.5 py-0.2 rounded border border-[#8B1A1A]/30">
+              INN {innings.number}
+            </span>
+            <span className="font-sketch font-bold text-xs text-[#1E3A8A] truncate">
+              {batterTeam.short} ({batterTeam.playerName})
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="font-sketch text-lg font-black text-[#1E293B]">
+              {innings.runs}<span className="text-[#DC2626]">/{innings.wickets}</span>
+            </span>
+            <span className="text-[11px] font-hand font-bold text-stone-600">
+              ({oversBowled}.{ballsThisOver}/{innings.overs})
+            </span>
+            {isPowerplayOver && (
+              <span className="text-[9px] font-sketch font-black text-amber-900 bg-amber-200/80 px-1.5 py-0.2 rounded border border-amber-300">
+                🔥 PP
+              </span>
+            )}
+            <span className="text-[9.5px] font-hand font-bold text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200">
+              CRR: {crr.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Target if 2nd innings */}
+        {target != null && (
+          <div className="py-0.5 px-1.5 my-0.5 rounded bg-amber-50 border border-amber-200/80 flex items-center justify-between text-[10px] font-hand text-amber-950 font-bold">
+            <span>Target: <strong>{target}</strong></span>
+            <span>Need {runsNeeded} off {ballsRemaining}b {rrr != null && `(RRR: ${rrr.toFixed(2)})`}</span>
+          </div>
+        )}
+
+        {/* 3-Row Mini Ledger (Striker, Non-Striker, Bowler) */}
+        <div className="py-1 space-y-0.5 text-xs">
+          {/* Striker */}
+          <div className="flex items-center justify-between gap-1.5 font-sketch">
+            <div className="flex items-center gap-1 min-w-0 flex-1 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block animate-pulse" />
+              <span className="font-bold text-stone-900 truncate text-[11.5px]">
+                {striker?.name ?? "Striker"} *
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-stone-700 text-[11px]">
+              <span className="font-black text-emerald-900">{strikerStats?.runs ?? 0} ({strikerStats?.balls ?? 0}b)</span>
+              <span className="text-stone-400 font-hand text-[9.5px]">SR: {strikerSr}</span>
+            </div>
+          </div>
+
+          {/* Non-Striker */}
+          <div className="flex items-center justify-between gap-1.5 font-sketch text-stone-600">
+            <div className="flex items-center gap-1 min-w-0 flex-1 truncate pl-2.5">
+              <span className="font-medium text-stone-700 truncate text-[11.5px]">
+                {nonStriker?.name ?? "Non-Striker"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-stone-600 text-[11px]">
+              <span>{nonStrikerStats?.runs ?? 0} ({nonStrikerStats?.balls ?? 0}b)</span>
+              <span className="text-stone-400 font-hand text-[9.5px]">SR: {nonStrikerSr}</span>
+            </div>
+          </div>
+
+          {/* Bowler */}
+          <div className="flex items-center justify-between gap-1.5 font-sketch pt-0.5 border-t border-[#D7C9B1]/40 text-stone-800">
+            <div className="flex items-center gap-1 min-w-0 flex-1 truncate">
+              <span className="text-[10px]">{isSpinner ? "🌀" : "⚡"}</span>
+              <span className="font-bold text-stone-900 truncate text-[11.5px]">
+                Bowler: {currentBowler?.name ?? "Choosing..."}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-stone-700 text-[11px]">
+              <span className="font-black text-red-950">{bowlerOvers}-{bowlerStats?.runs ?? 0}-{bowlerStats?.wickets ?? 0}</span>
+              <span className="text-stone-400 font-hand text-[9.5px]">Econ: {bowlerEcon}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Deliveries Strip */}
+        <div className="pt-1 border-t border-[#D7C9B1]/60 flex items-center justify-between gap-1">
+          <span className="font-sketch font-bold text-[9px] uppercase text-stone-500 shrink-0">
+            RECENT:
+          </span>
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+            {recentBalls.length === 0 ? (
+              <span className="text-[9.5px] font-hand text-stone-400 italic">Yet to bowl</span>
+            ) : (
+              recentBalls.map((b, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "w-4.5 h-4.5 rounded-full flex items-center justify-center font-sketch font-black text-[9.5px] shrink-0 border shadow-2xs",
+                    b.wicket
+                      ? "bg-red-600 text-white border-red-700 animate-bounce"
+                      : b.runs === 4 || b.runs === 6
+                      ? "bg-amber-400 text-amber-950 border-amber-500"
+                      : b.runs === 0
+                      ? "bg-stone-200 text-stone-700 border-stone-300"
+                      : "bg-white text-stone-800 border-stone-300"
+                  )}
+                >
+                  {b.wicket ? "W" : b.runs}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Wicket Announcement Toast if active */}
       {wicketAnnounce && (
         <WicketNotification
           outName={wicketAnnounce.outName}
@@ -2785,81 +3361,326 @@ export function InningsPhase({
         />
       )}
 
-      {/* 3. Combined Crease & Overs Card */}
-      <div className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-3.5 shadow-sm relative overflow-hidden">
-        <div className="grid grid-cols-12 gap-3">
-          {/* Left Column: Crease figures */}
-          <div className="col-span-7 border-r border-stone-200/70 pr-2">
-            <CurrentPlayersBar
-              state={state}
-              innings={innings}
-              selfId={selfId}
-              players={players}
-              big={false}
-              registerCardRef={registerCardRef}
-            />
-          </div>
-
-          {/* Right Column: This Over & Recent */}
-          <div className="col-span-5 flex flex-col justify-between space-y-2">
-            <div>
-              <div className="text-[11px] font-hand font-bold text-[#1E3A8A] italic mb-1 uppercase">
-                THIS OVER
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {innings.history.filter((b) => b.overNumber === upcomingOver).length === 0 ? (
-                  <span className="text-[10px] font-hand text-stone-400 italic">—</span>
-                ) : (
-                  innings.history
-                    .filter((b) => b.overNumber === upcomingOver)
-                    .map((b, i) => (
-                      <span
-                        key={i}
-                        className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center font-sketch font-black text-xs shadow-xs border",
-                          b.wicket ? "bg-[#DC2626] text-white border-[#991B1B]" : "bg-white text-[#1E3A8A] border border-[#1E3A8A]"
-                        )}
-                      >
-                        {b.wicket ? "W" : b.runs}
-                      </span>
-                    ))
-                )}
-              </div>
+      {/* ── 2. Interactive Match & Duel Card (Cricbuzz structured) ── */}
+      <div className="rounded-xl border-2 border-[#D7C9B1] bg-[#FFFDF8] p-2.5 shadow-xs relative overflow-hidden flex flex-col gap-1.5">
+        {/* Powerplay / Over indicator bar */}
+        {isPowerplayOver && (
+          <div className="flex items-center justify-between gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-[10px] font-sketch">
+            <div className="flex items-center gap-1 text-amber-900 font-bold">
+              <span>🔥 POWERPLAY</span>
+              <span className="text-stone-500 font-normal">Over {upcomingOver} of {innings.powerplayOvers}</span>
             </div>
-
-            <div className="pt-1.5 border-t border-stone-200/60">
-              <div className="text-[11px] font-hand font-bold text-[#1E3A8A] italic mb-1 uppercase">
-                RECENT
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {innings.history.slice(-5).map((b, i) => (
+            <div className="flex items-center gap-0.5">
+              <span className="text-[8.5px] text-stone-500 mr-0.5">Balls:</span>
+              {[1, 2, 3, 4, 5, 6].map((b) => {
+                const isCurrent = b === upcomingBall;
+                const isBowled = b < upcomingBall;
+                return (
                   <span
-                    key={i}
+                    key={b}
                     className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center font-sketch font-black text-xs shadow-xs border",
-                      b.wicket ? "bg-[#DC2626] text-white border-[#991B1B]" : "bg-white text-[#1E3A8A] border border-[#1E3A8A]"
+                      "w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8.5px] font-mono font-bold border",
+                      isCurrent
+                        ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                        : isBowled
+                        ? "bg-stone-200 text-stone-500 border-stone-300"
+                        : "bg-white text-stone-400 border-stone-200"
                     )}
                   >
-                    {b.wicket ? "W" : b.runs}
+                    {b}
                   </span>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
+        )}
+
+        {/* Turn Header & Opponent Ready Status */}
+        <div className="flex items-center justify-between gap-2 pb-1 border-b border-stone-200">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "font-sketch font-black text-xs uppercase tracking-wide",
+                myRole === "batter" ? "text-[#1E3A8A]" : "text-[#B91C1C]"
+              )}
+            >
+              {myRole === "batter" ? "🏏 YOU ARE BATTING" : "🎯 YOU ARE BOWLING"}
+            </span>
+            {isPowerplayOver && bowlerRestricted && myRole === "bowler" && !isYorkerToggled && (
+              <span className="text-[8.5px] font-sketch bg-amber-200 text-amber-950 px-1 rounded font-bold">
+                1–3 Capped
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-sketch">
+            {isMyTurn && secondsLeft != null && secondsLeft <= 15 && secondsLeft > 0 && (
+              <span className="font-sans font-black bg-red-600 text-white px-1.5 py-0.2 rounded-full text-[8.5px] animate-pulse">
+                ⏱ {secondsLeft}s
+              </span>
+            )}
+            <span className={cn("px-1.5 py-0.2 rounded border text-[9px] font-bold", oppLockedIn ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-stone-100 text-stone-500 border-stone-200")}>
+              Opp: {oppLockedIn ? "Ready ✓" : "thinking..."}
+            </span>
+          </div>
+        </div>
+
+        {/* Sub-steps: Next Batter / Bowler Selection OR Delivery Buttons */}
+        {innings.needsNextBatterPick ? (
+          <div className="w-full">
+            {reveal && (
+              <RevealStage
+                reveal={reveal}
+                innings={innings}
+                myId={selfId}
+                oppLockedIn={oppLockedIn}
+                myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                big={false}
+                players={players}
+              />
+            )}
+            {isBattingPlayer ? (
+              <NextBatterPicker state={state} innings={innings} big={false} />
+            ) : (
+              <div className="rounded-lg text-center py-2.5 font-notebook w-full bg-amber-50/80 border border-amber-200 text-xs font-hand text-stone-700">
+                Opponent is choosing their next batter…
+              </div>
+            )}
+            {needsBowler && (
+              <div className="mt-1">
+                <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={false} />
+              </div>
+            )}
+          </div>
+        ) : needsBowler ? (
+          <div className="w-full">
+            {reveal && (
+              <RevealStage
+                reveal={reveal}
+                innings={innings}
+                myId={selfId}
+                oppLockedIn={oppLockedIn}
+                myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                big={false}
+                players={players}
+              />
+            )}
+            <BowlerPicker state={state} innings={innings} selfId={selfId} players={players} isDesktop={false} />
+          </div>
+        ) : (
+          <div className="w-full flex flex-col items-center">
+            {/* Reveal Stage when active */}
+            {reveal && (
+              <div className="mb-1 w-full">
+                <RevealStage
+                  reveal={reveal}
+                  innings={innings}
+                  myId={selfId}
+                  oppLockedIn={oppLockedIn}
+                  myPick={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                  big={false}
+                  players={players}
+                />
+              </div>
+            )}
+
+            {/* Bowler Mystery Yorker Toggle */}
+            {canBowlYorker && myPick == null && (
+              <div className="mb-1 flex items-center justify-between gap-1.5 w-full px-2 py-0.5 rounded-md bg-red-50 border border-red-200">
+                <span className="text-[10px] font-sketch font-bold text-red-900">
+                  🔥 1 Mystery Yorker Available (4, 5, 6 = OUT!)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsYorkerToggled((v) => !v)}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[9.5px] font-sketch font-black uppercase transition cursor-pointer",
+                    isYorkerToggled ? "bg-red-700 text-white shadow-xs" : "bg-red-100 text-red-800 border border-red-300"
+                  )}
+                >
+                  {isYorkerToggled ? "⚡ ARMED ✓" : "ARM YORKER"}
+                </button>
+              </div>
+            )}
+
+            {/* PickRow (1 to 6 buttons) */}
+            <div className="w-full">
+              <PickRow
+                disabled={myPick != null || reveal !== null}
+                onPick={(n) => pick(n, isYorkerToggled)}
+                selected={typeof myPick === "number" && myPick > 0 ? myPick : null}
+                allowedPicks={myRole === "bowler" ? (isYorkerToggled ? [1, 2, 3] : allowedBowlerPicks) : [1, 2, 3, 4, 5, 6]}
+                restrictedNote={isYorkerToggled ? "Mystery Yorker: Lines 1, 2, 3" : bowlerRestricted ? "Powerplay: Capped to 1, 2, 3" : null}
+                big={false}
+                role={myRole}
+                isSpinner={isSpinner}
+                isYorker={isYorkerToggled}
+              />
+            </div>
+
+            {/* Compact Bottom status text */}
+            <div className="mt-1 flex items-center justify-center gap-2 text-[10px] font-hand font-bold text-stone-600">
+              <span className={cn("px-2 py-0.2 rounded-full border", myPick != null ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-sketch" : "border-stone-200 bg-stone-50")}>
+                You: {myPick != null ? `✓ ${myPick} locked` : "choose a number"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 3. Match Insights, Partnership Stand & Scorebook Breakdown ── */}
+      <MatchScorebookInsightsCard
+        state={state}
+        innings={innings}
+        target={target}
+        players={players}
+      />
+    </div>
+  );
+}
+
+export function MatchScorebookInsightsCard({
+  state,
+  innings,
+  target,
+  players: _players,
+}: {
+  state: HcState;
+  innings: HcInnings;
+  target: number | null;
+  players: Player[];
+}) {
+  const battingSelection = state.teamSelections[innings.battingPlayerId];
+  const bowlingSelection = state.teamSelections[innings.bowlingPlayerId];
+  const battingTeamId = battingSelection?.teamId;
+  const bowlingTeamId = bowlingSelection?.teamId;
+  const battingRoster = battingTeamId ? getRosterFor(battingTeamId, state.options.format) : null;
+  const bowlingRoster = bowlingTeamId ? getRosterFor(bowlingTeamId, state.options.format) : null;
+  const allBattingPlayers: HcPlayerProfile[] = battingRoster ? [...battingRoster.squad, ...battingRoster.extras] : [];
+  const allBowlingPlayers: HcPlayerProfile[] = bowlingRoster ? [...bowlingRoster.squad, ...bowlingRoster.extras] : [];
+  const lookupBatter = (id: string) => allBattingPlayers.find((p) => p.id === id);
+  const lookupBowler = (id: string) => allBowlingPlayers.find((p) => p.id === id);
+
+  const stand = currentPartnership(innings);
+  const fows = fallOfWickets(innings);
+  const lastWicket = fows.length > 0 ? fows[fows.length - 1] : null;
+  const lastBatter = lastWicket ? lookupBatter(lastWicket.batterId) : null;
+  const lastBowler = lastWicket ? lookupBowler(lastWicket.bowlerId) : null;
+
+  const overs = overBreakdown(innings);
+  const totalBallsBowled = innings.balls;
+  const crr = totalBallsBowled > 0 ? (innings.runs / totalBallsBowled) * 6 : 0;
+  const projectedScore = Math.round(crr * innings.overs);
+
+  // Partnership batter details
+  const pBatters = stand.batterIds.map((id) => lookupBatter(id)?.name).filter(Boolean);
+
+  return (
+    <div className="rounded-xl border-2 border-[#D7C9B1] bg-[#FCF8EE] p-2.5 shadow-xs flex flex-col gap-2 font-notebook select-none">
+      {/* Header title */}
+      <div className="flex items-center justify-between pb-1 border-b border-[#D7C9B1]/60">
+        <div className="flex items-center gap-1.5 font-sketch font-bold text-xs text-stone-800">
+          <span>📊 MATCH INSIGHTS & PARTNERSHIP</span>
+        </div>
+        <span className="text-[10px] font-hand text-stone-500 font-bold">
+          {stand.forWicket === 0 ? "Opening Stand" : `${stand.forWicket + 1}${stand.forWicket === 1 ? "nd" : stand.forWicket === 2 ? "rd" : "th"} Wkt Stand`}
+        </span>
+      </div>
+
+      {/* Partnership & Match Equation Grid */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {/* Partnership Stand */}
+        <div className="rounded-lg bg-amber-50/80 border border-amber-200/80 p-2 flex flex-col justify-between">
+          <span className="text-[9.5px] font-sketch font-bold text-amber-900 uppercase tracking-wide">
+            Current Stand
+          </span>
+          <div className="flex items-baseline gap-1 my-0.5">
+            <span className="text-base font-sketch font-black text-amber-950">
+              {stand.runs} <span className="text-[10px] font-hand font-bold text-amber-800">runs</span>
+            </span>
+            <span className="text-[10px] font-hand font-bold text-stone-500">
+              ({stand.balls}b)
+            </span>
+          </div>
+          <span className="text-[9.5px] font-hand font-bold text-stone-600 truncate">
+            {pBatters.length > 0 ? pBatters.join(" & ") : "Stand in progress"}
+          </span>
+        </div>
+
+        {/* Projection / Target Equation */}
+        <div className="rounded-lg bg-sky-50/80 border border-sky-200/80 p-2 flex flex-col justify-between">
+          <span className="text-[9.5px] font-sketch font-bold text-sky-900 uppercase tracking-wide">
+            {target != null ? "Target Equation" : "Projected Score"}
+          </span>
+          <div className="flex items-baseline gap-1 my-0.5">
+            <span className="text-base font-sketch font-black text-sky-950">
+              {target != null ? Math.max(0, target - innings.runs) : projectedScore}
+            </span>
+            <span className="text-[10px] font-hand font-bold text-sky-800">
+              {target != null ? "runs needed" : "proj. total"}
+            </span>
+          </div>
+          <span className="text-[9.5px] font-hand font-bold text-stone-600 truncate">
+            {target != null
+              ? `${Math.max(0, innings.overs * 6 - innings.balls)} balls remaining`
+              : `At current ${crr.toFixed(2)} RPO`}
+          </span>
         </div>
       </div>
 
-      {/* 4. Duel & Pick Gestures Card */}
-      <div className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-3.5 shadow-sm relative overflow-hidden">
-        {renderActionArea()}
+      {/* Fall of Wickets summary row */}
+      <div className="flex items-center justify-between text-[10.5px] bg-[#FFFDF8] rounded-md px-2 py-1 border border-stone-200">
+        <span className="font-sketch font-bold text-stone-600 text-[9.5px] uppercase shrink-0">
+          Last Dismissal:
+        </span>
+        <span className="font-hand font-bold text-stone-800 truncate ml-1 text-right">
+          {lastWicket && lastBatter
+            ? `${lastBatter.name} c&b ${lastBowler?.name ?? "Bowler"} (${lastWicket.score}/${lastWicket.wicket}, ${lastWicket.over} ov)`
+            : "No wickets fallen yet"}
+        </span>
       </div>
 
-      {/* 5. Bottom Silhouette Tagline */}
-      <div className="pt-2 text-center select-none opacity-80">
-        <div className="text-xs font-hand font-bold text-stone-600">
-          Play • Chat • Laugh • Repeat
+      {/* Over-by-Over Scorebook Breakdown */}
+      {overs.length > 0 && (
+        <div className="pt-1 border-t border-[#D7C9B1]/60 flex flex-col gap-1">
+          <span className="font-sketch font-bold text-[9.5px] uppercase text-stone-600">
+            Over-by-Over Scorebook:
+          </span>
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {overs.map((ov) => (
+              <div
+                key={ov.over}
+                className="shrink-0 rounded-md border border-[#D7C9B1] bg-[#FFFDF8] px-2 py-1 flex items-center gap-1.5 text-[10px]"
+              >
+                <span className="font-sketch font-black text-stone-800">Ov {ov.over}:</span>
+                <span className="font-sketch font-bold text-emerald-800">{ov.runs}r</span>
+                {ov.wickets > 0 && (
+                  <span className="font-sketch font-black text-red-600 bg-red-50 px-1 rounded">
+                    {ov.wickets}w
+                  </span>
+                )}
+                <div className="flex items-center gap-0.5 ml-0.5 border-l border-stone-200 pl-1">
+                  {ov.balls.map((b, bi) => (
+                    <span
+                      key={bi}
+                      className={cn(
+                        "w-3.5 h-3.5 rounded-full flex items-center justify-center font-sketch text-[8px] font-bold border",
+                        b.wicket
+                          ? "bg-red-500 text-white border-red-600"
+                          : b.runs === 4 || b.runs === 6
+                          ? "bg-amber-300 text-amber-950 border-amber-400"
+                          : "bg-stone-100 text-stone-700 border-stone-200"
+                      )}
+                    >
+                      {b.wicket ? "W" : b.runs}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -2867,46 +3688,57 @@ export function InningsPhase({
 export function PowerplayBanner({
   upcomingOver,
   powerplayOvers,
-  restrictedThisOver,
   upcomingBall,
 }: {
   upcomingOver: number;
   powerplayOvers: number;
-  restrictedThisOver: number[];
+  restrictedThisOver?: number[];
   upcomingBall: number;
 }) {
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-[#D9480F] via-[#E8590C] to-[#F76707] text-white p-3 sm:p-3.5 shadow-sm font-notebook select-none">
-      <div className="flex items-center gap-2.5">
-        <span className="text-2xl sm:text-3xl animate-pulse">🔥</span>
-        <div className="flex-1 min-w-0">
-          <div className="font-sketch font-black text-xs sm:text-sm uppercase tracking-wider text-white">
-            POWERPLAY
+    <div className="rounded-2xl border-2 border-dashed border-[#F59E0B]/80 bg-gradient-to-r from-[#FFFBEB] via-[#FEF3C7] to-[#FFFBEB] text-stone-800 p-2.5 sm:p-3 shadow-[0_2px_10px_rgba(245,158,11,0.12)] font-notebook select-none relative overflow-hidden">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm shadow-xs shrink-0 animate-bounce">
+            🔥
           </div>
-          <div className="text-[11px] sm:text-xs font-hand text-amber-100 font-bold truncate">
-            Over {upcomingOver} of {powerplayOvers} • 3 random balls restrict the bowler to 1–3
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-sketch font-black text-xs sm:text-sm uppercase tracking-wider text-amber-950 shrink-0">
+              POWERPLAY OVER {upcomingOver} OF {powerplayOvers}
+            </span>
+            <span className="text-[11px] sm:text-xs font-hand text-amber-900/90 font-bold truncate">
+              · 3 mystery balls cap bowler to 1–3
+            </span>
           </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0 text-[10px] font-sketch font-black text-amber-950 bg-amber-200/90 border border-amber-400 px-2.5 py-0.5 rounded-full shadow-2xs">
+          <span>🎲 3 Random Capped Balls</span>
         </div>
       </div>
 
-      {/* 6 Over Balls indicator pills */}
-      <div className="grid grid-cols-6 gap-1.5 sm:gap-2 mt-2">
+      {/* 6 Over Balls Progress Strip */}
+      <div className="grid grid-cols-6 gap-2 mt-2">
         {[1, 2, 3, 4, 5, 6].map((b) => {
-          const isRestricted = restrictedThisOver.includes(b);
+          const isBowled = b < upcomingBall;
           const isCurrent = b === upcomingBall;
           return (
             <div
               key={b}
               className={cn(
-                "h-7 rounded-lg flex items-center justify-center font-sketch font-black text-xs transition-all",
-                isRestricted
-                  ? "bg-[#4E1410] text-white border-2 border-white shadow-xs scale-105"
-                  : isCurrent
-                  ? "bg-amber-300 text-amber-950 font-black border border-white/80 shadow-xs"
-                  : "bg-amber-400/30 text-white/90 border border-amber-300/30"
+                "h-9 rounded-xl flex flex-col items-center justify-center font-sketch transition-all relative overflow-hidden",
+                isCurrent
+                  ? "bg-gradient-to-br from-amber-400 to-amber-500 border-2 border-amber-700 text-amber-950 shadow-md font-black scale-105 ring-2 ring-amber-300"
+                  : isBowled
+                  ? "bg-[#EFE8D6] border border-stone-300 text-stone-500 font-bold"
+                  : "bg-white/90 border-2 border-dashed border-stone-300 text-stone-700"
               )}
             >
-              {b}
+              <div className="flex items-center gap-1 leading-none">
+                <span className={cn("text-xs font-black", isCurrent ? "text-white drop-shadow-xs" : "")}>Ball {b}</span>
+              </div>
+              <span className={cn("text-[9px] font-hand font-bold leading-none mt-0.5", isCurrent ? "text-amber-950 font-black" : "text-stone-400")}>
+                {isCurrent ? "ACTIVE" : isBowled ? "Bowled ✓" : "Upcoming"}
+              </span>
             </div>
           );
         })}
@@ -2941,6 +3773,9 @@ export function CurrentPlayersBar({
   const lookupBatter = (id: string) => allBattingPlayers.find((p) => p.id === id);
   const lookupBowler = (id: string) => allBowlingPlayers.find((p) => p.id === id);
 
+  const battingStyleMap = battingTeamId ? getJsonPlayerStyleMap(battingTeamId, state.options.format) : null;
+  const bowlingStyleMap = bowlingTeamId ? getJsonPlayerStyleMap(bowlingTeamId, state.options.format) : null;
+
   const battingSquad = battingSelection?.squadPlayerIds ?? [];
   const strikerId = battingSquad[innings.strikerIdx];
   const nonStrikerId = battingSquad[innings.nonStrikerIdx];
@@ -2949,60 +3784,194 @@ export function CurrentPlayersBar({
   const strikerStats = strikerId ? innings.batterStats[strikerId] : null;
   const nonStrikerStats = nonStrikerId ? innings.batterStats[nonStrikerId] : null;
 
+  const strikerStyle = striker ? battingStyleMap?.get(striker.name.toLowerCase()) : null;
+  const nonStrikerStyle = nonStriker ? battingStyleMap?.get(nonStriker.name.toLowerCase()) : null;
+
   const currentBowlerId = innings.currentBowlerId;
   const currentBowler = currentBowlerId ? lookupBowler(currentBowlerId) : null;
   const bowlerStats = currentBowlerId ? innings.bowlerStats[currentBowlerId] : null;
+  const bowlerStyle = currentBowler ? bowlingStyleMap?.get(currentBowler.name.toLowerCase()) : null;
   const bowlingPlayer = players.find((p) => p.id === innings.bowlingPlayerId);
 
   const bowlingIsMine = innings.bowlingPlayerId === selfId;
   const waitingForBowler = !currentBowler;
 
+  const strikerSr = strikerStats && strikerStats.balls > 0 ? ((strikerStats.runs / strikerStats.balls) * 100).toFixed(0) : "0";
+  const nonStrikerSr = nonStrikerStats && nonStrikerStats.balls > 0 ? ((nonStrikerStats.runs / nonStrikerStats.balls) * 100).toFixed(0) : "0";
+  const bowlerEcon = bowlerStats && bowlerStats.balls > 0 ? ((bowlerStats.runs / bowlerStats.balls) * 6).toFixed(2) : "0.00";
+  const bowlerBalls = bowlerStats?.balls ?? 0;
+  const bowlerOvers = `${Math.floor(bowlerBalls / 6)}.${bowlerBalls % 6}`;
+
+  const isSpinner = isSpinnerBowler(currentBowler?.name, bowlerStyle?.bowlingStyle, currentBowler?.role);
+
   return (
-    <div className="flex flex-col space-y-2.5 font-notebook text-xs">
-      {/* Striker */}
-      <div>
-        <div className="text-[11px] font-hand font-bold text-[#1E3A8A] flex items-center gap-1">
-          <span>▶ STRIKER</span>
+    <div className="flex flex-col space-y-2.5 font-notebook text-xs select-none w-full">
+      {/* Header Stamp */}
+      <div className="flex items-center justify-between pb-1.5 border-b border-stone-200/80">
+        <div className="flex items-center gap-1.5">
+          <span className="font-sketch font-black text-[11px] tracking-wider uppercase text-stone-700 flex items-center gap-1">
+            <span>📜</span>
+            <span className="whitespace-nowrap">CREASE & SPELL DOSSIER</span>
+          </span>
         </div>
-        <div className="font-hand font-bold text-stone-900 text-xs sm:text-sm truncate">
-          {striker?.name ?? "—"}
+        <span className="font-sketch font-bold text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 whitespace-nowrap shadow-2xs">
+          Innings {innings.number}
+        </span>
+      </div>
+
+      {/* Batting Pair (Striker & Non-Striker) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* ── 1. Active Crease: Striker (On Strike) ── */}
+        <div className="rounded-xl border-2 border-emerald-300/90 bg-gradient-to-br from-[#F0FDF4] to-[#ECFDF5] p-2.5 shadow-2xs relative overflow-hidden transition-all hover:border-emerald-400">
+          <div className="absolute top-0 right-0 w-10 h-10 bg-emerald-500/10 rounded-bl-full pointer-events-none" />
+
+          <div className="flex items-center justify-between gap-1.5 mb-1">
+            <div className="flex items-center gap-1">
+              <span className="font-sketch font-black text-[10px] uppercase text-emerald-950 bg-emerald-200/90 border border-emerald-400/80 px-1.5 py-0.2 rounded-md shadow-2xs flex items-center gap-1 whitespace-nowrap">
+                <span>🏏</span>
+                <span>STRIKER</span>
+              </span>
+              {strikerStyle?.battingStyle && (
+                <span className="text-[9px] font-sketch font-bold text-emerald-800 bg-white/80 border border-emerald-200 px-1.5 py-0.2 rounded whitespace-nowrap">
+                  {strikerStyle.battingStyle}
+                </span>
+              )}
+            </div>
+            <span className="text-[9.5px] font-sketch font-black text-emerald-700 flex items-center gap-1 animate-pulse whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shadow-xs" />
+              <span>ON STRIKE</span>
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="font-sketch font-black text-stone-900 text-sm sm:text-base tracking-tight truncate flex-1">
+              {striker?.name ?? "—"}
+            </div>
+            <div className="flex items-baseline gap-1 shrink-0">
+              <span className="font-sketch font-black text-base sm:text-lg text-emerald-900 leading-none">
+                {strikerStats ? strikerStats.runs : 0}*
+              </span>
+              <span className="font-hand font-bold text-stone-500 text-[11px]">
+                ({strikerStats ? strikerStats.balls : 0}b)
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-1 pt-1 border-t border-emerald-200/60 flex items-center justify-between text-[10px]">
+            <span className="font-hand font-bold text-emerald-900">
+              SR: <span className="font-sketch font-black text-emerald-950">{strikerSr}</span>
+            </span>
+            <span className="font-hand text-stone-400 text-[9px]">
+              {striker?.isCaptain ? "Captain (c)" : striker?.role === "keeper" ? "Wicketkeeper (wk)" : "Top Order"}
+            </span>
+          </div>
         </div>
-        <div className="text-[11px] font-hand text-stone-500 tabular-nums">
-          {strikerStats ? `${strikerStats.runs}* (${strikerStats.balls})` : "0* (0)"}
+
+        {/* ── 2. Crease Partner: Non-Striker (Runner) ── */}
+        <div className="rounded-xl border border-stone-300 bg-gradient-to-br from-[#FAFAF9] to-[#F5F5F4] p-2.5 shadow-2xs relative overflow-hidden transition-all hover:border-stone-400">
+          <div className="flex items-center justify-between gap-1.5 mb-1">
+            <div className="flex items-center gap-1">
+              <span className="font-sketch font-black text-[10px] uppercase text-stone-700 bg-stone-200/90 border border-stone-300 px-1.5 py-0.2 rounded-md shadow-2xs flex items-center gap-1 whitespace-nowrap">
+                <span>🏃</span>
+                <span>NON-STRIKER</span>
+              </span>
+              {nonStrikerStyle?.battingStyle && (
+                <span className="text-[9px] font-sketch font-bold text-stone-600 bg-white/80 border border-stone-200 px-1.5 py-0.2 rounded whitespace-nowrap">
+                  {nonStrikerStyle.battingStyle}
+                </span>
+              )}
+            </div>
+            <span className="text-[9.5px] font-hand font-bold text-stone-500 whitespace-nowrap">
+              Runner End
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="font-sketch font-bold text-stone-800 text-sm truncate flex-1">
+              {nonStriker?.name ?? "—"}
+            </div>
+            <div className="flex items-baseline gap-1 shrink-0">
+              <span className="font-sketch font-black text-sm sm:text-base text-stone-800 leading-none">
+                {nonStrikerStats ? nonStrikerStats.runs : 0}*
+              </span>
+              <span className="font-hand font-bold text-stone-500 text-[11px]">
+                ({nonStrikerStats ? nonStrikerStats.balls : 0}b)
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-1 pt-1 border-t border-stone-200/60 flex items-center justify-between text-[10px]">
+            <span className="font-hand font-bold text-stone-600">
+              SR: <span className="font-sketch font-bold text-stone-800">{nonStrikerSr}</span>
+            </span>
+            <span className="font-hand text-stone-400 text-[9px]">
+              {nonStriker?.isCaptain ? "Captain (c)" : "Partner"}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Dotted Divider */}
-      <div className="border-t border-dashed border-stone-300 my-0.5" />
-
-      {/* Non-Striker */}
-      <div>
-        <div className="text-[11px] font-hand font-bold text-amber-800 flex items-center gap-1">
-          <span>👤 NON-STRIKER</span>
+      {/* ── 3. Active Bowler & Spell Figures ── */}
+      <div
+        ref={registerCardRef?.(innings.bowlingPlayerId)}
+        className={cn(
+          "rounded-xl border-2 p-2.5 shadow-2xs relative overflow-hidden transition-all flex items-center gap-3 w-full",
+          bowlingIsMine
+            ? "border-rose-400/90 bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]"
+            : "border-stone-300 bg-gradient-to-br from-[#FFFDF9] to-[#FDF4F4]"
+        )}
+      >
+        <div className="relative shrink-0">
+          <SeatAvatar
+            avatar={bowlingPlayer?.avatar}
+            name={bowlingPlayer?.name ?? "Bowler"}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full ring-2 ring-rose-400/80 shadow-2xs"
+          />
+          <span className="absolute -bottom-1 -right-1 text-xs">
+            {isSpinner ? "🌀" : "⚡"}
+          </span>
         </div>
-        <div className="font-hand font-bold text-stone-900 text-xs sm:text-sm truncate">
-          {nonStriker?.name ?? "—"}
-        </div>
-        <div className="text-[11px] font-hand text-stone-500 tabular-nums">
-          {nonStrikerStats ? `${nonStrikerStats.runs}* (${nonStrikerStats.balls})` : "0* (0)"}
-        </div>
-      </div>
 
-      {/* Solid Divider */}
-      <div className="border-t border-stone-200 my-0.5" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-1.5 mb-0.5">
+            <span className={cn(
+              "font-sketch font-black text-[10px] uppercase px-2 py-0.5 rounded-md border shadow-2xs flex items-center gap-1 whitespace-nowrap",
+              bowlingIsMine
+                ? "bg-rose-600 text-white border-rose-700"
+                : "bg-rose-100 text-rose-900 border-rose-300"
+            )}>
+              <span>🎯</span>
+              <span>BOWLING {bowlingIsMine ? "• YOU" : ""}</span>
+            </span>
 
-      {/* Bowler */}
-      <div ref={registerCardRef?.(innings.bowlingPlayerId)} className="flex items-center gap-2 pt-0.5">
-        <SeatAvatar avatar={bowlingPlayer?.avatar} name={bowlingPlayer?.name ?? "Bowler"} className="w-8 h-8 rounded-full ring-1 ring-red-400" />
-        <div className="min-w-0">
-          <div className="text-[10px] font-hand font-bold text-red-800 flex items-center gap-1 leading-tight">
-            <span>BOWLING {bowlingIsMine ? "• YOU" : ""}</span>
+            {bowlerStyle?.bowlingStyle ? (
+              <span className="text-[9px] font-sketch font-bold text-stone-600 bg-white/90 border border-stone-200 px-1.5 py-0.2 rounded truncate max-w-[120px] whitespace-nowrap">
+                {bowlerStyle.bowlingStyle}
+              </span>
+            ) : (
+              <span className="text-[9px] font-sketch font-bold text-stone-500 whitespace-nowrap">
+                {isSpinner ? "Spinner" : "Pacer"}
+              </span>
+            )}
           </div>
-          <div className="font-hand font-bold text-stone-900 text-xs truncate leading-tight">
-            {waitingForBowler ? "Picking bowler…" : currentBowler?.name}
+
+          <div className="font-sketch font-black text-stone-900 text-sm sm:text-base truncate">
+            {waitingForBowler ? "Selecting bowler…" : currentBowler?.name}
           </div>
-          <div className="text-[10px] font-hand text-stone-500 tabular-nums leading-tight">
-            {bowlerStats ? `${Math.floor(bowlerStats.balls / 6)}.${bowlerStats.balls % 6} - ${bowlerStats.wickets} - ${bowlerStats.runs}` : "0.0 - 0 - 0"}
+
+          <div className="flex items-center justify-between gap-2 mt-1 pt-1 border-t border-rose-200/60 text-[11px]">
+            <div className="flex items-baseline gap-1 font-sketch font-black text-rose-950">
+              <span className="text-sm">{bowlerStats?.wickets ?? 0}</span>
+              <span className="text-stone-400 font-normal">/</span>
+              <span className="text-sm">{bowlerStats?.runs ?? 0}</span>
+              <span className="font-hand font-bold text-stone-600 text-xs ml-1 whitespace-nowrap">
+                ({bowlerOvers} ov)
+              </span>
+            </div>
+
+            <span className="font-hand font-bold text-rose-900 text-[10px] bg-white/80 border border-rose-200 px-1.5 py-0.2 rounded whitespace-nowrap">
+              Econ: {bowlerEcon}
+            </span>
           </div>
         </div>
       </div>
@@ -3017,8 +3986,8 @@ export function Scoreboard({
   players,
   big: _big = false,
   registerCardRef,
-  isPowerplayOver: _isPowerplayOver = false,
-  upcomingOver: _upcomingOver = 1,
+  isPowerplayOver = false,
+  upcomingOver = 1,
 }: {
   state: HcState;
   innings: HcInnings;
@@ -3033,64 +4002,132 @@ export function Scoreboard({
   const batterPlayer = players.find((p) => p.id === innings.battingPlayerId);
   const oversBowled = Math.floor(innings.balls / 6);
   const ballsThisOver = innings.balls % 6;
+  const totalBallsBowled = innings.balls;
+  const crr = totalBallsBowled > 0 ? (innings.runs / totalBallsBowled) * 6 : 0;
   const ballsRemaining = Math.max(0, innings.overs * 6 - innings.balls);
   const runsNeeded = target != null ? Math.max(0, target - innings.runs) : null;
+  const rrr = runsNeeded != null && ballsRemaining > 0 ? (runsNeeded / ballsRemaining) * 6 : null;
 
   return (
     <div
       ref={registerCardRef?.(innings.battingPlayerId)}
-      className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-3.5 sm:p-4 shadow-sm font-notebook relative overflow-hidden select-none"
+      className="rounded-2xl border-2 border-[#D7C9B1] bg-[#FFFDF8] p-3.5 sm:p-4 shadow-[0_4px_16px_rgba(46,25,8,0.06)] font-notebook relative overflow-hidden select-none"
+      style={{
+        backgroundImage: "linear-gradient(rgba(37,99,235,0.035) 1px, transparent 1px)",
+        backgroundSize: "100% 24px",
+      }}
     >
-      {/* Corner Washi Tape */}
-      <div className="absolute -top-2.5 left-5 w-14 sm:w-16 h-4 bg-[#D4C3A3]/80 -rotate-12 rounded-xs shadow-xs pointer-events-none z-10 border-x border-amber-900/20" />
-      <div className="absolute -top-2.5 right-5 w-14 sm:w-16 h-4 bg-[#D4C3A3]/80 rotate-12 rounded-xs shadow-xs pointer-events-none z-10 border-x border-amber-900/20" />
+      {/* Corner Washi Tape Doodles */}
+      <div className="absolute -top-2.5 left-6 w-14 sm:w-16 h-4 bg-[#D4C3A3]/80 -rotate-6 rounded-xs shadow-2xs pointer-events-none z-10 border-x border-amber-900/20" />
+      <div className="absolute -top-2.5 right-6 w-14 sm:w-16 h-4 bg-[#D4C3A3]/80 rotate-6 rounded-xs shadow-2xs pointer-events-none z-10 border-x border-amber-900/20" />
 
-      {/* Top Italics Blue Header */}
-      <div className="text-center mb-2">
-        <span className="font-hand font-bold italic tracking-wide text-xs sm:text-sm text-[#1E3A8A] uppercase">
-          INNINGS {innings.number} • {batterTeam.short ?? batterTeam.name} ({batterTeam.playerName}) BATTING
-        </span>
+      {/* Top Header Row with Stamp & Batting Info */}
+      <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-stone-200/70">
+        <div className="flex items-center gap-2">
+          <span className="font-sketch font-black text-[11px] sm:text-xs uppercase bg-[#EFE7D2] text-[#8B1A1A] px-2.5 py-0.5 rounded-md border border-[#8B1A1A]/30 shadow-2xs">
+            INNINGS {innings.number}
+          </span>
+          <span className="font-hand font-bold text-xs sm:text-sm text-[#1E3A8A] flex items-center gap-1">
+            <span>🏏</span>
+            <span>{batterTeam.short ?? batterTeam.name} ({batterTeam.playerName}) BATTING</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] sm:text-[11px] font-hand font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+            CRR: {crr.toFixed(2)}
+          </span>
+          {isPowerplayOver && (
+            <span className="text-[10px] sm:text-[11px] font-sketch font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300">
+              🔥 PP OVER {upcomingOver}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        {/* Left: Flag + Avatar + Giant Score */}
+        {/* Left: Heraldry Emblem + Avatar + Giant Ink Score */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-stone-100 shadow-xs border border-stone-300 flex-shrink-0 flex items-center justify-center text-xl">
-            {batterTeam.flag}
+          <div className="flex items-center">
+            <div className="relative z-10 shrink-0">
+              <HcTeamCrest id={batterTeam.id} flag={batterTeam.flag} size={46} />
+            </div>
+            <div className="-ml-3 relative z-20 shrink-0">
+              <SeatAvatar avatar={batterPlayer?.avatar} name={batterTeam.playerName} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full ring-2 ring-white shadow-2xs" />
+            </div>
           </div>
 
-          <div className="flex-shrink-0">
-            <SeatAvatar avatar={batterPlayer?.avatar} name={batterTeam.playerName} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full ring-2 ring-[#2563EB] shadow-xs" />
-          </div>
-
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-baseline gap-1.5 leading-none">
-              <span className="font-sketch text-4xl sm:text-5xl font-black text-[#1E3A8A]">
+              <span className="font-sketch text-4xl sm:text-5xl font-black text-[#1E293B] tracking-tight">
                 {innings.runs}<span className="text-[#DC2626]">/{innings.wickets}</span>
               </span>
             </div>
-            <span className="text-xs sm:text-sm font-hand font-bold text-stone-600 mt-1">
-              Overs {oversBowled}.{ballsThisOver} / {innings.overs}
-              {target != null && <span className="text-amber-800 ml-1.5 font-bold">(Target: {target} • Need {runsNeeded} off {ballsRemaining}b)</span>}
-            </span>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-xs sm:text-sm font-hand font-bold text-stone-700">
+                Overs {oversBowled}.{ballsThisOver} / {innings.overs}
+              </span>
+              {target != null && (
+                <span className="text-xs font-hand font-extrabold text-amber-950 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                  Target: {target} • Need {runsNeeded} off {ballsRemaining}b {rrr != null && `(RRR: ${rrr.toFixed(2)})`}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Right: Cricket Stumps Sketch + Doodle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="text-right">
-            <div className="font-hand font-bold text-[#1E3A8A] italic text-xs sm:text-sm -rotate-3 leading-tight">
+        {/* Right: Cricket Stumps & Heritage Sketch Stamp */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="text-right hidden sm:block">
+            <div className="font-hand font-bold text-[#1E3A8A] italic text-xs -rotate-2 leading-tight">
               Small Numbers<br />Big Thrills!
             </div>
           </div>
-          <svg width={36} height={36} viewBox="0 0 44 44" fill="none" className="text-stone-700 opacity-90">
-            <line x1="16" y1="14" x2="16" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
-            <line x1="22" y1="12" x2="22" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
-            <line x1="28" y1="14" x2="28" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
-            <line x1="14" y1="12" x2="30" y2="12" stroke="#3E2723" strokeWidth="2.2" strokeLinecap="round" />
-            <circle cx="34" cy="34" r="5" fill="#991B1B" stroke="#3E2723" strokeWidth="1.5" />
-            <path d="M32 30 C34 32 34 36 36 38" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" />
-          </svg>
+          <div className="w-11 h-11 rounded-full bg-[#FAF5E6] border border-[#D7C9B1] flex items-center justify-center shadow-2xs shrink-0">
+            <svg width={30} height={30} viewBox="0 0 44 44" fill="none" className="text-stone-700 opacity-90">
+              <line x1="16" y1="14" x2="16" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="22" y1="12" x2="22" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="28" y1="14" x2="28" y2="38" stroke="#3E2723" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="14" y1="12" x2="30" y2="12" stroke="#3E2723" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="34" cy="34" r="5" fill="#991B1B" stroke="#3E2723" strokeWidth="1.5" />
+              <path d="M32 30 C34 32 34 36 36 38" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Mini Ball Tracker Ribbon */}
+      <div className="mt-2.5 pt-2 border-t border-stone-200/70 flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] font-sketch font-bold uppercase text-stone-500 tracking-wider">
+            Over {upcomingOver} Balls:
+          </span>
+          <div className="flex items-center gap-1">
+            {innings.history.filter((b) => b.overNumber === upcomingOver).length === 0 ? (
+              <span className="text-[10px] font-hand font-bold text-stone-400 italic">Yet to bowl</span>
+            ) : (
+              innings.history.filter((b) => b.overNumber === upcomingOver).map((b, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-sketch font-black text-[10px] sm:text-xs shadow-2xs border",
+                    b.wicket
+                      ? "bg-[#DC2626] text-white border-[#991B1B]"
+                      : b.runs === 6
+                      ? "bg-purple-600 text-white border-purple-800"
+                      : b.runs === 4
+                      ? "bg-amber-500 text-white border-amber-700"
+                      : "bg-white text-[#1E3A8A] border-[#1E3A8A]"
+                  )}
+                >
+                  {b.wicket ? "W" : b.runs}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="text-[10px] font-hand font-bold text-stone-500">
+          Last 6: {innings.history.slice(-6).map((b) => (b.wicket ? "W" : b.runs)).join(" · ") || "—"}
         </div>
       </div>
     </div>
@@ -3118,6 +4155,15 @@ export function RevealStage({
   const oppId = innings.battingPlayerId === myId ? innings.bowlingPlayerId : innings.battingPlayerId;
   const me = players.find((p) => p.id === myId);
   const opp = players.find((p) => p.id === oppId);
+
+  const gestureSymbols: Record<number, string> = {
+    1: "☝️",
+    2: "✌️",
+    3: "🤟",
+    4: "🖖",
+    5: "🖐️",
+    6: "🤙",
+  };
 
   if (reveal) {
     const myShown = meIsBatter ? reveal.batterPick : reveal.bowlerPick;
@@ -3177,39 +4223,57 @@ export function RevealStage({
   }
 
   return (
-    <div className="flex items-center justify-center gap-5 sm:gap-8 py-2 w-full select-none">
+    <div className="flex items-center justify-center gap-6 sm:gap-8 py-2 w-full select-none">
       {/* You Duel Box */}
       <div className="flex flex-col items-center">
         <div className={cn(
-          "w-16 h-20 sm:w-20 sm:h-24 rounded-2xl border-2 flex flex-col items-center justify-center transition-all bg-white shadow-xs",
-          myPick != null ? "border-emerald-600 text-emerald-800" : "border-dashed border-red-500 text-red-600"
+          "w-18 h-22 sm:w-22 sm:h-26 rounded-2xl border-2 flex flex-col items-center justify-between p-2 transition-all shadow-xs",
+          myPick != null
+            ? "bg-[#F0FDF4] border-emerald-600 text-emerald-950 border-b-4 border-b-emerald-800"
+            : "bg-[#FFFDF8] border-dashed border-red-400 text-red-600 shadow-inner"
         )}>
+          <span className="text-[10px] font-sketch font-bold uppercase text-stone-400">YOU</span>
           {myPick != null ? (
             <>
-              <span className="text-2xl sm:text-3xl leading-none">{HAND_GESTURES[myPick]?.emoji ?? myPick}</span>
-              <span className="font-sketch font-black text-sm sm:text-base mt-0.5">{myPick}</span>
+              <span className="text-2xl sm:text-3xl leading-none">{gestureSymbols[myPick] ?? "✋"}</span>
+              <span className="font-sketch font-black text-xl sm:text-2xl leading-none">{myPick}</span>
             </>
           ) : (
-            <span className="text-3xl sm:text-4xl font-sketch font-black text-red-600">?</span>
+            <span className="text-3xl sm:text-4xl font-sketch font-black text-red-500 animate-pulse">?</span>
           )}
+          <span className="text-[9px] font-hand font-bold text-stone-500">{myPick != null ? "Locked ✓" : "Choose"}</span>
         </div>
         <span className="font-hand font-bold text-xs text-stone-700 mt-1">You</span>
       </div>
 
-      {/* VS */}
-      <span className="font-sketch font-black text-xl sm:text-2xl text-[#1E3A8A]">
-        VS
-      </span>
+      {/* VS Stamp */}
+      <div className="w-9 h-9 rounded-full bg-[#EFE7D2] border-2 border-[#8B1A1A]/50 flex items-center justify-center shadow-xs shrink-0 ring-2 ring-amber-100">
+        <span className="font-sketch font-black text-xs text-[#8B1A1A]">VS</span>
+      </div>
 
       {/* Opponent Duel Box */}
       <div className="flex flex-col items-center">
         <div className={cn(
-          "w-16 h-20 sm:w-20 sm:h-24 rounded-2xl border-2 flex flex-col items-center justify-center transition-all shadow-xs",
-          oppLockedIn ? "bg-amber-50 border-amber-400" : "bg-stone-50 border-stone-300"
+          "w-18 h-22 sm:w-22 sm:h-26 rounded-2xl border-2 flex flex-col items-center justify-between p-2 transition-all shadow-xs",
+          oppLockedIn
+            ? "bg-[#FEFCE8] border-amber-400 border-b-4 border-b-amber-600 text-amber-950"
+            : "bg-[#FBF9F5] border-dashed border-stone-300 text-stone-500"
         )}>
-          <span className="text-3xl sm:text-4xl leading-none">{oppLockedIn ? "🤐" : "🤔"}</span>
+          <span className="text-[10px] font-sketch font-bold uppercase text-stone-400">OPP</span>
+          {oppLockedIn ? (
+            <>
+              <span className="text-xl sm:text-2xl">🔒</span>
+              <span className="font-sketch font-black text-xs uppercase text-amber-900">Locked</span>
+            </>
+          ) : (
+            <>
+              <span className="text-xl sm:text-2xl opacity-60">⏳</span>
+              <span className="font-hand font-bold text-xs text-stone-400">Thinking</span>
+            </>
+          )}
+          <span className="text-[9px] font-hand font-bold text-stone-500">{oppLockedIn ? "Ready" : "Waiting"}</span>
         </div>
-        <span className="font-hand font-bold text-xs text-stone-700 mt-1">Opp</span>
+        <span className="font-hand font-bold text-xs text-stone-700 mt-1 truncate max-w-[80px]">{opp?.name ?? "Opp"}</span>
       </div>
     </div>
   );
@@ -3233,6 +4297,15 @@ function RevealPlayerCard({
   isOutcome?: boolean;
   big?: boolean;
 }) {
+  const gestureSymbols: Record<number, string> = {
+    1: "☝️",
+    2: "✌️",
+    3: "🤟",
+    4: "🖖",
+    5: "🖐️",
+    6: "🤙",
+  };
+
   return (
     <div className="flex flex-col items-center min-w-[70px] sm:min-w-[90px]">
       <div className="flex items-center gap-1.5 mb-1">
@@ -3256,13 +4329,13 @@ function RevealPlayerCard({
       >
         {pick != null ? (
           <>
-            <span className="text-xl sm:text-2xl leading-none">{HAND_GESTURES[pick]?.emoji ?? pick}</span>
+            <span className="text-xl sm:text-2xl leading-none">{gestureSymbols[pick] ?? "✋"}</span>
             <span className="font-sketch font-black text-sm sm:text-base mt-0.5">{pick}</span>
           </>
         ) : hidden ? (
-          <span className="text-2xl leading-none">🤐</span>
+          <span className="text-xs font-sketch font-black text-amber-900 uppercase">Locked</span>
         ) : pending ? (
-          <span className="text-[10px] font-bold font-['Kalam',cursive] text-stone-400">Thinking…</span>
+          <span className="text-[10px] font-bold font-['Patrick_Hand',cursive] text-stone-400">Thinking…</span>
         ) : (
           <span className="text-stone-300 font-bold">—</span>
         )}
@@ -3273,6 +4346,79 @@ function RevealPlayerCard({
   );
 }
 
+export interface PickActionMeta {
+  name: string;
+  detail: string;
+}
+
+export const BATTING_SHOTS: Record<number, PickActionMeta> = {
+  1: { name: "Defence", detail: "Push / 1" },
+  2: { name: "Flick", detail: "Double / 2" },
+  3: { name: "Cut / Sweep", detail: "Placement / 3" },
+  4: { name: "Cover Drive", detail: "Boundary / 4" },
+  5: { name: "Pull Shot", detail: "Power Hit / 5" },
+  6: { name: "Lofted Six", detail: "Maximum / 6" },
+};
+
+export const PACER_DELIVERIES: Record<number, PickActionMeta> = {
+  1: { name: "Outswing", detail: "Good Length" },
+  2: { name: "Inswing", detail: "Full Length" },
+  3: { name: "Bouncer", detail: "Short Pitch" },
+  4: { name: "Cross Seam", detail: "Hard Length" },
+  5: { name: "Slower Ball", detail: "Off Cutter" },
+  6: { name: "Toe Yorker", detail: "Death Yorker" },
+};
+
+export const SPINNER_DELIVERIES: Record<number, PickActionMeta> = {
+  1: { name: "Stock Break", detail: "Turn & Bounce" },
+  2: { name: "Arm Ball", detail: "Drifter" },
+  3: { name: "Googly", detail: "Wrong'un" },
+  4: { name: "Top Spinner", detail: "Extra Bounce" },
+  5: { name: "Carrom Ball", detail: "Deceptive" },
+  6: { name: "Flighted Loop", detail: "Dip & Turn" },
+};
+
+export const YORKER_DELIVERIES: Record<number, PickActionMeta> = {
+  1: { name: "Inswing Yorker", detail: "Base Stumps" },
+  2: { name: "Wide Yorker", detail: "Outside Off" },
+  3: { name: "Toe Crusher", detail: "Middle Stumps" },
+};
+
+export function isSpinnerBowler(bowlerName?: string, bowlerStyle?: string, bowlerRole?: string): boolean {
+  const text = `${bowlerName ?? ""} ${bowlerStyle ?? ""} ${bowlerRole ?? ""}`.toLowerCase();
+  return (
+    text.includes("spin") ||
+    text.includes("break") ||
+    text.includes("orthodox") ||
+    text.includes("googly") ||
+    text.includes("flipper") ||
+    text.includes("doosra") ||
+    text.includes("carrom") ||
+    text.includes("chinaman") ||
+    text.includes("wrist") ||
+    text.includes("slow") ||
+    text.includes("chahal") ||
+    text.includes("kuldeep") ||
+    text.includes("ashwin") ||
+    text.includes("jadeja") ||
+    text.includes("axar") ||
+    text.includes("rashid") ||
+    text.includes("narine") ||
+    text.includes("varun") ||
+    text.includes("hasaranga") ||
+    text.includes("santner") ||
+    text.includes("zampa") ||
+    text.includes("shamsi") ||
+    text.includes("tahir") ||
+    text.includes("warne") ||
+    text.includes("muralitharan") ||
+    text.includes("kumble") ||
+    text.includes("saqlain") ||
+    text.includes("harbhajan") ||
+    text.includes("qadir")
+  );
+}
+
 export function PickRow({
   disabled,
   onPick,
@@ -3280,6 +4426,9 @@ export function PickRow({
   allowedPicks = [1, 2, 3, 4, 5, 6],
   restrictedNote = null,
   big = false,
+  role = null,
+  isSpinner = false,
+  isYorker = false,
 }: {
   disabled: boolean;
   onPick: (n: number) => void;
@@ -3287,46 +4436,91 @@ export function PickRow({
   allowedPicks?: number[];
   restrictedNote?: string | null;
   big?: boolean;
+  role?: "batter" | "bowler" | null;
+  isSpinner?: boolean;
+  isYorker?: boolean;
 }) {
-  const side = big ? 72 : 56;
+  const gestureSymbols: Record<number, string> = {
+    1: "☝️",
+    2: "✌️",
+    3: "🤟",
+    4: "🖖",
+    5: "🖐️",
+    6: "🤙",
+  };
+
   return (
-    <div className="space-y-1.5 w-full flex flex-col items-center select-none">
+    <div className="space-y-2 w-full flex flex-col items-center select-none">
       {restrictedNote && (
-        <div className="text-center text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-          🔥 {restrictedNote}
+        <div className="text-center text-[11px] font-sketch font-black uppercase tracking-wider px-3.5 py-1 rounded-full bg-amber-100 text-amber-900 border-2 border-amber-300 shadow-xs animate-pulse">
+          ⚡ {restrictedNote}
         </div>
       )}
-      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
         {[1, 2, 3, 4, 5, 6].map((n) => {
           const isAllowed = allowedPicks.includes(n);
           const isDisabled = disabled || !isAllowed;
           const isSelected = selected === n;
+
+          const actionMeta: PickActionMeta | undefined = isYorker
+            ? YORKER_DELIVERIES[n]
+            : role === "batter"
+            ? BATTING_SHOTS[n]
+            : role === "bowler"
+            ? (isSpinner ? SPINNER_DELIVERIES[n] : PACER_DELIVERIES[n])
+            : undefined;
+
           return (
             <button
               key={n}
               onClick={() => isAllowed && onPick(n)}
               disabled={isDisabled}
-              title={!isAllowed ? (restrictedNote?.toLowerCase().includes("yorker") ? "Mystery Yorker allows only 1, 2, or 3" : "Restricted during powerplay") : undefined}
+              title={!isAllowed ? (restrictedNote?.toLowerCase().includes("yorker") ? "Mystery Yorker allows only 1, 2, or 3" : "Restricted during powerplay") : actionMeta ? `${actionMeta.name} (${actionMeta.detail})` : undefined}
               className={cn(
-                "relative flex flex-col items-center justify-center font-bold transition-all duration-150 active:scale-95 group rounded-xl border-2 border-dashed",
+                "relative flex flex-col items-center justify-between p-1 sm:p-1.5 transition-all duration-150 rounded-xl sm:rounded-2xl border-2 select-none group",
                 isSelected
-                  ? "bg-emerald-50 border-emerald-600 text-emerald-800 shadow-md -translate-y-1"
+                  ? "bg-[#ECFDF5] border-emerald-600 border-b-4 border-b-emerald-800 text-emerald-950 shadow-md -translate-y-1 ring-2 ring-emerald-400/50"
                   : isDisabled
-                  ? "bg-stone-100 border-stone-200 text-stone-400 opacity-40 cursor-not-allowed"
-                  : "bg-white border-stone-400/80 text-stone-900 hover:border-stone-600 hover:-translate-y-0.5 shadow-xs cursor-pointer",
+                  ? "bg-stone-100/70 border-dashed border-stone-300 text-stone-400 opacity-40 cursor-not-allowed border-b-2"
+                  : "bg-[#FFFDF7] border-[#D7C9B1] border-b-4 border-b-[#B8A68B] text-stone-900 hover:border-stone-600 hover:bg-white hover:-translate-y-1 hover:shadow-md active:translate-y-1 active:border-b-2 shadow-xs cursor-pointer",
               )}
-              style={{ width: side, height: side * 1.2 }}
+              style={{
+                width: big ? 82 : 54,
+                minHeight: big ? 116 : 92,
+              }}
             >
-              <span className="leading-none font-sketch font-black transition-transform group-hover:scale-110" style={{ fontSize: big ? 34 : 29, lineHeight: 1 }}>
+              <div className="w-full flex justify-between items-center px-0.5 sm:px-1">
+                <span className="text-xs sm:text-sm leading-none">{gestureSymbols[n]}</span>
+                <span className="text-[8px] sm:text-[9px] font-sketch font-bold text-stone-400">#{n}</span>
+              </div>
+
+              <span className="leading-none font-sketch font-black text-2xl sm:text-3xl md:text-4xl transition-transform group-hover:scale-110 my-0.5">
                 {n}
               </span>
-              {!isAllowed && (
-                <span className="absolute inset-x-1 bottom-1 text-[8px] font-black uppercase tracking-tight text-red-700">
-                  Powerplay
-                </span>
-              )}
+
+              <div className="w-full flex flex-col items-center justify-center text-center overflow-hidden px-0.5">
+                {!isAllowed ? (
+                  <span className="text-[8px] font-black uppercase text-red-700 bg-red-100 px-1 py-0.2 rounded">
+                    Capped
+                  </span>
+                ) : actionMeta ? (
+                  <>
+                    <span className="text-[8.5px] sm:text-[10px] font-sketch font-black text-[#1E3A8A] leading-tight truncate w-full group-hover:text-emerald-700">
+                      {actionMeta.name}
+                    </span>
+                    <span className="text-[7px] sm:text-[8px] font-hand font-bold text-stone-400 truncate w-full leading-tight">
+                      {actionMeta.detail}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[9px] font-hand font-bold text-stone-400 group-hover:text-stone-600">
+                    {n === 6 ? "SIX" : n === 4 ? "FOUR" : `${n} ${n === 1 ? "RUN" : "RUNS"}`}
+                  </span>
+                )}
+              </div>
+
               {isSelected && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[8px] font-black shadow-xs">
+                <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black shadow-sm ring-2 ring-white">
                   ✓
                 </span>
               )}
@@ -3340,58 +4534,74 @@ export function PickRow({
 
 export function RecentBalls({ history, currentOver }: { history: HcBall[]; currentOver?: number }) {
   const thisOverBalls = history.filter((b) => currentOver != null && b.overNumber === currentOver);
-  const recentBalls = history.slice(-5);
+  const recentBalls = history.slice(-6);
+
+  const renderBallChip = (b: HcBall, i: number) => {
+    const isWicket = b.wicket;
+    const runs = b.runs;
+    const isSix = runs === 6;
+    const isFour = runs === 4;
+    const isDot = runs === 0 && !isWicket;
+
+    return (
+      <div
+        key={i}
+        className={cn(
+          "w-8 h-8 sm:w-9 sm:h-9 rounded-full flex flex-col items-center justify-center font-sketch font-black text-xs sm:text-sm shadow-xs border-2 transition-transform hover:scale-110 relative",
+          isWicket
+            ? "bg-gradient-to-br from-red-600 to-rose-700 text-white border-red-900 shadow-rose-900/30"
+            : isSix
+            ? "bg-gradient-to-br from-purple-600 to-indigo-700 text-white border-purple-900 shadow-purple-900/30"
+            : isFour
+            ? "bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 border-amber-800 shadow-amber-900/20"
+            : isDot
+            ? "bg-[#FFFDF8] text-stone-400 border-stone-300"
+            : "bg-[#EFF6FF] text-[#1E3A8A] border-[#3B82F6]"
+        )}
+        title={isWicket ? "WICKET!" : isSix ? "SIX!" : isFour ? "FOUR!" : `${runs} runs`}
+      >
+        <span>{isWicket ? "W" : isDot ? "•" : runs}</span>
+      </div>
+    );
+  };
 
   return (
-    <div className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-3.5 sm:p-4 shadow-sm font-notebook space-y-3 select-none">
+    <div className="rounded-2xl border-2 border-[#D7C9B1] bg-[#FFFDF8] p-3.5 sm:p-4 shadow-[0_4px_16px_rgba(46,25,8,0.06)] font-notebook space-y-3 select-none">
       {/* THIS OVER */}
       <div>
-        <div className="text-xs font-hand font-bold text-[#1E3A8A] italic mb-1.5 uppercase tracking-wide">
-          THIS OVER
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-sketch font-black text-[#1E3A8A] uppercase tracking-wider flex items-center gap-1">
+            <span>🎯</span>
+            <span>THIS OVER ({thisOverBalls.length}/6)</span>
+          </span>
+          <span className="text-[10px] font-hand font-bold text-stone-400">Ball-by-Ball</span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-h-[36px]">
           {thisOverBalls.length === 0 ? (
-            <div className="text-xs font-hand text-stone-400 italic">First ball of over…</div>
+            <div className="text-xs font-hand text-stone-400 italic flex items-center gap-1">
+              <span>🏏</span>
+              <span>Ready for ball 1 of over…</span>
+            </div>
           ) : (
-            thisOverBalls.map((b, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-sketch font-black text-xs sm:text-sm shadow-xs border",
-                  b.wicket
-                    ? "bg-[#DC2626] text-white border-[#991B1B]"
-                    : "bg-white text-[#1E3A8A] border-2 border-[#1E3A8A]"
-                )}
-              >
-                {b.wicket ? "W" : b.runs}
-              </span>
-            ))
+            thisOverBalls.map((b, i) => renderBallChip(b, i))
           )}
         </div>
       </div>
 
       {/* RECENT */}
-      <div className="pt-2 border-t border-stone-200/60">
-        <div className="text-xs font-hand font-bold text-[#1E3A8A] italic mb-1.5 uppercase tracking-wide">
-          RECENT
+      <div className="pt-2 border-t border-stone-200/80">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-sketch font-black text-[#1E3A8A] uppercase tracking-wider flex items-center gap-1">
+            <span>⏱️</span>
+            <span>RECENT DELIVERIES</span>
+          </span>
+          <span className="text-[10px] font-hand font-bold text-stone-400">Last {recentBalls.length}</span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-h-[36px]">
           {recentBalls.length === 0 ? (
             <div className="text-xs font-hand text-stone-400 italic">Match just started…</div>
           ) : (
-            recentBalls.map((b, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-sketch font-black text-xs sm:text-sm shadow-xs border",
-                  b.wicket
-                    ? "bg-[#DC2626] text-white border-[#991B1B]"
-                    : "bg-white text-[#1E3A8A] border-2 border-[#1E3A8A]"
-                )}
-              >
-                {b.wicket ? "W" : b.runs}
-              </span>
-            ))
+            recentBalls.map((b, i) => renderBallChip(b, i))
           )}
         </div>
       </div>
@@ -3402,35 +4612,39 @@ export function RecentBalls({ history, currentOver }: { history: HcBall[]; curre
 export function MatchInfoCard({ state }: { state: HcState }) {
   const format = state.options.format.toUpperCase();
   const overs = state.options.format === "test" ? 30 : state.options.format === "odi" ? 15 : 10;
-  const venue = state.options.category === "ipl" ? "IPL" : "International";
+  const venue = state.options.category === "ipl" ? "IPL Franchise" : "International";
   const powerplay = "Overs 1-3";
   const mode = "Classic";
 
   return (
-    <div className="rounded-2xl border-2 border-[#3E2723]/30 bg-[#FFFDF8] p-3.5 sm:p-4 shadow-sm font-notebook select-none">
-      <div className="text-xs font-sketch font-black text-[#1E3A8A] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-        <span>MATCH INFO</span>
+    <div className="rounded-2xl border-2 border-[#D7C9B1] bg-[#FFFDF8] p-3.5 sm:p-4 shadow-[0_4px_16px_rgba(46,25,8,0.06)] font-notebook select-none">
+      <div className="flex items-center justify-between mb-2.5 pb-1 border-b border-stone-200/80">
+        <div className="text-xs font-sketch font-black text-[#1E3A8A] uppercase tracking-wider flex items-center gap-1.5">
+          <span>📋</span>
+          <span>MATCH DETAILS</span>
+        </div>
+        <span className="text-[10px] font-hand font-bold text-stone-400">Official Ledger</span>
       </div>
       <div className="space-y-2 text-xs font-hand font-bold text-stone-700">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between p-1 rounded-md bg-stone-50 border border-stone-200/60">
           <span className="text-stone-500 flex items-center gap-1.5">📅 Format</span>
           <span className="text-[#1E3A8A] font-black font-sketch">{format}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-stone-500 flex items-center gap-1.5">⏱️ Overs</span>
-          <span className="text-[#1E3A8A] font-black font-sketch">{overs}</span>
+        <div className="flex items-center justify-between p-1 rounded-md bg-stone-50 border border-stone-200/60">
+          <span className="text-stone-500 flex items-center gap-1.5">⏱️ Match Overs</span>
+          <span className="text-[#1E3A8A] font-black font-sketch">{overs} Overs</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-stone-500 flex items-center gap-1.5">📍 Venue</span>
+        <div className="flex items-center justify-between p-1 rounded-md bg-stone-50 border border-stone-200/60">
+          <span className="text-stone-500 flex items-center gap-1.5">📍 Category</span>
           <span className="text-[#1E3A8A] font-black font-sketch">{venue}</span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between p-1 rounded-md bg-stone-50 border border-stone-200/60">
           <span className="text-stone-500 flex items-center gap-1.5">🔥 Powerplay</span>
-          <span className="text-[#1E3A8A] font-black font-sketch">{powerplay}</span>
+          <span className="text-amber-900 font-black font-sketch">{powerplay}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-stone-500 flex items-center gap-1.5">👑 Mode</span>
-          <span className="text-[#1E3A8A] font-black font-sketch">{mode}</span>
+        <div className="flex items-center justify-between p-1 rounded-md bg-stone-50 border border-stone-200/60">
+          <span className="text-stone-500 flex items-center gap-1.5">👑 Ruleset</span>
+          <span className="text-emerald-900 font-black font-sketch">{mode}</span>
         </div>
       </div>
     </div>
@@ -3442,12 +4656,13 @@ export function MatchPostItCard() {
     <div className="rounded-xl border border-amber-300/80 bg-[#FEF9C3] p-3 shadow-xs font-notebook relative rotate-1 select-none">
       <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-3.5 bg-[#D4C3A3]/80 -rotate-2 rounded-xs" />
       <div className="text-center">
-        <div className="text-xs font-hand font-bold text-amber-900 leading-tight">
-          Play Friends Relive 90s 😊
+        <div className="text-xs font-sketch font-black uppercase text-amber-950 leading-tight tracking-wider">
+          Classroom Rules 📜
         </div>
-        <div className="text-xl my-1">🏏</div>
-        <div className="text-[10px] font-hand text-amber-800/80 italic">
-          Chat • Laugh • Repeat
+        <div className="text-sm my-1">🏏</div>
+        <div className="text-[11px] font-hand text-amber-900/90 leading-tight">
+          Same number = <strong className="text-red-700">OUT!</strong><br />
+          Different number = <strong className="text-blue-900">Runs added</strong>
         </div>
       </div>
     </div>
@@ -3650,12 +4865,8 @@ export function MatchSummary({
    *  banner, a Continue button and a 90 s auto-advance countdown. */
   onContinue?: () => void;
 }) {
-  const INK = "#1a2952";
-  const INK_LT = "#4a5a82";
-  const STAMP_G = "#166534";
-  const STAMP_R = "#991b1b";
-
   const youWon = state.winnerId === selfId;
+  const isTie = state.result === "tie";
   const winnerName =
     players.find((p) => p.id === state.winnerId)?.name ??
     (state.winnerId ? useRoomStore.getState().knownPlayers[state.winnerId]?.name : undefined) ??
@@ -3673,15 +4884,13 @@ export function MatchSummary({
   const myRank = state.winnerId ? (youWon ? 0 : 1) : undefined;
   const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
 
-  // 90 s auto-advance to the Game Over screen — only when this is the
-  // end-of-match "page" (onContinue provided). Closable early via the button.
+  const [activeTab, setActiveTab] = useState<"both" | "inn1" | "inn2">("both");
+
+  // 90 s auto-advance to the Game Over screen
   const [secondsLeft, setSecondsLeft] = useState(SCORECARD_HOLD_SECONDS);
   const continueRef = useRef(onContinue);
   continueRef.current = onContinue;
   const hasContinue = !!onContinue;
-  // Mount-only: `onContinue`'s identity changes on every Room re-render, so
-  // depending on it would reset the countdown constantly. The ref keeps the
-  // latest callback; we only care whether one exists at mount.
   useEffect(() => {
     if (!hasContinue) return;
     const iv = setInterval(() => {
@@ -3695,77 +4904,156 @@ export function MatchSummary({
       });
     }, 1000);
     return () => clearInterval(iv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasContinue]);
 
-  const bannerBg = state.result === "tie"
-    ? "linear-gradient(135deg, #e7e2cf 0%, #cbd5e1 100%)"
-    : youWon
-    ? "linear-gradient(135deg, #dcfce7 0%, #fef9c3 55%, #fde68a 100%)"
-    : "linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%)";
+  const i1 = state.innings1;
+  const i2 = state.innings2;
+
+  const t1 = i1 ? teamLabel(state, i1.battingPlayerId, players) : null;
+  const t2 = i2 ? teamLabel(state, i2.battingPlayerId, players) : null;
 
   return (
-    <div className="space-y-3 font-notebook">
-      {/* 5-second Firing Crackers & Flower Blast for Winner or Cheer-up for Runner */}
+    <div className="space-y-3 font-notebook select-none pb-4">
+      {/* 5-second Fireworks / FX */}
       <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="nostalgia" />
 
+      {/* ── 1. Match Result Certificate Banner ── */}
       <div
-        className="rounded-xl p-4 text-center border-2"
-        style={{
-          background: bannerBg,
-          borderColor: state.result === "tie" ? INK_LT : youWon ? STAMP_G : STAMP_R,
-          boxShadow: youWon ? "0 4px 22px rgba(22,101,52,0.22)" : "0 4px 16px rgba(0,0,0,0.10)",
-        }}
+        className="relative rounded-2xl p-4 sm:p-5 border-2 border-[#D7C9B1] bg-[#FCF8EE] shadow-md overflow-hidden"
       >
-        <div className="text-4xl mb-1">
-          {state.result === "tie" ? "🤝" : youWon ? "🏆" : "👏"}
-        </div>
-        <div className="font-sketch text-[22px] font-bold" style={{ color: state.result === "tie" ? INK : youWon ? STAMP_G : STAMP_R }}>
-          {state.result === "tie"
-            ? "Match tied!"
-            : winnerTeam
-            ? `${winnerTeam.flag} ${winnerTeam.name} (${winnerName}) win!`
-            : "Match over"}
-        </div>
-        <div className="text-sm text-hc-ink-lt mt-1 font-bold">
-          {summarizeMatch(state)}
-        </div>
-        {winnerPrize && (
-          <div className="flex justify-center mt-2">
-            <PrizeWonChip amount={winnerPrize} size="md" />
+        {/* Decorative Ruled Notebook Red Margin */}
+        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-red-400/30" />
+
+        <div className="flex flex-col items-center text-center relative z-10 pl-3">
+          {/* Angled Vintage Rubber Stamp */}
+          <div className="inline-block transform -rotate-2 mb-2">
+            <span
+              className={cn(
+                "px-3 py-1 rounded border-2 border-dashed font-sketch font-black text-xs uppercase tracking-widest shadow-2xs",
+                isTie
+                  ? "border-blue-700 bg-blue-50 text-blue-900"
+                  : youWon
+                  ? "border-emerald-700 bg-emerald-50 text-emerald-900"
+                  : "border-red-700 bg-red-50 text-red-900"
+              )}
+            >
+              {isTie ? "🤝 MATCH TIED" : youWon ? "🏆 MATCH WINNER" : "👏 RUNNER-UP"}
+            </span>
           </div>
-        )}
+
+          {/* Winner Headline */}
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {winnerTeam && (
+              <span className="text-2xl">{winnerTeam.flag}</span>
+            )}
+            <h1 className="font-sketch text-2xl sm:text-3xl font-black text-[#1a2952] leading-tight">
+              {isTie
+                ? "Match Tied in a Thriller!"
+                : winnerTeam
+                ? `${winnerTeam.name} (${winnerName}) Won!`
+                : "Match Concluded"}
+            </h1>
+          </div>
+
+          {/* Match summary description */}
+          <p className="font-hand font-bold text-sm sm:text-base text-stone-600 mt-1">
+            {summarizeMatch(state)}
+          </p>
+
+          {winnerPrize && (
+            <div className="mt-3">
+              <PrizeWonChip amount={winnerPrize} size="md" />
+            </div>
+          )}
+        </div>
       </div>
 
       {typeof myRank === "number" && (
         <PlayerSettlementSummary settlement={settlement} myRank={myRank} isGuest={selfIsGuest} />
       )}
 
-      {/* Man of the Match */}
+      {/* ── 2. Player of the Match Certificate ── */}
       {mom && (
-        <div
-          className="relative rounded-xl px-4 py-3 text-center"
-          style={{ background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fcd34d 100%)" }}
-        >
-          <RoughBorder roughness={1.7} strokeWidth={2} stroke="rgba(180,120,20,0.95)" padding={3} />
-          <div className="relative">
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "#92400e" }}>
-              🏅 Player of the Match
+        <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-[#FFFDF5] to-amber-50 p-3 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center text-lg shadow-2xs shrink-0">
+                🏅
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[9.5px] font-sketch font-bold uppercase tracking-widest text-amber-900">
+                  PLAYER OF THE MATCH
+                </span>
+                <span className="font-sketch font-black text-base text-[#1a2952] truncate">
+                  {mom.name}
+                </span>
+                <span className="text-xs font-hand font-bold text-stone-600 truncate">
+                  {mom.teamShort} ({mom.playerName})
+                </span>
+              </div>
             </div>
-            <div className="font-sketch text-[20px] font-bold text-hc-ink mt-0.5">
-              {mom.name}
-            </div>
-            <div className="text-xs font-bold" style={{ color: "#78350f" }}>
-              {mom.teamShort} ({mom.playerName}){mom.line ? ` — ${mom.line}` : ""}
-            </div>
+
+            {mom.line && (
+              <div className="shrink-0 bg-amber-100/90 border border-amber-300/80 rounded-lg px-2.5 py-1 text-right">
+                <span className="text-[10px] font-sketch font-bold text-amber-950 block">
+                  Match Impact
+                </span>
+                <span className="text-xs font-sketch font-black text-emerald-900">
+                  {mom.line}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Innings scorecards — side by side on desktop to keep the page from
-          overflowing; stacked on narrow (mobile) shells. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-        {state.innings1 && (
+      {/* ── 3. Mobile Innings Selector (Tabs) ── */}
+      <div className="flex lg:hidden items-center justify-center gap-2 pt-1 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("both")}
+          className={cn(
+            "px-3 py-1 rounded-full text-xs font-sketch font-bold border transition cursor-pointer",
+            activeTab === "both"
+              ? "bg-[#1a2952] text-white border-[#1a2952] shadow-xs"
+              : "bg-[#FCF8EE] text-stone-700 border-stone-300"
+          )}
+        >
+          All Innings
+        </button>
+        {i1 && t1 && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("inn1")}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-sketch font-bold border transition cursor-pointer",
+              activeTab === "inn1"
+                ? "bg-emerald-800 text-white border-emerald-900 shadow-xs"
+                : "bg-[#FCF8EE] text-stone-700 border-stone-300"
+            )}
+          >
+            1st Inn: {t1.short} ({i1.runs}/{i1.wickets})
+          </button>
+        )}
+        {i2 && t2 && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("inn2")}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-sketch font-bold border transition cursor-pointer",
+              activeTab === "inn2"
+                ? "bg-sky-800 text-white border-sky-900 shadow-xs"
+                : "bg-[#FCF8EE] text-stone-700 border-stone-300"
+            )}
+          >
+            2nd Inn: {t2.short} ({i2.runs}/{i2.wickets})
+          </button>
+        )}
+      </div>
+
+      {/* ── 4. Innings Scorecards Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+        {state.innings1 && (activeTab === "both" || activeTab === "inn1") && (
           <InningsScorecard
             innings={state.innings1}
             state={state}
@@ -3773,7 +5061,7 @@ export function MatchSummary({
             accent="green"
           />
         )}
-        {state.innings2 && (
+        {state.innings2 && (activeTab === "both" || activeTab === "inn2") && (
           <InningsScorecard
             innings={state.innings2}
             state={state}
@@ -3783,14 +5071,19 @@ export function MatchSummary({
         )}
       </div>
 
-      {/* End-of-match page chrome: Continue + 90 s auto-advance countdown. */}
+      {/* ── 5. Sticky Bottom Action Deck ── */}
       {onContinue && (
-        <div className="sticky bottom-0 flex flex-col items-center gap-2 pt-2 pb-1 bg-[#F5F0E4]/90 backdrop-blur-sm rounded-b-xl">
-          <PaperButton variant="confirm" size="block" onClick={onContinue} className="max-w-xs tracking-[0.08em]">
-            Continue →
+        <div className="sticky bottom-0 z-20 flex flex-col items-center gap-1.5 pt-2 pb-1 bg-[#FDFCFA]/95 backdrop-blur-sm rounded-xl border border-[#D7C9B1] shadow-lg mt-3 p-3">
+          <PaperButton
+            variant="confirm"
+            size="block"
+            onClick={onContinue}
+            className="max-w-xs tracking-[0.08em] shadow-sm font-sketch font-black text-sm"
+          >
+            Continue to Lounge →
           </PaperButton>
-          <div className="text-[11px] text-hc-ink-lt">
-            Auto-continues in {secondsLeft}s · tap Continue to skip
+          <div className="text-[10.5px] font-hand font-bold text-stone-500">
+            Auto-advances in {secondsLeft}s · tap button to proceed immediately
           </div>
         </div>
       )}
@@ -3823,11 +5116,13 @@ const SCORECARD_ACCENTS = {
     bar: "linear-gradient(135deg, #166534 0%, #15803d 60%, #22c55e 100%)",
     soft: "rgba(22,101,52,0.10)",
     ring: "rgba(22,101,52,0.45)",
+    border: "#166534",
   },
   blue: {
     bar: "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%)",
     soft: "rgba(29,78,216,0.10)",
     ring: "rgba(29,78,216,0.40)",
+    border: "#1e3a8a",
   },
 } as const;
 
@@ -3850,7 +5145,7 @@ export function InningsScorecard({
   const fours = innings.history.filter((b) => !b.wicket && b.runs === 4).length;
   const sixes = innings.history.filter((b) => !b.wicket && b.runs === 6).length;
   const dots = innings.history.filter((b) => !b.wicket && b.runs === 0).length;
-  const strikeRate = innings.balls > 0 ? ((innings.runs / innings.balls) * 100).toFixed(1) : "0.0";
+  const strikeRateVal = innings.balls > 0 ? ((innings.runs / innings.balls) * 100).toFixed(1) : "0.0";
   const reasonLabel: Record<string, string> = {
     allOut: "All out",
     oversUp: "Overs up",
@@ -3883,41 +5178,47 @@ export function InningsScorecard({
     .filter((row) => row.stats.balls > 0)
     .sort((a, b) => b.stats.wickets - a.stats.wickets || a.stats.runs - b.stats.runs);
 
+  const fows = fallOfWickets(innings);
+
   return (
-    <PaperPanel tone="default" pad="none" className="space-y-2.5 overflow-hidden font-notebook min-w-0">
+    <div className="rounded-2xl border-2 border-[#D7C9B1] bg-[#FCF8EE] shadow-sm overflow-hidden font-notebook min-w-0 flex flex-col gap-2.5 p-3">
       {/* Coloured innings header bar */}
       <div
-        className="flex items-center justify-between flex-wrap gap-2 px-3 py-2"
+        className="flex items-center justify-between flex-wrap gap-2 px-3 py-2 rounded-xl"
         style={{ background: acc.bar, color: "#fff" }}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-xl drop-shadow">{batter.flag}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-2xl drop-shadow">{batter.flag}</span>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/85">
+            <div className="text-[10px] font-sketch font-bold uppercase tracking-[0.12em] text-white/90">
               Innings {innings.number} · {batter.short} ({batter.playerName})
             </div>
-            <div className="tabular-nums font-extrabold text-2xl leading-none text-white">
+            <div className="tabular-nums font-sketch font-black text-2xl leading-tight text-white">
               {innings.runs}<span className="text-amber-200">/{innings.wickets}</span>
-              {" "}<span className="text-xs font-normal text-white/80">({oversBowled}.{ballsThisOver} ov)</span>
+              {" "}<span className="text-xs font-hand text-white/80">({oversBowled}.{ballsThisOver} ov)</span>
             </div>
           </div>
         </div>
-        <div className="text-[11px] text-white/85 text-right">
+        <div className="text-[11px] font-hand text-white/90 text-right">
           <div>Bowled by {bowler.short} ({bowler.playerName})</div>
           {innings.endedReason && (
-            <div className="font-bold text-amber-200">
+            <div className="font-sketch font-bold text-amber-200 uppercase text-[10px]">
               {reasonLabel[innings.endedReason] ?? innings.endedReason}
             </div>
           )}
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 text-xs px-2.5">
-        <Stat label="4s" value={fours} color="#166534" bg="rgba(22,101,52,0.12)" />
-        <Stat label="6s" value={sixes} color="#6d28d9" bg="rgba(109,40,217,0.12)" />
-        <Stat label="Dots" value={dots} color="#475569" bg="rgba(71,85,105,0.12)" />
-        <Stat label="SR" value={strikeRate} color="#b45309" bg="rgba(180,83,9,0.12)" />
+
+      {/* 4 Quick Stat Pills */}
+      <div className="grid grid-cols-4 gap-1.5 text-xs">
+        <Stat label="4s" value={fours} color="#166534" bg="rgba(22,101,52,0.08)" />
+        <Stat label="6s" value={sixes} color="#6d28d9" bg="rgba(109,40,217,0.08)" />
+        <Stat label="Dots" value={dots} color="#475569" bg="rgba(71,85,105,0.08)" />
+        <Stat label="SR" value={strikeRateVal} color="#b45309" bg="rgba(180,83,9,0.08)" />
       </div>
-      <div className="space-y-2.5 px-2.5 pb-2.5">
+
+      {/* Batting & Bowling Tables */}
+      <div className="space-y-2.5">
         {batterRows.length > 0 && (
           <BatterTable rows={batterRows} nameOf={nameOfBatter} nameOfBowler={nameOfBowler} />
         )}
@@ -3925,7 +5226,24 @@ export function InningsScorecard({
           <BowlerTable rows={bowlerRows} nameOf={nameOfBowler} />
         )}
       </div>
-    </PaperPanel>
+
+      {/* Fall of Wickets Strip */}
+      {fows.length > 0 && (
+        <div className="rounded-lg bg-[#FFFDF8] border border-stone-200 p-2 text-xs">
+          <div className="font-sketch font-bold text-[10px] text-stone-600 uppercase mb-1">
+            Fall of Wickets:
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-hand text-stone-700 font-bold">
+            {fows.map((f, fi) => (
+              <span key={fi} className="inline-flex items-center gap-0.5 bg-stone-100 rounded px-1.5 py-0.5 border border-stone-200">
+                <span className="font-sketch font-black text-red-700">{f.score}/{f.wicket}</span>
+                <span className="text-stone-500">({nameOfBatter(f.batterId)}, {f.over} ov)</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -3939,38 +5257,57 @@ export function BatterTable({
   nameOfBowler: (id: string) => string;
 }) {
   return (
-    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8, overflowX: "auto" }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#166534", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
-        🏏 Batting
+    <div className="rounded-xl border border-[#D7C9B1] bg-[#FFFDF8] p-2.5 overflow-x-auto shadow-2xs font-notebook">
+      <div className="text-[11px] font-sketch font-black uppercase tracking-wider text-emerald-900 mb-1.5 flex items-center gap-1">
+        <span>🏏</span>
+        <span>Batting Scorebook</span>
       </div>
-      <table className="w-full text-xs">
+      <table className="w-full text-xs text-left">
         <thead>
-          <tr style={{ color: "#4a5a82", fontSize: 10, fontFamily: "'Kalam', cursive" }}>
-            <th className="text-left py-0.5">Batter</th>
-            <th className="text-right">R</th>
-            <th className="text-right">B</th>
-            <th className="text-right">4s</th>
-            <th className="text-right">6s</th>
-            <th className="text-right">SR</th>
+          <tr className="border-b border-[#D7C9B1]/60 font-sketch text-[10px] text-stone-500 uppercase">
+            <th className="py-1 px-1">Batter</th>
+            <th className="py-1 px-1 text-right">R</th>
+            <th className="py-1 px-1 text-right">B</th>
+            <th className="py-1 px-1 text-right">4s</th>
+            <th className="py-1 px-1 text-right">6s</th>
+            <th className="py-1 px-1 text-right">SR</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-[#D7C9B1]/30">
           {rows.map(({ id, stats }, i) => {
             if (!stats) return null;
             const sr = stats.balls > 0 ? ((stats.runs / stats.balls) * 100).toFixed(0) : "—";
             return (
-              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive", background: i % 2 ? "rgba(22,101,52,0.06)" : "transparent" }}>
-                <td className="py-0.5 pl-1 rounded-l">
-                  <div className="font-bold">{nameOf(id)}{!stats.isOut ? "*" : ""}</div>
-                  {stats.isOut && stats.dismissedBy && (
-                    <div style={{ fontSize: 10, color: "#991b1b", opacity: 0.75 }}>b {nameOfBowler(stats.dismissedBy)}</div>
+              <tr key={id} className={cn("hover:bg-amber-50/40", i % 2 === 1 ? "bg-[#FCF8EE]/60" : "")}>
+                <td className="py-1 px-1">
+                  <div className="font-sketch font-bold text-[#1a2952] text-xs">
+                    {nameOf(id)}{!stats.isOut ? " *" : ""}
+                  </div>
+                  {stats.isOut && stats.dismissedBy ? (
+                    <div className="text-[9.5px] font-hand font-bold text-red-700 leading-tight">
+                      b {nameOfBowler(stats.dismissedBy)}
+                    </div>
+                  ) : (
+                    <div className="text-[9.5px] font-hand font-bold text-emerald-700 leading-tight">
+                      not out
+                    </div>
                   )}
                 </td>
-                <td className="text-right tabular-nums font-bold">{stats.runs}</td>
-                <td className="text-right tabular-nums">{stats.balls}</td>
-                <td className="text-right tabular-nums">{stats.fours}</td>
-                <td className="text-right tabular-nums">{stats.sixes}</td>
-                <td className="text-right tabular-nums">{sr}</td>
+                <td className="py-1 px-1 text-right tabular-nums font-sketch font-black text-sm text-[#1a2952]">
+                  {stats.runs}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-hand font-bold text-stone-600">
+                  {stats.balls}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-hand font-bold text-emerald-800">
+                  {stats.fours}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-hand font-bold text-purple-800">
+                  {stats.sixes}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-sketch font-bold text-stone-700">
+                  {sr}
+                </td>
               </tr>
             );
           })}
@@ -3988,31 +5325,42 @@ export function BowlerTable({
   nameOf: (id: string) => string;
 }) {
   return (
-    <div style={{ background: "rgba(245,233,196,0.70)", border: "1.5px dashed rgba(46,40,25,0.35)", borderRadius: 6, padding: 8, overflowX: "auto" }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1d4ed8", fontWeight: 800, marginBottom: 4, paddingLeft: 4, fontFamily: "'Kalam', cursive" }}>
-        ⚾ Bowling
+    <div className="rounded-xl border border-[#D7C9B1] bg-[#FFFDF8] p-2.5 overflow-x-auto shadow-2xs font-notebook">
+      <div className="text-[11px] font-sketch font-black uppercase tracking-wider text-sky-900 mb-1.5 flex items-center gap-1">
+        <span>🎯</span>
+        <span>Bowling Figures</span>
       </div>
-      <table className="w-full text-xs">
+      <table className="w-full text-xs text-left">
         <thead>
-          <tr style={{ color: "#4a5a82", fontSize: 10, fontFamily: "'Kalam', cursive" }}>
-            <th className="text-left py-0.5">Bowler</th>
-            <th className="text-right">O</th>
-            <th className="text-right">R</th>
-            <th className="text-right">W</th>
-            <th className="text-right">Econ</th>
+          <tr className="border-b border-[#D7C9B1]/60 font-sketch text-[10px] text-stone-500 uppercase">
+            <th className="py-1 px-1">Bowler</th>
+            <th className="py-1 px-1 text-right">O</th>
+            <th className="py-1 px-1 text-right">R</th>
+            <th className="py-1 px-1 text-right">W</th>
+            <th className="py-1 px-1 text-right">Econ</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-[#D7C9B1]/30">
           {rows.map(({ id, stats }, i) => {
             const overs = `${Math.floor(stats.balls / 6)}.${stats.balls % 6}`;
             const econ = stats.balls > 0 ? ((stats.runs / stats.balls) * 6).toFixed(1) : "—";
             return (
-              <tr key={id} style={{ color: "#1a2952", fontFamily: "'Kalam', cursive", background: i % 2 ? "rgba(29,78,216,0.06)" : "transparent" }}>
-                <td className="py-0.5 pl-1 font-bold rounded-l">{nameOf(id)}</td>
-                <td className="text-right tabular-nums">{overs}</td>
-                <td className="text-right tabular-nums">{stats.runs}</td>
-                <td className="text-right tabular-nums font-bold" style={{ color: "#92400e" }}>{stats.wickets}</td>
-                <td className="text-right tabular-nums">{econ}</td>
+              <tr key={id} className={cn("hover:bg-amber-50/40", i % 2 === 1 ? "bg-[#FCF8EE]/60" : "")}>
+                <td className="py-1 px-1 font-sketch font-bold text-[#1a2952] text-xs">
+                  {nameOf(id)}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-hand font-bold text-stone-600">
+                  {overs}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-hand font-bold text-stone-700">
+                  {stats.runs}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-sketch font-black text-sm text-red-700">
+                  {stats.wickets}
+                </td>
+                <td className="py-1 px-1 text-right tabular-nums font-sketch font-bold text-stone-600">
+                  {econ}
+                </td>
               </tr>
             );
           })}
@@ -4035,14 +5383,18 @@ export function Stat({
 }) {
   return (
     <div
-      className="px-1.5 py-1 text-center rounded-md font-notebook"
+      className="px-2 py-1 text-center rounded-lg border font-notebook"
       style={{
-        background: bg ?? "rgba(245,233,196,0.7)",
-        border: `1.5px solid ${color ? `${color}55` : "rgba(46,40,25,0.30)"}`,
+        background: bg ?? "#FFFDF8",
+        borderColor: color ? `${color}40` : "#D7C9B1",
       }}
     >
-      <div className="text-[9px] uppercase tracking-[0.10em] font-extrabold" style={{ color: color ?? "#4a5a82" }}>{label}</div>
-      <div className="tabular-nums font-extrabold text-base" style={{ color: color ?? "#1a2952" }}>{value}</div>
+      <div className="text-[9px] uppercase tracking-[0.10em] font-sketch font-bold" style={{ color: color ?? "#4a5a82" }}>
+        {label}
+      </div>
+      <div className="tabular-nums font-sketch font-black text-base" style={{ color: color ?? "#1a2952" }}>
+        {value}
+      </div>
     </div>
   );
 }

@@ -109,6 +109,8 @@ export default function HcCricbuzzShell({
       <CricbuzzHeader
         state={state}
         players={players}
+        selfId={sid}
+        roomCode={roomCode}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
         rail={

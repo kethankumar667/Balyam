@@ -83,9 +83,21 @@ function ChipBtn({ label, onClick }: { label: string; onClick: () => void }) {
 }
 
 export function DoordarshanHeader({
-  state, players, onHelp, onLeave, rail,
+  state,
+  players,
+  selfId,
+  roomCode,
+  onHelp,
+  onLeave,
+  rail,
 }: {
-  state: HcState; players: Player[]; onHelp?: () => void; onLeave?: () => void; rail?: ReactNode;
+  state: HcState;
+  players: Player[];
+  selfId?: string;
+  roomCode?: string;
+  onHelp?: () => void;
+  onLeave?: () => void;
+  rail?: ReactNode;
 }) {
   const [skin, setSkin] = useHcSkin();
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
@@ -93,46 +105,63 @@ export function DoordarshanHeader({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
   const avatarOf = (id: string) => players.find((p) => p.id === id)?.avatar;
   const live = state.phase === "innings1" || state.phase === "innings2";
+  const opts = state.options;
+
+  const [copied, setCopied] = useState(false);
+  function handleCopyRoomCode() {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  const team0Id = p0 ? state.teamSelections[p0]?.teamId : null;
+  const team1Id = p1 ? state.teamSelections[p1]?.teamId : null;
+  const short0 = team0Id ? String(team0Id).slice(0, 3).toUpperCase() : "TEAM 1";
+  const short1 = team1Id ? String(team1Id).slice(0, 3).toUpperCase() : "TEAM 2";
+
+  const formatLabel =
+    opts.format === "test"
+      ? "TEST · 30 OV"
+      : opts.format === "odi"
+      ? "ODI · 15 OV"
+      : `T20 · ${state.oversPerInnings ?? 10} OV`;
+  const categoryLabel = opts.category === "ipl" ? "IPL" : "INTERNATIONAL";
 
   return (
-    <div className="shrink-0 px-4 py-2.5" style={{ borderBottom: `1px solid ${DD.lineStrong}`, background: "rgba(10,7,5,0.6)" }}>
-      <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded" style={{ background: `linear-gradient(165deg, ${DD.amber}, ${DD.amberDeep})`, color: "#1A0F04" }}>
+    <div
+      className="shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 flex flex-col gap-2 select-none"
+      style={{ borderBottom: `1px solid ${DD.lineStrong}`, background: "rgba(10,7,5,0.85)" }}
+    >
+      {/* Row 1: Brand + CRT tape indicator + Actions */}
+      <div className="flex items-center justify-between gap-x-3 gap-y-1.5 w-full">
+        <div className="flex min-w-0 items-center gap-2">
+          <div
+            className="grid h-7 w-7 shrink-0 place-items-center rounded"
+            style={{ background: `linear-gradient(165deg, ${DD.amber}, ${DD.amberDeep})`, color: "#1A0F04" }}
+          >
             <IconBat size={15} />
           </div>
           <div className="min-w-0">
-            <div className="font-typewriter truncate text-[13px] leading-none" style={{ color: DD.ink }}>
+            <div className="font-typewriter truncate text-[12px] sm:text-[13px] leading-none" style={{ color: DD.ink }}>
               Doordarshan Rerun
             </div>
-            <div className="font-crt mt-1 truncate text-[13px] uppercase leading-none" style={{ letterSpacing: "0.1em", color: DD.inkLo }}>
+            <div className="font-crt mt-1 truncate text-[10px] sm:text-[12px] uppercase leading-none" style={{ letterSpacing: "0.1em", color: DD.inkLo }}>
               {PHASE_LABEL[state.phase]}
             </div>
           </div>
         </div>
 
-        {p0 && p1 && (
-          <div className="flex items-center gap-2">
-            <DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} side={ddSideFor(0)} size={26} />
-            <span className="font-crt text-[13px]" style={{ color: DD.inkLo, letterSpacing: "0.08em" }}>VS</span>
-            <DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} side={ddSideFor(1)} size={26} />
-          </div>
-        )}
-
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
           <DdTapeCounter since={state.startedAt} />
           {live && <DdLive />}
-          {state.options.mode === "galli" && <DdChip tone="amber">GALLI</DdChip>}
-          <DdChip>
-            {state.options.format.toUpperCase()}
-            {state.oversPerInnings != null ? ` · ${state.oversPerInnings} OV` : ""}
-          </DdChip>
           <HcThemeSwitcher
             current={skin}
             onChange={setSkin}
             renderOption={(opt, isActive) => (
               <span
-                className="inline-block rounded px-2 py-1.5 font-crt text-[12px] uppercase"
+                className="inline-block rounded px-1.5 py-0.5 sm:px-2 sm:py-1 font-crt text-[10px] sm:text-[12px] uppercase transition-all"
                 style={{
                   letterSpacing: "0.06em",
                   background: isActive ? "rgba(217,138,61,0.18)" : "rgba(232,198,140,0.05)",
@@ -140,19 +169,152 @@ export function DoordarshanHeader({
                   border: `1px solid ${isActive ? DD.amber : DD.line}`,
                 }}
               >
-                {opt.label}
+                <span className="hidden sm:inline">{opt.label}</span>
+                <span className="sm:hidden">
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                </span>
               </span>
             )}
           />
           {isFullscreenSupported() && (
-            <ChipBtn label={isFullscreen ? "Exit FS" : "Fullscreen"} onClick={toggleFullscreen} />
+            <ChipBtn label={isFullscreen ? "Exit" : "FS"} onClick={toggleFullscreen} />
           )}
           {onHelp && <ChipBtn label="Help" onClick={onHelp} />}
           {onLeave && <DoordarshanLeaveButton onLeave={onLeave} />}
         </div>
       </div>
 
-      {rail && <div className="mt-2.5">{rail}</div>}
+      {/* Row 2: Format / Category Badges + Room Code */}
+      <div className="flex items-center justify-between gap-1.5 w-full">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <span
+            className="rounded px-2 py-0.5 font-crt text-[10px] sm:text-[11.5px] uppercase tracking-wide shrink-0"
+            style={{
+              background: "rgba(232,198,140,0.08)",
+              color: DD.ink,
+              border: `1px solid ${DD.line}`,
+            }}
+          >
+            {formatLabel}
+          </span>
+          <span
+            className="rounded px-2 py-0.5 font-crt text-[10px] sm:text-[11.5px] uppercase tracking-wide shrink-0"
+            style={{
+              background: "rgba(217,138,61,0.15)",
+              color: DD.amber,
+              border: `1px solid ${DD.lineStrong}`,
+            }}
+          >
+            {categoryLabel}
+          </span>
+          {opts.mode === "galli" && (
+            <span
+              className="rounded px-2 py-0.5 font-crt text-[10px] sm:text-[11.5px] uppercase tracking-wide shrink-0"
+              style={{
+                background: "rgba(239,68,68,0.15)",
+                color: "#FCA5A5",
+                border: "1px solid rgba(239,68,68,0.3)",
+              }}
+            >
+              GALLI
+            </span>
+          )}
+        </div>
+
+        {roomCode && (
+          <button
+            type="button"
+            onClick={handleCopyRoomCode}
+            title={copied ? "Copied" : `Copy room code ${roomCode}`}
+            className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-crt text-[10px] sm:text-[11.5px] uppercase tracking-wider transition hover:brightness-125 cursor-pointer shrink-0"
+            style={{
+              background: copied ? "rgba(34,197,94,0.15)" : "rgba(232,198,140,0.08)",
+              color: copied ? "#86EFAC" : DD.amber,
+              border: `1px dashed ${copied ? "#86EFAC" : DD.amber}`,
+            }}
+          >
+            <span className="text-[9px] text-stone-400">ROOM</span>
+            <span className="font-mono">{copied ? "COPIED ✓" : roomCode}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Row 3: Doordarshan CRT Matchup Cards */}
+      {p0 && p1 && (
+        <div className="flex items-center justify-between gap-2 w-full">
+          {/* Team 1 */}
+          <div
+            className="flex flex-1 items-center gap-2 rounded px-2.5 py-1.5 min-w-0"
+            style={{
+              background: "rgba(232,198,140,0.05)",
+              border: `1px solid ${DD.line}`,
+            }}
+          >
+            <DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} side={ddSideFor(0)} size={26} />
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>
+                  {short0}
+                </span>
+                {p0 === selfId && (
+                  <span
+                    className="rounded px-1 py-0.2 font-crt text-[8.5px] uppercase shrink-0"
+                    style={{ background: "rgba(217,138,61,0.25)", color: DD.amber }}
+                  >
+                    YOU
+                  </span>
+                )}
+              </div>
+              <span className="font-typewriter text-[10px] truncate" style={{ color: DD.inkLo }}>
+                {nameOf(p0)}
+              </span>
+            </div>
+          </div>
+
+          {/* VS Badge */}
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center font-crt text-[10px] shrink-0"
+            style={{
+              background: "rgba(217,138,61,0.18)",
+              color: DD.amber,
+              border: `1px solid ${DD.amber}`,
+            }}
+          >
+            VS
+          </div>
+
+          {/* Team 2 */}
+          <div
+            className="flex flex-1 items-center gap-2 rounded px-2.5 py-1.5 min-w-0"
+            style={{
+              background: "rgba(232,198,140,0.05)",
+              border: `1px solid ${DD.line}`,
+            }}
+          >
+            <DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} side={ddSideFor(1)} size={26} />
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>
+                  {short1}
+                </span>
+                {p1 === selfId && (
+                  <span
+                    className="rounded px-1 py-0.2 font-crt text-[8.5px] uppercase shrink-0"
+                    style={{ background: "rgba(217,138,61,0.25)", color: DD.amber }}
+                  >
+                    YOU
+                  </span>
+                )}
+              </div>
+              <span className="font-typewriter text-[10px] truncate" style={{ color: DD.inkLo }}>
+                {nameOf(p1)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rail && <div className="mt-1">{rail}</div>}
     </div>
   );
 }

@@ -987,4 +987,42 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     expect(s.winnerId).toBe("p0");
     expect(s.result).toBe("win");
   });
+
+  it("bot never selects the team chosen by the player (International)", () => {
+    engine.init(makePlayers());
+    // Player picks India
+    engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: "india" } });
+    // Bot selects team
+    engine.applyAutoMove!("p1");
+    const s = state(engine);
+    expect(s.teamSelections["p1"]?.teamId).toBeDefined();
+    expect(s.teamSelections["p1"]?.teamId).not.toBe("india");
+  });
+
+  it("bot never selects the franchise chosen by the player (IPL)", () => {
+    engine.setOptions({ mode: "single", format: "t20", category: "ipl" });
+    engine.init(makePlayers());
+    // Player picks CSK
+    engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: "csk" } });
+    // Bot selects team
+    engine.applyAutoMove!("p1");
+    const s = state(engine);
+    expect(s.teamSelections["p1"]?.teamId).toBeDefined();
+    expect(s.teamSelections["p1"]?.teamId).not.toBe("csk");
+  });
+
+  it("bot auto-reassigns team if player picks the team bot had pre-selected", () => {
+    engine.init(makePlayers());
+    // Bot selects first
+    engine.applyAutoMove!("p1");
+    const botInitialTeam = state(engine).teamSelections["p1"]?.teamId!;
+    expect(botInitialTeam).toBeDefined();
+    // Human picks the same team
+    engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: botInitialTeam } });
+    // Bot should have its selection cleared / re-picked on next bot move
+    engine.applyAutoMove!("p1");
+    const s = state(engine);
+    expect(s.teamSelections["p0"]?.teamId).toBe(botInitialTeam);
+    expect(s.teamSelections["p1"]?.teamId).not.toBe(botInitialTeam);
+  });
 });

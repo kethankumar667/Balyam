@@ -80,6 +80,8 @@ export default function HcDoordarshanShell({
       <DoordarshanHeader
         state={state}
         players={players}
+        selfId={sid}
+        roomCode={roomCode}
         onHelp={() => tut.setOpen(true)}
         onLeave={onLeave}
         rail={
