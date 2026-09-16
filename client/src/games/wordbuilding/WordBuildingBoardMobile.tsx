@@ -4,8 +4,6 @@ import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useWordBuildingBoard, type WordBuildingBoardProps } from "./useWordBuildingBoard";
 import { getInkDisplayColor } from "./inks";
 import {
-  WordBuildingNotebookLogo,
-  WordBuildingNeonLogo,
   Grid,
   LetterPad,
   VocabularyFoundCard,
@@ -17,10 +15,8 @@ import FloatingReactionsLayer from "../../components/reactions/FloatingReactions
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import {
   WordBuildingWinnerCelebration,
-  WordBuildingComboBanner,
 } from "./WordBuildingAnimations";
 import { useAudio } from "../../hooks/useAudio";
-import CoachHintButton from "../../components/CoachHintButton";
 import Modal from "../../components/Modal";
 import Chat from "../../components/Chat";
 import {
@@ -34,6 +30,7 @@ import {
   Timer,
   Flag,
   LogOut,
+  ArrowLeft,
 } from "lucide-react";
 import { getPlayerInitials, SpiralBinderRings } from "../dotsboxes/dotsboxes-theme";
 
@@ -51,10 +48,10 @@ function useFitCellPx(size: number): number {
       window.removeEventListener("orientationchange", onResize);
     };
   }, []);
-  const cap = size === 8 ? 44 : size === 10 ? 38 : 28;
+  const cap = size === 8 ? 44 : 36;
   const avail = Math.min(vw, 480) - 32;
   const raw = Math.floor((avail - (size - 1) * 2) / size);
-  return Math.max(18, Math.min(cap, raw));
+  return Math.max(20, Math.min(cap, raw));
 }
 
 /**
@@ -115,37 +112,50 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
       >
         {/* Notebook Top Spiral Wire Binder */}
         {!m.isNeon && (
-          <div className="w-full h-7 bg-[#EFE9DA] -mt-2 -mx-2 mb-2 border-b-2 border-[#D7C9B1] flex items-center justify-center relative shadow-inner overflow-hidden">
-            <SpiralBinderRings orientation="horizontal" count={14} />
+          <div className="w-full h-6 bg-[#EFE9DA] -mt-2 -mx-2 mb-1.5 border-b-2 border-[#D7C9B1] flex items-center justify-center relative shadow-inner overflow-hidden">
+            <SpiralBinderRings orientation="horizontal" count={12} />
           </div>
         )}
 
-        {/* ── 1. Top Header Bar ── */}
-        <header className="w-full flex flex-col items-center gap-1.5 pb-2 border-b border-stone-200/50 dark:border-slate-800/80">
+        {/* ── 1. Top Header Bar (Single Sleek Row) ── */}
+        <header className="w-full pb-1.5 border-b border-stone-200/60 dark:border-slate-800/80 flex flex-col gap-1">
           <div className="w-full flex items-center justify-between">
-            {/* Back / Leave Button */}
-            <button
-              type="button"
-              onClick={onLeave}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs ${
-                m.isNeon
-                  ? "bg-slate-900/80 border border-slate-700/80 text-slate-300 hover:text-white"
-                  : "bg-white/90 border border-stone-300 text-stone-700 hover:text-stone-900"
-              }`}
-              aria-label="Back"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
+            {/* Left: Back Button + Clean Logo */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onLeave}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs ${
+                  m.isNeon
+                    ? "bg-slate-900/90 border border-slate-700/80 text-slate-300 hover:text-white"
+                    : "bg-white border border-stone-300 text-stone-700 hover:text-stone-950"
+                }`}
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
 
-            {/* Center Logo */}
-            <div className="flex items-center">
-              {m.isNeon ? <WordBuildingNeonLogo /> : <WordBuildingNotebookLogo className="scale-90" />}
+              {/* Title / Logo */}
+              {m.isNeon ? (
+                <div className="flex items-center px-2 py-0.5 rounded-lg border border-sky-400/50 bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 shadow-[0_0_10px_rgba(56,189,248,0.2)]">
+                  <span className="font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-white to-pink-300 text-xs sm:text-sm">
+                    WORDS BUILDING
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 select-none font-['Architects_Daughter',cursive] leading-none">
+                  <span className="text-base sm:text-lg font-black tracking-wider text-[#1E3A8A] underline decoration-wavy decoration-[#3B82F6]/60">
+                    WORD
+                  </span>
+                  <span className="text-base sm:text-lg font-black tracking-wider text-[#DC2626]">
+                    BUILDING
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Right Action Buttons */}
-            <div className="flex items-center gap-1.5">
+            {/* Right: Exactly 3 Action Icon Buttons (Theme, Audio, Help) */}
+            <div className="flex items-center gap-1">
               {/* Theme Switcher */}
               <button
                 type="button"
@@ -156,14 +166,10 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
                     : "bg-amber-50 border border-amber-400 text-amber-800"
                 }`}
                 title="Switch Theme"
+                aria-label="Switch Theme"
               >
                 {m.isNeon ? <BookOpen className="w-4 h-4 text-amber-300" /> : <Zap className="w-4 h-4 text-amber-500 fill-amber-400" />}
               </button>
-
-              {/* AI Coach Hint */}
-              {m.coach && state.phase === "playing" && (
-                <CoachHintButton coach={m.coach} />
-              )}
 
               {/* Audio Mute Toggle */}
               <button
@@ -175,11 +181,12 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
                     : "bg-white border border-stone-300 text-stone-700"
                 }`}
                 title={isMuted ? "Unmute Sound" : "Mute Sound"}
+                aria-label={isMuted ? "Unmute Sound" : "Mute Sound"}
               >
                 {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
               </button>
 
-              {/* Help */}
+              {/* Help / Tutorial */}
               <button
                 type="button"
                 onClick={() => m.setTutorialOpen(true)}
@@ -195,39 +202,48 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
             </div>
           </div>
 
-          {/* Matrix Size & Turn Timer Pill */}
-          <div
-            className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full text-xs font-semibold shadow-xs ${
-              m.isNeon
-                ? "bg-slate-900/90 border border-slate-800 text-slate-300"
-                : "bg-white/90 border border-stone-300 text-stone-800"
-            }`}
-          >
-            {isFinished ? (
-              <>
-                <Flag className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-emerald-500 font-bold">Match Completed</span>
-              </>
-            ) : (
-              <>
-                <Target className="w-3.5 h-3.5 text-rose-500" />
-                <span>Grid:</span>
-                <span className={`font-bold ${m.isNeon ? "text-cyan-300" : "text-[#1E3A8A]"}`}>
-                  {m.size}×{m.size} ({state.filledCells}/{state.totalCells})
-                </span>
-                <span className="opacity-40">|</span>
-                <Timer className="w-3.5 h-3.5 text-sky-500" />
-                <span className={m.isNeon ? "text-sky-300" : "text-stone-700"}>
-                  {state.options.turnTimerSeconds ? `${state.options.turnTimerSeconds}s` : "30s"}
-                </span>
-              </>
-            )}
+          {/* Sub-Header: Unified Match Telemetry Status Pill */}
+          <div className="w-full flex items-center justify-center pt-0.5">
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full text-xs font-semibold shadow-xs ${
+                m.isNeon
+                  ? "bg-slate-900/90 border border-slate-800 text-slate-300"
+                  : "bg-white/95 border border-stone-300 text-stone-800"
+              }`}
+            >
+              {isFinished ? (
+                <>
+                  <Flag className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-emerald-500 font-bold">Match Completed</span>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1">
+                    <Target className="w-3.5 h-3.5 text-rose-500" />
+                    <span className="font-medium opacity-80">Grid:</span>
+                    <span className={`font-bold ${m.isNeon ? "text-cyan-300" : "text-[#1E3A8A]"}`}>
+                      {m.size}×{m.size}
+                    </span>
+                    <span className="text-[11px] opacity-70">
+                      ({state.filledCells}/{state.totalCells})
+                    </span>
+                  </div>
+                  <span className="opacity-30">|</span>
+                  <div className="flex items-center gap-1">
+                    <Timer className="w-3.5 h-3.5 text-sky-500" />
+                    <span className={m.isNeon ? "text-sky-300 font-semibold" : "text-stone-700 font-semibold"}>
+                      {state.options.turnTimerSeconds ? `${state.options.turnTimerSeconds}s` : "30s"}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
         {/* ── 2. Player Score Horizon ── */}
-        <section className="w-full my-2">
-          <div className="flex items-stretch justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+        <section className="w-full my-1.5">
+          <div className="flex items-stretch justify-between gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {state.playerOrder.map((pid) => {
               const ink = m.inkOf[pid];
               const isTurn = !isFinished && state.turnPlayerId === pid;
@@ -243,7 +259,7 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
                   key={pid}
                   ref={reactions.registerCardRef?.(pid)}
                   onClick={!isSelf ? () => reactions.openTarget(pid) : undefined}
-                  className={`relative flex-1 min-w-[58px] max-w-[80px] flex flex-col items-center py-2 px-1 rounded-2xl transition-all duration-300 ${
+                  className={`relative flex-1 min-w-[50px] max-w-[72px] flex flex-col items-center py-1.5 px-1 rounded-2xl transition-all duration-300 ${
                     !isSelf ? "cursor-pointer hover:brightness-105 active:scale-95" : ""
                   } ${
                     isWinner
@@ -398,7 +414,6 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
               cellOverlays={m.cellOverlays}
               inkOf={m.inkOf}
               activePulse={m.activePulse}
-              hintCells={m.coach.highlight}
               onPickCell={m.pickCell}
               isNeon={m.isNeon}
             />

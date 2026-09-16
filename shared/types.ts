@@ -1245,7 +1245,7 @@ export interface RpsState {
 // Multiplayer model mirrors Ludo/SnL: turn-based on a shared board,
 // everyone sees the same grid in real time.
 
-export type WordBuildingBoardSize = 8 | 10 | 15;
+export type WordBuildingBoardSize = 8 | 10;
 
 /**
  * Which wordlist the engine validates placements against.

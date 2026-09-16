@@ -56,18 +56,18 @@ describe("economyCapacityContract — verified 1-12 seat matrix", () => {
     expect(APPROVED.has(6)).toBe(true);
   });
 
-  it("every catalog game whose max is exactly 6 seats is supported at 6 (Dots & Boxes, Rummy)", () => {
+  it("every catalog game whose max is exactly 6 seats is supported at 6 (Dots & Boxes, Rummy, Word Building)", () => {
     const sixSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 6).map(([g]) => g);
-    expect(sixSeatGames.sort()).toEqual(["dotsboxes", "rummy"].sort());
+    expect(sixSeatGames.sort()).toEqual(["dotsboxes", "rummy", "wordbuilding"].sort());
     for (const game of sixSeatGames) {
       expect(isStructurallyValidSeatConfiguration(6, 6, 0)).toBe(true);
       expect(APPROVED.has(6)).toBe(true);
     }
   });
 
-  it("every catalog game whose max is exactly 8 seats is supported at 8 (Ludo, Word Building, Star Game, Bingo, Names Place Animal, Block Blast)", () => {
+  it("every catalog game whose max is exactly 8 seats is supported at 8 (Ludo, Star Game, Bingo, Names Place Animal, Block Blast)", () => {
     const eightSeatGames = Object.entries(GAME_LIMITS).filter(([, l]) => l.max === 8).map(([g]) => g).sort();
-    expect(eightSeatGames).toEqual(["bingo", "blockblast", "ludo", "namesplaceanimal", "stargame", "wordbuilding"].sort());
+    expect(eightSeatGames).toEqual(["bingo", "blockblast", "ludo", "namesplaceanimal", "stargame"].sort());
     for (const game of eightSeatGames) {
       expect(isStructurallyValidSeatConfiguration(8, 8, 0)).toBe(true);
       expect(APPROVED.has(8)).toBe(true);

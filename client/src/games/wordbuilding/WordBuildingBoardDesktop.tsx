@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import WordBuildingTutorialModal from "./TutorialModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
-import CoachHintButton from "../../components/CoachHintButton";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useWordBuildingBoard, type WordBuildingBoardProps } from "./useWordBuildingBoard";
 import { getInkDisplayColor } from "./inks";
@@ -210,11 +209,6 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
               >
                 <span>{m.isNeon ? "📓 Notebook Theme" : "⚡ Neon Theme"}</span>
               </button>
-
-              {/* AI Coach Hint */}
-              {m.coach && state.phase === "playing" && (
-                <CoachHintButton coach={m.coach} />
-              )}
 
               {/* Scorecard Button (on finish) */}
               {isFinished && (
@@ -472,7 +466,6 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                   cellOverlays={m.cellOverlays}
                   inkOf={m.inkOf}
                   activePulse={m.activePulse}
-                  hintCells={m.coach.highlight}
                   onPickCell={m.pickCell}
                   isNeon={m.isNeon}
                 />

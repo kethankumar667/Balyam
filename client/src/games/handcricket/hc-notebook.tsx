@@ -672,6 +672,7 @@ export function HcNotebookHeader({
         : "T20 • 10 Overs";
   const categoryLabel =
     state.options.category === "ipl" ? "IPL" : "International";
+  const isLiveMatch = state.phase === "innings1" || state.phase === "innings2";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1040,11 +1041,11 @@ export function HcNotebookHeader({
       style={{
         flexShrink: 0,
         borderBottom: `1.5px solid ${LINE_CLR}`,
-        padding: "10px 14px 14px",
+        padding: isLiveMatch ? "6px 14px 9px" : "10px 14px 14px",
         background: "transparent",
       }}
     >
-      <div className="hidden lg:flex flex-col gap-3 w-full">
+      <div className={`hidden lg:flex flex-col ${isLiveMatch ? "gap-2" : "gap-3"} w-full`}>
         <div className="grid grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] items-center gap-4 w-full">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-full bg-[linear-gradient(180deg,#AA2A1E_0%,#7F1D1D_100%)] border-2 border-red-950/80 flex items-center justify-center text-white shadow-[0_5px_14px_rgba(127,29,29,0.22)] relative">
@@ -1059,7 +1060,7 @@ export function HcNotebookHeader({
               >
                 Hand Cricket
               </span>
-              <span className="text-[11px] font-hand font-bold text-stone-500 mt-1 truncate">
+              <span className={`text-[11px] font-hand font-bold text-stone-500 mt-1 truncate ${isLiveMatch ? "hidden" : ""}`}>
                 Sunday-scorebook energy, classroom-paper detail, instant rematch pull.
               </span>
             </div>
@@ -1112,7 +1113,7 @@ export function HcNotebookHeader({
           </div>
 
           <div className="flex items-center justify-center gap-3 flex-1 min-w-0 max-w-3xl mx-auto">
-            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: 56 }} />
+            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: isLiveMatch ? 46 : 56 }} />
             <div className="flex flex-col items-center px-1 select-none">
               <span className="font-sketch font-black text-lg text-[#1a2952] leading-none">
                 VS
@@ -1121,7 +1122,7 @@ export function HcNotebookHeader({
                 Live Page
               </span>
             </div>
-            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: 56 }} />
+            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: isLiveMatch ? 46 : 56 }} />
           </div>
 
           <div className="flex items-center justify-end shrink-0">

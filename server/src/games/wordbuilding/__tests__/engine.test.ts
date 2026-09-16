@@ -13,17 +13,17 @@ function mockPlayers(count = 2): Player[] {
 }
 
 describe("WordBuildingEngine — Player Capacity", () => {
-  it("initializes with up to 8 players", () => {
+  it("initializes with up to 6 players", () => {
     const engine = new WordBuildingEngine();
-    const players = mockPlayers(8);
+    const players = mockPlayers(6);
     expect(() => engine.init(players)).not.toThrow();
     const pub = engine.getPublicState() as any;
-    expect(pub.playerOrder.length).toBe(8);
+    expect(pub.playerOrder.length).toBe(6);
   });
 
-  it("rejects more than 8 players", () => {
+  it("rejects more than 6 players", () => {
     const engine = new WordBuildingEngine();
-    const players = mockPlayers(9);
-    expect(() => engine.init(players)).toThrow(/Word Building requires 2-8 players/);
+    const players = mockPlayers(7);
+    expect(() => engine.init(players)).toThrow(/Word Building requires 2-6 players/);
   });
 });

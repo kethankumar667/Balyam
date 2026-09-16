@@ -311,7 +311,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Word Building",
     badge: "📚 English Period",
     nostalgiaQuote: "Spell words, build the chain.",
-    playerRange: "2–4 Players",
+    playerRange: "2–6 Players",
     duration: "5–15 min",
     paperBg: "linear-gradient(155deg, #06233B 0%, #031321 45%, #010A12 100%)",
     paperBorder: "rgba(14, 165, 233, 0.55)",

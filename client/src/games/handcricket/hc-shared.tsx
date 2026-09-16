@@ -2559,6 +2559,23 @@ export function InningsPhase({
         </div>
       </div>
 
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+        "mb-3 rounded-full border px-4 py-1.5 text-center text-[11px] font-black uppercase tracking-[0.12em]",
+        myPick != null
+          ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+          : "border-red-200 bg-red-50 text-red-800",
+        )}
+      >
+        {myPick != null
+          ? "Your move is locked · waiting for the reveal"
+          : oppLockedIn
+          ? "Your move · opponent is locked in"
+          : "Your move · choose a number"}
+      </div>
+
       {innings.needsNextBatterPick ? (
         <div className="w-full">
           {reveal && (
@@ -2643,9 +2660,9 @@ export function InningsPhase({
           </div>
 
           {/* Footer Status line */}
-          <div className="mt-2.5 flex items-center justify-center gap-6 text-xs font-hand font-bold text-stone-600 select-none">
-            <span>You: {myPick != null ? "✓ locked" : "thinking..."}</span>
-            <span>Opp: {oppLockedIn ? "✓ locked" : "thinking..."}</span>
+          <div className="mt-3 flex items-center justify-center gap-3 text-xs font-hand font-bold text-stone-600 select-none">
+            <span className={cn("rounded-full border px-3 py-1", myPick != null ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-stone-300 bg-stone-50")}>You: {myPick != null ? "✓ locked" : "thinking..."}</span>
+            <span className={cn("rounded-full border px-3 py-1", oppLockedIn ? "border-amber-300 bg-amber-50 text-amber-800" : "border-stone-300 bg-stone-50")}>Opp: {oppLockedIn ? "✓ locked" : "thinking..."}</span>
           </div>
         </div>
       )}
@@ -3271,7 +3288,7 @@ export function PickRow({
   restrictedNote?: string | null;
   big?: boolean;
 }) {
-  const side = big ? 52 : 44;
+  const side = big ? 72 : 56;
   return (
     <div className="space-y-1.5 w-full flex flex-col items-center select-none">
       {restrictedNote && (
@@ -3279,7 +3296,7 @@ export function PickRow({
           🔥 {restrictedNote}
         </div>
       )}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-2.5">
+      <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
         {[1, 2, 3, 4, 5, 6].map((n) => {
           const isAllowed = allowedPicks.includes(n);
           const isDisabled = disabled || !isAllowed;
@@ -3289,7 +3306,7 @@ export function PickRow({
               key={n}
               onClick={() => isAllowed && onPick(n)}
               disabled={isDisabled}
-              title={!isAllowed ? "Restricted during powerplay" : undefined}
+              title={!isAllowed ? (restrictedNote?.toLowerCase().includes("yorker") ? "Mystery Yorker allows only 1, 2, or 3" : "Restricted during powerplay") : undefined}
               className={cn(
                 "relative flex flex-col items-center justify-center font-bold transition-all duration-150 active:scale-95 group rounded-xl border-2 border-dashed",
                 isSelected
@@ -3300,15 +3317,15 @@ export function PickRow({
               )}
               style={{ width: side, height: side * 1.2 }}
             >
-              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 20 : 16 }}>
+              <span className="leading-none transition-transform group-hover:scale-110" style={{ fontSize: big ? 28 : 21 }}>
                 {HAND_GESTURES[n]?.emoji ?? n}
               </span>
-              <span className="mt-0.5 font-sketch font-black text-xs sm:text-sm">
+              <span className="mt-1 font-sketch font-black text-base sm:text-lg">
                 {n}
               </span>
               {!isAllowed && (
-                <span className="absolute top-1 right-1 text-[8px] font-black text-red-600">
-                  ✕
+                <span className="absolute inset-x-1 bottom-1 text-[8px] font-black uppercase tracking-tight text-red-700">
+                  Powerplay
                 </span>
               )}
               {isSelected && (

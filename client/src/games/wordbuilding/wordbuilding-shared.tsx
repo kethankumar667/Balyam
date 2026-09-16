@@ -7,7 +7,6 @@ import type {
 } from "@shared/types";
 import { getInkDisplayColor, type Ink } from "./inks";
 import type { WordBuildingBoardModel } from "./useWordBuildingBoard";
-import CoachHintButton, { type CoachState } from "../../components/CoachHintButton";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
@@ -242,7 +241,7 @@ export function Grid({
   /** Word whose cells should pulse-highlight right now (or null). */
   activePulse: WordBuildingScoredWord | null;
   /** Cells the AI Coach is pointing at, as "r,c" keys. */
-  hintCells: ReadonlySet<string>;
+  hintCells?: ReadonlySet<string>;
   onPickCell: (r: number, c: number) => void;
   isNeon?: boolean;
 }) {
@@ -279,7 +278,7 @@ export function Grid({
             const overlays = cellOverlays.get(k) ?? [];
             const filled = cell !== "";
             const isSel = selected?.r === r && selected?.c === c;
-            const isHint = hintCells.has(k);
+            const isHint = hintCells?.has(k) ?? false;
             const lastOverlay = overlays[overlays.length - 1];
             const inkOwner = lastOverlay?.scorerId ? inkOf[lastOverlay.scorerId] : null;
             return (
@@ -396,7 +395,6 @@ export function StudentBar({
   avatarOf,
   selfId,
   remainingSec,
-  coach,
   onOpenTutorial,
   onLeave,
   registerCardRef,
@@ -413,8 +411,6 @@ export function StudentBar({
   avatarOf: (id: string) => string | undefined;
   selfId: string | null;
   remainingSec: number | null;
-  /** AI Coach state from the board model. Omitted by shells without one. */
-  coach?: CoachState;
   onOpenTutorial: () => void;
   onLeave?: () => void;
   /** Opponent-targeted reactions: registers this row as the fly-to/flinch anchor for `pid`. */
@@ -505,9 +501,6 @@ export function StudentBar({
         );
       })}
       <div className="flex-1" />
-      {/* Coach — sits beside the timer because both answer "what now?".
-          Only while the round is live; a hint on a finished sheet is noise. */}
-      {coach && state.phase === "playing" && <CoachHintButton coach={coach} />}
       {/* Timer */}
       {remainingSec != null && state.phase === "playing" && (
         <div
@@ -981,7 +974,6 @@ export function WorkbookBoard({
           cellOverlays={m.cellOverlays}
           inkOf={m.inkOf}
           activePulse={m.activePulse}
-          hintCells={m.coach.highlight}
           onPickCell={m.pickCell}
           isNeon={m.isNeon}
         />

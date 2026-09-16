@@ -10,7 +10,6 @@ import { useTurnHaptics } from "../../hooks/useHaptics";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useTutorialGate } from "../../components/GameTutorial";
 import { inkFor, type Ink } from "./inks";
-import { useCoach, type CoachState } from "../../components/CoachHintButton";
 import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
 import { useRoomStore } from "../../store/roomStore";
 
@@ -52,9 +51,6 @@ export interface WordBuildingBoardModel {
   pickCell: (r: number, c: number) => void;
   placeLetter: (letter: string) => void;
   remainingSec: number | null;
-  /** AI Coach. Lives on the model so the grid can highlight the suggested
-   *  cell while the button renders wherever each shell has room. */
-  coach: CoachState;
   theme: GameSkinTheme;
   toggleTheme: () => void;
   isNotebook: boolean;
@@ -252,9 +248,6 @@ export function useWordBuildingBoard({
   const secondsLeft = useTurnSecondsLeft(state.turnDeadline);
   const remainingSec = state.turnDeadline != null ? secondsLeft : null;
 
-  // AI Coach. Server-computed, requested on demand — see CoachHintButton.
-  const coach = useCoach();
-
   const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("wordbuilding", "notebook");
 
   return {
@@ -279,7 +272,6 @@ export function useWordBuildingBoard({
     pickCell,
     placeLetter,
     remainingSec,
-    coach,
     theme,
     toggleTheme,
     isNotebook,

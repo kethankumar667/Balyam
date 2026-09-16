@@ -258,10 +258,9 @@ const WB_DICT_MODES: { id: "common" | "tournament"; label: string; blurb: string
 
 // OptionGrid only takes string ids; we store the numeric board size as a
 // string here and parse on commit.
-const WB_BOARD_SIZES: { id: "8" | "10" | "15"; label: string; blurb: string }[] = [
+const WB_BOARD_SIZES: { id: "8" | "10"; label: string; blurb: string }[] = [
   { id: "8",  label: "8 × 8",   blurb: "Quick game. Fills up fast." },
   { id: "10", label: "10 × 10", blurb: "Balanced — the default workbook page." },
-  { id: "15", label: "15 × 15", blurb: "Long match. Room for big words." },
 ];
 
 // Dots & Boxes — dot-grid size. Box count = (n-1)^2 so 5→16, 7→36, 9→64.
@@ -378,7 +377,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   // players don't get tripped up by tournament Scrabble entries.
   const [wbDictMode, setWbDictMode] =
     useState<"common" | "tournament">("common");
-  const [wbBoardSize, setWbBoardSize] = useState<8 | 10 | 15>(10);
+  const [wbBoardSize, setWbBoardSize] = useState<8 | 10>(10);
   // Dots & Boxes: dot-grid edge length. Box count = (n-1)^2.
   const [dbBoardSize, setDbBoardSize] = useState<5 | 7 | 9>(7);
   const [starTheme, setStarTheme] = useState<string>("colors");
@@ -1153,7 +1152,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     : game === "dotsboxes"
                     ? 5
                     : game === "wordbuilding"
-                    ? 3
+                    ? 5
                     : 9
                 }
               />
@@ -1444,9 +1443,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 <Field label="Board size">
                   <OptionGrid
                     items={WB_BOARD_SIZES}
-                    value={String(wbBoardSize) as "8" | "10" | "15"}
-                    onChange={(v) => setWbBoardSize(Number(v) as 8 | 10 | 15)}
-                    cols={3}
+                    value={String(wbBoardSize) as "8" | "10"}
+                    onChange={(v) => setWbBoardSize(Number(v) as 8 | 10)}
+                    cols={2}
                   />
                 </Field>
               </>
