@@ -739,31 +739,59 @@ export function HcNotebookHeader({
     ) : null;
 
   const renderBroadcastButton = () => (
-    <HcThemeSwitcher
-      current={skin}
-      onChange={setSkin}
-      renderOption={(opt, isActive) => (
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            height: 32,
-            padding: "0 12px",
-            borderRadius: 9999,
-            border: `1px solid ${isActive ? "#C5963A" : "rgba(80,50,20,0.18)"}`,
-            background: isActive ? "#FDE047" : "#FFFDF5",
-            boxShadow: isActive ? "0 2px 6px rgba(197,150,58,0.25)" : "0 1px 3px rgba(50,20,5,0.06)",
-            color: isActive ? "#713F12" : INK,
-            fontWeight: 800,
-            fontSize: 12,
-            fontFamily: "'Kalam', system-ui, sans-serif",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {opt.label}
-        </span>
-      )}
-    />
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexWrap: "wrap",
+        gap: 8,
+        padding: "4px 8px",
+        borderRadius: 9999,
+        background: "rgba(255,253,245,0.92)",
+        border: "1px solid rgba(80,50,20,0.16)",
+        boxShadow: "0 3px 10px rgba(50,20,5,0.08)",
+      }}
+    >
+      <HcThemeSwitcher
+        current={skin}
+        onChange={setSkin}
+        renderOption={(opt, isActive) => {
+          const isClassic = opt.id === "nostalgia";
+          const bg = isActive
+            ? isClassic
+              ? "linear-gradient(180deg, #FFF4CC 0%, #FDE68A 100%)"
+              : "linear-gradient(180deg, #FFFDF5 0%, #F6EFE0 100%)"
+            : "transparent";
+          const borderColor = isActive
+            ? isClassic
+              ? "#C5963A"
+              : "rgba(80,50,20,0.22)"
+            : "transparent";
+          return (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 30,
+                padding: "0 10px",
+                borderRadius: 9999,
+                border: `1px solid ${borderColor}`,
+                background: bg,
+                boxShadow: isActive ? "0 2px 6px rgba(50,20,5,0.10)" : "none",
+                color: isActive && isClassic ? "#713F12" : INK,
+                fontWeight: isActive ? 900 : 800,
+                fontSize: 12,
+                fontFamily: "'Kalam', system-ui, sans-serif",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {opt.label}
+            </span>
+          );
+        }}
+      />
+    </div>
   );
 
   const renderMenu = (ref: React.RefObject<HTMLDivElement>) => (
@@ -920,15 +948,17 @@ export function HcNotebookHeader({
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <span
         style={{
-          height: 26,
-          padding: "0 12px",
-          borderRadius: 9999,
-          background: "#FFFDF5",
-          border: "1px solid rgba(80,50,20,0.18)",
-          boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
+          minHeight: 28,
+          padding: "5px 12px",
+          borderRadius: 10,
+          background: "linear-gradient(180deg, #FFFDF5 0%, #F8EFD8 100%)",
+          border: "1px solid rgba(80,50,20,0.16)",
+          boxShadow: "0 2px 7px rgba(50,20,5,0.05)",
           color: INK,
-          fontSize: 12,
-          fontWeight: 800,
+          fontSize: 11,
+          fontWeight: 900,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
           display: "inline-flex",
           alignItems: "center",
           whiteSpace: "nowrap",
@@ -939,15 +969,17 @@ export function HcNotebookHeader({
       </span>
       <span
         style={{
-          height: 26,
-          padding: "0 12px",
-          borderRadius: 9999,
-          background: "#FFFDF5",
-          border: "1px solid rgba(80,50,20,0.18)",
-          boxShadow: "0 1px 3px rgba(50,20,5,0.06)",
+          minHeight: 28,
+          padding: "5px 12px",
+          borderRadius: 10,
+          background: "linear-gradient(180deg, #FFFDF5 0%, #F8EFD8 100%)",
+          border: "1px solid rgba(80,50,20,0.16)",
+          boxShadow: "0 2px 7px rgba(50,20,5,0.05)",
           color: INK,
-          fontSize: 12,
-          fontWeight: 800,
+          fontSize: 11,
+          fontWeight: 900,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
           display: "inline-flex",
           alignItems: "center",
           whiteSpace: "nowrap",
@@ -959,73 +991,108 @@ export function HcNotebookHeader({
     </div>
   );
 
+  const renderRoomCodeStamp = () =>
+    roomCode ? (
+      <button
+        type="button"
+        onClick={handleCopyRoomCode}
+        aria-label={copied ? "Room code copied" : `Copy room code ${roomCode}`}
+        title={copied ? "Copied" : `Copy room code ${roomCode}`}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          minHeight: 30,
+          padding: "6px 12px",
+          borderRadius: 8,
+          border: "1px dashed rgba(139,26,26,0.32)",
+          background: copied ? "rgba(22,101,52,0.10)" : "rgba(255,248,231,0.92)",
+          color: copied ? "#166534" : INK_RED,
+          boxShadow: "0 2px 6px rgba(50,20,5,0.05)",
+          cursor: "pointer",
+          fontFamily: "'Kalam', system-ui, sans-serif",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+          }}
+        >
+          {copied ? "Copied" : "Room Code"}
+        </span>
+        <span
+          style={{
+            fontSize: 14,
+            fontWeight: 900,
+            letterSpacing: "0.18em",
+          }}
+        >
+          {roomCode}
+        </span>
+      </button>
+    ) : null;
+
   return (
     <div
       style={{
         flexShrink: 0,
         borderBottom: `1.5px solid ${LINE_CLR}`,
-        padding: "10px 14px 12px",
+        padding: "10px 14px 14px",
         background: "transparent",
       }}
     >
-      {/* ══════════════════════════════════════════════════════
-          DESKTOP VIEW (≥ lg / 1024px):
-          Top navigation bar matching media_1789502369831.jpg
-          Left: Stamp Ball + Bat + Brand + Tagline
-          Center: Broadcast | Chichbaz | Rerun | [Classic]
-          Right: Sound + Settings + Profile Pill + Leave
-      ══════════════════════════════════════════════════════ */}
       <div className="hidden lg:flex flex-col gap-3 w-full">
-        <div className="flex items-center justify-between gap-4 w-full">
-          {/* Left Brand Stamp */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-10 h-10 rounded-full bg-red-800 border-2 border-red-900 flex items-center justify-center text-white shadow-xs relative">
-              <span className="text-xl">🏏</span>
+        <div className="grid grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] items-center gap-4 w-full">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full bg-[linear-gradient(180deg,#AA2A1E_0%,#7F1D1D_100%)] border-2 border-red-950/80 flex items-center justify-center text-white shadow-[0_5px_14px_rgba(127,29,29,0.22)] relative">
+              <span className="text-lg">🏏</span>
             </div>
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-black tracking-[0.22em] uppercase text-[#8B1A1A] font-hand">
+                Classic Notebook Edition
+              </span>
               <span
-                className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none"
+                className="font-sketch text-[24px] font-black tracking-wide uppercase text-[#1a2952] leading-none truncate"
               >
                 Hand Cricket
               </span>
-              <span className="text-[11px] font-hand font-bold text-stone-500 mt-0.5">
-                Play • Friends • Relive 90s
+              <span className="text-[11px] font-hand font-bold text-stone-500 mt-1 truncate">
+                Sunday-scorebook energy, classroom-paper detail, instant rematch pull.
               </span>
             </div>
           </div>
 
-          {/* Center Mode Switcher */}
           <div className="flex items-center justify-center">
             {renderBroadcastButton()}
           </div>
 
-          {/* Right Action Icons & User Badge */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center justify-end gap-3 min-w-0">
             {onHelp && (
               <button
                 type="button"
                 onClick={onHelp}
-                className="w-8 h-8 rounded-full bg-[#FFFDF5] border border-stone-300 flex items-center justify-center text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                className="w-9 h-9 rounded-full bg-[#FFFDF5] border border-stone-300 flex items-center justify-center text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
                 title="Tutorial"
               >
                 ❓
               </button>
             )}
 
-            {/* User Profile Pill */}
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFDF5] border border-stone-300 shadow-xs">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFFDF5] border border-stone-300 shadow-xs max-w-[260px] min-w-0">
               <SeatAvatar avatar={me?.avatar} name={me?.name ?? "Player"} className="w-6 h-6" textClassName="text-[10px]" />
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-hand font-bold text-stone-800 leading-tight">
-                  Hey, {me?.name ?? "Player"}!
+              <div className="flex flex-col text-left min-w-0">
+                <span className="text-xs font-hand font-bold text-stone-800 leading-tight truncate">
+                  {me?.name ?? "Player"}
                 </span>
-                <span className="text-[9px] font-hand text-stone-400 leading-tight">
-                  Play. Laugh. Repeat!
+                <span className="text-[9px] font-hand text-stone-400 leading-tight truncate">
+                  Ink on paper. Eyes on the next ball.
                 </span>
               </div>
             </div>
 
-            {/* Leave Button */}
             {onLeave && (
               <button
                 type="button"
@@ -1039,61 +1106,71 @@ export function HcNotebookHeader({
           </div>
         </div>
 
-        {/* Desktop Match Info & Matchup Cards */}
-        <div className="flex items-center justify-between gap-4 w-full pt-1 border-t border-stone-200/40">
-          {/* Match Chips */}
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 w-full pt-2 border-t border-stone-200/50">
           <div className="flex items-center gap-2 shrink-0">
             {renderBadges()}
           </div>
 
-          {/* Center Matchup Strip */}
-          <div className="flex items-center justify-center gap-3 flex-1 min-w-0 max-w-xl mx-auto">
-            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: 48 }} />
-            <div className="font-sketch font-black text-lg text-[#1a2952] px-1 select-none">
-              VS
+          <div className="flex items-center justify-center gap-3 flex-1 min-w-0 max-w-3xl mx-auto">
+            <MatchupCard team={t0} isSelf={p0 === selfId} style={{ height: 56 }} />
+            <div className="flex flex-col items-center px-1 select-none">
+              <span className="font-sketch font-black text-lg text-[#1a2952] leading-none">
+                VS
+              </span>
+              <span className="text-[10px] font-hand font-bold uppercase tracking-[0.18em] text-stone-500 mt-1">
+                Live Page
+              </span>
             </div>
-            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: 48 }} />
+            <MatchupCard team={t1} isSelf={p1 === selfId} style={{ height: 56 }} />
           </div>
 
-          {/* Right Doodle Tag */}
-          <div className="hidden xl:flex items-center gap-1 text-stone-500 font-hand font-bold text-xs shrink-0 select-none">
-            <span>Good Matches Better Friends! 😊</span>
+          <div className="flex items-center justify-end shrink-0">
+            {renderRoomCodeStamp() ?? (
+              <span className="text-[11px] font-hand font-bold text-stone-500 select-none">
+                Make it feel like recess never ended.
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════
-          MOBILE VIEW (< lg):
-          Classic layout matching media_1789502371018.png
-      ══════════════════════════════════════════════════════ */}
       <div className="flex lg:hidden flex-col gap-2.5 w-full">
-        {/* ROW 1: Back + Brand ... Broadcast + 3-dots */}
         <div className="flex items-center justify-between gap-3 w-full">
           {renderBackButton()}
 
-          <div className="flex flex-col items-center">
-            <span className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none">
+          <div className="flex flex-col items-center min-w-0 flex-1 px-1">
+            <span className="text-[9px] font-black tracking-[0.2em] uppercase text-[#8B1A1A] font-hand">
+              Classic Notebook Edition
+            </span>
+            <span className="font-sketch text-lg font-black tracking-wide uppercase text-[#1a2952] leading-none truncate max-w-full">
               Hand Cricket
             </span>
-            <div className="mt-1">{renderBroadcastButton()}</div>
+            <span className="text-[10px] font-hand font-bold text-stone-500 mt-1 text-center leading-tight max-w-full">
+              Sharp paper, old-school thrill, fast rematch flow.
+            </span>
           </div>
 
           {renderMenu(mobileMenuRef)}
         </div>
 
-        {/* ROW 2: Format Chips & Crown Doodle */}
-        <div className="flex items-center justify-between w-full">
-          {renderBadges()}
-          <span className="text-[11px] font-hand font-bold text-stone-500 select-none">
-            👑 Play Friends Relive 90s
-          </span>
+        <div className="flex items-center justify-center w-full">
+          {renderBroadcastButton()}
         </div>
 
-        {/* ROW 3: Forest Green Matchup Cards */}
+        <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+          {renderBadges()}
+          {renderRoomCodeStamp()}
+        </div>
+
         <div className="flex items-center justify-between gap-2.5 w-full">
           <MatchupCard team={t0} isSelf={p0 === selfId} />
-          <div className="font-sketch font-black text-base text-[#1a2952] px-1 select-none">
-            VS
+          <div className="flex flex-col items-center px-1 select-none">
+            <span className="font-sketch font-black text-base text-[#1a2952] leading-none">
+              VS
+            </span>
+            <span className="text-[9px] font-hand font-bold uppercase tracking-[0.16em] text-stone-500 mt-1">
+              Live
+            </span>
           </div>
           <MatchupCard team={t1} isSelf={p1 === selfId} />
         </div>

@@ -1203,12 +1203,13 @@ export function TossCallPhase({
     <div
       className="relative mx-auto w-full my-auto select-none"
       style={{
-        maxWidth: 580,
+        maxWidth: 760,
       }}
     >
       <PaperPanel tone="legend" pad="lg" className="text-center space-y-4 font-notebook">
-        <div className="inline-block rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-3 py-1 text-[11px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300">
-          STEP 1 OF 2 · THE CALL
+        <div className="inline-flex items-center gap-2 rounded-full bg-amber-100/90 dark:bg-amber-950/60 px-4 py-1.5 text-[11px] font-bold tracking-widest text-amber-900 dark:text-amber-200 border border-amber-300">
+          <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" aria-hidden />
+          YOUR CALL · STEP 1 OF 2
         </div>
         <SketchHeading>The Toss Call</SketchHeading>
         <p className="text-[14.5px] text-hc-ink/80 font-kalam max-w-md mx-auto">
@@ -1233,17 +1234,18 @@ export function TossCallPhase({
         </div>
 
         {isCaller ? (
-          <div className="flex justify-center gap-4 pt-2">
-            <PaperButton variant="solidBlue" size="lg" onClick={() => call("odd")} className="px-6 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 justify-center gap-3 pt-2 max-w-2xl mx-auto w-full">
+            <PaperButton variant="solidBlue" size="lg" onClick={() => call("odd")} className="min-h-16 px-6 py-3 text-base sm:text-lg tracking-wide">
               ODD (1,3,5,7,9,11)
             </PaperButton>
-            <PaperButton variant="solidGreen" size="lg" onClick={() => call("even")} className="px-6 py-2">
+            <PaperButton variant="solidGreen" size="lg" onClick={() => call("even")} className="min-h-16 px-6 py-3 text-base sm:text-lg tracking-wide">
               EVEN (2,4,6,8,10,12)
             </PaperButton>
           </div>
         ) : (
-          <div className="py-4 text-[13px] font-kalam text-hc-ink/60 animate-pulse">
-            Awaiting call from {callerName}…
+          <div className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-sm font-kalam font-bold text-blue-900 animate-pulse">
+            <span aria-hidden>⏳</span>
+            Waiting for {callerName} to call odd or even…
           </div>
         )}
       </PaperPanel>

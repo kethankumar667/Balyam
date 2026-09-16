@@ -27,7 +27,7 @@ export function HcThemeSwitcher({
   className?: string;
 }) {
   return (
-    <div role="group" aria-label="Hand Cricket theme" className={`inline-flex items-center gap-1 ${className}`}>
+    <div role="group" aria-label="Hand Cricket theme" className={`inline-flex flex-wrap items-center justify-center gap-1 ${className}`}>
       {HC_SKINS.map((opt) => {
         const isActive = opt.id === current;
         return (

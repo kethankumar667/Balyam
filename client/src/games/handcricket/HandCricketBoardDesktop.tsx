@@ -134,19 +134,19 @@ export default function HandCricketBoardDesktop({
             {isTeamSelect ? (
               teamSelectContent()
             ) : state.phase === "tossCall" ? (
-              <PhaseStage centred maxWidth={620}>
+              <PhaseStage centred maxWidth={820}>
                 <TossCallPhase state={state} selfId={sid} players={players} />
               </PhaseStage>
             ) : state.phase === "toss" ? (
-              <PhaseStage centred maxWidth={620}>
+              <PhaseStage centred maxWidth={820}>
                 <TossPhase state={state} selfId={sid} players={players} />
               </PhaseStage>
             ) : state.phase === "tossChoice" ? (
-              <PhaseStage centred maxWidth={620}>
+              <PhaseStage centred maxWidth={820}>
                 <TossChoicePhase state={state} selfId={sid} players={players} />
               </PhaseStage>
             ) : state.phase === "innings1" || state.phase === "innings2" ? (
-              <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden p-3 sm:p-5 font-notebook">
+              <div className="flex-1 min-h-0 w-full flex flex-col relative overflow-hidden p-2 sm:p-3 font-notebook">
                 <InningsPhase state={state} selfId={sid} players={players} isDesktop registerCardRef={reactions.registerCardRef} />
               </div>
             ) : state.phase === "finished" ? (

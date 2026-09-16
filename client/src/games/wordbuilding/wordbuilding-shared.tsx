@@ -24,6 +24,44 @@ import { isFullscreenSupported } from "../../lib/fullscreen";
  * keyframe now lives in index.css (was an inline <style> in Grid).
  */
 
+/**
+ * Branded Hand-Drawn Notebook "WORD BUILDING" Title (Nostalgic Classroom Mode)
+ */
+export function WordBuildingNotebookLogo({ className = "" }: { className?: string }) {
+  return (
+    <div className={`inline-flex flex-col items-start select-none font-['Architects_Daughter',cursive] ${className}`}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-lg sm:text-xl md:text-2xl font-black tracking-wider text-[#1E3A8A] drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)] underline decoration-wavy decoration-[#3B82F6]/60">
+          WORD
+        </span>
+        <span className="text-lg sm:text-xl md:text-2xl font-black tracking-wider text-[#DC2626] drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">
+          BUILDING
+        </span>
+      </div>
+      <div className="text-[9px] font-bold tracking-widest text-[#7C2D12]/80 uppercase -mt-0.5">
+        Classroom Vocabulary
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Branded Neon "WORDS BUILDING" Title (Arcade Matrix Mode)
+ */
+export function WordBuildingNeonLogo({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center px-3 py-1 rounded-xl border border-sky-400/80 shadow-[0_0_15px_rgba(56,189,248,0.3)] bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 ${className}`}
+    >
+      <span className="font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-white to-pink-300 text-sm sm:text-base md:text-lg drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+        WORDS BUILDING
+      </span>
+      <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-pink-500 shadow-[0_0_8px_#EC4899]" />
+      <div className="absolute -bottom-1 -left-1 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_8px_#38BDF8]" />
+    </div>
+  );
+}
+
 /* ─────────────────────────── Workbook paper shell ─────────────────────────── */
 
 export function WorkbookPaper({ children, isNeon }: { children: React.ReactNode; isNeon?: boolean }) {
