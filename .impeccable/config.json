@@ -22,6 +22,25 @@
         ],
         "createdAt": "2026-08-07T13:05:52.247Z",
         "reason": "User confirmed: .bhalyam-paper is a radial-gradient paper-fibre speckle (two offset dot fields), not a linear-gradient grid overlay; it is the app's core material"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "client/src/games/2048/Game2048ModeMenu.tsx"
+        ],
+        "createdAt": "2026-09-17T08:24:07.688Z",
+        "reason": "User confirmed the border-2 + border-b-4 chunky claymorphic press-button idiom (header back button, JellyTile, all 6 mode cards) is intentional, not an accidental clash"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "client/src/games/2048/Game2048ModeMenu.tsx",
+          "src/games/2048/Game2048ModeMenu.tsx"
+        ],
+        "createdAt": "2026-09-17T08:28:03.895Z",
+        "reason": "User confirmed the border-2 + border-b-4 chunky claymorphic press-button idiom is intentional; both path forms needed since the hook resolves paths relative to client/ while manual CLI runs from repo root"
       }
     ]
   }

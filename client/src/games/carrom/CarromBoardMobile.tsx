@@ -17,6 +17,10 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { HapticsManager } from "../../services/HapticsManager";
+import { CarromAudio } from "./carromAudio";
+import { CarromVfxOverlay } from "./CarromVfxOverlay";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useAudio } from "../../hooks/useAudio";
 
 export default function CarromBoardMobile({
   state,
@@ -34,6 +38,14 @@ export default function CarromBoardMobile({
   const [showQuickChat, setShowQuickChat] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [unread, setUnread] = useState(0);
+  const { settings } = useAudio();
+
+  // See CarromBoardDesktop.tsx — Carrom's procedural Web Audio sounds are a
+  // separate engine from the shared AudioManager, so they need their own
+  // sync to the global mute toggle.
+  useEffect(() => {
+    CarromAudio.setMuted(settings.isMuted);
+  }, [settings.isMuted]);
 
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
@@ -78,6 +90,8 @@ export default function CarromBoardMobile({
     setDrag(toBoard(e));
   }
 
+  const [activeImpact, setActiveImpact] = useState<{ x: number; y: number; power: number } | null>(null);
+
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (!drag || !myTurn) return;
     setDrag(toBoard(e));
@@ -85,10 +99,28 @@ export default function CarromBoardMobile({
 
   function handlePointerUp() {
     if (aim && myTurn) {
+      CarromAudio.playStrikerPunch(aim.power);
+      setActiveImpact({
+        x: striker?.x ?? 50,
+        y: striker?.y ?? 50,
+        power: aim.power,
+      });
       onMove("shoot", { angle: aim.angle, power: aim.power });
     }
     setDrag(null);
   }
+
+  // Audio feedback for combos and fouls
+  useEffect(() => {
+    if (!state.lastCombo) return;
+    if (state.lastCombo.includes("Queen")) {
+      CarromAudio.playCelebrationChime();
+    } else if (state.lastCombo.includes("Foul")) {
+      CarromAudio.playFoulBuzzer();
+    } else {
+      CarromAudio.playCoinClack(0.85);
+    }
+  }, [state.lastCombo]);
 
   useEffect(() => {
     if (!drag) return;
@@ -124,8 +156,14 @@ export default function CarromBoardMobile({
         avatarOf={avatarOf}
       />
 
+      <TurnTimeWarning
+        deadline={state.turnDeadline}
+        active={myTurn && state.phase === "aiming"}
+        chipless
+      />
+
       {/* ─── Central Carrom Board Area ─── */}
-      <div className="flex-1 flex items-center justify-center min-h-0 px-2 py-1 max-h-[60vh]">
+      <div className="flex-1 flex items-center justify-center min-h-0 px-2 py-1 max-h-[60vh] relative">
         <CarromSvgBoard
           state={activeState}
           selfId={selfId}
@@ -136,6 +174,10 @@ export default function CarromBoardMobile({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+        />
+        <CarromVfxOverlay
+          lastCombo={state.lastCombo}
+          activeImpact={activeImpact}
         />
       </div>
 

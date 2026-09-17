@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin } from "@shared/types";
+import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin, CarromMode } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
 import { findAvatar } from "../../lib/avatars";
@@ -12,6 +12,8 @@ import {
   shouldRecordShot,
   type CarromFeedEntry,
 } from "./carromFeed";
+import { computeCarromTrajectory } from "@shared/carromTrajectory";
+import { CarromAudio } from "./carromAudio";
 
 export type { CarromFeedEntry };
 
@@ -227,22 +229,53 @@ const WARM = {
  *  button. Two lists meant two things to keep true; they had already drifted
  *  (only one of them mentioned the Queen's 5 points, only the other mentioned
  *  the striker-foul rule). One list now, rendered in both places. */
-export const CARROM_RULES: readonly string[] = [
-  "Slide the position slider to place your striker on the baseline.",
-  "Drag backward from the striker to set aim angle & power, then release.",
-  "The dashed line previews the trajectory — including bank shots.",
-  "Pot every coin of your colour, then cover the Queen, to win.",
-  "The Queen (red) is worth 5 points, but you must cover it by potting one of your own coins on the very next shot.",
-  "Pot the striker and your turn ends — one of your potted coins returns to the centre.",
-];
+export function getCarromRules(mode: CarromMode = "classic"): readonly string[] {
+  switch (mode) {
+    case "discpool":
+      return [
+        "Slide the position slider to place your striker on the baseline.",
+        "Drag backward from the striker to set aim angle & power, then release.",
+        "The predictive dual-ray trajectory previews your shot and target coin direction.",
+        "Pure pool race: Pot all 9 of your assigned pucks (White or Black).",
+        "No Queen on the board — straight race to clear your pieces.",
+        "Potting the striker is a foul: one of your potted coins returns to the board.",
+        "First player to clear all 9 of their pucks wins immediately!",
+      ];
+    case "freestyle":
+      return [
+        "Slide the position slider to place your striker on the baseline.",
+        "Drag backward from the striker to set aim angle & power, then release.",
+        "The predictive dual-ray trajectory previews your shot and target coin direction.",
+        "No color restrictions: Any player can pot any coin on the board.",
+        "Point values: Queen = 25 pts, White = 10 pts, Black = 5 pts.",
+        "Queen does NOT need a cover shot — pot her anytime for instant 25 points!",
+        "Striker foul: -5 points penalty and 1 potted coin returns to the board.",
+        "First player to reach the target score wins!",
+      ];
+    case "classic":
+    default:
+      return [
+        "Slide the position slider to place your striker on the baseline.",
+        "Drag backward from the striker to set aim angle & power, then release.",
+        "The predictive dual-ray trajectory previews your shot and target coin direction.",
+        "Pot every coin of your colour (White or Black) to win.",
+        "The Queen (red) must be covered by potting one of your own coins on the same or next shot.",
+        "Potting the striker is a foul: one of your potted coins returns to the centre.",
+        "First player to clear their colour with the Queen settled wins the board.",
+      ];
+  }
+}
 
-export function CarromRulesList({ className = "" }: { className?: string }) {
+export const CARROM_RULES = getCarromRules("classic");
+
+export function CarromRulesList({ className = "", mode = "classic" }: { className?: string; mode?: CarromMode }) {
+  const rules = getCarromRules(mode);
   return (
     <ul
       className={`text-[11px] font-semibold space-y-1.5 list-disc list-outside pl-4 ${className}`}
       style={{ color: WARM.wood }}
     >
-      {CARROM_RULES.map((rule) => (
+      {rules.map((rule) => (
         <li key={rule}>{rule}</li>
       ))}
     </ul>
@@ -570,20 +603,33 @@ export function CarromPlayerCards({
                 <span className="text-xs font-bold truncate block" style={{ color: WARM.woodDark }}>
                   {name}
                 </span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{
-                      background: isWhite
-                        ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
-                        : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
-                      border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
-                    }}
-                  />
-                  <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood + "AA" }}>
-                    {s.remaining} left
+                {state.mode === "freestyle" ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[9px] font-black uppercase text-amber-700">
+                      {state.targetScore ? `Target: ${state.targetScore}` : "Any Coin"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{
+                        background: isWhite
+                          ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
+                          : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
+                        border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
+                      }}
+                    />
+                    <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood + "AA" }}>
+                      {s.remaining} left
+                    </span>
+                  </div>
+                )}
+                {state.mode === "classic" && state.queenPendingFor === s.playerId && (
+                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-amber-500 text-[8px] font-black text-white uppercase tracking-wider animate-pulse">
+                    👑 Cover Queen!
                   </span>
-                </div>
+                )}
               </div>
               <div className="flex flex-col items-end flex-shrink-0">
                 <span className="text-lg font-black tabular-nums leading-none" style={{ color: WARM.woodDark }}>
@@ -661,20 +707,33 @@ export function CarromPlayerCards({
               {name.split(" ")[0]}
             </span>
             {/* Coin indicator + remaining */}
-            <div className="flex items-center gap-1">
-              <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{
-                  background: isWhite
-                    ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
-                    : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
-                  border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
-                }}
-              />
-              <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood }}>
-                {s.remaining} left
+            {state.mode === "freestyle" ? (
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] font-black uppercase text-amber-700">
+                  {state.targetScore ? `Goal: ${state.targetScore}` : "Any Coin"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{
+                    background: isWhite
+                      ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
+                      : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
+                    border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
+                  }}
+                />
+                <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood }}>
+                  {s.remaining} left
+                </span>
+              </div>
+            )}
+            {state.mode === "classic" && state.queenPendingFor === s.playerId && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-[8px] font-black text-white uppercase tracking-wider animate-pulse">
+                👑 Cover Queen!
               </span>
-            </div>
+            )}
             {/* Score */}
             <div className="flex items-baseline gap-0.5">
               <span
@@ -840,82 +899,81 @@ export function CarromSvgBoard({
     { x: size - cushion, y: size - cushion },
   ];
 
-  // 1-Cushion Reflection Trajectory Calculation
-  const trajectoryPoints = useMemo(() => {
-    if (!aim || !striker) return null;
-    const startX = striker.x;
-    const startY = striker.y;
-    const dirX = Math.cos(aim.angle);
-    const dirY = Math.sin(aim.angle);
-    const maxDist = 50 * aim.power;
+  // Track pieces currently undergoing 3D pocket sinking animation (Miniclip style)
+  const [sinkingPieces, setSinkingPieces] = useState<
+    Array<{
+      id: string;
+      kind: string;
+      startX: number;
+      startY: number;
+      pocketX: number;
+      pocketY: number;
+      startTime: number;
+    }>
+  >([]);
+  const prevPiecesRef = useRef(state.pieces);
 
-    const r = CARROM_BOARD.strikerRadius;
-    const minB = cushion + r;
-    const maxB = size - cushion - r;
+  useEffect(() => {
+    const prev = prevPiecesRef.current;
+    prevPiecesRef.current = state.pieces;
 
-    // Check collision with 4 cushion walls
-    let tMin = maxDist;
-    let hitNormal = { x: 0, y: 0 };
+    const newlyPotted = state.pieces.filter((curr) => {
+      const old = prev.find((p) => p.id === curr.id);
+      return curr.pocketed && old && !old.pocketed;
+    });
 
-    if (dirX > 0) {
-      const t = (maxB - startX) / dirX;
-      if (t > 0 && t < tMin) {
-        tMin = t;
-        hitNormal = { x: -1, y: 0 };
-      }
-    } else if (dirX < 0) {
-      const t = (minB - startX) / dirX;
-      if (t > 0 && t < tMin) {
-        tMin = t;
-        hitNormal = { x: 1, y: 0 };
-      }
+    if (newlyPotted.length > 0) {
+      CarromAudio.playPocketDrop();
+      const now = Date.now();
+      const newSinks = newlyPotted.map((p) => {
+        const nearestPocket = pockets.reduce((best, cur) => {
+          const dCur = Math.hypot(p.x - cur.x, p.y - cur.y);
+          const dBest = Math.hypot(p.x - best.x, p.y - best.y);
+          return dCur < dBest ? cur : best;
+        }, pockets[0]);
+
+        return {
+          id: p.id,
+          kind: p.kind,
+          startX: p.x,
+          startY: p.y,
+          pocketX: nearestPocket.x,
+          pocketY: nearestPocket.y,
+          startTime: now,
+        };
+      });
+
+      setSinkingPieces((prevSinks) => [...prevSinks, ...newSinks]);
     }
+  }, [state.pieces, pockets]);
 
-    if (dirY > 0) {
-      const t = (maxB - startY) / dirY;
-      if (t > 0 && t < tMin) {
-        tMin = t;
-        hitNormal = { x: 0, y: -1 };
-      }
-    } else if (dirY < 0) {
-      const t = (minB - startY) / dirY;
-      if (t > 0 && t < tMin) {
-        tMin = t;
-        hitNormal = { x: 0, y: 1 };
-      }
-    }
+  useEffect(() => {
+    if (sinkingPieces.length === 0) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setSinkingPieces((prevSinks) => {
+        const remaining = prevSinks.filter((s) => now - s.startTime < 360);
+        return remaining.length === prevSinks.length ? prevSinks : remaining;
+      });
+    }, 60);
+    return () => clearInterval(interval);
+  }, [sinkingPieces.length]);
 
-    const hitX = startX + dirX * tMin;
-    const hitY = startY + dirY * tMin;
-
-    if (tMin < maxDist) {
-      // Compute reflected vector
-      const dot = dirX * hitNormal.x + dirY * hitNormal.y;
-      const refX = dirX - 2 * dot * hitNormal.x;
-      const refY = dirY - 2 * dot * hitNormal.y;
-      const remDist = maxDist - tMin;
-      const endX = hitX + refX * remDist;
-      const endY = hitY + refY * remDist;
-
-      return {
-        startX,
-        startY,
-        hitX,
-        hitY,
-        endX,
-        endY,
-        isReflected: true,
-      };
-    }
-
-    return {
-      startX,
-      startY,
-      hitX: startX + dirX * maxDist,
-      hitY: startY + dirY * maxDist,
-      isReflected: false,
-    };
-  }, [aim, striker, cushion, size]);
+  // Full Predictive Aiming Trajectory (Miniclip Carrom Pool parity)
+  const trajectory = useMemo(() => {
+    if (!aim || !striker || !myTurn) return null;
+    return computeCarromTrajectory({
+      striker: { x: striker.x, y: striker.y },
+      angleRad: aim.angle,
+      power01: aim.power,
+      pieces: state.pieces,
+      cushion,
+      size,
+      strikerRadius: CARROM_BOARD.strikerRadius,
+      coinRadius: CARROM_BOARD.coinRadius,
+      pocketRadius: CARROM_BOARD.pocketRadius,
+    });
+  }, [aim, striker, myTurn, state.pieces, cushion, size]);
 
   /* Board geometry, all in engine units. The playing surface is exactly the
    * rebound area (cushion..size-cushion); the frame is drawn OUTSIDE it. */
@@ -1034,6 +1092,16 @@ export function CarromSvgBoard({
             <stop offset="0%" stopColor={strikerSkin.start} />
             <stop offset="100%" stopColor={strikerSkin.end} />
           </radialGradient>
+
+          <pattern id="pocketNetPattern" width="1.4" height="1.4" patternUnits="userSpaceOnUse">
+            <path d="M 0 0.7 L 1.4 0.7 M 0.7 0 L 0.7 1.4" stroke="#FFFFFF" strokeWidth="0.22" opacity="0.32" />
+          </pattern>
+
+          <linearGradient id="pocketBrassRim" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FEF08A" />
+            <stop offset="45%" stopColor="#EAB308" />
+            <stop offset="100%" stopColor="#78350F" />
+          </linearGradient>
 
           <filter id="pieceShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feDropShadow dx="0.3" dy="0.55" stdDeviation="0.35" floodColor="#000" floodOpacity="0.45" />
@@ -1186,44 +1254,89 @@ export function CarromSvgBoard({
           <circle cx={center} cy={center} r={7.5} fill="none" stroke="#C42B1C" strokeWidth={0.7} />
           <circle cx={center} cy={center} r={1.9} fill="#C42B1C" />
 
-          {/* ── Pockets ── */}
-          {pockets.map((p, i) => (
-            <g key={`pocket-${i}`}>
-              {/* Bed wrapped around the hole. Without this the lacquer band ran
-                  straight behind the pocket and it read as a black blob resting
-                  on the frame rather than a hole cut into the playing surface. */}
-              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 1.3} fill="url(#surfaceGrad)" />
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={CARROM_BOARD.pocketRadius + 1.3}
-                fill={feltSkin.grain}
-                mask="url(#grainMask)"
-                opacity={0.38}
-              />
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={CARROM_BOARD.pocketRadius + 1.3}
-                fill="none"
-                stroke="#00000040"
-                strokeWidth={0.4}
-              />
-              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 0.6} fill={feltSkin.pocketRim} opacity={0.9} />
-              <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" />
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={CARROM_BOARD.pocketRadius}
-                fill="none"
-                stroke="#000000"
-                strokeWidth={0.5}
-                opacity={0.7}
-              />
-            </g>
-          ))}
+          {/* ── 3D Recessed Net Pockets (Miniclip Parity) ── */}
+          {pockets.map((p, i) => {
+            const isTargeted =
+              trajectory?.isPocketTargeted && trajectory.targetedPocketIndex === i;
 
-          {/* ── Rendered Pieces ── */}
+            return (
+              <g key={`pocket-${i}`}>
+                {/* Brass Corner Reinforcement Plate */}
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 2.2} fill="url(#pocketBrassRim)" opacity={0.88} />
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 2.0} fill="none" stroke="#451A03" strokeWidth={0.3} />
+
+                {/* Corner Rivet Studs */}
+                <circle cx={p.x - 2.8} cy={p.y} r={0.4} fill="#FEF08A" stroke="#78350F" strokeWidth={0.15} />
+                <circle cx={p.x} cy={p.y - 2.8} r={0.4} fill="#FEF08A" stroke="#78350F" strokeWidth={0.15} />
+
+                {/* Bed wrapped around the hole */}
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 1.2} fill="url(#surfaceGrad)" />
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={CARROM_BOARD.pocketRadius + 1.2}
+                  fill={feltSkin.grain}
+                  mask="url(#grainMask)"
+                  opacity={0.38}
+                />
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={CARROM_BOARD.pocketRadius + 1.2}
+                  fill="none"
+                  stroke="#00000040"
+                  strokeWidth={0.4}
+                />
+
+                {/* Pocket Outer Bevel Rim */}
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius + 0.5} fill={feltSkin.pocketRim} opacity={0.95} />
+
+                {/* Deep Recessed Cavity */}
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketInner)" />
+
+                {/* Braided Net Mesh Texture */}
+                <circle cx={p.x} cy={p.y} r={CARROM_BOARD.pocketRadius} fill="url(#pocketNetPattern)" />
+
+                {/* Inner Depth Shadow Ring */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={CARROM_BOARD.pocketRadius}
+                  fill="none"
+                  stroke="#000000"
+                  strokeWidth={0.65}
+                  opacity={0.85}
+                />
+
+                {/* Active Pocket Target Beacon (when aiming directly into this pocket) */}
+                {isTargeted && (
+                  <g>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={CARROM_BOARD.pocketRadius + 1.8}
+                      fill="none"
+                      stroke="#FBBF24"
+                      strokeWidth={0.8}
+                      className="animate-ping"
+                      opacity={0.75}
+                    />
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={CARROM_BOARD.pocketRadius + 0.9}
+                      fill="none"
+                      stroke="#FDE047"
+                      strokeWidth={0.6}
+                      strokeDasharray="1.2 0.8"
+                    />
+                  </g>
+                )}
+              </g>
+            );
+          })}
+
+          {/* ── Rendered Pieces (3D Beveled Cylindrical Tokens) ── */}
           {state.pieces
             .filter((p) => !p.pocketed)
             .map((p) => {
@@ -1234,11 +1347,21 @@ export function CarromSvgBoard({
               const ringColor = isStriker
                 ? strikerSkin.core
                 : isWhite
-                ? "#00000030"
-                : "#FFFFFF2E";
+                ? "#00000035"
+                : "#FFFFFF35";
 
               return (
                 <g key={p.id} filter="url(#pieceShadow)">
+                  {/* 3D Cylindrical Extrusion Shadow */}
+                  <circle
+                    cx={p.x}
+                    cy={p.y + (isStriker ? 0.45 : 0.35)}
+                    r={r}
+                    fill="#150B05"
+                    opacity={0.6}
+                  />
+
+                  {/* Main Disc Surface */}
                   <circle
                     cx={p.x}
                     cy={p.y}
@@ -1261,77 +1384,182 @@ export function CarromSvgBoard({
                         ? CARROM_THEME.whiteCoinRim
                         : CARROM_THEME.blackCoinRim
                     }
-                    strokeWidth={isStriker ? 0.45 : 0.35}
+                    strokeWidth={isStriker ? 0.5 : 0.38}
                   />
-                  {/* Turned concentric grooves — the detail that reads as a
-                      machined disc rather than a flat dot. */}
-                  <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.3} />
-                  <circle cx={p.x} cy={p.y} r={r * 0.48} fill="none" stroke={ringColor} strokeWidth={0.25} />
-                  {/* Specular highlight */}
+
+                  {/* Outer Bevel Highlight Ring */}
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={r * 0.92}
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.35)"
+                    strokeWidth={0.25}
+                  />
+
+                  {/* Lathe-turned Concentric Grooves */}
+                  <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.32} />
+                  <circle cx={p.x} cy={p.y} r={r * 0.46} fill="none" stroke={ringColor} strokeWidth={0.25} />
+
+                  {/* Top-Left Specular Gloss Highlight */}
                   <ellipse
-                    cx={p.x - r * 0.3}
-                    cy={p.y - r * 0.36}
-                    rx={r * 0.32}
-                    ry={r * 0.22}
+                    cx={p.x - r * 0.28}
+                    cy={p.y - r * 0.34}
+                    rx={r * 0.34}
+                    ry={r * 0.2}
                     fill="#FFFFFF"
-                    opacity={isWhite || isStriker ? 0.5 : 0.24}
-                    transform={`rotate(-35 ${p.x - r * 0.3} ${p.y - r * 0.36})`}
+                    opacity={isWhite || isStriker ? 0.65 : 0.3}
+                    transform={`rotate(-32 ${p.x - r * 0.28} ${p.y - r * 0.34})`}
                   />
-                  {isQueen && <circle cx={p.x} cy={p.y} r={r * 0.25} fill="#F59E0B" opacity={0.9} />}
-                  {isStriker && <circle cx={p.x} cy={p.y} r={r * 0.26} fill={strikerSkin.core} />}
+
+                  {/* Center Jewel / Medallion */}
+                  {isQueen && (
+                    <g>
+                      <circle cx={p.x} cy={p.y} r={r * 0.28} fill="#F59E0B" />
+                      <circle cx={p.x} cy={p.y} r={r * 0.16} fill="#FEF08A" />
+                    </g>
+                  )}
+                  {isStriker && (
+                    <g>
+                      <circle cx={p.x} cy={p.y} r={r * 0.28} fill={strikerSkin.core} />
+                      <circle cx={p.x} cy={p.y} r={r * 0.14} fill="#FFFFFF" opacity={0.8} />
+                    </g>
+                  )}
                 </g>
               );
             })}
 
-          {/* ── 1-Cushion Reflection Trajectory ── */}
-          {trajectoryPoints && (
-            <g>
-              {/* Direct Ray — white dashed line like the mockup */}
-              <line
-                x1={trajectoryPoints.startX}
-                y1={trajectoryPoints.startY}
-                x2={trajectoryPoints.hitX}
-                y2={trajectoryPoints.hitY}
-                stroke="#FFFFFF"
-                strokeWidth={0.6}
-                strokeDasharray="1.2 1"
-                opacity={0.85}
-              />
+          {/* ── 3D Pocket Sinking Animation (Miniclip Z-Depth Drop) ── */}
+          {sinkingPieces.map((sp) => {
+            const elapsed = Date.now() - sp.startTime;
+            const progress = Math.min(1, elapsed / 350);
+            const currX = sp.startX + (sp.pocketX - sp.startX) * progress;
+            const currY = sp.startY + (sp.pocketY - sp.startY) * progress;
+            const scale = 1 - 0.65 * progress;
+            const opacity = 1 - 0.85 * progress;
+            const r =
+              (sp.kind === "striker" ? CARROM_BOARD.strikerRadius : CARROM_BOARD.coinRadius) * scale;
 
-              {/* Rebound Ray */}
-              {trajectoryPoints.isReflected && (
-                <>
-                  <line
-                    x1={trajectoryPoints.hitX}
-                    y1={trajectoryPoints.hitY}
-                    x2={trajectoryPoints.endX}
-                    y2={trajectoryPoints.endY}
-                    stroke="#38BDF8"
-                    strokeWidth={0.5}
-                    strokeDasharray="1 0.7"
-                    opacity={0.6}
-                  />
-                  {/* Rebound Starburst Dot */}
-                  <circle
-                    cx={trajectoryPoints.hitX}
-                    cy={trajectoryPoints.hitY}
-                    r={1}
-                    fill="#38BDF8"
-                    className="animate-ping"
-                  />
-                </>
+            return (
+              <g key={`sink-${sp.id}`} opacity={opacity} pointerEvents="none">
+                <circle
+                  cx={currX}
+                  cy={currY}
+                  r={r}
+                  fill={
+                    sp.kind === "queen"
+                      ? "url(#queenGrad)"
+                      : sp.kind === "white"
+                      ? "url(#whiteCoinGrad)"
+                      : sp.kind === "striker"
+                      ? "url(#customStrikerGrad)"
+                      : "url(#blackCoinGrad)"
+                  }
+                  stroke="#000000"
+                  strokeWidth={0.25}
+                />
+              </g>
+            );
+          })}
+
+          {/* ── Dual-Ray Predictive Aiming Trajectory (Miniclip Parity) ── */}
+          {trajectory && (
+            <g pointerEvents="none">
+              {/* Striker Forward Path Rays */}
+              {trajectory.strikerPath.length >= 2 &&
+                trajectory.strikerPath.slice(0, -1).map((pt, idx) => {
+                  const nextPt = trajectory.strikerPath[idx + 1];
+                  const isReboundSegment = idx > 0;
+                  return (
+                    <line
+                      key={`ray-${idx}`}
+                      x1={pt.x}
+                      y1={pt.y}
+                      x2={nextPt.x}
+                      y2={nextPt.y}
+                      stroke={isReboundSegment ? "#38BDF8" : "#FFFFFF"}
+                      strokeWidth={0.65}
+                      strokeDasharray="1.2 0.9"
+                      opacity={isReboundSegment ? 0.75 : 0.9}
+                    />
+                  );
+                })}
+
+              {/* Cushion Bounce Starburst Dot */}
+              {trajectory.cushionBounce && (
+                <circle
+                  cx={trajectory.cushionBounce.x}
+                  cy={trajectory.cushionBounce.y}
+                  r={1.1}
+                  fill="#38BDF8"
+                  className="animate-ping"
+                />
               )}
 
-              {/* Target Reticle */}
-              <circle
-                cx={trajectoryPoints.isReflected ? trajectoryPoints.endX : trajectoryPoints.hitX}
-                cy={trajectoryPoints.isReflected ? trajectoryPoints.endY : trajectoryPoints.hitY}
-                r={CARROM_BOARD.coinRadius}
-                fill="none"
-                stroke={trajectoryPoints.isReflected ? "#38BDF8" : "#FFFFFF"}
-                strokeWidth={0.4}
-                strokeDasharray="0.8 0.5"
-              />
+              {/* Ghost Striker at Point of Collision (Miniclip Signature) */}
+              {trajectory.ghostStriker && (
+                <g>
+                  <circle
+                    cx={trajectory.ghostStriker.x}
+                    cy={trajectory.ghostStriker.y}
+                    r={CARROM_BOARD.strikerRadius}
+                    fill="rgba(56, 189, 248, 0.14)"
+                    stroke="#38BDF8"
+                    strokeWidth={0.55}
+                    strokeDasharray="1 0.8"
+                  />
+                  <circle
+                    cx={trajectory.ghostStriker.x}
+                    cy={trajectory.ghostStriker.y}
+                    r={CARROM_BOARD.strikerRadius * 0.28}
+                    fill="#38BDF8"
+                    opacity={0.75}
+                  />
+                </g>
+              )}
+
+              {/* Target Coin Departure Vector */}
+              {trajectory.targetCoin && (
+                <g>
+                  <line
+                    x1={trajectory.targetCoin.startX}
+                    y1={trajectory.targetCoin.startY}
+                    x2={trajectory.targetCoin.endX}
+                    y2={trajectory.targetCoin.endY}
+                    stroke={trajectory.isPocketTargeted ? "#FBBF24" : "#22D3EE"}
+                    strokeWidth={0.8}
+                    strokeDasharray="1.4 0.9"
+                    opacity={0.95}
+                  />
+                  {/* Target Coin Reticle */}
+                  <circle
+                    cx={trajectory.targetCoin.endX}
+                    cy={trajectory.targetCoin.endY}
+                    r={CARROM_BOARD.coinRadius}
+                    fill={
+                      trajectory.isPocketTargeted
+                        ? "rgba(251, 191, 36, 0.2)"
+                        : "rgba(34, 211, 238, 0.1)"
+                    }
+                    stroke={trajectory.isPocketTargeted ? "#FBBF24" : "#22D3EE"}
+                    strokeWidth={0.5}
+                  />
+                </g>
+              )}
+
+              {/* Striker Deflection Tangent Ray */}
+              {trajectory.strikerDeflection && (
+                <line
+                  x1={trajectory.strikerDeflection.startX}
+                  y1={trajectory.strikerDeflection.startY}
+                  x2={trajectory.strikerDeflection.endX}
+                  y2={trajectory.strikerDeflection.endY}
+                  stroke="#FFFFFF"
+                  strokeWidth={0.45}
+                  strokeDasharray="0.9 0.7"
+                  opacity={0.65}
+                />
+              )}
             </g>
           )}
 

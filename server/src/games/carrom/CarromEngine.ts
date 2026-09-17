@@ -82,7 +82,7 @@ export class CarromEngine implements GameEngine {
       playerId: p.id,
       color: (i === 0 ? "white" : "black") as CarromColor,
       score: 0,
-      remaining: 9,
+      remaining: this.opts.mode === "freestyle" ? this.opts.targetScore : 9,
     }));
     this.turnIndex = 0;
     this.phase = "aiming";
@@ -95,13 +95,16 @@ export class CarromEngine implements GameEngine {
     this.layoutBoard();
   }
 
-  /** Standard opening: queen centred, coins in alternating rings around her. */
+  /** Opening rack: queen centred (in classic & freestyle), coins in alternating rings around her. */
   private layoutBoard(): void {
     const c = CARROM_BOARD.size / 2;
     const r = CARROM_BOARD.coinRadius;
-    this.pieces = [
-      { id: this.id("q"), kind: "queen", x: c, y: c, vx: 0, vy: 0, pocketed: false },
-    ];
+    const hasQueen = this.opts.mode !== "discpool";
+
+    this.pieces = hasQueen
+      ? [{ id: this.id("q"), kind: "queen", x: c, y: c, vx: 0, vy: 0, pocketed: false }]
+      : [];
+
     // Two concentric rings of 6 and 12, alternating colours — 9 of each.
     const rings: { count: number; radius: number }[] = [
       { count: 6, radius: r * 2.1 },
@@ -223,6 +226,7 @@ export class CarromEngine implements GameEngine {
 
     const potted = this.pottedThisShot;
     const strikerPotted = potted.some((p) => p.kind === "striker");
+    const nonStrikerPotted = potted.filter((p) => p.kind !== "striker");
     const own = potted.filter((p) => p.kind === seat.color);
     const opponentSeat = this.seats[(this.turnIndex + 1) % this.seats.length];
     const opponentPotted = potted.filter((p) => p.kind === opponentSeat?.color);
@@ -230,69 +234,149 @@ export class CarromEngine implements GameEngine {
 
     const notes: string[] = [];
     let keepTurn = false;
+    let queenCovered = false;
 
-    if (queenPotted) {
-      // The queen is only banked once covered by one of your own coins.
-      if (own.length > 0) {
-        seat.score += 3;
-        this.queenPendingFor = null;
-        notes.push("queen covered (+3)");
-      } else {
-        // Potting the queen earns the covering stroke. Without this the turn
-        // passes immediately and the player can never satisfy the cover — the
-        // queen would return every single time, making her unwinnable.
-        this.queenPendingFor = seat.playerId;
+    if (this.opts.mode === "freestyle") {
+      // ── Freestyle Mode: White = 10 pts, Black = 5 pts, Queen = 25 pts ──
+      const whiteCount = potted.filter((p) => p.kind === "white").length;
+      const blackCount = potted.filter((p) => p.kind === "black").length;
+      const coinPoints = whiteCount * 10 + blackCount * 5;
+
+      if (coinPoints > 0) {
+        seat.score += coinPoints;
         keepTurn = true;
-        notes.push("queen potted — cover her next shot");
+        notes.push(`+${coinPoints} pts (${whiteCount}W, ${blackCount}B)`);
       }
-    } else if (this.queenPendingFor === seat.playerId) {
+
+      if (queenPotted) {
+        seat.score += 25;
+        keepTurn = true;
+        queenCovered = true;
+        notes.push("queen potted (+25)");
+      }
+
+      if (strikerPotted) {
+        seat.score = Math.max(0, seat.score - 5);
+        this.returnOneCoin(seat);
+        keepTurn = false;
+        notes.push("striker foul (-5)");
+      }
+
+      for (const s of this.seats) {
+        s.remaining = Math.max(0, this.opts.targetScore - s.score);
+      }
+    } else {
+      // ── Classic / Disc Pool Modes ──
+      if (this.opts.mode !== "discpool") {
+        if (queenPotted) {
+          if (own.length > 0) {
+            seat.score += 3;
+            this.queenPendingFor = null;
+            queenCovered = true;
+            notes.push("queen covered (+3)");
+          } else {
+            this.queenPendingFor = seat.playerId;
+            keepTurn = true;
+            notes.push("queen potted — cover her next shot");
+          }
+        } else if (this.queenPendingFor === seat.playerId) {
+          if (own.length > 0) {
+            seat.score += 3;
+            this.queenPendingFor = null;
+            queenCovered = true;
+            notes.push("queen covered (+3)");
+          } else {
+            this.returnQueen();
+            this.queenPendingFor = null;
+            notes.push("queen returned — not covered");
+          }
+        }
+      }
+
       if (own.length > 0) {
-        seat.score += 3;
-        this.queenPendingFor = null;
-        notes.push("queen covered (+3)");
-      } else {
-        this.returnQueen();
-        this.queenPendingFor = null;
-        notes.push("queen returned — not covered");
+        seat.score += own.length;
+        seat.remaining = Math.max(0, seat.remaining - own.length);
+        keepTurn = true;
+        notes.push(`${own.length} own coin${own.length === 1 ? "" : "s"} (+${own.length})`);
       }
-    }
 
-    if (own.length > 0) {
-      seat.score += own.length;
-      seat.remaining = Math.max(0, seat.remaining - own.length);
-      keepTurn = true;
-      notes.push(`${own.length} own coin${own.length === 1 ? "" : "s"} (+${own.length})`);
-    }
+      if (opponentPotted.length > 0 && opponentSeat) {
+        opponentSeat.score += opponentPotted.length;
+        opponentSeat.remaining = Math.max(0, opponentSeat.remaining - opponentPotted.length);
+        notes.push(`${opponentPotted.length} to ${opponentSeat.color}`);
+      }
 
-    if (opponentPotted.length > 0 && opponentSeat) {
-      // Their coin goes to them, and it does not earn you another shot.
-      opponentSeat.score += opponentPotted.length;
-      opponentSeat.remaining = Math.max(0, opponentSeat.remaining - opponentPotted.length);
-      notes.push(`${opponentPotted.length} to ${opponentSeat.color}`);
-    }
-
-    if (strikerPotted) {
-      // Foul: a point back, one coin back on the table, and the turn passes.
-      seat.score = Math.max(0, seat.score - 1);
-      this.returnOneCoin(seat);
-      keepTurn = false;
-      notes.push("striker potted (-1)");
+      if (strikerPotted) {
+        seat.score = Math.max(0, seat.score - 1);
+        this.returnOneCoin(seat);
+        keepTurn = false;
+        notes.push("striker potted (-1)");
+      }
     }
 
     if (potted.length === 0) notes.push("no pot");
 
+    // Dynamic combo / celebration banners matching Miniclip Carrom Pool
+    if (nonStrikerPotted.length >= 3) {
+      this.lastCombo = "Triple Pot! ⚡";
+    } else if (nonStrikerPotted.length === 2) {
+      this.lastCombo = "Double Pot! 🔥";
+    } else if (queenCovered) {
+      // Freestyle has no cover requirement at all — the queen is worth 25
+      // points the instant she's potted, so "Covered" (a Classic/Disc Pool
+      // concept) would misrepresent what just happened.
+      this.lastCombo = this.opts.mode === "freestyle" ? "Royal Strike! 👑" : "Queen Covered! 👑";
+    } else if (nonStrikerPotted.length === 1 && !strikerPotted) {
+      this.lastCombo = "Clean Pot! 🎯";
+    } else if (strikerPotted) {
+      this.lastCombo = "Striker Foul! ⚠️";
+    } else {
+      this.lastCombo = null;
+    }
+
     this.lastShot = notes.join(", ");
     this.pottedThisShot = [];
 
-    if (seat.remaining === 0 && this.queenPendingFor === null) {
-      this.phase = "finished";
-      this.winnerId = seat.playerId;
-      return;
-    }
-    if (seat.score >= this.opts.targetScore) {
-      this.phase = "finished";
-      this.winnerId = seat.playerId;
-      return;
+    // Victory checks
+    if (this.opts.mode === "discpool") {
+      if (seat.remaining === 0) {
+        this.phase = "finished";
+        this.winnerId = seat.playerId;
+        return;
+      }
+      if (opponentSeat && opponentSeat.remaining === 0) {
+        this.phase = "finished";
+        this.winnerId = opponentSeat.playerId;
+        return;
+      }
+    } else if (this.opts.mode === "freestyle") {
+      const remainingTotal = this.pieces.filter((p) => !p.pocketed && p.kind !== "striker").length;
+      if (seat.score >= this.opts.targetScore || remainingTotal === 0) {
+        this.phase = "finished";
+        const otherSeat = opponentSeat;
+        // Reaching the target score is an outright win regardless of the
+        // opponent's total. A board-clear with no one at target, though, can
+        // land on an exact tie — that's a draw, not a win for whoever
+        // happened to be shooting when the last coin fell.
+        if (seat.score < this.opts.targetScore && otherSeat && otherSeat.score === seat.score) {
+          this.winnerId = null;
+        } else {
+          this.winnerId = otherSeat && otherSeat.score > seat.score ? otherSeat.playerId : seat.playerId;
+        }
+        return;
+      }
+    } else {
+      // Classic mode
+      if (seat.remaining === 0 && this.queenPendingFor === null) {
+        this.phase = "finished";
+        this.winnerId = seat.playerId;
+        return;
+      }
+      if (seat.score >= this.opts.targetScore) {
+        this.phase = "finished";
+        this.winnerId = seat.playerId;
+        return;
+      }
     }
 
     if (!keepTurn) this.turnIndex = (this.turnIndex + 1) % this.seats.length;
@@ -316,7 +400,15 @@ export class CarromEngine implements GameEngine {
 
   /** Foul penalty: one of the fouling player's potted coins returns. */
   private returnOneCoin(seat: CarromSeat): void {
-    const coin = this.pieces.find((p) => p.kind === seat.color && p.pocketed);
+    let coin: CarromPiece | undefined;
+    if (this.opts.mode === "freestyle") {
+      coin =
+        this.pieces.find((p) => p.pocketed && p.kind === "black") ??
+        this.pieces.find((p) => p.pocketed && p.kind === "white") ??
+        this.pieces.find((p) => p.pocketed && p.kind === "queen");
+    } else {
+      coin = this.pieces.find((p) => p.kind === seat.color && p.pocketed);
+    }
     if (!coin) return;
     const c = CARROM_BOARD.size / 2;
     coin.pocketed = false;
@@ -325,7 +417,9 @@ export class CarromEngine implements GameEngine {
     const spot = this.freeSpotNear(c, c, radiusOf(coin), coin.id);
     coin.x = spot.x;
     coin.y = spot.y;
-    seat.remaining += 1;
+    if (this.opts.mode !== "freestyle") {
+      seat.remaining += 1;
+    }
   }
 
   /**
@@ -377,6 +471,8 @@ export class CarromEngine implements GameEngine {
       lastShot: this.lastShot,
       lastCombo: this.lastCombo,
       mode: this.opts.mode ?? "classic",
+      targetScore: this.opts.targetScore,
+      shotTimerSeconds: this.opts.shotTimerSeconds,
       strikerSkin: this.opts.strikerSkin ?? "pearl",
       boardSkin: this.opts.boardSkin ?? "birch",
       turnDeadline: this.turnDeadline,
@@ -428,12 +524,25 @@ export class CarromEngine implements GameEngine {
     let striker = this.pieces.find((p) => p.kind === "striker");
     if (!seat || !striker || this.phase !== "aiming") return { ok: false, error: "Cannot shoot" };
 
-    const targets = this.pieces.filter((p) => !p.pocketed && p.kind === seat.color);
-    const target =
-      targets.sort(
-        (a, b) =>
-          Math.hypot(a.x - striker!.x, a.y - striker!.y) - Math.hypot(b.x - striker!.x, b.y - striker!.y),
-      )[0] ?? this.pieces.find((p) => !p.pocketed && p.kind === "queen");
+    let target: CarromPiece | undefined;
+    if (this.opts.mode === "freestyle") {
+      const candidates = this.pieces.filter((p) => !p.pocketed && p.kind !== "striker");
+      candidates.sort((a, b) => {
+        const valA = a.kind === "queen" ? 25 : a.kind === "white" ? 10 : 5;
+        const valB = b.kind === "queen" ? 25 : b.kind === "white" ? 10 : 5;
+        const distA = Math.hypot(a.x - striker!.x, a.y - striker!.y);
+        const distB = Math.hypot(b.x - striker!.x, b.y - striker!.y);
+        return valB / (distB + 15) - valA / (distA + 15);
+      });
+      target = candidates[0];
+    } else {
+      const targets = this.pieces.filter((p) => !p.pocketed && p.kind === seat.color);
+      target =
+        targets.sort(
+          (a, b) =>
+            Math.hypot(a.x - striker!.x, a.y - striker!.y) - Math.hypot(b.x - striker!.x, b.y - striker!.y),
+        )[0] ?? (this.opts.mode !== "discpool" ? this.pieces.find((p) => !p.pocketed && p.kind === "queen") : undefined);
+    }
 
     // Align striker position with target X for optimal shot alignment
     if (target) {

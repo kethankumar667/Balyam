@@ -27,14 +27,17 @@ const IMPACT_RESTITUTION = 0.92;
 /** Hard ceiling on launch speed, so a strike can never tunnel a wall. */
 export const MAX_SPEED = 150;
 
+export const SUB_STEPS = 4;
+
 export function radiusOf(piece: CarromPiece): number {
   return piece.kind === "striker" ? CARROM_BOARD.strikerRadius : CARROM_BOARD.coinRadius;
 }
 
 export function massOf(piece: CarromPiece): number {
-  // A striker is heavier than a coin — that mass ratio is what makes a strike
-  // carry through a cluster instead of stopping dead on first contact.
-  return piece.kind === "striker" ? 1.8 : 1;
+  // A striker is significantly heavier than a coin in physical carrom and Miniclip —
+  // this mass ratio (2.8) provides realistic punch, scattering the rack cleanly
+  // without decelerating unnaturally on first contact.
+  return piece.kind === "striker" ? 2.8 : 1;
 }
 
 export function speedOf(p: CarromPiece): number {
@@ -59,59 +62,68 @@ export function pocketCentres(): { x: number; y: number }[] {
 }
 
 /**
- * Advance the simulation by `dt` seconds.
+ * Advance the simulation by `dt` seconds using multi-frequency sub-stepping (240Hz).
  *
- * Returns the pieces pocketed during this step, in the order they fell — the
- * rules layer needs that order to decide whether a queen was covered.
+ * Running 4 micro-substeps per 60Hz frame guarantees displacement per step is
+ * well below piece radius even at MAX_SPEED, eliminating cluster tunneling
+ * and overlap explosions.
+ *
+ * Returns the pieces pocketed during this step, in the order they fell.
  */
 export function step(pieces: CarromPiece[], dt: number): CarromPiece[] {
-  const live = pieces.filter((p) => !p.pocketed);
-
-  // ── integrate + friction ──
-  const damping = Math.pow(FRICTION_PER_SECOND, dt);
-  for (const p of live) {
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vx *= damping;
-    p.vy *= damping;
-    if (speedOf(p) < REST_SPEED) {
-      p.vx = 0;
-      p.vy = 0;
-    }
-  }
-
-  // ── cushions ──
-  const { size, cushion } = CARROM_BOARD;
-  for (const p of live) {
-    const r = radiusOf(p);
-    const lo = cushion + r;
-    const hi = size - cushion - r;
-    if (p.x < lo) { p.x = lo; p.vx = Math.abs(p.vx) * CUSHION_RESTITUTION; }
-    if (p.x > hi) { p.x = hi; p.vx = -Math.abs(p.vx) * CUSHION_RESTITUTION; }
-    if (p.y < lo) { p.y = lo; p.vy = Math.abs(p.vy) * CUSHION_RESTITUTION; }
-    if (p.y > hi) { p.y = hi; p.vy = -Math.abs(p.vy) * CUSHION_RESTITUTION; }
-  }
-
-  // ── piece-piece collisions ──
-  for (let i = 0; i < live.length; i++) {
-    for (let j = i + 1; j < live.length; j++) {
-      resolvePair(live[i], live[j]);
-    }
-  }
-
-  // ── pockets ──
   const pocketed: CarromPiece[] = [];
-  for (const p of live) {
-    for (const pocket of pocketCentres()) {
-      if (Math.hypot(p.x - pocket.x, p.y - pocket.y) <= CARROM_BOARD.pocketRadius) {
-        p.pocketed = true;
+  const subDt = dt / SUB_STEPS;
+  const damping = Math.pow(FRICTION_PER_SECOND, subDt);
+  const { size, cushion } = CARROM_BOARD;
+
+  for (let s = 0; s < SUB_STEPS; s++) {
+    const live = pieces.filter((p) => !p.pocketed);
+    if (live.length === 0) break;
+
+    // ── integrate + friction ──
+    for (const p of live) {
+      p.x += p.vx * subDt;
+      p.y += p.vy * subDt;
+      p.vx *= damping;
+      p.vy *= damping;
+      if (speedOf(p) < REST_SPEED) {
         p.vx = 0;
         p.vy = 0;
-        pocketed.push(p);
-        break;
+      }
+    }
+
+    // ── cushions ──
+    for (const p of live) {
+      const r = radiusOf(p);
+      const lo = cushion + r;
+      const hi = size - cushion - r;
+      if (p.x < lo) { p.x = lo; p.vx = Math.abs(p.vx) * CUSHION_RESTITUTION; }
+      if (p.x > hi) { p.x = hi; p.vx = -Math.abs(p.vx) * CUSHION_RESTITUTION; }
+      if (p.y < lo) { p.y = lo; p.vy = Math.abs(p.vy) * CUSHION_RESTITUTION; }
+      if (p.y > hi) { p.y = hi; p.vy = -Math.abs(p.vy) * CUSHION_RESTITUTION; }
+    }
+
+    // ── piece-piece collisions ──
+    for (let i = 0; i < live.length; i++) {
+      for (let j = i + 1; j < live.length; j++) {
+        resolvePair(live[i], live[j]);
+      }
+    }
+
+    // ── pockets ──
+    for (const p of live) {
+      for (const pocket of pocketCentres()) {
+        if (Math.hypot(p.x - pocket.x, p.y - pocket.y) <= CARROM_BOARD.pocketRadius) {
+          p.pocketed = true;
+          p.vx = 0;
+          p.vy = 0;
+          pocketed.push(p);
+          break;
+        }
       }
     }
   }
+
   return pocketed;
 }
 

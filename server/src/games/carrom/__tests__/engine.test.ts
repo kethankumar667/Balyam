@@ -296,3 +296,133 @@ describe("match lifecycle", () => {
     expect(e.applyMove({ playerId: "p0", type: "shoot", data: { angle: 0, power: 0.5 } }).ok).toBe(false);
   });
 });
+
+describe("game modes (Miniclip parity)", () => {
+  it("initialises Disc Pool without queen (18 coins total)", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "discpool" });
+    e.init(makePlayers());
+    const st = e.getPublicState();
+    expect(st.mode).toBe("discpool");
+    expect(st.pieces.filter((p) => p.kind === "queen")).toHaveLength(0);
+    expect(st.pieces.filter((p) => p.kind === "white")).toHaveLength(9);
+    expect(st.pieces.filter((p) => p.kind === "black")).toHaveLength(9);
+    expect(st.pieces.filter((p) => p.kind === "striker")).toHaveLength(1);
+  });
+
+  it("initialises Freestyle with queen and scores points per coin (10 white, 5 black, 25 queen)", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "freestyle", targetScore: 50 });
+    e.init(makePlayers());
+    const st = e.getPublicState();
+    expect(st.mode).toBe("freestyle");
+    expect(st.pieces.filter((p) => p.kind === "queen")).toHaveLength(1);
+
+    // Pot one black coin
+    const inner = e as unknown as { pieces: CarromPiece[] };
+    const black = inner.pieces.find((p) => p.kind === "black" && !p.pocketed)!;
+    black.x = CARROM_BOARD.cushion;
+    black.y = CARROM_BOARD.cushion;
+
+    e.applyMove({ playerId: "p0", type: "shoot", data: { angle: -Math.PI / 2, power: 0.3 } });
+    settle(e);
+    const after = e.getPublicState();
+    // In freestyle, p0 scores 5 points for black coin
+    const p0 = after.seats.find((s) => s.playerId === "p0")!;
+    expect(p0.score).toBe(5);
+    expect(after.lastCombo).toBe("Clean Pot! 🎯");
+  });
+
+  it("awards 25 points immediately for queen in Freestyle with no cover required", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "freestyle", targetScore: 100 });
+    e.init(makePlayers());
+
+    // Place Queen in corner pocket
+    const inner = e as unknown as { pieces: CarromPiece[] };
+    const queen = inner.pieces.find((p) => p.kind === "queen" && !p.pocketed)!;
+    queen.x = CARROM_BOARD.cushion;
+    queen.y = CARROM_BOARD.cushion;
+
+    e.applyMove({ playerId: "p0", type: "shoot", data: { angle: -Math.PI / 2, power: 0.3 } });
+    settle(e);
+    const after = e.getPublicState();
+    const p0 = after.seats.find((s) => s.playerId === "p0")!;
+    expect(p0.score).toBe(25);
+    // In freestyle, no cover is pending!
+    expect(after.queenPendingFor).toBeNull();
+    // Turn is kept
+    expect(after.turnPlayerId).toBe("p0");
+    // Freestyle has no cover mechanic — the queen's instant pot must not be
+    // mislabelled with Classic/Disc Pool's "Covered" terminology.
+    expect(after.lastCombo).toBe("Royal Strike! 👑");
+  });
+
+  it("triggers match victory in Freestyle when reaching targetScore", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "freestyle", targetScore: 20 });
+    e.init(makePlayers());
+
+    // Pot Queen (25 pts >= 20 target)
+    const inner = e as unknown as { pieces: CarromPiece[] };
+    const queen = inner.pieces.find((p) => p.kind === "queen" && !p.pocketed)!;
+    queen.x = CARROM_BOARD.cushion;
+    queen.y = CARROM_BOARD.cushion;
+
+    e.applyMove({ playerId: "p0", type: "shoot", data: { angle: -Math.PI / 2, power: 0.3 } });
+    settle(e);
+    const after = e.getPublicState();
+    expect(after.isOver).toBe(true);
+    expect(after.winnerId).toBe("p0");
+  });
+
+  it("declares a draw (winnerId null) when the board clears on an exact score tie", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "freestyle", targetScore: 1000 }); // unreachable by score alone
+    e.init(makePlayers());
+
+    const inner = e as unknown as {
+      pieces: CarromPiece[];
+      seats: { playerId: string; score: number }[];
+    };
+
+    // Clear every non-striker piece except one black coin (worth 5), and
+    // give p1 a 5-point head start so potting that last coin ties them.
+    let lastBlack: CarromPiece | null = null;
+    for (const piece of inner.pieces) {
+      if (piece.kind === "striker") continue;
+      if (piece.kind === "black" && !lastBlack) {
+        lastBlack = piece;
+        continue;
+      }
+      piece.pocketed = true;
+    }
+    lastBlack!.x = CARROM_BOARD.cushion;
+    lastBlack!.y = CARROM_BOARD.cushion;
+
+    inner.seats[0].score = 0;
+    inner.seats[1].score = 5;
+
+    e.applyMove({ playerId: "p0", type: "shoot", data: { angle: -Math.PI / 2, power: 0.3 } });
+    settle(e);
+    const after = e.getPublicState();
+
+    expect(after.isOver).toBe(true);
+    expect(after.seats.find((s) => s.playerId === "p0")!.score).toBe(5);
+    expect(after.seats.find((s) => s.playerId === "p1")!.score).toBe(5);
+    expect(after.winnerId).toBeNull();
+  });
+
+  it("executes bot applyAutoMove smartly in Freestyle without color restriction errors", () => {
+    const e = new CarromEngine();
+    e.setOptions({ mode: "freestyle" });
+    e.init(makePlayers());
+
+    // P0 (bot) takes an auto shot in freestyle
+    const res = e.applyAutoMove("p0");
+    expect(res.ok).toBe(true);
+    expect(e.getPublicState().phase).toBe("resolving");
+    settle(e);
+    expect(e.getPublicState().phase).toBe("aiming");
+  });
+});

@@ -18,6 +18,10 @@ import CarromSkinModal from "./CarromSkinModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
+import { CarromAudio } from "./carromAudio";
+import { CarromVfxOverlay } from "./CarromVfxOverlay";
+import { TurnTimeWarning } from "../../components/TurnTimeWarning";
+import { useAudio } from "../../hooks/useAudio";
 
 export default function CarromBoardDesktop({
   state,
@@ -32,6 +36,15 @@ export default function CarromBoardDesktop({
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [showSkins, setShowSkins] = useState(false);
+  const { settings } = useAudio();
+
+  // Carrom's procedural sound effects (carromAudio.ts) run through their own
+  // Web Audio engine, separate from the shared AudioManager Howler sounds —
+  // sync them to the same global mute toggle so muting the app actually
+  // silences the striker punches, clacks, and celebration chimes too.
+  useEffect(() => {
+    CarromAudio.setMuted(settings.isMuted);
+  }, [settings.isMuted]);
   const [localStriker, setLocalStriker] = useState<StrikerSkin>(state.strikerSkin ?? "pearl");
   const [localFelt, setLocalFelt] = useState<BoardFeltSkin>(state.boardSkin ?? "birch");
   const reactions = useSeatReactions(selfId);
@@ -75,6 +88,8 @@ export default function CarromBoardDesktop({
     setDrag(toBoard(e));
   }
 
+  const [activeImpact, setActiveImpact] = useState<{ x: number; y: number; power: number } | null>(null);
+
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (!drag || !myTurn) return;
     setDrag(toBoard(e));
@@ -82,10 +97,28 @@ export default function CarromBoardDesktop({
 
   function handlePointerUp() {
     if (aim && myTurn) {
+      CarromAudio.playStrikerPunch(aim.power);
+      setActiveImpact({
+        x: striker?.x ?? 50,
+        y: striker?.y ?? 50,
+        power: aim.power,
+      });
       onMove("shoot", { angle: aim.angle, power: aim.power });
     }
     setDrag(null);
   }
+
+  // Audio feedback for combos and fouls
+  useEffect(() => {
+    if (!state.lastCombo) return;
+    if (state.lastCombo.includes("Queen")) {
+      CarromAudio.playCelebrationChime();
+    } else if (state.lastCombo.includes("Foul")) {
+      CarromAudio.playFoulBuzzer();
+    } else {
+      CarromAudio.playCoinClack(0.85);
+    }
+  }, [state.lastCombo]);
 
   useEffect(() => {
     if (!drag) return;
@@ -119,6 +152,12 @@ export default function CarromBoardDesktop({
         modeLabel={modeLabel}
         onOpenSkins={() => setShowSkins(true)}
         onLeave={onLeave}
+      />
+
+      <TurnTimeWarning
+        deadline={state.turnDeadline}
+        active={myTurn && state.phase === "aiming"}
+        chipless
       />
 
       {/* ─── 3-Column Desktop Layout ───
@@ -165,17 +204,23 @@ export default function CarromBoardDesktop({
 
         {/* ─── CENTER: Board + Shot Controls ─── */}
         <div className="flex-1 max-w-[680px] flex flex-col gap-3 min-h-0 overflow-y-auto">
-          <CarromSvgBoard
-            state={activeState}
-            selfId={selfId}
-            myTurn={myTurn}
-            aim={aim}
-            svgRef={svgRef}
-            isFlipped={isFlipped}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          />
+          <div className="relative w-full">
+            <CarromSvgBoard
+              state={activeState}
+              selfId={selfId}
+              myTurn={myTurn}
+              aim={aim}
+              svgRef={svgRef}
+              isFlipped={isFlipped}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            />
+            <CarromVfxOverlay
+              lastCombo={state.lastCombo}
+              activeImpact={activeImpact}
+            />
+          </div>
 
           <CarromShotControls
             myTurn={myTurn}
@@ -204,7 +249,7 @@ export default function CarromBoardDesktop({
             >
               How to Play
             </h3>
-            <CarromRulesList />
+            <CarromRulesList mode={state.mode} />
           </div>
 
           {/* Room Rail (Chat / Voice / Players) */}

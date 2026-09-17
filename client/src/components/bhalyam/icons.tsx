@@ -283,6 +283,19 @@ export const BlockBlastGlyph = makeIcon(
   </>,
 );
 
+export const CarromGlyph = makeIcon(
+  <>
+    {/* Authentic Carrom board: outer rim, 4 corner pockets, center circle */}
+    <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.8" />
+    <circle cx="5.2" cy="5.2" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="18.8" cy="5.2" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="5.2" cy="18.8" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="18.8" cy="18.8" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="3.2" strokeWidth="1.2" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+  </>,
+);
+
 export const UsersIcon = makeIcon(
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

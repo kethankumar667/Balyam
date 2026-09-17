@@ -1501,7 +1501,6 @@ export default function Room() {
 
   const minPlayersNeeded =
     roomState.game === "snake" ||
-    roomState.game === "carrom" ||
     roomState.game === "spacewar"
       ? 1
       : 2;

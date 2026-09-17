@@ -2304,6 +2304,9 @@ export interface CarromPublicState {
   lastShot: string | null;
   lastCombo?: string | null;
   mode: CarromMode;
+  targetScore?: number;
+  /** Configured seconds-per-shot for this match — the countdown ring's denominator, since the timer is room-configurable (15/30/45/untimed). */
+  shotTimerSeconds?: number;
   strikerSkin: StrikerSkin;
   boardSkin: BoardFeltSkin;
   turnDeadline: number | null;
