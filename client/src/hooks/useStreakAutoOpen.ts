@@ -27,25 +27,30 @@ export function useStreakAutoOpen(): void {
     resetTransientState,
   } = useStreakStore();
 
-  const prevUserIdRef = useRef(userId);
+  const identity = userId ? `user:${userId}` : isMember ? "member" : null;
+  const previousIdentityRef = useRef(identity);
+  const autoFetchAttemptedRef = useRef(false);
 
   // Identity transition boundary: reset state on sign out or account switch
   useEffect(() => {
-    if (prevUserIdRef.current !== userId) {
-      prevUserIdRef.current = userId;
+    if (previousIdentityRef.current !== identity) {
+      previousIdentityRef.current = identity;
+      autoFetchAttemptedRef.current = false;
       resetTransientState();
-      if (authReady && (userId || isMember)) {
+      if (authReady && identity !== null) {
+        autoFetchAttemptedRef.current = true;
         void fetchStreak();
       }
     }
-  }, [userId, authReady, isMember, resetTransientState, fetchStreak]);
+  }, [identity, authReady, resetTransientState, fetchStreak]);
 
   // Initial fetch on authenticated mount if not yet requested
   useEffect(() => {
-    if (authReady && (userId || isMember) && !state && !isLoading) {
+    if (authReady && identity !== null && !state && !isLoading && !autoFetchAttemptedRef.current) {
+      autoFetchAttemptedRef.current = true;
       void fetchStreak();
     }
-  }, [authReady, userId, isMember, state, isLoading, fetchStreak]);
+  }, [authReady, identity, state, isLoading, fetchStreak]);
 
   // Auto-open claim modal when authenticated user has an unclaimed reward
   useEffect(() => {
