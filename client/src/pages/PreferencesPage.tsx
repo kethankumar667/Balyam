@@ -145,7 +145,7 @@ export default function PreferencesPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-mono font-bold uppercase text-stone-400 dark:text-slate-500 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-mono font-bold uppercase text-stone-600 dark:text-slate-300 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                 Display
               </span>
             </div>
@@ -261,6 +261,7 @@ export default function PreferencesPage() {
                 }`}
                 role="switch"
                 aria-checked={reduceMotion}
+                aria-label="Reduce motion and animations"
               >
                 <div
                   className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
@@ -323,6 +324,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.masterVolume}
                   onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                  aria-label="Master volume"
                   className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 py-2.5"
                 />
               </div>
@@ -345,6 +347,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.musicVolume}
                   onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                  aria-label="Background music volume"
                   className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 py-2.5"
                 />
               </div>
@@ -367,6 +370,7 @@ export default function PreferencesPage() {
                   step="0.05"
                   value={audioSettings.effectsVolume}
                   onChange={(e) => setEffectsVolume(parseFloat(e.target.value))}
+                  aria-label="Gameplay sound effects volume"
                   className="w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 py-2.5"
                 />
               </div>
@@ -400,6 +404,7 @@ export default function PreferencesPage() {
                 }`}
                 role="switch"
                 aria-checked={hapticsEnabled}
+                aria-label="Haptics and tactile feedback"
               >
                 <div
                   className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
@@ -494,6 +499,7 @@ export default function PreferencesPage() {
                   }`}
                   role="switch"
                   aria-checked={turnWarning}
+                  aria-label="10-second turn time warning"
                 >
                   <div
                     className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
@@ -522,6 +528,7 @@ export default function PreferencesPage() {
                   }`}
                   role="switch"
                   aria-checked={autoStart}
+                  aria-label="Auto-start next round"
                 >
                   <div
                     className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
@@ -550,6 +557,7 @@ export default function PreferencesPage() {
                   }`}
                   role="switch"
                   aria-checked={onlineStatus}
+                  aria-label="Show online status in lounge"
                 >
                   <div
                     className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
