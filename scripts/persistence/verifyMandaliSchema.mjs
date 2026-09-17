@@ -38,7 +38,9 @@ const { Client } = pkg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATION = path.join(ROOT, "supabase/migrations/20261001000000_mandali_groups.sql");
+const RPC_MIGRATION = path.join(ROOT, "supabase/migrations/20261002000000_mandali_group_rpcs.sql");
 const ROLLBACK = path.join(ROOT, "supabase/rollbacks/20261001000000_mandali_groups_rollback.sql");
+const RPC_ROLLBACK = path.join(ROOT, "supabase/rollbacks/20261002000000_mandali_group_rpcs_rollback.sql");
 
 const PORT = Number(process.env.VERIFY_PG_PORT) || 55434;
 const DATA_DIR = path.join(os.tmpdir(), `bhalyam-mandali-pg-verify-${process.pid}`);
@@ -90,10 +92,11 @@ async function main() {
     return c.connect().then(() => c);
   };
 
-  let db;
+    let db;
   try {
     db = await connect();
     const migration = fs.readFileSync(MIGRATION, "utf8");
+    const rpcMigration = fs.readFileSync(RPC_MIGRATION, "utf8");
     const rollback = fs.readFileSync(ROLLBACK, "utf8");
 
     await db.query(SETUP);
@@ -104,9 +107,11 @@ async function main() {
     check("migration", "applies cleanly and is re-runnable", true);
 
     /* ── seed auth users + identities ── */
+    // dave/eve own nothing at seed time — the RPC limit checks below need a
+    // clean slate, earlier sections leave groups behind on purpose.
     await db.query(
       `insert into auth.users (id, email)
-       select gen_random_uuid(), p || '@example.com' from unnest(array['alice','bob','carol']) p
+       select gen_random_uuid(), p || '@example.com' from unnest(array['alice','bob','carol','dave','eve']) p
        returning id`,
     );
     await db.query(
@@ -282,7 +287,57 @@ async function main() {
     }
     check("transfer", "pointer-first owner transfer commits", transferOk);
 
-    /* ── 9. Rollback re-applies ── */
+    /* ── 9. Creation RPC: limit, atomicity, concurrency ── */
+    await db.query(rpcMigration);
+    const rpcCount = async (owner) => {
+      await db.query("begin");
+      await db.query("set local role service_role");
+      const r = await db.query("select count(*)::int as n from public.mandalis where owner_id = $1", [owner]);
+      await db.query("reset role");
+      await db.query("commit");
+      return r.rows[0].n;
+    };
+    await db.query("select public.mandali_create_group($1, $2, $3, $4)", ["Rpc One", null, "member_dave", 32]);
+    check("rpc", "mandali_create_group establishes group + owner in one call", (await rpcCount("member_dave")) === 1);
+    let limitRejected = false;
+    await db.query("select public.mandali_create_group($1, $2, $3, $4)", ["Rpc Two", null, "member_dave", 32]);
+    try {
+      await db.query("select public.mandali_create_group($1, $2, $3, $4)", ["Rpc Three", null, "member_dave", 32]);
+    } catch {
+      limitRejected = true;
+    }
+    check("rpc", "third owned group refused by in-transaction limit", limitRejected);
+
+    // Concurrency: three parallel creations for one fresh owner; exactly two commit.
+    await db.query("insert into public.player_identities (player_id, kind) values ('member_frank', 'guest')");
+    const c1 = await connect();
+    const c2 = await connect();
+    let concurrencyAccepted = 0;
+    const attempt = async (client, name) => {
+      try {
+        await client.query("begin");
+        await client.query("select public.mandali_create_group($1, $2, $3, $4)", [name, null, "member_frank", 32]);
+        await client.query("commit");
+        return true;
+      } catch {
+        await client.query("rollback").catch(() => {});
+        return false;
+      }
+    };
+    const [a, b, c] = await Promise.all([
+      attempt(c1, "Frank A"), attempt(c1, "Frank B"), attempt(c2, "Frank C"),
+    ]);
+    concurrencyAccepted = [a, b, c].filter(Boolean).length;
+    await c1.end().catch(() => {});
+    await c2.end().catch(() => {});
+    check("rpc", "concurrent creations respect the owned-group limit exactly", concurrencyAccepted === 2, `accepted=${concurrencyAccepted}`);
+
+    /* ── 10. Rollback re-applies ── */
+    // Reverse dependency order: the RPC's return type depends on the
+    // mandalis table, so the RPC rollback must run before the table drop —
+    // the exact defect this drill exists to catch.
+    const rpcRollback = fs.readFileSync(RPC_ROLLBACK, "utf8");
+    await db.query(rpcRollback);
     await db.query(rollback);
     const gone = await db.query(
       `select count(*)::int as n from information_schema.tables
@@ -290,7 +345,8 @@ async function main() {
     );
     check("rollback", "rollback drops both tables", gone.rows[0].n === 0);
     await db.query(migration);
-    check("rollback", "migration re-applies after rollback", true);
+    await db.query(rpcMigration);
+    check("rollback", "migrations re-apply after rollback", true);
 
     console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}\n`);
     process.exitCode = failures === 0 ? 0 : 1;
