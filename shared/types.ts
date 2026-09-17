@@ -2756,6 +2756,13 @@ export interface ChatSendPayload {
   text: string;
 }
 
+/** Optional duration in milliseconds. Absent = the metric was not measured. */
+export interface ClientTelemetryPayload {
+  pageLoadMs?: number;
+  roomLoadMs?: number;
+  boardLoadMs?: number;
+}
+
 export interface GameMovePayload {
   type: string;
   data?: unknown;
@@ -3096,6 +3103,12 @@ export interface ClientToServerEvents {
    * listed is treated as ungrouped.
    */
   "rummy:arrangement": (payload: { groups: string[][] }) => void;
+  /**
+   * Client-only device metrics. Fire-and-forget, machine-paced, and recorded
+   * into bounded histograms; each duration is validated server-side (finite,
+   * non-negative, capped) before it can move a metric.
+   */
+  "telemetry:client": (payload: ClientTelemetryPayload) => void;
   /**
    * Ask for a coaching hint. Request/response via ack rather than a
    * broadcast: a hint is private to the asker, and telling the table that

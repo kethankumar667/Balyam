@@ -75,3 +75,11 @@ export class SocketRateLimiter {
 }
 
 export const globalRateLimiter = new SocketRateLimiter(15, 10);
+
+/**
+ * Separate budget for machine-paced events (WebRTC negotiation, telemetry).
+ * These must never consume a player's interactive tokens, but they also must
+ * not be unlimited: negotiation and metrics can be spammed like anything else
+ * a connected socket emits.
+ */
+export const machineRateLimiter = new SocketRateLimiter(30, 5);

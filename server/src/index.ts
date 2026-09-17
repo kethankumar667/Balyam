@@ -7,7 +7,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.j
 import { registerSocketHandlers } from "./sockets/index.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { logger } from "./lib/logger.js";
-import { globalRateLimiter } from "./lib/rateLimiter.js";
+import { globalRateLimiter, machineRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
 import { serverResourceTracker } from "./reliability/ResourceTracker.js";
@@ -411,6 +411,7 @@ io.on("connection", (socket) => {
     serverResourceTracker.unregister("socket", socket.id);
     metricsCollector.onSocketDisconnect();
     globalRateLimiter.removeSocket(socket.id);
+    machineRateLimiter.removeSocket(socket.id);
     // Every OTHER handler that calls into RoomManager from this file
     // (`room:leave`, `game:move`, `room:retryTerminalPersistence`) wraps its
     // call in a catch. This is the one call into RoomManager on this whole

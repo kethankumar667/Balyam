@@ -1,12 +1,13 @@
 import type { Server, Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
-import { globalRateLimiter } from "../lib/rateLimiter.js";
+import { globalRateLimiter, machineRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
+import { sanitizeClientTelemetry } from "./telemetry.js";
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -38,6 +39,11 @@ export function registerSocketHandlers(
   // Socket.IO packet middleware to enforce authoritative rate limits before event dispatch
   socket.use(([event, ..._args], next) => {
     if (MACHINE_EVENTS.has(event)) {
+      const { allowed } = machineRateLimiter.consume(socket.id);
+      if (!allowed) {
+        logger.warn({ message: `Machine rate limit exceeded for event ${event}`, socketId: socket.id, module: "RATE_LIMIT" });
+        return;
+      }
       return next();
     }
     const { allowed } = globalRateLimiter.consume(socket.id);
@@ -369,16 +375,16 @@ export function registerSocketHandlers(
     rooms.setRummyArrangement(socket.id, groups);
   });
 
-  socket.on("telemetry:client" as any, (payload: any) => {
-    if (!payload || typeof payload !== "object") return;
-    if (typeof payload.pageLoadMs === "number") {
-      metricsRegistry.recordHistogram("client.page_load_ms", payload.pageLoadMs);
+  socket.on("telemetry:client", (payload) => {
+    const sanitized = sanitizeClientTelemetry(payload);
+    if (sanitized.pageLoadMs !== undefined) {
+      metricsRegistry.recordHistogram("client.page_load_ms", sanitized.pageLoadMs);
     }
-    if (typeof payload.roomLoadMs === "number") {
-      metricsRegistry.recordHistogram("client.room_load_ms", payload.roomLoadMs);
+    if (sanitized.roomLoadMs !== undefined) {
+      metricsRegistry.recordHistogram("client.room_load_ms", sanitized.roomLoadMs);
     }
-    if (typeof payload.boardLoadMs === "number") {
-      metricsRegistry.recordHistogram("client.board_load_ms", payload.boardLoadMs);
+    if (sanitized.boardLoadMs !== undefined) {
+      metricsRegistry.recordHistogram("client.board_load_ms", sanitized.boardLoadMs);
     }
   });
 }
