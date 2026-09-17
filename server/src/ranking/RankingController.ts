@@ -41,7 +41,8 @@ rankingRouter.get("/leaderboard", (req: Request, res: Response) => {
 rankingRouter.get("/scorecards/:game/:mode", (req: Request, res: Response) => {
   const game = req.params.game as AllGameSlug;
   const mode = req.params.mode;
-  const limit = req.query.limit ? Number(req.query.limit) : 50;
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(100, rawLimit) : 50;
 
   const entries = scorecardService.getModeLeaderboard(
     game,

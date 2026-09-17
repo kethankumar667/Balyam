@@ -63,8 +63,8 @@ describe("UI Hardening Remediation Suite", () => {
     });
   });
 
-  describe("Test B: Leaderboard filter semantics", () => {
-    it("uses native button controls with aria-pressed for division tiers and retains search accessible name", () => {
+  describe("Test B: Score Board filter semantics", () => {
+    it("uses native button controls with aria-pressed for game arena selection and retains search accessible name", () => {
       useAuthStore.setState({ isSuperAdmin: true });
       render(
         <BrowserRouter>
@@ -74,33 +74,33 @@ describe("UI Hardening Remediation Suite", () => {
 
       // 1. Filter container has role="group", accurate accessible name, and NOT role="tablist"
       const filterGroup = screen.getByRole("group", {
-        name: "Filter leaderboard by division tier",
+        name: "Filter scoreboard by game arena",
       });
       expect(filterGroup).toBeDefined();
       expect(filterGroup.getAttribute("role")).toBe("group");
       expect(filterGroup.getAttribute("role")).not.toBe("tablist");
 
-      // 2. All tier options are native buttons with no role="tab" or aria-selected
-      const tiers = ["All", "Grandmaster", "Master", "Diamond", "Gold"];
-      for (const tier of tiers) {
+      // 2. All game arena options are native buttons with no role="tab" or aria-selected
+      const games = ["Hand Cricket", "2048 Classic", "Snake 2D", "Ludo", "Uno"];
+      for (const game of games) {
         const btn = screen.getByRole("button", {
-          name: new RegExp(`Filter by ${tier} division`, "i"),
+          name: new RegExp(`Filter by ${game} game`, "i"),
         });
         expect(btn.tagName.toLowerCase()).toBe("button");
         expect(btn.getAttribute("role")).toBeNull();
         expect(btn.getAttribute("aria-selected")).toBeNull();
       }
 
-      // 3. Initially, "All" has aria-pressed="true", others have aria-pressed="false"
-      const allBtn = screen.getByRole("button", { name: /Filter by All division/i });
-      const masterBtn = screen.getByRole("button", { name: /Filter by Master division/i });
-      expect(allBtn.getAttribute("aria-pressed")).toBe("true");
-      expect(masterBtn.getAttribute("aria-pressed")).toBe("false");
+      // 3. Initially, "Hand Cricket" has aria-pressed="true", others have aria-pressed="false"
+      const hcBtn = screen.getByRole("button", { name: /Filter by Hand Cricket game/i });
+      const ludoBtn = screen.getByRole("button", { name: /Filter by Ludo game/i });
+      expect(hcBtn.getAttribute("aria-pressed")).toBe("true");
+      expect(ludoBtn.getAttribute("aria-pressed")).toBe("false");
 
-      // 4. Selecting "Master" updates filter state and aria-pressed
-      fireEvent.click(masterBtn);
-      expect(allBtn.getAttribute("aria-pressed")).toBe("false");
-      expect(masterBtn.getAttribute("aria-pressed")).toBe("true");
+      // 4. Selecting "Ludo" updates filter state and aria-pressed
+      fireEvent.click(ludoBtn);
+      expect(hcBtn.getAttribute("aria-pressed")).toBe("false");
+      expect(ludoBtn.getAttribute("aria-pressed")).toBe("true");
 
       // 5. Search field retains its accessible name
       const searchInput = screen.getByLabelText("Search players by name");

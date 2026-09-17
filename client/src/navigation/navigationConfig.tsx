@@ -494,22 +494,19 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
     ],
   },
 
-  /* ──────────────────────── 9. Leaderboard (Future Ready) ──────────────────────── */
+  /* ──────────────────────── 9. Leaderboard (Score Board) ──────────────────────── */
   leaderboard: {
     id: "leaderboard",
     showPromoNote: false,
     header: {
       title: "Hall of Fame",
-      subtitle: "Global & friends leaderboards",
+      subtitle: "Player scorecards & game records",
       icon: Crown,
       parentPath: "/",
       parentLabel: "Back to Home",
     },
     items: [
-      { id: "lb-global", label: "Global Ranking", icon: Crown, path: "/leaderboard" },
-      { id: "lb-friends", label: "Friends Board", icon: Users, path: "/leaderboard" },
-      { id: "lb-weekly", label: "Weekly Top 10", icon: Trophy, path: "/leaderboard", badge: { text: "Hot", variant: "amber" } },
-      { id: "lb-games", label: "Game Records", icon: Gamepad2, path: "/leaderboard" },
+      { id: "lb-scoreboard", label: "Score Board", icon: Trophy, path: "/leaderboard" },
     ],
   },
 

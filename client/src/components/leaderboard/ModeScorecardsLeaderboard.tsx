@@ -51,14 +51,23 @@ export default function ModeScorecardsLeaderboard() {
     setLoading(true);
     setError(null);
 
-    apiJson<{ entries: ModeLeaderboardItem[] }>(
-      `/api/ranking/scorecards/${selectedGame}/${selectedMode}`
+    Promise.resolve(
+      apiJson<{ entries: ModeLeaderboardItem[] }>(
+        `/api/ranking/scorecards/${selectedGame}/${selectedMode}`
+      )
     )
       .then((res) => {
-        if (active) {
-          setItems(res?.entries || []);
+        if (!active) return;
+        // `apiJson` resolves `null` on any network error or non-2xx response instead
+        // of rejecting, so that case must be checked explicitly — otherwise a failed
+        // request silently renders as "No Chrono Records Yet" instead of an error.
+        if (res === null) {
+          setError("Failed to load records");
           setLoading(false);
+          return;
         }
+        setItems(res.entries || []);
+        setLoading(false);
       })
       .catch((err) => {
         if (active) {
