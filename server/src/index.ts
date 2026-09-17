@@ -49,6 +49,7 @@ import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.j
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig } from "./persistence/postgrest.js";
+import { mandaliFlags } from "./mandali/flags.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -185,6 +186,10 @@ app.get("/health", (_req, res) => {
       voucher: voucherHmacDurability(),
     },
     reviews: reviewsStoreStatus(),
+    // Mandali rollout state: which doors exist, never why. All-off is the
+    // expected reading until the feature ships; a deploy that accidentally
+    // flips a flag shows up here before any player notices.
+    mandali: mandaliFlags(),
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
