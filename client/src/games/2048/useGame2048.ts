@@ -16,6 +16,7 @@ import { useHaptics } from "../../hooks/useHaptics";
 import { AUDIO } from "../../constants/audio";
 import { fire2048WinConfetti } from "./confetti2048";
 import { getGame2048Stats, syncGame2048Stats } from "../../lib/game2048StatsApi";
+import { useScorecardStore } from "../../store/scorecardStore";
 import { createDateSeed, mulberry32 } from "./prng";
 import type { TableTheme } from "./tileStyles";
 
@@ -480,6 +481,21 @@ export function useGame2048(): UseGame2048Result {
           // push here just costs a slightly stale cloud copy, not a regression.
           void syncGame2048Stats(next);
         }
+
+        // Sync with universal Chrono-Scorecard system
+        try {
+          const storedGuestId = localStorage.getItem("bhalyam.guest.id") || "guest";
+          void useScorecardStore.getState().recordScore(storedGuestId, {
+            game: "2048",
+            modeId: "grid_4x4",
+            score: finalScore,
+            context: "SOLO",
+            matchId: `2048_${Date.now()}`,
+          });
+        } catch {
+          // Ignore
+        }
+
         setIsNewBest(improved);
         return improved ? next : prev;
       });
@@ -508,6 +524,11 @@ export function useGame2048(): UseGame2048Result {
         setGrid(spawnTile(spawnTile(emptyGrid())));
       }
       setScore(0);
+      try {
+        useScorecardStore.getState().updateLivePace("2048", "grid_4x4", 0);
+      } catch {
+        // safe
+      }
       setIsOver(false);
       setReachedTarget(false);
       setIsNewBest(false);
@@ -633,6 +654,11 @@ export function useGame2048(): UseGame2048Result {
 
       setGrid(nextGrid);
       setScore(nextScore);
+      try {
+        useScorecardStore.getState().updateLivePace("2048", "grid_4x4", nextScore);
+      } catch {
+        // safe
+      }
 
       if (mode === "race" && nextHighest >= TARGET_TILE) {
         setReachedTarget(true);

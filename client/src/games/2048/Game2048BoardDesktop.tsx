@@ -23,6 +23,8 @@ import {
   Layers,
 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
+import GhostPaceHUD from "../../components/scorecard/GhostPaceHUD";
+import { useScorecardStore } from "../../store/scorecardStore";
 
 export interface Game2048BoardDesktopProps {
   game: UseGame2048Result;
@@ -42,6 +44,7 @@ const THEMES: { id: TableTheme; label: string }[] = [
 
 function Game2048BoardDesktop({ game, onExit }: Game2048BoardDesktopProps) {
   const { settings, toggleMute } = useAudio();
+  const ghostPace = useScorecardStore((s) => s.activeGhostPace);
 
   const maxScoreEver = Math.max(
     game.highestTile,
@@ -131,6 +134,7 @@ function Game2048BoardDesktop({ game, onExit }: Game2048BoardDesktopProps) {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <GhostPaceHUD pace={ghostPace} />
           {/* Codex quick trigger */}
           <button
             type="button"

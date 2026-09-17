@@ -21,6 +21,8 @@ import {
   Layers,
 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
+import GhostPaceHUD from "../../components/scorecard/GhostPaceHUD";
+import { useScorecardStore } from "../../store/scorecardStore";
 
 export interface Game2048BoardMobileProps {
   game: UseGame2048Result;
@@ -39,6 +41,7 @@ function getNextTheme(current: TableTheme): TableTheme {
 
 function Game2048BoardMobile({ game, onExit }: Game2048BoardMobileProps) {
   const { settings, toggleMute } = useAudio();
+  const ghostPace = useScorecardStore((s) => s.activeGhostPace);
 
   const maxScoreEver = Math.max(
     game.highestTile,
@@ -150,6 +153,12 @@ function Game2048BoardMobile({ game, onExit }: Game2048BoardMobileProps) {
 
       {/* Main Play Area */}
       <main className="w-full max-w-sm flex-1 flex flex-col justify-between items-center my-0.5 min-h-0 space-y-1">
+        {ghostPace && ghostPace.personalBest > 0 && (
+          <div className="w-full flex justify-center py-0.5">
+            <GhostPaceHUD pace={ghostPace} />
+          </div>
+        )}
+
         {/* Score & Best Dual Stat Card */}
         <section aria-label="Game Scores" className="w-full grid grid-cols-2 gap-2">
           <div className="relative p-2 rounded-2xl bg-white/90 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 shadow-md flex flex-col items-center">

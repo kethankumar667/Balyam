@@ -225,12 +225,17 @@ export default function BhalyamResultModal({
               <span className="text-[11px] font-black uppercase tracking-wider text-[#8A7564]">
                 SCORES
               </span>
-              {myPBScore !== undefined && (
+              {lastNewPB && lastNewPB.game === currentGame ? (
+                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-950 bg-gradient-to-r from-amber-400 to-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500 font-black shadow-xs animate-bounce">
+                  <Zap className="w-3 h-3 text-amber-950 fill-amber-950" />
+                  <span>NEW PB! ({lastNewPB.scorecard.bestScore})</span>
+                </div>
+              ) : myPBScore !== undefined ? (
                 <div className="flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
                   <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
                   <span>PB: {myPBScore}</span>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">

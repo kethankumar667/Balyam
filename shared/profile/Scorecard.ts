@@ -78,6 +78,7 @@ export interface RecordScorePayload {
  * Result returned upon recording a score.
  */
 export interface RecordScoreResult {
+  game: AllGameSlug;
   scorecard: ModeScorecard;
   isNewPersonalBest: boolean;
   deltaFromPrevious: number;

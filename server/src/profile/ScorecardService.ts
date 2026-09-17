@@ -140,6 +140,7 @@ export class ScorecardService {
     archive.updatedAt = now;
 
     return {
+      game: payload.game,
       scorecard: updatedModeScorecard,
       isNewPersonalBest,
       deltaFromPrevious,
