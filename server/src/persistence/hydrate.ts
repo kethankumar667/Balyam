@@ -34,8 +34,8 @@ import type { MatchHistoryItem, MatchResult } from "@shared/profile/MatchHistory
  * first write re-establishes them.
  */
 
-const HYDRATE_PROFILE_LIMIT = Number(process.env.HYDRATE_PROFILE_LIMIT) || 5000;
-const HYDRATE_MATCHES_PER_PLAYER = Number(process.env.HYDRATE_MATCHES_PER_PLAYER) || 25;
+const HYDRATE_PROFILE_LIMIT = 500;
+const HYDRATE_MATCHES_PER_PLAYER = 25;
 
 export interface HydrationReport {
   profiles: number;
@@ -74,7 +74,17 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     durationMs: 0,
   };
 
-  const profiles = await repo.listProfiles(HYDRATE_PROFILE_LIMIT);
+  const profiles: Awaited<ReturnType<typeof repo.listProfiles>> = [];
+  const seenProfiles = new Set<string>();
+  for (;;) {
+    const page = await repo.listProfiles(HYDRATE_PROFILE_LIMIT, profiles.length);
+    if (page.length === 0) break;
+    for (const profile of page) {
+      if (seenProfiles.has(profile.playerId)) throw new Error("Profile hydration did not advance");
+      seenProfiles.add(profile.playerId);
+      profiles.push(profile);
+    }
+  }
   report.profiles = profiles.length;
 
   // Per-player reads, in a bounded loop rather than one query, because the
@@ -113,7 +123,24 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     challengeClaims.push(...claims.map((c) => ({ playerId: c.playerId, challengeId: c.challengeId })));
     seasonClaims.push(...sClaims.map((c) => ({ seasonId: c.seasonId, playerId: c.playerId, tierId: c.tierId })));
 
-    for (const m of page.matches) {
+    const matches = [...page.matches];
+    const seenMatches = new Set(matches.map((m) => m.id));
+    while (matches.length < page.total) {
+      const next = await repo.listMatchesForPlayer(profile.playerId, {
+        limit: HYDRATE_MATCHES_PER_PLAYER,
+        offset: matches.length,
+      });
+      if (next.matches.length === 0 || next.total !== page.total) {
+        throw new Error("Match hydration is incomplete");
+      }
+      for (const match of next.matches) {
+        if (seenMatches.has(match.id)) throw new Error("Match hydration did not advance");
+        seenMatches.add(match.id);
+        matches.push(match);
+      }
+    }
+
+    for (const m of matches) {
       matchEntries.push({
         playerId: profile.playerId,
         match: {
@@ -186,7 +213,7 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     }
   }
 
-  profileService.hydrate(profiles, achievements);
+  profileService.hydrate(profiles, achievements, matchEntries);
   matchHistoryService.hydrate(matchEntries);
   challengeEngine.hydrate(challengeClaims);
   seasonService.hydrate(seasonStats, seasonClaims);

@@ -266,7 +266,7 @@ export interface ProgressionRepository {
   /* profiles */
   upsertProfile(record: ProfileRecord): Promise<void>;
   getProfile(playerId: string): Promise<ProfileRecord | null>;
-  listProfiles(limit?: number): Promise<ProfileRecord[]>;
+  listProfiles(limit?: number, offset?: number): Promise<ProfileRecord[]>;
 
   /* xp */
   appendXp(entry: XpLedgerEntry): Promise<Applied>;

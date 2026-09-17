@@ -248,6 +248,7 @@ export class ProfileService {
       lastSeenAt: number;
     }>,
     achievements: Array<{ playerId: string; achievementId: string; unlockedAt: number }>,
+    matches: Array<{ playerId: string; match: MatchHistoryItem }> = [],
   ): void {
     for (const p of profiles) {
       this.profiles.set(p.playerId, {
@@ -261,6 +262,21 @@ export class ProfileService {
       });
       if (!this.stats.has(p.playerId)) this.stats.set(p.playerId, INITIAL_PLAYER_STATS(p.playerId));
       if (!this.unlockedAchievements.has(p.playerId)) this.unlockedAchievements.set(p.playerId, {});
+    }
+
+    const restoredStats = new Map<string, PlayerStats>();
+    const seenMatches = new Map<string, Set<string>>();
+    for (const { playerId, match } of [...matches].sort((a, b) =>
+      a.match.finishedAt - b.match.finishedAt || a.match.matchId.localeCompare(b.match.matchId),
+    )) {
+      const seen = seenMatches.get(playerId) ?? new Set<string>();
+      if (seen.has(match.matchId)) continue;
+      seen.add(match.matchId);
+      seenMatches.set(playerId, seen);
+      restoredStats.set(playerId, StatsProjection.projectMatch(restoredStats.get(playerId), playerId, match));
+    }
+    for (const p of profiles) {
+      this.stats.set(p.playerId, restoredStats.get(p.playerId) ?? INITIAL_PLAYER_STATS(p.playerId));
     }
 
     for (const a of achievements) {

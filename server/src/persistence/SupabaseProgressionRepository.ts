@@ -149,10 +149,10 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
     return rows[0] ? SupabaseProgressionRepository.toProfile(rows[0]) : null;
   }
 
-  async listProfiles(limit = 100): Promise<ProfileRecord[]> {
+  async listProfiles(limit = 100, offset = 0): Promise<ProfileRecord[]> {
     const rows = await this.db.select<Parameters<typeof SupabaseProgressionRepository.toProfile>[0]>(
       "player_profiles",
-      `order=experience_points.desc,player_id.asc&limit=${limit}`,
+      `order=experience_points.desc,player_id.asc&limit=${limit}&offset=${offset}`,
     );
     return rows.map(SupabaseProgressionRepository.toProfile);
   }
@@ -603,6 +603,21 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
    * against any Postgres — which is what turned P0-3's restart durability from
    * an intention into a measurement.
    */
+  private async readAllPages<T>(table: string, query: string, key: (row: T) => string): Promise<T[]> {
+    const rows: T[] = [];
+    const seen = new Set<string>();
+    for (;;) {
+      const page = await this.db.select<T>(table, `${query}&limit=100&offset=${rows.length}`);
+      if (page.length === 0) return rows;
+      for (const row of page) {
+        const id = key(row);
+        if (seen.has(id)) throw new Error(`Pagination did not advance on ${table}`);
+        seen.add(id);
+        rows.push(row);
+      }
+    }
+  }
+
   async listMatchesForPlayer(
     playerId: string,
     opts: { limit?: number; offset?: number; game?: string } = {},
@@ -610,7 +625,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
     const { limit = 20, offset = 0, game } = opts;
     const p = encodeURIComponent(playerId);
 
-    const mine = await this.db.select<{
+    const mine = await this.readAllPages<{
       match_id: string;
       player_id: string;
       display_name: string | null;
@@ -618,13 +633,13 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       is_winner: boolean;
       is_bot: boolean;
       placement: number | null;
-    }>("match_participants", `player_id=eq.${p}`);
+    }>("match_participants", `player_id=eq.${p}&order=match_id.asc`, (row) => row.match_id);
 
     if (mine.length === 0) return { total: 0, matches: [] };
 
     const ids = mine.map((r) => r.match_id);
     const gameFilter = game ? `&game=eq.${encodeURIComponent(game)}` : "";
-    const summaries = await this.db.select<{
+    type SummaryRow = {
       id: string;
       room_code: string;
       game: string;
@@ -633,10 +648,17 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       duration_ms: number;
       winner_id: string | null;
       participant_count: number;
-    }>(
-      "match_summaries",
-      `id=in.(${ids.map((id) => encodeURIComponent(id)).join(",")})${gameFilter}&order=finished_at.desc`,
-    );
+    };
+    const summaries: SummaryRow[] = [];
+    for (let start = 0; start < ids.length; start += 50) {
+      const batch = ids.slice(start, start + 50);
+      summaries.push(...await this.readAllPages<SummaryRow>(
+        "match_summaries",
+        `id=in.(${batch.map((id) => encodeURIComponent(id)).join(",")})${gameFilter}&order=finished_at.desc,id.asc`,
+        (row) => row.id,
+      ));
+    }
+    summaries.sort((a, b) => ms(b.finished_at) - ms(a.finished_at) || a.id.localeCompare(b.id));
 
     const selfByMatch = new Map(mine.map((r) => [r.match_id, r]));
 
