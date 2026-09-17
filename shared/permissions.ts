@@ -76,7 +76,7 @@ export interface Capabilities {
   spectate: boolean;
   /** Participate in or browse competitive tournaments. Member-only. */
   viewTournaments: boolean;
-  /** View global leaderboards and seasonal rankings. Member-only. */
+  /** View global leaderboards and seasonal rankings. Open to all players. */
   viewLeaderboards: boolean;
   /** View persistent career profile and personal stats. Member-only. */
   viewProfile: boolean;
@@ -101,7 +101,7 @@ const GUEST: Capabilities = {
   voiceChat: true,
   spectate: true,
   viewTournaments: false,
-  viewLeaderboards: false,
+  viewLeaderboards: true,
   viewProfile: false,
   viewSocial: false,
   accessAdminPanel: false,

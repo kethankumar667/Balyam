@@ -119,20 +119,22 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       const memberSocial = memberNav.items.find((i) => i.id === "home-social");
       const memberProfile = memberNav.items.find((i) => i.id === "home-profile");
 
-      // Tournaments, Leaderboard, Social are disabled Coming Soon for all users
+      // Tournaments and Social are disabled Coming Soon for all users
       expect(guestTournaments?.badge?.text).toBe("Coming Soon");
       expect(guestTournaments?.disabled).toBe(true);
-      expect(guestLeaderboard?.badge?.text).toBe("Coming Soon");
-      expect(guestLeaderboard?.disabled).toBe(true);
       expect(guestSocial?.badge?.text).toBe("Coming Soon");
       expect(guestSocial?.disabled).toBe(true);
 
       expect(memberTournaments?.badge?.text).toBe("Coming Soon");
       expect(memberTournaments?.disabled).toBe(true);
-      expect(memberLeaderboard?.badge?.text).toBe("Coming Soon");
-      expect(memberLeaderboard?.disabled).toBe(true);
       expect(memberSocial?.badge?.text).toBe("Coming Soon");
       expect(memberSocial?.disabled).toBe(true);
+
+      // Leaderboard is unlocked for all players across all environments
+      expect(guestLeaderboard?.disabled).toBe(false);
+      expect(guestLeaderboard?.badge?.text).toBe("Top");
+      expect(memberLeaderboard?.disabled).toBe(false);
+      expect(memberLeaderboard?.badge?.text).toBe("Top");
 
       // Profile is Member gated: Member badge for guests, unlocked for members
       expect(guestProfile?.badge?.text).toBe("Member");

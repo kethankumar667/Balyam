@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, Medal, Crown, Flame, ShieldCheck, ArrowUpRight, Search } from "lucide-react";
-import ComingSoonGate from "../components/common/ComingSoonGate";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
+import { apiJson } from "../lib/playerIdentity";
+import type { LeaderboardEntry as SharedLeaderboardEntry } from "@shared/ranking/PlayerRank";
 
 interface LeaderboardEntry {
   rank: number;
@@ -26,30 +27,41 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 ];
 
 export default function LeaderboardPage() {
-  const { isSuperAdmin, capabilities } = useAuthStore();
+  const { isSuperAdmin } = useAuthStore();
   const [selectedTier, setSelectedTier] = useState<string>("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [entries, setEntries] = useState<LeaderboardEntry[]>(MOCK_LEADERBOARD);
 
-  if (!isSuperAdmin && !capabilities.unlockAllFeatures) {
-    return (
-      <ComingSoonGate
-        title="Global Leaderboards"
-        subtitle="Rankings, Quests & Grandmaster Tiers"
-        description="Global rankings and competitive ladder systems are currently being calibrated. Soon you'll be able to compare ratings with friends, climb division ranks, and claim weekly rewards."
-        icon={Trophy}
-        iconBgGradient="from-yellow-500 via-amber-500 to-amber-600"
-        accentColor="text-yellow-400"
-        features={[
-          "Global & Game-Specific Rank Ladders",
-          "Daily Skill Quests & Bonus XP Multipliers",
-          "Grandmaster Tier Badges & Hall of Fame",
-          "Head-to-Head Player Comparison",
-        ]}
-      />
-    );
-  }
+  useEffect(() => {
+    let active = true;
+    try {
+      const p = apiJson<{ entries: SharedLeaderboardEntry[]; total: number }>("/api/ranking/leaderboard");
+      if (p && typeof p.then === "function") {
+        p.then((data) => {
+          if (active && data?.entries && data.entries.length > 0) {
+            const mapped: LeaderboardEntry[] = data.entries.map((e, idx) => ({
+              rank: e.rank || idx + 1,
+              name: e.displayName || e.playerId,
+              rating: e.rating,
+              winRate: `${Math.round((e.winRate || 0) * 100)}%`,
+              streak: 0,
+              tier: (e.tier as "Grandmaster" | "Master" | "Diamond" | "Gold") || "Gold",
+            }));
+            setEntries(mapped);
+          }
+        }).catch(() => {
+          // Fallback benchmark entries remain intact
+        });
+      }
+    } catch {
+      // Safe fallback
+    }
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const filtered = MOCK_LEADERBOARD.filter((entry) => {
+  const filtered = entries.filter((entry) => {
     const matchesTier = selectedTier === "All" || entry.tier === selectedTier;
     const matchesSearch = entry.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesTier && matchesSearch;
@@ -58,35 +70,37 @@ export default function LeaderboardPage() {
   return (
     <AppLayout>
       <div className="min-h-[85vh] py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-6">
-        {/* Super Admin Unlock Banner */}
-        <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-transparent border border-amber-500/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-500">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-500">
-                  ⚡ Super Admin Sandbox Active
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950">
-                  Feature Unlocked
-                </span>
+        {/* Super Admin Panel link — only visible when super admin is logged in */}
+        {isSuperAdmin && (
+          <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-transparent border border-amber-500/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-500">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-              <p className="text-xs text-[var(--chrome-ink-soft)]">
-                You have full access to inspect, filter, and calibrate Global Ratings and ELO Rank Ladders.
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-500">
+                    ⚡ Super Admin Mode
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950">
+                    Admin Tools
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--chrome-ink-soft)]">
+                  You have full access to inspect, filter, and calibrate Global Ratings and ELO Rank Ladders.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/admin/leaderboards"
+                className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold transition"
+              >
+                Admin Ratings Panel →
+              </Link>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin/leaderboards"
-              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold transition"
-            >
-              Admin Ratings Panel →
-            </Link>
-          </div>
-        </div>
+        )}
 
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

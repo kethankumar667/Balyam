@@ -98,8 +98,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         label: "Leaderboard",
         icon: Trophy,
         path: "/leaderboard",
-        badge: { text: "Coming Soon", variant: "muted" },
-        disabled: true,
+        badge: { text: "Top", variant: "amber" },
         isActive: (p) => p.startsWith("/leaderboard"),
       },
 
