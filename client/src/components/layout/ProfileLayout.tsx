@@ -7,6 +7,7 @@ import {
   BarChart3,
   History,
   Award,
+  Trophy,
   Settings,
 } from "lucide-react";
 import ProfileHeader from "../../features/profile/ProfileHeader";
@@ -26,6 +27,7 @@ interface ProfileLayoutProps {
 
 const PROFILE_TABS = [
   { path: "/profile", label: "Overview", icon: LayoutDashboard },
+  { path: "/profile/scorecards", label: "Scorecards", icon: Trophy },
   { path: "/profile/personal", label: "Identity & Bio", icon: UserCheck },
   { path: "/profile/statistics", label: "Statistics", icon: BarChart3 },
   { path: "/profile/matches", label: "Match History", icon: History },

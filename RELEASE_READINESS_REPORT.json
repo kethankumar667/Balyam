@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-09-09T09:49:51.474Z",
-  "gitCommit": "95669d4",
-  "certificationState": "INTERNAL TESTING READY",
-  "releaseApproved": false,
+  "timestamp": "2026-09-17T12:37:15.583Z",
+  "gitCommit": "138bdd06",
+  "certificationState": "CLOSED BETA READY",
+  "releaseApproved": true,
   "stateCapped": true,
   "stateCappingReason": "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY.",
   "domains": {
@@ -12,15 +12,15 @@
     },
     "testIntegrity": {
       "status": "PASS",
-      "message": "301 test files clean (0 skipped, 0 focused)"
+      "message": "336 test files clean (0 skipped, 0 focused)"
     },
     "persistence": {
-      "status": "FAIL",
-      "message": "Receipt expired or failed (passed: false)"
+      "status": "PASS",
+      "message": "Verified against supabase-postgres (0d old)"
     },
     "accessibility": {
       "status": "PASS",
-      "message": "516 UI components & 22 rendered pages clean"
+      "message": "613 UI components & 22 rendered pages clean"
     },
     "mobile": {
       "status": "PASS",
@@ -28,7 +28,7 @@
     },
     "bundleBudgets": {
       "status": "WARN",
-      "message": "5 chunks exceeded budget"
+      "message": "3 chunks exceeded budget"
     },
     "dependencyGovernance": {
       "status": "PASS",
@@ -51,11 +51,9 @@
       "message": "Pending hosted cloud staging deployment"
     }
   },
-  "blockers": [
-    "Persistence verification receipt is expired or failed"
-  ],
+  "blockers": [],
   "advisories": [
-    "5 chunks exceeded bundle budget",
+    "3 chunks exceeded bundle budget",
     "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
   ]
 }

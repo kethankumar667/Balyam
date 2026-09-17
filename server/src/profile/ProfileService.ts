@@ -8,6 +8,8 @@ import type { Achievement } from "@shared/profile/Achievements.js";
 import { StatsProjection } from "./StatsProjection.js";
 import { AchievementsEngine } from "./AchievementsEngine.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
+import { scorecardService } from "./ScorecardService.js";
+import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
 
 export class ProfileService {
@@ -92,7 +94,16 @@ export class ProfileService {
     finishedAt: number;
     durationMs: number;
     winnerId?: string;
-    participants: Array<{ playerId: string; name: string; avatar?: string; isWinner: boolean; isBot?: boolean }>;
+    modeId?: string;
+    participants: Array<{
+      playerId: string;
+      name: string;
+      avatar?: string;
+      isWinner: boolean;
+      isBot?: boolean;
+      score?: number;
+      secondaryMetrics?: Record<string, number | string>;
+    }>;
   }): void {
     const replayAvailable = true;
 
@@ -160,6 +171,21 @@ export class ProfileService {
         }
       }
       this.unlockedAchievements.set(p.playerId, unlMap);
+
+      // 5. Update personal best scorecard for this game and mode
+      if (typeof p.score === "number") {
+        const resolvedMode = params.modeId || resolveModeId(params.game);
+        const isSoloOrBot = params.participants.filter((x) => !x.isBot).length <= 1;
+        const context = isSoloOrBot ? "VS_BOTS" : "PVP_MULTIPLAYER";
+        scorecardService.recordScore(p.playerId, {
+          game: params.game,
+          modeId: resolvedMode,
+          score: p.score,
+          context,
+          matchId: matchItem.matchId,
+          secondaryMetrics: p.secondaryMetrics,
+        });
+      }
     }
 
     // One summary row for the match, after the per-player loop. Keyed on

@@ -103,6 +103,7 @@ import { metricsCollector } from "../observability/MetricsCollector.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { profileService } from "../profile/ProfileService.js";
+import { resolveModeId } from "@shared/profile/GameModes.js";
 import { rankingService } from "../ranking/RankingService.js";
 import { recentPlayersService } from "../ranking/RecentPlayersService.js";
 import { logger } from "../lib/logger.js";
@@ -3387,18 +3388,88 @@ export class RoomManager {
     }
   }
 
+  private extractParticipantScoreAndMetrics(room: Room, playerId: string): {
+    score?: number;
+    secondaryMetrics?: Record<string, number | string>;
+  } {
+    if (!room.engine) return {};
+    try {
+      const publicState = room.engine.getPublicState() as Record<string, unknown> | null;
+      if (!publicState) return {};
+
+      // Hand Cricket: innings scores
+      if (room.game === "handcricket") {
+        const i1 = publicState.innings1 as
+          | { batterStats?: Record<string, { runs: number; balls: number; fours?: number; sixes?: number }> }
+          | undefined;
+        const i2 = publicState.innings2 as
+          | { batterStats?: Record<string, { runs: number; balls: number; fours?: number; sixes?: number }> }
+          | undefined;
+        const bStats = i1?.batterStats?.[playerId] ?? i2?.batterStats?.[playerId];
+        if (bStats) {
+          return {
+            score: bStats.runs,
+            secondaryMetrics: {
+              balls: bStats.balls,
+              strikeRate: bStats.balls > 0 ? Math.round((bStats.runs / bStats.balls) * 100) : 0,
+              fours: bStats.fours ?? 0,
+              sixes: bStats.sixes ?? 0,
+            },
+          };
+        }
+      }
+
+      // Word Building: scores map
+      if (room.game === "wordbuilding") {
+        const scores = publicState.scores as Record<string, number> | undefined;
+        if (scores && typeof scores[playerId] === "number") {
+          return { score: scores[playerId] };
+        }
+      }
+
+      // Dots & Boxes: scores map
+      if (room.game === "dotsboxes") {
+        const scores = publicState.scores as Record<string, number> | undefined;
+        if (scores && typeof scores[playerId] === "number") {
+          return { score: scores[playerId] };
+        }
+      }
+
+      // Snake: length / apples
+      if (room.game === "snake") {
+        const snakes = publicState.snakes as Record<string, { score?: number; length?: number }> | undefined;
+        if (snakes && snakes[playerId]) {
+          return { score: snakes[playerId]?.score ?? snakes[playerId]?.length ?? 0 };
+        }
+      }
+
+      // Generic single numeric score if present
+      if (typeof publicState.score === "number") {
+        return { score: publicState.score };
+      }
+    } catch {
+      // Graceful fallback
+    }
+    return {};
+  }
+
   private recordPostMatchStats(room: Room): void {
     serverTimelineRecorder.recordGameFinished(room.code, room.game, (room.engine ? getWinnerId(room.engine) : null) ?? null);
     metricsCollector.onMatchFinished(room.game, 0);
     try {
       const winnerId = (room.engine ? getWinnerId(room.engine) : undefined) ?? undefined;
-      const participants = Array.from(room.players.values()).map((p) => ({
-        playerId: p.id,
-        name: p.name,
-        avatar: p.avatar,
-        isWinner: Boolean(winnerId && p.id === winnerId),
-        isBot: p.isBot,
-      }));
+      const participants = Array.from(room.players.values()).map((p) => {
+        const { score, secondaryMetrics } = this.extractParticipantScoreAndMetrics(room, p.id);
+        return {
+          playerId: p.id,
+          name: p.name,
+          avatar: p.avatar,
+          isWinner: Boolean(winnerId && p.id === winnerId),
+          isBot: p.isBot,
+          score,
+          secondaryMetrics,
+        };
+      });
       profileService.recordMatchFinished({
         roomCode: room.code,
         game: room.game,
@@ -3406,6 +3477,7 @@ export class RoomManager {
         finishedAt: Date.now(),
         durationMs: Math.max(1000, Date.now() - room.createdAt),
         winnerId: winnerId ?? undefined,
+        modeId: resolveModeId(room.game),
         participants,
       });
       recentPlayersService.recordMatch({

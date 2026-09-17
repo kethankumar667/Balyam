@@ -21,6 +21,7 @@ const LazyPersonalInformationPage = lazy(() => import("./pages/PersonalInformati
 const LazyGameStatisticsPage = lazy(() => import("./pages/GameStatisticsPage"));
 const LazyMatchHistoryPage = lazy(() => import("./pages/MatchHistoryPage"));
 const LazyAchievementsPage = lazy(() => import("./pages/AchievementsPage"));
+const LazyScorecardsPage = lazy(() => import("./pages/ScorecardsPage"));
 const LazyLoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const LazySignUpPage = lazy(() => import("./pages/auth/SignUpPage"));
 const LazyForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
@@ -81,6 +82,7 @@ export interface RouteComponents {
   GameStatisticsPage?: React.ComponentType;
   MatchHistoryPage?: React.ComponentType;
   AchievementsPage?: React.ComponentType;
+  ScorecardsPage?: React.ComponentType;
   LoginPage?: React.ComponentType;
   SignUpPage?: React.ComponentType;
   ForgotPasswordPage?: React.ComponentType;
@@ -264,6 +266,7 @@ export default function App({ components = {} }: AppProps) {
   const GameStatisticsPage = components.GameStatisticsPage ?? LazyGameStatisticsPage;
   const MatchHistoryPage = components.MatchHistoryPage ?? LazyMatchHistoryPage;
   const AchievementsPage = components.AchievementsPage ?? LazyAchievementsPage;
+  const ScorecardsPage = components.ScorecardsPage ?? LazyScorecardsPage;
   const LoginPage = components.LoginPage ?? LazyLoginPage;
   const SignUpPage = components.SignUpPage ?? LazySignUpPage;
   const ForgotPasswordPage = components.ForgotPasswordPage ?? LazyForgotPasswordPage;
@@ -355,6 +358,7 @@ export default function App({ components = {} }: AppProps) {
               }
             >
               <Route path="/profile" element={<ProfileOverviewPage />} />
+              <Route path="/profile/scorecards" element={<ScorecardsPage />} />
               <Route path="/profile/personal" element={<PersonalInformationPage />} />
               <Route path="/profile/statistics" element={<GameStatisticsPage />} />
               <Route path="/profile/matches" element={<MatchHistoryPage />} />

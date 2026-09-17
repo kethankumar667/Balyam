@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Crown, RotateCcw } from "lucide-react";
+import { Crown, RotateCcw, Zap } from "lucide-react";
 import type { Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
+import { useScorecardStore } from "../store/scorecardStore";
 import { findAvatar } from "../lib/avatars";
 import { getGameLimits } from "@shared/catalog";
 import CountUp from "./CountUp";
@@ -77,6 +78,12 @@ export default function BhalyamResultModal({
   // `RematchPanel.tsx`'s matching fix (the game-agnostic sibling of this
   // modal) for the full report and the server-side guard this backs up.
   const notEnoughPlayers = !!roomState && players.length < getGameLimits(roomState.game).min;
+
+  const scorecardArchive = useScorecardStore((s) => s.archive);
+  const lastNewPB = useScorecardStore((s) => s.lastNewPB);
+  const currentGame = roomState?.game;
+  const myGameCard = currentGame ? scorecardArchive?.games[currentGame] : undefined;
+  const myPBScore = myGameCard ? Object.values(myGameCard.modes)[0]?.bestScore : undefined;
 
   function requestRematch() {
     getSocket().emit("rematch:request");
@@ -218,6 +225,12 @@ export default function BhalyamResultModal({
               <span className="text-[11px] font-black uppercase tracking-wider text-[#8A7564]">
                 SCORES
               </span>
+              {myPBScore !== undefined && (
+                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                  <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span>PB: {myPBScore}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">
@@ -285,7 +298,12 @@ export default function BhalyamResultModal({
                       )}
                     </span>
 
-                    <span className={`tabular-nums shrink-0 font-black ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
+                    <span className={`tabular-nums shrink-0 font-black flex items-center gap-1.5 ${isWinnerRow ? "text-amber-800 text-sm" : "text-[#7C6652]"}`}>
+                      {p.id === selfId && lastNewPB?.isNewPersonalBest && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-white uppercase tracking-wider animate-pulse">
+                          NEW PB!
+                        </span>
+                      )}
                       <CountUp end={p.score} duration={1.2} />
                     </span>
 
