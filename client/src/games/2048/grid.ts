@@ -6,6 +6,8 @@ export interface Cell {
   value: number;
   /** One-tick "just landed" flag for the attack-tile pulse animation in Battle mode. Cleared the moment the tile passes through any slide. */
   isGarbage?: boolean;
+  /** Prism Core Wildcard tile: merges with any standard tile, yielding double that tile's value. */
+  isWildcard?: boolean;
 }
 
 export type Grid = (Cell | null)[];
@@ -24,16 +26,21 @@ export function emptyCells(grid: Grid): number[] {
 
 /**
  * Picks one empty cell at random and drops a tile into it — 90% a "2", 10%
- * a "4", the same odds every 2048 clone uses. This is a genuinely solo,
- * client-only game (see the "2048 is solo-only" product decision), so
- * there is no multiplayer fairness requirement driving a seeded RNG —
- * `rng` defaults to `Math.random` and only exists as a parameter for tests.
+ * a "4", the same odds every 2048 clone uses.
  */
-export function spawnTile(grid: Grid, rng: () => number = Math.random, opts?: { value?: number; isGarbage?: boolean }): Grid {
+export function spawnTile(
+  grid: Grid,
+  rng: () => number = Math.random,
+  opts?: { value?: number; isGarbage?: boolean; isWildcard?: boolean }
+): Grid {
   const empties = emptyCells(grid);
   const next = grid.slice();
   if (empties.length === 0) return next;
   const idx = empties[Math.floor(rng() * empties.length)];
+  if (opts?.isWildcard) {
+    next[idx] = { value: 0, isWildcard: true };
+    return next;
+  }
   const value = opts?.value ?? (rng() < 0.9 ? 2 : 4);
   next[idx] = opts?.isGarbage ? { value, isGarbage: true } : { value };
   return next;
@@ -47,9 +54,12 @@ export function hasAnyMove(grid: Grid): boolean {
   }
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
-      const v = grid[r * N + c]!.value;
-      if (c + 1 < N && grid[r * N + c + 1]?.value === v) return true;
-      if (r + 1 < N && grid[(r + 1) * N + c]?.value === v) return true;
+      const cell = grid[r * N + c]!;
+      if (cell.isWildcard) return true;
+      const right = c + 1 < N ? grid[r * N + c + 1] : null;
+      if (right && (right.value === cell.value || right.isWildcard)) return true;
+      const down = r + 1 < N ? grid[(r + 1) * N + c] : null;
+      if (down && (down.value === cell.value || down.isWildcard)) return true;
     }
   }
   return false;
@@ -59,9 +69,30 @@ export function hasAnyMove(grid: Grid): boolean {
 export function highestTile(grid: Grid): number {
   let best = 0;
   for (const cell of grid) {
-    if (cell && cell.value > best) best = cell.value;
+    if (cell && !cell.isWildcard && cell.value > best) best = cell.value;
   }
   return best;
+}
+
+/** Checks if two indices in a 4x4 grid are Manhattan neighbors (distance 1). */
+export function areAdjacent(idxA: number, idxB: number): boolean {
+  if (idxA < 0 || idxA >= GRID_SIZE * GRID_SIZE || idxB < 0 || idxB >= GRID_SIZE * GRID_SIZE) return false;
+  if (idxA === idxB) return false;
+  const rA = Math.floor(idxA / GRID_SIZE);
+  const cA = idxA % GRID_SIZE;
+  const rB = Math.floor(idxB / GRID_SIZE);
+  const cB = idxB % GRID_SIZE;
+  return Math.abs(rA - rB) + Math.abs(cA - cB) === 1;
+}
+
+/** Quantum Swap: Swaps two adjacent cells on the grid. */
+export function swapCells(grid: Grid, idxA: number, idxB: number): Grid {
+  if (!areAdjacent(idxA, idxB)) return grid;
+  const next = [...grid];
+  const temp = next[idxA];
+  next[idxA] = next[idxB];
+  next[idxB] = temp;
+  return next;
 }
 
 /** Indices, in slide order (index 0 is where tiles move toward), for one row or column. */
@@ -87,26 +118,38 @@ interface MergeLineResult {
 
 /** Slides and merges ONE row/column, already read in slide order (see `lineIndices`). Standard 2048 rule: each tile merges at most once per move. */
 function mergeLine(line: readonly (Cell | null)[]): MergeLineResult {
-  const values = line.filter((c): c is Cell => c != null).map((c) => c.value);
-  const merged: number[] = [];
+  const cells = line.filter((c): c is Cell => c != null);
+  const merged: Cell[] = [];
   let mergeCount = 0;
   let scoreGained = 0;
   let i = 0;
-  while (i < values.length) {
-    if (i + 1 < values.length && values[i] === values[i + 1]) {
-      const sum = values[i] * 2;
-      merged.push(sum);
+  while (i < cells.length) {
+    const c1 = cells[i];
+    const c2 = cells[i + 1];
+    if (c2 != null && (c1.value === c2.value || c1.isWildcard || c2.isWildcard)) {
+      let sum: number;
+      if (c1.isWildcard && c2.isWildcard) {
+        sum = 4;
+      } else if (c1.isWildcard) {
+        sum = c2.value * 2;
+      } else if (c2.isWildcard) {
+        sum = c1.value * 2;
+      } else {
+        sum = c1.value * 2;
+      }
+      merged.push({ value: sum });
       mergeCount++;
       scoreGained += sum;
       i += 2;
     } else {
-      merged.push(values[i]);
+      merged.push({ value: c1.value, isWildcard: c1.isWildcard });
       i += 1;
     }
   }
-  while (merged.length < line.length) merged.push(0);
+  const resultLine: (Cell | null)[] = [...merged];
+  while (resultLine.length < line.length) resultLine.push(null);
   return {
-    line: merged.map((v) => (v === 0 ? null : { value: v })),
+    line: resultLine,
     mergeCount,
     scoreGained,
   };

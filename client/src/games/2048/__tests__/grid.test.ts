@@ -7,6 +7,7 @@ import {
   insertGarbage,
   slideAndMerge,
   spawnTile,
+  swapCells,
 } from "../grid";
 import type { Grid } from "../grid";
 
@@ -145,6 +146,53 @@ describe("2048 grid", () => {
       const g = emptyGrid();
       const next = insertGarbage(g, 0, () => 0);
       expect(next.every((c) => c == null)).toBe(true);
+    });
+  });
+
+  describe("swapCells", () => {
+    it("swaps two adjacent cells horizontally and vertically", () => {
+      const g = emptyGrid();
+      g[0] = { value: 64 };
+      g[1] = { value: 128 };
+      const swappedH = swapCells(g, 0, 1);
+      expect(swappedH[0]).toEqual({ value: 128 });
+      expect(swappedH[1]).toEqual({ value: 64 });
+
+      g[4] = { value: 256 };
+      const swappedV = swapCells(g, 0, 4);
+      expect(swappedV[0]).toEqual({ value: 256 });
+      expect(swappedV[4]).toEqual({ value: 64 });
+    });
+
+    it("rejects swapping non-adjacent cells", () => {
+      const g = emptyGrid();
+      g[0] = { value: 64 };
+      g[3] = { value: 128 };
+      const swapped = swapCells(g, 0, 3);
+      expect(swapped[0]).toEqual({ value: 64 });
+      expect(swapped[3]).toEqual({ value: 128 });
+    });
+  });
+
+  describe("wildcard mechanics", () => {
+    it("merges a wildcard with a regular tile to double the regular tile's value", () => {
+      const g = emptyGrid();
+      g[0] = { value: 32 };
+      g[1] = { value: 0, isWildcard: true };
+      const res = slideAndMerge(g, "left");
+      expect(res.moved).toBe(true);
+      expect(res.grid[0]).toEqual({ value: 64 });
+      expect(res.scoreGained).toBe(64);
+    });
+
+    it("merges two wildcards together to yield 4", () => {
+      const g = emptyGrid();
+      g[0] = { value: 0, isWildcard: true };
+      g[1] = { value: 0, isWildcard: true };
+      const res = slideAndMerge(g, "left");
+      expect(res.moved).toBe(true);
+      expect(res.grid[0]).toEqual({ value: 4 });
+      expect(res.scoreGained).toBe(4);
     });
   });
 });

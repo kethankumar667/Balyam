@@ -44,6 +44,8 @@ import socialRouter from "./social/SocialController.js";
 import partyRouter from "./party/PartyController.js";
 import { StreakService } from "./streak/StreakService.js";
 import { createStreakRouter } from "./streak/StreakController.js";
+import { Game2048StatsService } from "./games2048/Game2048StatsService.js";
+import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.js";
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig } from "./persistence/postgrest.js";
@@ -330,6 +332,14 @@ app.use("/api/cosmetics", createCosmeticsRouter(cosmeticsService));
  */
 const streakService = new StreakService({ economyService, cosmeticsService });
 app.use("/api/streak", createStreakRouter(streakService));
+
+/**
+ * 2048 Cloud-Synced Best Scores API.
+ * 2048 itself is a client-only solo game (no room, no socket) — this is the
+ * one small server surface it needs, so personal bests follow the account.
+ */
+const game2048StatsService = new Game2048StatsService();
+app.use("/api/games/2048/stats", createGame2048StatsRouter(game2048StatsService));
 
 /**
  * Operational surface. The gate lives ON this router (see
