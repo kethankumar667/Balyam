@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T06:36:06.284Z",
+  "generatedAt": "2026-09-17T08:04:06.298Z",
   "engine": "axe-core in chromium (playwright)",
   "standard": "WCAG 2.1 A + AA (wcag2a, wcag2aa, wcag21a, wcag21aa)",
   "themes": [
@@ -25,9 +25,9 @@
   "scope": "axe-core covers a well-defined subset of WCAG. It cannot judge whether a label is MEANINGFUL, whether focus order is logical, or whether a live-region announcement is useful. Those remain manual review items and are NOT counted as passes.",
   "counts": {
     "accessibility": {
-      "total": 6,
+      "total": 4,
       "critical": 4,
-      "serious": 2,
+      "serious": 0,
       "moderate": 0,
       "minor": 0
     },
@@ -39,25 +39,6 @@
     "keyboard": 0
   },
   "accessibilityViolations": [
-    {
-      "route": "Home",
-      "theme": "dark",
-      "id": "aria-prohibited-attr",
-      "impact": "serious",
-      "help": "Elements must only use permitted ARIA attributes",
-      "wcag": [
-        "wcag2a",
-        "wcag412"
-      ],
-      "nodes": [
-        {
-          "target": "div[aria-label=\"Loading player progress\"]",
-          "html": "<div class=\"grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse\" aria-busy=\"true\" aria-label=\"Loading player progress\">",
-          "message": "Fix all of the following: aria-label attribute cannot be used on a div with no valid role attribute."
-        }
-      ],
-      "nodeCount": 1
-    },
     {
       "route": "Settings",
       "theme": "dark",
@@ -125,25 +106,6 @@
         }
       ],
       "nodeCount": 3
-    },
-    {
-      "route": "Home",
-      "theme": "light",
-      "id": "aria-prohibited-attr",
-      "impact": "serious",
-      "help": "Elements must only use permitted ARIA attributes",
-      "wcag": [
-        "wcag2a",
-        "wcag412"
-      ],
-      "nodes": [
-        {
-          "target": "div[aria-label=\"Loading player progress\"]",
-          "html": "<div class=\"grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse\" aria-busy=\"true\" aria-label=\"Loading player progress\">",
-          "message": "Fix all of the following: aria-label attribute cannot be used on a div with no valid role attribute."
-        }
-      ],
-      "nodeCount": 1
     },
     {
       "route": "Settings",
