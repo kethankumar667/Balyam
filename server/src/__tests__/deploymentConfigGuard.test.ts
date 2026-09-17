@@ -38,6 +38,17 @@ import {
 
 const ROOT_DIR = path.resolve(__dirname, "../../..");
 
+describe("release quality gate dependencies", () => {
+  it("installs root dependencies before running persistence verification", () => {
+    const workflow = fs.readFileSync(path.join(ROOT_DIR, ".github/workflows/ci.yml"), "utf8");
+    const qualityJob = workflow.slice(workflow.indexOf("  quality-gates:"));
+    const rootInstall = qualityJob.search(/^\s+run: npm ci\s*$/m);
+    const persistenceCheck = qualityJob.indexOf("run: node scripts/persistence/verifySchema.mjs");
+    expect(rootInstall).toBeGreaterThanOrEqual(0);
+    expect(persistenceCheck).toBeGreaterThan(rootInstall);
+  });
+});
+
 describe("extractAuthoritativeRoutes", () => {
   const fixture = `
 const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
