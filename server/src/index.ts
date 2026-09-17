@@ -50,6 +50,37 @@ import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig } from "./persistence/postgrest.js";
 import { mandaliFlags } from "./mandali/flags.js";
+import { SupabaseMandaliRepository } from "./mandali/SupabaseMandaliRepository.js";
+import { MandaliService } from "./mandali/MandaliService.js";
+import { createMandaliRouter } from "./mandali/MandaliController.js";
+import { requireStrictMandaliAccount } from "./mandali/strictAccount.js";
+import type { MandaliRepository } from "./mandali/MandaliRepository.js";
+
+/**
+ * No silent fallbacks: when durable storage is unconfigured the Mandali
+ * domain still mounts — and every route fails closed at the guard — but the
+ * repository slot is filled by a throwing placeholder rather than a fake
+ * that would pretend to work.
+ */
+function unreachableMandaliRepository(): MandaliRepository {
+  return {
+    async createGroupWithOwner() {
+      throw new Error("Mandali storage is not configured");
+    },
+    async listGroupsForUser() {
+      throw new Error("Mandali storage is not configured");
+    },
+    async getGroup() {
+      throw new Error("Mandali storage is not configured");
+    },
+    async getLiveMembership() {
+      throw new Error("Mandali storage is not configured");
+    },
+    async listMembers() {
+      throw new Error("Mandali storage is not configured");
+    },
+  };
+}
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -133,6 +164,23 @@ app.use(express.json());
  * ended up with six different amounts of it — which is to say, none.
  */
 app.use(attachPlayerIdentity);
+
+/**
+ * Mandali mounts BEFORE every route that relies on `attachPlayerIdentity`'s
+ * side effects: its strict guard derives the actor from a fresh provider
+ * answer itself and must not fall through into identity-provisioning writes
+ * (see strictAccount.ts's header for the revocation reasoning).
+ */
+const mandaliPostgrest = readPostgrestConfig();
+const mandaliRepository = mandaliPostgrest
+  ? new SupabaseMandaliRepository(mandaliPostgrest)
+  : null;
+const mandaliRouter = createMandaliRouter(
+  new MandaliService(mandaliRepository ?? unreachableMandaliRepository()),
+  () => mandaliFlags().groups,
+  requireStrictMandaliAccount,
+);
+app.use("/api/mandali", mandaliRouter);
 
 /** Issues guest identities. Must not sit behind a guard that needs one. */
 app.use("/api/auth", authRouter);
