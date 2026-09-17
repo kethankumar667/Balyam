@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T18:46:05.348Z",
+  "generatedAt": "2026-09-17T08:04:06.298Z",
   "engine": "axe-core in chromium (playwright)",
   "standard": "WCAG 2.1 A + AA (wcag2a, wcag2aa, wcag21a, wcag21aa)",
   "themes": [
@@ -21,24 +21,325 @@
   ],
   "viewport": "390×844",
   "pagesAudited": 22,
-  "keyboardStopsExercised": 368,
+  "keyboardStopsExercised": 316,
   "scope": "axe-core covers a well-defined subset of WCAG. It cannot judge whether a label is MEANINGFUL, whether focus order is logical, or whether a live-region announcement is useful. Those remain manual review items and are NOT counted as passes.",
   "counts": {
     "accessibility": {
-      "total": 0,
-      "critical": 0,
+      "total": 4,
+      "critical": 4,
       "serious": 0,
       "moderate": 0,
       "minor": 0
     },
     "contrast": {
-      "total": 0,
-      "serious": 0,
+      "total": 7,
+      "serious": 7,
       "moderate": 0
     },
     "keyboard": 0
   },
-  "accessibilityViolations": [],
-  "contrastViolations": [],
+  "accessibilityViolations": [
+    {
+      "route": "Settings",
+      "theme": "dark",
+      "id": "button-name",
+      "impact": "critical",
+      "help": "Buttons must have discernible text",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "nodes": [
+        {
+          "target": ".space-y-5.bg-white\\/95.p-5 > .gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70 > .bg-stone-300.dark\\:bg-stone-700[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-stone-300 dark:bg-stone-700\"",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".focus\\:ring-purple-500\\/50",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-purple-600\" role=\"switch\" a",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(1) > .bg-amber-500.w-12[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-amber-500\" role=\"switch\" ari",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(2) > .bg-stone-300.dark\\:bg-stone-700[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-stone-300 dark:bg-stone-700\"",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(3) > .bg-amber-500.w-12[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-amber-500\" role=\"switch\" ari",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        }
+      ],
+      "nodeCount": 5
+    },
+    {
+      "route": "Settings",
+      "theme": "dark",
+      "id": "label",
+      "impact": "critical",
+      "help": "Form elements must have labels",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "nodes": [
+        {
+          "target": ".accent-amber-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 py-2.5\" value=\"0.8\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        },
+        {
+          "target": ".accent-purple-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 py-2.5\" value=\"0.55\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        },
+        {
+          "target": ".accent-emerald-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 py-2.5\" value=\"0.85\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        }
+      ],
+      "nodeCount": 3
+    },
+    {
+      "route": "Settings",
+      "theme": "light",
+      "id": "button-name",
+      "impact": "critical",
+      "help": "Buttons must have discernible text",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "nodes": [
+        {
+          "target": ".space-y-5.bg-white\\/95.p-5 > .gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70 > .bg-stone-300.dark\\:bg-stone-700[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-stone-300 dark:bg-stone-700\"",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".focus\\:ring-purple-500\\/50",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-purple-600\" role=\"switch\" a",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(1) > .bg-amber-500.w-12[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-amber-500\" role=\"switch\" ari",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(2) > .bg-stone-300.dark\\:bg-stone-700[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-stone-300 dark:bg-stone-700\"",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        },
+        {
+          "target": ".gap-3.bg-stone-50\\/70.dark\\:bg-\\[\\#151c2e\\]\\/70:nth-child(3) > .bg-amber-500.w-12[role=\"switch\"]",
+          "html": "<button type=\"button\" class=\"w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-amber-500\" role=\"switch\" ari",
+          "message": "Fix any of the following: Element does not have inner text that is visible to screen readers aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Element does not have an impli"
+        }
+      ],
+      "nodeCount": 5
+    },
+    {
+      "route": "Settings",
+      "theme": "light",
+      "id": "label",
+      "impact": "critical",
+      "help": "Form elements must have labels",
+      "wcag": [
+        "wcag2a",
+        "wcag412"
+      ],
+      "nodes": [
+        {
+          "target": ".accent-amber-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 py-2.5\" value=\"0.8\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        },
+        {
+          "target": ".accent-purple-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 py-2.5\" value=\"0.55\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        },
+        {
+          "target": ".accent-emerald-500",
+          "html": "<input type=\"range\" min=\"0\" max=\"1\" step=\"0.05\" class=\"w-full h-7 bg-stone-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 py-2.5\" value=\"0.85\">",
+          "message": "Fix any of the following: Element does not have an implicit (wrapped) <label> Element does not have an explicit <label> aria-label attribute does not exist or is empty aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty Element has no title attribute Ele"
+        }
+      ],
+      "nodeCount": 3
+    }
+  ],
+  "contrastViolations": [
+    {
+      "route": "Settings",
+      "theme": "dark",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".dark\\:text-slate-500",
+          "html": "<span class=\"text-[10px] font-mono font-bold uppercase text-stone-400 dark:text-slate-500 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md\">Display</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 3.07 (foreground color: #64748b, background color: #1e293b, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 1
+    },
+    {
+      "route": "Sign up",
+      "theme": "dark",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".text-\\[\\#881337\\].text-\\[11\\.5px\\].mt-1",
+          "html": "<span class=\"text-[11.5px] font-bold mt-1 tracking-tight text-[#881337]\">About You</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 2 (foreground color: #881337, background color: #0b0f17, font size: 8.6pt (11.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".z-10.flex-col.relative:nth-child(3) > .text-\\[\\#7A5B3E\\]\\/80.dark\\:text-slate-500.text-\\[11\\.5px\\]",
+          "html": "<span class=\"text-[11.5px] font-bold mt-1 tracking-tight text-[#7A5B3E]/80 dark:text-slate-500\">Secure Account</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 4.03 (foreground color: #64748b, background color: #0b0f17, font size: 8.6pt (11.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".z-10.flex-col.relative:nth-child(4) > .text-\\[\\#7A5B3E\\]\\/80.dark\\:text-slate-500.text-\\[11\\.5px\\]",
+          "html": "<span class=\"text-[11.5px] font-bold mt-1 tracking-tight text-[#7A5B3E]/80 dark:text-slate-500\">Choose Avatar</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 4.03 (foreground color: #64748b, background color: #0b0f17, font size: 8.6pt (11.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": "label[for=\"signup-dob\"]",
+          "html": "<label for=\"signup-dob\" class=\"text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block\">Date of Birth</label>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 2.26 (foreground color: #5c4a32, background color: #0b0f17, font size: 7.9pt (10.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": "label[for=\"signup-gender\"]",
+          "html": "<label for=\"signup-gender\" class=\"text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block\">Gender</label>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 2.26 (foreground color: #5c4a32, background color: #0b0f17, font size: 7.9pt (10.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 5
+    },
+    {
+      "route": "Home",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".text-amber-600.dark\\:text-amber-400.font-mono",
+          "html": "<span class=\"text-xs font-black text-amber-600 dark:text-amber-400 shrink-0 font-mono\">Join Room →</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 3.13 (foreground color: #d97706, background color: #fffdf7, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".text-emerald-600.dark\\:text-emerald-400.font-mono",
+          "html": "<span class=\"text-xs font-black text-emerald-600 dark:text-emerald-400 shrink-0 font-mono\">Choose Game →</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 3.7 (foreground color: #059669, background color: #fffdf7, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 2
+    },
+    {
+      "route": "Settings",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".dark\\:text-slate-500",
+          "html": "<span class=\"text-[10px] font-mono font-bold uppercase text-stone-400 dark:text-slate-500 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md\">Display</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 2.31 (foreground color: #a8a29e, background color: #f5f5f4, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 1
+    },
+    {
+      "route": "Sign in",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".text-\\[\\#8C6D4F\\]",
+          "html": "<span class=\"text-[12px] font-semibold text-[#8C6D4F] dark:text-slate-400 whitespace-nowrap\">or continue with</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 4.41 (foreground color: #8c6d4f, background color: #faf6ee, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 1
+    },
+    {
+      "route": "Sign up",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".z-10.flex-col.relative:nth-child(3) > .text-\\[\\#7A5B3E\\]\\/80.dark\\:text-slate-500.text-\\[11\\.5px\\]",
+          "html": "<span class=\"text-[11.5px] font-bold mt-1 tracking-tight text-[#7A5B3E]/80 dark:text-slate-500\">Secure Account</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 3.73 (foreground color: #947a61, background color: #faf6ee, font size: 8.6pt (11.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".z-10.flex-col.relative:nth-child(4) > .text-\\[\\#7A5B3E\\]\\/80.dark\\:text-slate-500.text-\\[11\\.5px\\]",
+          "html": "<span class=\"text-[11.5px] font-bold mt-1 tracking-tight text-[#7A5B3E]/80 dark:text-slate-500\">Choose Avatar</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 3.73 (foreground color: #947a61, background color: #faf6ee, font size: 8.6pt (11.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 2
+    },
+    {
+      "route": "Admin (gated)",
+      "theme": "light",
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "wcag": [
+        "wcag2aa",
+        "wcag143"
+      ],
+      "nodes": [
+        {
+          "target": ".text-\\[\\#8C6D4F\\]",
+          "html": "<span class=\"text-[12px] font-semibold text-[#8C6D4F] dark:text-slate-400 whitespace-nowrap\">or continue with</span>",
+          "message": "Fix any of the following: Element has insufficient color contrast of 4.41 (foreground color: #8c6d4f, background color: #faf6ee, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "nodeCount": 1
+    }
+  ],
   "keyboardFindings": []
 }

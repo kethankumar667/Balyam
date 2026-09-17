@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-09T16:36:04.802Z",
+  "generatedAt": "2026-09-17T07:05:02.280Z",
   "engine": "chromium (playwright)",
   "scope": "Layout measured in one engine at CSS viewport sizes. NOT device certification: no WebKit, no Gecko, no physical hardware, and nothing about iOS address-bar or Android keyboard insets.",
   "viewports": [
@@ -32,14 +32,29 @@
     "wcagTouchTargetPx": 24
   },
   "pagesInspected": 88,
-  "controlsMeasured": 1787,
+  "controlsMeasured": 1856,
   "counts": {
     "critical": 0,
-    "high": 0,
-    "medium": 53
+    "high": 21,
+    "medium": 49
   },
   "findings": [
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Home",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "320×568 (iPhone SE)",
@@ -64,6 +79,21 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Games",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "320×568 (iPhone SE)",
@@ -79,6 +109,21 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Competitions",
           "size": "82.1×32"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Leaderboard",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
         }
       ]
     },
@@ -102,6 +147,21 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Tournaments",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "320×568 (iPhone SE)",
@@ -121,6 +181,21 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Social hub",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "320×568 (iPhone SE)",
@@ -136,6 +211,21 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Settings",
           "size": "49.1×32"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "Settings",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
         }
       ]
     },
@@ -154,12 +244,61 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "320×568 (iPhone SE)",
+      "route": "About",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 282,
+          "right": 326
+        }
+      ]
+    },
+    {
+      "kind": "touch-target-below-product-bar",
+      "severity": "MEDIUM",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Home",
+      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Home",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "Games",
-      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "4 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
@@ -178,12 +317,32 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Games",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "Leaderboard",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
@@ -193,6 +352,21 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Competitions",
           "size": "82.1×32"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Leaderboard",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
         }
       ]
     },
@@ -201,8 +375,13 @@
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "Tournaments",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
@@ -216,12 +395,32 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Tournaments",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "Social hub",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
@@ -235,12 +434,32 @@
       ]
     },
     {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "Social hub",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
+        }
+      ]
+    },
+    {
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "Settings",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "3 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
@@ -254,21 +473,17 @@
       ]
     },
     {
-      "kind": "touch-target-below-product-bar",
-      "severity": "MEDIUM",
+      "kind": "control-clipped",
+      "severity": "HIGH",
       "viewport": "360×800 (Galaxy A/S)",
-      "route": "Sign in",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "route": "Settings",
+      "message": "1 control(s) extend past the viewport edge.",
       "controls": [
         {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "Google",
-          "size": "150×41.5"
-        },
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "🎮 Guest",
-          "size": "150×41.5"
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
         }
       ]
     },
@@ -277,12 +492,32 @@
       "severity": "MEDIUM",
       "viewport": "360×800 (Galaxy A/S)",
       "route": "About",
-      "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
+      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
+        {
+          "selector": "a.flex.items-center.gap-2.5",
+          "label": "BHALYAM — go to the lounge home",
+          "size": "38.5×51"
+        },
         {
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
           "size": "36×32"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "360×800 (Galaxy A/S)",
+      "route": "About",
+      "message": "1 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 322,
+          "right": 366
         }
       ]
     },
@@ -383,25 +618,6 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Settings",
           "size": "49.1×32"
-        }
-      ]
-    },
-    {
-      "kind": "touch-target-below-product-bar",
-      "severity": "MEDIUM",
-      "viewport": "375×667 (iPhone 8/SE3)",
-      "route": "Sign in",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
-      "controls": [
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "Google",
-          "size": "157.5×41.5"
-        },
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "🎮 Guest",
-          "size": "157.5×41.5"
         }
       ]
     },
@@ -521,25 +737,6 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Settings",
           "size": "49.1×32"
-        }
-      ]
-    },
-    {
-      "kind": "touch-target-below-product-bar",
-      "severity": "MEDIUM",
-      "viewport": "390×844 (iPhone 13-16)",
-      "route": "Sign in",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
-      "controls": [
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "Google",
-          "size": "165×41.5"
-        },
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "🎮 Guest",
-          "size": "165×41.5"
         }
       ]
     },
@@ -671,25 +868,6 @@
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "412×915 (Pixel 7-9)",
-      "route": "Sign in",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
-      "controls": [
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "Google",
-          "size": "176×41.5"
-        },
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "🎮 Guest",
-          "size": "176×41.5"
-        }
-      ]
-    },
-    {
-      "kind": "touch-target-below-product-bar",
-      "severity": "MEDIUM",
-      "viewport": "412×915 (Pixel 7-9)",
       "route": "About",
       "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
@@ -814,25 +992,6 @@
       "kind": "touch-target-below-product-bar",
       "severity": "MEDIUM",
       "viewport": "430×932 (iPhone Pro Max)",
-      "route": "Sign in",
-      "message": "2 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
-      "controls": [
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "Google",
-          "size": "185×41.5"
-        },
-        {
-          "selector": "button.flex.items-center.justify-center",
-          "label": "🎮 Guest",
-          "size": "185×41.5"
-        }
-      ]
-    },
-    {
-      "kind": "touch-target-below-product-bar",
-      "severity": "MEDIUM",
-      "viewport": "430×932 (iPhone Pro Max)",
       "route": "About",
       "message": "1 control(s) smaller than the product's 44×44px thumb bar but at or above the WCAG floor.",
       "controls": [
@@ -840,6 +999,153 @@
           "selector": "a.inline-flex.items-center.min-h-[32px]",
           "label": "Home",
           "size": "36×32"
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Home",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Games",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 859,
+          "right": 1028
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1038,
+          "right": 1082
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Leaderboard",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Tournaments",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Social hub",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "Settings",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
+        }
+      ]
+    },
+    {
+      "kind": "control-clipped",
+      "severity": "HIGH",
+      "viewport": "1024×1366 (iPad Pro)",
+      "route": "About",
+      "message": "2 control(s) extend past the viewport edge.",
+      "controls": [
+        {
+          "selector": "button.relative.min-h-[44px].min-w-[44px]",
+          "label": "Profile — LayoutProbe",
+          "left": 857,
+          "right": 1025
+        },
+        {
+          "selector": "button.inline-flex.items-center.justify-center",
+          "label": "Switch to dark mode",
+          "left": 1035,
+          "right": 1079
         }
       ]
     },

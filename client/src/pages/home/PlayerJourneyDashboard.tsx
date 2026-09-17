@@ -72,7 +72,8 @@ export function PlayerJourneyDashboard({
       </div>
 
       {!snapshot.ready ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse" aria-busy="true" aria-label="Loading player progress">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse" role="status" aria-busy="true">
+          <span className="sr-only">Loading player progress</span>
           {[1, 2, 3].map((i) => (
             <div
               key={i}

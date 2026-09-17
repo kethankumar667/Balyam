@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, fireEvent, waitFor } from "@testing-library/react";
+import { useStreakAutoOpen } from "../../../hooks/useStreakAutoOpen";
 import { useAuthStore } from "../../../store/authStore";
 import { useStreakStore } from "../../../store/streakStore";
 import { DailyStreakEntryChip } from "../DailyStreakEntryChip";
@@ -60,6 +61,8 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
   });
 
   afterEach(() => {
+    apiJsonSpy.mockRestore();
+    refreshWalletSpy.mockRestore();
     useStreakStore.getState().resetTransientState();
     useAuthStore.setState({
       ready: true,
@@ -73,6 +76,84 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
    * 1. Auto-Open Triggering
    * ───────────────────────────────────────────────────────────────────────── */
   describe("Auto-Open Triggering", () => {
+    it("does not automatically retry a failed initial load and preserves manual refresh", async () => {
+      useAuthStore.setState({ ready: true, userId: "user-alpha", isMember: true });
+      const recoveredState = createMockStreakState({ isClaimableToday: false });
+      apiJsonSpy.mockResolvedValue(recoveredState).mockResolvedValueOnce(null);
+
+      const { rerender, unmount } = renderHook(() => useStreakAutoOpen());
+      await act(async () => {});
+
+      expect(apiJsonSpy).toHaveBeenCalledTimes(1);
+      expect(useStreakStore.getState().state).toBeNull();
+      expect(useStreakStore.getState().isLoading).toBe(false);
+
+      rerender();
+      await act(async () => {});
+      expect(apiJsonSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await useStreakStore.getState().fetchStreak();
+      });
+      expect(apiJsonSpy).toHaveBeenCalledTimes(2);
+      expect(useStreakStore.getState().state).toEqual(recoveredState);
+      unmount();
+    });
+
+    it("allows a fresh automatic attempt after identity changes and on remount", async () => {
+      useAuthStore.setState({ ready: true, userId: "user-alpha", isMember: true });
+      apiJsonSpy.mockResolvedValue(createMockStreakState({ isClaimableToday: false }))
+        .mockResolvedValueOnce(null);
+
+      const { unmount } = renderHook(() => useStreakAutoOpen());
+      await act(async () => {});
+      expect(apiJsonSpy).toHaveBeenCalledTimes(1);
+
+      apiJsonSpy.mockResolvedValueOnce(null);
+      await act(async () => {
+        useAuthStore.setState({ userId: "user-beta" });
+      });
+      expect(apiJsonSpy).toHaveBeenCalledTimes(2);
+      expect(useStreakStore.getState().state).toBeNull();
+
+      unmount();
+      apiJsonSpy.mockResolvedValueOnce(null);
+      const remounted = renderHook(() => useStreakAutoOpen());
+      await act(async () => {});
+      expect(apiJsonSpy).toHaveBeenCalledTimes(3);
+      expect(useStreakStore.getState().isLoading).toBe(false);
+      remounted.unmount();
+    });
+
+    it("waits for auth readiness and resets a member fallback attempt on sign out", async () => {
+      useAuthStore.setState({ ready: false, userId: null, isMember: true });
+      apiJsonSpy.mockResolvedValue(createMockStreakState({ isClaimableToday: false }))
+        .mockResolvedValueOnce(null);
+
+      const { unmount } = renderHook(() => useStreakAutoOpen());
+      await act(async () => {});
+      expect(apiJsonSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        useAuthStore.setState({ ready: true });
+      });
+      expect(apiJsonSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        useAuthStore.setState({ isMember: false });
+      });
+      expect(apiJsonSpy).toHaveBeenCalledTimes(1);
+      expect(useStreakStore.getState().state).toBeNull();
+
+      apiJsonSpy.mockResolvedValueOnce(null);
+      await act(async () => {
+        useAuthStore.setState({ isMember: true });
+      });
+      expect(apiJsonSpy).toHaveBeenCalledTimes(2);
+      expect(useStreakStore.getState().isLoading).toBe(false);
+      unmount();
+    });
+
     it("auto-opens claim modal when user is authenticated, streak is unclaimed, and not yet opened in session", async () => {
       useAuthStore.setState({
         ready: true,

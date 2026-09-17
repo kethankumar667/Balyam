@@ -1,5 +1,349 @@
 # Mandali — end-to-end implementation plan
 
+## Current proposal — private groups and existing-wallet donations
+
+Updated: 2026-09-17. **Analysis and planning only; not implementation approval.**
+
+This section supersedes conflicting requirements in the September 16 draft below and its companion architecture/acceptance documents. The older material remains historical design input, not a second active release contract. Before implementation, reconcile those companion documents and ADRs against this proposal. No source code, migrations, dependencies, or deployments were changed for this update.
+
+### 1. Confirmed requirements and recommended release boundary
+
+Confirmed in the current conversation:
+
+- Any verified signed-in account may create a private group, subject to ordinary abuse limits. Platform-admin status is not required.
+- Every new membership requires the group owner/admin's approval. Opening a link, entering a code, or accepting an invitation does not grant membership. Creating the group atomically establishes its creator as owner; that is not a join request.
+- Members can chat, request coins, donate existing wallet coins, and share game-room joining information.
+- Example: A requests 100 coins; B chooses Donate; B loses 100 and A receives 100.
+
+Recommended interpretation for the first complete release: one donor funds the full request, exactly once, with no fee. No partial contributions, automatic deductions, loans, group treasury, cash-out, or new currency. B sees a confirmation naming A and the amount. Admin approval is required for membership, not for each donation. These donation details are proposed defaults beyond the confirmed debit/credit example.
+
+The core release includes creation, approval, membership administration, persistent text chat, structured coin-request cards, full-request donations, structured game-share cards, unread state, essential moderation, and durable in-app notifications. Deliver internal slices incrementally, but do not describe chat-only delivery as completion of this request.
+
+Defer custom channels, uploads, voice/video, polls, advanced discovery, unique handles, probation, guest passes, reservation/waitlist machinery, seasons, and generated recaps. They are not necessary for the requested first loop. Existing draft features are not automatically mandatory. A direct member-to-member gift without a request can later reuse the transfer primitive; request-backed donations are the initial contract.
+
+Privacy means access-controlled private groups, not WhatsApp-equivalent end-to-end encryption. The proposed server can process message bodies for moderation; do not market E2EE without a separate cryptographic/key-management design. Previously viewed or copied information cannot be recalled after removal.
+
+### 2. Source-backed project assessment
+
+Paths are relative to the repository root. This was a cross-project architecture review, not an exhaustive audit of every game implementation or proof of production configuration.
+
+| Area | Observed evidence | Implementation consequence |
+|---|---|---|
+| Server stack | `server/src/index.ts`; `server/src/persistence/postgrest.ts:61` | Extend Express, Socket.IO and existing Supabase PostgREST/RPC; no NestJS, Redis or new server ORM required. |
+| Authentication | `server/src/auth/identity.ts:295` promotes callers in auth-off mode | Introduce strict verified-account authorization for groups and transfers. Never inherit the development bypass. |
+| Live rooms | `server/src/rooms/RoomManager.ts:1415`, `:1553`, `:1619` | Rooms are process-local and normally unsealed. Persistent groups are a separate domain; a room code is not membership. |
+| Chat | `server/src/rooms/RoomManager.ts:5725`; `client/src/components/Chat.tsx:21`; `client/src/store/roomStore.ts:301` | Existing chat is socket-bound and ephemeral, capped at 200 client messages. Reuse presentation selectively, not its storage/identity model. |
+| Parties | `shared/party/Party.ts:11`; progression migration party tables | Parties already exist but have different lifecycle/capacity rules, including one party per player. Do not turn parties into groups or migrate them silently. |
+| Social page | `client/src/pages/SocialHubPage.tsx:16` | Current page is gated/mock, not a working private-group implementation. Add a real lazy-loaded group route. |
+| Economy | `server/src/economy/EconomyService.ts`; `server/src/persistence/SupabaseEconomyRepository.ts`; economy migrations | Existing durable wallets, ledgers, stakes, rewards, cosmetics and settlement must be extended, not replaced. Peer donations are missing. |
+| Wallet UI | `client/src/hooks/useEconomy.ts:132`, `:264`; `client/src/lib/economyApi.ts:22` | Refresh the existing authoritative wallet cache; ledger updates follow wallet version changes. Do not create a second balance store. |
+| Game sharing | `client/src/components/room/RoomShareCard.tsx:21`; `client/src/pages/Room.tsx:1692` | This is the active share surface. Code sharing alone does not make the underlying game member-only. |
+| Notifications | `client/src/lib/profileNotifications.ts:14`; `client/src/components/layout/AppLayout.tsx:130` | Existing profile notices include sample data. Approval/donation notifications need real durable records. |
+| Feature flags | `client/src/lib/featureFlags.ts:20` | URL/local-storage overrides are presentation only. Authorization and rollout controls belong on the server. |
+| Validation | Root `package.json:6`; client/server scripts and CI | Client tests and persistence tooling exist despite stale overview docs. New behavior needs explicit added coverage. |
+
+Existing September 16 Mandali documents provide useful transaction, outbox, permission-revocation and private-room designs, but defer/isolate transfers and allow a direct-invitation membership path. Both conflict with this conversation. Recommendations or claimed historical approvals in those documents are not treated as fresh user authorization.
+
+Current working-tree changes to streak code/tests, accessibility output, and persistence verification receipts are unrelated and must remain untouched.
+
+### 3. Architecture decision
+
+| Option | Assessment |
+|---|---|
+| Existing Express + Socket.IO + Postgres transactions | Recommended: one authoritative identity/economy boundary, existing deployment and tooling, least unnecessary migration. |
+| Browser-direct Supabase group writes/realtime | Possible, but creates another authorization path alongside game/economy APIs and complicates atomic workflows. Not recommended here. |
+| Separate chat/group microservice | Independently scalable later, but introduces distributed identity, transaction and room-admission coordination before there is evidence it is needed. Defer. |
+
+Recommended flow:
+
+```text
+React group UI -> authenticated Express API -> focused group/economy services
+              -> existing PostgREST RPC adapter -> PostgreSQL transaction
+PostgreSQL outbox -> worker -> existing Socket.IO -> authorized refetch/sync
+Game share/admission -> narrow room adapter -> existing RoomManager/GameEngine
+```
+
+Postgres owns memberships, requests, messages, transfers, audit and delivery intent. Socket.IO only delivers notifications of committed changes. Live gameplay remains RoomManager-owned; no database call per move. Do not use the progression write-behind queue for accepted messages or financial transfers.
+
+Groups and donations fail closed when verified auth, required schema, or durable storage is unavailable. Test doubles are explicitly selected in tests; never silently substitute an in-memory production backend. A database timeout after a command may mean an uncertain commit, not a definite failure.
+
+### 4. Membership, roles and invitations
+
+Use stable verified account identity, not room seat IDs, display names, localStorage membership flags, or client-supplied actor IDs.
+
+| Action | Owner | Admin | Member | Pending/outsider |
+|---|---|---|---|---|
+| Read permitted chat and member list | Yes | Yes | Yes | No |
+| Send, request/donate coins, share games | Yes | Yes | Yes, subject to restrictions | No |
+| Approve/reject applicants | Yes | Yes | No | No |
+| Remove/ban ordinary members; moderate | Yes | Yes | No | No |
+| Appoint/demote admins; transfer ownership; archive | Yes | No | No | No |
+| Leave | Transfer or archive first | Yes | Yes | Withdraw request only |
+
+Admins cannot remove the owner or modify peer admins. Group-admin status never grants platform-admin or wallet-adjustment powers. Suspension, chat mute and transfer restrictions are conditions separate from base role. An owner/admin can never spend another person's wallet.
+
+Joining is always `PENDING -> APPROVED | REJECTED | WITHDRAWN | EXPIRED | CANCELLED`. Approval and membership creation are one transaction. Direct-invite acceptance creates a pending request; there is no auto-join exception. Approval requires an applicant-initiated request, so admins cannot silently enroll unwilling recipients.
+
+Within that transaction recheck reviewer rights, applicant eligibility, ban/block status, group state, invitation validity and remaining capacity. Repeated approval creates one membership. Two approvals for the final slot yield one success. Unban does not restore membership or previous admin privileges; rejoining requires a fresh approval.
+
+Exactly one eligible owner must exist for an active group. Use an authoritative owner pointer and a relational commit-time constraint to its active membership, not just an index that permits zero owners. Owner transfer, leave/archive, suspension and deletion have explicit audited workflows.
+
+Invite URLs use cryptographically random tokens stored only as hashes. Human-entry codes are separate, rate-limited, expiring request locators, never authorization credentials; do not reuse six-character game codes. Use generic invalid/unavailable responses to limit enumeration. Limit preview to group name, approved description and curated avatar; no chat/member list/presence. Tokens must be redacted from logs and analytics. Revocation prevents future requests and cancels linked pending requests; use limits are consumed only by committed approvals.
+
+Proposed configurable pilot defaults: 32 members/group, 5 memberships/account, 2 owned groups/account, 7-day invitation expiry, 10 successful uses/link, 1 active coin request/member/group, and 24-hour coin-request expiry. These are product defaults for review, not confirmed requirements or security guarantees.
+
+New members see chat from their latest approved membership episode onward by default. Replies, search, cards and previews respect that visibility floor. They cannot fund a request whose underlying card they are not authorized to view. Rejoin does not restore access to previous private history.
+
+### 5. Chat, delivery and private data
+
+One general conversation per group. Initial trusted message kinds: `TEXT`, `SYSTEM`, `COIN_REQUEST`, `GAME_SHARE`. Only server workflows may create system/financial/game cards; user text cannot impersonate a transaction or trusted Join button.
+
+Persist text before acknowledging success. Assign server ordering plus immutable IDs. A client-generated request ID and normalized payload hash make retries deduplicate; same key with different content conflicts. Use cursor pagination, bounded client memory, deletion tombstones and monotonic read cursors. Start with 50-message pages and a proposed 2,000-character maximum. Defer complex threads/search/edit history unless explicitly restored to release scope.
+
+In the same database transaction, write the domain change and an outbox event. Workers claim bounded batches with leases, retry/backoff and deduplicated consumers. Socket delivery may duplicate or be missed; after reconnect/foreground, fetch canonical changes after the stored cursor. Changes must include deletion, card-status and access updates, not just new text. An expired cursor requires a clean authorized snapshot. Subscription setup must close the snapshot/subscribe race with a follow-up delta fetch.
+
+Use the existing singleton socket with namespaced group subscriptions, account authentication/refresh and membership checks. Sensitive message bodies are fetched through authorized APIs; realtime hints carry IDs/versions rather than private bodies. Clear group cache, draft, subscriptions and stale in-flight responses on logout, account switch or membership loss. Disable caching of private API responses in browser/service-worker intermediaries.
+
+Removal prevents all future reads/writes/subscriptions, cancels open requests and updates member-only game access. A delayed notification must not restore access. Use an authorization generation/revocation barrier to resolve concurrent admission or delivery; do not promise to erase information already downloaded.
+
+Essential moderation: report message/member, remove or tombstone content, chat mute, ban, block-aware notifications/donations, slow-mode/rate limits, audit and a staffed escalation path. Preserve restricted report evidence when visible content is deleted. Start with in-app notifications only: approval needed, request decided, request funded, removal and permitted game-share updates. Wallet balance details never appear in group notifications.
+
+### 6. Coin requests and donations: financial contract
+
+Example with no fee:
+
+```text
+Before: A = 50 coins; B = 300 coins; request = OPEN for 100
+B confirms Donate 100
+After:  A = 150 coins; B = 200 coins; request = FUNDED
+Ledger: B -100 and A +100, linked to one immutable transfer ID
+```
+
+Request lifecycle: `OPEN -> FUNDED | CANCELLED | EXPIRED`. Failed attempts do not mark it funded. The requester may cancel only while open. Amount is immutable; changing it means cancelling and creating a new request. Full funding closes the card across all clients. No donor identity/amount is inferred from untrusted card JSON.
+
+The browser sends the group/request ID and idempotency key; the server derives B from verified credentials and A/amount from the stored request. There is a dedicated confirmation step, no automatic payment on opening a card, and no offline queued automatic transfer.
+
+**One Postgres transaction must:**
+
+1. Verify feature availability and current actor, group, membership, request, block and transfer eligibility under the established lock protocol.
+2. Lock the relevant request and both wallet rows in a globally consistent order compatible with existing spending operations; serialize membership removal/cancellation against funding.
+3. Resolve actor/operation/scope/key plus normalized payload hash before applying new-funding status checks. A committed retry returns only the actor's authorized sanitized receipt without moving funds again; changed payload conflicts. Coordinate concurrent uses of the same key. A different donor/key cannot fund an already funded request.
+4. For a new transfer, check request is open/unexpired and visible to B, A and B are different active members of that group, both wallets are usable, B has sufficient transferable balance, and all caps hold atomically. A membership-lost caller may read their own prior wallet receipt through the wallet API, not regain group access through replay.
+5. Debit B and credit A by the same positive integer amount; update both wallet versions and transfer-specific lifetime counters.
+6. Insert one transfer record and exactly two linked append-only ledger entries; mark the request funded and update its card version.
+7. Commit audit, safe receipt, change log and outbox notification intent together with the financial changes.
+
+Any failure before commit rolls back all financial changes. Notification delivery happens after commit and cannot roll back or repeat money movement. Return success only for a confirmed committed receipt. If the HTTP response is lost, retry with the same key or fetch operation status; show Processing/Checking rather than encourage a second payment.
+
+Two donors racing to fund A's request: one succeeds; the other receives Already funded and pays nothing. Double-clicks, multiple tabs, duplicate outbox deliveries and server restarts cannot produce another transfer. Donation versus game-entry debit, cosmetics purchase, account freeze or another donation must share wallet-row serialization; a process-local lock is not sufficient.
+
+Use Postgres bigint and decimal-string API amounts; never JavaScript floating-point arithmetic for balances. Extend the existing ledger vocabulary with transfer-out/transfer-in categories and explicit cumulative counters rather than disguising donations as prizes, grants, or admin adjustments. Update the wallet reconciliation equation to include incoming minus outgoing transfers, preserving legacy counter meanings. Update every affected DTO, view, SQL constraint, repository implementation, wallet/history presentation and reconciliation test. The two transfer ledger legs sum to zero; total wallet supply is unchanged. No World Bank revenue, XP, game win or donation-volume reward is created.
+
+An immutable transfer receipt is independent of the chat card. Deleting the message, leaving the group or closing the group must not delete financial records or refund a settled donation. Participants retain access to their own sanitized wallet receipt after group access ends, without revealing group history. Future reversal is a separate privileged, audited, compensating operation linked to the original; never edit ledger history or silently claw back coins after they were spent.
+
+Additional source-backed donation prerequisites: match participant debit locking currently follows supplied participant order (`supabase/migrations/20260910000000_economy_idempotent_participant_debits.sql:125`), so align multi-wallet ordering across operations or explicitly support safe rollback/retry; sorting only the new donation path is insufficient. Review cosmetic refund correctness (`supabase/migrations/20260925000000_cosmetics_refund_capability.sql:109`): bound refunds to the original paid amount and atomically consume refund eligibility once before transferable balances launch. These are source-level review findings, not runtime-reproduced defects. Funding must not implicitly mint starter grants. Extend `WalletDrawer.tsx:39` with explicit transfer direction/labels because unknown entry types currently default to credit.
+
+**Economy launch gate:** existing starter coins, recurring rewards, vouchers and cosmetic refunds acquire new abuse implications when transferable. Verified sign-in alone does not establish unique-human identity. Product/economy review must choose eligible sources, account-age requirements, per-transfer/day/recipient limits, shared-network-safe abuse detection, and handling of frozen/deleted accounts before enabling donations. If promotional coins are nontransferable, balance provenance or restricted-balance accounting and all relevant spend/refund paths must be designed and tested; an arbitrary lifetime-total formula is not a safe substitute. Keep donations disabled until this policy and cross-operation concurrency tests pass.
+
+### 7. Database and API implementation map
+
+Add only tables required by each implemented slice:
+
+| Domain | Planned records/invariants |
+|---|---|
+| Groups | `mandalis`, `mandali_memberships`: stable IDs, owner relationship, versions, membership episode/visibility floor and indexes by account/status. |
+| Approval | `mandali_invites`, `mandali_join_requests`: token hash/code lookup, deadlines, reviewer, unique pending request per group/account, limited uses. |
+| Chat | `mandali_messages`, `mandali_read_cursors`, `mandali_changes`: group-scoped order/cursor, author/client-key dedup, structured object references, tombstones. |
+| Donations | `mandali_coin_requests`, `coin_transfers`: immutable amount/recipient, request status/version, unique successful funding per request, sender/recipient receipt indexes. Extend existing wallets/ledgers, do not add competing wallets. |
+| Reliability | Command receipts/idempotency, transactional rate-limit buckets where needed, outbox leases/deliveries, per-recipient inbox/preferences. |
+| Safety | Audit, reports/evidence, membership restrictions and block integration; reuse existing primitives where verified adequate. |
+| Games | Group-scoped share records; member-only games additionally need durable binding/access metadata and authority epoch. |
+
+Use group-scoped composite relationships to stop cross-group message/request references. Index foreign keys and actual query patterns: group/message order, pending approvals, account memberships, open request expiry, wallet/transfer history, unread inbox and due outbox work. Use cursor rather than offset pagination for growing chat/ledger lists. Use timestamptz deadlines checked at command time, not only by cleanup workers.
+
+Enable RLS and deny direct browser access to privileged tables/functions. Revoke default RPC execution grants; grant only required server roles. Because the existing service credential bypasses RLS, each privileged RPC must validate the server-verified actor and object scope. Use constrained search paths where security-definer functions are required. Verify real anon/authenticated/service-role behavior through actual PostgREST, not just SQL running as an owner.
+
+Proposed modules: `shared/mandali/{types,permissions,validation}.ts`; `server/src/mandali/` controllers, authorization, focused services and repository; `server/src/economy/` transfer orchestration using existing repository/RPC infrastructure; `client/src/features/mandali/`, `client/src/lib/mandaliApi.ts`, `client/src/store/mandaliStore.ts`. Extend shared socket interfaces and centralized registration; do not put the whole feature into `RoomManager.ts` or `shared/types.ts`.
+
+HTTP resource families under `/api/mandali`: groups/members, invite resolution, join requests and decisions, messages/read/sync, coin requests/fund/status, game shares, notification preferences and reports. All mutations have typed runtime validation, bounded error codes and idempotency where applicable. Use 401 for unauthenticated callers, 404 for inaccessible private objects, 403 for forbidden actions on visible objects, 409 for state/version conflicts, 429 for limits, and 503 for unavailable durability. Do not return SQL details or another member's wallet balance.
+
+### 8. Game-code sharing versus private game admission
+
+These are different features and must be labelled honestly:
+
+- **Ordinary room shared to group:** an authorized member posts a validated game-share card; the server resolves current game/lobby availability. The underlying ordinary room retains existing code-based admission. A forwarded code can still work outside the group. Label it as a shared ordinary room, not a members-only game.
+- **Members-only group game, recommended for the private-group experience:** creation registers explicit server-owned group/access metadata before exposing the lobby. Every join path checks current verified membership. The code locates the room; it does not grant entry. This costs more than placing a Join button in chat.
+
+Build structured sharing first behind internal rollout, then enable member-only game creation through a narrow typed RoomManager adapter. Normal game code creation/join behavior must remain unchanged. Do not silently convert existing ordinary rooms into private rooms.
+
+For member-only rooms, cover raw `room:join`, direct `/room/:code`, reclaim with an old seat token, `/tv/:code`, spectating, start, rematch, host migration, bot/local-seat changes and post-await revalidation. Reclaim requires current account authorization plus seat ownership. Default anonymous/guest access and spectating off for these rooms. Existing eligible bots follow catalog rules. Removing a member removes lobby access; during play use the existing departure/takeover/settlement lifecycle rather than inventing refunds or corrupting opponents' match.
+
+Joining uses the existing singleton socket and same-tab room route, with explicit confirmation before leaving another active room. Provide Return to group. Shared cards show full/started/closed/interrupted states and current entry stakes. Sharing or approving group membership never charges game entry; preserve existing ready/consent and settlement flow.
+
+Live rooms are in memory. Recommended initial restart contract: durable groups/chat/transfers survive; a lost advertised game becomes interrupted/unavailable, not silently recreated or resumed. A durable logical binding and fenced serving authority protect against duplicate room creation during retries and overlapping deploys. Do not claim horizontal game scaling from database persistence alone. If results are shown, project only authoritative durable outcomes with stable identities; a missing room is not proof of a winner or refund.
+
+### 9. User experience
+
+Routes: lazy-loaded `/mandali`, `/mandali/:id`, invite resolution, and existing game routes. Add navigation via the existing sidebar/header configuration without replacing friends/parties. Use Mandali as the existing working feature name, not a requirement to rename unrelated concepts.
+
+Mobile: group list -> group conversation, compact header, accessible Chat/Games/Members sections and admin approval badge. Requests appear as cards: requester, amount, expiry/status and Donate. Confirmation sheet names the recipient and uses the existing wallet display. Keep composer above the mobile keyboard/safe area; history pagination preserves scroll position. Show pending membership without chat previews.
+
+Desktop: group list, conversation, optional member/game context rail; dedicated layout rather than enlarged mobile markup. Share data/hooks/cards across layouts. Use existing DLS buttons, accessible Modal, error/empty/loading states, themes and reduced-motion preferences. Refresh both donor and recipient wallets authoritatively after committed events; wallet versions trigger existing ledger refresh. Never optimistically claim a changed financial balance.
+
+Required unhappy states: pending/rejected membership, invalid/revoked code, group full, muted/removed, message sending/uncertain/retry, request expired/cancelled/funded, insufficient or ineligible coins, frozen wallet, feature read-only, database outage, game full/ended/interrupted, expired login and account switch.
+
+### 10. Delivery plan and release gates
+
+Each milestone includes real backend/frontend integration and focused tests. Schema ownership and economy changes must be coordinated; frontend work can proceed against typed fixtures, but fixtures are not acceptance evidence.
+
+| Milestone | Work and dependencies | Exit proof |
+|---|---|---|
+| P0 — contract and baseline | Reconcile older docs; settle provisional defaults, transfer eligibility/caps, history/retention and game-sharing scope; capture current test/build baseline and deployment topology. | Approved scoped contract; unrelated failures identified; no unresolved financial/privacy policy hidden in implementation. |
+| P1 — identity/schema foundation | Strict verified auth, server flags, domain contracts, repository/RPC approach, migration/grant tests, idempotency/outbox foundation. | Auth-off cannot grant access; direct browser RPC denied; durability unavailable means fail-closed. |
+| P2 — groups and approval | Atomic creation/ownership, invites/codes, requests/approval, capacity, roles, removal/ban/archive and first usable group UI. | Two real accounts complete create -> request -> approve; outsider cannot read; concurrency/owner invariants pass. |
+| P3 — durable chat | Message/card types, pagination/read cursors, sync, notifications, basic moderation, mobile/desktop layouts. | Committed message survives restart; lost/duplicate events converge; removal closes every private-data path. |
+| P4 — wallet donations | Requires P2/P3 and approved economy policy. Request cards, atomic transfer RPC, counters/ledger/views/DTO updates, confirmations, receipts and wallet refresh. | A requests 100, B pays 100, one receipt/two balanced entries; all concurrent-spend, retry and crash cases pass. |
+| P5 — game integration | Share existing rooms honestly; add explicitly member-only creation/admission, same-tab entry/return, lifecycle/card updates and existing economy regression tests. Can run alongside P4 after contracts stabilize. | Leaked code/old seat cannot enter member-only game; ordinary rooms unchanged; restart produces correct unavailable state. |
+| P6 — production readiness | Real PostgREST security tests, multi-account browser journey, load/chaos, deletion/export, monitoring, restore/rollback, human support and independent privacy/economy review. | Evidence-backed release sign-off; server-controlled internal -> invited cohort -> wider rollout. |
+
+Rough planning estimate, not a commitment: 12–18 engineer-weeks for this narrower core including request-backed donations and limited member-only game certification; about 8–12 calendar weeks with two engineers and dedicated QA/design/review support. Transferable-balance provenance, live-game restoration or broad game certification can add substantial scope. Re-estimate after the first real donation transaction and first private-room integration. The older 14–22 engineer-week estimate covers a broader feature bundle and is not additive.
+
+### 11. Acceptance tests that define completion
+
+- Identity/permissions: verified and expired accounts; auth-off refusal; actor spoofing; cross-group object IDs; role hierarchy; direct API/socket access; logout/account-switch stale responses; owner transfer/deletion.
+- Membership: duplicate approvals; two applicants/final slot; approve versus revoke/ban/archive/expiry; direct invite still requires approval; leave/rejoin cannot recover former privileges/history.
+- Chat: loss before/after commit; duplicate sends and changed-payload idempotency; reconnect gaps; deletion/card updates; cursor retention reset; private-body denial after removal; evidence survives visible deletion.
+- Donations: exact 100-coin example; self-donation refusal; insufficient/frozen/ineligible balance; two donors/one request; same donor/two requests; donation versus game entry and cosmetics; cancel/expire/remove/freeze versus funding; duplicate HTTP retries/new connections; response lost after commit; crash before/after commit; notification failure; wallet/ledger/version reconciliation; no supply creation; safe receipt after group exit.
+- Games: ordinary sharing retains ordinary policy; member-only raw code/URL/spectator/reclaim paths deny outsiders; removal/admission race; another active-room conflict; consent/entry charges preserved; retry/deploy interruption cannot duplicate live authority; normal room/guest/solo/pass-and-play regressions unchanged.
+- Database: fresh additive migration and upgrade with existing wallets/data; backfill defaults; old/new app compatibility; FK/grant/RLS checks; simultaneous transactions on separate connections; bounded locks/retries; real PostgREST role matrix; backup restore and outbox lease recovery.
+- Browser: separate A/B/admin/outsider contexts complete approval -> chat -> request -> donate -> play -> return. Verify 320px minimum and 375/768/1024/1440 layouts, mobile keyboard, 44px targets, zoom, screen reader/focus, both themes and reduced motion. Label emulated versus physical-device evidence.
+
+Existing root commands to run during implementation: `npm run typecheck`, `npm test`, `npm run build`, `npm run check:bundle`, `npm run check:deps`, `npm run check:admin-key-leak`, `npm run verify:persistence`, `npm run coverage`, `npm run check:mobile-layout`, `npm run check:a11y-rendered`, `npm run check:multiplayer`, `npm run check:deployment`, and the applicable release/enterprise gates. Extend real-Postgres and browser harnesses with group/transfer scenarios; existing passing reports alone cannot certify this feature. Isolated configured services are required for persistence/staging/restore checks; never run destructive scenarios against production. Verify current package scripts before execution and record whether a separate lint command exists rather than assuming one. The current schema harness targets the progression migration, not the entire migration chain; explicitly load and exercise group/transfer migrations. Release/enterprise reports are aggregations, not substitutes for executed tests, and the enterprise report's actual certification states differ from older governance descriptions. Rendered mobile checks do not prove every 44px touch target by their passing score alone; explicitly exercise the new authenticated routes and room integration.
+
+### 12. Operations, privacy and rollout
+
+Use independent server flags for groups, invitations, chat writes, coin requests, donations and private-game creation. A transfer kill switch stops new funds movement but preserves receipt/history access and committed-event recovery. Disabling game creation must not abandon active matches or settlement recovery. Client flags never grant eligibility.
+
+Proposed pilot capacity test: 200 authenticated clients across 20 groups, 20 aggregate chat writes/second, burst funding contention and concurrent games for 60 minutes. Measure rather than claim this capacity. Initial targets: ordinary API p95 under 500ms excluding external-auth latency, committed-change visibility p95 under 2 seconds, bounded reconnect recovery. Tune to the real hosting tier before rollout.
+
+Monitor oldest outbox work, failed deliveries, denied membership/admission, transfer conflicts, uncertain operations, wallet reconciliation failures, database latency, memory and moderation queue age. Alert on any reconciliation mismatch or private-data incident; log correlation IDs, never tokens/private chat bodies. Assign an operator to reports and financial investigation before external launch.
+
+Privacy/deletion is a prerequisite, not cleanup: the current account deletion path deletes `auth.users`, progression cascades to identities, while economy tables restrict deletion of wallet-bearing identities. Resolve this through an explicit transfer/archive and retained/pseudonymized financial-record workflow; do not promise simple cascading erasure. Integrate export, restricted evidence, retention holds and account disabling with existing privacy surfaces. Proposed chat retention is 90 days; evidence/financial retention requires an approved purpose-specific policy, not automatic adoption of the chat lifetime. This plan makes no legal-compliance claim.
+
+Deployment: backup/restore drill -> additive migrations -> compatible backend with flags off -> lazy frontend -> isolated acceptance -> internal accounts -> invited cohort -> wider rollout. Verify actual single-authority behavior during rolling replacement. Roll back through server flags and compatible application versions; never drop ledgers/groups or truncate evidence to undo a UI release. Keep committed transfer/outbox and existing game-settlement recovery running.
+
+### 13. Consolidated risk register
+
+Libraries support safeguards; they do not establish transaction correctness, private access or live-game scalability by themselves. Severity below is a planning assessment, not a claim of reproduced production incidents.
+
+| Risk | Severity | Required mitigation and evidence | Delivery gate |
+|---|---|---|---|
+| Duplicate or inconsistent donations | Critical | One transaction for both wallets, paired ledger entries and request closure; unique successful funding; retry/response-loss/crash and two-donor tests. | P4 |
+| Concurrent spending across features | Critical | Wallet-row serialization shared with game entry, cosmetics and other transfers; compatible multi-wallet lock order; bounded idempotent retries and real concurrent transactions. | P4 |
+| Private data exposed across membership boundaries | Critical | Central authorization and group-scoped RPC checks; no content for pending members; revoke subscriptions and discard stale caches/responses; exercise all read/write paths. | P1–P3/P6 |
+| Account disabled while cached/JWT credentials remain valid | Critical | Explicit current-account eligibility/revocation mechanism in addition to signature/expiry verification; test disabling an account with active sockets and cached credentials. Define fail-closed outage behavior and revocation propagation bounds. | P1/P4/P6 |
+| Coin farming and economy imbalance | High | Approve eligible coin sources, account-age/transfer limits and abuse policy; review promotional grants, vouchers and original-payment-bounded refunds; no donation-volume XP. | P0/P4 |
+| Lost, repeated or outdated chat/card updates | High | Persist before acknowledgement; transactional outbox; monotonic change cursor, deduplication and canonical reconnect recovery, including deletions/funded status. | P3 |
+| Member-only game entered through an alternate route | High | Reauthorize raw code, direct URL, seat reclaim, TV/spectator, start/rematch and asynchronous admission; ordinary-room regression tests. | P5 |
+| Multiple servers claim the same live game | High | One authoritative room worker, explicit routing and fencing; test replacement/lease loss/reconnect. Socket fan-out alone is insufficient. | P5/P6; later scale gate |
+| Personal-data deletion conflicts with financial retention | High | Resolve owner succession, pending requests, balance policy, restricted evidence and retained/pseudonymized receipts; export/delete tests against actual schema. | P0/P6 |
+| Spam, harassment and moderation overload | High | Rate limits, report evidence, member restrictions and human escalation ownership; measure queue age and prevent reporting abuse. | P3/P6 |
+| Database, fan-out and client-history growth | High | Indexed scoped queries, cursor pagination, bounded listeners/caches, selective subscriptions, retention and measured load/heap tests. | P3/P6 |
+| Hosting downtime, operating cost and dependency failure | High | Appropriate always-on compute, database capacity, restore-tested backups, bounded retries/backpressure and provider outage runbooks; budget from measured traffic. | P6 |
+| Added packages increase supply-chain and integration risk | Medium | Minimal dependency set, compatible versions, lockfile review, license/security checks and maintenance ownership; no incidental framework migration. | Every dependency change |
+
+Account authentication and account eligibility are distinct: the existing verifier's cached success or locally valid JWT does not establish that the account is still active. Define whether verified membership requires confirmed email or another account policy; neither local flags nor a library alone supplies that policy. Removal/account revocation must remain effective even when notification delivery is disabled.
+
+### 14. External libraries and infrastructure strategy
+
+The package inventory below was inspected during planning; it is not an installed-version/security audit. Recheck manifests, resolved versions, Node/TypeScript support and peer dependencies before implementation. Nothing in this section authorizes installation or deployment.
+
+#### Reuse dependencies already present
+
+| Existing dependency/tool | Planned use |
+|---|---|
+| Express, Socket.IO and socket.io-client | Authenticated APIs and realtime committed-change hints; preserve the singleton connection. |
+| Client `@supabase/supabase-js` | Existing account session integration; keep the server's fetch-based PostgREST/RPC adapter. |
+| Zustand | Bounded account/group-scoped state without a competing wallet cache. |
+| Client Zod and React Hook Form | Form validation and compatible runtime contract schemas. |
+| `@tanstack/react-virtual` | Long message/member list virtualization when profiling justifies it; preserve scroll anchoring and accessibility. |
+| Existing Radix/Base UI and DLS components | Accessible dialogs, confirmations, menus and responsive controls; do not introduce another UI kit. |
+| Vitest, Testing Library and Playwright | Permission/state tests, component behavior and multi-account browser journeys. |
+| Root development `embedded-postgres` and `pg` | Actual transaction/concurrency tests; not a requirement to add a production SQL driver. |
+
+No new ORM, chat platform, frontend framework or data-fetching framework is necessary for the initial release.
+
+#### Recommended initial additions, subject to dependency review
+
+| Candidate | Purpose | Scope/decision |
+|---|---|---|
+| Server `zod` | Validate untrusted HTTP/socket payloads at runtime and share compatible schemas. | Declare explicitly in the server package if imported there. Match the existing client schema major version or plan a deliberate coordinated upgrade; TypeScript types are not runtime checks. |
+| `rate-limiter-flexible` | Consistent request/socket abuse throttling rather than further bespoke implementations. | Evaluate against existing limiter utilities. Shared enforcement across replicas needs a shared backend; financial quotas remain atomic in Postgres, not merely limiter counters. |
+| `@opentelemetry/api`, `@opentelemetry/sdk-node`, selected instrumentation and exporter packages | Backend traces/metrics across request, database and outbox work. | Extend existing logging/metrics rather than duplicate them. Export to a chosen collector/backend; redact tokens, private bodies and sensitive identifiers. Current documentation treats browser instrumentation as experimental, so it is not a launch dependency. |
+| Development `fast-check` | Property-based tests of balance conservation, idempotency and state transitions. | Complements, not replaces, real Postgres concurrency and browser tests. |
+| Optional `@sentry/node` and `@sentry/react` | Error reporting and actionable release diagnostics. | Alternative/complement to the chosen observability system; avoid duplicate tracing. Private chat session replay stays disabled unless explicitly justified and consented. Review data residency, scrubbing and cost. |
+
+These are recommendations, not a mandatory bulk installation. The minimum viable implementation can use existing utilities where they meet the same verified requirements. No package establishes exactly-once financial effects without the database invariants in section 6.
+
+#### Add only at the multi-server or heavier-worker stage
+
+| Candidate/infrastructure | Use | Preconditions and limitations |
+|---|---|---|
+| `@socket.io/redis-streams-adapter` | Fan out events among multiple Socket.IO servers; supports connection-state recovery. | Does not persist canonical chat/wallets, distribute RoomManager state, or replace authorization. Recovered subscriptions must not restore revoked membership. Keep database cursor recovery. |
+| `redis` or `ioredis` | Redis connectivity for the chosen adapter/worker stack. | Select deliberately based on compatibility; do not add both without justification. |
+| Managed Redis | Shared transport, presence leases and distributed throttling. | Extra infrastructure, cost and outage behavior; never the authoritative wallet store. Bound stream/presence retention and test disconnect recovery. |
+| Optional `bullmq` | Dedicated background processing for push/email delivery, reminders, exports or media workloads. | Evaluate when workload warrants it; the common Redis-backed deployment adds Redis operations. Keep the Postgres outbox as the committed source of work and make enqueue/consumers idempotent. Jobs may run again after failures. |
+
+Initially use a bounded Postgres outbox worker; do not operate a second competing queue merely to deliver chat updates. If later adopting a job library, define the outbox-to-queue handoff, duplicate handling, leases, shutdown, retry/dead-letter ownership and rollback explicitly. A job queue must never split donor debit and recipient credit into separate jobs.
+
+For Socket.IO multi-node deployment with HTTP long-polling enabled, configure appropriate session affinity. Affinity for a socket connection is not room ownership: players on different connections still need routing to their game's authoritative worker. WebSocket-only transport avoids the polling affinity requirement but loses that fallback and does not solve game ownership.
+
+#### Optional future features
+
+| Capability | Candidate | Required design before adoption |
+|---|---|---|
+| Browser push/reminders | `web-push` | Opt-in subscriptions, service-worker/browser support, renewal/revocation and privacy-safe payloads. Push is best-effort, never proof of financial completion. |
+| Group voice/video | `livekit-client`, `livekit-server-sdk` | SFU service/deployment, TURN/network capacity, moderation and cost planning. Do not stretch existing mesh voice to large groups. |
+| Attachments | Existing Supabase Storage SDK plus selected file-validation/scanning service | Private buckets, authorized upload/download, size/type limits, untrusted-file scanning, retention and signed-link expiry. Filenames/MIME claims are not proof of safe content. |
+| Group search | Postgres full-text search initially | Apply membership, history floor, deletion and retention to every result; no new search engine until measured need. |
+| Rich text | Editor/sanitization library selected later | Plain text is the initial scope; review rendering, link policy, sanitization and moderation before expansion. |
+| AI summaries/translation | Provider SDK only after product/privacy approval | Explicit consent, group-level visibility controls, provider processing/retention policy and prompt/output isolation. No silent forwarding of private messages to an AI provider. |
+
+E2EE is not an optional package toggle. It requires a separate protocol/key lifecycle, multi-device/recovery, member-removal and metadata threat model, and decisions about server-side search, moderation and AI features. Do not imply the above libraries provide WhatsApp-equivalent privacy.
+
+#### Dependency adoption controls and reference documentation
+
+For each accepted package: name the responsible maintainer, document why existing utilities are insufficient, review license/security advisories and transitive dependencies, choose compatible versions, update the lockfile through the package manager, and run relevant typecheck/tests/build/dependency and bundle gates. Pin the agreed dependency policy rather than blindly installing latest versions. Treat hosted telemetry, Redis, SFU and scanning as separately budgeted infrastructure, not free library capabilities.
+
+Documentation consulted during planning:
+
+- [Socket.IO Redis Streams adapter](https://github.com/socketio/socket.io-redis-streams-adapter)
+- [BullMQ](https://docs.bullmq.io/)
+- [OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
+
+Documentation capability statements are not a compatibility certification for the repository's resolved versions.
+
+### 15. Measured scalability roadmap
+
+1. **Reliable initial launch — P1–P6:** existing stack, strict authorization, atomic wallet transactions, database-backed chat/outbox, indexed pagination, monitoring and real storage tests. Use appropriate production compute and restore-tested backups.
+2. **Optimize measured bottlenecks:** profile database plans, chat rendering, subscription/fan-out volume and memory; apply indexes, virtualization, batching and bounded caches. Avoid synchronous per-member work on the message-write request path.
+3. **Separate heavy background workers:** move exports, media or large notification jobs away from latency-sensitive gameplay. Keep committed source records and replayable outcomes in Postgres; choose a queue only after identifying actual operational requirements.
+4. **Scale API/realtime replicas:** introduce shared transport/throttling/revocation as needed, load-balancer affinity where required, distributed presence leases and compatible deployments. Test Redis outage and subscription recovery. Database transactions remain authoritative.
+5. **Scale live games independently:** assign each room one authoritative worker with explicit routing/fencing, replacement behavior and capacity limits. Mid-game restoration needs its own checkpoint/replay design; do not promise it through a Socket.IO adapter.
+6. **Add optional capabilities incrementally:** push, media, voice or AI each receives a focused privacy, moderation, cost and recovery review. Stable IDs, versioned contracts/events, focused modules and immutable transfer receipts preserve extension points without speculative tables or services.
+
+Advance stages based on measured CPU/event-loop delay, database latency/locks, outbox backlog, socket counts, reconnect behavior and capacity forecasts—not an arbitrary user-count promise. Record load-test topology and hosting tier with results. Always-on compute, database headroom, backup retention, restore drills and incident ownership are operational prerequisites that libraries cannot replace.
+
+### 16. Review status and remaining decision gates
+
+Confirmed: verified-account private groups; admin approval for every join; existing-wallet debit/credit donation example. Proposed: full-request-only funding, no fee, no per-payment admin approval, configurable quotas, history floor, retention, restricted game defaults and restart boundary. Donation-source eligibility, financial caps and account lifecycle/retention are mandatory release decisions before their dependent implementation.
+
+Verification for this planning update: repository/source and existing plan review; read-only working-tree status and recent commit inspection. No tests/builds, live database checks, migration execution or production capacity measurements were performed. No implementation success is claimed.
+
+---
+
+## Historical September 16 draft — superseded where it conflicts above
+
 Date: 2026-09-16  
 Status: Planning complete for review; development has not started.  
 Confirmed product decision: the feature is **Mandali**, not Circles.  
