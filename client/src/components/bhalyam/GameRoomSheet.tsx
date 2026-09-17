@@ -109,6 +109,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   chess: StarGameGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
+  "2048": StarGameGlyph,
 };
 
 /**
@@ -121,7 +122,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -131,6 +132,9 @@ const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
   brickblocks: "/brickblocks",
   tetris: "/brickblocks",
   breakout: "/breakout",
+  // Client-only solo arcade page — never opens a server room, same as the
+  // retro titles above. See client/src/pages/Game2048Page.tsx.
+  "2048": "/2048",
 };
 
 const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
@@ -141,6 +145,7 @@ const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "breakout",
   "spacewar",
   "nokiacricket",
+  "2048",
 ]);
 
 function asGameKind(slug: BhalyamGameSlug): GameKind {
@@ -338,6 +343,7 @@ const SNAKE_THEMES: { id: "monochrome" | "color" | "neon-modern"; label: string;
   { id: "neon-modern",      label: "Neon Glow",  blurb: "Modern vibrant dark mode" },
 ];
 
+
 const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
   { id: "t20",  label: "T20",  blurb: "10 ov · 3 powerplay · 3-over bowler quota" },
   { id: "odi",  label: "ODI",  blurb: "15 ov · 3 powerplay · 4-over bowler quota" },
@@ -440,6 +446,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const isSolo = game
     ? SOLO_GAME_SLUGS.has(game) || Boolean(meta?.tags.includes("solo") && !meta?.tags.includes("multiplayer"))
     : false;
+  /**
+   * Games RoomManager never charges or pays out for, regardless of seat
+   * count or mode — see NO_ECONOMY_GAMES's doc comment in shared/catalog.ts
+   * (the authoritative, server-side source of truth this mirrors). A stake
+   * picker for a game the server will never actually charge is worse than
+   * no picker: it promises a wager that never happens.
+   */
+  const isFreeEconomyGame = game === "snake" || game === "spacewar";
 
   const caps = useCapabilities();
   /**
@@ -1167,7 +1181,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
               />
             )}
 
-            {/* Entry stake — cross-game, applies to every mode */}
+            {/* Entry stake — cross-game, applies to every mode except NO_ECONOMY_GAMES (see isFreeEconomyGame above) */}
+            {!isFreeEconomyGame && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] uppercase tracking-widest font-extrabold text-sand-600 dark:text-slate-400">
@@ -1327,6 +1342,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 </p>
               )}
             </div>
+            )}
 
             {/* Per-game Primary Options */}
             {game === "snl" && (
@@ -1676,27 +1692,31 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   </span>
                 </div>
 
-                {/* Entry Stake */}
-                <div className="flex items-center justify-between pt-1 border-t border-sand-300/50 dark:border-slate-800/60">
-                  <span className="text-sand-600 dark:text-slate-400 font-semibold">Entry Stake</span>
-                  <span className="font-black text-economy-coin flex items-center gap-1">
-                    <CoinIcon className="w-3.5 h-3.5" />
-                    <span>{entryStakeCoins.toLocaleString()}</span>
-                    <span className="text-[10px] text-sand-600 dark:text-slate-400 font-normal">/ seat</span>
-                  </span>
-                </div>
+                {!isFreeEconomyGame && (
+                  <>
+                    {/* Entry Stake */}
+                    <div className="flex items-center justify-between pt-1 border-t border-sand-300/50 dark:border-slate-800/60">
+                      <span className="text-sand-600 dark:text-slate-400 font-semibold">Entry Stake</span>
+                      <span className="font-black text-economy-coin flex items-center gap-1">
+                        <CoinIcon className="w-3.5 h-3.5" />
+                        <span>{entryStakeCoins.toLocaleString()}</span>
+                        <span className="text-[10px] text-sand-600 dark:text-slate-400 font-normal">/ seat</span>
+                      </span>
+                    </div>
 
-                {/* Projected Pot Banner */}
-                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-economy-pool-surface dark:bg-economy-pool-surface border border-chest-500/25 -mx-1 mt-1">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-chest-700 dark:text-amber-200 flex items-center gap-1.5">
-                    <TrophyIcon className="w-3.5 h-3.5" />
-                    <span>Projected Pot</span>
-                  </span>
-                  <span className="font-black text-economy-coin text-sm flex items-center gap-1">
-                    <CoinIcon className="w-4 h-4" />
-                    <span>{(entryStakeCoins * (meta?.playerRange ? parseInt(meta.playerRange) || 2 : 2)).toLocaleString()}</span>
-                  </span>
-                </div>
+                    {/* Projected Pot Banner */}
+                    <div className="flex items-center justify-between p-2.5 rounded-2xl bg-economy-pool-surface dark:bg-economy-pool-surface border border-chest-500/25 -mx-1 mt-1">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-chest-700 dark:text-amber-200 flex items-center gap-1.5">
+                        <TrophyIcon className="w-3.5 h-3.5" />
+                        <span>Projected Pot</span>
+                      </span>
+                      <span className="font-black text-economy-coin text-sm flex items-center gap-1">
+                        <CoinIcon className="w-4 h-4" />
+                        <span>{(entryStakeCoins * (meta?.playerRange ? parseInt(meta.playerRange) || 2 : 2)).toLocaleString()}</span>
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1739,13 +1759,17 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     <>
                       <SparkIcon className="w-5 h-5" />
                       <span>Play vs Bots</span>
-                      <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                      {!isFreeEconomyGame && (
+                        <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                      )}
                     </>
                   ) : (
                     <>
                       <SparkIcon className="w-5 h-5" />
                       <span>Create Room</span>
-                      <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                      {!isFreeEconomyGame && (
+                        <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                      )}
                     </>
                   )}
                 </button>

@@ -5,7 +5,10 @@ export type BhalyamGameSlug =
   | "nokiacricket"
   | "brickblocks"
   | "tetris"
-  | "breakout";
+  | "breakout"
+  // Client-only solo arcade game — never opens a server room, same as the
+  // three retro titles above. See client/src/pages/Game2048Page.tsx.
+  | "2048";
 
 export interface GameLimitSpec {
   min: number;
@@ -44,6 +47,21 @@ export const GAME_LIMITS: Record<GameKind, GameLimitSpec> = {
 export const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
   "snake",
   "roadrash",
+  "spacewar",
+]);
+
+/**
+ * Games that never charge or pay out coins, for any seat count or mode.
+ *
+ * Root-caused 2026-09-17: `RoomManager.requestGameStart`'s only existing
+ * free-play exemption was `isBotPractice` (bot seats present, <=1 human) —
+ * a genuinely solo human, alone with nobody else at the table, still fell
+ * through to a real paid `commitMatchEntry`. Snake and Space War (both
+ * `GAME_LIMITS.min: 1`, meaning a lone human is a fully valid room) were
+ * silently charging the host to play against nobody.
+ */
+export const NO_ECONOMY_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
+  "snake",
   "spacewar",
 ]);
 
@@ -133,6 +151,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   blockblast: "portrait",
   spacewar: "portrait",
   roadrash: "portrait",
+  "2048": "portrait",
 
   // Browser-only retro titles — all modelled on portrait handhelds.
   nokiacricket: "portrait",
@@ -821,6 +840,37 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
       { stepNumber: 2, title: "Clear Lines", instruction: "Complete full horizontal or vertical rows to dissolve blocks." },
       { stepNumber: 3, title: "Chain Combos", instruction: "Clear consecutive lines in back-to-back turns for multipliers." },
       { stepNumber: 4, title: "Maintain Space", instruction: "Keep board open for large 3x3 square blocks." },
+    ],
+  },
+  {
+    id: "2048",
+    name: "2048",
+    teluguName: "2048",
+    tagline: "Slide, merge, and chase your own best run",
+    shortDescription: "The classic tile-merging puzzle, solo — four ways to play it: Battle (escalating garbage tiles as a self-imposed challenge), Race (beat your own best time to the target tile), Time Attack (2-minute high-score sprint), and Zen (no clock, a few free undos).",
+    description: "One board, your own pace. Battle drops garbage tiles onto your own grid as merges pile up, turning survival into the challenge. Race times your sprint to the target tile against your own saved best. Time Attack is a 2-minute high-score dash. Zen strips away every clock and fail state for a calm slide with a few free undos.",
+    nostalgiaQuote: "\"One more merge and I'll stop.\" — Every 2048 addict, every time.",
+    minPlayers: 1,
+    maxPlayers: 1,
+    playTime: "3–10 min",
+    playTimeCategory: "quick",
+    difficulty: "medium",
+    genre: "casual",
+    tags: ["puzzle", "tiles", "grid", "solo"],
+    nostalgiaWorlds: ["rainy_evening", "sunday_afternoon"],
+    supportedModes: ["solo_arcade"],
+    supportsBots: false,
+    isPopular: true,
+    isClassic: false,
+    availability: "playable",
+    accent: { from: "#EDCC61", to: "#F2B179" },
+    thumbnail: "/games/thumbnails/2048.svg",
+    heroAsset: "/games/heroes/2048-hero.svg",
+    howToPlay: [
+      { stepNumber: 1, title: "Pick a Mode", instruction: "Battle (escalating garbage tiles), Race (beat your own best time), Time Attack (highest score on the clock), or Zen (no clock, a few free undos)." },
+      { stepNumber: 2, title: "Swipe or Arrow Keys", instruction: "Slide every tile on the board in one direction at once." },
+      { stepNumber: 3, title: "Merge Matching Tiles", instruction: "Two tiles of the same number combine into their sum when they collide." },
+      { stepNumber: 4, title: "Don't Lock Up", instruction: "A full grid with no legal merge left ends your run." },
     ],
   },
 ];

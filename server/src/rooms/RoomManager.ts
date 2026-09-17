@@ -77,6 +77,7 @@ import {
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
+import { NO_ECONOMY_GAMES } from "@shared/catalog.js";
 import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
@@ -2544,9 +2545,12 @@ export class RoomManager {
     const botSeats = playersList.filter((p) => p.isBot).length;
     const humanSeats = playersList.filter((p) => !p.isBot).length;
     const isBotPractice = botSeats > 0 && humanSeats <= 1;
+    const isFreeEconomyGame = NO_ECONOMY_GAMES.has(room.game);
 
-    if (isBotPractice) {
-      // Free practice match against AI bots: no coins charged, no host wallet commitment required
+    if (isBotPractice || isFreeEconomyGame) {
+      // Free practice match against AI bots, or a game that never charges
+      // (Snake/Space War/2048 — see NO_ECONOMY_GAMES's doc comment): no
+      // coins charged, no host wallet commitment required.
       room.currentMatchId = null;
       room.committedCostPerSeat = null;
       room.committedTotalPot = null;
@@ -6420,9 +6424,11 @@ export class RoomManager {
     const humanSeatCount = playersList.filter((p) => !p.isBot).length;
     const botSeatCount = playersList.length - humanSeatCount;
     const isBotPractice = botSeatCount > 0 && humanSeatCount <= 1;
+    const isFreeEconomyGame = NO_ECONOMY_GAMES.has(room.game);
 
-    if (isBotPractice) {
-      // Free practice rematch against AI bots: no coins charged
+    if (isBotPractice || isFreeEconomyGame) {
+      // Free practice rematch against AI bots, or a game that never charges
+      // (see NO_ECONOMY_GAMES's doc comment): no coins charged.
       room.currentMatchId = null;
       room.committedCostPerSeat = null;
       room.committedTotalPot = null;

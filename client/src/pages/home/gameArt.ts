@@ -27,4 +27,5 @@ export const TILE_ART_BY_GAME: Record<BhalyamGameSlug, string> = {
   chess: "/Chess Game Tile.png",
   spacewar: "/SpacewarTile.png",
   nokiacricket: "/RetroCricket Game Tile.png",
+  "2048": "/2048 Game Tile.svg",
 };

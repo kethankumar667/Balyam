@@ -1716,21 +1716,26 @@ export default function Room() {
               startReadiness={roomState.startReadiness}
             />
 
-            {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count */}
+            {/* Live Match Prize Pool (Phase 7F) or Corrective Notice for Unsupported Seat Count.
+                No pool at all for NO_ECONOMY_GAMES (shared/catalog.ts) — RoomManager never
+                actually charges or pays out for these, so a pool banner would promise a
+                wager that never happens. */}
             {viewModel.isSeatCountSupported ? (
-              <LobbyPrizePool
-                seatCount={viewModel.totalPlayersCount}
-                readyCount={viewModel.readyPlayersCount}
-                allReady={viewModel.allReady}
-                quote={effectiveLobbyQuote}
-                isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
-                lockPhase={lobbyLockPhase}
-                isHost={selfIsHost}
-                entryStakeCoins={roomState.entryStakeCoins}
-                canChangeStake={canChangeStake}
-                onChangeStake={() => setShowChangeStakeModal(true)}
-                stakeLockedReason={stakeLockedReason}
-              />
+              roomState.game === "snake" || roomState.game === "spacewar" ? null : (
+                <LobbyPrizePool
+                  seatCount={viewModel.totalPlayersCount}
+                  readyCount={viewModel.readyPlayersCount}
+                  allReady={viewModel.allReady}
+                  quote={effectiveLobbyQuote}
+                  isQuoteLoading={isPlayingWithBots ? false : isLobbyQuoteLoading}
+                  lockPhase={lobbyLockPhase}
+                  isHost={selfIsHost}
+                  entryStakeCoins={roomState.entryStakeCoins}
+                  canChangeStake={canChangeStake}
+                  onChangeStake={() => setShowChangeStakeModal(true)}
+                  stakeLockedReason={stakeLockedReason}
+                />
+              )
             ) : (
               <UnsupportedSeatCountCard
                 seatCount={viewModel.totalPlayersCount}

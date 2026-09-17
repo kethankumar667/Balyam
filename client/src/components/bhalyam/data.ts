@@ -37,7 +37,8 @@ export type BhalyamGameSlug =
   | "brickblocks"
   | "tetris"
   | "breakout"
-  | "carrom";
+  | "carrom"
+  | "2048";
 
 /**
  * Game filters.
@@ -494,5 +495,21 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "The legendary Nokia 3310 retro space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
     accent: { from: "#2DD4BF", to: "#0D9488" },
+  },
+  {
+    slug: "2048",
+    tags: ["retro", "solo"],
+    theme: "Tile Merge 🔢",
+    title: "2048",
+    badge: "🔢 Battle · Race · Zen",
+    nostalgiaQuote: "One more merge and I'll stop.",
+    playerRange: "1 Player",
+    duration: "3–10 min",
+    paperBg: "linear-gradient(155deg, #3A2A05 0%, #201603 45%, #0F0B01 100%)",
+    paperBorder: "rgba(237, 194, 46, 0.55)",
+    btnGradient: { from: "#EDC22E", to: "#CA8A04", shadow: "#78350F" },
+    blurb:
+      "The classic tile-merging puzzle, solo — four ways to play it. Battle drops garbage tiles onto your own board as merges pile up, Race times your sprint against your own best, Time Attack is a 2-minute score dash, and Zen strips away the clock for a calm slide with a few free undos.",
+    accent: { from: "#EDC22E", to: "#CA8A04" },
   },
 ];

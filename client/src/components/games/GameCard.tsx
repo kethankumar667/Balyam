@@ -58,6 +58,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   chess: StarGameGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
+  "2048": StarGameGlyph,
 };
 
 const TILE_ART: Record<BhalyamGameSlug, string> = {
@@ -82,6 +83,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   chess: "/Chess Game Tile.png",
   spacewar: "/SpacewarTile.png",
   nokiacricket: "/RetroCricket Game Tile.png",
+  "2048": "/2048 Game Tile.svg",
 };
 
 export default function GameCard({

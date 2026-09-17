@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" role="img" aria-label="2048 game tile">
+  <defs>
+    <linearGradient id="bg2048" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F2D06B"/>
+      <stop offset="100%" stop-color="#CA8A04"/>
+    </linearGradient>
+    <linearGradient id="tile2048" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF9EE"/>
+      <stop offset="100%" stop-color="#F2E7CF"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="320" height="320" rx="36" fill="url(#bg2048)"/>
+  <g opacity="0.9">
+    <rect x="30" y="30" width="112" height="112" rx="16" fill="url(#tile2048)"/>
+    <rect x="178" y="30" width="112" height="112" rx="16" fill="#F67C5F"/>
+    <rect x="30" y="178" width="112" height="112" rx="16" fill="#F59563"/>
+    <rect x="178" y="178" width="112" height="112" rx="16" fill="url(#tile2048)"/>
+  </g>
+  <text x="86" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="40" fill="#6B5D52">2</text>
+  <text x="234" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="40" fill="#FBF6F0">4</text>
+  <text x="86" y="244" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="40" fill="#FBF6F0">8</text>
+  <text x="234" y="244" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="34" fill="#6B5D52">16</text>
+</svg>
