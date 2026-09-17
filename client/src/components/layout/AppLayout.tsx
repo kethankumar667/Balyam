@@ -5,7 +5,7 @@ import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
-import { type NotificationItem, INITIAL_NOTIFICATIONS } from "../../pages/home/sheets/ProfileSheet";
+import { type NotificationItem, INITIAL_NOTIFICATIONS } from "../../lib/profileNotifications";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";

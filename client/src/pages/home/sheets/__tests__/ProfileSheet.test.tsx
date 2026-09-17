@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { ProfileSheet, type NotificationItem } from "../ProfileSheet";
+import { ProfileSheet } from "../ProfileSheet";
+import type { NotificationItem } from "../../../../lib/profileNotifications";
 import { useAuthStore, setAccessToken } from "../../../../store/authStore";
 
 const NOTIFICATIONS: NotificationItem[] = [

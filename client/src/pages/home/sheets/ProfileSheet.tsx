@@ -23,71 +23,10 @@ import { useRoomStore } from "../../../store/roomStore";
 import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
 import { useTheme } from "../../../lib/useTheme";
 import { bhalyamSpring } from "../../../lib/motion";
-import { type BhalyamGameSlug } from "../../../components/bhalyam/data";
+import type { NotificationItem } from "../../../lib/profileNotifications";
 import { SheetShell } from "./SheetShell";
 import { GuestProfileModal } from "./GuestProfileModal";
 import DeleteAccountModal from "../../../components/auth/DeleteAccountModal";
-
-export interface NotificationItem {
-  id: string;
-  type: "invite" | "reward" | "gang" | "trophy";
-  title: string;
-  desc: string;
-  time: string;
-  unread: boolean;
-  gameSlug?: BhalyamGameSlug;
-  roomCode?: string;
-}
-
-/**
- * Sample notifications, one of each `NotificationItem["type"]`, seeded at
- * explicit request for design/dev reference while the profile-sheet
- * notifications view is being built out — there is still no backend that
- * produces real ones. This reverses an earlier deliberate decision to ship
- * this list empty (a fabricated invite/reward/friend-score used to render
- * here for every player, "real news" that was never real); that concern
- * still applies the moment this ships to actual users, so swap this back to
- * an empty array — or a real feed — before release. `ProfileSheet`'s
- * notifications view already renders an honest empty state
- * ("You're all caught up!") for that case.
- */
-export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "sample-invite-1",
-    type: "invite",
-    title: "Priya invited you to a Rummy table",
-    desc: "Room ANNA42 · 3 of 4 seats filled",
-    time: "2m ago",
-    unread: true,
-    gameSlug: "rummy",
-    roomCode: "ANNA42",
-  },
-  {
-    id: "sample-reward-1",
-    type: "reward",
-    title: "Daily streak bonus unlocked",
-    desc: "3-day streak — claim your bonus XP",
-    time: "1h ago",
-    unread: true,
-  },
-  {
-    id: "sample-gang-1",
-    type: "gang",
-    title: "Arjun joined your gang",
-    desc: "Your friend circle now has 5 members",
-    time: "5h ago",
-    unread: false,
-  },
-  {
-    id: "sample-trophy-1",
-    type: "trophy",
-    title: "New personal best in Hand Cricket",
-    desc: "You scored 86 runs against the bot",
-    time: "Yesterday",
-    unread: false,
-    gameSlug: "handcricket",
-  },
-];
 
 /**
  * Profile sheet — the one right-side panel for everything about "you":
