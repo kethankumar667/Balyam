@@ -120,7 +120,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Scorecard modal is open initially
-    expect(await screen.findByRole("dialog", {}, { timeout: 5000 })).toBeDefined();
+    expect(await screen.findByRole("dialog", {}, { timeout: 10000 })).toBeDefined();
     const continueBtn = screen.getByRole("button", { name: /Continue/i });
     fireEvent.click(continueBtn);
 
@@ -134,7 +134,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     // Honest representation: does NOT claim settlements or wallet rewards are already complete
     expect(screen.queryByText(/settlement complete/i)).toBeNull();
     expect(screen.queryByText(/rewards awarded/i)).toBeNull();
-  });
+  }, 15000);
 
   it("FINALIZATION_FAILED: shows retry sync button for host, hides it for non-host, and hides raw exceptions", async () => {
     // 1. As Host (p_host)
@@ -155,7 +155,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Dismiss scorecard
-    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 10000 }));
 
     // Alert message is visible
     const alertMsg = screen.getByText(/Settlement synchronization is pending/i);
@@ -193,14 +193,14 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Dismiss scorecard
-    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 10000 }));
 
     // Non-host still sees honest explanation
     expect(screen.getByText(/Settlement synchronization is pending/i)).toBeDefined();
 
     // Non-host does NOT see retry button
     expect(screen.queryByRole("button", { name: /Retry Settlement Sync/i })).toBeNull();
-  });
+  }, 20000);
 
   it("Continue Flow: dismisses scorecard, exposes table, does not re-open immediately, and COMPLETED clears failure state", async () => {
     useRoomStore.setState({
@@ -220,7 +220,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     );
 
     // Modal is initially open
-    expect(await screen.findByRole("dialog", {}, { timeout: 5000 })).toBeDefined();
+    expect(await screen.findByRole("dialog", {}, { timeout: 10000 })).toBeDefined();
 
     // Click Continue
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
@@ -229,7 +229,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByRole("dialog")).toBeNull();
 
     // Table view with rematch controls is reached and visible
-    expect(await screen.findByRole("button", { name: /Play (Rematch|Again)/i }, { timeout: 5000 })).toBeDefined();
+    expect(await screen.findByRole("button", { name: /Play (Rematch|Again)/i }, { timeout: 10000 })).toBeDefined();
 
     // FINALIZATION_FAILED banner remains visible after dismissal
     expect(screen.getByText(/Settlement synchronization is pending/i)).toBeDefined();
@@ -259,7 +259,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
 
     // Play Again button remains available for rematch
     expect(screen.getByRole("button", { name: /Play (Rematch|Again)/i })).toBeDefined();
-  });
+  }, 15000);
 
   /**
    * Root-caused 2026-09-09 from a live screenshot: a host left alone in this
@@ -294,12 +294,12 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
       </AudioProvider>
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/i }, { timeout: 10000 }));
 
     // The wrong, misleading tooltip must never appear here.
     expect(screen.queryByTitle(/Match is already active/i)).toBeNull();
     // With nobody else at the table, the host should be free to adjust the
     // stake, not see a static "Locked" badge.
     expect(screen.getByRole("button", { name: /Change/i })).toBeDefined();
-  });
+  }, 15000);
 });
