@@ -39,6 +39,7 @@ export interface LeaderboardEntry {
   wins: number;
   matchesPlayed: number;
   winRate: number;
+  currentWinStreak: number;
   totalPlayTimeMinutes: number;
   favoriteGame: GameKind | "none";
 }

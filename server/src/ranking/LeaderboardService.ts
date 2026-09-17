@@ -60,6 +60,7 @@ export class LeaderboardService {
         wins: options.game ? stats.perGame[options.game]?.wins || 0 : stats.wins,
         matchesPlayed: options.game ? stats.perGame[options.game]?.matchesPlayed || 0 : stats.totalMatches,
         winRate: options.game ? stats.perGame[options.game]?.winRate || 0 : stats.winRate,
+        currentWinStreak: stats.currentWinStreak,
         totalPlayTimeMinutes: Math.round(
           options.game ? stats.perGame[options.game]?.totalPlayTimeMinutes || 0 : stats.totalPlayTimeMinutes
         ),

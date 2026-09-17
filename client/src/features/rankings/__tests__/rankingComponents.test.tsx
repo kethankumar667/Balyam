@@ -44,6 +44,7 @@ describe("Progression & Ranking UI Components", () => {
         wins: 45,
         matchesPlayed: 50,
         winRate: 90,
+        currentWinStreak: 3,
         totalPlayTimeMinutes: 300,
         favoriteGame: "ludo",
       },

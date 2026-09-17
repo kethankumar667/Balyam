@@ -157,4 +157,47 @@ describe("ScorecardService", () => {
     expect(pace2.isAhead).toBe(true);
     expect(pace2.isOverdrive).toBe(true);
   });
+
+  it("ranks players correctly on getModeLeaderboard across multiple players", () => {
+    service.recordScore("player_a", {
+      game: "2048",
+      modeId: "grid_4x4",
+      score: 1024,
+      context: "SOLO",
+      matchId: "m_2048_1",
+    });
+
+    service.recordScore("player_b", {
+      game: "2048",
+      modeId: "grid_4x4",
+      score: 4096,
+      context: "SOLO",
+      matchId: "m_2048_2",
+    });
+
+    service.recordScore("player_c", {
+      game: "2048",
+      modeId: "grid_4x4",
+      score: 2048,
+      context: "SOLO",
+      matchId: "m_2048_3",
+    });
+
+    const ranks = service.getModeLeaderboard("2048", "grid_4x4", 10, (id) => ({
+      displayName: `Name_${id}`,
+    }));
+
+    expect(ranks.length).toBe(3);
+    expect(ranks[0]?.playerId).toBe("player_b");
+    expect(ranks[0]?.bestScore).toBe(4096);
+    expect(ranks[0]?.rank).toBe(1);
+
+    expect(ranks[1]?.playerId).toBe("player_c");
+    expect(ranks[1]?.bestScore).toBe(2048);
+    expect(ranks[1]?.rank).toBe(2);
+
+    expect(ranks[2]?.playerId).toBe("player_a");
+    expect(ranks[2]?.bestScore).toBe(1024);
+    expect(ranks[2]?.rank).toBe(3);
+  });
 });

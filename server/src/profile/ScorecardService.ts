@@ -6,6 +6,9 @@ import type {
   RecordScorePayload,
   RecordScoreResult,
   GhostPaceStatus,
+  FoilTier,
+  ScoringDirection,
+  QuantumPerformanceRadar,
 } from "@shared/profile/Scorecard.js";
 import {
   getGameModeConfig,
@@ -198,6 +201,77 @@ export class ScorecardService {
       isAhead,
       isOverdrive,
     };
+  }
+
+  /**
+   * Retrieves the ranked personal best scorecards across all players for a specific game and mode.
+   */
+  public getModeLeaderboard(
+    game: AllGameSlug,
+    modeId: string,
+    limit = 50,
+    resolveProfile?: (playerId: string) => { displayName?: string; avatar?: string } | undefined
+  ): {
+    rank: number;
+    playerId: string;
+    displayName: string;
+    avatar?: string;
+    bestScore: number;
+    bestScoreAchievedAt: number;
+    foilTier: FoilTier;
+    scoringDirection: ScoringDirection;
+    timesPlayed: number;
+    radar: QuantumPerformanceRadar;
+  }[] {
+    const results: {
+      rank: number;
+      playerId: string;
+      displayName: string;
+      avatar?: string;
+      bestScore: number;
+      bestScoreAchievedAt: number;
+      foilTier: FoilTier;
+      scoringDirection: ScoringDirection;
+      timesPlayed: number;
+      radar: QuantumPerformanceRadar;
+    }[] = [];
+
+    const gameConfig = getGameModeConfig(game);
+    const modeDef = gameConfig.modes.find((m) => m.modeId === modeId) ?? gameConfig.modes[0];
+    const scoringDirection = modeDef?.scoringDirection ?? "HIGHER_IS_BETTER";
+
+    for (const [playerId, archive] of this.scorecards.entries()) {
+      const modeCard = archive.games[game]?.modes[modeId];
+      if (!modeCard || modeCard.timesPlayed === 0) continue;
+
+      const prof = resolveProfile ? resolveProfile(playerId) : undefined;
+
+      results.push({
+        rank: 0,
+        playerId,
+        displayName: prof?.displayName || playerId,
+        avatar: prof?.avatar,
+        bestScore: modeCard.bestScore,
+        bestScoreAchievedAt: modeCard.bestScoreAchievedAt,
+        foilTier: modeCard.foilTier,
+        scoringDirection: modeCard.scoringDirection,
+        timesPlayed: modeCard.timesPlayed,
+        radar: modeCard.radar,
+      });
+    }
+
+    results.sort((a, b) => {
+      if (scoringDirection === "HIGHER_IS_BETTER") {
+        return b.bestScore - a.bestScore;
+      }
+      return a.bestScore - b.bestScore;
+    });
+
+    for (let i = 0; i < results.length; i++) {
+      results[i]!.rank = i + 1;
+    }
+
+    return results.slice(0, limit);
   }
 
   /**

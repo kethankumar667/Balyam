@@ -4,6 +4,9 @@ import { rankingService } from "./RankingService.js";
 import { challengeEngine } from "./ChallengeEngine.js";
 import { recentPlayersService } from "./RecentPlayersService.js";
 import { XPEngine } from "./XPEngine.js";
+import { scorecardService } from "../profile/ScorecardService.js";
+import { profileService } from "../profile/ProfileService.js";
+import type { AllGameSlug } from "@shared/profile/Scorecard.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
 import type { GameKind } from "@shared/types.js";
 import type { LeaderboardMetric, LeaderboardTimeframe } from "@shared/ranking/PlayerRank.js";
@@ -32,6 +35,26 @@ rankingRouter.get("/leaderboard", (req: Request, res: Response) => {
   const offset = req.query.offset ? Number(req.query.offset) : 0;
 
   res.json(leaderboardService.getLeaderboard({ metric, game, timeframe, search, limit, offset }));
+});
+
+/** PUBLIC — personal best high score leaderboards for a specific game and mode. */
+rankingRouter.get("/scorecards/:game/:mode", (req: Request, res: Response) => {
+  const game = req.params.game as AllGameSlug;
+  const mode = req.params.mode;
+  const limit = req.query.limit ? Number(req.query.limit) : 50;
+
+  const entries = scorecardService.getModeLeaderboard(
+    game,
+    mode,
+    limit,
+    (id) => profileService.getProfile(id)
+  );
+
+  res.json({
+    game,
+    mode,
+    entries,
+  });
 });
 
 /** PUBLIC — one player's standing. Already visible on the board above. */
