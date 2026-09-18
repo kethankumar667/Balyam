@@ -47,6 +47,7 @@ const LazyBrickRacerPage = lazy(() => import("./pages/BrickRacerPage"));
 const LazyBrickTetrisPage = lazy(() => import("./pages/BrickTetrisPage"));
 const LazyBrickBreakoutPage = lazy(() => import("./pages/BrickBreakoutPage"));
 const LazyGame2048Page = lazy(() => import("./pages/Game2048Page"));
+const LazySudokuPage = lazy(() => import("./pages/SudokuPage"));
 const LazyPartyScreen = lazy(() => import("./pages/PartyScreen"));
 const LazyDiagnostics = lazy(() => import("./pages/Diagnostics"));
 const LazyPreviewLudo = lazy(() => import("./pages/PreviewLudo"));
@@ -108,6 +109,7 @@ export interface RouteComponents {
   BrickTetrisPage?: React.ComponentType;
   BrickBreakoutPage?: React.ComponentType;
   Game2048Page?: React.ComponentType;
+  SudokuPage?: React.ComponentType;
   PartyScreen?: React.ComponentType;
   Diagnostics?: React.ComponentType;
   PreviewLudo?: React.ComponentType;
@@ -292,6 +294,7 @@ export default function App({ components = {} }: AppProps) {
   const BrickTetrisPage = components.BrickTetrisPage ?? LazyBrickTetrisPage;
   const BrickBreakoutPage = components.BrickBreakoutPage ?? LazyBrickBreakoutPage;
   const Game2048Page = components.Game2048Page ?? LazyGame2048Page;
+  const SudokuPage = components.SudokuPage ?? LazySudokuPage;
   const PartyScreen = components.PartyScreen ?? LazyPartyScreen;
   const Diagnostics = components.Diagnostics ?? LazyDiagnostics;
   const PreviewLudo = components.PreviewLudo ?? LazyPreviewLudo;
@@ -595,6 +598,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/brick-breakout" element={<BrickBreakoutPage />} />
             <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
             <Route path="/2048" element={<Game2048Page />} />
+            <Route path="/sudoku" element={<SudokuPage />} />
             <Route path="/preview/animations" element={<LazyPreviewAnimations3D />} />
 
             <Route path="*" element={<NotFound />} />

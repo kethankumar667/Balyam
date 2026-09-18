@@ -39,4 +39,12 @@ describe("Game Catalog Discovery & Filtering", () => {
     expect(matched.length).toBeGreaterThan(0);
     expect(matched.some((g) => g.slug === "handcricket" || g.slug === "nokiacricket")).toBe(true);
   });
+
+  it("includes Sudoku Cyber-Matrix in the catalog with valid tile art and tags", () => {
+    const sudoku = BHALYAM_GAMES.find((g) => g.slug === "sudoku");
+    expect(sudoku).toBeDefined();
+    expect(sudoku?.title).toBe("Sudoku");
+    expect(sudoku?.tags).toContain("solo");
+    expect(sudoku?.tileImage).toBe("/Sudoku Game Tile.png");
+  });
 });

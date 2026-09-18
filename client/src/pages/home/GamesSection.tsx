@@ -58,6 +58,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
   "2048": StarGameGlyph,
+  sudoku: StarGameGlyph,
 };
 
 /** Tiles the home grid shows before deferring to /games. */

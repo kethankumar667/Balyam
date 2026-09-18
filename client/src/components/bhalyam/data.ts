@@ -38,7 +38,8 @@ export type BhalyamGameSlug =
   | "tetris"
   | "breakout"
   | "carrom"
-  | "2048";
+  | "2048"
+  | "sudoku";
 
 /**
  * Game filters.
@@ -511,5 +512,23 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "The classic tile-merging puzzle, solo — four ways to play it. Battle drops garbage tiles onto your own board as merges pile up, Race times your sprint against your own best, Time Attack is a 2-minute score dash, and Zen strips away the clock for a calm slide with a few free undos.",
     accent: { from: "#EDC22E", to: "#CA8A04" },
+    tileImage: "/2048 Game Tile.png",
+  },
+  {
+    slug: "sudoku",
+    tags: ["retro", "solo"],
+    theme: "Cyber Matrix 🧩",
+    title: "Sudoku",
+    badge: "🧩 Cyber Matrix",
+    nostalgiaQuote: "Pen, paper, and the Sunday morning coffee.",
+    playerRange: "1 Player",
+    duration: "3–15 min",
+    paperBg: "linear-gradient(155deg, #031D28 0%, #02111A 45%, #010A10 100%)",
+    paperBorder: "rgba(6, 182, 212, 0.55)",
+    btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#0E7490" },
+    blurb:
+      "Futuristic Cyber-Matrix Sudoku powered by sudoku-gen. 4 cyber themes, Quantum Pencil candidate notes with auto-clearing, Neural Laser Hint scanner, and personal best tracking across 4 difficulty tiers.",
+    accent: { from: "#06B6D4", to: "#0891B2" },
+    tileImage: "/Sudoku Game Tile.png",
   },
 ];

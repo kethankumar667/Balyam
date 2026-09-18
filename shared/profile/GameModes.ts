@@ -277,6 +277,18 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
       { modeId: "endless", displayName: "Endless", description: "Keep going. No limits.", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
+  sudoku: {
+    game: "sudoku",
+    displayName: "Sudoku Cyber-Matrix",
+    category: "retro_arcade",
+    defaultModeId: "medium",
+    modes: [
+      { modeId: "easy", displayName: "Initiate (Easy)", description: "Casual relaxing solve with generous clues", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: false },
+      { modeId: "medium", displayName: "Data Runner (Medium)", description: "Balanced logical deduction challenge", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: true },
+      { modeId: "hard", displayName: "Cyber Architect (Hard)", description: "Advanced patterns, hidden pairs & triples", scoringDirection: "LOWER_IS_BETTER", unit: "s" },
+      { modeId: "expert", displayName: "Quantum Singularity (Expert)", description: "Extreme complexity for sudoku masters", scoringDirection: "LOWER_IS_BETTER", unit: "s" },
+    ],
+  },
 };
 
 /**

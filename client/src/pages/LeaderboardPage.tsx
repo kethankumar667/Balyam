@@ -45,6 +45,12 @@ const INITIAL_MODE_BASELINES: Record<string, Record<string, number>> = {
     zen: 2480,
     race: 168,
   },
+  sudoku: {
+    easy: 180,
+    medium: 320,
+    hard: 540,
+    expert: 780,
+  },
   nokiasnake: {
     classic_walled: 54,
     speed_rush: 44,
@@ -226,7 +232,8 @@ const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
 
 const GAME_TIPS: Record<string, string> = {
   breakout: "Angles make all the difference. Try hitting the corners for better control!",
-  "2048": "Keep your highest tile in a single corner and snake the descending values beside it!",
+  "2048": "Prioritize building your highest tile in a dedicated corner and never swipe against your anchor direction.",
+  sudoku: "Look for rows, columns, and 3x3 boxes with 7 or 8 clues already locked in to trigger chain reactions!",
   nokiasnake: "Hug the perimeter early on to keep the center grid open for food pickups!",
   nokiacricket: "Watch bowler variations carefully — timing aggressive shots on short balls pays off!",
   roadrash: "Look two cars ahead on the highway to weave smoothly without clipping bumpers!",
@@ -309,6 +316,8 @@ function getGameRoute(game: AllGameSlug, modeId?: string): string {
   switch (game) {
     case "2048":
       return modeId ? `/2048?mode=${modeId}` : "/2048";
+    case "sudoku":
+      return modeId ? `/sudoku?diff=${modeId}` : "/sudoku";
     case "nokiasnake":
       return "/games/nokiasnake";
     case "nokiacricket":
@@ -365,6 +374,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "namesplaceanimal", label: "Name Place Animal", icon: "📝" },
   { id: "spacewar", label: "Space War", icon: "🚀" },
   { id: "blockblast", label: "Block Blast", icon: "💥" },
+  { id: "sudoku", label: "Sudoku Cyber-Matrix", icon: "🧩" },
 ];
 
 const GAME_TILE_IMAGES: Record<string, string> = {
@@ -392,6 +402,7 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   spacewar: "/SpacewarTile.png",
   blockblast: "/BlockBlast Game Tile.png",
   tambola: "/Tambola.png",
+  sudoku: "/Sudoku Game Tile.png",
 };
 
 function getModeIcon(modeId: string): string {

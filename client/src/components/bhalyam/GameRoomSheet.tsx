@@ -114,6 +114,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
   "2048": StarGameGlyph,
+  sudoku: StarGameGlyph,
 };
 
 /**
@@ -126,7 +127,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -139,6 +140,7 @@ const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
   // Client-only solo arcade page — never opens a server room, same as the
   // retro titles above. See client/src/pages/Game2048Page.tsx.
   "2048": "/2048",
+  sudoku: "/sudoku",
 };
 
 const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
@@ -150,6 +152,7 @@ const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "spacewar",
   "nokiacricket",
   "2048",
+  "sudoku",
 ]);
 
 function asGameKind(slug: BhalyamGameSlug): GameKind {

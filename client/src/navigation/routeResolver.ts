@@ -24,6 +24,8 @@ const RETRO_GAME_ROUTES = new Set([
   "/brickbreakout",
   "/brick-breakout",
   "/blockbreakout",
+  "/2048",
+  "/sudoku",
 ]);
 
 /**

@@ -360,7 +360,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       isSuperAdmin: false,
       ready: true,
     });
-    void syncUserDataOnLogin(email.trim().toLowerCase() || "guest");
   },
 
   signInSuperAdmin: () => {

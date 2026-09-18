@@ -8,7 +8,8 @@ export type BhalyamGameSlug =
   | "breakout"
   // Client-only solo arcade game — never opens a server room, same as the
   // three retro titles above. See client/src/pages/Game2048Page.tsx.
-  | "2048";
+  | "2048"
+  | "sudoku";
 
 export interface GameLimitSpec {
   min: number;
@@ -152,6 +153,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   spacewar: "portrait",
   roadrash: "portrait",
   "2048": "portrait",
+  sudoku: "portrait",
 
   // Browser-only retro titles — all modelled on portrait handhelds.
   nokiacricket: "portrait",

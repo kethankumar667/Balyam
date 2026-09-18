@@ -158,7 +158,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         badge: { text: "90s", variant: "amber" },
         isActive: (p, s) =>
           p === "/games" && s.includes("c=retro") ||
-          ["/nokiacricket", "/cricket2d", "/snake", "/nokiasnake", "/snake2d", "/roadrash", "/brickracer", "/racer", "/brickblocks", "/tetris", "/bricktetris", "/pentix", "/breakout", "/brickbreakout", "/brick-breakout", "/blockbreakout"].includes(p),
+          ["/nokiacricket", "/cricket2d", "/snake", "/nokiasnake", "/snake2d", "/roadrash", "/brickracer", "/racer", "/brickblocks", "/tetris", "/bricktetris", "/pentix", "/breakout", "/brickbreakout", "/brick-breakout", "/blockbreakout", "/2048", "/sudoku"].includes(p),
       },
       {
         id: "games-board",

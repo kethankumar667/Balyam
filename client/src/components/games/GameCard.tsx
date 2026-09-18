@@ -59,6 +59,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
   "2048": StarGameGlyph,
+  sudoku: StarGameGlyph,
 };
 
 const TILE_ART: Record<BhalyamGameSlug, string> = {
@@ -84,6 +85,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   spacewar: "/SpacewarTile.png",
   nokiacricket: "/RetroCricket Game Tile.png",
   "2048": "/2048 Game Tile.png",
+  sudoku: "/Sudoku Game Tile.png",
 };
 
 export default function GameCard({
@@ -101,7 +103,7 @@ export default function GameCard({
   const accent = getGameAccent(game);
   const Glyph = GAME_GLYPHS[game.slug] || StarGameGlyph;
 
-  const isSolo = ["snake", "roadrash", "brickblocks", "tetris", "breakout", "spacewar", "nokiacricket"].includes(game.slug);
+  const isSolo = ["snake", "roadrash", "brickblocks", "tetris", "breakout", "spacewar", "nokiacricket", "2048", "sudoku"].includes(game.slug);
 
   /**
    * The category chip must not repeat the mode badge.
