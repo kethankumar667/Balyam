@@ -24,10 +24,25 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "social",
     defaultModeId: "2_overs",
     modes: [
-      { modeId: "1_over", displayName: "1 Over Blitz", description: "6-ball rapid showdown", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
-      { modeId: "2_overs", displayName: "2 Overs Classic", description: "Standard match", scoringDirection: "HIGHER_IS_BETTER", unit: "runs", isDefault: true },
-      { modeId: "5_overs", displayName: "5 Overs Championship", description: "Strategic 30-ball duel", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
-      { modeId: "target_chase", displayName: "Target Chase", description: "High-pressure run chase", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "2_overs", displayName: "2 Overs Classic", description: "Standard match, 12 balls per innings", scoringDirection: "HIGHER_IS_BETTER", unit: "runs", isDefault: true },
+      { modeId: "1_over", displayName: "1 Over Blitz", description: "Rapid 6-ball street showdown", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "5_overs", displayName: "5 Overs Championship", description: "Strategic 30-ball duel with bowler quotas", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "t20", displayName: "T20 Match (10 Overs)", description: "10 overs per innings with powerplay swings", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "odi", displayName: "ODI Match (15 Overs)", description: "15 overs strategic duel with bowler limits", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "galli", displayName: "Galli Cricket", description: "Street cricket with custom overs and free play", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+    ],
+  },
+  "2048": {
+    game: "2048",
+    displayName: "2048 Classic",
+    category: "retro_arcade",
+    defaultModeId: "daily",
+    modes: [
+      { modeId: "daily", displayName: "Daily Singularity", description: "Compete globally with today's deterministic seed matrix", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "battle", displayName: "Battle", description: "Garbage shadow tiles escalate as you merge — survive the Crucible", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "race", displayName: "Race", description: "Sprint to 2048 and beat your fastest clear time", scoringDirection: "LOWER_IS_BETTER", unit: "s" },
+      { modeId: "timeattack", displayName: "Time Attack", description: "2 minutes on the clock — chase the highest rapid score", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "zen", displayName: "Zen", description: "No clock, no pressure — serene merges with free undos", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   snake: {
@@ -36,9 +51,9 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "retro_arcade",
     defaultModeId: "classic_walled",
     modes: [
-      { modeId: "classic_walled", displayName: "Classic Walled", description: "Nokia 3310 walled grid", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
-      { modeId: "borderless_wrap", displayName: "Borderless Wrap", description: "Edges wrap seamlessly", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
-      { modeId: "speed_rush", displayName: "Speed Rush", description: "Progressive speed throttle", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
+      { modeId: "classic_walled", displayName: "Classic Walled", description: "Solid border boundaries — boundary collision kills", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
+      { modeId: "borderless_wrap", displayName: "Borderless Wrap", description: "Edges wrap seamlessly through screen boundaries", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
+      { modeId: "speed_rush", displayName: "Speed Rush (70ms)", description: "Fast-pace reflex survival at max speed", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
     ],
   },
   nokiasnake: {
@@ -47,18 +62,92 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "retro_arcade",
     defaultModeId: "classic_walled",
     modes: [
-      { modeId: "classic_walled", displayName: "Classic Walled", description: "Pixelated nostalgia run", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
-      { modeId: "speed_rush", displayName: "Speed Rush", description: "High-speed arcade mode", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
+      { modeId: "classic_walled", displayName: "Classic 3310 Walled", description: "Pixelated nostalgia run with LCD dot matrix", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
+      { modeId: "speed_rush", displayName: "Arcade Rush", description: "High-speed reflex challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
     ],
   },
-  "2048": {
-    game: "2048",
-    displayName: "2048 Classic",
-    category: "retro_arcade",
-    defaultModeId: "grid_4x4",
+  ludo: {
+    game: "ludo",
+    displayName: "Ludo",
+    category: "board",
+    defaultModeId: "classic_4token",
     modes: [
-      { modeId: "grid_4x4", displayName: "Classic 4x4", description: "Original numerical puzzle", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "grid_5x5", displayName: "Expanded 5x5", description: "Larger grid for giant merges", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "classic_4token", displayName: "Classic 4-Token", description: "All 4 tokens navigated home to center", scoringDirection: "LOWER_IS_BETTER", unit: "turns to win", isDefault: true },
+      { modeId: "quick_2token", displayName: "Quick 2-Token", description: "Fast-paced sprint: first 2 tokens home wins", scoringDirection: "LOWER_IS_BETTER", unit: "turns to win" },
+    ],
+  },
+  rummy: {
+    game: "rummy",
+    displayName: "Indian Rummy",
+    category: "card",
+    defaultModeId: "single",
+    modes: [
+      { modeId: "single", displayName: "Points Rummy (Single Deal)", description: "One deal showdown — lowest penalty points wins", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts", isDefault: true },
+      { modeId: "pool101", displayName: "Pool 101", description: "Multi-deal elimination — survive below 101 penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
+      { modeId: "pool201", displayName: "Pool 201", description: "Championship elimination — survive below 201 penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
+      { modeId: "points_rummy", displayName: "Points Classic", description: "Lowest penalty points per deal", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
+    ],
+  },
+  uno: {
+    game: "uno",
+    displayName: "UNO Showdown",
+    category: "card",
+    defaultModeId: "single",
+    modes: [
+      { modeId: "single", displayName: "Single Round", description: "One deal — first to empty hand wins", scoringDirection: "LOWER_IS_BETTER", unit: "card pts", isDefault: true },
+      { modeId: "race_300", displayName: "Race to 300", description: "Quick multi-round match to 300 points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
+      { modeId: "race_500", displayName: "Official Race to 500", description: "Mattel championship rules: first to 500 cumulative points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
+      { modeId: "race_1000", displayName: "Marathon 1000", description: "Extended high-drama session to 1000 points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
+      { modeId: "classic", displayName: "Classic Uno", description: "Fewest rounds and lowest card penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
+    ],
+  },
+  snl: {
+    game: "snl",
+    displayName: "Snakes & Ladders",
+    category: "board",
+    defaultModeId: "medium",
+    modes: [
+      { modeId: "medium", displayName: "Classic Balanced", description: "Traditional board with balanced snakes and ladders", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to 100", isDefault: true },
+      { modeId: "easy", displayName: "Friendly Ladders", description: "12 ladders, 5 snakes — rapid climb up the board", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to 100" },
+      { modeId: "hard", displayName: "Treacherous Slopes", description: "Scarce ladders and punishing long snake descents", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to 100" },
+      { modeId: "extreme", displayName: "Extreme (99→1 Snake)", description: "Sudden death slide waiting at square 99", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to 100" },
+      { modeId: "classic_100", displayName: "Standard 100", description: "Fewest dice rolls to reach square 100", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to 100" },
+    ],
+  },
+  dotsboxes: {
+    game: "dotsboxes",
+    displayName: "Dots & Boxes",
+    category: "board",
+    defaultModeId: "grid_7x7",
+    modes: [
+      { modeId: "grid_7x7", displayName: "Standard 7×7 (36 Boxes)", description: "Balanced territory and chaining battles", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes", isDefault: true },
+      { modeId: "grid_5x5", displayName: "Compact 5×5 (16 Boxes)", description: "Quick recess sprint — fast tactical skirmish", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes" },
+      { modeId: "grid_9x9", displayName: "Grand 9×9 (64 Boxes)", description: "Marathon notebook match — deep multi-box sacrifices", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes" },
+      { modeId: "grid_4x4", displayName: "Classic 4×4", description: "Standard square territory capture", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes" },
+    ],
+  },
+  wordbuilding: {
+    game: "wordbuilding",
+    displayName: "Word Building",
+    category: "social",
+    defaultModeId: "classroom_10x10",
+    modes: [
+      { modeId: "classroom_10x10", displayName: "Classroom 10×10", description: "Everyday English (~20k words) on standard grid", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "classroom_8x8", displayName: "Classroom 8×8", description: "Quick compact match on 8×8 board", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "tournament_10x10", displayName: "Tournament Scrabble", description: "Full 275k lexicon with rare tournament words", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "timed_sprint", displayName: "Timed Sprint", description: "30s rapid anagram word builder", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+    ],
+  },
+  carrom: {
+    game: "carrom",
+    displayName: "Carrom Lounge",
+    category: "board",
+    defaultModeId: "classic",
+    modes: [
+      { modeId: "classic", displayName: "Classic Carrom", description: "Traditional rules with red Queen & mandatory cover", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "discpool", displayName: "Disc Pool", description: "Miniclip speed mode — pocket all color pucks", scoringDirection: "LOWER_IS_BETTER", unit: "shots to clear" },
+      { modeId: "freestyle", displayName: "Freestyle Points", description: "Race to target score (Queen 25, White 10, Black 5)", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "points_carrom", displayName: "Points Carrom (29)", description: "29-point race to victory", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   nokiacricket: {
@@ -68,78 +157,54 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     defaultModeId: "2_overs",
     modes: [
       { modeId: "2_overs", displayName: "2 Overs Blitz", description: "12 balls against AI bowler", scoringDirection: "HIGHER_IS_BETTER", unit: "runs", isDefault: true },
-      { modeId: "5_overs", displayName: "5 Overs Cup", description: "Full inning challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "5_overs", displayName: "5 Overs Cup", description: "Full innings challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
     ],
   },
-  wordbuilding: {
-    game: "wordbuilding",
-    displayName: "Word Building",
+  rps: {
+    game: "rps",
+    displayName: "Rock Paper Scissors",
     category: "social",
-    defaultModeId: "timed_sprint",
+    defaultModeId: "best_of_3",
     modes: [
-      { modeId: "timed_sprint", displayName: "Timed Sprint", description: "30s rapid anagram builder", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "turn_based", displayName: "Turn-Based Classic", description: "Relaxed vocabulary duel", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "best_of_3", displayName: "Best of 3", description: "Classic first to 2 round wins", scoringDirection: "HIGHER_IS_BETTER", unit: "rounds won", isDefault: true },
+      { modeId: "best_of_5", displayName: "Best of 5", description: "Extended series — first to 3 wins", scoringDirection: "HIGHER_IS_BETTER", unit: "rounds won" },
+      { modeId: "sudden_death", displayName: "Sudden Death", description: "Single round high-stakes duel", scoringDirection: "HIGHER_IS_BETTER", unit: "wins" },
     ],
   },
-  dotsboxes: {
-    game: "dotsboxes",
-    displayName: "Dots & Boxes",
+  stargame: {
+    game: "stargame",
+    displayName: "Star Game",
     category: "board",
-    defaultModeId: "grid_4x4",
+    defaultModeId: "classic_5",
     modes: [
-      { modeId: "grid_3x3", displayName: "Compact 3x3", description: "Quick tactical skirmish", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes" },
-      { modeId: "grid_4x4", displayName: "Classic 4x4", description: "Balanced territory capture", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes", isDefault: true },
-      { modeId: "grid_5x5", displayName: "Master 5x5", description: "Deep chaining grid", scoringDirection: "HIGHER_IS_BETTER", unit: "boxes" },
+      { modeId: "classic_5", displayName: "Classic (5 Rounds)", description: "Standard 5-round constellation star capture", scoringDirection: "HIGHER_IS_BETTER", unit: "stars", isDefault: true },
+      { modeId: "sprint_3", displayName: "Quick Sprint (3 Rounds)", description: "Fast 3-round speed run", scoringDirection: "HIGHER_IS_BETTER", unit: "stars" },
+      { modeId: "marathon_10", displayName: "Marathon (10 Rounds)", description: "10-round endurance star challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "stars" },
+      { modeId: "classic", displayName: "Constellation", description: "Capture golden stars", scoringDirection: "HIGHER_IS_BETTER", unit: "stars" },
     ],
   },
-  ludo: {
-    game: "ludo",
-    displayName: "Ludo",
-    category: "board",
-    defaultModeId: "classic_4token",
+  bingo: {
+    game: "bingo",
+    displayName: "Bingo",
+    category: "social",
+    defaultModeId: "first_win",
     modes: [
-      { modeId: "classic_4token", displayName: "Classic 4-Token", description: "All 4 tokens home", scoringDirection: "LOWER_IS_BETTER", unit: "turns to win", isDefault: true },
-      { modeId: "quick_2token", displayName: "Quick 2-Token", description: "First 2 tokens home wins", scoringDirection: "LOWER_IS_BETTER", unit: "turns to win" },
+      { modeId: "first_win", displayName: "First Claim (Standard 4s)", description: "Round ends the moment first player claims BINGO", scoringDirection: "LOWER_IS_BETTER", unit: "calls to win", isDefault: true },
+      { modeId: "all_win", displayName: "Full Table Play-Out", description: "Calling continues until everyone completes ticket", scoringDirection: "LOWER_IS_BETTER", unit: "calls to win" },
+      { modeId: "fast_2500", displayName: "Fast Pace (2.5s)", description: "Lightning numbers called every 2.5s", scoringDirection: "LOWER_IS_BETTER", unit: "calls to win" },
+      { modeId: "standard_5x5", displayName: "Standard 5×5", description: "Fewest calls to complete BINGO", scoringDirection: "LOWER_IS_BETTER", unit: "calls to win" },
     ],
   },
-  snl: {
-    game: "snl",
-    displayName: "Snakes & Ladders",
-    category: "board",
-    defaultModeId: "classic_100",
+  namesplaceanimal: {
+    game: "namesplaceanimal",
+    displayName: "Name Place Animal Thing",
+    category: "social",
+    defaultModeId: "medium_5rds",
     modes: [
-      { modeId: "classic_100", displayName: "Classic 100", description: "Fewest rolls to reach 100", scoringDirection: "LOWER_IS_BETTER", unit: "rolls to finish", isDefault: true },
-    ],
-  },
-  rummy: {
-    game: "rummy",
-    displayName: "Indian Rummy",
-    category: "card",
-    defaultModeId: "points_rummy",
-    modes: [
-      { modeId: "points_rummy", displayName: "Points Rummy", description: "Lowest penalty points per deal", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts", isDefault: true },
-      { modeId: "pool_101", displayName: "101 Pool", description: "Survive under 101 points", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
-      { modeId: "pool_201", displayName: "201 Pool", description: "Deep elimination pool", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
-    ],
-  },
-  uno: {
-    game: "uno",
-    displayName: "UNO Showdown",
-    category: "card",
-    defaultModeId: "classic",
-    modes: [
-      { modeId: "classic", displayName: "Classic UNO", description: "Fewest rounds / card points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts", isDefault: true },
-      { modeId: "draw_to_match", displayName: "Draw-to-Match", description: "Draw until a playable card lands", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
-    ],
-  },
-  carrom: {
-    game: "carrom",
-    displayName: "Carrom Lounge",
-    category: "board",
-    defaultModeId: "points_carrom",
-    modes: [
-      { modeId: "points_carrom", displayName: "Points Carrom", description: "29-point race to victory", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "board_clear", displayName: "Board Clear", description: "Fastest full board pocket", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "medium_5rds", displayName: "Classic 5 Rounds (30s)", description: "Standard 30-second timer across 5 rounds", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "hard_speed", displayName: "Speed Rush 5 Rounds (20s)", description: "20-second rapid vocabulary pressure", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "marathon_10rds", displayName: "Marathon 10 Rounds", description: "Extended 10-round vocabulary championship", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "standard_rounds", displayName: "Standard Rounds", description: "Highest aggregate vocabulary points", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   chess: {
@@ -148,9 +213,9 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "board",
     defaultModeId: "blitz_3m",
     modes: [
+      { modeId: "blitz_3m", displayName: "Blitz 3m", description: "Fast competitive duel with 3m clock", scoringDirection: "LOWER_IS_BETTER", unit: "moves to mate", isDefault: true },
       { modeId: "bullet_1m", displayName: "Bullet 1m", description: "Lightning 60-second time control", scoringDirection: "LOWER_IS_BETTER", unit: "moves to mate" },
-      { modeId: "blitz_3m", displayName: "Blitz 3m", description: "Fast competitive duel", scoringDirection: "LOWER_IS_BETTER", unit: "moves to mate", isDefault: true },
-      { modeId: "rapid_10m", displayName: "Rapid 10m", description: "Tactical positional play", scoringDirection: "LOWER_IS_BETTER", unit: "moves to mate" },
+      { modeId: "rapid_10m", displayName: "Rapid 10m", description: "Tactical classical positional play", scoringDirection: "LOWER_IS_BETTER", unit: "moves to mate" },
     ],
   },
   spacewar: {
@@ -159,7 +224,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     category: "retro_arcade",
     defaultModeId: "arcade_survival",
     modes: [
-      { modeId: "arcade_survival", displayName: "Arcade Survival", description: "Waves cleared & alien score", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "arcade_survival", displayName: "Arcade Survival", description: "Waves cleared & alien destroy score", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
     ],
   },
   blockblast: {
@@ -171,50 +236,13 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
       { modeId: "classic_endless", displayName: "Classic Endless", description: "Highest combo score", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
     ],
   },
-  rps: {
-    game: "rps",
-    displayName: "Rock Paper Scissors",
-    category: "social",
-    defaultModeId: "best_of_3",
-    modes: [
-      { modeId: "best_of_3", displayName: "Best of 3", description: "Classic first to 2 wins", scoringDirection: "HIGHER_IS_BETTER", unit: "rounds won", isDefault: true },
-      { modeId: "best_of_5", displayName: "Best of 5", description: "Extended psychological battle", scoringDirection: "HIGHER_IS_BETTER", unit: "rounds won" },
-    ],
-  },
-  stargame: {
-    game: "stargame",
-    displayName: "Star Game",
-    category: "board",
-    defaultModeId: "classic",
-    modes: [
-      { modeId: "classic", displayName: "Classic Constellation", description: "Capture the golden stars", scoringDirection: "HIGHER_IS_BETTER", unit: "stars", isDefault: true },
-    ],
-  },
-  bingo: {
-    game: "bingo",
-    displayName: "Bingo / Tambola",
-    category: "social",
-    defaultModeId: "standard_5x5",
-    modes: [
-      { modeId: "standard_5x5", displayName: "Standard 5x5", description: "Fewest calls to complete BINGO", scoringDirection: "LOWER_IS_BETTER", unit: "calls to win", isDefault: true },
-    ],
-  },
-  namesplaceanimal: {
-    game: "namesplaceanimal",
-    displayName: "Name Place Animal Thing",
-    category: "social",
-    defaultModeId: "standard_rounds",
-    modes: [
-      { modeId: "standard_rounds", displayName: "Standard 5 Rounds", description: "Highest aggregate vocabulary points", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-    ],
-  },
   roadrash: {
     game: "roadrash",
     displayName: "Road Rash 2D",
     category: "retro_arcade",
     defaultModeId: "circuit_rush",
     modes: [
-      { modeId: "circuit_rush", displayName: "Circuit Rush", description: "Distance and takedown score", scoringDirection: "HIGHER_IS_BETTER", unit: "distance (m)", isDefault: true },
+      { modeId: "circuit_rush", displayName: "Circuit Rush", description: "Distance and takedown score", scoringDirection: "HIGHER_IS_BETTER", unit: "meters", isDefault: true },
     ],
   },
 };
@@ -243,35 +271,94 @@ export function resolveModeId(game: string, options?: Record<string, unknown>): 
   const cfg = getGameModeConfig(game);
   if (!options) return cfg.defaultModeId;
 
-  // Hand Cricket: overs check
-  if (game === "handcricket" && typeof options.overs === "number") {
-    if (options.overs === 1) return "1_over";
-    if (options.overs === 5) return "5_overs";
-    return "2_overs";
+  // Hand Cricket
+  if (game === "handcricket") {
+    if (options.mode === "galli") {
+      if (options.galliOvers === 1 || options.overs === 1) return "1_over";
+      return "galli";
+    }
+    if (options.format === "t20") return "t20";
+    if (options.format === "odi") return "odi";
+    if (options.format === "test") return "5_overs";
+    if (typeof options.overs === "number") {
+      if (options.overs === 1) return "1_over";
+      if (options.overs === 5) return "5_overs";
+      if (options.overs === 10) return "t20";
+      if (options.overs === 15) return "odi";
+      return "2_overs";
+    }
+    return cfg.defaultModeId;
   }
 
-  // Dots & Boxes: gridSize check
-  if (game === "dotsboxes" && typeof options.gridSize === "number") {
-    if (options.gridSize === 3) return "grid_3x3";
-    if (options.gridSize === 5) return "grid_5x5";
-    return "grid_4x4";
+  // SNL
+  if (game === "snl" && typeof options.difficulty === "string") {
+    if (["easy", "medium", "hard", "extreme"].includes(options.difficulty)) {
+      return options.difficulty;
+    }
   }
 
-  // Ludo: tokenCount check
+  // Rummy
+  if (game === "rummy" && typeof options.rummyMode === "string") {
+    if (["single", "pool101", "pool201"].includes(options.rummyMode)) {
+      return options.rummyMode;
+    }
+  }
+
+  // UNO
+  if (game === "uno" && typeof options.matchLength === "string") {
+    if (options.matchLength === "300") return "race_300";
+    if (options.matchLength === "500") return "race_500";
+    if (options.matchLength === "1000") return "race_1000";
+    return "single";
+  }
+
+  // Dots & Boxes
+  if (game === "dotsboxes") {
+    const size = typeof options.boardSize === "number" ? options.boardSize : typeof options.gridSize === "number" ? options.gridSize : null;
+    if (size === 5) return "grid_5x5";
+    if (size === 9) return "grid_9x9";
+    if (size === 7) return "grid_7x7";
+    if (size === 4) return "grid_4x4";
+    return "grid_7x7";
+  }
+
+  // Ludo
   if (game === "ludo" && typeof options.tokenCount === "number" && options.tokenCount === 2) {
     return "quick_2token";
   }
 
-  // Snake: mode check
-  if ((game === "snake" || game === "nokiasnake") && typeof options.mode === "string") {
-    if (options.mode === "borderless") return "borderless_wrap";
-    if (options.mode === "speed") return "speed_rush";
+  // Word Building
+  if (game === "wordbuilding") {
+    if (options.dictMode === "tournament") return "tournament_10x10";
+    if (options.boardSize === 8) return "classroom_8x8";
+    if (options.mode === "timed_sprint") return "timed_sprint";
+    return "classroom_10x10";
+  }
+
+  // Snake
+  if (game === "snake" || game === "nokiasnake") {
+    if (options.wallMode === "wrap" || options.mode === "borderless") return "borderless_wrap";
+    if (options.speed === "70" || options.mode === "speed") return "speed_rush";
     return "classic_walled";
   }
 
-  // 2048: gridSize check
-  if (game === "2048" && typeof options.gridSize === "number" && options.gridSize === 5) {
-    return "grid_5x5";
+  // 2048
+  if (game === "2048") {
+    if (typeof options.mode === "string") {
+      if (options.mode === "daily") return "daily";
+      if (options.mode === "battle") return "battle";
+      if (options.mode === "race") return "race";
+      if (options.mode === "timeattack" || options.mode === "time_attack") return "timeattack";
+      if (options.mode === "zen") return "zen";
+    }
+    return "daily";
+  }
+
+  // Carrom
+  if (game === "carrom" && typeof options.carromMode === "string") {
+    if (["classic", "discpool", "freestyle"].includes(options.carromMode)) {
+      return options.carromMode;
+    }
   }
 
   return cfg.defaultModeId;

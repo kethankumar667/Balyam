@@ -485,10 +485,12 @@ export function useGame2048(): UseGame2048Result {
         // Sync with universal Chrono-Scorecard system
         try {
           const storedGuestId = localStorage.getItem("bhalyam.guest.id") || "guest";
+          const currentMode = modeRef.current || "battle";
+          const scorecardScore = currentMode === "race" ? (finalElapsedMs ? Math.round(finalElapsedMs / 1000) : 0) : finalScore;
           void useScorecardStore.getState().recordScore(storedGuestId, {
             game: "2048",
-            modeId: "grid_4x4",
-            score: finalScore,
+            modeId: currentMode,
+            score: scorecardScore,
             context: "SOLO",
             matchId: `2048_${Date.now()}`,
           });
@@ -525,7 +527,7 @@ export function useGame2048(): UseGame2048Result {
       }
       setScore(0);
       try {
-        useScorecardStore.getState().updateLivePace("2048", "grid_4x4", 0);
+        useScorecardStore.getState().updateLivePace("2048", m, 0);
       } catch {
         // safe
       }
@@ -655,7 +657,7 @@ export function useGame2048(): UseGame2048Result {
       setGrid(nextGrid);
       setScore(nextScore);
       try {
-        useScorecardStore.getState().updateLivePace("2048", "grid_4x4", nextScore);
+        useScorecardStore.getState().updateLivePace("2048", modeRef.current || "battle", nextScore);
       } catch {
         // safe
       }

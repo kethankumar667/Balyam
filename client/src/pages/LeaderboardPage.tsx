@@ -21,16 +21,18 @@ interface ModeLeaderboardItem {
   timesPlayed: number;
 }
 
-const SUPPORTED_GAMES: { id: AllGameSlug; label: string }[] = [
-  { id: "handcricket", label: "Hand Cricket" },
-  { id: "2048", label: "2048 Classic" },
-  { id: "snake", label: "Snake 2D" },
-  { id: "nokiasnake", label: "Nokia Snake" },
-  { id: "wordbuilding", label: "Word Building" },
-  { id: "dotsboxes", label: "Dots & Boxes" },
-  { id: "ludo", label: "Ludo" },
-  { id: "rummy", label: "Rummy" },
-  { id: "uno", label: "Uno" },
+const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
+  { id: "handcricket", label: "Hand Cricket", icon: "🏏" },
+  { id: "2048", label: "2048 Classic", icon: "🔢" },
+  { id: "snake", label: "Snake 2D", icon: "🐍" },
+  { id: "ludo", label: "Ludo", icon: "🎲" },
+  { id: "rummy", label: "Rummy", icon: "🎴" },
+  { id: "uno", label: "UNO", icon: "🃏" },
+  { id: "snl", label: "Snakes & Ladders", icon: "🪜" },
+  { id: "dotsboxes", label: "Dots & Boxes", icon: "📦" },
+  { id: "wordbuilding", label: "Word Building", icon: "🔤" },
+  { id: "carrom", label: "Carrom", icon: "⚪" },
+  { id: "nokiasnake", label: "Nokia Snake", icon: "📱" },
 ];
 
 export default function LeaderboardPage() {
@@ -172,65 +174,106 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Game Selector Chips */}
-        <div className="space-y-2">
-          <label className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] flex items-center gap-1.5">
-            <Gamepad2 className="w-3.5 h-3.5 text-amber-500" />
-            <span>Select Game Arena</span>
-          </label>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)] flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4 text-amber-500" />
+              <span>Select Game Arena</span>
+            </label>
+            <span className="text-[11px] font-mono text-[var(--chrome-ink-soft)]">
+              {SUPPORTED_GAMES.length} Arenas
+            </span>
+          </div>
+
           <div
             role="group"
             aria-label="Filter scoreboard by game arena"
-            className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar"
+            className="flex items-center gap-2.5 overflow-x-auto pb-2 custom-scrollbar -mx-1 px-1"
           >
-            {SUPPORTED_GAMES.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                aria-pressed={selectedGame === g.id}
-                aria-label={`Filter by ${g.label} game`}
-                onClick={() => handleGameChange(g.id)}
-                className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-black tracking-wide uppercase transition active:scale-95 shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
-                  selectedGame === g.id
-                    ? "bg-amber-500 text-slate-950 shadow-md font-extrabold"
-                    : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] border border-[var(--chrome-border)]"
-                }`}
-              >
-                {g.label}
-              </button>
-            ))}
+            {SUPPORTED_GAMES.map((g) => {
+              const isSelected = selectedGame === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`Filter by ${g.label} game arena`}
+                  onClick={() => handleGameChange(g.id)}
+                  className={`min-h-[44px] px-4 py-2.5 rounded-2xl text-xs tracking-wide transition-all active:scale-95 shrink-0 cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                    isSelected
+                      ? "bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 font-black shadow-md shadow-amber-500/25 ring-2 ring-amber-400/50"
+                      : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] font-bold shadow-xs"
+                  }`}
+                >
+                  <span className="text-base leading-none">{g.icon}</span>
+                  <span className="uppercase">{g.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Mode Sub-Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-          {gameConfig.modes.map((m) => (
-            <button
-              key={m.modeId}
-              type="button"
-              aria-pressed={selectedMode === m.modeId}
-              onClick={() => setSelectedMode(m.modeId)}
-              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
-                selectedMode === m.modeId
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-xs"
-                  : "bg-stone-900/40 text-stone-400 hover:text-stone-200 border border-stone-800"
-              }`}
-            >
-              <span>{m.displayName}</span>
-            </button>
-          ))}
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[var(--chrome-ink-soft)]">
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Ruleset & Game Mode</span>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Filter scoreboard by game mode"
+            className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar -mx-1 px-1"
+          >
+            {gameConfig.modes.map((m) => {
+              const isSelected = selectedMode === m.modeId;
+              return (
+                <button
+                  key={m.modeId}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  aria-label={`Filter by ${m.displayName} mode`}
+                  onClick={() => setSelectedMode(m.modeId)}
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-xs transition-all shrink-0 cursor-pointer flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                    isSelected
+                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40 font-black shadow-xs ring-1 ring-amber-500/20"
+                      : "bg-[var(--chrome-control)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control-hi)] border border-[var(--chrome-border)] font-semibold"
+                  }`}
+                >
+                  {isSelected && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  )}
+                  <span>{m.displayName}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Mode Description Banner */}
         {activeModeDef && (
-          <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="text-[var(--chrome-ink)] font-bold">{activeModeDef.displayName}:</span>
-              <span className="text-[var(--chrome-ink-soft)]">{activeModeDef.description}</span>
+          <div className="p-4 rounded-2xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] border-l-4 border-l-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0 mt-0.5 sm:mt-0">
+                <Zap className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="text-sm font-black text-[var(--chrome-ink)]">
+                  {activeModeDef.displayName}
+                </div>
+                <div className="text-xs text-[var(--chrome-ink-soft)]">
+                  {activeModeDef.description}
+                </div>
+              </div>
             </div>
-            <span className="font-mono font-bold text-[10px] uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0 self-start sm:self-auto">
-              {activeModeDef.scoringDirection === "HIGHER_IS_BETTER" ? "High Score Wins" : "Fewest Turns Wins"}
-            </span>
+
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <span className="font-mono font-bold text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 flex items-center gap-1.5">
+                <span>{activeModeDef.scoringDirection === "HIGHER_IS_BETTER" ? "🏆 High Score Wins" : "⚡ Fewest Turns Wins"}</span>
+                <span className="opacity-60 text-[10px]">({unit})</span>
+              </span>
+            </div>
           </div>
         )}
 
