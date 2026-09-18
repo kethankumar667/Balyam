@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Game2048StatsService, sanitizeCandidateStats, mergeGame2048Stats } from "../Game2048StatsService.js";
+import { scorecardService } from "../../profile/ScorecardService.js";
 
 describe("sanitizeCandidateStats", () => {
   it("passes through a well-formed candidate", () => {
@@ -188,5 +189,28 @@ describe("Game2048StatsService", () => {
     await service.syncStats("player_b", { bestScore: { battle: 900, timeattack: 0, zen: 0 }, bestRaceTimeMs: null });
     expect((await service.getStats("player_a")).bestScore.battle).toBe(500);
     expect((await service.getStats("player_b")).bestScore.battle).toBe(900);
+  });
+
+  it("projects synced 2048 best scores directly into scorecardService for leaderboards", async () => {
+    await service.syncStats("player_2048_champ", {
+      bestScore: { battle: 8192, timeattack: 2500, zen: 4096 },
+      bestRaceTimeMs: 120000,
+      dailyBestScore: 5000,
+      dailyDate: "2026-09-18",
+    });
+
+    const battleBoard = scorecardService.getModeLeaderboard("2048", "battle");
+    const zenBoard = scorecardService.getModeLeaderboard("2048", "zen");
+
+    const playerBattle = battleBoard.find((e) => e.playerId === "player_2048_champ");
+    const playerZen = zenBoard.find((e) => e.playerId === "player_2048_champ");
+
+    expect(playerBattle).toBeDefined();
+    expect(playerBattle?.bestScore).toBe(8192);
+    expect(playerBattle?.rank).toBe(1);
+
+    expect(playerZen).toBeDefined();
+    expect(playerZen?.bestScore).toBe(4096);
+    expect(playerZen?.rank).toBe(1);
   });
 });

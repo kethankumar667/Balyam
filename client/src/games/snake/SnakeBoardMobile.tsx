@@ -9,6 +9,7 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
+import { recordSoloScore } from "../../store/scorecardStore";
 
 /** Same "seen" bookkeeping convention as every other game's tutorial gate. */
 export const SNAKE_RULES_KEY = "snake.tutorial.completed.v1";
@@ -97,9 +98,13 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
   useEffect(() => {
     if (state.isOver && !prevOverRef.current) {
       haptics.win();
+      const me = state.players.find((p) => p.id === selfId);
+      if (me && me.score > 0) {
+        void recordSoloScore("snake", "classic_walled", me.score);
+      }
     }
     prevOverRef.current = !!state.isOver;
-  }, [state.isOver, haptics]);
+  }, [state.isOver, haptics, selfId, state.players]);
 
   const me = state.players.find((p) => p.id === selfId);
 

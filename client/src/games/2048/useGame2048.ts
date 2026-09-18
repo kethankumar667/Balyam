@@ -16,7 +16,7 @@ import { useHaptics } from "../../hooks/useHaptics";
 import { AUDIO } from "../../constants/audio";
 import { fire2048WinConfetti } from "./confetti2048";
 import { getGame2048Stats, syncGame2048Stats } from "../../lib/game2048StatsApi";
-import { useScorecardStore } from "../../store/scorecardStore";
+import { useScorecardStore, recordSoloScore } from "../../store/scorecardStore";
 import { createDateSeed, mulberry32 } from "./prng";
 import type { TableTheme } from "./tileStyles";
 
@@ -394,6 +394,19 @@ export function useGame2048(): UseGame2048Result {
   // device, or a server hiccup all just leave `stats` as the local baseline.
   useEffect(() => {
     let cancelled = false;
+
+    // Sync any existing local bests into cloud and scorecards on mount
+    const local = loadStats();
+    if (
+      local.bestScore.battle > 0 ||
+      local.bestScore.zen > 0 ||
+      local.bestScore.timeattack > 0 ||
+      local.bestRaceTimeMs != null ||
+      local.dailyBestScore > 0
+    ) {
+      void syncGame2048Stats(local);
+    }
+
     void getGame2048Stats().then((cloud) => {
       if (cancelled || !cloud) return;
       setStats((prev) => {
@@ -484,16 +497,9 @@ export function useGame2048(): UseGame2048Result {
 
         // Sync with universal Chrono-Scorecard system
         try {
-          const storedGuestId = localStorage.getItem("bhalyam.guest.id") || "guest";
           const currentMode = modeRef.current || "battle";
           const scorecardScore = currentMode === "race" ? (finalElapsedMs ? Math.round(finalElapsedMs / 1000) : 0) : finalScore;
-          void useScorecardStore.getState().recordScore(storedGuestId, {
-            game: "2048",
-            modeId: currentMode,
-            score: scorecardScore,
-            context: "SOLO",
-            matchId: `2048_${Date.now()}`,
-          });
+          void recordSoloScore("2048", currentMode, scorecardScore);
         } catch {
           // Ignore
         }

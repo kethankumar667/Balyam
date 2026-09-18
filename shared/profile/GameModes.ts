@@ -245,6 +245,38 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
       { modeId: "circuit_rush", displayName: "Circuit Rush", description: "Distance and takedown score", scoringDirection: "HIGHER_IS_BETTER", unit: "meters", isDefault: true },
     ],
   },
+  brickblocks: {
+    game: "brickblocks",
+    displayName: "Brick Tetris",
+    category: "retro_arcade",
+    defaultModeId: "classic",
+    modes: [
+      { modeId: "classic", displayName: "Classic Marathon", description: "Standard falling blocks line-clear run", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "pentix", displayName: "Pentix 5-Block", description: "Challenging 5-block polyominoes", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+    ],
+  },
+  tetris: {
+    game: "tetris",
+    displayName: "Brick Tetris",
+    category: "retro_arcade",
+    defaultModeId: "classic",
+    modes: [
+      { modeId: "classic", displayName: "Classic Marathon", description: "Standard falling blocks line-clear run", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "pentix", displayName: "Pentix 5-Block", description: "Challenging 5-block polyominoes", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+    ],
+  },
+  breakout: {
+    game: "breakout",
+    displayName: "Brick Breakout",
+    category: "retro_arcade",
+    defaultModeId: "classic",
+    modes: [
+      { modeId: "classic", displayName: "Classic Wall", description: "Paddle & ball brick clearing", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "moving_wall", displayName: "Moving Wall", description: "Bricks move. So must you.", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "time_attack", displayName: "Time Attack", description: "Clear as many as you can in 2 minutes.", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "endless", displayName: "Endless", description: "Keep going. No limits.", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+    ],
+  },
 };
 
 /**

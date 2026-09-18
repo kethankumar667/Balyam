@@ -13,6 +13,7 @@ import {
 } from "./engine/gameReducer";
 import { loadBreakoutData, saveBreakoutData } from "./services/storageService";
 import { breakoutAudio } from "./services/audioService";
+import { recordSoloScore } from "../../store/scorecardStore";
 import { useGameLoop } from "./hooks/useGameLoop";
 import { useKeyboardControls } from "./hooks/useKeyboardControls";
 import { BreakoutGrid } from "./components/BreakoutGrid";
@@ -72,6 +73,11 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
         maxLevel: state.level,
         soundEnabled: state.settings.soundEnabled,
       });
+      if (state.status === "game-over" && state.score > 0) {
+        void recordSoloScore("breakout", "classic", state.score, {
+          level: state.level,
+        });
+      }
     }
   }, [state.score, state.highScore, state.level, state.status, state.settings.soundEnabled]);
 

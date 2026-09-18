@@ -83,7 +83,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   chess: "/Chess Game Tile.png",
   spacewar: "/SpacewarTile.png",
   nokiacricket: "/RetroCricket Game Tile.png",
-  "2048": "/2048 Game Tile.svg",
+  "2048": "/2048 Game Tile.png",
 };
 
 export default function GameCard({

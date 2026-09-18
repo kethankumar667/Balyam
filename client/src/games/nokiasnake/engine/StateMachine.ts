@@ -14,6 +14,7 @@ import { RetroSoundEngine } from "../audio/RetroSoundEngine";
 import { RenderPipeline } from "../canvas/RenderPipeline";
 import { StorageService } from "../utils/storage";
 import { GRID_CONFIG, SPRITES } from "../utils/constants";
+import { recordSoloScore } from "../../../store/scorecardStore";
 
 export class StateMachine {
   public state: GameState = "BOOT";
@@ -49,6 +50,9 @@ export class StateMachine {
     this.foodManager = new FoodManager();
     this.saveData = StorageService.load();
     this.updateStats();
+    if (this.saveData.highScore > 0) {
+      void recordSoloScore("nokiasnake", "classic_walled", this.saveData.highScore);
+    }
   }
 
   public getCurrentTickInterval(): number {
@@ -159,6 +163,13 @@ export class StateMachine {
 
     this.saveData = finalData;
     this.updateStats(isNewHigh);
+
+    // Sync score to Chrono-Scorecard & Leaderboard
+    const modeId = this.gameMode === "WRAP_AROUND" ? "speed_rush" : "classic_walled";
+    void recordSoloScore("nokiasnake", modeId, this.score, {
+      level: this.level,
+      length: this.snake.length,
+    });
   }
 
   public handleInput(input: GameInput): void {

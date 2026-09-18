@@ -11,6 +11,7 @@
 
 import { logger } from "../lib/logger.js";
 import { PostgrestClient, readPostgrestConfig, type PostgrestConfig } from "../persistence/postgrest.js";
+import { scorecardService } from "../profile/ScorecardService.js";
 
 export interface RaceGhostPoint {
   /** Milliseconds since the race started when this tile milestone was first reached. */
@@ -222,6 +223,61 @@ export class Game2048StatsService {
     const candidate = sanitizeCandidateStats(candidateInput);
     const merged = mergeGame2048Stats(existing, candidate);
     await this.persistRecord(playerId, merged);
+
+    // Wire authoritative personal bests directly into the universal Chrono-Scorecard system
+    try {
+      if (merged.bestScore.battle > 0) {
+        scorecardService.recordScore(playerId, {
+          game: "2048",
+          modeId: "battle",
+          score: merged.bestScore.battle,
+          context: "SOLO",
+          matchId: `2048_sync_battle_${Date.now()}`,
+        });
+      }
+      if (merged.bestScore.zen > 0) {
+        scorecardService.recordScore(playerId, {
+          game: "2048",
+          modeId: "zen",
+          score: merged.bestScore.zen,
+          context: "SOLO",
+          matchId: `2048_sync_zen_${Date.now()}`,
+        });
+      }
+      if (merged.bestScore.timeattack > 0) {
+        scorecardService.recordScore(playerId, {
+          game: "2048",
+          modeId: "timeattack",
+          score: merged.bestScore.timeattack,
+          context: "SOLO",
+          matchId: `2048_sync_timeattack_${Date.now()}`,
+        });
+      }
+      if (merged.bestRaceTimeMs != null && merged.bestRaceTimeMs > 0) {
+        scorecardService.recordScore(playerId, {
+          game: "2048",
+          modeId: "race",
+          score: Math.round(merged.bestRaceTimeMs / 1000),
+          context: "SOLO",
+          matchId: `2048_sync_race_${Date.now()}`,
+        });
+      }
+      if (merged.dailyBestScore > 0) {
+        scorecardService.recordScore(playerId, {
+          game: "2048",
+          modeId: "daily",
+          score: merged.dailyBestScore,
+          context: "SOLO",
+          matchId: `2048_sync_daily_${Date.now()}`,
+        });
+      }
+    } catch (err) {
+      logger.warn({
+        message: `Failed to project 2048 stats into scorecardService for ${playerId}: ${String(err)}`,
+        module: "GAME_2048_STATS",
+      });
+    }
+
     return merged;
   }
 }

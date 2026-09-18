@@ -10,6 +10,7 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import { recordSoloScore } from "../../store/scorecardStore";
 
 export default function SnakeBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
   // Auto-opens once per browser the first time this player reaches the
@@ -52,6 +53,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
     if (myScore > bestScore) {
       setBestScore(myScore);
       localStorage.setItem("mpg.snake.best", myScore.toString());
+      void recordSoloScore("snake", "classic_walled", myScore);
     }
   }, [myScore, bestScore]);
 

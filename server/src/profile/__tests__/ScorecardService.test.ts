@@ -200,4 +200,61 @@ describe("ScorecardService", () => {
     expect(ranks[2]?.bestScore).toBe(1024);
     expect(ranks[2]?.rank).toBe(3);
   });
+
+  it("seeds initial benchmark scores so leaderboards are populated from launch", () => {
+    // 2048 Zen mode
+    const zenRanks = service.getModeLeaderboard("2048", "zen");
+    expect(zenRanks.length).toBeGreaterThanOrEqual(3);
+    expect(zenRanks[0]?.displayName).toBe("Master A.N.N.A");
+    expect(zenRanks[0]?.bestScore).toBe(2450);
+
+    // 2048 Battle mode
+    const battleRanks = service.getModeLeaderboard("2048", "battle");
+    expect(battleRanks.length).toBeGreaterThanOrEqual(3);
+    expect(battleRanks[0]?.bestScore).toBe(2840);
+
+    // Nokia Snake
+    const snakeRanks = service.getModeLeaderboard("nokiasnake", "classic_walled");
+    expect(snakeRanks.length).toBeGreaterThanOrEqual(3);
+    expect(snakeRanks[0]?.bestScore).toBe(84);
+
+    // Nokia Cricket
+    const cricketRanks = service.getModeLeaderboard("nokiacricket", "2_overs");
+    expect(cricketRanks.length).toBeGreaterThanOrEqual(3);
+    expect(cricketRanks[0]?.bestScore).toBe(44);
+
+    // Brick Racer
+    const racerRanks = service.getModeLeaderboard("roadrash", "circuit_rush");
+    expect(racerRanks.length).toBeGreaterThanOrEqual(3);
+    expect(racerRanks[0]?.bestScore).toBe(450);
+
+    // Brick Tetris
+    const tetrisRanks = service.getModeLeaderboard("brickblocks", "classic");
+    expect(tetrisRanks.length).toBeGreaterThanOrEqual(3);
+    expect(tetrisRanks[0]?.bestScore).toBe(5400);
+  });
+
+  it("allows a real player to beat the benchmark and take Rank 1 on the leaderboard", () => {
+    // Real player scores 5000 in Zen mode (benchmark was 2450)
+    service.recordScore("human_player_pro", {
+      game: "2048",
+      modeId: "zen",
+      score: 5000,
+      context: "SOLO",
+      matchId: "m_zen_pro",
+    });
+
+    const zenRanks = service.getModeLeaderboard("2048", "zen", 10, (id) =>
+      id === "human_player_pro" ? { displayName: "ProGamer99", avatar: "pro" } : undefined
+    );
+
+    expect(zenRanks[0]?.playerId).toBe("human_player_pro");
+    expect(zenRanks[0]?.displayName).toBe("ProGamer99");
+    expect(zenRanks[0]?.bestScore).toBe(5000);
+    expect(zenRanks[0]?.rank).toBe(1);
+
+    // The former champion drops to Rank 2
+    expect(zenRanks[1]?.playerId).toBe("bot_lounge_champ");
+    expect(zenRanks[1]?.rank).toBe(2);
+  });
 });

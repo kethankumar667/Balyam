@@ -12,6 +12,7 @@ import { RetroSoundEngine } from "../audio/RetroSoundEngine";
 import { RenderPipeline } from "../canvas/RenderPipeline";
 import { StorageService } from "../utils/storage";
 import { LANE_CENTERS, SPRITES } from "../utils/constants";
+import { recordSoloScore } from "../../../store/scorecardStore";
 
 export class StateMachine {
   public state: GameState = "BOOT";
@@ -47,6 +48,9 @@ export class StateMachine {
     this.enemyManager = new EnemyCarManager();
     this.saveData = StorageService.load();
     this.updateStats();
+    if (this.saveData.highScore > 0) {
+      void recordSoloScore("roadrash", "circuit_rush", this.saveData.highScore);
+    }
   }
 
   public getCurrentTickInterval(): number {
@@ -144,6 +148,13 @@ export class StateMachine {
 
     this.saveData = finalData;
     this.updateStats(isNewHigh);
+
+    // Sync score to Chrono-Scorecard & Leaderboard
+    void recordSoloScore("roadrash", "circuit_rush", this.score, {
+      level: this.level,
+      carsDodged: this.carsDodged,
+      distanceMeters: this.distanceMeters,
+    });
   }
 
   public handleInput(input: GameInput): void {

@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import type { GameAction, GameState } from "../types";
 import { saveTetrisMatchResult } from "../services/storageService";
 import { tetrisAudio } from "../services/audioService";
+import { recordSoloScore } from "../../../store/scorecardStore";
 
 interface GameOverScreenProps {
   state: GameState;
@@ -12,6 +13,11 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ state, dispatch 
   useEffect(() => {
     tetrisAudio.playGameOver();
     saveTetrisMatchResult(state.score, state.linesCleared, state.level, state.mode);
+    const modeId = state.mode === "PENTIX" ? "pentix" : "classic";
+    void recordSoloScore("brickblocks", modeId, state.score, {
+      lines: state.linesCleared,
+      level: state.level,
+    });
   }, [state.score, state.linesCleared, state.level, state.mode]);
 
   const isNewRecord = state.score >= state.highScore && state.score > 0;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiJson, apiFetch } from "../lib/playerIdentity";
+import { apiJson, apiFetch, getPlayerCredential } from "../lib/playerIdentity";
 import type {
   PlayerScorecardArchive,
   RecordScorePayload,
@@ -20,6 +20,7 @@ interface ScorecardState {
   recordScore: (playerId: string, payload: RecordScorePayload) => Promise<RecordScoreResult | null>;
   updateLivePace: (game: AllGameSlug, modeId: string, currentScore: number) => void;
   dismissPBModal: () => void;
+  clearScorecards: (playerId?: string) => void;
 }
 
 const STORAGE_KEY = "bhalyam.scorecards.cache";
@@ -79,10 +80,17 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
   },
 
   recordScore: async (playerId: string, payload: RecordScorePayload) => {
-    if (!playerId) return null;
+    let effectivePlayerId = playerId;
+    if (!effectivePlayerId || effectivePlayerId === "guest") {
+      const cred = await getPlayerCredential();
+      if (cred?.playerId) {
+        effectivePlayerId = cred.playerId;
+      }
+    }
+    if (!effectivePlayerId) return null;
 
     try {
-      const res = await apiFetch(`/api/profile/${playerId}/scorecards/record`, {
+      const res = await apiFetch(`/api/profile/${effectivePlayerId}/scorecards/record`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -100,7 +108,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
         }
 
         // Re-fetch archive in background to update UI
-        get().fetchScorecards(playerId);
+        get().fetchScorecards(effectivePlayerId);
         return result;
       }
     } catch (err) {
@@ -154,4 +162,42 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
   },
 
   dismissPBModal: () => set({ lastNewPB: null }),
+  clearScorecards: (playerId?: string) => {
+    if (playerId) {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY}.${playerId}`);
+      } catch {}
+    }
+    set({
+      archive: null,
+      lastNewPB: null,
+      activeGhostPace: null,
+      error: null,
+      loading: false,
+    });
+  },
 }));
+
+/**
+ * Universal helper for solo and arcade games to record personal best scores
+ * into the Chrono-Scorecard and Leaderboard system.
+ */
+export async function recordSoloScore(
+  game: AllGameSlug,
+  modeId: string,
+  score: number,
+  secondaryMetrics?: Record<string, number | string>
+): Promise<RecordScoreResult | null> {
+  const cred = await getPlayerCredential();
+  const effectiveId = cred?.playerId || "guest";
+
+  return useScorecardStore.getState().recordScore(effectiveId, {
+    game,
+    modeId,
+    score,
+    context: "SOLO",
+    matchId: `solo_${game}_${modeId}_${Date.now()}`,
+    secondaryMetrics,
+  });
+}
+

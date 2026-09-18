@@ -14,10 +14,21 @@ import {
   getGameModeConfig,
   determineFoilTier,
   calculateRadarMetrics,
+  GAME_MODE_REGISTRY,
 } from "@shared/profile/GameModes.js";
+
+export const BOT_PROFILES: Record<string, { displayName: string; avatar: string }> = {
+  bot_lounge_champ: { displayName: "Master A.N.N.A", avatar: "aura-gold" },
+  bot_retro_master: { displayName: "Retro King", avatar: "retro-crown" },
+  bot_gully_legend: { displayName: "Gully Legend", avatar: "bat-gold" },
+};
 
 export class ScorecardService {
   private scorecards: Map<string, PlayerScorecardArchive> = new Map();
+
+  constructor() {
+    this.seedInitialLeaderboards();
+  }
 
   /**
    * Retrieves or initializes a player's scorecard archive.
@@ -245,12 +256,15 @@ export class ScorecardService {
       if (!modeCard || modeCard.timesPlayed === 0) continue;
 
       const prof = resolveProfile ? resolveProfile(playerId) : undefined;
+      const bot = BOT_PROFILES[playerId];
+      const displayName = prof?.displayName || bot?.displayName || playerId;
+      const avatar = prof?.avatar || bot?.avatar;
 
       results.push({
         rank: 0,
         playerId,
-        displayName: prof?.displayName || playerId,
-        avatar: prof?.avatar,
+        displayName,
+        avatar,
         bestScore: modeCard.bestScore,
         bestScoreAchievedAt: modeCard.bestScoreAchievedAt,
         foilTier: modeCard.foilTier,
@@ -279,6 +293,170 @@ export class ScorecardService {
    */
   public deleteScorecards(playerId: string): boolean {
     return this.scorecards.delete(playerId);
+  }
+
+  /**
+   * Seeds realistic initial benchmark records across all games and modes
+   * so leaderboards provide engaging lounge records from launch.
+   */
+  public seedInitialLeaderboards(): void {
+    const benchmarks: Record<string, Record<string, [number, number, number]>> = {
+      "2048": {
+        daily: [3420, 2680, 1940],
+        battle: [2840, 2120, 1560],
+        timeattack: [1960, 1520, 1140],
+        zen: [2450, 1820, 1280],
+        race: [135, 168, 205],
+      },
+      nokiasnake: {
+        classic_walled: [84, 56, 38],
+        speed_rush: [68, 44, 28],
+      },
+      snake: {
+        classic_walled: [92, 64, 42],
+        borderless_wrap: [110, 78, 52],
+        speed_rush: [76, 50, 32],
+      },
+      nokiacricket: {
+        "2_overs": [44, 32, 22],
+        "5_overs": [96, 74, 52],
+      },
+      roadrash: {
+        circuit_rush: [450, 320, 210],
+      },
+      brickblocks: {
+        classic: [5400, 3800, 2200],
+        pentix: [3900, 2700, 1600],
+      },
+      tetris: {
+        classic: [5400, 3800, 2200],
+        pentix: [3900, 2700, 1600],
+      },
+      breakout: {
+        classic: [1850, 1320, 840],
+      },
+      handcricket: {
+        "2_overs": [52, 38, 26],
+        "1_over": [28, 20, 14],
+        "5_overs": [112, 86, 62],
+        t20: [184, 142, 98],
+        odi: [240, 185, 130],
+        galli: [64, 48, 32],
+      },
+      dotsboxes: {
+        grid_7x7: [24, 18, 12],
+        grid_5x5: [11, 8, 5],
+        grid_9x9: [42, 32, 22],
+        grid_4x4: [7, 5, 3],
+      },
+      wordbuilding: {
+        classroom_10x10: [145, 110, 78],
+        classroom_8x8: [98, 74, 52],
+        tournament_10x10: [185, 140, 95],
+        timed_sprint: [72, 54, 38],
+      },
+      carrom: {
+        classic: [24, 18, 12],
+        discpool: [7, 10, 14],
+        freestyle: [85, 65, 45],
+        points_carrom: [29, 21, 15],
+      },
+      rps: {
+        best_of_3: [3, 2, 1],
+        best_of_5: [5, 4, 3],
+        sudden_death: [1, 1, 1],
+      },
+      stargame: {
+        classic_5: [18, 14, 9],
+        sprint_3: [11, 8, 5],
+        marathon_10: [34, 26, 17],
+        classic: [15, 11, 7],
+      },
+      bingo: {
+        first_win: [18, 23, 29],
+        all_win: [32, 38, 45],
+        fast_2500: [17, 22, 28],
+        standard_5x5: [19, 24, 30],
+      },
+      namesplaceanimal: {
+        medium_5rds: [190, 145, 110],
+        hard_speed: [165, 125, 90],
+        marathon_10rds: [360, 275, 195],
+        standard_rounds: [180, 135, 100],
+      },
+      ludo: {
+        classic_4token: [34, 42, 52],
+        quick_2token: [18, 24, 31],
+      },
+      rummy: {
+        single: [0, 12, 24],
+        pool101: [25, 45, 68],
+        pool201: [55, 85, 120],
+        points_rummy: [0, 10, 20],
+      },
+      uno: {
+        single: [0, 18, 35],
+        race_300: [85, 145, 210],
+        race_500: [160, 240, 350],
+        race_1000: [320, 480, 650],
+        classic: [0, 15, 30],
+      },
+      snl: {
+        medium: [19, 25, 33],
+        easy: [14, 18, 25],
+        hard: [26, 35, 48],
+        extreme: [32, 44, 58],
+        classic_100: [21, 28, 38],
+      },
+      chess: {
+        blitz_3m: [28, 36, 45],
+        bullet_1m: [32, 40, 50],
+        rapid_10m: [25, 34, 42],
+      },
+      spacewar: {
+        arcade_survival: [3200, 2400, 1500],
+      },
+      blockblast: {
+        classic_endless: [4200, 3100, 1900],
+      },
+    };
+
+    const bots = ["bot_lounge_champ", "bot_retro_master", "bot_gully_legend"];
+
+    for (const [gameSlug, modes] of Object.entries(benchmarks)) {
+      for (const [modeId, scores] of Object.entries(modes)) {
+        for (let i = 0; i < bots.length; i++) {
+          const botId = bots[i]!;
+          const score = scores[i]!;
+          this.recordScore(botId, {
+            game: gameSlug as AllGameSlug,
+            modeId,
+            score,
+            context: "VS_BOTS",
+            matchId: `seed_${gameSlug}_${modeId}_${botId}`,
+          });
+        }
+      }
+    }
+
+    // Dynamic fallback for any remaining games or modes registered in GAME_MODE_REGISTRY
+    for (const [gameSlug, config] of Object.entries(GAME_MODE_REGISTRY)) {
+      for (const mode of config.modes) {
+        if (!benchmarks[gameSlug]?.[mode.modeId]) {
+          const isHigher = mode.scoringDirection !== "LOWER_IS_BETTER";
+          const fallbackScores: [number, number, number] = isHigher ? [100, 75, 50] : [20, 30, 40];
+          for (let i = 0; i < bots.length; i++) {
+            this.recordScore(bots[i]!, {
+              game: gameSlug as AllGameSlug,
+              modeId: mode.modeId,
+              score: fallbackScores[i]!,
+              context: "VS_BOTS",
+              matchId: `seed_${gameSlug}_${mode.modeId}_${bots[i]}`,
+            });
+          }
+        }
+      }
+    }
   }
 }
 

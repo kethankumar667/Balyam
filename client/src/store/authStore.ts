@@ -10,6 +10,7 @@ import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator
 import { clearGuestIdentity } from "../lib/playerIdentity";
 import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../services/FavouritesManager";
+import { syncUserDataOnLogin, clearUserDataOnSignOut } from "../services/UserDataSyncService";
 
 /**
  * The name Supabase itself already knows for this person, if any.
@@ -359,6 +360,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       isSuperAdmin: false,
       ready: true,
     });
+    void syncUserDataOnLogin(email.trim().toLowerCase() || "guest");
   },
 
   signInSuperAdmin: () => {
@@ -451,10 +453,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // guest IS the identity, and destroying it on "sign out" would delete
     // the only progress that ever existed while presenting itself as an
     // account transition rather than a guest wallet reset.
-    if (get().userId === null) {
+    const exitingUserId = get().userId;
+    if (exitingUserId === null) {
       saveLocalAccount(GUEST);
       clearAccountDetails();
-      useStreakStore.getState().resetTransientState();
+      clearUserDataOnSignOut();
       set({
         ...GUEST,
         userId: null,
@@ -513,7 +516,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // reactive roomStore state, which the earlier localStorage.clear()
     // cannot reach any more than it could RecentlyPlayedManager's cache.
     useRoomStore.getState().resetIdentity();
-    useStreakStore.getState().resetTransientState();
+    clearUserDataOnSignOut(exitingUserId);
     set({
       ...GUEST,
       userId: null,
@@ -762,9 +765,12 @@ if (isSupabaseConfigured) {
       if (userId && userId !== syncedUserId) {
         syncedUserId = userId;
         void startProfileSync(userId, session?.user?.user_metadata);
+        void syncUserDataOnLogin(userId);
       } else if (!userId && syncedUserId) {
+        const exitingUserId = syncedUserId;
         syncedUserId = null;
         stopProfileSync?.();
+        clearUserDataOnSignOut(exitingUserId);
       }
     };
 

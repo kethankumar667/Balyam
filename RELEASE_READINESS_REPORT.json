@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-09-17T12:37:15.583Z",
-  "gitCommit": "138bdd06",
+  "timestamp": "2026-09-18T08:45:38.538Z",
+  "gitCommit": "9cce8a76",
   "certificationState": "CLOSED BETA READY",
   "releaseApproved": true,
   "stateCapped": true,
@@ -16,11 +16,11 @@
     },
     "persistence": {
       "status": "PASS",
-      "message": "Verified against supabase-postgres (0d old)"
+      "message": "Verified against supabase-postgres (1d old)"
     },
     "accessibility": {
       "status": "PASS",
-      "message": "613 UI components & 22 rendered pages clean"
+      "message": "615 UI components & 22 rendered pages clean"
     },
     "mobile": {
       "status": "PASS",

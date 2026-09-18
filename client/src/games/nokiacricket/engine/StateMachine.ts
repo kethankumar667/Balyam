@@ -16,6 +16,7 @@ import { NokiaSoundEngine } from "../audio/NokiaSoundEngine";
 import { RenderPipeline } from "../canvas/RenderPipeline";
 import { SPRITES } from "../canvas/SpriteSheet";
 import { StorageService } from "../utils/storage";
+import { recordSoloScore } from "../../../store/scorecardStore";
 
 export class StateMachine {
   private state: GameState = "BOOT";
@@ -81,6 +82,9 @@ export class StateMachine {
     this.saveData = StorageService.load();
     this.stateTimer = 1800; // Boot timer
     this.soundEngine.playNokiaBoot();
+    if (this.saveData.highScore > 0) {
+      void recordSoloScore("nokiacricket", "2_overs", this.saveData.highScore);
+    }
   }
 
   public getState(): GameState {
@@ -454,6 +458,17 @@ export class StateMachine {
         isChase
       );
       this.saveData = StorageService.load();
+
+      // Sync score to Chrono-Scorecard & Leaderboard
+      const selectedOvers = this.overOptions[this.selectedOversIndex]?.overs ?? 5;
+      const modeId = selectedOvers >= 5 ? "5_overs" : "2_overs";
+      void recordSoloScore("nokiacricket", modeId, this.stats.score, {
+        wickets: this.stats.wickets,
+        sixes: this.stats.sixes,
+        fours: this.stats.fours,
+        won: won ? 1 : 0,
+      });
+
       this.state = "GAME_OVER";
       this.stateTimer = 0;
     } else {
