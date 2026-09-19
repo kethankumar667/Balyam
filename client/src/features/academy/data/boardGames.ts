@@ -1,0 +1,291 @@
+import type { GameAcademySpec } from "../types/academy";
+
+// Rules text in this file is checked against the engines by
+// __tests__/academyRulesTruth.test.ts. Sources: server/src/games/{ludo,snl,
+// dotsboxes,chess,carrom}, shared/ludo-rules.ts, shared/catalog.ts.
+
+export const LUDO_ACADEMY: GameAcademySpec = {
+  slug: "ludo",
+  title: "Ludo Lounge",
+  tagline: "The timeless tabletop race of tactical blocks, cut-throat chases, and golden finishes.",
+  genre: "board",
+  players: "2–8 Players",
+  duration: "15–25 min",
+  difficulty: "Casual",
+  primaryAccent: "#F59E0B",
+  secondaryAccent: "#10B981",
+  glowAura: "from-amber-500/20 via-emerald-500/10 to-transparent",
+  storageKey: "bhalyam.academy.ludo.v2",
+  slides: [
+    {
+      id: "objective",
+      badge: "MISSION 01",
+      title: "The Four-Token Odyssey",
+      summary: "Your objective is to navigate all 4 of your colored tokens around the perimeter track (52 cells with 2-4 players, 13 cells per seat with 5-8 players) and reach the central Home Triangle.",
+      keyRule: "First player to pilot all 4 tokens safely into Home wins the match; everyone else keeps playing for their placing.",
+      proTip: "Never advance just one token in isolation. Mobilize a pack to control the board.",
+      iconName: "Target",
+      sandboxKind: "dice-roll",
+      sandboxConfig: { rollTarget: 6, mode: "unlock" },
+    },
+    {
+      id: "unlock_rule",
+      badge: "MISSION 02",
+      title: "Roll 6 to Launch",
+      summary: "Tokens remain locked inside your yard until you roll a 6 on the die. A 6 allows you to place one token onto your colored starting square.",
+      keyRule: "Rolling a 6 also awards an immediate BONUS ROLL. Three consecutive 6s forfeit the turn.",
+      proTip: "When you roll a 6 with multiple tokens in the yard, assess whether launching a new threat or moving an active token yields higher territorial control.",
+      iconName: "Dice5",
+      sandboxKind: "dice-roll",
+      sandboxConfig: { rollTarget: 6, mode: "bonus" },
+    },
+    {
+      id: "mandatory_capture",
+      badge: "TACTICAL RULE",
+      title: "Mandatory Capture Lock",
+      summary: "Mandatory Capture is a room option, switched on by default. While it is on, your Home Column stays locked until you have captured at least ONE opponent token during the match.",
+      keyRule: "With the option on, a token that reaches the home stretch before you have captured cannot enter and must run another full lap!",
+      proTip: "Hunt for early captures near starting gates to unlock your home gates before tokens reach the final stretch. Check the room settings, because a host can turn this rule off.",
+      iconName: "ShieldCheck",
+    },
+    {
+      id: "safe_squares",
+      badge: "DEFENSIVE MATRIX",
+      title: "Star Squares & Safe Havens",
+      summary: "The Star Squares (★) — each arm's start cell plus a midpoint star, 8 in all on the classic board — and your colored home stretch provide absolute immunity against opponent captures.",
+      keyRule: "Multiple tokens of any color can co-exist harmlessly on Star Squares, unless the host turns safe squares off.",
+      proTip: "Camp on safe star squares directly behind enemies to ambush them on their next movement roll.",
+      iconName: "Crown",
+    },
+  ],
+  cheatsheet: [
+    {
+      title: "Core Mechanics",
+      iconName: "Zap",
+      items: [
+        { label: "Yard Unlock", detail: "Requires an exact roll of 6 to deploy from yard to start cell.", tag: "Mandatory" },
+        { label: "Bonus Turn Triggers", detail: "Rolling a 6, capturing an opponent token, or landing a token safely into Home.", tag: "Momentum" },
+        { label: "Consecutive 6s Penalty", detail: "Rolling three 6s in a row forfeits that entire turn.", tag: "Hazard" },
+      ],
+    },
+    {
+      title: "Competitive Rules",
+      iconName: "ShieldCheck",
+      items: [
+        { label: "Mandatory Capture Rule", detail: "Room option, on by default: home entrance stays locked until you achieve at least 1 capture.", tag: "Critical" },
+        { label: "Safe Star Cells (★)", detail: "Every arm's start cell and midpoint star protect the tokens sitting on them (8 on the classic board).", tag: "Immunity" },
+        { label: "Exact Roll to Win", detail: "Tokens in the 6-cell home column must roll the exact number to reach Home; an overshooting roll cannot be used.", tag: "Endgame" },
+      ],
+    },
+  ],
+  keybindings: [
+    { key: "R", description: "Roll the dice (desktop)" },
+    { key: "1 - 4", description: "Select token 1 through 4 when eligible" },
+  ],
+};
+
+export const SNL_ACADEMY: GameAcademySpec = {
+  slug: "snl",
+  title: "Snakes & Ladders",
+  tagline: "Ascend golden ladders and evade venomous vipers in the classic race to square 100.",
+  genre: "board",
+  players: "2–10 Players",
+  duration: "10–15 min",
+  difficulty: "Casual",
+  primaryAccent: "#F97316",
+  secondaryAccent: "#EF4444",
+  glowAura: "from-orange-500/20 via-rose-500/10 to-transparent",
+  storageKey: "bhalyam.academy.snl.v2",
+  slides: [
+    {
+      id: "objective",
+      badge: "MISSION 01",
+      title: "The Climb to 100",
+      summary: "Roll the dice and advance your coin across a 10x10 numbered grid from cell 1 to cell 100.",
+      keyRule: "Exact landing on 100 is required to claim the victory crown.",
+      proTip: "If your roll overshoots 100, your token bounces backwards from 100 by the excess count.",
+      iconName: "Target",
+    },
+    {
+      id: "ladders",
+      badge: "ELEVATION",
+      title: "Ascend Golden Ladders",
+      summary: "Landing precisely at the bottom rung of a ladder catapults your token straight to the ladder top.",
+      keyRule: "Ladders provide massive shortcuts that can flip a match in a single roll.",
+      proTip: "The board difficulty sets how many ladders you get: Easy has the most, Extreme only three. Spot the ones that jump several rows at once.",
+      iconName: "Flame",
+    },
+    {
+      id: "snakes",
+      badge: "HAZARD MATRIX",
+      title: "Beware the Venomous Serpents",
+      summary: "Landing on a snake's head forces your coin to slide all the way down to the tip of its tail.",
+      keyRule: "Snakes near the top can undo a lot of progress. On Hard a head at 99 drops you to 35, and on Extreme it drops you all the way to 1!",
+      proTip: "Easy boards have few, short snakes; Hard and Extreme have many long ones. Stay calculated when approaching the final row.",
+      iconName: "ShieldCheck",
+    },
+  ],
+  cheatsheet: [
+    {
+      title: "Track Navigation",
+      iconName: "Zap",
+      items: [
+        { label: "Movement", detail: "Advance forward by the exact number shown on the dice.", tag: "Core" },
+        { label: "One Roll Per Turn", detail: "Rolling a 6 does not earn an extra roll; the turn always passes on.", tag: "Turns" },
+        { label: "Ladder Shortcut", detail: "Land on the base of a ladder to automatically rise to its summit.", tag: "Boost" },
+        { label: "Snake Penalty", detail: "Land on a snake head to slide down to its tail.", tag: "Penalty" },
+        { label: "Exact 100 Finish", detail: "You must reach 100 exactly; overshooting bounces back.", tag: "Victory" },
+      ],
+    },
+  ],
+};
+
+export const DOTSBOXES_ACADEMY: GameAcademySpec = {
+  slug: "dotsboxes",
+  title: "Dots & Boxes",
+  tagline: "Strategic territorial grid combat — draw lines, seal squares, and trigger massive combo chains.",
+  genre: "board",
+  players: "2–6 Players",
+  duration: "5–10 min",
+  difficulty: "Tactical",
+  primaryAccent: "#2563EB",
+  secondaryAccent: "#06B6D4",
+  glowAura: "from-blue-500/20 via-cyan-500/10 to-transparent",
+  storageKey: "bhalyam.academy.dotsboxes.v2",
+  slides: [
+    {
+      id: "objective",
+      badge: "MISSION 01",
+      title: "Grid Territory Conquest",
+      summary: "Players take turns connecting two adjacent orthogonal dots with a single horizontal or vertical line.",
+      keyRule: "The player who owns the highest number of closed boxes when all lines are drawn wins.",
+      proTip: "Patience is king: avoid placing the 3rd line on any box unless you control the outcome.",
+      iconName: "Grid",
+      sandboxKind: "dots-chain",
+    },
+    {
+      id: "closing_bonus",
+      badge: "TACTICAL POWER",
+      title: "The 4th Line Bonus Chain",
+      summary: "Drawing the 4th line that completes a 1x1 box claims it with your color and instantly awards an EXTRA TURN!",
+      keyRule: "Every box you close keeps the turn with you, so a whole chain of boxes can fall to you in a single turn.",
+      proTip: "Create long corridor tunnels that trap your opponent into handing over full chains.",
+      iconName: "Zap",
+      sandboxKind: "dots-chain",
+    },
+  ],
+  cheatsheet: [
+    {
+      title: "Grid Combat",
+      iconName: "Grid",
+      items: [
+        { label: "Line Drawing", detail: "Draw 1 line between two orthogonal dots per normal turn.", tag: "Basic" },
+        { label: "Box Capture", detail: "Drawing the 4th boundary closes the box and earns 1 point.", tag: "Scoring" },
+        { label: "Bonus Turn", detail: "Closing a box immediately grants another line placement.", tag: "Chain" },
+        { label: "Double-Cross Strategy", detail: "Sacrifice 2 boxes to maintain corridor control in endgames.", tag: "Pro" },
+      ],
+    },
+  ],
+  keybindings: [{ key: "Click / Tap", description: "Place grid line" }],
+};
+
+export const CHESS_ACADEMY: GameAcademySpec = {
+  slug: "chess",
+  title: "Royal Chess",
+  tagline: "The ultimate 64-square grandmaster battle of positional warfare, tactical forks, and checkmate.",
+  genre: "board",
+  players: "2 Players",
+  duration: "15–30 min",
+  difficulty: "Mastermind",
+  primaryAccent: "#D97706",
+  secondaryAccent: "#475569",
+  glowAura: "from-amber-600/20 via-slate-600/10 to-transparent",
+  storageKey: "bhalyam.academy.chess.v2",
+  slides: [
+    {
+      id: "objective",
+      badge: "MISSION 01",
+      title: "Checkmate the King",
+      summary: "Traverse the 8x8 battlefield to attack your opponent's King such that escape or defense is impossible.",
+      keyRule: "A game ends in checkmate, a draw (stalemate, repetition, the 50-move rule, too little material, or agreement), resignation, or when a clock runs out.",
+      proTip: "Control the four central squares (d4, d5, e4, e5) early to dominate piece mobility.",
+      iconName: "Crown",
+    },
+    {
+      id: "special_moves",
+      badge: "GRANDMASTER MOVES",
+      title: "Castling & En Passant",
+      summary: "Castling protects your King while activating the Rook. En Passant allows capturing an enemy pawn that skipped past your pawn's attack square.",
+      keyRule: "Pawn promotion occurs when your pawn reaches the far rank, and it is promoted to a Queen automatically.",
+      proTip: "Castle early (within first 10 moves) to keep your King secure from central tactical strikes.",
+      iconName: "ShieldCheck",
+    },
+  ],
+  cheatsheet: [
+    {
+      title: "Piece Values",
+      iconName: "Crown",
+      items: [
+        { label: "Queen (♛)", detail: "9 Points — Moves any number of squares horizontally, vertically, or diagonally.", tag: "Power" },
+        { label: "Rook (♜)", detail: "5 Points — Moves horizontally and vertically across open files.", tag: "Major" },
+        { label: "Bishop (♝) / Knight (♞)", detail: "3 Points — Bishops command diagonals; Knights jump in L-shapes.", tag: "Minor" },
+        { label: "Pawn (♟)", detail: "1 Point — Advances forward, captures diagonally, promotes on the far rank.", tag: "Core" },
+      ],
+    },
+    {
+      title: "Clock & Endings",
+      iconName: "Trophy",
+      items: [
+        { label: "Time Control", detail: "The default is 3 minutes per side plus a 2-second increment; the host can change it.", tag: "Clock" },
+        { label: "Flag Fall", detail: "Running out of time loses the game.", tag: "Loss" },
+        { label: "Draws", detail: "Stalemate, threefold repetition, the 50-move rule, insufficient material, or an accepted draw offer.", tag: "Draw" },
+      ],
+    },
+  ],
+};
+
+export const CARROM_ACADEMY: GameAcademySpec = {
+  slug: "carrom",
+  title: "Classic Carrom",
+  tagline: "Striker flick precision on wooden felt — pocket carrom men, sink the Queen, and seal victory.",
+  genre: "board",
+  players: "2 Players",
+  duration: "10–20 min",
+  difficulty: "Tactical",
+  primaryAccent: "#B45309",
+  secondaryAccent: "#DC2626",
+  glowAura: "from-amber-700/20 via-red-600/10 to-transparent",
+  storageKey: "bhalyam.academy.carrom.v2",
+  slides: [
+    {
+      id: "objective",
+      badge: "MISSION 01",
+      title: "Pocket the Carrom Men",
+      summary: "Position your striker on the baseline and flick it to sink your designated carrom pieces (White or Black) into the corner pockets.",
+      keyRule: "Pocketing one of your own pieces earns a point and another shot. Pocketing only an opponent's piece scores for them and ends your turn; pocketing one of your own on the same shot keeps it.",
+      proTip: "Use rebound cushion angles to unlock carrom men clustered in dead corners.",
+      iconName: "Target",
+    },
+    {
+      id: "queen_cover",
+      badge: "THE RED JEWEL",
+      title: "The Queen & Mandatory Cover",
+      summary: "In Classic mode the Red Queen is worth 3 points, awarded once she is covered: pocket one of your own pieces on the same shot or on the very next shot.",
+      keyRule: "Failure to cover the Queen returns her to the center spot.",
+      proTip: "Never attempt the Queen unless an easy cover piece is sitting near an adjacent pocket.",
+      iconName: "Crown",
+    },
+  ],
+  cheatsheet: [
+    {
+      title: "Board Regulations",
+      iconName: "ShieldCheck",
+      items: [
+        { label: "Points Value", detail: "Classic mode: White piece 1 pt · Black piece 1 pt · Red Queen 3 pts. Freestyle mode pays 10 / 5 / 25.", tag: "Scoring" },
+        { label: "Queen Cover", detail: "Pocket one of your own pieces on the same shot or the follow-up strike.", tag: "Crucial" },
+        { label: "Striker Foul", detail: "Classic mode: pocketing the striker costs 1 point and your turn, and one of your pocketed pieces returns to the board.", tag: "Foul" },
+        { label: "Winning", detail: "Classic mode: first to the target score (21 by default), or clear your own color with the Queen settled.", tag: "Victory" },
+      ],
+    },
+  ],
+};

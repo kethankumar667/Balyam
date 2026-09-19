@@ -53,6 +53,49 @@ export interface InventoryEntry {
   holdsOthersData?: boolean;
 }
 
+/**
+ * Game Academy walkthroughs. Each one stores a single "finished it" flag under
+ * `bhalyam.academy.<slug>.v2`. Nothing reads it back today — the auto-open gate uses
+ * the older `<game>.tutorial.completed.vN` keys — so the descriptions say only what is
+ * recorded, never that it changes what you see. The list is pinned against the academy
+ * catalog by dataInventoryLearning.test.ts, so a new academy game cannot ship with an
+ * undeclared key.
+ */
+const ACADEMY_GAMES: ReadonlyArray<readonly [slug: string, name: string]> = [
+  ["ludo", "Ludo"],
+  ["snl", "Snakes & Ladders"],
+  ["dotsboxes", "Dots & Boxes"],
+  ["chess", "Chess"],
+  ["carrom", "Carrom"],
+  ["rummy", "Rummy"],
+  ["uno", "Uno"],
+  ["handcricket", "Hand Cricket"],
+  ["rps", "Rock Paper Scissors"],
+  ["wordbuilding", "Word Building"],
+  ["stargame", "Star Game"],
+  ["bingo", "Bingo"],
+  ["tambola", "Tambola"],
+  ["namesplaceanimal", "Names, Place, Animal"],
+  ["tictactoe", "Tic Tac Toe"],
+  ["sudoku", "Sudoku"],
+  ["2048", "2048"],
+  ["snake", "Snake"],
+  ["tetris", "Tetris"],
+  ["breakout", "Breakout"],
+  ["roadrash", "Road Rash"],
+  ["spacewar", "Space War"],
+  ["nokiacricket", "Nokia Cricket"],
+  ["brickblocks", "Brick Blocks"],
+];
+
+const ACADEMY_ENTRIES: readonly InventoryEntry[] = ACADEMY_GAMES.map(([slug, name]) => ({
+  key: `bhalyam.academy.${slug}.v2`,
+  label: `${name} academy finished`,
+  description: `A record on this device that you finished the ${name} walkthrough.`,
+  purpose: "progress",
+  isPersonalData: false,
+}));
+
 export const DATA_INVENTORY: readonly InventoryEntry[] = [
   {
     key: "mpg.playerId",
@@ -315,6 +358,64 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     purpose: "preference",
     isPersonalData: false,
   },
+  {
+    key: "uno.tutorial.completed.v2",
+    label: "Uno tutorial seen",
+    description: "Whether you have seen the Uno tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "handcricket.tutorial.completed.v1",
+    label: "Hand Cricket tutorial seen",
+    description: "Whether you have seen the Hand Cricket tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "snl.tutorial.completed.v1",
+    label: "Snakes & Ladders tutorial seen",
+    description: "Whether you have seen the Snakes & Ladders tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "rps.tutorial.completed.v1",
+    label: "Rock Paper Scissors tutorial seen",
+    description: "Whether you have seen the Rock Paper Scissors tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "dotsboxes.tutorial.completed.v1",
+    label: "Dots & Boxes tutorial seen",
+    description: "Whether you have seen the Dots & Boxes tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "stargame.tutorial.completed.v1",
+    label: "Star Game tutorial seen",
+    description: "Whether you have seen the Star Game tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "snake.tutorial.completed.v1",
+    label: "Snake tutorial seen",
+    description: "Whether you have seen the Snake tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.onboarding.state",
+    label: "Welcome tour progress",
+    description:
+      "Whether you finished or skipped the welcome tour, and which first-steps milestones you have reached, so the tour does not repeat.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  ...ACADEMY_ENTRIES,
 ];
 
 /**

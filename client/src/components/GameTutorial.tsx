@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
+import { getGameAcademy } from "../features/academy/data";
+import { GameAcademyModal } from "../features/academy/components/GameAcademyModal";
+import { HapticsManager } from "../services/HapticsManager";
 
 /** One tutorial slide: a big emoji, a title, and rich body content. */
 export interface TutorialSlide {
@@ -9,30 +12,12 @@ export interface TutorialSlide {
 }
 
 /**
- * Per-browser "has seen this game's tutorial" gate. Generalises the bespoke
- * Rummy/WordBuilding helpers (localStorage key `<game>.tutorial.completed.v1`)
- * so every other game shares ONE modal implementation instead of copying it.
- *
- * Closing via {@link GameTutorial} marks the key seen so it won't auto-open
- * again. A header "?" button ({@link TutorialButton}) can re-open it anytime.
- *
+ * Per-browser "has seen this game's tutorial" gate.
  * SSR/private-mode safe: if localStorage throws we simply don't auto-open.
  *
- * ── `canAutoOpen` — never steal a live turn ────────────────────────────
- * The deck used to auto-open unconditionally on first mount, which on a
- * turn-based board can mean mounting with a live turn timer already running
- * (a page refresh, a rejoin inside the 90s disconnect grace, or simply being
- * first in turn order) — the modal then sits over the board while the real
- * clock underneath keeps counting down and can time the player out of a turn
- * they never got to see. Documented reproduction: Ludo, first play, "10s
- * left" on open → "3s left" four seconds later, board unreachable throughout.
- *
- * `canAutoOpen` (default `true`, so every existing call site is unaffected)
- * lets a turn-based board pass a live boolean meaning "safe to interrupt
- * right now" — typically `!myTurn || noActiveDeadline`. When it is `false`
- * at mount, the storage key is deliberately NOT read yet: the effect below
- * waits for `canAutoOpen` to become `true` and opens then, once, so a
- * first-time player still sees the tutorial — just not mid-countdown.
+ * `canAutoOpen` (default `true`) lets a turn-based board pass a live boolean
+ * meaning "safe to interrupt right now" (e.g. `!myTurn || noActiveDeadline`)
+ * to prevent auto-opening over an active turn countdown.
  */
 export function useTutorialGate(
   storageKey: string,
@@ -61,13 +46,7 @@ export function useTutorialGate(
   return { open, setOpen };
 }
 
-/**
- * Marks a tutorial/rules deck as seen, so `useTutorialGate` won't auto-open
- * it again. Exported for boards that show their OWN bespoke rules modal
- * (Carrom, Chess, Snake, Dots & Boxes) rather than the generic {@link
- * GameTutorial} slide deck — they still want the same "seen" bookkeeping,
- * just without adopting the slide-deck UI.
- */
+/** Marks a tutorial/rules deck as seen */
 export function markSeen(storageKey: string): void {
   try {
     localStorage.setItem(storageKey, "1");
@@ -78,7 +57,7 @@ export function markSeen(storageKey: string): void {
 
 /**
  * Small "?" pill the game shells drop into their header/control area to re-open
- * the tutorial. Neutral parchment styling so it reads on any board theme.
+ * the tutorial. Neutral parchment styling with golden focus ring and haptic feedback.
  */
 export function TutorialButton({
   onClick,
@@ -89,16 +68,21 @@ export function TutorialButton({
   className?: string;
   label?: string;
 }) {
+  const handleClick = () => {
+    HapticsManager.getInstance().subtle();
+    onClick();
+  };
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       aria-label={label}
       title={label}
       className={`inline-flex items-center justify-center min-w-[44px] min-h-[44px] p-1.5 -m-1.5 rounded-full text-base font-extrabold shadow-sm transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${className}`}
     >
       <span
-        className="w-8 h-8 rounded-full flex items-center justify-center"
+        className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-bold"
         style={{
           background: "rgba(255,255,255,0.88)",
           color: "#6D4323",
@@ -112,13 +96,13 @@ export function TutorialButton({
 }
 
 /**
- * Shared slide-deck "how to play" modal. One implementation for every game that
- * doesn't ship a bespoke deck (Rummy & WordBuilding keep their richer custom
- * ones). Feed it `slides` + the `storageKey`; closing marks the deck seen.
+ * Universal Game Tutorial entrypoint.
  *
- * Chrome mirrors the existing Rummy/WordBuilding tutorials — dark branded card,
- * progress dots, Back / Skip / Next — with a configurable `accent` so each game
- * can tint it to its own palette.
+ * Renders the Game Academy when the game has an academy spec, otherwise the plain
+ * slide deck. The two branches are separate components so neither calls hooks after
+ * the other's early return. The academy is looked up by the first segment of the
+ * storage key (`uno.tutorial.completed.v2` -> `uno`), which is why callers keep
+ * using the `<game>.tutorial.completed.vN` convention.
  */
 export default function GameTutorial({
   slides,
@@ -126,21 +110,41 @@ export default function GameTutorial({
   onClose,
   accent = "#E4B128",
 }: {
-  slides: TutorialSlide[];
+  slides?: TutorialSlide[];
   storageKey: string;
   onClose: () => void;
   accent?: string;
 }) {
-  const [step, setStep] = useState(0);
-  const slide = slides[step];
-  const isFirst = step === 0;
-  const isLast = step === slides.length - 1;
-  const nextBtnRef = useRef<HTMLButtonElement>(null);
+  const slug = storageKey.split(".")[0]?.toLowerCase();
+  const academySpec = slug ? getGameAcademy(slug) : null;
 
   function done() {
     markSeen(storageKey);
     onClose();
   }
+
+  if (academySpec) {
+    return <GameAcademyModal open spec={academySpec} onClose={done} />;
+  }
+  return <SlideTutorial slides={slides ?? []} accent={accent} onDone={done} />;
+}
+
+/** The plain slide-deck tutorial, for games without an academy spec. */
+function SlideTutorial({
+  slides: fallbackSlides,
+  accent,
+  onDone: done,
+}: {
+  slides: TutorialSlide[];
+  accent: string;
+  onDone: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const slide = fallbackSlides[step];
+  const isFirst = step === 0;
+  const isLast = step === fallbackSlides.length - 1;
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
+
   function next() {
     if (isLast) done();
     else setStep((s) => s + 1);
@@ -159,80 +163,71 @@ export default function GameTutorial({
       ariaLabelledBy="game-tutorial-title"
       zIndex={60}
       className="overflow-auto"
-      panelClassName="rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative"
-      panelStyle={{
-        background: "linear-gradient(160deg, #2a2118 0%, #17110c 100%)",
-        border: `2px solid ${accent}`,
-      }}
+      panelClassName="rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-4 relative backdrop-blur-2xl bg-slate-950/95 border border-stone-800 text-stone-100"
     >
+      <button
+        onClick={done}
+        className="absolute top-4 right-4 text-stone-400 hover:text-white text-xl leading-none cursor-pointer"
+        aria-label="Close tutorial"
+      >
+        ✕
+      </button>
+
+      {/* Progress dots */}
+      <div className="flex justify-center gap-1.5" aria-label="Tutorial progress">
+        {fallbackSlides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setStep(i)}
+            className="h-2 rounded-full transition-all cursor-pointer"
+            style={{
+              width: i === step ? "1.75rem" : "0.5rem",
+              background: i === step ? accent : "rgba(255,255,255,0.2)",
+            }}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Slide */}
+      <div className="text-center space-y-2">
+        <div className="text-4xl">{slide.emoji}</div>
+        <h2
+          id="game-tutorial-title"
+          className="text-lg font-black tracking-wider uppercase font-mono"
+          style={{ color: accent }}
+        >
+          {slide.title}
+        </h2>
+      </div>
+      <div className="text-stone-300 text-xs sm:text-sm font-mono leading-relaxed min-h-[5rem] p-3 rounded-xl bg-slate-900/60 border border-stone-800">
+        {slide.body}
+      </div>
+
+      {/* Footer controls */}
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-stone-800">
+        <button
+          onClick={prev}
+          disabled={isFirst}
+          className="text-xs px-3.5 py-1.5 rounded-lg font-mono font-bold transition bg-stone-800 hover:bg-stone-700 disabled:opacity-30 disabled:cursor-not-allowed text-white cursor-pointer"
+        >
+          ← Back
+        </button>
         <button
           onClick={done}
-          className="absolute top-3 right-3 text-white/60 hover:text-white text-xl leading-none"
-          aria-label="Close tutorial"
+          className="text-xs font-mono text-stone-400 hover:text-stone-200 transition cursor-pointer"
         >
-          ✕
+          Skip
         </button>
-
-        {/* Progress dots */}
-        <div className="flex justify-center gap-1.5" aria-label="Tutorial progress">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setStep(i)}
-              className="w-2 h-2 rounded-full transition"
-              style={{
-                background:
-                  i === step
-                    ? accent
-                    : i < step
-                      ? "rgba(228,177,40,0.5)"
-                      : "rgba(255,255,255,0.22)",
-                transform: i === step ? "scale(1.4)" : "scale(1)",
-              }}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Slide */}
-        <div className="text-center">
-          <div className="text-5xl mb-2">{slide.emoji}</div>
-          <h2
-            id="game-tutorial-title"
-            className="text-xl font-extrabold tracking-wider uppercase"
-            style={{ color: accent }}
-          >
-            {slide.title}
-          </h2>
-        </div>
-        <div className="text-[#f3ead7] text-sm leading-relaxed min-h-[7rem]">
-          {slide.body}
-        </div>
-
-        {/* Footer controls */}
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/10">
-          <button
-            onClick={prev}
-            disabled={isFirst}
-            className="text-sm px-4 py-1.5 rounded-lg font-bold transition bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white"
-          >
-            ← Back
-          </button>
-          <button
-            onClick={done}
-            className="text-xs text-white/50 hover:text-white/80 transition"
-          >
-            Skip
-          </button>
-          <button
-            ref={nextBtnRef}
-            onClick={next}
-            className="text-sm px-5 py-1.5 rounded-lg font-extrabold transition text-[#2a2118]"
-            style={{ background: accent }}
-          >
-            {isLast ? "Got it!" : "Next →"}
-          </button>
-        </div>
+        <button
+          ref={nextBtnRef}
+          onClick={next}
+          className="text-xs px-5 py-1.5 rounded-lg font-black font-mono transition text-slate-950 shadow-md cursor-pointer"
+          style={{ background: accent }}
+        >
+          {isLast ? "Got it!" : "Next →"}
+        </button>
+      </div>
     </Modal>
   );
 }
