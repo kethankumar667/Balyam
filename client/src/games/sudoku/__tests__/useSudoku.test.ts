@@ -222,7 +222,8 @@ describe("useSudoku", () => {
     });
 
     expect(result.current.isComplete).toBe(true);
-    expect(result.current.newPersonalBest).toBe(true);
+    // "New PB" is now claimed only when the scorecard confirms it (see useSudokuIntegrity.test.ts).
+    expect(result.current.newPersonalBest).toBe(false);
     expect(result.current.progress.easy).toBe(1);
     expect(recordScoreSpy).toHaveBeenCalledWith(
       "sudoku",

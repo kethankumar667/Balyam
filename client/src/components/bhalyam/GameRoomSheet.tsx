@@ -27,6 +27,7 @@ import {
   snapEntryStake,
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
+import { NO_ECONOMY_GAMES } from "@shared/catalog";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
 import { ensureGuestToken, resolveRoomCredential } from "../../lib/playerIdentity";
@@ -65,6 +66,7 @@ import {
   StarGameGlyph,
   BingoGlyph,
   CarromGlyph,
+  TicTacToeGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   nokiacricket: HandCricketGlyph,
   "2048": StarGameGlyph,
   sudoku: StarGameGlyph,
+  tictactoe: TicTacToeGlyph,
 };
 
 /**
@@ -127,7 +130,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -407,6 +410,18 @@ const CARROM_FELT_THEMES: { id: BoardFeltSkin; label: string; blurb: string }[] 
   { id: "ebony",   label: "Midnight Ebony",  blurb: "Modern sleek dark lacquer." },
 ];
 
+const TTT_MODES: { id: "quantum" | "classic"; label: string; blurb: string }[] = [
+  { id: "quantum", label: "Quantum Flux (Hero)", blurb: "3-piece FIFO limit. 4th piece evaporates the oldest, so the board never locks into a draw." },
+  { id: "classic", label: "Classic Matrix",      blurb: "Traditional 3x3 grid. Align 3 in a row to win." },
+];
+
+const TTT_TURN_TIMERS: { id: "10" | "15" | "30" | "0"; label: string; blurb: string }[] = [
+  { id: "10", label: "Blitz (10s)",    blurb: "Lightning fast cyber reflexes." },
+  { id: "15", label: "Standard (15s)", blurb: "Balanced tactical turn window." },
+  { id: "30", label: "Tactical (30s)", blurb: "Deep quantum planning." },
+  { id: "0",  label: "Untimed",        blurb: "No turn limit for relaxed matches." },
+];
+
 export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
@@ -468,6 +483,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [carromTargetScore, setCarromTargetScore] = useState<"50" | "100" | "160">("100");
   const [carromBotDifficulty, setCarromBotDifficulty] = useState<"easy" | "medium" | "pro">("medium");
   const [carromBoardSkin, setCarromBoardSkin] = useState<BoardFeltSkin>("birch");
+  const [tttMode, setTttMode] = useState<"quantum" | "classic">("quantum");
+  const [tttTurnTimer, setTttTurnTimer] = useState<"10" | "15" | "30" | "0">("15");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [mobileTab, setMobileTab] = useState<"create" | "join">("create");
@@ -510,7 +527,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
    * picker for a game the server will never actually charge is worse than
    * no picker: it promises a wager that never happens.
    */
-  const isFreeEconomyGame = game === "snake" || game === "spacewar";
+  const isFreeEconomyGame =
+    isSolo ||
+    (game ? SOLO_GAME_SLUGS.has(game) || NO_ECONOMY_GAMES.has(game as GameKind) : false);
 
   const caps = useCapabilities();
   /**
@@ -567,6 +586,10 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
           : "Classic Carrom";
       return `${modeName} · ${carromTurnTimer === "0" ? "Untimed" : `${carromTurnTimer}s`}`;
     }
+    if (game === "tictactoe") {
+      const modeName = tttMode === "quantum" ? "Quantum Flux" : "Classic Matrix";
+      return `${modeName} · ${tttTurnTimer === "0" ? "Untimed" : `${tttTurnTimer}s`}`;
+    }
     return meta?.playerRange ? `${meta.playerRange}` : "Standard Match";
   }, [
     game,
@@ -594,6 +617,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     carromMode,
     carromTurnTimer,
     carromTargetScore,
+    tttMode,
+    tttTurnTimer,
   ]);
 
   // Reset transient state every time a new game opens.
@@ -624,6 +649,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setCarromTargetScore("100");
       setCarromBotDifficulty("medium");
       setCarromBoardSkin("birch");
+      setTttMode("quantum");
+      setTttTurnTimer("15");
     }
   }, [game]);
 
@@ -788,6 +815,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   boardSkin: carromBoardSkin,
                 }
               : undefined,
+          ticTacToeOptions:
+            game === "tictactoe"
+              ? {
+                  mode: tttMode,
+                  turnTimerSeconds: Number(tttTurnTimer),
+                }
+              : undefined,
         },
         (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
           if (activeAttemptRef.current !== attemptId) return;
@@ -941,6 +975,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 targetScore: Number(carromTargetScore),
                 botDifficulty: carromBotDifficulty,
                 boardSkin: carromBoardSkin,
+              }
+            : undefined,
+        ticTacToeOptions:
+          game === "tictactoe"
+            ? {
+                mode: tttMode,
+                turnTimerSeconds: Number(tttTurnTimer),
               }
             : undefined,
       },
@@ -1257,14 +1298,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             <div className={mobileTab === "join" ? "hidden md:block md:space-y-4" : "space-y-4"}>
 
             {/* Pass & Play toggle */}
-            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "carrom") && (
+            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "carrom" || game === "tictactoe") && (
               <PassPlayBlock
                 on={passPlay}
                 onToggle={() => setPassPlay((v) => !v)}
                 names={localNames}
                 onNamesChange={setLocalNames}
                 maxExtraSeats={
-                  game === "carrom"
+                  game === "carrom" || game === "tictactoe"
                     ? 1
                     : game === "ludo"
                     ? 3
@@ -1763,6 +1804,28 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     items={CARROM_FELT_THEMES}
                     value={carromBoardSkin}
                     onChange={(v) => setCarromBoardSkin(v as BoardFeltSkin)}
+                    cols={2}
+                  />
+                </Field>
+              </>
+            )}
+
+            {game === "tictactoe" && (
+              <>
+                <Field label="Game Matrix Mode">
+                  <OptionGrid
+                    items={TTT_MODES}
+                    value={tttMode}
+                    onChange={(v) => setTttMode(v as "quantum" | "classic")}
+                    cols={1}
+                  />
+                </Field>
+
+                <Field label="Turn Timer">
+                  <OptionGrid
+                    items={TTT_TURN_TIMERS}
+                    value={tttTurnTimer}
+                    onChange={(v) => setTttTurnTimer(v as "10" | "15" | "30" | "0")}
                     cols={2}
                   />
                 </Field>

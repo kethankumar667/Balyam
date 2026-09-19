@@ -1569,6 +1569,51 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("Only a signed-in account can host"))).toBe(true);
     });
 
+    describe("a guest hosting Pass & Play — same-device seats are not 'other human players'", () => {
+      function guestWithWallet(id: string) {
+        const { repo, service } = freshEconomy();
+        repo.testFixture.seedIdentity(id, "guest");
+        repo.testFixture.seedWallet({ identityId: id, identityKind: "guest", balance: "2000", lifetimeGranted: "2000", starterGranted: true });
+        const { io, socketEmits } = makeIo();
+        return { service, rooms: new RoomManager(io, service), socketEmits };
+      }
+
+      it.each(["ludo", "tictactoe"] as const)(
+        "lets a guest start a %s Pass & Play match at the limited 100-coin stake, paying for each seat",
+        async (game) => {
+          const id = `guest_pnp_${game}`;
+          const { service, rooms, socketEmits } = guestWithWallet(id);
+          const host = createRoomAs(rooms, "s_g", "GuestHost", game, "guest", id);
+          rooms.addLocalPlayer("s_g", "Buddy"); // same phone: no socket, no identityId
+          rooms.setReady("s_g", true);
+
+          await rooms.requestGameStart("s_g");
+
+          expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("signed-in"))).toBe(false);
+          expect(peek(rooms, host.code).phase).toBe("playing");
+          expect((await service.getWallet(id)).balance).toBe("1800"); // 2 seats @ 100 — the guest stake, not more
+        }
+      );
+
+      it("still refuses a guest host when a REMOTE human is at the table, even if a local seat is present too", async () => {
+        const { repo, service } = freshEconomy();
+        repo.testFixture.seedIdentity("guest_mix_host", "guest");
+        repo.testFixture.seedIdentity("guest_mix_joiner", "guest");
+        const { io, socketEmits } = makeIo();
+        const rooms = new RoomManager(io, service);
+        const host = createRoomAs(rooms, "s_g1", "GuestHost", "ludo", "guest", "guest_mix_host");
+        rooms.addLocalPlayer("s_g1", "Buddy");
+        joinRoomAs(rooms, "s_g2", "Remote", host.code, "guest", "guest_mix_joiner");
+        rooms.setReady("s_g1", true);
+        rooms.setReady("s_g2", true);
+
+        await rooms.requestGameStart("s_g1");
+
+        expect(peek(rooms, host.code).phase).toBe("lobby");
+        expect(socketEmits.some((e) => e.event === "room:error" && String(e.data).includes("Only a signed-in account can host"))).toBe(true);
+      });
+    });
+
     it("rejects match start if the host has no resolved identityId (missing or unprovisioned) in paid match", async () => {
       const { repo, service } = freshEconomy();
       const { io, socketEmits } = makeIo();

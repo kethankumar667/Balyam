@@ -37,6 +37,8 @@ describe("SudokuBoardMobile Redesigned Header & HUD", () => {
     ghostDelta: 45,
     ghostDeltaFormatted: "+0:45",
     zenMode: false,
+    hintsUsed: 0,
+    isAssisted: false,
     newPersonalBest: false,
     recentlyCompletedUnits: [],
     selectCell: vi.fn(),

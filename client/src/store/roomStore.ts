@@ -21,6 +21,7 @@ import type {
   CarromPublicState,
   ChessPublicState,
   SpaceWarPublicState,
+  TicTacToePublicState,
 } from "@shared/types";
 
 const idleRematch: RematchState = {
@@ -52,6 +53,7 @@ export interface GameStateMap {
   carrom: CarromPublicState;
   chess: ChessPublicState;
   spacewar: SpaceWarPublicState;
+  tictactoe: TicTacToePublicState;
   roadrash: unknown;
   blockblast: unknown;
 }

@@ -95,6 +95,7 @@ export function registerSocketHandlers(
         payload.chessOptions,
         payload.blockBlastOptions,
         payload.spaceWarOptions,
+        payload.ticTacToeOptions,
         payload.avatar,
         hostKind,
         identityId,

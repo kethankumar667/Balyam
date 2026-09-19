@@ -43,6 +43,7 @@ export const GAME_LIMITS: Record<GameKind, GameLimitSpec> = {
   blockblast: { min: 1, max: 8 },
   spacewar: { min: 1, max: 1 },
   roadrash: { min: 1, max: 4 },
+  tictactoe: { min: 2, max: 2 },
 };
 
 export const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
@@ -102,6 +103,7 @@ export const GAME_START_REQUIREMENTS: Record<GameKind, GameStartRequirements> = 
   blockblast: { requiresOrientation: null, orientationPromptTiers: [] },
   spacewar: { requiresOrientation: null, orientationPromptTiers: [] },
   roadrash: { requiresOrientation: null, orientationPromptTiers: [] },
+  tictactoe: { requiresOrientation: null, orientationPromptTiers: [] },
 };
 
 export function getGameOrientationRequirement(game: GameKind): "landscape" | "portrait" | null {
@@ -154,6 +156,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   roadrash: "portrait",
   "2048": "portrait",
   sudoku: "portrait",
+  tictactoe: "portrait",
 
   // Browser-only retro titles — all modelled on portrait handhelds.
   nokiacricket: "portrait",
@@ -896,4 +899,5 @@ export const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
   carrom: "Carrom 🎯",
   blockblast: "Block Blast 🧱",
   spacewar: "Space War 🚀",
+  tictactoe: "Tic Tac Toe ✔️",
 };

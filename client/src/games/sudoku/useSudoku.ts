@@ -4,6 +4,9 @@ import { type SudokuThemeId, SUDOKU_THEMES } from "./sudokuThemes";
 import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore, useScorecardStore } from "../../store/scorecardStore";
 import { sudokuAudio } from "./sudokuAudio";
+import { clearSavedGame, readSavedGame, writeSavedGame, STORAGE_SUDOKU_SAVED, type SavedSudokuGame } from "./sudokuSave";
+
+export { STORAGE_SUDOKU_SAVED };
 
 export type SudokuDifficulty = "easy" | "medium" | "hard" | "expert";
 export type SudokuInputMode = "cell-first" | "digit-first";
@@ -80,6 +83,9 @@ export interface UseSudokuReturn {
   ghostDelta: number | null;
   ghostDeltaFormatted: string | null;
   zenMode: boolean;
+  /** Hints taken on this board. Any hint makes the solve unranked. */
+  hintsUsed: number;
+  isAssisted: boolean;
   // Actions
   selectCell: (index: number) => void;
   selectDigit: (digit: number) => void;
@@ -197,6 +203,12 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
   const [history, setHistory] = useState<Array<SudokuCell[]>>([]);
   const [recentlyCompletedUnits, setRecentlyCompletedUnits] = useState<string[]>([]);
   const [zenMode, setZenMode] = useState<boolean>(false);
+  const [hintsUsed, setHintsUsed] = useState<number>(0);
+  // Fixed when the board is loaded. Deriving it from `progress` (which a win
+  // increments) made the victory modal announce the NEXT board as cleared.
+  const [boardNumber, setBoardNumber] = useState<number>(
+    () => (readSudokuProgress()[initialDifficulty] || 0) + 1
+  );
 
   const maxMistakes = 3;
   const isGameOver = mistakes >= maxMistakes && !isComplete;
@@ -215,6 +227,16 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
   cellsRef.current = cells;
   const historyRef = useRef<Array<SudokuCell[]>>(history);
   historyRef.current = history;
+  const mistakesRef = useRef<number>(mistakes);
+  mistakesRef.current = mistakes;
+  const boardNumberRef = useRef<number>(boardNumber);
+  boardNumberRef.current = boardNumber;
+  const hintsUsedRef = useRef<number>(0);
+  const isCompleteRef = useRef<boolean>(false);
+  const puzzleRef = useRef<string>("");
+  const solutionRef = useRef<string>("");
+  /** Bumped on every board load, so a slow answer for an old board cannot touch a new one. */
+  const gameIdRef = useRef<number>(0);
 
   // Cleanup sweep timeout on unmount
   useEffect(() => {
@@ -225,19 +247,23 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     };
   }, []);
 
-  const boardNumber = (progress[difficulty] || 0) + 1;
-
-  // Initialize fresh puzzle via sudoku-gen
-  const initGame = useCallback(
-    (diff: SudokuDifficulty) => {
+  /** The one place every board (fresh or restored) is put into play. */
+  const loadBoard = useCallback(
+    (
+      diff: SudokuDifficulty,
+      puzzle: string,
+      solution: string,
+      parsed: SudokuCell[],
+      session: { elapsed: number; mistakes: number; hints: number; number: number; paused: boolean }
+    ) => {
       if (sweepTimeoutRef.current) {
         window.clearTimeout(sweepTimeoutRef.current);
       }
-
-      const generated = getSudoku(diff);
-      const parsed = parseBoard(generated.puzzle, generated.solution);
-      setPuzzleString(generated.puzzle);
-      setSolutionString(generated.solution);
+      gameIdRef.current += 1;
+      puzzleRef.current = puzzle;
+      solutionRef.current = solution;
+      setPuzzleString(puzzle);
+      setSolutionString(solution);
       setDifficulty(diff);
       difficultyRef.current = diff;
       cellsRef.current = parsed;
@@ -246,11 +272,17 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
       selectedCellIndexRef.current = null;
       setSelectedDigit(null);
       selectedDigitRef.current = null;
-      setElapsedSeconds(0);
-      elapsedSecondsRef.current = 0;
-      setIsPaused(false);
+      setElapsedSeconds(session.elapsed);
+      elapsedSecondsRef.current = session.elapsed;
+      setIsPaused(session.paused);
       setIsComplete(false);
-      setMistakes(0);
+      isCompleteRef.current = false;
+      setMistakes(session.mistakes);
+      mistakesRef.current = session.mistakes;
+      setHintsUsed(session.hints);
+      hintsUsedRef.current = session.hints;
+      setBoardNumber(session.number);
+      boardNumberRef.current = session.number;
       setHintText(null);
       setNewPersonalBest(false);
       historyRef.current = [];
@@ -261,9 +293,104 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     []
   );
 
+  // Initialize fresh puzzle via sudoku-gen
+  const initGame = useCallback(
+    (diff: SudokuDifficulty) => {
+      clearSavedGame(diff);
+      const generated = getSudoku(diff);
+      loadBoard(diff, generated.puzzle, generated.solution, parseBoard(generated.puzzle, generated.solution), {
+        elapsed: 0,
+        mistakes: 0,
+        hints: 0,
+        number: (readSudokuProgress()[diff] || 0) + 1,
+        paused: false,
+      });
+    },
+    [loadBoard]
+  );
+
+  /**
+   * Picks up a saved board. It comes back PAUSED: the player has been away, so
+   * the clock must not run and the grid stays shielded until they resume.
+   */
+  const restoreGame = useCallback(
+    (diff: SudokuDifficulty, saved: SavedSudokuGame) => {
+      const restored = checkCellErrors(
+        parseBoard(saved.puzzle, saved.solution).map((cell) => {
+          const s = saved.cells[cell.index]!;
+          return cell.isGiven ? cell : { ...cell, value: s.v, notes: [...s.n] };
+        })
+      );
+      loadBoard(diff, saved.puzzle, saved.solution, restored, {
+        elapsed: saved.elapsedSeconds,
+        mistakes: saved.mistakes,
+        hints: saved.hintsUsed,
+        number: saved.boardNumber,
+        paused: true,
+      });
+    },
+    [loadBoard]
+  );
+
   useEffect(() => {
-    initGame(initialDifficulty);
-  }, [initGame, initialDifficulty]);
+    const saved = readSavedGame(initialDifficulty);
+    if (saved) restoreGame(initialDifficulty, saved);
+    else initGame(initialDifficulty);
+  }, [initGame, restoreGame, initialDifficulty]);
+
+  // Keep the save current. Time is read from a ref, so a change of board, lives,
+  // hints or pause state is enough to stamp an accurate clock into it.
+  const persist = useCallback(() => {
+    if (isCompleteRef.current || mistakesRef.current >= maxMistakes) return;
+    const current = cellsRef.current;
+    if (current.length !== 81 || !puzzleRef.current) return;
+    const isPristine =
+      elapsedSecondsRef.current === 0 &&
+      mistakesRef.current === 0 &&
+      hintsUsedRef.current === 0 &&
+      current.every((c) => c.isGiven || (c.value === null && c.notes.length === 0));
+    if (isPristine) return; // nothing worth resuming
+    writeSavedGame(difficultyRef.current, {
+      puzzle: puzzleRef.current,
+      solution: solutionRef.current,
+      cells: current.map((c) => ({ v: c.value, n: c.notes })),
+      elapsedSeconds: elapsedSecondsRef.current,
+      mistakes: mistakesRef.current,
+      hintsUsed: hintsUsedRef.current,
+      boardNumber: boardNumberRef.current,
+      savedAt: Date.now(),
+    });
+  }, []);
+
+  useEffect(() => {
+    persist();
+  }, [cells, mistakes, hintsUsed, isPaused, persist]);
+
+  useEffect(() => {
+    // The last chance to save when the page is being torn down.
+    window.addEventListener("pagehide", persist);
+    return () => {
+      window.removeEventListener("pagehide", persist);
+      persist();
+    };
+  }, [persist]);
+
+  // A lost game is over for good: reopening the page should not resurrect it.
+  useEffect(() => {
+    if (isGameOver) clearSavedGame(difficultyRef.current);
+  }, [isGameOver]);
+
+  // Switching away pauses: the grid is shielded and the clock neither gains nor
+  // loses time. It never resumes on its own — coming back is a deliberate act.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden && !isCompleteRef.current && mistakesRef.current < maxMistakes) {
+        setIsPaused(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   // Chrono Timer Loop
   useEffect(() => {
@@ -286,6 +413,23 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     return counts;
   }, [cells]);
 
+  // Celebrate any row/column/block that just became complete (Circuit Sweep Laser).
+  const celebrateNewUnits = useCallback((validated: SudokuCell[]) => {
+    const currentUnits = getCompletedUnitIds(validated);
+    const newCompleted: string[] = [];
+    for (const u of currentUnits) {
+      if (!knownCompletedUnitsRef.current.has(u)) newCompleted.push(u);
+    }
+    knownCompletedUnitsRef.current = currentUnits;
+    if (newCompleted.length === 0) return;
+    setRecentlyCompletedUnits(newCompleted);
+    sudokuAudio.playCircuitSweep();
+    if (sweepTimeoutRef.current) window.clearTimeout(sweepTimeoutRef.current);
+    sweepTimeoutRef.current = window.setTimeout(() => {
+      setRecentlyCompletedUnits([]);
+    }, 850);
+  }, []);
+
   // Check victory condition
   const checkVictory = useCallback(
     (currentCells: SudokuCell[]) => {
@@ -294,11 +438,13 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
         const matchesSolution = currentCells.every((c) => c.value === c.solution);
         if (matchesSolution) {
           setIsComplete(true);
+          isCompleteRef.current = true;
           HapticsManager.trigger("win");
           sudokuAudio.playVictory();
 
           // Increment progression
           const currentDiff = difficultyRef.current;
+          clearSavedGame(currentDiff);
           const currentProg = readSudokuProgress();
           const nextProg: SudokuLevelProgress = {
             ...currentProg,
@@ -307,9 +453,21 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
           saveSudokuProgress(nextProg);
           setProgress(nextProg);
 
-          // Dispatch score to BHALYAM scorecard system (with offline catch)
-          void recordSoloScore("sudoku", currentDiff, elapsedSecondsRef.current).catch(() => {});
-          setNewPersonalBest(true);
+          // A hint hands the player the answer, so a hint-assisted solve counts
+          // as a cleared board but is never ranked: 59 taps used to post a
+          // 0-second "personal best" on the leaderboard. Only an unassisted
+          // solve is submitted, and "personal best" is claimed only if the
+          // scorecard confirms it — never assumed.
+          if (hintsUsedRef.current === 0) {
+            const gameId = gameIdRef.current;
+            void recordSoloScore("sudoku", currentDiff, elapsedSecondsRef.current)
+              .then((result) => {
+                if (gameIdRef.current === gameId && result?.isNewPersonalBest) {
+                  setNewPersonalBest(true);
+                }
+              })
+              .catch(() => {});
+          }
         }
       }
     },
@@ -324,6 +482,9 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
       const prev = cellsRef.current;
       const targetCell = prev[targetIndex];
       if (!targetCell || targetCell.isGiven) return;
+      // Pencil marks belong on empty cells only; on a filled one they would sit
+      // invisibly beside the value and resurface when it is erased.
+      if (asNote && targetCell.value !== null) return;
 
       historyRef.current = [...historyRef.current.slice(-30), prev];
       setHistory(historyRef.current);
@@ -388,30 +549,18 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
       cellsRef.current = validated;
       setCells(validated);
 
-      // Check if any unit was just completed (Circuit Sweep Laser)
+      // A correct entry may complete a unit (Circuit Sweep Laser). A mistake or a
+      // toggle-off can BREAK one, so the record of "already celebrated" units is
+      // re-synced either way — otherwise re-completing it would stay silent.
       if (!isMistake && !isToggleOff) {
-        const currentUnits = getCompletedUnitIds(validated);
-        const newCompleted: string[] = [];
-        for (const u of currentUnits) {
-          if (!knownCompletedUnitsRef.current.has(u)) {
-            newCompleted.push(u);
-          }
-        }
-        knownCompletedUnitsRef.current = currentUnits;
-
-        if (newCompleted.length > 0) {
-          setRecentlyCompletedUnits(newCompleted);
-          sudokuAudio.playCircuitSweep();
-          if (sweepTimeoutRef.current) window.clearTimeout(sweepTimeoutRef.current);
-          sweepTimeoutRef.current = window.setTimeout(() => {
-            setRecentlyCompletedUnits([]);
-          }, 850);
-        }
+        celebrateNewUnits(validated);
+      } else {
+        knownCompletedUnitsRef.current = getCompletedUnitIds(validated);
       }
 
       checkVictory(validated);
     },
-    [isPaused, isComplete, isGameOver, checkVictory]
+    [isPaused, isComplete, isGameOver, checkVictory, celebrateNewUnits]
   );
 
   // Cell Selection Handler
@@ -477,6 +626,7 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     const validated = checkCellErrors(next);
     cellsRef.current = validated;
     setCells(validated);
+    knownCompletedUnitsRef.current = getCompletedUnitIds(validated);
   }, [isPaused, isComplete, isGameOver]);
 
   const undo = useCallback(() => {
@@ -488,6 +638,7 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
       setHistory(historyRef.current);
       cellsRef.current = prevBoard;
       setCells(prevBoard);
+      knownCompletedUnitsRef.current = getCompletedUnitIds(prevBoard);
     }
   }, [isPaused, isComplete, isGameOver]);
 
@@ -501,6 +652,10 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     HapticsManager.trigger("subtle");
     historyRef.current = [...historyRef.current.slice(-30), prev];
     setHistory(historyRef.current);
+    // Counted before the board is touched: a hint that completes the puzzle
+    // must already make the solve unranked when victory is checked below.
+    hintsUsedRef.current += 1;
+    setHintsUsed(hintsUsedRef.current);
 
     selectedCellIndexRef.current = target.index;
     setSelectedCellIndex(target.index);
@@ -535,8 +690,9 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     const validated = checkCellErrors(next);
     cellsRef.current = validated;
     setCells(validated);
+    celebrateNewUnits(validated);
     checkVictory(validated);
-  }, [isPaused, isComplete, isGameOver, checkVictory]);
+  }, [isPaused, isComplete, isGameOver, checkVictory, celebrateNewUnits]);
 
   // Auto-Fill candidate notes across empty cells
   const autoFillNotes = useCallback(() => {
@@ -552,9 +708,12 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
 
       const candidates: number[] = [];
       for (let d = 1; d <= 9; d++) {
+        // A wrong entry is not a fact about the puzzle: counting it would strike
+        // the true candidate out of every peer's notes.
         const conflict = prev.some(
           (other) =>
             other.value === d &&
+            !other.isError &&
             (other.row === cell.row ||
               other.col === cell.col ||
               other.block === cell.block)
@@ -622,25 +781,15 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
 
   const restartCurrentGame = useCallback(() => {
     if (!puzzleString || !solutionString) return;
-    const fresh = parseBoard(puzzleString, solutionString);
-    cellsRef.current = fresh;
-    setCells(fresh);
-    historyRef.current = [];
-    setHistory([]);
-    setSelectedCellIndex(null);
-    selectedCellIndexRef.current = null;
-    setSelectedDigit(null);
-    selectedDigitRef.current = null;
-    setElapsedSeconds(0);
-    elapsedSecondsRef.current = 0;
-    setIsPaused(false);
-    setIsComplete(false);
-    setMistakes(0);
-    setHintText(null);
-    setHistory([]);
-    setRecentlyCompletedUnits([]);
-    knownCompletedUnitsRef.current = getCompletedUnitIds(fresh);
-  }, [puzzleString, solutionString]);
+    // Same puzzle, new attempt: time, lives and hints all start over.
+    loadBoard(
+      difficultyRef.current,
+      puzzleString,
+      solutionString,
+      parseBoard(puzzleString, solutionString),
+      { elapsed: 0, mistakes: 0, hints: 0, number: boardNumberRef.current, paused: false }
+    );
+  }, [puzzleString, solutionString, loadBoard]);
 
   // Ghost Pace Delta calculation
   const archive = useScorecardStore((s) => s.archive);
@@ -692,6 +841,8 @@ export function useSudoku(initialDifficulty: SudokuDifficulty = "medium"): UseSu
     ghostDelta,
     ghostDeltaFormatted,
     zenMode,
+    hintsUsed,
+    isAssisted: hintsUsed > 0,
     selectCell,
     selectDigit,
     inputDigit,

@@ -3,6 +3,7 @@ import { type SudokuDifficulty, type SudokuLevelProgress } from "./useSudoku";
 import { SUDOKU_THEMES, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
 import { X, Trophy, Flame, Orbit, ShieldCheck, Zap, ArrowRight, Play } from "lucide-react";
 import { useScorecardStore } from "../../store/scorecardStore";
+import Modal from "../../components/Modal";
 
 export interface SudokuDifficultyModalProps {
   isOpen: boolean;
@@ -89,12 +90,7 @@ function SudokuDifficultyModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="difficulty-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
-    >
+    <Modal open onClose={onClose} ariaLabelledBy="difficulty-modal-title" panelClassName="w-full flex justify-center">
       <div
         className={`w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto ${
           isLight
@@ -315,9 +311,11 @@ function SudokuDifficultyModal({
                         ? `${d.lightClass} ring-2 ring-sky-500 shadow-sm font-semibold`
                         : "bg-white border-slate-200 hover:bg-slate-50"
                       : isSelected
-                        ? `bg-gradient-to-r ${d.colorClass} shadow-[0_0_20px_${theme.accentGlow}] ring-1 ring-white/20`
+                        ? `bg-gradient-to-r ${d.colorClass} ring-1 ring-white/20`
                         : "bg-white/[0.03] border-white/10 hover:bg-white/[0.07]"
                   }`}
+                  // Runtime colour => inline style; a Tailwind class built from it is never emitted.
+                  style={!isLight && isSelected ? { boxShadow: `0 0 20px ${theme.accentGlow}` } : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -373,7 +371,7 @@ function SudokuDifficultyModal({
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

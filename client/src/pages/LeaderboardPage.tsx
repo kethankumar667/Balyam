@@ -18,10 +18,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  Search,
+  X,
+  Target,
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
 import { usePlayerId } from "../lib/playerIdentity";
+import { useHaptics } from "../hooks/useHaptics";
 import { findAvatar } from "../lib/avatars";
 import { useScorecardStore } from "../store/scorecardStore";
 import { GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
@@ -159,6 +163,10 @@ const INITIAL_MODE_BASELINES: Record<string, Record<string, number>> = {
   blockblast: {
     classic_endless: 5100,
   },
+  tictactoe: {
+    quantum: 4,
+    classic: 3,
+  },
 };
 
 const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
@@ -228,6 +236,10 @@ const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
     bullet_1m: 32,
     rapid_10m: 25,
   },
+  tictactoe: {
+    quantum: 12,
+    classic: 9,
+  },
 };
 
 const GAME_TIPS: Record<string, string> = {
@@ -245,6 +257,7 @@ const GAME_TIPS: Record<string, string> = {
   snake: "Plan your turn radius before entering narrow corridor spaces!",
   carrom: "Gentle angled bank shots often set up easy follow-up pocketings!",
   chess: "Control the center squares early to maximize piece mobility!",
+  tictactoe: "In Quantum Flux, remember your 4th placement evaporates your 1st — plan rotations ahead to trap your opponent!",
 };
 
 /**
@@ -331,6 +344,8 @@ function getGameRoute(game: AllGameSlug, modeId?: string): string {
       return "/games/brickbreakout";
     case "snake":
       return "/?game=snake";
+    case "tictactoe":
+      return "/?game=tictactoe";
     default:
       return `/?game=${game}`;
   }
@@ -369,6 +384,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "dotsboxes", label: "Dots & Boxes", icon: "📦" },
   { id: "wordbuilding", label: "Word Building", icon: "🔤" },
   { id: "rps", label: "Rock Paper Scissors", icon: "✂️" },
+  { id: "tictactoe", label: "Tic Tac Toe", icon: "⚡" },
   { id: "stargame", label: "Star Game", icon: "⭐" },
   { id: "bingo", label: "Bingo", icon: "🎱" },
   { id: "namesplaceanimal", label: "Name Place Animal", icon: "📝" },
@@ -403,10 +419,13 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   blockblast: "/BlockBlast Game Tile.png",
   tambola: "/Tambola.png",
   sudoku: "/Sudoku Game Tile.png",
+  tictactoe: "/TicTacToeTile.png",
 };
 
 function getModeIcon(modeId: string): string {
   switch (modeId) {
+    case "quantum":
+      return "⚛️";
     case "classic":
     case "classic_walled":
       return "🧱";
@@ -446,10 +465,41 @@ function getGameIconEmoji(game: string): string {
   return found?.icon ?? "🎮";
 }
 
+function getFoilTierInfo(tier: FoilTier) {
+  switch (tier) {
+    case "obsidian_vanguard":
+      return {
+        label: "Obsidian Vanguard",
+        badgeClass: "bg-purple-950/80 text-purple-300 border-purple-500/40",
+        icon: "💎",
+      };
+    case "prismatic_holo":
+      return {
+        label: "Prismatic Holo",
+        badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40",
+        icon: "👑",
+      };
+    case "neon_cyan":
+      return {
+        label: "Neon Cyan",
+        badgeClass: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/40",
+        icon: "⚡",
+      };
+    case "carbon":
+    default:
+      return {
+        label: "Carbon",
+        badgeClass: "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30",
+        icon: "🛡️",
+      };
+  }
+}
+
 export default function LeaderboardPage() {
   const { isSuperAdmin } = useAuthStore();
   const { playerId } = usePlayerId();
   const { archive, fetchScorecards } = useScorecardStore();
+  const haptics = useHaptics();
 
   const [selectedGame, setSelectedGame] = useState<AllGameSlug>("handcricket");
   const gameConfig = GAME_MODE_REGISTRY[selectedGame] ?? GAME_MODE_REGISTRY.handcricket ?? GAME_MODE_REGISTRY["2048"];
@@ -466,9 +516,15 @@ export default function LeaderboardPage() {
 
   // Sync default mode whenever game changes
   const handleGameChange = (game: AllGameSlug) => {
+    haptics.subtle();
     setSelectedGame(game);
     const cfg = GAME_MODE_REGISTRY[game] ?? GAME_MODE_REGISTRY["2048"] ?? GAME_MODE_REGISTRY.handcricket!;
     setSelectedMode(cfg.defaultModeId);
+  };
+
+  const handleModeSelect = (modeId: string) => {
+    haptics.subtle();
+    setSelectedMode(modeId);
   };
 
   // Resolve player's score items across modes for the selected game
@@ -535,15 +591,6 @@ export default function LeaderboardPage() {
   // The active mode item
   const activeItem = modeScores.find((m) => m.modeId === selectedMode) ?? modeScores[0]!;
 
-  // Search filter matching check
-  const isFilteredOut = useMemo(() => {
-    if (!searchTerm.trim()) return false;
-    const term = searchTerm.toLowerCase();
-    const matchesGame = gameConfig.displayName.toLowerCase().includes(term);
-    const matchesMode = modeScores.some((m) => m.modeDisplayName.toLowerCase().includes(term));
-    return !matchesGame && !matchesMode;
-  }, [searchTerm, gameConfig, modeScores]);
-
   // Count total personal bests across all games
   const totalPersonalBests = useMemo(() => {
     let count = 0;
@@ -578,9 +625,57 @@ export default function LeaderboardPage() {
     return map;
   }, [archive]);
 
+  // Filter game arenas based on game search term
+  const filteredGames = useMemo(() => {
+    if (!searchTerm.trim()) return SUPPORTED_GAMES;
+    const term = searchTerm.toLowerCase().trim();
+    return SUPPORTED_GAMES.filter((g) => {
+      const labelMatch = g.label.toLowerCase().includes(term);
+      const idMatch = g.id.toLowerCase().includes(term);
+      const cfg = getGameModeConfig(g.id);
+      const displayNameMatch = cfg.displayName.toLowerCase().includes(term);
+      const modeMatch = cfg.modes.some(
+        (m) =>
+          m.displayName.toLowerCase().includes(term) ||
+          m.modeId.toLowerCase().includes(term) ||
+          m.description.toLowerCase().includes(term)
+      );
+      return labelMatch || idMatch || displayNameMatch || modeMatch;
+    });
+  }, [searchTerm]);
+
+  // When search filters games, auto-select the first matching game if current is not in list
+  useEffect(() => {
+    if (filteredGames.length > 0 && !filteredGames.some((g) => g.id === selectedGame)) {
+      const nextGame = filteredGames[0]!.id;
+      setSelectedGame(nextGame);
+      const cfg = GAME_MODE_REGISTRY[nextGame] ?? GAME_MODE_REGISTRY["2048"] ?? GAME_MODE_REGISTRY.handcricket!;
+      setSelectedMode(cfg.defaultModeId);
+    }
+  }, [filteredGames, selectedGame]);
+
+  // Search filter matching check: true when no games match the search term
+  const isFilteredOut = useMemo(() => {
+    if (!searchTerm.trim()) return false;
+    return filteredGames.length === 0;
+  }, [searchTerm, filteredGames]);
+
+  const globalBenchmark = GLOBAL_MODE_BESTS[selectedGame]?.[activeItem.modeId] ?? 2480;
+  const isBreakoutClassic = selectedGame === "breakout" && activeItem.modeId === "classic";
+
+  const progressPercent = useMemo(() => {
+    if (activeItem.scoringDirection === "LOWER_IS_BETTER") {
+      if (activeItem.score <= 0) return 100;
+      return Math.min(100, Math.max(10, Math.round((globalBenchmark / Math.max(1, activeItem.score)) * 100)));
+    }
+    return Math.min(100, Math.max(5, Math.round((activeItem.score / Math.max(1, globalBenchmark)) * 100)));
+  }, [activeItem.score, activeItem.scoringDirection, globalBenchmark]);
+
+  const foilInfo = getFoilTierInfo(activeItem.foilTier);
+
   return (
     <AppLayout>
-      <div className="min-h-[85vh] py-4 sm:py-6 px-3.5 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-4 sm:space-y-6 w-full min-w-0 overflow-x-hidden">
+      <div className="py-2.5 sm:py-4 px-3 sm:px-5 lg:px-6 max-w-6xl mx-auto space-y-3 sm:space-y-4 w-full min-w-0 overflow-x-hidden">
         {/* Super Admin Panel link — only visible when super admin is logged in */}
         {isSuperAdmin && (
           <div className="rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-transparent border border-amber-500/30 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full min-w-0">
@@ -613,79 +708,91 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* Top Header & Navigation Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0 pt-1">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">
-              <span>BHALYAM</span>
-              <span>•</span>
-              <span>HALL OF FAME</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-white tracking-tight">
-              Personal Score Board
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-medium">
-              Your milestones, high scores, and personal bests.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+        {/* Top Header: Mobile-First Gaming Header */}
+        <div className="flex items-center justify-between gap-3 w-full min-w-0 pt-1">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/profile"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-zinc-700 shadow-xs transition-all active:scale-95 min-h-[40px]"
+              aria-label="Back to Profile"
+              className="w-11 h-11 rounded-2xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xs flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-700 transition active:scale-95 shrink-0 min-h-[44px] min-w-[44px]"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-              <span>Back</span>
+              <ArrowLeft className="w-5 h-5" />
             </Link>
-
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-xs hover:border-amber-400/50 transition-all active:scale-95 min-h-[40px]"
-            >
-              <Crown className="w-4 h-4 text-amber-500 fill-amber-400/30 shrink-0" />
-              <div className="flex flex-col text-left">
-                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 leading-tight">
-                  Records
-                </span>
-                <span className="text-xs font-black text-slate-900 dark:text-white leading-tight flex items-center gap-0.5">
-                  {totalPersonalBests || 2} <ChevronRight className="w-3 h-3 text-slate-400" />
-                </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-0.5">
+                <span>BHALYAM</span>
+                <span>•</span>
+                <span>HALL OF FAME</span>
               </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Section 1: Select Game Arena */}
-        <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-lg sm:text-xl">🎮</span>
-              <h2 className="text-sm sm:text-lg font-black text-stone-900 dark:text-stone-100 tracking-tight">
-                1. Select Game Arena
-              </h2>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                Personal Score Board
+              </h1>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                Track high scores, foil tiers & personal records
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                aria-label="Search players by name"
-                placeholder="Search player..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 min-h-[36px]"
-              />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {SUPPORTED_GAMES.length} Games
+          </div>
+
+          <Link
+            to="/profile"
+            aria-label="View unlocked personal bests"
+            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/15 hover:to-orange-500/15 border border-amber-500/30 shadow-xs transition-all active:scale-95 min-h-[44px] shrink-0"
+          >
+            <Crown className="w-4 h-4 text-amber-500 fill-amber-400/20 shrink-0" />
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 leading-tight">
+                Records
+              </span>
+              <span className="text-xs font-black text-slate-900 dark:text-white leading-tight font-mono">
+                {totalPersonalBests || 2} PBs
               </span>
             </div>
+          </Link>
+        </div>
+
+        {/* Mobile Game Search Bar */}
+        <div className="relative w-full min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            aria-label="Search games by name"
+            placeholder="Search games..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40 min-h-[44px] shadow-xs"
+          />
+          {searchTerm.trim() && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              aria-label="Clear Search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Arena Touch-Scroll Carousel */}
+        <div className="space-y-2 w-full min-w-0">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <Gamepad2 className="w-4 h-4 text-amber-500" />
+              <span>Select Game Arena</span>
+            </span>
+            <span>
+              {filteredGames.length} {filteredGames.length === 1 ? "Arena" : "Arenas"}
+              {searchTerm.trim() && ` of ${SUPPORTED_GAMES.length}`}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 w-full min-w-0">
             {/* Left Carousel Arrow (desktop only) */}
             <button
               type="button"
-              onClick={() => arenaScrollRef.current?.scrollBy({ left: -320, behavior: "smooth" })}
+              onClick={() => arenaScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" })}
               aria-label="Previous Games"
-              className="hidden md:flex w-11 h-11 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-700 cursor-pointer shrink-0 min-h-[44px] min-w-[44px]"
+              className="hidden md:flex w-10 h-10 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-700 cursor-pointer shrink-0 min-h-[44px] min-w-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -695,11 +802,13 @@ export default function LeaderboardPage() {
               ref={arenaScrollRef}
               role="group"
               aria-label="Filter scoreboard by game arena"
-              className="flex items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth w-full min-w-0 flex-1 snap-x snap-mandatory"
+              className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar py-1.5 px-0.5 scroll-smooth w-full min-w-0 flex-1 snap-x snap-mandatory"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              {SUPPORTED_GAMES.map((g) => {
+              {filteredGames.map((g) => {
                 const isSelected = selectedGame === g.id;
                 const tileImg = GAME_TILE_IMAGES[g.id];
+                const pbCount = gamePBCounts[g.id] ?? 0;
                 return (
                   <button
                     key={g.id}
@@ -707,25 +816,31 @@ export default function LeaderboardPage() {
                     onClick={() => handleGameChange(g.id)}
                     aria-label={`Filter by ${g.label} game`}
                     aria-pressed={isSelected}
-                    className={`shrink-0 snap-start flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl transition-all cursor-pointer min-h-[44px] w-24 sm:w-28 md:w-32 active:scale-95 ${
+                    className={`shrink-0 snap-start flex flex-col items-center justify-between p-1.5 sm:p-2 rounded-xl sm:rounded-2xl transition-all cursor-pointer min-h-[44px] w-18 sm:w-20 md:w-24 active:scale-95 ${
                       isSelected
-                        ? "bg-sky-50 dark:bg-sky-950/40 border-2 border-sky-400 shadow-md ring-2 ring-sky-400/25 scale-[1.02]"
-                        : "bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-xs"
+                        ? "bg-amber-500/10 dark:bg-amber-950/40 border-2 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/20 scale-[1.02]"
+                        : "bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-xs"
                     }`}
                   >
-                    <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 flex items-center justify-center">
+                    <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                       {tileImg ? (
                         <img
                           src={tileImg}
                           alt={g.label}
-                          className="w-full h-full object-contain rounded-xl sm:rounded-2xl drop-shadow-xs"
+                          className="w-full h-full object-contain rounded-xl drop-shadow-xs"
                           loading="lazy"
                         />
                       ) : (
-                        <span className="text-3xl sm:text-4xl">{g.icon}</span>
+                        <span className="text-2xl sm:text-3xl">{g.icon}</span>
+                      )}
+                      {pbCount > 0 && (
+                        <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 font-black text-[9px] shadow-xs flex items-center gap-0.5">
+                          <Crown className="w-2.5 h-2.5 fill-stone-950" />
+                          {pbCount}
+                        </span>
                       )}
                     </div>
-                    <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 mt-1.5 sm:mt-2 truncate max-w-[80px] sm:max-w-[100px] text-center">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 truncate max-w-[65px] sm:max-w-[78px] text-center">
                       {g.label}
                     </span>
                   </button>
@@ -736,23 +851,24 @@ export default function LeaderboardPage() {
             {/* Right Carousel Arrow (desktop only) */}
             <button
               type="button"
-              onClick={() => arenaScrollRef.current?.scrollBy({ left: 320, behavior: "smooth" })}
+              onClick={() => arenaScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
               aria-label="Next Games"
-              className="hidden md:flex w-11 h-11 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-700 cursor-pointer shrink-0 min-h-[44px] min-w-[44px]"
+              className="hidden md:flex w-10 h-10 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-700 cursor-pointer shrink-0 min-h-[44px] min-w-[44px]"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>
 
+        {/* Filtered Out Empty State */}
         {isFilteredOut ? (
           <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-center space-y-3 my-4 w-full">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 text-2xl">
               🔍
             </div>
-            <h3 className="text-base sm:text-lg font-extrabold text-stone-900 dark:text-white">No players found</h3>
+            <h3 className="text-base sm:text-lg font-extrabold text-stone-900 dark:text-white">No games found</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              No personal bests or players matched "{searchTerm}".
+              No game arenas matched "{searchTerm}". Try searching for Tic Tac Toe, Sudoku, Rummy, or Hand Cricket.
             </p>
             <button
               type="button"
@@ -764,236 +880,210 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <>
-            {/* Section 2: Select Game Mode */}
-            <div className="space-y-2.5 sm:space-y-3 w-full min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-lg sm:text-xl">🥞</span>
-            <h2 className="text-sm sm:text-lg font-black text-stone-900 dark:text-stone-100 tracking-tight">
-              2. Select Game Mode
-            </h2>
-          </div>
+            {/* Hero Achievement Card — Active Game & Mode Spotlight */}
+            <div className="bg-white/95 dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl relative overflow-hidden w-full min-w-0 space-y-3">
+          {/* Mode Selector Pill Bar */}
+          <div className="w-full min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5 text-amber-500" />
+                <span>Game Mode ({modeScores.length})</span>
+              </span>
+              <span className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold">
+                Tap to Switch
+              </span>
+            </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full min-w-0">
-            {/* Mode Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full min-w-0 sm:flex-wrap">
+            <div
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full min-w-0"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
               {modeScores.map((m) => {
                 const isSelected = m.modeId === activeItem.modeId;
                 return (
                   <button
                     key={m.modeId}
                     type="button"
-                    onClick={() => setSelectedMode(m.modeId)}
-                    className={`shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm transition-all cursor-pointer min-h-[44px] active:scale-95 ${
+                    onClick={() => handleModeSelect(m.modeId)}
+                    className={`shrink-0 px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer min-h-[44px] active:scale-95 ${
                       isSelected
-                        ? "bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-400 text-amber-950 dark:text-amber-200 font-bold shadow-xs ring-1 ring-amber-400/20"
-                        : "bg-white dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-xs"
+                        ? "bg-amber-500 text-stone-950 shadow-md ring-2 ring-amber-500/30 scale-[1.01]"
+                        : "bg-slate-100 dark:bg-zinc-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700/60"
                     }`}
                   >
-                    <span className="text-base">{getModeIcon(m.modeId)}</span>
-                    <span className="font-bold">{m.modeDisplayName}</span>
+                    <span className="text-sm">{getModeIcon(m.modeId)}</span>
+                    <span>{m.modeDisplayName}</span>
                   </button>
                 );
               })}
             </div>
+          </div>
 
-            {/* Sticky note on the right (desktop only) */}
-            <div className="hidden sm:flex items-center bg-[#fff8db] text-amber-950 px-4 py-2.5 rounded-sm border border-amber-200 shadow-xs rotate-[1.5deg] relative self-start lg:self-auto select-none shrink-0">
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-10 h-4 bg-white/60 border border-white/70 rotate-[-1deg]" />
-              <p className="font-serif italic text-xs font-semibold">
-                Same game. New challenges. Higher scores! :)
+          {/* Mode Info & Badges */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-zinc-700/60">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <span>{getGameIconEmoji(selectedGame)}</span>
+                  <span>{gameConfig.displayName}</span>
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${foilInfo.badgeClass}`}>
+                  {foilInfo.icon} {foilInfo.label}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                {activeItem.modeDisplayName}
+              </h2>
+              <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                {activeItem.description || `Master your skills in ${activeItem.modeDisplayName}`}
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* Active Mode Hero Card */}
-        <div className="bg-white/95 dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-lg relative overflow-hidden w-full min-w-0">
-          {/* Watermark / doodle in top right (desktop only) */}
-          <div className="absolute top-3 right-6 pointer-events-none opacity-40 hidden md:flex items-center gap-2 select-none">
-            <div className="text-right font-serif italic text-[11px] font-bold text-slate-600 dark:text-slate-400">
-              STILL<br />A KID<br />AT HEART :)
-            </div>
-            <div className="w-8 h-12 rounded-md border-2 border-slate-400/60 p-1 flex flex-col justify-between">
-              <div className="w-full h-4 bg-slate-200 dark:bg-zinc-700 rounded-xs" />
-              <div className="w-2 h-2 rounded-full bg-slate-400/60 self-center" />
-            </div>
+            {/* Direct Play CTA for Mobile */}
+            <Link
+              to={getGameRoute(selectedGame, activeItem.modeId)}
+              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-xs sm:text-sm shadow-md shadow-amber-500/25 flex items-center justify-center gap-2 transition-all min-h-[44px] active:scale-[0.98] cursor-pointer self-start sm:self-auto shrink-0 mt-2 sm:mt-0"
+            >
+              <Play className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
+              <span>Play Arena →</span>
+            </Link>
           </div>
 
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 relative z-10 w-full min-w-0">
-            {/* Center: Info & Stats */}
-            <div className="flex-1 flex flex-col justify-between space-y-3.5 sm:space-y-4 w-full min-w-0">
-              <div className="w-full min-w-0">
-                {/* Badges */}
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <span>{getGameIconEmoji(selectedGame)}</span>
-                    <span>{gameConfig.displayName}</span>
-                  </span>
-                  <span className="text-slate-400">•</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                    ARCADE
-                  </span>
+          {/* Hero Personal Best Counter & Progress Meter */}
+          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-700/60 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  <Crown className="w-4 h-4 text-amber-500 fill-amber-400/30 shrink-0" />
+                  <span>Your Personal Best</span>
                 </div>
-
-                {/* Mode Title */}
-                <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight break-words">
-                  {activeItem.modeDisplayName}
-                </h3>
-                <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mt-0.5">
-                  {activeItem.description || `Master your reflexes in ${activeItem.modeDisplayName}`}
-                </p>
-              </div>
-
-              {/* 3-Column Stats Bar — balanced for mobile and desktop */}
-              <div className="grid grid-cols-3 gap-1 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-700/60 divide-x divide-slate-200 dark:divide-zinc-700 w-full min-w-0">
-                {/* Column 1: Your Best Score */}
-                <div className="px-1.5 sm:px-3 first:pl-0 text-center sm:text-left min-w-0">
-                  <div className="flex items-center justify-center sm:justify-start gap-1 text-amber-500 mb-0.5">
-                    <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400/20 shrink-0" />
-                  </div>
-                  <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-amber-500 dark:text-amber-400">
                     {activeItem.score.toLocaleString()}
-                  </div>
-                  <div className="text-[9px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-                    Your Best
-                  </div>
+                  </span>
+                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-500 dark:text-slate-400">
+                    {activeItem.unit || "pts"}
+                  </span>
+                  {activeItem.isPersonalBest && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wide">
+                      Active Record
+                    </span>
+                  )}
                 </div>
+              </div>
 
-                {/* Column 2: Global Best */}
-                <div className="px-1.5 sm:px-3 text-center sm:text-left min-w-0">
-                  <div className="flex items-center justify-center sm:justify-start gap-1 text-slate-500 dark:text-slate-400 mb-0.5">
-                    <BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                  </div>
-                  <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white truncate">
-                    {(GLOBAL_MODE_BESTS[selectedGame]?.[activeItem.modeId] ?? 2480).toLocaleString()}
-                  </div>
-                  <div className="text-[9px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-                    Global Best
-                  </div>
-                </div>
-
-                {/* Column 3: Last Played */}
-                <div className="px-1.5 sm:px-3 text-center sm:text-left min-w-0">
-                  <div className="flex items-center justify-center sm:justify-start gap-1 text-slate-500 dark:text-slate-400 mb-0.5">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                  </div>
-                  <div className="text-xs sm:text-base font-black text-slate-900 dark:text-white pt-0.5 truncate">
-                    {formatScoreDate(activeItem.achievedAt, selectedGame === "breakout" && activeItem.modeId === "classic")}
-                  </div>
-                  <div className="text-[9px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-                    Last Played
-                  </div>
-                </div>
+              <div className="text-left sm:text-right">
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block">
+                  Milestone Target: <strong className="text-slate-700 dark:text-slate-200">{globalBenchmark.toLocaleString()} {activeItem.unit || "pts"}</strong>
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {progressPercent}% Achieved
+                </span>
               </div>
             </div>
 
-            {/* Right: Actions */}
-            <div className="w-full lg:w-48 shrink-0 flex flex-col sm:flex-row lg:flex-col justify-center gap-2.5 sm:gap-3 pt-1 lg:pt-0">
-              <Link
-                to={getGameRoute(selectedGame, activeItem.modeId)}
-                className="w-full py-3.5 px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-sm sm:text-base shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all min-h-[48px] active:scale-[0.98] cursor-pointer"
-              >
-                <Play className="w-4 h-4 fill-stone-950 text-stone-950 shrink-0" />
-                <span className="text-stone-950 font-black text-sm sm:text-base">Play Now →</span>
-              </Link>
+            {/* Progress Meter Bar */}
+            <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-amber-500 to-orange-500 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById("all-modes-grid");
-                  el?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="w-full py-3 px-4 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all min-h-[44px] cursor-pointer active:scale-[0.98]"
-              >
-                <BarChart2 className="w-4 h-4 text-slate-600 dark:text-slate-400 shrink-0" />
-                <span className="text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm">View All Modes</span>
-              </button>
+            {/* 3-Column Metrics Grid */}
+            <div className="grid grid-cols-3 gap-1 sm:gap-4 pt-2 border-t border-slate-200/60 dark:border-zinc-700/60 divide-x divide-slate-200 dark:divide-zinc-700/60">
+              <div className="text-center sm:text-left px-1">
+                <span className="text-[10px] font-semibold text-slate-400 block">Status</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {activeItem.isPersonalBest ? "PB Unlocked" : "In Progress"}
+                </span>
+              </div>
+              <div className="text-center sm:text-left px-1 sm:px-3">
+                <span className="text-[10px] font-semibold text-slate-400 block">Matches Played</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {activeItem.timesPlayed}
+                </span>
+              </div>
+              <div className="text-center sm:text-left px-1 sm:px-3">
+                <span className="text-[10px] font-semibold text-slate-400 block">Last Played</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {formatScoreDate(activeItem.achievedAt, isBreakoutClassic)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section 3: All Modes — {Game Name} */}
-        <div id="all-modes-grid" className="space-y-3 sm:space-y-4 pt-1 sm:pt-2 w-full min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 w-full min-w-0">
+        {/* All Modes Trophy Matrix for Selected Arena */}
+        <div className="space-y-3 pt-1 w-full min-w-0">
+          <div className="flex items-center justify-between gap-1 w-full min-w-0">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 fill-amber-400/20 shrink-0" />
-              <h2 className="text-sm sm:text-lg font-black text-stone-900 dark:text-stone-100 tracking-tight">
-                All Modes — {gameConfig.displayName}
+              <h2 className="text-sm sm:text-base font-black text-stone-900 dark:text-stone-100 tracking-tight">
+                All Modes — {gameConfig.displayName} ({modeScores.length})
               </h2>
             </div>
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Compare your records across all modes of this game
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Tap a mode to inspect
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
             {modeScores.map((m) => {
               const isSelected = m.modeId === activeItem.modeId;
-              const globalVal = GLOBAL_MODE_BESTS[selectedGame]?.[m.modeId] ?? 2480;
-              const isBreakoutClassic = selectedGame === "breakout" && m.modeId === "classic";
+              const modeBenchmark = GLOBAL_MODE_BESTS[selectedGame]?.[m.modeId] ?? 2480;
+              const isBreakout = selectedGame === "breakout" && m.modeId === "classic";
 
               return (
                 <button
                   key={m.modeId}
                   type="button"
-                  onClick={() => setSelectedMode(m.modeId)}
-                  className={`w-full min-w-0 text-left p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl transition-all cursor-pointer space-y-2.5 sm:space-y-3 min-h-[44px] active:scale-[0.99] ${
+                  onClick={() => handleModeSelect(m.modeId)}
+                  className={`w-full min-w-0 text-left p-3.5 rounded-2xl transition-all cursor-pointer space-y-2.5 min-h-[44px] active:scale-[0.99] ${
                     isSelected
-                      ? "bg-white dark:bg-zinc-800 border-2 border-amber-400 shadow-md ring-1 ring-amber-400/30"
+                      ? "bg-white dark:bg-zinc-800 border-2 border-amber-400 shadow-md ring-1 ring-amber-400/30 scale-[1.01]"
                       : "bg-white/90 dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700/80 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-xs"
                   }`}
                 >
-                  {/* Header */}
-                  <div className="flex items-start gap-3 w-full min-w-0">
-                    <span className="text-xl sm:text-2xl shrink-0 p-1.5 rounded-xl bg-slate-100 dark:bg-zinc-700/60">
+                  <div className="flex items-start gap-2.5 w-full min-w-0">
+                    <span className="text-xl shrink-0 p-1 rounded-xl bg-slate-100 dark:bg-zinc-700/60">
                       {getModeIcon(m.modeId)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                         {m.modeDisplayName}
                       </h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 line-clamp-1">
+                      <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 line-clamp-1">
                         {m.description || `Challenge mode for ${m.modeDisplayName}`}
                       </p>
                     </div>
                   </div>
 
-                  {/* Scores row */}
                   <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-100 dark:border-zinc-700/60 w-full min-w-0">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 text-amber-500">
-                        <Crown className="w-3.5 h-3.5 fill-amber-400/20 shrink-0" />
-                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                        <Crown className="w-3 h-3 fill-amber-400/20 shrink-0" />
+                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
                           {m.score.toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-[10px] font-medium text-slate-400 truncate block">Your Best</span>
+                      <span className="text-[9px] font-medium text-slate-400 truncate block">Your Record</span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                        <BarChart2 className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                          {globalVal.toLocaleString()}
+                        <Target className="w-3 h-3 shrink-0" />
+                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
+                          {modeBenchmark.toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-[10px] font-medium text-slate-400 truncate block">Global Best</span>
+                      <span className="text-[9px] font-medium text-slate-400 truncate block">Target</span>
                     </div>
                   </div>
 
-                  {/* Meta row */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-medium text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-zinc-700/60 w-full min-w-0">
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                        {m.timesPlayed}
-                      </div>
-                      <span className="truncate block">Times Played</span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                        {formatScoreDate(m.achievedAt, isBreakoutClassic)}
-                      </div>
-                      <span className="truncate block">Last Played</span>
-                    </div>
+                  <div className="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-zinc-700/60 w-full min-w-0">
+                    <span>{m.timesPlayed} Played</span>
+                    <span>{formatScoreDate(m.achievedAt, isBreakout)}</span>
                   </div>
                 </button>
               );
@@ -1003,7 +1093,7 @@ export default function LeaderboardPage() {
       </>
     )}
 
-        {/* Section 4: Tip Banner */}
+        {/* Pro Tip & Strategy Banner */}
         <div className="p-3.5 sm:p-5 rounded-2xl bg-amber-50/70 dark:bg-zinc-800/80 border border-amber-200/60 dark:border-zinc-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 w-full min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
@@ -1011,10 +1101,10 @@ export default function LeaderboardPage() {
             </div>
             <div className="min-w-0">
               <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                Tip
+                Pro Strategy Tip
               </span>
               <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-                {GAME_TIPS[selectedGame] ?? "Angles make all the difference. Try hitting the corners for better control!"}
+                {GAME_TIPS[selectedGame] ?? "Angles make all the difference. Practice mode patterns to smash high scores!"}
               </p>
             </div>
           </div>
@@ -1027,7 +1117,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Bottom Desk Footer Note */}
-        <div className="pt-2 flex justify-end w-full min-w-0">
+        <div className="pt-2 pb-4 flex justify-end w-full min-w-0">
           <div className="flex items-center gap-3 text-stone-600 dark:text-stone-400 select-none">
             <div className="w-12 h-1.5 rounded-full bg-stone-400/40 rotate-[-12deg]" />
             <p className="font-serif italic text-xs sm:text-sm font-bold tracking-wide">

@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe";
 
 /**
  * What a player is: somebody with an account, or somebody who just started
@@ -1500,6 +1500,98 @@ export interface DotsBoxesDrawMove {
   data: { kind: "h" | "v"; r: number; c: number };
 }
 
+// ---- TIC TAC TOE (Tic Tac Toe: QUANTUM NEXUS) ----
+
+export type TicTacToeMode = "quantum" | "classic";
+export type TicTacToeMark = "X" | "O";
+
+export interface TicTacToeOptions {
+  mode: TicTacToeMode;
+  /** Seconds per turn. 0 disables the timer. */
+  turnTimerSeconds: number;
+}
+
+export const DEFAULT_TICTACTOE_OPTIONS: TicTacToeOptions = {
+  mode: "quantum",
+  turnTimerSeconds: 15,
+};
+
+/** Same 5 s floor every other timed game applies. */
+export const TICTACTOE_MIN_TURN_SECONDS = 5;
+/**
+ * Two minutes is far past any sensible turn. The real reason for a cap is the
+ * 32-bit `setTimeout` limit: anything above ~2,147,483 s is silently clamped to
+ * 1 ms by Node, turning "a very long turn" into "an instant timeout".
+ */
+export const TICTACTOE_MAX_TURN_SECONDS = 120;
+
+/**
+ * The room-create payload is client-controlled, so options are never trusted:
+ * an unknown `mode` matches neither engine branch (a full board then has no
+ * legal move and no result), and an absurd timer either auto-plays the table
+ * at 1 ms or overflows `setTimeout`.
+ *
+ *   - unknown/missing mode        -> default mode
+ *   - non-numeric/non-finite timer -> default timer
+ *   - timer <= 0                   -> 0 (untimed)
+ *   - any other timer              -> whole seconds, clamped to [min, max]
+ */
+export function sanitizeTicTacToeOptions(input: unknown): TicTacToeOptions {
+  const raw = input !== null && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  const mode: TicTacToeMode =
+    raw.mode === "classic" || raw.mode === "quantum" ? raw.mode : DEFAULT_TICTACTOE_OPTIONS.mode;
+
+  const t = raw.turnTimerSeconds;
+  let turnTimerSeconds: number;
+  if (typeof t !== "number" || !Number.isFinite(t)) {
+    turnTimerSeconds = DEFAULT_TICTACTOE_OPTIONS.turnTimerSeconds;
+  } else if (t <= 0) {
+    turnTimerSeconds = 0;
+  } else {
+    turnTimerSeconds = Math.min(
+      TICTACTOE_MAX_TURN_SECONDS,
+      Math.max(TICTACTOE_MIN_TURN_SECONDS, Math.round(t))
+    );
+  }
+  return { mode, turnTimerSeconds };
+}
+
+export interface TicTacToeCell {
+  mark: TicTacToeMark;
+  playerId: string;
+  moveNumber: number;
+  /** In quantum mode: true if this mark is the oldest for this player and will evaporate on their next placement. */
+  isExpiring?: boolean;
+}
+
+export interface TicTacToePublicState {
+  kind: "tictactoe";
+  phase: "playing" | "finished";
+  options: TicTacToeOptions;
+  playerOrder: string[]; // [playerXId, playerOId]
+  playerMarks: Record<string, TicTacToeMark>; // playerId -> "X" | "O"
+  turnPlayerId: string;
+  grid: (TicTacToeCell | null)[]; // 9 cells (indices 0-8)
+  /** In quantum mode: FIFO queue of placed cell indices for X and O to track piece evaporation */
+  pieceQueues: Record<TicTacToeMark, number[]>;
+  /** Index triplet of winning line if any (e.g. [0, 1, 2]), or null */
+  winningLine: number[] | null;
+  /** Final winner id, "draw", or null while playing */
+  winnerId: string | "draw" | null;
+  /** Move counter — used for animations + telemetry */
+  moveCount: number;
+  turnDeadline: number | null;
+  /** Index of cell that just evaporated in quantum mode, if any */
+  lastEvaporatedCell: number | null;
+}
+
+export interface TicTacToePlaceMove {
+  type: "place";
+  cellIndex: number;
+}
+
+export type TicTacToeMove = TicTacToePlaceMove;
+
 // ---- UNO ----
 
 export type UnoColor = "R" | "G" | "B" | "Y"; // Red, Green, Blue, Yellow
@@ -2675,6 +2767,7 @@ export interface CreateRoomPayload {
   chessOptions?: Partial<ChessOptions>;
   blockBlastOptions?: Partial<BlockBlastOptions>;
   spaceWarOptions?: Partial<SpaceWarOptions>;
+  ticTacToeOptions?: Partial<TicTacToeOptions>;
   /**
    * What the creator claims to be. Only an explicit `"guest"` seals the room;
    * absent leaves it open, so a caller that has not been taught this field

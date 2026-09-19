@@ -103,9 +103,9 @@ describe("UI Hardening Remediation Suite", () => {
       expect(ludoBtn.getAttribute("aria-pressed")).toBe("true");
 
       // 5. Search field retains its accessible name
-      const searchInput = screen.getByLabelText("Search players by name");
+      const searchInput = screen.getByLabelText("Search games by name");
       expect(searchInput).toBeDefined();
-      expect(searchInput.getAttribute("placeholder")).toBe("Search player...");
+      expect(searchInput.getAttribute("placeholder")).toBe("Search games...");
     });
   });
 

@@ -18,6 +18,33 @@ function makeIo(): Server<ClientToServerEvents, ServerToClientEvents> {
   } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
 }
 
+function createMemberRoom(rm: RoomManager, socketId: string, name: string, game = "rps" as const) {
+  return rm.createRoom(
+    socketId,
+    name,
+    game,
+    undefined, // ludo
+    undefined, // snl
+    undefined, // rummy
+    undefined, // hc
+    undefined, // wordBuilding
+    undefined, // dotsBoxes
+    undefined, // starGame
+    undefined, // uno
+    undefined, // bingo
+    undefined, // namesplaceanimal
+    undefined, // tambola
+    undefined, // snake
+    undefined, // carrom
+    undefined, // chess
+    undefined, // blockBlast
+    undefined, // spaceWar
+    undefined, // ticTacToe
+    undefined, // avatar
+    "member" // hostKind
+  );
+}
+
 describe("RoomInspectorTelemetry & Sensitive Field Omission Suite", () => {
   let roomManager: RoomManager;
 
@@ -26,28 +53,7 @@ describe("RoomInspectorTelemetry & Sensitive Field Omission Suite", () => {
   });
 
   it("produces rich OperationalPlayerSummary in getOperationalRoomSummaries without omitting seats", () => {
-    const createRes = roomManager.createRoom(
-      "sock_host_1",
-      "HostPlayer",
-      "rps",
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "member"
-    );
+    const createRes = createMemberRoom(roomManager, "sock_host_1", "HostPlayer", "rps");
     expect(createRes.code).toBeDefined();
     const roomCode = createRes.code;
 
@@ -83,28 +89,7 @@ describe("RoomInspectorTelemetry & Sensitive Field Omission Suite", () => {
   });
 
   it("populates isHost and autoTurnCap in getOperationalRecoverySummary when a player disconnects", () => {
-    const createRes = roomManager.createRoom(
-      "sock_host_alice",
-      "HostAlice",
-      "rps",
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "member"
-    );
+    const createRes = createMemberRoom(roomManager, "sock_host_alice", "HostAlice", "rps");
     const roomCode = createRes.code;
 
     const joinRes = roomManager.joinRoom(
@@ -138,28 +123,7 @@ describe("RoomInspectorTelemetry & Sensitive Field Omission Suite", () => {
   });
 
   it("STRICT PRIVACY AUDIT: Prohibited sensitive identifiers must NEVER appear in operational telemetry DTOs", () => {
-    const createRes = roomManager.createRoom(
-      "sock_secret_id",
-      "PrivacySubject",
-      "rps",
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "member"
-    );
+    const createRes = createMemberRoom(roomManager, "sock_secret_id", "PrivacySubject", "rps");
     const roomCode = createRes.code;
 
     const summaries = roomManager.getOperationalRoomSummaries();

@@ -28,6 +28,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "snl", label: "Snakes & Ladders", icon: "🪜" },
   { id: "dotsboxes", label: "Dots & Boxes", icon: "📦" },
   { id: "wordbuilding", label: "Word Building", icon: "🔤" },
+  { id: "tictactoe", label: "Tic Tac Toe", icon: "⚡" },
   { id: "carrom", label: "Carrom", icon: "⚪" },
   { id: "nokiasnake", label: "Nokia Snake", icon: "📱" },
 ];

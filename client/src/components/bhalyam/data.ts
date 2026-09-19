@@ -39,7 +39,8 @@ export type BhalyamGameSlug =
   | "breakout"
   | "carrom"
   | "2048"
-  | "sudoku";
+  | "sudoku"
+  | "tictactoe";
 
 /**
  * Game filters.
@@ -276,6 +277,22 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "Stone-Paper-Scissor! The ultimate playground arbiter for deciding who bats first.",
     accent: { from: "#FB7185", to: "#E11D48" },
+  },
+  {
+    slug: "tictactoe",
+    tags: ["multiplayer", "board", "classroom"],
+    title: "Tic Tac Toe",
+    badge: "⚡ Classic",
+    nostalgiaQuote: "3-piece limit. Zero draws. Pure tactical fun.",
+    playerRange: "2 Players",
+    duration: "2–5 min",
+    paperBg: "linear-gradient(155deg, #04253a 0%, #021422 45%, #01080e 100%)",
+    paperBorder: "rgba(6, 182, 212, 0.65)",
+    btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#164E63" },
+    blurb:
+      "A classic evolution of the classic grid. Tic Tac Toe introduces the 3-piece limit rule where 4th moves evaporate your oldest mark. Fast, tactical, and the board can never lock into a draw.",
+    accent: { from: "#06B6D4", to: "#EC4899" },
+    tileImage: "/TicTacToeTile.png",
   },
   {
     slug: "bingo",

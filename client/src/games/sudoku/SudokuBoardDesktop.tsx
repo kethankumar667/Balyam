@@ -61,6 +61,12 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
         return;
       }
 
+      // A held key auto-repeats keydown. Arrow repeat is wanted (it glides the
+      // cursor); for every action it is not — repeating a wrong digit flips
+      // "mistake / erase / mistake" and burns all three lives in a blink, and
+      // repeating H spends every hint.
+      if (e.repeat && !e.key.startsWith("Arrow")) return;
+
       if (game.isPaused || game.isComplete || game.isGameOver) return;
 
       // Digits 1-9
@@ -472,6 +478,8 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
         elapsedSeconds={game.elapsedSeconds}
         difficulty={game.difficulty}
         mistakes={game.mistakes}
+        hintsUsed={game.hintsUsed}
+        emptyCellCount={game.cells.filter((c) => !c.isGiven).length}
         themeId={game.themeId}
         newPersonalBest={game.newPersonalBest}
         onPlayNextBoard={game.startNextBoard}

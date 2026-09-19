@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { SUDOKU_THEMES, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
+import Modal from "../../components/Modal";
 import {
   X,
   ArrowRight,
@@ -146,12 +147,7 @@ function SudokuTutorialModal({ isOpen, themeId, onClose }: SudokuTutorialModalPr
   const Icon = currentSlide.icon;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="tutorial-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
-    >
+    <Modal open onClose={onClose} ariaLabelledBy="tutorial-modal-title" panelClassName="w-full flex justify-center">
       <div
         className={`w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[92vh] overflow-y-auto ${
           isLight
@@ -519,7 +515,7 @@ function SudokuTutorialModal({ isOpen, themeId, onClose }: SudokuTutorialModalPr
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

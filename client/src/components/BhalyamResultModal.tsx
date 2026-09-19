@@ -226,7 +226,7 @@ export default function BhalyamResultModal({
                 SCORES
               </span>
               {lastNewPB && lastNewPB.game === currentGame ? (
-                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-950 bg-gradient-to-r from-amber-400 to-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500 font-black shadow-xs animate-bounce">
+                <div className="flex items-center gap-1 text-[10px] font-mono text-amber-950 bg-gradient-to-r from-amber-400 to-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500 font-black shadow-xs animate-trophy-float">
                   <Zap className="w-3 h-3 text-amber-950 fill-amber-950" />
                   <span>NEW PB! ({lastNewPB.scorecard.bestScore})</span>
                 </div>
@@ -240,7 +240,14 @@ export default function BhalyamResultModal({
 
             <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">
               {rankedPlayers.map((p, index) => {
-                const isWinnerRow = p.id === winnerId || index === 0;
+                // With a declared winner, only that seat is crowned. Without one
+                // (a draw, or an engine that reports none), the top row is
+                // crowned only if it is genuinely ahead — never just because it
+                // is listed first, which crowned the host on every draw.
+                const hasClearLeader = rankedPlayers.every(
+                  (other, i) => i === 0 || other.score < rankedPlayers[0]!.score
+                );
+                const isWinnerRow = winnerId != null ? p.id === winnerId : index === 0 && hasClearLeader;
                 const avatarOpt = p.avatar ? findAvatar(p.avatar) : null;
                 const rankNum = index + 1;
                 // A placement badge only means something when this score is

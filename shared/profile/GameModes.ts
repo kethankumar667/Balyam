@@ -7,6 +7,13 @@ export interface ModeDefinition {
   scoringDirection: ScoringDirection;
   unit: string;
   isDefault?: boolean;
+  /**
+   * Bounds for a score the client reports for a solo game. The server cannot
+   * re-derive a browser-computed result, but it can refuse values no real play
+   * could produce (a 0-second Sudoku, say). Omit for "no opinion".
+   */
+  minPlausibleScore?: number;
+  maxPlausibleScore?: number;
 }
 
 export interface GameModeConfig {
@@ -15,6 +22,18 @@ export interface GameModeConfig {
   category: "board" | "card" | "social" | "retro_arcade";
   defaultModeId: string;
   modes: ModeDefinition[];
+  /**
+   * True when the SERVER derives this game's scores from the match itself. A
+   * client-reported score for it is refused: it would be a way to write a
+   * personal best for a game the player never played.
+   */
+  serverScored?: boolean;
+  /**
+   * True when only the listed `modes` are valid for a client-reported score.
+   * Off by default because several solo titles report ids the registry does not
+   * list, and rejecting those would silently stop their scores being recorded.
+   */
+  strictModes?: boolean;
 }
 
 export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
@@ -282,11 +301,23 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     displayName: "Sudoku Cyber-Matrix",
     category: "retro_arcade",
     defaultModeId: "medium",
+    strictModes: true,
     modes: [
-      { modeId: "easy", displayName: "Initiate (Easy)", description: "Casual relaxing solve with generous clues", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: false },
-      { modeId: "medium", displayName: "Data Runner (Medium)", description: "Balanced logical deduction challenge", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: true },
-      { modeId: "hard", displayName: "Cyber Architect (Hard)", description: "Advanced patterns, hidden pairs & triples", scoringDirection: "LOWER_IS_BETTER", unit: "s" },
-      { modeId: "expert", displayName: "Quantum Singularity (Expert)", description: "Extreme complexity for sudoku masters", scoringDirection: "LOWER_IS_BETTER", unit: "s" },
+      { modeId: "easy", displayName: "Initiate (Easy)", description: "Casual relaxing solve with generous clues", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: false, minPlausibleScore: 25, maxPlausibleScore: 86_400 },
+      { modeId: "medium", displayName: "Data Runner (Medium)", description: "Balanced logical deduction challenge", scoringDirection: "LOWER_IS_BETTER", unit: "s", isDefault: true, minPlausibleScore: 35, maxPlausibleScore: 86_400 },
+      { modeId: "hard", displayName: "Cyber Architect (Hard)", description: "Advanced patterns, hidden pairs & triples", scoringDirection: "LOWER_IS_BETTER", unit: "s", minPlausibleScore: 50, maxPlausibleScore: 86_400 },
+      { modeId: "expert", displayName: "Quantum Singularity (Expert)", description: "Extreme complexity for sudoku masters", scoringDirection: "LOWER_IS_BETTER", unit: "s", minPlausibleScore: 60, maxPlausibleScore: 86_400 },
+    ],
+  },
+  tictactoe: {
+    game: "tictactoe",
+    displayName: "Tic Tac Toe",
+    category: "board",
+    defaultModeId: "quantum",
+    serverScored: true,
+    modes: [
+      { modeId: "quantum", displayName: "Quantum Flux", description: "3-piece limit rule — 4th piece evaporates oldest mark. No draws. Faster wins score higher (max 8).", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "classic", displayName: "Classic Holo (3x3)", description: "Traditional 3x3 with holographic laser grid and cyber sound. Faster wins score higher (max 8).", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
 };
@@ -403,6 +434,12 @@ export function resolveModeId(game: string, options?: Record<string, unknown>): 
     if (["classic", "discpool", "freestyle"].includes(options.carromMode)) {
       return options.carromMode;
     }
+  }
+
+  // Tic Tac Toe
+  if (game === "tictactoe") {
+    if (options.mode === "classic") return "classic";
+    return "quantum";
   }
 
   return cfg.defaultModeId;

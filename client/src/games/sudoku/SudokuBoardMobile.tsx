@@ -357,6 +357,8 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
         elapsedSeconds={game.elapsedSeconds}
         difficulty={game.difficulty}
         mistakes={game.mistakes}
+        hintsUsed={game.hintsUsed}
+        emptyCellCount={game.cells.filter((c) => !c.isGiven).length}
         themeId={game.themeId}
         newPersonalBest={game.newPersonalBest}
         onPlayNextBoard={game.startNextBoard}

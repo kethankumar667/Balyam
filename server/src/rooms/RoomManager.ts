@@ -34,6 +34,7 @@ import type {
   ChessOptions,
   BlockBlastOptions,
   SpaceWarOptions,
+  TicTacToeOptions,
   OperationalRoomSummary,
   DisconnectedSeatSummary,
   OperationalRecoverySummary,
@@ -61,6 +62,7 @@ import {
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_BLOCKBLAST_OPTIONS,
   DEFAULT_SPACEWAR_OPTIONS,
+  sanitizeTicTacToeOptions,
   StartBlockReason,
   StartPreflightPayload,
   StartAcknowledgementPayload,
@@ -127,6 +129,11 @@ import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
+import {
+  TicTacToeEngine,
+  scoreTicTacToeWin,
+  orderForAlternatingFirstMove,
+} from "../games/tictactoe/TicTacToeEngine.js";
 import type { EconomyService, IssuedVoucherAck, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
 import {
@@ -311,6 +318,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   ],
   roadrash: ["Rider", "Speedy", "Biker", "Racer", "Nitro", "Drifter", "Burnout", "Throttle"],
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender", "Nova", "Starlight", "Galaxy", "Pulsar"],
+  tictactoe: ["NEXUS-9", "CYBER-AI", "VORTEX", "AURA-7", "SYNTH-X", "QUANTUM-0", "NEON-BLADE", "GLITCH"],
 };
 
 /**
@@ -528,6 +536,7 @@ export interface Room {
   snakeOptions: SnakeOptions;
   blockBlastOptions: BlockBlastOptions;
   spaceWarOptions: SpaceWarOptions;
+  ticTacToeOptions: TicTacToeOptions;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -693,6 +702,8 @@ interface HostEconomyEligibility {
  *  - An unresolved identityId (null/empty) is rejected: there is no wallet to debit.
  *  - A guest may play solo or against any number of bots (`soloVsBots: true`).
  *  - A guest CANNOT host multiplayer matches containing other real human players (`hasOtherHumanPlayers === true`).
+ *    Same-device Pass & Play seats (`isLocal`) are NOT other humans: a guest may play any Pass & Play
+ *    game at the limited stake, paying per seat like any host.
  *  - A guest may host ONLY at exactly `GUEST_HOST_ENTRY_STAKE_COINS`, unconditionally —
  *    independent of `hasOtherHumanPlayers` (2026-09-08, custom entry stakes). This is the
  *    AUTHORITATIVE check for that rule: `RoomManager.createRoom` also rejects a guest's
@@ -725,8 +736,14 @@ function checkHostEconomyEligibility(
     };
   }
 
+  // A Pass & Play seat is the host's own device, not another account: it has no
+  // socket and no identity, so nobody else can be paid from or charged for it.
+  // Every other "who is really here" check in this file already excludes
+  // `isLocal`; counting it here made a guest unable to start ANY Pass & Play
+  // match, contradicting the rule that a guest may play at the limited stake.
+  // A REMOTE human is still "another human" — that is the anti-exploit rule.
   const hasOtherHumanPlayers = playersList.some(
-    (candidate) => !candidate.isBot && candidate.id !== host.id,
+    (candidate) => !candidate.isBot && !candidate.isLocal && candidate.id !== host.id,
   );
 
   if (host.isGuest && hasOtherHumanPlayers) {
@@ -1433,6 +1450,7 @@ export class RoomManager {
     chessOptions?: Partial<ChessOptions>,
     blockBlastOptions?: Partial<BlockBlastOptions>,
     spaceWarOptions?: Partial<SpaceWarOptions>,
+    ticTacToeOptions?: Partial<TicTacToeOptions>,
     /**
      * Appended here, rather than sitting next to `name` where it belongs,
      * on purpose. Every option parameter above is a `Partial<…>`, and two
@@ -1568,6 +1586,8 @@ export class RoomManager {
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       blockBlastOptions: { ...DEFAULT_BLOCKBLAST_OPTIONS, ...(blockBlastOptions ?? {}) },
       spaceWarOptions: { ...DEFAULT_SPACEWAR_OPTIONS, ...(spaceWarOptions ?? {}) },
+      // Client-controlled payload: sanitised, never spread (see the helper's doc).
+      ticTacToeOptions: sanitizeTicTacToeOptions(ticTacToeOptions),
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -2040,16 +2060,17 @@ export class RoomManager {
       room.game !== "ludo" &&
       room.game !== "snl" &&
       room.game !== "wordbuilding" &&
-      room.game !== "dotsboxes"
+      room.game !== "dotsboxes" &&
+      room.game !== "tictactoe"
     ) {
       // Pass & Play is fair only for open-information games — everyone
-      // looks at the same board state, no private hands. Word Building
-      // and Dots & Boxes both qualify (every move is visible to
+      // looks at the same board state, no private hands. Word Building,
+      // Dots & Boxes and Tic Tac Toe all qualify (every move is visible to
       // everyone). Rummy / UNO etc. would leak hidden information to
       // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, and Dots & Boxes"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, and Tic Tac Toe"
       );
       return;
     }
@@ -3169,6 +3190,9 @@ export class RoomManager {
       if (engine instanceof SpaceWarEngine) {
         engine.setOptions(room.spaceWarOptions);
       }
+      if (engine instanceof TicTacToeEngine) {
+        engine.setOptions(room.ticTacToeOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -3443,6 +3467,25 @@ export class RoomManager {
         }
       }
 
+      // Tic Tac Toe: only a genuine three-in-a-row is scored, by how quickly it
+      // was made. A loss, a draw, or a win by the opponent leaving returns no
+      // score, so it never touches the scorecard — otherwise a first-ever loss
+      // registers as a "personal best" and an opponent quitting on move one
+      // hands out the maximum score.
+      if (room.game === "tictactoe") {
+        const winningLine = publicState.winningLine as number[] | null | undefined;
+        const marks = publicState.playerMarks as Record<string, "X" | "O"> | undefined;
+        const moveCount = typeof publicState.moveCount === "number" ? publicState.moveCount : 0;
+        // A Pass & Play table has one person on both sides: a quick win there
+        // proves nothing, and would be a repeatable way to mint the top score.
+        const hasLocalSeat = Array.from(room.players.values()).some((p) => p.isLocal);
+        if (hasLocalSeat || publicState.winnerId !== playerId || !winningLine || !marks?.[playerId]) return {};
+        return {
+          score: scoreTicTacToeWin(moveCount, marks[playerId]),
+          secondaryMetrics: { moves: moveCount },
+        };
+      }
+
       // Generic single numeric score if present
       if (typeof publicState.score === "number") {
         return { score: publicState.score };
@@ -3477,7 +3520,10 @@ export class RoomManager {
         finishedAt: Date.now(),
         durationMs: Math.max(1000, Date.now() - room.createdAt),
         winnerId: winnerId ?? undefined,
-        modeId: resolveModeId(room.game),
+        modeId: resolveModeId(
+          room.game,
+          room.game === "tictactoe" ? (room.ticTacToeOptions as unknown as Record<string, unknown>) : undefined
+        ),
         participants,
       });
       recentPlayersService.recordMatch({
@@ -3550,10 +3596,12 @@ export class RoomManager {
     if (departedPlayer && !rosterForSettlement.has(departedPlayer.id)) {
       rosterForSettlement.set(departedPlayer.id, departedPlayer);
     }
+    const departedIds = new Set([...rosterForSettlement.keys()].filter((id) => !room.players.has(id)));
     const { isValidRanking, participants, reason } = extractRankedParticipants({
       game: room.game,
       players: rosterForSettlement,
       engine: room.engine,
+      departedIds,
     });
 
     const request: SettleMatchEconomyRequest = isValidRanking
@@ -5427,6 +5475,29 @@ export class RoomManager {
       this.armTurnTimer(room, ms);
       return;
     }
+    if (room.engine instanceof TicTacToeEngine) {
+      const engine = room.engine;
+      const pub = engine.getPublicState();
+      if (!pub.turnDeadline) {
+        this.broadcastGameState(room);
+        return;
+      }
+      let ms = pub.turnDeadline - Date.now();
+      if (ms <= 0) {
+        // The stored deadline already lapsed, and it can only get here if the
+        // timeout was deliberately withheld (the opponent is inside a
+        // disconnect-grace window) or a resume found it stale. Arming nothing
+        // would leave the clock at zero with no timer behind it — forever.
+        // Open a fresh window instead, as every other timed game does.
+        engine.restartTurnClock();
+        ms = (engine.getPublicState().turnDeadline ?? Date.now()) - Date.now();
+      }
+      this.broadcastGameState(room);
+      if (ms > 0) {
+        this.armTurnTimer(room, ms);
+      }
+      return;
+    }
   }
 
   private async onTurnTimeout(room: Room): Promise<void> {
@@ -5441,6 +5512,18 @@ export class RoomManager {
     // Before the engine resolves this turn for them, note WHO let it lapse —
     // afterwards the engine has moved on and that information is gone.
     this.recordTurnTimeout(room);
+    if (room.engine instanceof TicTacToeEngine) {
+      const engine = room.engine;
+      const state = engine.getPublicState();
+      if (state.phase !== "playing") return;
+      if (!this.canApplyTimeoutMove(room, state.turnPlayerId)) {
+        await this.afterAutoMove(room, false);
+        return;
+      }
+      engine.applyAutoMove(state.turnPlayerId);
+      await this.afterAutoMove(room, engine.isOver());
+      return;
+    }
     // Full time on the race. Nobody timed out — the match simply ended.
     if (room.engine instanceof BlockBlastEngine) {
       const engine = room.engine;
@@ -6647,7 +6730,14 @@ export class RoomManager {
       if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
       if (engine instanceof BlockBlastEngine) engine.setOptions(room.blockBlastOptions);
       if (engine instanceof SpaceWarEngine) engine.setOptions(room.spaceWarOptions);
-      engine.init(playersList);
+      if (engine instanceof TicTacToeEngine) engine.setOptions(room.ticTacToeOptions);
+      // X moves first, and the first mover is a real edge. Seat order is join
+      // order, which would make the host X in every rematch — swap it.
+      const seating =
+        engine instanceof TicTacToeEngine && room.engine instanceof TicTacToeEngine
+          ? orderForAlternatingFirstMove(room.engine.getPublicState().playerOrder, playersList)
+          : playersList;
+      engine.init(seating);
       room.engine = engine;
       room.phase = "playing";
       room.lastMatchPlayers = null;

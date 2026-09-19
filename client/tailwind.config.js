@@ -507,6 +507,14 @@ export default {
           "0%":   { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        // A win flourish that rises and settles instead of bouncing: the rise
+        // decelerates (ease-out-quart) and the return is symmetric, so nothing
+        // slams to a stop the way Tailwind's stock `bounce` does.
+        trophyFloat: {
+          "0%":   { transform: "translateY(0)",    animationTimingFunction: "cubic-bezier(0.25, 1, 0.5, 1)" },
+          "45%":  { transform: "translateY(-6px)", animationTimingFunction: "cubic-bezier(0.65, 0, 0.35, 1)" },
+          "100%": { transform: "translateY(0)" },
+        },
       },
       animation: {
         "card-flip":  "cardFlip 360ms ease-in-out",
@@ -517,6 +525,7 @@ export default {
         "cosmetic-sweep":     "cosmeticSweep 4.5s ease-in-out infinite",
         "cosmetic-modal-in":  "cosmeticModalIn 420ms cubic-bezier(0.16,1,0.3,1) both",
         "cosmetic-fade-in":   "cosmeticFadeIn 420ms ease-out both",
+        "trophy-float":       "trophyFloat 2400ms infinite",
       },
     },
   },

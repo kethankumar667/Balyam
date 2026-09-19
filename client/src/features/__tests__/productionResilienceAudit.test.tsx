@@ -465,22 +465,22 @@ describe("Production UX Resilience Audit Suite", () => {
   });
 
   describe("4. Empty States & Dynamic Filters in Feature Hubs", () => {
-    it("dynamically shows EmptyState when Leaderboard search matches 0 players and restores on clear", () => {
+    it("dynamically shows EmptyState when Leaderboard search matches 0 games and restores on clear", () => {
       render(
         <MemoryRouter>
           <LeaderboardPage />
         </MemoryRouter>
       );
 
-      const searchInput = screen.getByPlaceholderText(/search player.../i);
-      fireEvent.change(searchInput, { target: { value: "ZzzUnknownPlayer999" } });
+      const searchInput = screen.getByPlaceholderText(/search games.../i);
+      fireEvent.change(searchInput, { target: { value: "ZzzUnknownGame999" } });
 
-      expect(screen.getByText("No players found")).toBeInTheDocument();
+      expect(screen.getByText("No games found")).toBeInTheDocument();
       const clearBtn = screen.getByRole("button", { name: /clear filters/i });
       expect(clearBtn).toBeInTheDocument();
 
       fireEvent.click(clearBtn);
-      expect(screen.queryByText("No players found")).not.toBeInTheDocument();
+      expect(screen.queryByText("No games found")).not.toBeInTheDocument();
     });
 
     it("renders active lounge friends in SocialHubPage", () => {

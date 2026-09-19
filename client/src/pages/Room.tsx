@@ -19,6 +19,8 @@ import ChatMessageToast from "../components/ChatMessageToast";
 import AppLayout from "../components/layout/AppLayout";
 import BoardPreviewPill from "../components/BoardPreviewPill";
 import PassPhoneGate from "../components/PassPhoneGate";
+import { normalizeWinnerId, rankMatchPlayers } from "../lib/matchRanking";
+import { useMatchSettlement } from "../hooks/useMatchSettlement";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
 import RoomHeader from "../components/room/RoomHeader";
 import ParticipantPanel from "../components/room/ParticipantPanel";
@@ -43,7 +45,7 @@ import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPla
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
-import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState } from "@shared/types";
+import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState } from "@shared/types";
 
 import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
 
@@ -64,6 +66,7 @@ const SnakeBoard = lazy(() => import("../games/snake/SnakeBoard"));
 const CarromBoard = lazy(() => import("../games/carrom/CarromBoard"));
 const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
 const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
+const TicTacToeBoard = lazy(() => import("../games/tictactoe/TicTacToeBoard"));
 
 // ── Lazy-loaded modals & conditional overlays (code-split) ──
 const BhalyamResultModal = lazy(() => import("../components/BhalyamResultModal"));
@@ -287,6 +290,10 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "carrom",
   "chess",
   "rps",
+  // Its board sizes itself to the viewport (`h-dvh-safe`); without this it sat
+  // inside the padded page wrapper and its footer — the rematch button and the
+  // mode rules — was clipped ~48px below the fold on a 390x844 phone.
+  "tictactoe",
 ]);
 
 /**
@@ -486,6 +493,49 @@ function WordBuildingBoardContainer({
         roomCode={roomState.code}
         roomPhase={roomState.phase}
         onLeave={requestLeaveConfirmation}
+      />
+    </PassPhoneGate>
+  );
+}
+
+/**
+ * Tic Tac Toe supports Pass & Play. On a shared phone the host's socket plays
+ * the local seat's turn, so the board is told the ACTIVE seat as "self" — the
+ * same trick the Ludo/Word Building containers use.
+ */
+function TicTacToeBoardContainer({
+  gameState,
+  roomState,
+  effectivePlayers,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+  handleScorecardClose,
+}: {
+  gameState: TicTacToePublicState;
+  roomState: RoomPublicState;
+  effectivePlayers?: Player[];
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+  handleScorecardClose: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate activePlayerId={activePid} players={players} isHost={isHost}>
+      <TicTacToeBoard
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId || ""}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+        onScorecardClose={handleScorecardClose}
       />
     </PassPhoneGate>
   );
@@ -1413,8 +1463,8 @@ export default function Room() {
     gameState && typeof gameState === "object" && "winnerId" in gameState
       ? gameState.winnerId
       : null;
-  const gameOverWinnerId =
-    typeof gameOverWinnerIdRaw === "string" ? gameOverWinnerIdRaw : null;
+  // A draw is reported as the string "draw" (Tic Tac Toe); it is not a seat id.
+  const gameOverWinnerId = normalizeWinnerId(gameOverWinnerIdRaw);
 
   // These three hooks — and everything above them in this function — must
   // run on EVERY render, which is why they sit ahead of the two early
@@ -1449,13 +1499,16 @@ export default function Room() {
 
   const rankedPlayers = useMemo(() => {
     if (!roomState) return [];
-    return effectiveMatchPlayers.map((p) => ({
-      id: p.id,
-      name: p.name,
-      score: p.id === gameOverWinnerId ? 100 : 0,
-      avatar: p.avatar,
-    }));
+    // Winner first: the result modal shows rows in this order, so roster order
+    // used to crown the host in every match, including ones they lost.
+    return rankMatchPlayers(effectiveMatchPlayers, gameOverWinnerId);
   }, [roomState, effectiveMatchPlayers, gameOverWinnerId]);
+
+  // The winner is credited a beat after the last move. The result screen watches for
+  // that itself, but it can be dismissed before the payout lands — and then nothing
+  // would reload the wallet, leaving the balance chip on the debited figure. The room
+  // page outlives the result screen, so it watches too (one extra cheap request).
+  useMatchSettlement(deriveTerminalMatchId(roomState));
 
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
@@ -1529,6 +1582,7 @@ export default function Room() {
     bingo:        "Bingo",
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
+    tictactoe: "Tic Tac Toe",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -1606,7 +1660,7 @@ export default function Room() {
             maxPlayers={viewModel.maxPlayers}
           />
         ) : (
-          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && roomState.game !== "rps" && (
+          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && roomState.game !== "rps" && roomState.game !== "tictactoe" && (
             <header
               className={
                 roomState.game === "stargame"
@@ -1619,14 +1673,14 @@ export default function Room() {
                   onClick={toggleRoomFullscreen}
                   aria-label={roomIsFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                   title={roomIsFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  className="pointer-events-auto mr-2 text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-slate-700 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3 py-1.5 rounded-lg shadow-lg transition font-medium"
+                  className="pointer-events-auto mr-2 text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-slate-700 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3 py-1.5 rounded-lg shadow-lg transition font-medium"
                 >
                   {roomIsFullscreen ? "🗗" : "⛶"}
                 </button>
               )}
               <button
                 onClick={requestLeaveConfirmation}
-                className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-slate-200 px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
+                className="pointer-events-auto text-sm bg-[#4A3F35] hover:bg-[#3F352C] dark:bg-slate-800/90 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:border dark:border-slate-700/60 text-[#FFF3E3] dark:text-white px-3.5 py-1.5 rounded-lg shadow-lg transition font-medium"
               >
                 Leave
               </button>
@@ -1976,6 +2030,18 @@ export default function Room() {
                   onMove={sendMove}
                   state={gameState as SpaceWarPublicState}
                   selfId={playerId || ""}
+                />
+              )}
+
+              {roomState.game === "tictactoe" && gameState != null && (
+                <TicTacToeBoardContainer
+                  gameState={gameState as TicTacToePublicState}
+                  roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                  handleScorecardClose={handleScorecardClose}
                 />
               )}
               </Suspense>

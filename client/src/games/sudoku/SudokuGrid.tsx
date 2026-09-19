@@ -121,7 +121,9 @@ function SudokuGrid({
               tabIndex={isSelected ? 0 : -1}
               onClick={() => onSelectCell(cell.index)}
               aria-label={`Row ${cell.row + 1}, Column ${cell.col + 1}${
-                cell.value ? `, Value ${cell.value}` : ", Empty"
+                cell.value
+                  ? `, ${cell.isGiven ? "Given" : "Value"} ${cell.value}${cell.isError ? ", incorrect" : ""}`
+                  : `, Empty${cell.notes.length > 0 ? `, notes ${cell.notes.join(" ")}` : ""}`
               }`}
               className={`relative flex items-center justify-center select-none transition-colors duration-150 outline-none
                 ${cellBg}

@@ -286,6 +286,35 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     purpose: "progress",
     isPersonalData: false,
   },
+  {
+    key: "bhalyam.sudoku.progress.v1",
+    label: "Sudoku boards cleared",
+    description: "How many Sudoku boards you have cleared at each difficulty, so the next board is numbered correctly.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.sudoku.saved.v1",
+    label: "Sudoku board in progress",
+    description:
+      "The Sudoku puzzle you are part-way through (one per difficulty), with your entries, pencil notes, time and mistakes, so a refresh or a call does not lose it.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.sudoku.tutorial.seen.v1",
+    label: "Sudoku tutorial seen",
+    description: "Whether you have seen the Sudoku tutorial, so it stops reappearing.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.tictactoe.muted",
+    label: "Tic Tac Toe sound off",
+    description: "Whether you muted the Tic Tac Toe sound effects on this device.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
 ];
 
 /**

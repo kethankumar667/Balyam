@@ -47,4 +47,12 @@ describe("Game Catalog Discovery & Filtering", () => {
     expect(sudoku?.tags).toContain("solo");
     expect(sudoku?.tileImage).toBe("/Sudoku Game Tile.png");
   });
+
+  it("includes Tic Tac Toe in the catalog with valid tile art and tags", () => {
+    const tictactoe = BHALYAM_GAMES.find((g) => g.slug === "tictactoe");
+    expect(tictactoe).toBeDefined();
+    expect(tictactoe?.title).toBe("Tic Tac Toe");
+    expect(tictactoe?.tags).toContain("multiplayer");
+    expect(tictactoe?.tileImage).toBe("/TicTacToeTile.png");
+  });
 });

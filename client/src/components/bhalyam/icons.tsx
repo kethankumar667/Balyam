@@ -296,6 +296,17 @@ export const CarromGlyph = makeIcon(
   </>,
 );
 
+export const TicTacToeGlyph = makeIcon(
+  <>
+    {/* 3x3 Grid Lines */}
+    <path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18" strokeWidth="1.8" strokeLinecap="round" />
+    {/* Top left X */}
+    <path d="M4.5 4.5l2.5 2.5M7 4.5l-2.5 2.5" strokeWidth="1.6" strokeLinecap="round" />
+    {/* Center O */}
+    <circle cx="12" cy="12" r="1.75" strokeWidth="1.6" />
+  </>,
+);
+
 export const UsersIcon = makeIcon(
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

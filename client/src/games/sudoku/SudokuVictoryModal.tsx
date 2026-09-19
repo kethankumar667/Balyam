@@ -4,6 +4,8 @@ import { type SudokuDifficulty } from "./useSudoku";
 import { SUDOKU_THEMES, type SudokuThemeId, isLightTheme } from "./sudokuThemes";
 import { Trophy, Zap, RotateCcw, ArrowRight, Award, Compass, Gauge } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Modal from "../../components/Modal";
+import { useReducedMotion } from "../../animations/helpers/useReducedMotion";
 
 export interface SudokuVictoryModalProps {
   isOpen: boolean;
@@ -11,6 +13,10 @@ export interface SudokuVictoryModalProps {
   elapsedSeconds: number;
   difficulty: SudokuDifficulty;
   mistakes: number;
+  /** Hints taken. Any hint means the time was not submitted to the leaderboard. */
+  hintsUsed: number;
+  /** Cells the player had to fill — the basis for the solve-rate figure. */
+  emptyCellCount: number;
   themeId: SudokuThemeId;
   newPersonalBest: boolean;
   onPlayNextBoard: () => void;
@@ -30,6 +36,8 @@ function SudokuVictoryModal({
   elapsedSeconds,
   difficulty,
   mistakes,
+  hintsUsed,
+  emptyCellCount,
   themeId,
   newPersonalBest,
   onPlayNextBoard,
@@ -37,11 +45,15 @@ function SudokuVictoryModal({
   onChangeLevel,
 }: SudokuVictoryModalProps) {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
   const theme = SUDOKU_THEMES[themeId] || SUDOKU_THEMES.chronicle;
   const isLight = isLightTheme(themeId);
+  const isAssisted = hintsUsed > 0;
 
   useEffect(() => {
-    if (!isOpen) return;
+    // The app's global CSS catch-all cannot reach a canvas animation, so the
+    // burst has to opt out itself.
+    if (!isOpen || reduceMotion) return;
 
     // Trigger victory confetti burst
     const end = Date.now() + 1800;
@@ -67,20 +79,22 @@ function SudokuVictoryModal({
         requestAnimationFrame(frame);
       }
     })();
-  }, [isOpen]);
+  }, [isOpen, reduceMotion]);
 
   if (!isOpen) return null;
 
-  // Calculate telemetry metrics
-  const solveVelocity = elapsedSeconds > 0 ? (45 / (elapsedSeconds / 60)).toFixed(1) : "0";
+  // Cells filled per minute, from the board's real empty-cell count.
+  const solveVelocity = elapsedSeconds > 0 ? (emptyCellCount / (elapsedSeconds / 60)).toFixed(1) : "0";
+  const solvedNote = isAssisted
+    ? `solved with ${hintsUsed} hint${hintsUsed === 1 ? "" : "s"} · not ranked`
+    : mistakes === 0
+      ? "solved flawlessly"
+      : "solved";
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="victory-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in zoom-in-95 duration-200"
-    >
+    // No onClose: this is a result screen with its own actions, not a dismissible popup.
+    // The shared Modal still gives it a focus trap, initial focus and focus restore.
+    <Modal open ariaLabelledBy="victory-modal-title" panelClassName="w-full flex justify-center">
       <div
         className={`w-full max-w-sm sm:max-w-md rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4 ${
           isLight
@@ -97,7 +111,7 @@ function SudokuVictoryModal({
                 : "bg-gradient-to-tr from-cyan-500/20 via-fuchsia-500/20 to-amber-500/20 border-cyan-400/50 shadow-[0_0_30px_rgba(6,182,212,0.5)]"
             }`}
           >
-            <Trophy className={`w-10 h-10 animate-bounce ${isLight ? "text-amber-500" : "text-cyan-300"}`} />
+            <Trophy className={`w-10 h-10 animate-trophy-float ${isLight ? "text-amber-500" : "text-cyan-300"}`} />
           </div>
           {newPersonalBest && (
             <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-lg">
@@ -122,7 +136,7 @@ function SudokuVictoryModal({
             Protocol Decrypted
           </h2>
           <p className={`text-xs mt-0.5 ${isLight ? "text-slate-500" : "text-cyan-300/80"}`}>
-            Level <span className="font-bold uppercase text-cyan-500">{difficulty}</span> · Board {boardNumber} solved flawlessly
+            Level <span className="font-bold uppercase text-cyan-500">{difficulty}</span> · Board {boardNumber} {solvedNote}
           </p>
         </div>
 
@@ -216,7 +230,7 @@ function SudokuVictoryModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

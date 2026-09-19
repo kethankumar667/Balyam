@@ -29,7 +29,7 @@ export default function WhatAreWePlayingSection({
       caption: "Relive those lunch break battles!",
       games: [
         { name: "Hand Cricket", slug: "handcricket" as BhalyamGameSlug },
-        { name: "Carrom", slug: "carrom" as BhalyamGameSlug },
+        { name: "Tic Tac Toe", slug: "tictactoe" as BhalyamGameSlug },
         { name: "Dots & Boxes", slug: "dotsboxes" as BhalyamGameSlug },
       ],
     },

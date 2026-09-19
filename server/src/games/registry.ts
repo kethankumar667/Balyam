@@ -17,6 +17,7 @@ import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
 import { BlockBlastEngine } from "./blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
+import { TicTacToeEngine } from "./tictactoe/TicTacToeEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -54,6 +55,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new BlockBlastEngine();
     case "spacewar":
       return new SpaceWarEngine();
+    case "tictactoe":
+      return new TicTacToeEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }

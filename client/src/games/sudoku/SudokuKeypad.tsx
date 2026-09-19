@@ -77,9 +77,12 @@ function SudokuKeypad({
             notesMode
               ? isLight
                 ? "bg-sky-500 border-sky-600 text-white shadow-md shadow-sky-500/30 font-black"
-                : `${theme.badgeBg} shadow-[0_0_15px_${theme.accentGlow}] font-black`
+                : `${theme.badgeBg} font-black`
               : actionBtnClass
           }`}
+          // A runtime colour cannot be a Tailwind class (it is only emitted for literal text
+          // found at build time), so the glow is an inline style.
+          style={notesMode && !isLight ? { boxShadow: `0 0 15px ${theme.accentGlow}` } : undefined}
         >
           <div className="relative">
             <Pencil className="w-4 h-4" />

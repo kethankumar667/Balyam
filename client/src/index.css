@@ -131,6 +131,63 @@
   background-color: #66799A;
 }
 
+/**
+ * .no-scrollbar: Universal utility to hide scrollbars while preserving touch and wheel scroll.
+ * Required for horizontal swipe carousels, breadcrumbs, and tag lists.
+ */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+
+/**
+ * Sleek global theme-aware scrollbars matching BHALYAM's parchment & dark aesthetics.
+ * Replaces unsightly 16px grey native OS scrollbars with subtle 6px rounded pills.
+ */
+#app-main-scroll,
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(199, 172, 125, 0.45) transparent;
+}
+#app-main-scroll::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+#app-main-scroll::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+#app-main-scroll::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(199, 172, 125, 0.45);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+#app-main-scroll::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #A17C4E;
+}
+
+:root[data-theme="dark"] #app-main-scroll,
+:root[data-theme="dark"] .custom-scrollbar {
+  scrollbar-color: rgba(63, 76, 102, 0.5) transparent;
+}
+:root[data-theme="dark"] #app-main-scroll::-webkit-scrollbar-thumb,
+:root[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(63, 76, 102, 0.5);
+}
+:root[data-theme="dark"] #app-main-scroll::-webkit-scrollbar-thumb:hover,
+:root[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #F59E0B;
+}
+
 /* ===== Design tokens — MultiplayerGames v1.0 ===== */
 :root {
   /* Brand (felt-emerald) */
