@@ -3,6 +3,10 @@ import { Router, type Request, type Response } from "express";
 import { callerId, requireIdentity, requireMember } from "../auth/identity.js";
 import { requireOperationalAuth } from "../security/operationalAuth.js";
 import { logger } from "../lib/logger.js";
+import { settlementViewFor } from "./settlementAccess.js";
+
+/** The repository clamps ledger reads to 100 rows; a result screen is opened moments after the match, so its entry is among the newest. */
+const SETTLEMENT_ACCESS_LEDGER_LOOKBACK = 100;
 import {
   DuplicateParticipantIdentityError,
   EconomyService,
@@ -534,12 +538,29 @@ export function createEconomyRouter(service: EconomyService): Router {
         logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "MatchNotFound");
         return;
       }
-      if (settlement.hostIdentityId !== callerId(req)) {
+      // The host sees the full record; any other PARTICIPANT sees a redacted one
+      // (see settlementAccess.ts). It used to be host-only, so a joining player
+      // who won was refused the very record that shows their prize.
+      const caller = callerId(req);
+      let view = settlementViewFor(settlement, caller);
+      if (view.access === "none" && caller) {
+        // Not the host and not listed on the record (Supabase never reads the
+        // debit list back): fall back to the caller's own ledger, which has a
+        // `match` row for every match they paid into.
+        // Best-effort: a caller with no wallet at all (or a failed read) simply has
+        // no evidence, and gets the ordinary 403 below rather than an error.
+        const hasOwnLedgerEntry = await service
+          .getLedger(caller, { limit: SETTLEMENT_ACCESS_LEDGER_LOOKBACK, offset: 0 })
+          .then((recent) => recent.some((e) => e.sourceKind === "match" && e.sourceId === matchId))
+          .catch(() => false);
+        view = settlementViewFor(settlement, caller, { hasOwnLedgerEntry });
+      }
+      if (view.access === "none") {
         res.status(403).json({ error: "Forbidden", message: "That is not your record." });
         logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "error", "Forbidden");
         return;
       }
-      res.json({ settlement });
+      res.json({ settlement: view.settlement });
       logOutcome(req, res, "GET /settlements/:matchId", "getSettlement", matchId, startedAt, "ok");
     } catch (err) {
       const mapped = sendError(req, res, err);

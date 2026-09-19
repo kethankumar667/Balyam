@@ -99,6 +99,9 @@ const DEFAULT_LEASE_SECONDS = 30;
 const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_MAX_INFRASTRUCTURE_RETRIES = 5;
 const DEFAULT_PERIODIC_SWEEP_INTERVAL_MS = 5_000;
+/** A kick that finds a sweep already running retries this soon, this many times, before leaving it to the timer. */
+const KICK_RETRY_DELAY_MS = 250;
+const KICK_MAX_RETRIES = 8;
 /** Exponential-ish backoff, capped — never a zero-delay retry loop. */
 const RETRY_BACKOFF_MS = (attempt: number): number => Math.min(1_000 * 2 ** Math.max(attempt - 1, 0), 60_000);
 
@@ -182,6 +185,39 @@ export class DurableSettlementWorker {
     return tracked;
   }
 
+  /**
+   * A finished match used to wait for the next periodic sweep (up to 5 s) before
+   * the winner was credited: the intent was durably stored, but nothing ran it
+   * until the timer fired, so for those seconds both wallets still showed the
+   * debited stake. Once new work is persisted, run a sweep straight away.
+   *
+   * Only while periodic recovery is running (production, via `start()`), so the
+   * deterministic timing the tests rely on is unchanged. The periodic timer stays
+   * as the safety net; a kick is an optimisation, never the only path. If a sweep
+   * is already in progress the kick retries shortly, because that sweep may have
+   * read the queue before this intent landed.
+   */
+  private kickAfter<T>(persisted: Promise<T>): Promise<T> {
+    return persisted.then((value) => {
+      this.kickSweep();
+      return value;
+    });
+  }
+
+  private kickSweep(attempt = 0): void {
+    if (this.stopped || !this.sweepTimer) return;
+    const timer = setTimeout(
+      () => {
+        if (this.stopped) return; // stop() may have run while this kick was pending
+        void this.runSweep().then(({ skipped }) => {
+          if (skipped && attempt < KICK_MAX_RETRIES) this.kickSweep(attempt + 1);
+        });
+      },
+      attempt === 0 ? 0 : KICK_RETRY_DELAY_MS,
+    );
+    timer.unref?.();
+  }
+
   constructor(private readonly service: EconomyService, options: DurableSettlementWorkerOptions = {}) {
     this.workerId =
       options.workerId ?? `worker_${process.pid}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -202,7 +238,7 @@ export class DurableSettlementWorker {
    */
 
   enqueueSettlement(request: SettleMatchEconomyRequest): Promise<TerminalIntentRecord> {
-    return this.trackInFlight(this.doEnqueueSettlement(request));
+    return this.kickAfter(this.trackInFlight(this.doEnqueueSettlement(request)));
   }
 
   private async doEnqueueSettlement(request: SettleMatchEconomyRequest): Promise<TerminalIntentRecord> {
@@ -226,7 +262,7 @@ export class DurableSettlementWorker {
   }
 
   enqueueRefund(matchId: string, reason: string): Promise<TerminalIntentRecord> {
-    return this.trackInFlight(this.doEnqueueRefund(matchId, reason));
+    return this.kickAfter(this.trackInFlight(this.doEnqueueRefund(matchId, reason)));
   }
 
   private async doEnqueueRefund(matchId: string, reason: string): Promise<TerminalIntentRecord> {
@@ -240,7 +276,7 @@ export class DurableSettlementWorker {
   }
 
   enqueueForfeiture(matchId: string, reason: string): Promise<TerminalIntentRecord> {
-    return this.trackInFlight(this.doEnqueueForfeiture(matchId, reason));
+    return this.kickAfter(this.trackInFlight(this.doEnqueueForfeiture(matchId, reason)));
   }
 
   private async doEnqueueForfeiture(matchId: string, reason: string): Promise<TerminalIntentRecord> {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { computePrizePool } from "@shared/economy-prizes";
 import { getMatchSettlement, type MatchEconomySettlementRecord, EconomyClientError } from "../lib/economyApi";
+import { refreshCurrentWallet } from "./useEconomy";
 
 export interface MatchSettlementState {
   settlement: MatchEconomySettlementRecord | null;
@@ -8,10 +9,32 @@ export interface MatchSettlementState {
   error: string | null;
 }
 
+/** How often to look again while the settlement is still `COMMITTED`. The server settles within moments of the last move. */
+export const SETTLEMENT_POLL_INTERVAL_MS = 700;
+/** ~8 s in total: comfortably past the immediate settle, and past one 5 s recovery sweep should that be needed. */
+export const SETTLEMENT_POLL_MAX_ATTEMPTS = 12;
+
+const RECORD_UNAVAILABLE = "Settlement record unavailable for this match.";
+
+/** A proxy blip (5xx) or throttling (429) says nothing about the record; only a 4xx is a definite answer. */
+function isTransientStatus(status: number): boolean {
+  return status >= 500 || status === 429;
+}
+
 /**
  * Fetches a match's authoritative settlement record. `matchId` being
  * null/undefined means "no economy match" (a free/practice game) — never
  * fetches, never errors, just returns an idle, empty state.
+ *
+ * The record is not final at the moment a match ends: the entry stakes are
+ * debited at the start, but the winner is credited a beat AFTER the last move,
+ * so the first answer is normally `COMMITTED` and shows no prize. This hook
+ * therefore keeps asking (bounded) until the status becomes final — SETTLED,
+ * REFUNDED or ABANDONMENT_FORFEITED — and then reloads the wallet once, so the
+ * balance chip reflects the payout instead of the stale debited figure.
+ *
+ * A definite answer from the server (403, 404, ...) stops the polling and is
+ * shown; a transient network failure is retried like a still-pending record.
  */
 export function useMatchSettlement(matchId: string | null | undefined): MatchSettlementState {
   const [settlement, setSettlement] = useState<MatchEconomySettlementRecord | null>(null);
@@ -19,29 +42,54 @@ export function useMatchSettlement(matchId: string | null | undefined): MatchSet
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setSettlement(null);
+    setError(null);
     if (!matchId) {
-      setSettlement(null);
       setIsLoading(false);
-      setError(null);
       return;
     }
-    let cancelled = false;
     setIsLoading(true);
-    setError(null);
-    getMatchSettlement(matchId)
-      .then((data) => {
-        if (!cancelled) setSettlement(data.settlement);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof EconomyClientError ? err.message : "Settlement record unavailable for this match.");
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+
+    const poll = async (): Promise<void> => {
+      attempts += 1;
+      try {
+        const data = await getMatchSettlement(matchId);
+        if (cancelled) return;
+        setSettlement(data.settlement);
+        setError(null);
+        setIsLoading(false);
+        if (data.settlement.status !== "COMMITTED") {
+          void refreshCurrentWallet();
+          return;
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof EconomyClientError && !isTransientStatus(err.status)) {
+          setError(err.message);
+          setIsLoading(false);
+          return;
+        }
+        if (attempts >= SETTLEMENT_POLL_MAX_ATTEMPTS) {
+          setError(RECORD_UNAVAILABLE);
+          setIsLoading(false);
+          return;
+        }
+      }
+      if (attempts >= SETTLEMENT_POLL_MAX_ATTEMPTS) {
+        setIsLoading(false);
+        return;
+      }
+      timer = setTimeout(() => void poll(), SETTLEMENT_POLL_INTERVAL_MS);
+    };
+
+    void poll();
     return () => {
       cancelled = true;
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, [matchId]);
 

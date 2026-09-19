@@ -45,6 +45,9 @@ import type { SettlementParticipantOutcome } from "../economy/EconomyService.js"
  *     pool match's real ranking is elimination order across many rounds,
  *     not one round's own scores, and reconstructing that correctly is
  *     separate, not-yet-done work.
+ *   - Dots & Boxes and Word Building, 3+ seats: ranked by their authoritative
+ *     `scores`, highest first, refunding on any ambiguity at a paid place —
+ *     see `scoreRanking`.
  *   - Everything else at 3+ seats: `isValidRanking: false` — refund, not a
  *     guess. This is the documented, correct behavior for an ambiguous
  *     ranking (game-settlement-map.md Rule 2), not a shortcut dressed up
@@ -65,6 +68,11 @@ export interface PlacementExtractionInput {
   game: GameKind;
   players: ReadonlyMap<string, Player>;
   engine: GameEngine | null;
+  /**
+   * Seats that left after the match was committed. They are still in `players`
+   * (the committed seat count must match) but did not play to the end.
+   */
+  departedIds?: ReadonlySet<string>;
 }
 
 export interface PlacementExtractionResult {
@@ -172,6 +180,51 @@ function rummySingleRoundRanking(engine: GameEngine, seatIds: string[]): string[
   return ranked;
 }
 
+/** DEFAULT_SCHEDULES pays at most three places, and never the last seat (`min(seats - 1, 3)`). */
+function paidPlaceCount(seatCount: number): number {
+  return Math.min(seatCount - 1, 3);
+}
+
+/**
+ * Dots & Boxes and Word Building, 3+ seats: both engines keep an
+ * authoritative `scores` map (boxes claimed / points scored) and crown the top
+ * score, so the standings are the scores, highest first.
+ *
+ * Conservative by construction — anything the payout would have to guess at
+ * is a refund (`null`), exactly as before this ranking existed:
+ *   - every seat needs a finite score (missing / NaN / Infinity → refund);
+ *   - each PAID place must be strictly ahead of the seat below it, so a tie
+ *     for 1st, 2nd or 3rd — or between the last paid place and the first
+ *     unpaid one — is never broken arbitrarily. A tie among unpaid places
+ *     alone changes nobody's payout and is accepted;
+ *   - the engine's own declared winner, when it declares one, must be the
+ *     score leader. A forfeit win (last player standing) can disagree with the
+ *     scores; that is refunded rather than paid on a guess;
+ *   - a seat that LEFT mid-match must not land in a paid place: it keeps the
+ *     score it had, but the engine only crowns among those who stayed, so it
+ *     could otherwise be paid ahead of a player who played to the end.
+ */
+function scoreRanking(engine: GameEngine, seatIds: string[], departedIds: ReadonlySet<string>): string[] | null {
+  const scores = (engine.getPublicState() as { scores?: Record<string, unknown> } | null | undefined)?.scores;
+  if (!scores || typeof scores !== "object") return null;
+  if (!seatIds.every((id) => Number.isFinite(scores[id]))) return null;
+
+  const points = (id: string): number => scores[id] as number;
+  const ranked = [...seatIds].sort((a, b) => points(b) - points(a));
+
+  for (let i = 0; i < paidPlaceCount(seatIds.length); i++) {
+    if (points(ranked[i]!) === points(ranked[i + 1]!)) return null;
+    if (departedIds.has(ranked[i]!)) return null;
+  }
+
+  const declaredWinner = getWinnerId(engine);
+  if (declaredWinner !== undefined && declaredWinner !== ranked[0]) return null;
+
+  return ranked;
+}
+
+const SCORE_RANKED_GAMES: ReadonlySet<GameKind> = new Set<GameKind>(["dotsboxes", "wordbuilding"]);
+
 export function extractRankedParticipants(input: PlacementExtractionInput): PlacementExtractionResult {
   const { game, players, engine } = input;
   if (!engine) {
@@ -195,6 +248,8 @@ export function extractRankedParticipants(input: PlacementExtractionInput): Plac
     }
   } else if (game === "rummy") {
     order = rummySingleRoundRanking(engine, seatIds);
+  } else if (SCORE_RANKED_GAMES.has(game)) {
+    order = scoreRanking(engine, seatIds, input.departedIds ?? new Set());
   }
 
   if (!order) {
