@@ -106,6 +106,141 @@ export const STRUCTURED_DATA_GAMES = [
     maxPlayers: 8,
     genre: ["Party Game", "Classroom", "Reaction Game"],
   },
+  {
+    slug: "connect4",
+    name: "Connect 4",
+    description: "Drop colored discs into the vertical 7x6 grid and connect four in a row horizontally, vertically, or diagonally.",
+    image: `${BASE_URL}/Connect4Tile.png`,
+    minPlayers: 2,
+    maxPlayers: 2,
+    genre: ["Board Game", "Strategy", "Multiplayer", "Classroom"],
+  },
+  {
+    slug: "chess",
+    name: "Chess Grandmaster",
+    description: "Classic 2-player strategy board game of kings, queens, tactics, and checkmates.",
+    image: `${BASE_URL}/og/chess.jpg`,
+    minPlayers: 2,
+    maxPlayers: 2,
+    genre: ["Board Game", "Strategy", "Mind Game", "Multiplayer"],
+  },
+  {
+    slug: "carrom",
+    name: "Carrom Board Lounge",
+    description: "Traditional Indian tabletop board game with smooth striker controls, pocketing carrom men, and queen covers.",
+    image: `${BASE_URL}/og/carrom.jpg`,
+    minPlayers: 2,
+    maxPlayers: 4,
+    genre: ["Board Game", "Family Game", "Multiplayer"],
+  },
+  {
+    slug: "spacewar",
+    name: "Space War 90s",
+    description: "Retro 90s pixel space shooter. Battle alien squadrons, dodge bullets, and climb high scores.",
+    image: `${BASE_URL}/og/spacewar.jpg`,
+    minPlayers: 1,
+    maxPlayers: 4,
+    genre: ["Arcade", "Action", "Retro Game", "Multiplayer"],
+  },
+  {
+    slug: "tambola",
+    name: "Tambola (Housie)",
+    description: "India's beloved family numbers game. Claim Early 5, Lines, and Full House with friends.",
+    image: `${BASE_URL}/og/tambola.jpg`,
+    minPlayers: 2,
+    maxPlayers: 12,
+    genre: ["Party Game", "Number Game", "Multiplayer"],
+  },
+  {
+    slug: "namesplaceanimal",
+    name: "Name Place Animal Thing",
+    description: "Fast-paced nostalgia word game. Race against timer to write Name, Place, Animal, and Thing for the chosen letter.",
+    image: `${BASE_URL}/og/handcricket.jpg`,
+    minPlayers: 2,
+    maxPlayers: 8,
+    genre: ["Classroom", "Word Game", "Party Game", "Multiplayer"],
+  },
+  {
+    slug: "tictactoe",
+    name: "Tic Tac Toe Duel",
+    description: "Quick 3x3 grid naughts and crosses battles with smart bot and pass & play modes.",
+    image: `${BASE_URL}/RPSTile.png`,
+    minPlayers: 1,
+    maxPlayers: 2,
+    genre: ["Classroom", "Quick Game", "Puzzle"],
+  },
+  {
+    slug: "nokiacricket",
+    name: "Nokia Cricket 2D",
+    description: "Hit sixes and time your batting in authentic 90s monochrome LCD mobile cricket.",
+    image: `${BASE_URL}/og/nokiacricket.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Retro Game", "Sports", "Arcade"],
+  },
+  {
+    slug: "snake",
+    name: "Classic Snake",
+    description: "Classic Nokia 3310 green-screen Snake arcade. Eat dots, grow your tail, and avoid walls.",
+    image: `${BASE_URL}/og/snake.jpg`,
+    minPlayers: 1,
+    maxPlayers: 4,
+    genre: ["Retro Game", "Arcade", "Classic"],
+  },
+  {
+    slug: "brickracer",
+    name: "Brick Racer 9999-in-1",
+    description: "Classic 9999-in-1 handheld racing. Weave between incoming cars across three frantic lanes.",
+    image: `${BASE_URL}/og/brickracer.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Retro Game", "Racing", "Arcade"],
+  },
+  {
+    slug: "brickblocks",
+    name: "Brick Blocks 9999-in-1",
+    description: "Handheld brick console falling blocks puzzle. Rotate shapes and clear horizontal lines.",
+    image: `${BASE_URL}/og/brickblocks.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Retro Game", "Puzzle", "Arcade"],
+  },
+  {
+    slug: "tetris",
+    name: "Classic Tetris 90s",
+    description: "Original falling block puzzle with authentic 90s LCD pixel grid and escalating speeds.",
+    image: `${BASE_URL}/og/tetris.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Retro Game", "Puzzle", "Arcade"],
+  },
+  {
+    slug: "breakout",
+    name: "Brick Breakout",
+    description: "Deflect balls, smash rows of bricks, and bounce back for high scores in retro handheld style.",
+    image: `${BASE_URL}/og/breakout.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Retro Game", "Arcade", "Action"],
+  },
+  {
+    slug: "2048",
+    name: "2048 Puzzle",
+    description: "Slide numbered tiles across the 4x4 grid, merge matching numbers, and reach the legendary 2048 tile.",
+    image: `${BASE_URL}/og/breakout.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Puzzle", "Brain Game", "Solo"],
+  },
+  {
+    slug: "sudoku",
+    name: "Sudoku Cyber-Matrix",
+    description: "Neural 9x9 Sudoku logic puzzle with Easy, Medium, Hard, and Expert difficulties plus smart hints.",
+    image: `${BASE_URL}/og/breakout.jpg`,
+    minPlayers: 1,
+    maxPlayers: 1,
+    genre: ["Puzzle", "Brain Game", "Logic", "Solo"],
+  },
 ];
 
 /**
@@ -221,6 +356,59 @@ export function getStructuredDataForRoute(pathname: string, customParams?: Recor
         buildBreadcrumbSchema([
           { name: "Home", path: "/" },
           { name: "Social Hub", path: "/social" },
+        ]),
+      ];
+
+    case "/testimonials":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Community", path: "/social" },
+          { name: "Player Testimonials", path: "/testimonials" },
+        ]),
+      ];
+
+    case "/reviews/write":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Support", path: "/support" },
+          { name: "Write a Review", path: "/reviews/write" },
+        ]),
+      ];
+
+    case "/feedback":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Support", path: "/support" },
+          { name: "Player Feedback", path: "/feedback" },
+        ]),
+      ];
+
+    case "/design-system":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Design System & UI Catalog", path: "/design-system" },
+        ]),
+      ];
+
+    case "/favorites":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Games", path: "/games" },
+          { name: "My Favorite Games", path: "/favorites" },
+        ]),
+      ];
+
+    case "/recently-played":
+      return [
+        buildBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Games", path: "/games" },
+          { name: "Recently Played", path: "/recently-played" },
         ]),
       ];
 

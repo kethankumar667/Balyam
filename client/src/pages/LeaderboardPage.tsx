@@ -167,6 +167,9 @@ const INITIAL_MODE_BASELINES: Record<string, Record<string, number>> = {
     quantum: 4,
     classic: 3,
   },
+  connect4: {
+    classic: 12,
+  },
 };
 
 const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
@@ -240,6 +243,9 @@ const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
     quantum: 12,
     classic: 9,
   },
+  connect4: {
+    classic: 18,
+  },
 };
 
 const GAME_TIPS: Record<string, string> = {
@@ -258,6 +264,7 @@ const GAME_TIPS: Record<string, string> = {
   carrom: "Gentle angled bank shots often set up easy follow-up pocketings!",
   chess: "Control the center squares early to maximize piece mobility!",
   tictactoe: "In Quantum Flux, remember your 4th placement evaporates your 1st — plan rotations ahead to trap your opponent!",
+  connect4: "Claim the center column early to give your discs multiple horizontal, vertical, and diagonal win paths!",
 };
 
 /**
@@ -391,6 +398,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "spacewar", label: "Space War", icon: "🚀" },
   { id: "blockblast", label: "Block Blast", icon: "💥" },
   { id: "sudoku", label: "Sudoku Cyber-Matrix", icon: "🧩" },
+  { id: "connect4", label: "Connect 4", icon: "🟡" },
 ];
 
 const GAME_TILE_IMAGES: Record<string, string> = {
@@ -420,6 +428,7 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   tambola: "/Tambola.png",
   sudoku: "/Sudoku Game Tile.png",
   tictactoe: "/TicTacToeTile.png",
+  connect4: "/Connect4Tile.png",
 };
 
 function getModeIcon(modeId: string): string {

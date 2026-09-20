@@ -1,4 +1,5 @@
 import type { AllGameSlug, ScoringDirection, FoilTier, QuantumPerformanceRadar } from "./Scorecard.js";
+import { CONNECT4_SCORE_MAX, CONNECT4_SCORE_MIN } from "../types.js";
 
 export interface ModeDefinition {
   modeId: string;
@@ -318,6 +319,27 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     modes: [
       { modeId: "quantum", displayName: "Quantum Flux", description: "3-piece limit rule — 4th piece evaporates oldest mark. No draws. Faster wins score higher (max 8).", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
       { modeId: "classic", displayName: "Classic Holo (3x3)", description: "Traditional 3x3 with holographic laser grid and cyber sound. Faster wins score higher (max 8).", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+    ],
+  },
+  connect4: {
+    game: "connect4",
+    displayName: "Connect 4",
+    category: "board",
+    defaultModeId: "classic",
+    // The server scores the match (only a genuine four-in-a-row win by a human against another
+    // human); a client-reported score for this game is refused.
+    serverScored: true,
+    modes: [
+      {
+        modeId: "classic",
+        displayName: "Classic 7x6",
+        description: "Four in a row on the 7-by-6 board, human against human. Faster wins score higher (max 18).",
+        scoringDirection: "HIGHER_IS_BETTER",
+        unit: "pts",
+        isDefault: true,
+        minPlausibleScore: CONNECT4_SCORE_MIN,
+        maxPlausibleScore: CONNECT4_SCORE_MAX,
+      },
     ],
   },
 };

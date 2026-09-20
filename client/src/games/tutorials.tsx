@@ -214,3 +214,35 @@ export const STARGAME_TUTORIAL: TutorialDeck = {
     },
   ],
 };
+
+export const CONNECT4_TUTORIAL: TutorialDeck = {
+  key: "connect4.tutorial.completed.v1",
+  accent: "#F59E0B",
+  slides: [
+    {
+      emoji: "🔴",
+      title: "Drop your disc",
+      body: "Pick a column to drop your coloured disc. Gravity pulls it down to the lowest open row.",
+    },
+    {
+      emoji: "↔️",
+      title: "Connect four",
+      body: "Connect four of your discs in a line horizontally, vertically, or diagonally.",
+    },
+    {
+      emoji: "🛡️",
+      title: "Block your opponent",
+      body: "Watch for your opponent's three-in-a-row traps and block them before they drop the winning disc.",
+    },
+    {
+      emoji: "⏱️",
+      title: "Mind the turn clock",
+      body: "Play within the turn timer limit. If the clock runs out, a smart auto-move will be played for you.",
+    },
+    {
+      emoji: "🏆",
+      title: "First to four wins",
+      body: "The first player to get four discs in a row wins the match! If the grid fills with no winner, it's a draw.",
+    },
+  ],
+};

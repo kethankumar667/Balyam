@@ -1,4 +1,4 @@
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
 
 /**
  * What a player is: somebody with an account, or somebody who just started
@@ -1592,6 +1592,111 @@ export interface TicTacToePlaceMove {
 
 export type TicTacToeMove = TicTacToePlaceMove;
 
+// ---- CONNECT 4 ----
+
+/**
+ * Geometry and the win rule are fixed constants, deliberately NOT options: an option is
+ * client-controlled input, and a board size or win length the creator could choose would be
+ * an attack surface (and a different game).
+ */
+export const CONNECT4_COLUMNS = 7;
+export const CONNECT4_ROWS = 6;
+export const CONNECT4_WIN_LENGTH = 4;
+
+/**
+ * "R" is the seat that moves first, "Y" the second. The names are internal: the UI must tell the
+ * two apart by pattern or shape as well as colour (WCAG 1.4.1), never colour alone.
+ */
+export type Connect4Disc = "R" | "Y";
+
+export const CONNECT4_BOT_DIFFICULTIES = ["easy", "medium", "pro"] as const;
+export type Connect4BotDifficulty = (typeof CONNECT4_BOT_DIFFICULTIES)[number];
+
+export interface Connect4Options {
+  /** Seconds per turn. There is deliberately no "off": an untimed paid match could be stalled forever. */
+  turnTimerSeconds: number;
+  /** Only used by a bot seat. */
+  botDifficulty: Connect4BotDifficulty;
+}
+
+export const DEFAULT_CONNECT4_OPTIONS: Connect4Options = {
+  turnTimerSeconds: 20,
+  botDifficulty: "medium",
+};
+
+/** Same 5 s floor every other timed game applies. */
+export const CONNECT4_MIN_TURN_SECONDS = 5;
+/** See TICTACTOE_MAX_TURN_SECONDS: the real reason for a cap is the 32-bit `setTimeout` limit. */
+export const CONNECT4_MAX_TURN_SECONDS = 120;
+
+/**
+ * A win scores `22 - your own discs`, clamped: a winner uses 4 to 21 discs, so faster wins score
+ * up to 18. The bounds are published so the leaderboard's plausibility check can reject anything else.
+ */
+export const CONNECT4_SCORE_MIN = 1;
+export const CONNECT4_SCORE_MAX = 18;
+
+/**
+ * The room-create payload is client-controlled, so options are never trusted.
+ *
+ *   - timer not a finite number, or <= 0  -> default (there is no untimed mode)
+ *   - any other timer                     -> whole seconds, clamped to [min, max]
+ *   - difficulty outside the closed set   -> default (matching is exact and case-sensitive)
+ *   - every other key                     -> dropped
+ */
+export function sanitizeConnect4Options(input: unknown): Connect4Options {
+  const raw = input !== null && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
+
+  const t = raw.turnTimerSeconds;
+  const turnTimerSeconds =
+    typeof t === "number" && Number.isFinite(t) && t > 0
+      ? Math.min(CONNECT4_MAX_TURN_SECONDS, Math.max(CONNECT4_MIN_TURN_SECONDS, Math.round(t)))
+      : DEFAULT_CONNECT4_OPTIONS.turnTimerSeconds;
+
+  const botDifficulty =
+    CONNECT4_BOT_DIFFICULTIES.find((level) => level === raw.botDifficulty) ?? DEFAULT_CONNECT4_OPTIONS.botDifficulty;
+
+  return { turnTimerSeconds, botDifficulty };
+}
+
+/** A board position. Row 0 is the TOP row, so a dropped disc settles at the highest row index free. */
+export interface Connect4Cell {
+  row: number;
+  col: number;
+}
+
+/** How the match ended. `forfeit` (opponent left) is deliberately distinct from a genuine `connect4`. */
+export type Connect4EndReason = "connect4" | "draw" | "forfeit";
+
+export interface Connect4PublicState {
+  kind: "connect4";
+  phase: "playing" | "finished";
+  options: Connect4Options;
+  playerOrder: string[]; // [first mover, second mover]
+  playerDiscs: Record<string, Connect4Disc>;
+  turnPlayerId: string;
+  /** grid[row][col], row 0 = top. There is no hidden information in this game. */
+  grid: (Connect4Disc | null)[][];
+  /** Every disc of the winning line(s), computed on the server. The client never derives the result. */
+  winningCells: Connect4Cell[] | null;
+  /** Winner's player id; null while playing and on a draw. */
+  winnerId: string | null;
+  isDraw: boolean;
+  endReason: Connect4EndReason | null;
+  moveCount: number;
+  /** Discs each player has placed, for scoring. */
+  discsPlaced: Record<string, number>;
+  lastMove: { row: number; col: number; playerId: string } | null;
+  turnDeadline: number | null;
+}
+
+export interface Connect4DropMove {
+  type: "drop";
+  column: number;
+}
+
+export type Connect4Move = Connect4DropMove;
+
 // ---- UNO ----
 
 export type UnoColor = "R" | "G" | "B" | "Y"; // Red, Green, Blue, Yellow
@@ -2768,6 +2873,7 @@ export interface CreateRoomPayload {
   blockBlastOptions?: Partial<BlockBlastOptions>;
   spaceWarOptions?: Partial<SpaceWarOptions>;
   ticTacToeOptions?: Partial<TicTacToeOptions>;
+  connect4Options?: Partial<Connect4Options>;
   /**
    * What the creator claims to be. Only an explicit `"guest"` seals the room;
    * absent leaves it open, so a caller that has not been taught this field

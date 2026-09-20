@@ -67,6 +67,7 @@ import {
   BingoGlyph,
   CarromGlyph,
   TicTacToeGlyph,
+  Connect4Glyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   "2048": StarGameGlyph,
   sudoku: StarGameGlyph,
   tictactoe: TicTacToeGlyph,
+  connect4: Connect4Glyph,
 };
 
 /**
@@ -130,7 +132,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -422,6 +424,20 @@ const TTT_TURN_TIMERS: { id: "10" | "15" | "30" | "0"; label: string; blurb: str
   { id: "0",  label: "Untimed",        blurb: "No turn limit for relaxed matches." },
 ];
 
+const CONNECT4_TURN_TIMERS: { id: "10" | "15" | "20" | "30" | "45"; label: string; blurb: string }[] = [
+  { id: "10", label: "Blitz (10s)",    blurb: "High pressure speed duel." },
+  { id: "15", label: "Fast (15s)",     blurb: "Quick decisions, fast turns." },
+  { id: "20", label: "Standard (20s)", blurb: "The official default balance." },
+  { id: "30", label: "Tactical (30s)", blurb: "Careful calculation & planning." },
+  { id: "45", label: "Relaxed (45s)",  blurb: "Generous thinking time." },
+];
+
+const CONNECT4_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string; blurb: string }[] = [
+  { id: "easy",   label: "Casual",   blurb: "Plays casually, misses blocks occasionally." },
+  { id: "medium", label: "Tactical", blurb: "Blocks threats, takes immediate wins." },
+  { id: "pro",    label: "Master",   blurb: "Looks 4 plies ahead, traps and wins." },
+];
+
 export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
@@ -485,6 +501,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   const [carromBoardSkin, setCarromBoardSkin] = useState<BoardFeltSkin>("birch");
   const [tttMode, setTttMode] = useState<"quantum" | "classic">("quantum");
   const [tttTurnTimer, setTttTurnTimer] = useState<"10" | "15" | "30" | "0">("15");
+  const [connect4TurnTimer, setConnect4TurnTimer] = useState<"10" | "15" | "20" | "30" | "45">("20");
+  const [connect4BotDifficulty, setConnect4BotDifficulty] = useState<"easy" | "medium" | "pro">("medium");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [mobileTab, setMobileTab] = useState<"create" | "join">("create");
@@ -590,6 +608,9 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       const modeName = tttMode === "quantum" ? "Quantum Flux" : "Classic Matrix";
       return `${modeName} · ${tttTurnTimer === "0" ? "Untimed" : `${tttTurnTimer}s`}`;
     }
+    if (game === "connect4") {
+      return `${connect4TurnTimer}s turns · Bot ${connect4BotDifficulty.charAt(0).toUpperCase() + connect4BotDifficulty.slice(1)}`;
+    }
     return meta?.playerRange ? `${meta.playerRange}` : "Standard Match";
   }, [
     game,
@@ -619,6 +640,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
     carromTargetScore,
     tttMode,
     tttTurnTimer,
+    connect4TurnTimer,
+    connect4BotDifficulty,
   ]);
 
   // Reset transient state every time a new game opens.
@@ -651,6 +674,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
       setCarromBoardSkin("birch");
       setTttMode("quantum");
       setTttTurnTimer("15");
+      setConnect4TurnTimer("20");
+      setConnect4BotDifficulty("medium");
     }
   }, [game]);
 
@@ -822,6 +847,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   turnTimerSeconds: Number(tttTurnTimer),
                 }
               : undefined,
+          connect4Options:
+            game === "connect4"
+              ? {
+                  turnTimerSeconds: Number(connect4TurnTimer),
+                  botDifficulty: connect4BotDifficulty,
+                }
+              : undefined,
         },
         (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
           if (activeAttemptRef.current !== attemptId) return;
@@ -982,6 +1014,13 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             ? {
                 mode: tttMode,
                 turnTimerSeconds: Number(tttTurnTimer),
+              }
+            : undefined,
+        connect4Options:
+          game === "connect4"
+            ? {
+                turnTimerSeconds: Number(connect4TurnTimer),
+                botDifficulty: connect4BotDifficulty,
               }
             : undefined,
       },
@@ -1298,14 +1337,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             <div className={mobileTab === "join" ? "hidden md:block md:space-y-4" : "space-y-4"}>
 
             {/* Pass & Play toggle */}
-            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "carrom" || game === "tictactoe") && (
+            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "carrom" || game === "tictactoe" || game === "connect4") && (
               <PassPlayBlock
                 on={passPlay}
                 onToggle={() => setPassPlay((v) => !v)}
                 names={localNames}
                 onNamesChange={setLocalNames}
                 maxExtraSeats={
-                  game === "carrom" || game === "tictactoe"
+                  game === "carrom" || game === "tictactoe" || game === "connect4"
                     ? 1
                     : game === "ludo"
                     ? 3
@@ -1827,6 +1866,28 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                     value={tttTurnTimer}
                     onChange={(v) => setTttTurnTimer(v as "10" | "15" | "30" | "0")}
                     cols={2}
+                  />
+                </Field>
+              </>
+            )}
+
+            {game === "connect4" && (
+              <>
+                <Field label="Turn Timer">
+                  <OptionGrid
+                    items={CONNECT4_TURN_TIMERS}
+                    value={connect4TurnTimer}
+                    onChange={(v) => setConnect4TurnTimer(v as "10" | "15" | "20" | "30" | "45")}
+                    cols={2}
+                  />
+                </Field>
+
+                <Field label="Bot Difficulty">
+                  <OptionGrid
+                    items={CONNECT4_BOT_DIFFICULTIES}
+                    value={connect4BotDifficulty}
+                    onChange={(v) => setConnect4BotDifficulty(v as "easy" | "medium" | "pro")}
+                    cols={3}
                   />
                 </Field>
               </>

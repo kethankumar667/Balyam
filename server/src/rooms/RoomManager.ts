@@ -35,6 +35,7 @@ import type {
   BlockBlastOptions,
   SpaceWarOptions,
   TicTacToeOptions,
+  Connect4Options,
   OperationalRoomSummary,
   DisconnectedSeatSummary,
   OperationalRecoverySummary,
@@ -63,6 +64,7 @@ import {
   DEFAULT_BLOCKBLAST_OPTIONS,
   DEFAULT_SPACEWAR_OPTIONS,
   sanitizeTicTacToeOptions,
+  sanitizeConnect4Options,
   StartBlockReason,
   StartPreflightPayload,
   StartAcknowledgementPayload,
@@ -134,6 +136,7 @@ import {
   scoreTicTacToeWin,
   orderForAlternatingFirstMove,
 } from "../games/tictactoe/TicTacToeEngine.js";
+import { Connect4Engine, scoreConnect4Win } from "../games/connect4/Connect4Engine.js";
 import type { EconomyService, IssuedVoucherAck, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
 import {
@@ -319,6 +322,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   roadrash: ["Rider", "Speedy", "Biker", "Racer", "Nitro", "Drifter", "Burnout", "Throttle"],
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender", "Nova", "Starlight", "Galaxy", "Pulsar"],
   tictactoe: ["NEXUS-9", "CYBER-AI", "VORTEX", "AURA-7", "SYNTH-X", "QUANTUM-0", "NEON-BLADE", "GLITCH"],
+  connect4: ["Stacker", "Dropper", "Gravity", "Checker", "Fourth", "Column-7", "Blocker", "Diagonal"],
 };
 
 /**
@@ -537,6 +541,7 @@ export interface Room {
   blockBlastOptions: BlockBlastOptions;
   spaceWarOptions: SpaceWarOptions;
   ticTacToeOptions: TicTacToeOptions;
+  connect4Options: Connect4Options;
   /** Active rematch negotiation (or idle). Refer to the RematchState type. */
   rematch: RematchState;
   /** Timer that auto-cancels a pending rematch when the window expires. */
@@ -1451,6 +1456,7 @@ export class RoomManager {
     blockBlastOptions?: Partial<BlockBlastOptions>,
     spaceWarOptions?: Partial<SpaceWarOptions>,
     ticTacToeOptions?: Partial<TicTacToeOptions>,
+    connect4Options?: Partial<Connect4Options>,
     /**
      * Appended here, rather than sitting next to `name` where it belongs,
      * on purpose. Every option parameter above is a `Partial<…>`, and two
@@ -1588,6 +1594,7 @@ export class RoomManager {
       spaceWarOptions: { ...DEFAULT_SPACEWAR_OPTIONS, ...(spaceWarOptions ?? {}) },
       // Client-controlled payload: sanitised, never spread (see the helper's doc).
       ticTacToeOptions: sanitizeTicTacToeOptions(ticTacToeOptions),
+      connect4Options: sanitizeConnect4Options(connect4Options),
       rematch: emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -2061,11 +2068,12 @@ export class RoomManager {
       room.game !== "snl" &&
       room.game !== "wordbuilding" &&
       room.game !== "dotsboxes" &&
-      room.game !== "tictactoe"
+      room.game !== "tictactoe" &&
+      room.game !== "connect4"
     ) {
       // Pass & Play is fair only for open-information games — everyone
       // looks at the same board state, no private hands. Word Building,
-      // Dots & Boxes and Tic Tac Toe all qualify (every move is visible to
+      // Dots & Boxes, Tic Tac Toe and Connect 4 all qualify (every move is visible to
       // everyone). Rummy / UNO etc. would leak hidden information to
       // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
@@ -3193,6 +3201,9 @@ export class RoomManager {
       if (engine instanceof TicTacToeEngine) {
         engine.setOptions(room.ticTacToeOptions);
       }
+      if (engine instanceof Connect4Engine) {
+        engine.setOptions(room.connect4Options);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -3484,6 +3495,21 @@ export class RoomManager {
           score: scoreTicTacToeWin(moveCount, marks[playerId]),
           secondaryMetrics: { moves: moveCount },
         };
+      }
+
+      // Connect 4: only a genuine four-in-a-row by a HUMAN against another human is scored, by how
+      // few of the winner's own discs it took. A loss, a draw, a walkover (the opponent left), a
+      // table with a bot seat (practice) and Pass & Play (one person on both sides) all return
+      // nothing, so none of them can reach a scorecard — otherwise beating an easy bot in four
+      // discs would be a free, repeatable way to post the maximum.
+      if (room.game === "connect4") {
+        const hasBotOrLocalSeat = Array.from(room.players.values()).some((p) => p.isBot === true || p.isLocal === true);
+        const discsPlaced = publicState.discsPlaced as Record<string, number> | undefined;
+        const discs = discsPlaced?.[playerId];
+        if (hasBotOrLocalSeat || publicState.winnerId !== playerId || publicState.endReason !== "connect4" || typeof discs !== "number") {
+          return {};
+        }
+        return { score: scoreConnect4Win(discs), secondaryMetrics: { discs } };
       }
 
       // Generic single numeric score if present
@@ -5475,7 +5501,9 @@ export class RoomManager {
       this.armTurnTimer(room, ms);
       return;
     }
-    if (room.engine instanceof TicTacToeEngine) {
+    // Tic Tac Toe and Connect 4 share the same clock contract: a public `turnDeadline`, and
+    // `restartTurnClock()` to open a fresh window when a timeout was deliberately withheld.
+    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine) {
       const engine = room.engine;
       const pub = engine.getPublicState();
       if (!pub.turnDeadline) {
@@ -5512,7 +5540,7 @@ export class RoomManager {
     // Before the engine resolves this turn for them, note WHO let it lapse —
     // afterwards the engine has moved on and that information is gone.
     this.recordTurnTimeout(room);
-    if (room.engine instanceof TicTacToeEngine) {
+    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine) {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;
@@ -6731,11 +6759,13 @@ export class RoomManager {
       if (engine instanceof BlockBlastEngine) engine.setOptions(room.blockBlastOptions);
       if (engine instanceof SpaceWarEngine) engine.setOptions(room.spaceWarOptions);
       if (engine instanceof TicTacToeEngine) engine.setOptions(room.ticTacToeOptions);
-      // X moves first, and the first mover is a real edge. Seat order is join
-      // order, which would make the host X in every rematch — swap it.
+      if (engine instanceof Connect4Engine) engine.setOptions(room.connect4Options);
+      // The first mover is a real edge (X in Tic Tac Toe, red in Connect 4). Seat order is join
+      // order, which would give the host the opening move in every rematch — swap it.
       const seating =
-        engine instanceof TicTacToeEngine && room.engine instanceof TicTacToeEngine
-          ? orderForAlternatingFirstMove(room.engine.getPublicState().playerOrder, playersList)
+        (engine instanceof TicTacToeEngine && room.engine instanceof TicTacToeEngine) ||
+        (engine instanceof Connect4Engine && room.engine instanceof Connect4Engine)
+          ? orderForAlternatingFirstMove((room.engine.getPublicState() as { playerOrder: string[] }).playerOrder, playersList)
           : playersList;
       engine.init(seating);
       room.engine = engine;

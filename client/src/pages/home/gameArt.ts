@@ -30,4 +30,5 @@ export const TILE_ART_BY_GAME: Record<BhalyamGameSlug, string> = {
   "2048": "/2048 Game Tile.png",
   sudoku: "/Sudoku Game Tile.png",
   tictactoe: "/TicTacToeTile.png",
+  connect4: "/Connect4Tile.png",
 };

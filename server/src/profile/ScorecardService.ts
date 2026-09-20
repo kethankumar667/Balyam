@@ -423,6 +423,9 @@ export class ScorecardService {
         quantum: [8, 6, 4],
         classic: [6, 4, 3],
       },
+      connect4: {
+        classic: [18, 14, 10],
+      },
     };
 
     const bots = ["bot_lounge_champ", "bot_retro_master", "bot_gully_legend"];

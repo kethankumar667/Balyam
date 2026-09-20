@@ -15,9 +15,9 @@ export default function Game2048Page() {
   }, [setActiveGame]);
 
   return (
-    <div className="w-full min-h-dvh-safe h-dvh-safe overflow-y-auto overflow-x-hidden overscroll-none">
+    <main role="main" aria-label="2048 Puzzle Game" className="w-full min-h-dvh-safe h-dvh-safe overflow-y-auto overflow-x-hidden overscroll-none">
       <h1 className="sr-only">2048 — Battle, Race, Time Attack &amp; Zen</h1>
       <Game2048Board onExit={() => navigate("/games")} />
-    </div>
+    </main>
   );
 }

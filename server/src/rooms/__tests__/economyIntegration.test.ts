@@ -1578,7 +1578,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
         return { service, rooms: new RoomManager(io, service), socketEmits };
       }
 
-      it.each(["ludo", "tictactoe"] as const)(
+      it.each(["ludo", "tictactoe", "connect4"] as const)(
         "lets a guest start a %s Pass & Play match at the limited 100-coin stake, paying for each seat",
         async (game) => {
           const id = `guest_pnp_${game}`;

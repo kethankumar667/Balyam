@@ -40,6 +40,7 @@ function createMemberRoom(rm: RoomManager, socketId: string, name: string, game 
     undefined, // blockBlast
     undefined, // spaceWar
     undefined, // ticTacToe
+    undefined, // connect4
     undefined, // avatar
     "member" // hostKind
   );

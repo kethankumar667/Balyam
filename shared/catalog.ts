@@ -44,6 +44,7 @@ export const GAME_LIMITS: Record<GameKind, GameLimitSpec> = {
   spacewar: { min: 1, max: 1 },
   roadrash: { min: 1, max: 4 },
   tictactoe: { min: 2, max: 2 },
+  connect4: { min: 2, max: 2 },
 };
 
 export const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
@@ -104,6 +105,7 @@ export const GAME_START_REQUIREMENTS: Record<GameKind, GameStartRequirements> = 
   spacewar: { requiresOrientation: null, orientationPromptTiers: [] },
   roadrash: { requiresOrientation: null, orientationPromptTiers: [] },
   tictactoe: { requiresOrientation: null, orientationPromptTiers: [] },
+  connect4: { requiresOrientation: null, orientationPromptTiers: [] },
 };
 
 export function getGameOrientationRequirement(game: GameKind): "landscape" | "portrait" | null {
@@ -157,6 +159,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   "2048": "portrait",
   sudoku: "portrait",
   tictactoe: "portrait",
+  connect4: "portrait",
 
   // Browser-only retro titles — all modelled on portrait handhelds.
   nokiacricket: "portrait",
@@ -538,6 +541,37 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     ],
   },
   {
+    id: "connect4",
+    name: "Connect 4",
+    tagline: "Drop, stack and connect four",
+    shortDescription: "Take turns dropping discs into a seven-column grid. Be the first to line up four.",
+    description:
+      "A classic two-player strategy game. Drop a disc into any column, block your opponent, and connect four in a row — across, up and down, or diagonally — before the board fills up.",
+    nostalgiaQuote: "\"Just one more game?\" — a rainy afternoon on the living-room floor.",
+    minPlayers: 2,
+    maxPlayers: 2,
+    playTime: "5–10 min",
+    playTimeCategory: "quick",
+    difficulty: "medium",
+    genre: "board",
+    tags: ["connect4", "strategy", "two-player", "classic", "quick"],
+    nostalgiaWorlds: ["rainy_evening", "friends_adda"],
+    supportedModes: ["online_multiplayer", "pass_and_play", "vs_bots"],
+    supportsBots: true,
+    isPopular: false,
+    isClassic: true,
+    availability: "playable",
+    accent: { from: "#1D4ED8", to: "#0F172A" },
+    thumbnail: "/games/thumbnails/connect4.svg",
+    heroAsset: "/games/heroes/connect4-hero.svg",
+    howToPlay: [
+      { stepNumber: 1, title: "Pick a Column", instruction: "On your turn, choose one of the seven columns to drop a disc into." },
+      { stepNumber: 2, title: "Gravity Decides", instruction: "Your disc falls to the lowest free spot in that column." },
+      { stepNumber: 3, title: "Connect Four", instruction: "Line up four of your discs in a row — across, up and down, or diagonally — to win." },
+      { stepNumber: 4, title: "Block and Plan", instruction: "Stop your opponent's lines. If the board fills with no four in a row, it is a draw." },
+    ],
+  },
+  {
     id: "wordbuilding",
     name: "Word Building",
     teluguName: "వర్డ్ బిల్డింగ్",
@@ -900,4 +934,5 @@ export const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
   blockblast: "Block Blast 🧱",
   spacewar: "Space War 🚀",
   tictactoe: "Tic Tac Toe ✔️",
+  connect4: "Connect 4",
 };

@@ -28,6 +28,7 @@ import {
   StarGameGlyph,
   BingoGlyph,
   TicTacToeGlyph,
+  Connect4Glyph,
 } from "../bhalyam/icons";
 
 export interface GameCardProps {
@@ -62,6 +63,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   "2048": StarGameGlyph,
   sudoku: StarGameGlyph,
   tictactoe: TicTacToeGlyph,
+  connect4: Connect4Glyph,
 };
 
 const TILE_ART: Record<BhalyamGameSlug, string> = {
@@ -89,6 +91,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   "2048": "/2048 Game Tile.png",
   sudoku: "/Sudoku Game Tile.png",
   tictactoe: "/TicTacToeTile.png",
+  connect4: "/Connect4Tile.png",
 };
 
 export default function GameCard({
@@ -124,8 +127,12 @@ export default function GameCard({
   const btnShadow = game.btnGradient?.shadow ?? accent.to;
 
   const bgStyle = isDark
-    ? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
+    ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
     : `linear-gradient(155deg, var(--surface-1) 0%, ${btnFrom}28 40%, ${btnTo}48 100%)`;
+
+  const borderStyle = isDark
+    ? game.paperBorder ?? "rgba(255, 255, 255, 0.1)"
+    : `${btnFrom}55`;
 
   return (
     <motion.article
@@ -134,11 +141,10 @@ export default function GameCard({
       whileHover="hover"
       whileTap="tap"
       transition={bhalyamSpring}
-      className={`group relative w-full min-w-0 max-w-full rounded-2xl overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${
-        isDark ? "border-white/10" : "border-black/10"
-      } ${className}`}
+      className={`group relative w-full min-w-0 max-w-full rounded-2xl overflow-hidden text-left p-4 sm:p-5 flex flex-col justify-between border shadow-md touch-pan-y ${className}`}
       style={{
         background: bgStyle,
+        borderColor: borderStyle,
       }}
     >
       {/* Top row: Mode badge, Category & Favourite Toggle */}

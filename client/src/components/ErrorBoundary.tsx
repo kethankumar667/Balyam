@@ -36,6 +36,15 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleRetry = () => {
+    if (
+      this.state.error?.message?.includes("dynamically imported module") ||
+      this.state.error?.message?.includes("Loading chunk")
+    ) {
+      if (typeof window !== "undefined") {
+        window.location.reload();
+        return;
+      }
+    }
     this.setState({ hasError: false, error: null });
   };
 

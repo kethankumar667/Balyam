@@ -307,6 +307,25 @@ export const TicTacToeGlyph = makeIcon(
   </>,
 );
 
+export const Connect4Glyph = makeIcon(
+  <>
+    {/* Board frame and stand */}
+    <rect x="3" y="3.5" width="18" height="15" rx="2.2" strokeWidth="1.6" />
+    <path d="M6 18.5V21M18 18.5V21" strokeWidth="1.6" strokeLinecap="round" />
+    {/* Empty holes */}
+    <circle cx="7.5" cy="8" r="1.3" strokeWidth="1.2" />
+    <circle cx="12" cy="8" r="1.3" strokeWidth="1.2" />
+    <circle cx="7.5" cy="12" r="1.3" strokeWidth="1.2" />
+    <circle cx="16.5" cy="12" r="1.3" strokeWidth="1.2" />
+    <circle cx="12" cy="16" r="1.3" strokeWidth="1.2" />
+    <circle cx="16.5" cy="16" r="1.3" strokeWidth="1.2" />
+    {/* A diagonal of dropped discs */}
+    <circle cx="16.5" cy="8" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+    <circle cx="7.5" cy="16" r="1.3" fill="currentColor" stroke="none" />
+  </>,
+);
+
 export const UsersIcon = makeIcon(
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

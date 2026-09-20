@@ -14,6 +14,16 @@ if (typeof document !== "undefined") {
   timelineRecorder.start();
   document.documentElement.setAttribute("data-theme", resolveTheme());
   initLayoutGuard();
+
+  // Self-heal when Vite dynamic import fails due to stale chunk hashes or HMR updates
+  window.addEventListener("vite:preloadError", () => {
+    const key = "bhalyam_chunk_reload";
+    const lastReload = sessionStorage.getItem(key);
+    if (!lastReload || Date.now() - Number(lastReload) > 10000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+    }
+  });
 }
 
 const rootElement = document.getElementById("root")!;

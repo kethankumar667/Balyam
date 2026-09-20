@@ -171,6 +171,15 @@ services:
       - type: rewrite
         source: /blockbreakout
         destination: /blockbreakout/index.html
+      - type: rewrite
+        source: /home
+        destination: /home/index.html
+      - type: rewrite
+        source: /2048
+        destination: /2048/index.html
+      - type: rewrite
+        source: /sudoku
+        destination: /sudoku/index.html
 
       # Single Page Application (SPA) catch-all rewrite for deep links &
       # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,
