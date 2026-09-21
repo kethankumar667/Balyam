@@ -30,6 +30,8 @@ import { findAvatar } from "../lib/avatars";
 import { useScorecardStore } from "../store/scorecardStore";
 import { GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
 import type { AllGameSlug, FoilTier } from "@shared/profile/Scorecard";
+import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
+import { formatGameMetricValue } from "../lib/metricFormatters";
 
 /**
  * Initial target baseline benchmarks for unplayed games/modes.
@@ -372,6 +374,7 @@ interface PersonalScoreItem {
   averageScore?: number;
   recentScores: number[];
   achievedAt?: number;
+  secondaryMetrics: Record<string, number | string>;
 }
 
 const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
@@ -593,6 +596,7 @@ export default function LeaderboardPage() {
         averageScore,
         recentScores,
         achievedAt,
+        secondaryMetrics: modeScorecard?.secondaryMetrics ?? {},
       };
     });
   }, [archive, selectedGame, gameConfig]);
@@ -671,6 +675,7 @@ export default function LeaderboardPage() {
 
   const globalBenchmark = GLOBAL_MODE_BESTS[selectedGame]?.[activeItem.modeId] ?? 2480;
   const isBreakoutClassic = selectedGame === "breakout" && activeItem.modeId === "classic";
+  const gameSchema = getGameMetricSchema(selectedGame);
 
   const progressPercent = useMemo(() => {
     if (activeItem.scoringDirection === "LOWER_IS_BETTER") {
@@ -965,14 +970,11 @@ export default function LeaderboardPage() {
               <div>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                   <Crown className="w-4 h-4 text-amber-500 fill-amber-400/30 shrink-0" />
-                  <span>Your Personal Best</span>
+                  <span>{gameSchema.primaryRankMetric.label}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-amber-500 dark:text-amber-400">
-                    {activeItem.score.toLocaleString()}
-                  </span>
-                  <span className="text-xs sm:text-sm font-mono font-bold text-slate-500 dark:text-slate-400">
-                    {activeItem.unit || "pts"}
+                    {formatGameMetricValue(activeItem.score, gameSchema.primaryRankMetric.format)}
                   </span>
                   {activeItem.isPersonalBest && (
                     <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wide">
@@ -984,7 +986,10 @@ export default function LeaderboardPage() {
 
               <div className="text-left sm:text-right">
                 <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block">
-                  Milestone Target: <strong className="text-slate-700 dark:text-slate-200">{globalBenchmark.toLocaleString()} {activeItem.unit || "pts"}</strong>
+                  Milestone Target:{" "}
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {formatGameMetricValue(globalBenchmark, gameSchema.primaryRankMetric.format)}
+                  </strong>
                 </span>
                 <span className="text-[10px] text-slate-400">
                   {progressPercent}% Achieved
@@ -1000,24 +1005,53 @@ export default function LeaderboardPage() {
               />
             </div>
 
-            {/* 3-Column Metrics Grid */}
-            <div className="grid grid-cols-3 gap-1 sm:gap-4 pt-2 border-t border-slate-200/60 dark:border-zinc-700/60 divide-x divide-slate-200 dark:divide-zinc-700/60">
-              <div className="text-center sm:text-left px-1">
-                <span className="text-[10px] font-semibold text-slate-400 block">Status</span>
+            {/* Dynamic Game-Specific Telemetry Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2.5 border-t border-slate-200/60 dark:border-zinc-700/60">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100/70 dark:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-700/40 text-left">
+                <span className="text-[10px] font-mono uppercase text-slate-400 block truncate">Status</span>
                 <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
                   {activeItem.isPersonalBest ? "PB Unlocked" : "In Progress"}
                 </span>
               </div>
-              <div className="text-center sm:text-left px-1 sm:px-3">
-                <span className="text-[10px] font-semibold text-slate-400 block">Matches Played</span>
+
+              {gameSchema.secondaryMetrics[0] && (
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100/70 dark:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-700/40 text-left">
+                  <span
+                    className="text-[10px] font-mono uppercase text-slate-400 block truncate"
+                    title={gameSchema.secondaryMetrics[0].label}
+                  >
+                    {gameSchema.secondaryMetrics[0].shortLabel}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 truncate block font-mono">
+                    {formatGameMetricValue(
+                      activeItem.secondaryMetrics[gameSchema.secondaryMetrics[0].key] ?? (activeItem.isPersonalBest ? "-" : 0),
+                      gameSchema.secondaryMetrics[0].format
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {gameSchema.secondaryMetrics[1] && (
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100/70 dark:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-700/40 text-left">
+                  <span
+                    className="text-[10px] font-mono uppercase text-slate-400 block truncate"
+                    title={gameSchema.secondaryMetrics[1].label}
+                  >
+                    {gameSchema.secondaryMetrics[1].shortLabel}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 truncate block font-mono">
+                    {formatGameMetricValue(
+                      activeItem.secondaryMetrics[gameSchema.secondaryMetrics[1].key] ?? (activeItem.isPersonalBest ? "-" : 0),
+                      gameSchema.secondaryMetrics[1].format
+                    )}
+                  </span>
+                </div>
+              )}
+
+              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-100/70 dark:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-700/40 text-left">
+                <span className="text-[10px] font-mono uppercase text-slate-400 block truncate">Matches</span>
                 <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
                   {activeItem.timesPlayed}
-                </span>
-              </div>
-              <div className="text-center sm:text-left px-1 sm:px-3">
-                <span className="text-[10px] font-semibold text-slate-400 block">Last Played</span>
-                <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
-                  {formatScoreDate(activeItem.achievedAt, isBreakoutClassic)}
                 </span>
               </div>
             </div>
@@ -1074,16 +1108,18 @@ export default function LeaderboardPage() {
                       <div className="flex items-center gap-1 text-amber-500">
                         <Crown className="w-3 h-3 fill-amber-400/20 shrink-0" />
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
-                          {m.score.toLocaleString()}
+                          {formatGameMetricValue(m.score, gameSchema.primaryRankMetric.format)}
                         </span>
                       </div>
-                      <span className="text-[9px] font-medium text-slate-400 truncate block">Your Record</span>
+                      <span className="text-[9px] font-medium text-slate-400 truncate block">
+                        {gameSchema.primaryRankMetric.shortLabel}
+                      </span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                         <Target className="w-3 h-3 shrink-0" />
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
-                          {modeBenchmark.toLocaleString()}
+                          {formatGameMetricValue(modeBenchmark, gameSchema.primaryRankMetric.format)}
                         </span>
                       </div>
                       <span className="text-[9px] font-medium text-slate-400 truncate block">Target</span>

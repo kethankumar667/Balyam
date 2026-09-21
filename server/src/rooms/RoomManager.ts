@@ -3454,19 +3454,123 @@ export class RoomManager {
         }
       }
 
+      // Ludo: rolls to finish, tokens captured, sixes rolled
+      if (room.game === "ludo") {
+        const stats = publicState.stats as
+          | {
+              rollCount?: Record<string, number>;
+              captureCount?: Record<string, number>;
+              sixCount?: Record<string, number>;
+            }
+          | undefined;
+        const finishedCount = publicState.finishedCount as Record<string, number> | undefined;
+        const rolls = stats?.rollCount?.[playerId] ?? 0;
+        const captures = stats?.captureCount?.[playerId] ?? 0;
+        const sixes = stats?.sixCount?.[playerId] ?? 0;
+        const finished = finishedCount?.[playerId] ?? 0;
+        const isWinner = publicState.winnerId === playerId;
+
+        if (isWinner && rolls > 0) {
+          return {
+            score: rolls, // Lowest rolls to win is best
+            secondaryMetrics: {
+              turns: rolls,
+              tokensCaptured: captures,
+              sixesRolled: sixes,
+              tokensHome: finished,
+            },
+          };
+        }
+        if (rolls > 0) {
+          return {
+            score: rolls,
+            secondaryMetrics: {
+              turns: rolls,
+              tokensCaptured: captures,
+              sixesRolled: sixes,
+              tokensHome: finished,
+            },
+          };
+        }
+      }
+
+      // Indian Rummy: penalty points (0 = pure show)
+      if (room.game === "rummy") {
+        const scores = publicState.scores as Record<string, number> | undefined;
+        if (scores && typeof scores[playerId] === "number") {
+          const penalty = scores[playerId];
+          return {
+            score: penalty,
+            secondaryMetrics: {
+              penaltyPoints: penalty,
+              isPureShow: penalty === 0 ? 1 : 0,
+              pureShowRate: penalty === 0 ? 100 : 0,
+            },
+          };
+        }
+      }
+
+      // UNO: hand penalty points remaining
+      if (room.game === "uno") {
+        const scores = publicState.scores as Record<string, number> | undefined;
+        const cardCounts = publicState.cardCounts as Record<string, number> | undefined;
+        const handCards = cardCounts?.[playerId] ?? 0;
+        const scoreVal = scores && typeof scores[playerId] === "number" ? scores[playerId] : handCards;
+        return {
+          score: scoreVal,
+          secondaryMetrics: {
+            cardsRemaining: handCards,
+            penaltyPoints: scoreVal,
+            roundsWon: publicState.winnerId === playerId ? 1 : 0,
+          },
+        };
+      }
+
+      // Snakes & Ladders: rolls to reach 100, ladders, snakes
+      if (room.game === "snl") {
+        const stats = publicState.stats as
+          | Record<
+              string,
+              { rolls: number; laddersClimbed: number; snakesBitten: number; highestSquare: number }
+            >
+          | undefined;
+        const pStats = stats?.[playerId];
+        if (pStats) {
+          return {
+            score: pStats.rolls,
+            secondaryMetrics: {
+              rolls: pStats.rolls,
+              laddersClimbed: pStats.laddersClimbed,
+              snakeBitesTaken: pStats.snakesBitten,
+              highestSquare: pStats.highestSquare,
+            },
+          };
+        }
+      }
+
       // Word Building: scores map
       if (room.game === "wordbuilding") {
         const scores = publicState.scores as Record<string, number> | undefined;
         if (scores && typeof scores[playerId] === "number") {
-          return { score: scores[playerId] };
+          return {
+            score: scores[playerId],
+            secondaryMetrics: {
+              wordScore: scores[playerId],
+            },
+          };
         }
       }
 
-      // Dots & Boxes: scores map
+      // Dots & Boxes: scores map & territory
       if (room.game === "dotsboxes") {
         const scores = publicState.scores as Record<string, number> | undefined;
         if (scores && typeof scores[playerId] === "number") {
-          return { score: scores[playerId] };
+          return {
+            score: scores[playerId],
+            secondaryMetrics: {
+              boxesCaptured: scores[playerId],
+            },
+          };
         }
       }
 
@@ -3474,7 +3578,15 @@ export class RoomManager {
       if (room.game === "snake") {
         const snakes = publicState.snakes as Record<string, { score?: number; length?: number }> | undefined;
         if (snakes && snakes[playerId]) {
-          return { score: snakes[playerId]?.score ?? snakes[playerId]?.length ?? 0 };
+          const apples = snakes[playerId]?.score ?? 0;
+          const len = snakes[playerId]?.length ?? apples;
+          return {
+            score: apples,
+            secondaryMetrics: {
+              apples,
+              snakeLength: len,
+            },
+          };
         }
       }
 

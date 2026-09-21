@@ -232,6 +232,7 @@ export class ScorecardService {
     foilTier: FoilTier;
     scoringDirection: ScoringDirection;
     timesPlayed: number;
+    secondaryMetrics?: Record<string, number | string>;
     radar: QuantumPerformanceRadar;
   }[] {
     const results: {
@@ -244,6 +245,7 @@ export class ScorecardService {
       foilTier: FoilTier;
       scoringDirection: ScoringDirection;
       timesPlayed: number;
+      secondaryMetrics?: Record<string, number | string>;
       radar: QuantumPerformanceRadar;
     }[] = [];
 
@@ -270,6 +272,7 @@ export class ScorecardService {
         foilTier: modeCard.foilTier,
         scoringDirection: modeCard.scoringDirection,
         timesPlayed: modeCard.timesPlayed,
+        secondaryMetrics: modeCard.secondaryMetrics,
         radar: modeCard.radar,
       });
     }

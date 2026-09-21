@@ -4,6 +4,8 @@ import { apiJson } from "../../lib/playerIdentity";
 import { findAvatar } from "../../lib/avatars";
 import { GAME_MODE_REGISTRY } from "@shared/profile/GameModes";
 import type { AllGameSlug, FoilTier, ScoringDirection } from "@shared/profile/Scorecard";
+import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
+import { formatGameMetricValue } from "../../lib/metricFormatters";
 import PodiumTopThree, { type PodiumCompetitor } from "./PodiumTopThree";
 
 interface ModeLeaderboardItem {
@@ -16,6 +18,7 @@ interface ModeLeaderboardItem {
   foilTier: FoilTier;
   scoringDirection: ScoringDirection;
   timesPlayed: number;
+  secondaryMetrics?: Record<string, number | string>;
 }
 
 const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
@@ -85,6 +88,7 @@ export default function ModeScorecardsLeaderboard() {
     };
   }, [selectedGame, selectedMode]);
 
+  const gameSchema = getGameMetricSchema(selectedGame);
   const activeModeDef = gameConfig.modes.find((m) => m.modeId === selectedMode) ?? gameConfig.modes[0];
   const unit = activeModeDef?.unit || "pts";
 
@@ -94,7 +98,7 @@ export default function ModeScorecardsLeaderboard() {
     name: item.displayName,
     avatar: item.avatar,
     scoreOrRating: item.bestScore,
-    scoreLabel: `${item.bestScore} ${unit}`,
+    scoreLabel: formatGameMetricValue(item.bestScore, gameSchema.primaryRankMetric.format),
     tier: item.foilTier.replace("_", " ").toUpperCase(),
     foilTier: item.foilTier,
   }));
@@ -262,9 +266,15 @@ export default function ModeScorecardsLeaderboard() {
                   <tr>
                     <th className="py-3.5 px-4 font-bold">Rank</th>
                     <th className="py-3.5 px-4 font-bold">Challenger</th>
-                    <th className="py-3.5 px-4 font-bold">Personal Best</th>
+                    <th className="py-3.5 px-4 font-bold">{gameSchema.primaryRankMetric.label}</th>
+                    {gameSchema.secondaryMetrics[0] && (
+                      <th className="py-3.5 px-4 font-bold">{gameSchema.secondaryMetrics[0].shortLabel}</th>
+                    )}
+                    {gameSchema.secondaryMetrics[1] && (
+                      <th className="py-3.5 px-4 font-bold">{gameSchema.secondaryMetrics[1].shortLabel}</th>
+                    )}
                     <th className="py-3.5 px-4 font-bold">Foil Tier</th>
-                    <th className="py-3.5 px-4 font-bold">Runs Played</th>
+                    <th className="py-3.5 px-4 font-bold">Matches</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--chrome-hairline)] font-medium">
@@ -306,11 +316,24 @@ export default function ModeScorecardsLeaderboard() {
                           </div>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-black text-sm text-amber-500">
-                          {item.bestScore.toLocaleString()}{" "}
-                          <span className="text-[10px] text-[var(--chrome-ink-soft)] font-normal uppercase">
-                            {unit}
-                          </span>
+                          {formatGameMetricValue(item.bestScore, gameSchema.primaryRankMetric.format)}
                         </td>
+                        {gameSchema.secondaryMetrics[0] && (
+                          <td className="py-3.5 px-4 font-mono text-xs text-[var(--chrome-ink)]">
+                            {formatGameMetricValue(
+                              item.secondaryMetrics?.[gameSchema.secondaryMetrics[0].key],
+                              gameSchema.secondaryMetrics[0].format
+                            )}
+                          </td>
+                        )}
+                        {gameSchema.secondaryMetrics[1] && (
+                          <td className="py-3.5 px-4 font-mono text-xs text-[var(--chrome-ink)]">
+                            {formatGameMetricValue(
+                              item.secondaryMetrics?.[gameSchema.secondaryMetrics[1].key],
+                              gameSchema.secondaryMetrics[1].format
+                            )}
+                          </td>
+                        )}
                         <td className="py-3.5 px-4">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
