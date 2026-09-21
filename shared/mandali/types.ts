@@ -210,3 +210,28 @@ export interface CreateMandaliPayload {
   tags?: string[];
   visibility?: MandaliVisibility;
 }
+
+export type CoinTransferType = "SEND" | "REQUEST";
+export type CoinTransferStatus = "COMPLETED" | "PENDING" | "DECLINED";
+
+export interface MandaliCoinTransfer {
+  transferId: string;
+  mandaliId: string;
+  fromPlayerId: string;
+  fromPlayerName: string;
+  toPlayerId: string;
+  toPlayerName: string;
+  amount: number;
+  type: CoinTransferType;
+  status: CoinTransferStatus;
+  note?: string;
+  timestamp: number;
+}
+
+export interface CoinTransferPayload {
+  toPlayerId: string;
+  amount: number;
+  type: CoinTransferType;
+  note?: string;
+}
+

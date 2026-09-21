@@ -352,8 +352,9 @@ app.use("/api/games/2048/stats", createGame2048StatsRouter(game2048StatsService)
  * Server-authoritative persistent clans, roles, squad parties, and Gnapakalu memories.
  */
 const mandaliRepository = new MandaliRepository();
-const mandaliService = new MandaliService(mandaliRepository, roomManager, io);
+const mandaliService = new MandaliService(mandaliRepository, roomManager, io, economyService);
 app.use("/api/mandali", createMandaliRouter(mandaliService));
+
 
 /**
  * Operational surface. The gate lives ON this router (see

@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   Calendar,
   Zap,
+  Coins,
 } from "lucide-react";
 import type {
   Mandali,
@@ -68,6 +69,7 @@ export interface MandaliHubDesktopProps {
   onJoinParty: (partyId: string) => void;
   onLeaveParty: (partyId: string) => void;
   onLaunchParty: (partyId: string) => void;
+  onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
   onLeaveMandali: () => void;
 }
 
@@ -89,6 +91,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onJoinParty,
   onLeaveParty,
   onLaunchParty,
+  onOpenCoinTransfer,
   onLeaveMandali,
 }) => {
   const [chatInput, setChatInput] = useState("");
@@ -502,9 +505,20 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               <Users className="w-4 h-4 text-amber-500" />
               Members ({members.length})
             </h3>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
-              {members.filter((m) => m.presence === "online").length} Online
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenCoinTransfer?.()}
+                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-800 dark:text-amber-400 text-[11px] font-extrabold flex items-center gap-1 transition-all"
+                title="Transfer or Request Coins"
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>Coins</span>
+              </button>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
+                {members.filter((m) => m.presence === "online").length} Online
+              </span>
+            </div>
           </div>
 
           <div className="mt-3 space-y-2">
@@ -537,7 +551,19 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                   </div>
                 </div>
 
-                {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-500" />}
+                <div className="flex items-center gap-1.5">
+                  {member.playerId !== currentUserId && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenCoinTransfer?.(member.playerId)}
+                      className="w-7 h-7 rounded-lg hover:bg-amber-500/15 text-slate-400 hover:text-amber-500 transition-colors flex items-center justify-center"
+                      title={`Send or request coins with ${member.displayName}`}
+                    >
+                      <Coins className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-500" />}
+                </div>
               </div>
             ))}
           </div>

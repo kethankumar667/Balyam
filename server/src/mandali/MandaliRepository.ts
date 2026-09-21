@@ -9,6 +9,7 @@ import type {
   MandaliAuditLog,
   MandaliApplication,
   MandaliInvitation,
+  MandaliCoinTransfer,
 } from "@shared/mandali/types.js";
 import { pickAvatarForName } from "@shared/avatars.js";
 
@@ -25,6 +26,8 @@ export class MandaliRepository {
   private events = new Map<string, MandaliEvent[]>(); // mandaliId -> events
   private memories = new Map<string, MandaliMemory[]>(); // mandaliId -> memories (Gnapakalu)
   private auditLogs = new Map<string, MandaliAuditLog[]>(); // mandaliId -> logs
+  private coinTransfers = new Map<string, MandaliCoinTransfer[]>(); // mandaliId -> coin transfers
+
 
   constructor() {
     this.seedDefaultMandalis();
@@ -272,7 +275,22 @@ export class MandaliRepository {
     this.auditLogs.set(log.mandaliId, list);
   }
 
+  /* ── Coin Transfers & Requests ── */
+
+  public getCoinTransfers(mandaliId: string, limit = 50): MandaliCoinTransfer[] {
+    const list = this.coinTransfers.get(mandaliId) ?? [];
+    return list.slice(-limit).reverse();
+  }
+
+  public saveCoinTransfer(transfer: MandaliCoinTransfer): void {
+    const list = this.coinTransfers.get(transfer.mandaliId) ?? [];
+    list.push(transfer);
+    if (list.length > 100) list.shift();
+    this.coinTransfers.set(transfer.mandaliId, list);
+  }
+
   /* ── Default Seed Data ── */
+
 
   private seedDefaultMandalis(): void {
     const now = Date.now();

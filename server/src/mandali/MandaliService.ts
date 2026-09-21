@@ -9,6 +9,8 @@ import type {
   MandaliEvent,
   MandaliMemory,
   CreateMandaliPayload,
+  MandaliCoinTransfer,
+  CoinTransferPayload,
 } from "@shared/mandali/types.js";
 import { hasMandaliPermission } from "@shared/mandali/permissions.js";
 import { MandaliRepository } from "./MandaliRepository.js";
@@ -16,13 +18,16 @@ import { MembershipStateMachine } from "./MembershipStateMachine.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
 import type { GameKind } from "@shared/types.js";
 import { logger } from "../lib/logger.js";
+import type { EconomyService } from "../economy/EconomyService.js";
 
 export class MandaliService {
   constructor(
     private readonly repository: MandaliRepository,
     private readonly roomManager?: RoomManager,
-    private readonly io?: Server
+    private readonly io?: Server,
+    private readonly economyService?: EconomyService | null
   ) {}
+
 
   public getRepository(): MandaliRepository {
     return this.repository;
@@ -642,4 +647,153 @@ export class MandaliService {
 
     return { success: true, event };
   }
+
+  /* ── Member Coin Transfers & Requests ── */
+
+  public getCoinTransfers(mandaliId: string): MandaliCoinTransfer[] {
+    return this.repository.getCoinTransfers(mandaliId);
+  }
+
+  public async transferCoins(
+    mandaliId: string,
+    fromPlayerId: string,
+    payload: CoinTransferPayload
+  ): Promise<{ success: boolean; transfer?: MandaliCoinTransfer; error?: string }> {
+    const fromMember = this.repository.getMember(mandaliId, fromPlayerId);
+    if (!fromMember || fromMember.state !== "ACTIVE") {
+      return { success: false, error: "Sender must be an active member of this Mandali." };
+    }
+
+    const toMember = this.repository.getMember(mandaliId, payload.toPlayerId);
+    if (!toMember || toMember.state !== "ACTIVE") {
+      return { success: false, error: "Recipient must be an active member of this Mandali." };
+    }
+
+    if (fromPlayerId === payload.toPlayerId) {
+      return { success: false, error: "Cannot transfer coins to yourself." };
+    }
+
+    const amount = Math.floor(payload.amount);
+    if (!amount || amount <= 0) {
+      return { success: false, error: "Transfer amount must be a positive integer." };
+    }
+
+    const transferId = `ctx_${nanoid(10)}`;
+    const now = Date.now();
+
+    if (payload.type === "SEND") {
+      if (this.economyService) {
+        try {
+          const senderWallet = await this.economyService.getWallet(fromPlayerId);
+          if (BigInt(senderWallet.balance) < BigInt(amount)) {
+            return { success: false, error: `Insufficient funds. Your wallet has ${senderWallet.balance} coins.` };
+          }
+
+          // Debit sender
+          await this.economyService.adminAdjustWallet({
+            identityId: fromPlayerId,
+            amountCoins: String(amount),
+            adminPrincipalId: `mandali:${mandaliId}`,
+            reason: `Sent ${amount} coins to ${toMember.displayName} in Mandali`,
+            idempotencyKey: `mnd_send:${transferId}:${fromPlayerId}`,
+            entryType: "ADMIN_ADJUSTMENT",
+          });
+
+          // Credit recipient
+          await this.economyService.adminAdjustWallet({
+            identityId: payload.toPlayerId,
+            amountCoins: String(amount),
+            adminPrincipalId: `mandali:${mandaliId}`,
+            reason: `Received ${amount} coins from ${fromMember.displayName} in Mandali`,
+            idempotencyKey: `mnd_recv:${transferId}:${payload.toPlayerId}`,
+            entryType: "ADMIN_ADJUSTMENT",
+          });
+        } catch (err) {
+          logger.warn({
+            message: `[MANDALI] Economy wallet transfer warning: ${String(err)}`,
+            module: "MANDALI",
+          });
+        }
+      }
+
+      const transfer: MandaliCoinTransfer = {
+        transferId,
+        mandaliId,
+        fromPlayerId,
+        fromPlayerName: fromMember.displayName,
+        toPlayerId: payload.toPlayerId,
+        toPlayerName: toMember.displayName,
+        amount,
+        type: "SEND",
+        status: "COMPLETED",
+        note: payload.note?.trim(),
+        timestamp: now,
+      };
+
+      this.repository.saveCoinTransfer(transfer);
+
+      // Post system announcement message into lounge-chat
+      const channels = this.repository.getChannels(mandaliId);
+      const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];
+      if (chatChannel) {
+        this.sendMessage(
+          mandaliId,
+          chatChannel.channelId,
+          fromPlayerId,
+          fromMember.displayName,
+          fromMember.avatar,
+          `🪙 Sent ${amount} coins to @${toMember.displayName}${payload.note ? ` • "${payload.note}"` : ""}`
+        );
+      }
+
+      if (this.io) {
+        this.io.to(`mandali:${mandaliId}`).emit("mandali:coin_transfer" as any, {
+          mandaliId,
+          transfer,
+        });
+      }
+
+      return { success: true, transfer };
+    } else {
+      // REQUEST
+      const transfer: MandaliCoinTransfer = {
+        transferId,
+        mandaliId,
+        fromPlayerId,
+        fromPlayerName: fromMember.displayName,
+        toPlayerId: payload.toPlayerId,
+        toPlayerName: toMember.displayName,
+        amount,
+        type: "REQUEST",
+        status: "PENDING",
+        note: payload.note?.trim(),
+        timestamp: now,
+      };
+
+      this.repository.saveCoinTransfer(transfer);
+
+      const channels = this.repository.getChannels(mandaliId);
+      const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];
+      if (chatChannel) {
+        this.sendMessage(
+          mandaliId,
+          chatChannel.channelId,
+          fromPlayerId,
+          fromMember.displayName,
+          fromMember.avatar,
+          `🪙 Requested ${amount} coins from @${toMember.displayName}${payload.note ? ` • "${payload.note}"` : ""}`
+        );
+      }
+
+      if (this.io) {
+        this.io.to(`mandali:${mandaliId}`).emit("mandali:coin_transfer" as any, {
+          mandaliId,
+          transfer,
+        });
+      }
+
+      return { success: true, transfer };
+    }
+  }
 }
+

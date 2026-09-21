@@ -88,6 +88,10 @@ export interface Capabilities {
   bypassMaintenance: boolean;
   /** Unlock all platform features, experimental modes, and testing sandboxes. */
   unlockAllFeatures: boolean;
+  /** Create a persistent Mandali community. Signed-in members only. */
+  createMandali: boolean;
+  /** Join or apply to a Mandali community. Signed-in members only. */
+  joinMandali: boolean;
 }
 
 const GUEST: Capabilities = {
@@ -107,6 +111,8 @@ const GUEST: Capabilities = {
   accessAdminPanel: false,
   bypassMaintenance: false,
   unlockAllFeatures: false,
+  createMandali: false,
+  joinMandali: false,
 };
 
 const MEMBER: Capabilities = {
@@ -126,6 +132,8 @@ const MEMBER: Capabilities = {
   accessAdminPanel: false,
   bypassMaintenance: false,
   unlockAllFeatures: false,
+  createMandali: true,
+  joinMandali: true,
 };
 
 const SUPER_ADMIN: Capabilities = {
@@ -145,7 +153,10 @@ const SUPER_ADMIN: Capabilities = {
   accessAdminPanel: true,
   bypassMaintenance: true,
   unlockAllFeatures: true,
+  createMandali: true,
+  joinMandali: true,
 };
+
 
 export function capabilitiesFor(kind: AccountKind): Capabilities {
   if (kind === "super_admin" || kind === "admin") return SUPER_ADMIN;

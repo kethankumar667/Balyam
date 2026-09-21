@@ -20,6 +20,8 @@ import type {
   MandaliMemory,
   MandaliEvent,
   CreateMandaliPayload,
+  MandaliCoinTransfer,
+  CoinTransferPayload,
 } from "@shared/mandali/types.js";
 import type {
   MandaliPartyLaunchedBroadcast,
@@ -30,6 +32,7 @@ import type {
 import type { GameKind } from "@shared/types.js";
 import { apiFetch, apiJson } from "../lib/playerIdentity";
 import { getSocket } from "../lib/socket";
+import { useAuthStore } from "./authStore";
 
 export interface MandaliStore {
   // Discovery & Communities
@@ -43,6 +46,7 @@ export interface MandaliStore {
   parties: MandaliParty[];
   memories: MandaliMemory[];
   events: MandaliEvent[];
+  coinTransfers: MandaliCoinTransfer[];
 
   // Launch Handoff tracking
   activeGameLaunch: MandaliPartyLaunchedBroadcast | null;
@@ -58,18 +62,22 @@ export interface MandaliStore {
   setActiveChannel: (channelId: string) => void;
   fetchMessages: (channelId: string) => Promise<void>;
   createMandali: (payload: CreateMandaliPayload) => Promise<{ success: boolean; mandali?: Mandali; error?: string }>;
-  joinMandali: (mandaliId: string, statement?: string) => Promise<{ success: boolean; error?: string }>;
+  joinMandali: (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }) => Promise<{ success: boolean; error?: string }>;
   leaveMandali: (mandaliId: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Coin Transfers
+  fetchCoinTransfers: (mandaliId: string) => Promise<void>;
+  transferCoins: (mandaliId: string, payload: CoinTransferPayload) => Promise<{ success: boolean; transfer?: MandaliCoinTransfer; error?: string }>;
 
   // Realtime Socket Methods
   initMandaliSocket: (mandaliId: string, playerId: string) => void;
   cleanupMandaliSocket: (mandaliId: string, playerId: string) => void;
-  sendMessage: (content: string, replyToId?: string) => Promise<{ success: boolean; error?: string }>;
-  reactToMessage: (messageId: string, emoji: string) => Promise<void>;
-  createParty: (game: GameKind, modeId: string, title: string, slots: number) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
-  joinParty: (partyId: string) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
-  leaveParty: (partyId: string) => Promise<{ success: boolean; error?: string }>;
-  launchParty: (partyId: string) => Promise<{ success: boolean; roomCode?: string; game?: string; error?: string }>;
+  sendMessage: (content: string, playerId?: string, replyToId?: string) => Promise<{ success: boolean; message?: MandaliMessage; error?: string }>;
+  reactToMessage: (messageId: string, emoji: string, playerId?: string) => Promise<void>;
+  createParty: (game: GameKind, modeId: string, title: string, slots: number, playerId?: string) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
+  joinParty: (partyId: string, playerId?: string) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
+  leaveParty: (partyId: string, playerId?: string) => Promise<{ success: boolean; error?: string }>;
+  launchParty: (partyId: string, leaderId?: string) => Promise<{ success: boolean; roomCode?: string; game?: string; error?: string }>;
   clearActiveLaunch: () => void;
 }
 
@@ -173,6 +181,19 @@ export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
 
 let socketListenersBound = false;
 
+function resolveCurrentPlayerId(passedId?: string): string {
+  if (passedId && passedId !== "me") return passedId;
+  const auth = useAuthStore.getState();
+  if (auth.userId) return auth.userId;
+  if (typeof localStorage !== "undefined") {
+    const guestId = localStorage.getItem("bhalyam.guest.id");
+    if (guestId) return guestId;
+    const playerId = localStorage.getItem("mpg.playerId");
+    if (playerId) return playerId;
+  }
+  return "p_member_1";
+}
+
 export const useMandaliStore = create<MandaliStore>((set, get) => ({
   mandalis: DEFAULT_PREVIEW_MANDALIS,
   myMandalis: [],
@@ -184,6 +205,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   parties: [],
   memories: [],
   events: [],
+  coinTransfers: [],
   activeGameLaunch: null,
   isLoading: false,
   isSubmitting: false,
@@ -310,13 +332,17 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   createMandali: async (payload: CreateMandaliPayload) => {
     set({ isSubmitting: true, errorMessage: null });
     try {
-      const storedId = typeof localStorage !== "undefined" ? localStorage.getItem("bhalyam.guest.id") : null;
+      const storedName = typeof localStorage !== "undefined" ? localStorage.getItem("mpg.playerName") : null;
+      const storedAvatar = typeof localStorage !== "undefined" ? localStorage.getItem("mpg.avatar") : null;
+      const playerId = resolveCurrentPlayerId();
+
       const res = await apiFetch("/api/mandali", {
         method: "POST",
         body: JSON.stringify({
           payload,
-          creatorId: storedId || undefined,
-          creatorName: "Mandali Founder",
+          creatorId: playerId,
+          creatorName: storedName || "Mandali Founder",
+          creatorAvatar: storedAvatar || "file_0000000084c48208b1f893419d784cf2_1.jpg",
         }),
       });
       const data = (await res.json()) as { success?: boolean; mandali?: Mandali; error?: string };
@@ -336,20 +362,25 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     }
   },
 
-
-  joinMandali: async (mandaliId: string, statement?: string) => {
+  joinMandali: async (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }) => {
     set({ isSubmitting: true });
     try {
+      const storedName = typeof localStorage !== "undefined" ? localStorage.getItem("mpg.playerName") : null;
+      const storedAvatar = typeof localStorage !== "undefined" ? localStorage.getItem("mpg.avatar") : null;
+      const playerId = resolveCurrentPlayerId(userDetails?.playerId);
+      const displayName = userDetails?.displayName || storedName || "Mandali Member";
+      const avatar = userDetails?.avatar || storedAvatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
+
       const res = await apiFetch(`/api/mandali/${mandaliId}/join`, {
         method: "POST",
-        body: JSON.stringify({ statement }),
+        body: JSON.stringify({ playerId, displayName, avatar, statement }),
       });
       const data = (await res.json()) as { success: boolean; error?: string };
       set({ isSubmitting: false });
       if (data.success) {
         // Refresh details
-        get().fetchMandaliByHandleOrId(mandaliId);
-        get().fetchMyMandalis();
+        await get().fetchMandaliByHandleOrId(mandaliId);
+        await get().fetchMyMandalis();
         return { success: true };
       }
       return { success: false, error: data.error || "Failed to join Mandali" };
@@ -375,6 +406,45 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         return { success: true };
       }
       return { success: false, error: data.error || "Failed to leave Mandali" };
+    } catch (err) {
+      set({ isSubmitting: false });
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  fetchCoinTransfers: async (mandaliId: string) => {
+    try {
+      const res = await apiJson<{ success: boolean; transfers: MandaliCoinTransfer[] }>(
+        `/api/mandali/${mandaliId}/coins/transfers`
+      );
+      if (res && res.success) {
+        set({ coinTransfers: res.transfers || [] });
+      }
+    } catch {
+      // ignore
+    }
+  },
+
+  transferCoins: async (mandaliId: string, payload: CoinTransferPayload) => {
+    set({ isSubmitting: true });
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/coins/transfer`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as { success: boolean; transfer?: MandaliCoinTransfer; error?: string };
+      set({ isSubmitting: false });
+      if (data.success && data.transfer) {
+        set((state) => ({
+          coinTransfers: [data.transfer!, ...state.coinTransfers],
+        }));
+        const { activeChannelId } = get();
+        if (activeChannelId) {
+          get().fetchMessages(activeChannelId);
+        }
+        return { success: true, transfer: data.transfer };
+      }
+      return { success: false, error: data.error || "Failed to transfer coins" };
     } catch (err) {
       set({ isSubmitting: false });
       return { success: false, error: err instanceof Error ? err.message : "Network error" };
@@ -463,6 +533,15 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
           ),
         }));
       });
+
+      socket.on("mandali:coin_transfer" as any, (payload: { mandaliId: string; transfer: MandaliCoinTransfer }) => {
+        const { activeMandali } = get();
+        if (!activeMandali || activeMandali.id !== payload.mandaliId) return;
+
+        set((state) => ({
+          coinTransfers: [payload.transfer, ...state.coinTransfers],
+        }));
+      });
     }
   },
 
@@ -471,9 +550,11 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     socket.emit("mandali:leave_room" as any, { mandaliId, playerId });
   },
 
-  sendMessage: async (content: string, replyToId?: string) => {
+  sendMessage: async (content: string, playerId?: string, replyToId?: string) => {
     const { activeMandali, activeChannelId } = get();
     if (!activeMandali || !activeChannelId) return { success: false, error: "No active channel" };
+
+    const effectivePlayerId = resolveCurrentPlayerId(playerId);
 
     return new Promise((resolve) => {
       const socket = getSocket();
@@ -482,43 +563,59 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         {
           mandaliId: activeMandali.id,
           channelId: activeChannelId,
-          playerId: "me", // Server resolves or checks member
+          playerId: effectivePlayerId,
           content,
           replyToId,
         },
         (res: unknown) => {
           const outcome = res as { success: boolean; message?: MandaliMessage; error?: string };
-          resolve(outcome);
+          if (outcome?.success && outcome.message) {
+            const msg = outcome.message;
+            set((state) => {
+              const chId = msg.channelId;
+              const currentMsgs = state.messages[chId] || [];
+              if (currentMsgs.some((m) => m.messageId === msg.messageId)) return state;
+              return {
+                messages: {
+                  ...state.messages,
+                  [chId]: [...currentMsgs, msg],
+                },
+              };
+            });
+          }
+          resolve(outcome || { success: false, error: "Failed to send message" });
         }
       );
     });
   },
 
-  reactToMessage: async (messageId: string, emoji: string) => {
+  reactToMessage: async (messageId: string, emoji: string, playerId?: string) => {
     const { activeMandali, activeChannelId } = get();
     if (!activeMandali || !activeChannelId) return;
 
+    const effectivePlayerId = resolveCurrentPlayerId(playerId);
     const socket = getSocket();
     socket.emit("mandali:chat:react" as any, {
       mandaliId: activeMandali.id,
       channelId: activeChannelId,
       messageId,
-      playerId: "me",
+      playerId: effectivePlayerId,
       emoji,
     });
   },
 
-  createParty: async (game: GameKind, modeId: string, title: string, slots: number) => {
+  createParty: async (game: GameKind, modeId: string, title: string, slots: number, playerId?: string) => {
     const { activeMandali } = get();
     if (!activeMandali) return { success: false, error: "No active Mandali" };
 
+    const effectivePlayerId = resolveCurrentPlayerId(playerId);
     return new Promise((resolve) => {
       const socket = getSocket();
       socket.emit(
         "mandali:party:create" as any,
         {
           mandaliId: activeMandali.id,
-          playerId: "me",
+          playerId: effectivePlayerId,
           game,
           modeId,
           title,
@@ -532,10 +629,11 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     });
   },
 
-  joinParty: async (partyId: string) => {
+  joinParty: async (partyId: string, playerId?: string) => {
     const { activeMandali } = get();
     if (!activeMandali) return { success: false, error: "No active Mandali" };
 
+    const effectivePlayerId = resolveCurrentPlayerId(playerId);
     return new Promise((resolve) => {
       const socket = getSocket();
       socket.emit(
@@ -543,7 +641,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         {
           mandaliId: activeMandali.id,
           partyId,
-          playerId: "me",
+          playerId: effectivePlayerId,
         },
         (res: unknown) => {
           const outcome = res as { success: boolean; party?: MandaliParty; error?: string };
@@ -553,10 +651,11 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     });
   },
 
-  leaveParty: async (partyId: string) => {
+  leaveParty: async (partyId: string, playerId?: string) => {
     const { activeMandali } = get();
     if (!activeMandali) return { success: false, error: "No active Mandali" };
 
+    const effectivePlayerId = resolveCurrentPlayerId(playerId);
     return new Promise((resolve) => {
       const socket = getSocket();
       socket.emit(
@@ -564,7 +663,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         {
           mandaliId: activeMandali.id,
           partyId,
-          playerId: "me",
+          playerId: effectivePlayerId,
         },
         (res: unknown) => {
           const outcome = res as { success: boolean; error?: string };
@@ -574,10 +673,11 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     });
   },
 
-  launchParty: async (partyId: string) => {
+  launchParty: async (partyId: string, leaderId?: string) => {
     const { activeMandali } = get();
     if (!activeMandali) return { success: false, error: "No active Mandali" };
 
+    const effectiveLeaderId = resolveCurrentPlayerId(leaderId);
     return new Promise((resolve) => {
       const socket = getSocket();
       socket.emit(
@@ -585,7 +685,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         {
           mandaliId: activeMandali.id,
           partyId,
-          leaderId: "me",
+          leaderId: effectiveLeaderId,
         },
         (res: unknown) => {
           const outcome = res as { success: boolean; roomCode?: string; game?: string; error?: string };

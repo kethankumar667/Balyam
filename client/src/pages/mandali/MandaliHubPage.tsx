@@ -11,14 +11,17 @@
  * - WCAG 2.1 AA compliant focus rings.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useViewport } from "../../lib/useViewport";
 import { useMandaliStore } from "../../store/mandaliStore";
+import { useAuthStore } from "../../store/authStore";
+import { useRoomStore } from "../../store/roomStore";
 import { usePlayerId } from "../../lib/playerIdentity";
 import { useTheme } from "../../lib/useTheme";
 import { MandaliHubDesktop } from "./MandaliHubDesktop";
 import { MandaliHubMobile } from "./MandaliHubMobile";
+import { CoinTransferModal } from "./CoinTransferModal";
 import { Play, Crown, Users, Zap, Sun, Moon } from "lucide-react";
 
 export default function MandaliHubPage(): JSX.Element {
@@ -26,7 +29,13 @@ export default function MandaliHubPage(): JSX.Element {
   const navigate = useNavigate();
   const viewport = useViewport();
   const { playerId } = usePlayerId();
+  const isMember = useAuthStore((s) => s.isMember);
+  const playerName = useRoomStore((s) => s.playerName);
+  const avatarId = useRoomStore((s) => s.avatarId);
   const [theme, toggleTheme] = useTheme();
+
+  const [showCoinTransfer, setShowCoinTransfer] = useState(false);
+  const [preselectedMemberId, setPreselectedMemberId] = useState<string | undefined>(undefined);
 
   const {
     activeMandali,
@@ -94,7 +103,6 @@ export default function MandaliHubPage(): JSX.Element {
     );
   }
 
-
   const isCurrentMember = members.some((m) => m.playerId === playerId);
   const activeChannelMessages = activeChannelId ? messages[activeChannelId] || [] : [];
 
@@ -103,6 +111,11 @@ export default function MandaliHubPage(): JSX.Element {
     const targetRoom = activeGameLaunch.roomCode;
     clearActiveLaunch();
     navigate(`/room/${targetRoom}`);
+  };
+
+  const handleOpenCoinTransfer = (memberId?: string) => {
+    setPreselectedMemberId(memberId);
+    setShowCoinTransfer(true);
   };
 
   const sharedProps = {
@@ -115,13 +128,14 @@ export default function MandaliHubPage(): JSX.Element {
     memories,
     currentUserId: playerId,
     onSelectChannel: setActiveChannel,
-    onSendMessage: (content: string) => sendMessage(content),
-    onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji),
+    onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
+    onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
     onCreateParty: (game: any, modeId: string, title: string, slots: number) =>
-      createParty(game, modeId, title, slots),
-    onJoinParty: (partyId: string) => joinParty(partyId),
-    onLeaveParty: (partyId: string) => leaveParty(partyId),
-    onLaunchParty: (partyId: string) => launchParty(partyId),
+      createParty(game, modeId, title, slots, playerId || undefined),
+    onJoinParty: (partyId: string) => joinParty(partyId, playerId || undefined),
+    onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),
+    onLaunchParty: (partyId: string) => launchParty(partyId, playerId || undefined),
+    onOpenCoinTransfer: handleOpenCoinTransfer,
     onLeaveMandali: async () => {
       await leaveMandali(activeMandali.id);
       navigate("/mandali");
@@ -135,7 +149,11 @@ export default function MandaliHubPage(): JSX.Element {
         <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm font-bold sticky top-0 z-30 shadow-md">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            <span>You are previewing {activeMandali.name}. Join to chat in real-time and squad up!</span>
+            <span>
+              {isMember
+                ? `You are previewing ${activeMandali.name}. Join to chat in real-time and squad up!`
+                : `You are previewing ${activeMandali.name}. Sign in as a BHALYAM member to join, chat, and transfer coins.`}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -147,18 +165,32 @@ export default function MandaliHubPage(): JSX.Element {
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button
-              type="button"
-              onClick={async () => {
-                const res = await joinMandali(activeMandali.id);
-                if (!res.success) {
-                  alert(res.error || "Failed to join");
-                }
-              }}
-              className="min-h-[36px] px-4 py-1 rounded-lg bg-slate-950 text-amber-400 font-extrabold hover:bg-slate-900 transition-colors shadow"
-            >
-              Join Mandali
-            </button>
+            {isMember ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await joinMandali(activeMandali.id, undefined, {
+                    playerId: playerId || undefined,
+                    displayName: playerName || "Mandali Member",
+                    avatar: avatarId || "file_0000000084c48208b1f893419d784cf2_1.jpg",
+                  });
+                  if (!res.success) {
+                    alert(res.error || "Failed to join");
+                  }
+                }}
+                className="min-h-[36px] px-4 py-1 rounded-lg bg-slate-950 text-amber-400 font-extrabold hover:bg-slate-900 transition-colors shadow"
+              >
+                Join Mandali
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="min-h-[36px] px-4 py-1 rounded-lg bg-slate-950 text-amber-400 font-extrabold hover:bg-slate-900 transition-colors shadow"
+              >
+                Sign In to Join
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -228,6 +260,17 @@ export default function MandaliHubPage(): JSX.Element {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Coin Transfer Modal */}
+      {showCoinTransfer && activeMandali && (
+        <CoinTransferModal
+          mandaliId={activeMandali.id}
+          members={members}
+          currentUserId={playerId}
+          preselectedMemberId={preselectedMemberId}
+          onClose={() => setShowCoinTransfer(false)}
+        />
       )}
     </div>
   );

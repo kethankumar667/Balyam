@@ -1,5 +1,43 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import type { MandaliService } from "./MandaliService.js";
+
+function extractPlayerFromReq(req: Request): { playerId: string; isMember: boolean } | null {
+  if (req.player) {
+    return {
+      playerId: req.player.playerId,
+      isMember: req.player.kind === "member",
+    };
+  }
+
+  const auth = req.headers["authorization"];
+  if (auth && auth.startsWith("Bearer ")) {
+    try {
+      const token = auth.slice(7);
+      const [, payloadB64] = token.split(".");
+      if (payloadB64) {
+        const json = Buffer.from(payloadB64, "base64url").toString("utf8");
+        const payload = JSON.parse(json) as { sub?: string };
+        if (payload.sub) {
+          return { playerId: payload.sub, isMember: true };
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const accountKind = req.headers["x-account-kind"];
+  const bodyPlayerId = typeof req.body?.playerId === "string" ? req.body.playerId : null;
+  const creatorId = typeof req.body?.creatorId === "string" ? req.body.creatorId : null;
+  const id = bodyPlayerId || creatorId;
+
+  if (id) {
+    const isMember = accountKind === "member" || (!id.startsWith("guest_") && !id.startsWith("bg_"));
+    return { playerId: id, isMember };
+  }
+
+  return null;
+}
 
 export function createMandaliRouter(mandaliService: MandaliService): Router {
   const router = Router();
@@ -21,30 +59,18 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ success: true, mandalis });
   });
 
-  // Create Mandali
+  // Create Mandali (Members Only)
   router.post("/", (req, res) => {
-    // Read creatorId from body OR JWT Authorization header
-    let creatorId: string = req.body.creatorId || "";
-    if (!creatorId) {
-      const auth = req.headers["authorization"];
-      if (auth && auth.startsWith("Bearer ")) {
-        try {
-          const token = auth.slice(7);
-          const [, payloadB64] = token.split(".");
-          if (payloadB64) {
-            const json = Buffer.from(payloadB64, "base64url").toString("utf8");
-            const payload = JSON.parse(json) as { sub?: string };
-            if (payload.sub) creatorId = payload.sub;
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-    if (!creatorId) {
-      creatorId = `p_founder_${Date.now()}`;
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({
+        success: false,
+        error: "Only signed-in members can create a Mandali. Guests are not permitted.",
+      });
+      return;
     }
 
+    const creatorId = playerInfo.playerId;
     const creatorName: string = req.body.creatorName || "Mandali Founder";
     const creatorAvatar: string = req.body.creatorAvatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
 
@@ -151,24 +177,32 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ members });
   });
 
-  // Apply or Direct Join
-  router.post("/:id/apply", (req, res) => {
-    const { playerId, displayName, avatar, statement } = req.body;
-    if (!playerId || !displayName) {
-      res.status(400).json({ error: "Missing playerId or displayName." });
+  // Apply or Direct Join (Members Only)
+  router.post(["/:id/apply", "/:id/join"], (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({
+        success: false,
+        error: "Only signed-in members can join a Mandali. Guests are not permitted.",
+      });
       return;
     }
+
+    const playerId = playerInfo.playerId || req.body.playerId;
+    const displayName = req.body.displayName || "Member";
+    const avatar = req.body.avatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
+    const statement = req.body.statement;
 
     const result = mandaliService.applyToMandali(
       req.params.id,
       playerId,
       displayName,
-      avatar || "avatar_1",
+      avatar,
       statement
     );
 
     if (!result.success) {
-      res.status(400).json({ error: result.error });
+      res.status(400).json({ success: false, error: result.error });
       return;
     }
 
@@ -177,15 +211,16 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Leave Mandali
   router.post("/:id/leave", (req, res) => {
-    const { playerId } = req.body;
+    const playerInfo = extractPlayerFromReq(req);
+    const playerId = playerInfo?.playerId || req.body.playerId;
     if (!playerId) {
-      res.status(400).json({ error: "Missing playerId." });
+      res.status(400).json({ success: false, error: "Missing playerId." });
       return;
     }
 
     const result = mandaliService.leaveMandali(req.params.id, playerId);
     if (!result.success) {
-      res.status(400).json({ error: result.error });
+      res.status(400).json({ success: false, error: result.error });
       return;
     }
 
@@ -361,6 +396,44 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   router.get("/:id/memories", (req, res) => {
     const memories = mandaliService.getMemories(req.params.id);
     res.json({ memories });
+  });
+
+  // Transfer Coins (Send / Request) - Members Only
+  router.post("/:id/coins/transfer", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({
+        success: false,
+        error: "Only registered members can transfer or request coins in a Mandali.",
+      });
+      return;
+    }
+
+    const { toPlayerId, amount, type, note } = req.body;
+    if (!toPlayerId || typeof amount !== "number") {
+      res.status(400).json({ success: false, error: "Invalid transfer parameters." });
+      return;
+    }
+
+    const result = await mandaliService.transferCoins(req.params.id, playerInfo.playerId, {
+      toPlayerId,
+      amount,
+      type: type === "REQUEST" ? "REQUEST" : "SEND",
+      note,
+    });
+
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+
+    res.json({ success: true, transfer: result.transfer });
+  });
+
+  // Get Coin Transfers History
+  router.get("/:id/coins/transfers", (req, res) => {
+    const transfers = mandaliService.getCoinTransfers(req.params.id);
+    res.json({ success: true, transfers });
   });
 
   return router;
