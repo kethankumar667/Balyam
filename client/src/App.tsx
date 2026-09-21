@@ -71,6 +71,8 @@ const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatal
 const LazySocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
+const LazyMandaliDiscoveryPage = lazy(() => import("./pages/mandali/MandaliDiscoveryPage"));
+const LazyMandaliHubPage = lazy(() => import("./pages/mandali/MandaliHubPage"));
 
 export interface RouteComponents {
   BhalyamHome?: React.ComponentType;
@@ -132,6 +134,8 @@ export interface RouteComponents {
   SocialHubPage?: React.ComponentType;
   PreviewLoader?: React.ComponentType;
   GameTileShowcase?: React.ComponentType;
+  MandaliDiscoveryPage?: React.ComponentType;
+  MandaliHubPage?: React.ComponentType;
 }
 
 export interface AppProps {
@@ -317,6 +321,8 @@ export default function App({ components = {} }: AppProps) {
   const SocialHubPage = components.SocialHubPage ?? LazySocialHubPage;
   const PreviewLoader = components.PreviewLoader ?? LazyPreviewLoader;
   const GameTileShowcase = components.GameTileShowcase ?? LazyGameTileShowcase;
+  const MandaliDiscoveryPage = components.MandaliDiscoveryPage ?? LazyMandaliDiscoveryPage;
+  const MandaliHubPage = components.MandaliHubPage ?? LazyMandaliHubPage;
 
   useEffect(() => {
     enforceConsentOnLoad();
@@ -382,6 +388,8 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
+            <Route path="/mandali" element={<MandaliDiscoveryPage />} />
+            <Route path="/mandali/:handle" element={<MandaliHubPage />} />
             <Route path="/design-system" element={<DesignSystemCatalogPage />} />
 
             {/* Help & Trust Architecture */}
