@@ -23,8 +23,6 @@ import {
   Flame,
   ArrowRight,
   Zap,
-  Sun,
-  Moon,
   Gamepad2,
   Compass,
   ChevronDown,
@@ -33,15 +31,13 @@ import {
 import { useMandaliStore, DEFAULT_PREVIEW_MANDALIS } from "../../store/mandaliStore";
 import { useAuthStore } from "../../store/authStore";
 import { CreateMandaliModal } from "./CreateMandaliModal";
-import { useTheme } from "../../lib/useTheme";
-import BhalyamLogo from "../../components/bhalyam/BhalyamLogo";
+import AppLayout from "../../components/layout/AppLayout";
 
 const LANGUAGES = ["All", "English", "Telugu", "Hindi", "Tamil", "Kannada"];
 const POPULAR_TAGS = ["All", "Casual", "Tournaments", "Ludo", "Hand Cricket", "Rummy", "Weekend Play"];
 
 export default function MandaliDiscoveryPage(): JSX.Element {
   const navigate = useNavigate();
-  const [theme, toggleTheme] = useTheme();
   const isMember = useAuthStore((s) => s.isMember);
   const { mandalis, myMandalis, isLoading, fetchMandalis, fetchMyMandalis, createMandali } =
     useMandaliStore();
@@ -97,49 +93,40 @@ export default function MandaliDiscoveryPage(): JSX.Element {
   const isExploreVisible = !hasJoinedMandalis || showExplore;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 select-none">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/90 dark:border-slate-800/90 px-4 sm:px-6 py-3 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 font-black text-lg text-slate-900 dark:text-white hover:text-amber-500 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg p-1"
-          >
-            <BhalyamLogo size={32} />
-            <span className="tracking-tight font-extrabold">BHALYAM</span>
-          </Link>
-          <span className="text-slate-300 dark:text-slate-700 font-bold">/</span>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-400 text-xs font-bold shadow-xs">
-            <Crown className="w-3.5 h-3.5" />
-            Mandali (మండలి)
+    <AppLayout>
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-14 space-y-6 sm:space-y-8 select-none">
+        {/* Mandali Header Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
+              <Crown className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  Mandali Communities
+                </h1>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-400 font-bold">
+                  మండలి
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium mt-0.5">
+                Form gaming squads, launch multiplayer arena rooms, chat in real-time, and transfer clan coins.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleCreateClick}
+              className="min-h-[44px] px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Mandali</span>
+            </button>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          {/* Theme Toggle Button */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
-            aria-label="Toggle Theme"
-          >
-            {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCreateClick}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Mandali</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-14 space-y-6 sm:space-y-8">
         {/* If user is in at least 1 Mandali: Dedicated "Your Communities" Headquarters */}
         {hasJoinedMandalis ? (
           <section className="space-y-4">
@@ -521,7 +508,7 @@ export default function MandaliDiscoveryPage(): JSX.Element {
             </section>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Guest Auth Required Modal */}
       {showAuthPrompt && (
@@ -574,6 +561,6 @@ export default function MandaliDiscoveryPage(): JSX.Element {
           }}
         />
       )}
-    </div>
+    </AppLayout>
   );
 }

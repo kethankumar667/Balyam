@@ -179,7 +179,7 @@ function RouteLoadingFallback() {
     );
   }
 
-  if (pathname.startsWith("/social")) {
+  if (pathname.startsWith("/social") || pathname.startsWith("/mandali")) {
     return (
       <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto space-y-6">

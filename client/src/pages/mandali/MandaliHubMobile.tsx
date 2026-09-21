@@ -126,7 +126,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
+    <div className="flex flex-col flex-1 min-h-0 h-full w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
       {/* ── TOP APP BAR ── */}
       <header className="h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/90 px-3 flex items-center justify-between z-20 flex-shrink-0 shadow-xs">
         <div className="flex items-center gap-2">

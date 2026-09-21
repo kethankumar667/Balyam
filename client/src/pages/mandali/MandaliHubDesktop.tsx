@@ -124,7 +124,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
+    <div className="flex flex-1 min-h-0 h-full w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
       {/* ── COLUMN 1: Channels & Community Crest Rail ── */}
       <aside className="w-72 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/90 dark:border-slate-800/90 flex flex-col justify-between flex-shrink-0 shadow-xs">
         <div>
