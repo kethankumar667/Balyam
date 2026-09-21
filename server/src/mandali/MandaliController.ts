@@ -23,26 +23,54 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Create Mandali
   router.post("/", (req, res) => {
-    const { creatorId, creatorName, creatorAvatar, payload } = req.body;
-    if (!creatorId || !creatorName || !payload?.name || !payload?.handle) {
-      res.status(400).json({ error: "Missing required Mandali creation fields." });
+    // Read creatorId from body OR JWT Authorization header
+    let creatorId: string = req.body.creatorId || "";
+    if (!creatorId) {
+      const auth = req.headers["authorization"];
+      if (auth && auth.startsWith("Bearer ")) {
+        try {
+          const token = auth.slice(7);
+          const [, payloadB64] = token.split(".");
+          if (payloadB64) {
+            const json = Buffer.from(payloadB64, "base64url").toString("utf8");
+            const payload = JSON.parse(json) as { sub?: string };
+            if (payload.sub) creatorId = payload.sub;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    if (!creatorId) {
+      creatorId = `p_founder_${Date.now()}`;
+    }
+
+    const creatorName: string = req.body.creatorName || "Mandali Founder";
+    const creatorAvatar: string = req.body.creatorAvatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
+
+    // Support both direct payload (req.body) and nested payload (req.body.payload)
+    const payload = req.body.payload || (req.body.name ? req.body : null);
+
+    if (!payload?.name || !payload?.handle) {
+      res.status(400).json({ success: false, error: "Missing required Mandali name or handle." });
       return;
     }
 
     const result = mandaliService.createMandali(
       creatorId,
       creatorName,
-      creatorAvatar || "avatar_1",
+      creatorAvatar,
       payload
     );
 
     if (!result.success) {
-      res.status(400).json({ error: result.error });
+      res.status(400).json({ success: false, error: result.error });
       return;
     }
 
-    res.status(201).json({ mandali: result.mandali });
+    res.status(201).json({ success: true, mandali: result.mandali });
   });
+
 
   // Get Mandali by Handle
   router.get("/handle/:handle", (req, res) => {

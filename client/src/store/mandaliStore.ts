@@ -310,18 +310,24 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   createMandali: async (payload: CreateMandaliPayload) => {
     set({ isSubmitting: true, errorMessage: null });
     try {
+      const storedId = typeof localStorage !== "undefined" ? localStorage.getItem("bhalyam.guest.id") : null;
       const res = await apiFetch("/api/mandali", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          payload,
+          creatorId: storedId || undefined,
+          creatorName: "Mandali Founder",
+        }),
       });
-      const data = (await res.json()) as { success: boolean; mandali?: Mandali; error?: string };
+      const data = (await res.json()) as { success?: boolean; mandali?: Mandali; error?: string };
       set({ isSubmitting: false });
-      if (data.success && data.mandali) {
+      if (data && (data.success || data.mandali)) {
+        const newMandali = data.mandali!;
         set((state) => ({
-          myMandalis: [data.mandali!, ...state.myMandalis],
-          mandalis: [data.mandali!, ...state.mandalis],
+          myMandalis: [newMandali, ...state.myMandalis],
+          mandalis: [newMandali, ...state.mandalis],
         }));
-        return { success: true, mandali: data.mandali };
+        return { success: true, mandali: newMandali };
       }
       return { success: false, error: data.error || "Failed to create Mandali" };
     } catch (err) {
@@ -329,6 +335,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       return { success: false, error: err instanceof Error ? err.message : "Network error" };
     }
   },
+
 
   joinMandali: async (mandaliId: string, statement?: string) => {
     set({ isSubmitting: true });
