@@ -73,10 +73,108 @@ export interface MandaliStore {
   clearActiveLaunch: () => void;
 }
 
+export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
+  {
+    id: "mandali_ludo_kings",
+    handle: "ludo-maharajas",
+    name: "Ludo Lounge Maharajas",
+    description: "Dedicated to precision dice rolls, cut-throat tactical blockades, and high-stakes speedrun circuits across Indian lounge boards.",
+    emblem: "pawn_amber",
+    bannerGradient: "from-amber-600 via-yellow-600 to-orange-700",
+    language: "Telugu",
+    region: "Telangana & AP",
+    tags: ["Tournaments", "Ludo", "Competitive", "Weekend Play"],
+    visibility: "PUBLIC",
+    memberCount: 28,
+    maxMembers: 50,
+    level: 4,
+    xp: 3450,
+    ownerId: "p_rajesh_ludo",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "mandali_hc_warriors",
+    handle: "hand-cricket-champs",
+    name: "Street & Galli Hand Cricket League",
+    description: "Childhood finger-cricket nostalgia! High-voltage death overs, boundary blitzes, and galli cricket tournaments every weekend evening.",
+    emblem: "flame_ruby",
+    bannerGradient: "from-rose-600 via-red-600 to-amber-700",
+    language: "Hindi",
+    region: "All India",
+    tags: ["Hand Cricket", "Casual", "Weekend Play", "Voice Lounge"],
+    visibility: "PUBLIC",
+    memberCount: 42,
+    maxMembers: 60,
+    level: 6,
+    xp: 6200,
+    ownerId: "p_vikram_hc",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 45,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "mandali_rummy_royals",
+    handle: "rummy-royals",
+    name: "Classic Rummy Royals",
+    description: "Mastery over pure sequences, second sequences, and disciplined drops. Where 0 penalty points is the only acceptable declaration.",
+    emblem: "crown_gold",
+    bannerGradient: "from-purple-600 via-indigo-600 to-slate-900",
+    language: "English",
+    region: "Global",
+    tags: ["Rummy", "Tournaments", "Competitive"],
+    visibility: "DISCOVERABLE",
+    memberCount: 31,
+    maxMembers: 50,
+    level: 5,
+    xp: 4800,
+    ownerId: "p_aditi_rummy",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 25,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "mandali_snl_explorers",
+    handle: "snakes-and-ladders-club",
+    name: "Paramapada Sopanam (Vaikuntapali Club)",
+    description: "Sacred boards, fateful 99-snake drops, and miraculous ladder ascents. Reliving traditional Indian board games with hearty laughter.",
+    emblem: "shield_sapphire",
+    bannerGradient: "from-emerald-600 via-teal-600 to-cyan-700",
+    language: "Telugu",
+    region: "South India",
+    tags: ["Casual", "Weekend Play", "Voice Lounge"],
+    visibility: "PUBLIC",
+    memberCount: 18,
+    maxMembers: 40,
+    level: 3,
+    xp: 2150,
+    ownerId: "p_venkat_v",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 18,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "mandali_uno_champs",
+    handle: "uno-frenzy",
+    name: "Wild Draw-4 Blitz Guild",
+    description: "Stacking +4 cards, ruthless colour switches, and split-second 'UNO!' calls. Friendly chaos and fast-paced party games every night.",
+    emblem: "flame_ruby",
+    bannerGradient: "from-cyan-600 via-blue-600 to-indigo-800",
+    language: "English",
+    region: "Bangalore & Hyderabad",
+    tags: ["UNO", "Casual", "Voice Lounge"],
+    visibility: "PUBLIC",
+    memberCount: 24,
+    maxMembers: 45,
+    level: 4,
+    xp: 3900,
+    ownerId: "p_sneha_w",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 22,
+    updatedAt: Date.now(),
+  },
+];
+
 let socketListenersBound = false;
 
 export const useMandaliStore = create<MandaliStore>((set, get) => ({
-  mandalis: [],
+  mandalis: DEFAULT_PREVIEW_MANDALIS,
   myMandalis: [],
   activeMandali: null,
   members: [],
@@ -104,10 +202,10 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       if (res && res.success) {
         set({ mandalis: res.mandalis, isLoading: false });
       } else {
-        set({ isLoading: false });
+        set({ mandalis: DEFAULT_PREVIEW_MANDALIS, isLoading: false });
       }
     } catch {
-      set({ isLoading: false, errorMessage: "Failed to load Mandalis." });
+      set({ mandalis: DEFAULT_PREVIEW_MANDALIS, isLoading: false });
     }
   },
 

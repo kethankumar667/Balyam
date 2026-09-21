@@ -43,6 +43,15 @@ import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import type { GameKind } from "@shared/types.js";
 
+function getAvatarUrl(avatar?: string): string {
+  if (!avatar) return "/logo.png";
+  if (avatar.startsWith("/") || avatar.startsWith("http")) return avatar;
+  if (avatar.endsWith(".jpg") || avatar.endsWith(".png") || avatar.endsWith(".webp") || avatar.endsWith(".svg")) {
+    return `/Avatars/${avatar}`;
+  }
+  return `/Avatars/${avatar}.png`;
+}
+
 export interface MandaliHubMobileProps {
   mandali: Mandali;
   members: MandaliMember[];
@@ -174,7 +183,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                       className={`flex gap-2.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}
                     >
                       <img
-                        src={`/Avatars/${msg.senderAvatar || "avatar_1"}.png`}
+                        src={getAvatarUrl(msg.senderAvatar)}
                         alt={msg.senderName}
                         className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700 mt-1"
                         onError={(e) => {
@@ -359,7 +368,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                   <div className="flex items-center gap-2.5">
                     <div className="relative">
                       <img
-                        src={`/Avatars/${member.avatar || "avatar_1"}.png`}
+                        src={getAvatarUrl(member.avatar)}
                         alt={member.displayName}
                         className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover border border-slate-300 dark:border-slate-700"
                         onError={(e) => {
