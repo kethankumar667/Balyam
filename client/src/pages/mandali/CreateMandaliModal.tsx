@@ -1,8 +1,8 @@
 /**
- * BHALYAM Mandali — Create Mandali Modal
+ * BHALYAM Mandali — Futuristic Create Mandali Modal
  *
  * Creation dialog with unique handle verification, emblem picker, language tags,
- * and server-authoritative submission.
+ * and dual Light & Dark mode theme support.
  *
  * Rules:
  * - Touch targets >= 44x44px.
@@ -11,7 +11,7 @@
  */
 
 import React, { useState } from "react";
-import { X, Crown, Flame, Shield, Trophy, Check } from "lucide-react";
+import { X, Crown, Flame, Shield, Trophy, Check, Zap } from "lucide-react";
 import Modal from "../../components/Modal";
 import type { CreateMandaliPayload, MandaliVisibility } from "@shared/mandali/types.js";
 
@@ -22,10 +22,10 @@ export interface CreateMandaliModalProps {
 }
 
 const EMBLEMS = [
-  { id: "pawn_amber", name: "Amber Pawn", icon: Trophy, color: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
-  { id: "crown_gold", name: "Gold Crown", icon: Crown, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
-  { id: "flame_ruby", name: "Ruby Flame", icon: Flame, color: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
-  { id: "shield_sapphire", name: "Sapphire Shield", icon: Shield, color: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
+  { id: "pawn_amber", name: "Amber Pawn", icon: Trophy, color: "text-amber-500 bg-amber-500/10 border-amber-500/30" },
+  { id: "crown_gold", name: "Gold Crown", icon: Crown, color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/30" },
+  { id: "flame_ruby", name: "Ruby Flame", icon: Flame, color: "text-rose-500 bg-rose-500/10 border-rose-500/30" },
+  { id: "shield_sapphire", name: "Sapphire Shield", icon: Shield, color: "text-blue-500 bg-blue-500/10 border-blue-500/30" },
 ];
 
 const LANGUAGES = ["English", "Telugu", "Hindi", "Tamil", "Kannada", "Malayalam", "Bengali", "Marathi"];
@@ -58,7 +58,6 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
   };
 
   const handleHandleChange = (val: string) => {
-    // Auto strip @ and spaces, sanitize to alphanumeric and hyphens
     const clean = val.replace(/^@/, "").replace(/\s+/g, "-").toLowerCase();
     setHandle(clean);
   };
@@ -98,22 +97,22 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
 
   return (
     <Modal open={open} onClose={onClose} mobileSheet ariaLabel="Create New Mandali">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto text-left shadow-2xl">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto text-left shadow-2xl transition-colors">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-400" />
+            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-500" />
               Found a New Mandali (మండలి)
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
               Create a persistent gaming community for your friends and squad.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -121,7 +120,7 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
         </div>
 
         {error && (
-          <div className="my-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium">
+          <div className="my-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold">
             {error}
           </div>
         )}
@@ -131,7 +130,7 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
           {/* Name & Handle */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Mandali Name *
               </label>
               <input
@@ -141,16 +140,16 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Hyderabad Royals"
                 maxLength={40}
-                className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition-all"
+                className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Handle (@handle) *
               </label>
               <div className="relative flex items-center">
-                <span className="absolute left-3 text-slate-500 text-sm font-semibold select-none">
+                <span className="absolute left-3.5 text-slate-400 dark:text-slate-500 text-sm font-bold select-none">
                   @
                 </span>
                 <input
@@ -160,7 +159,7 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
                   onChange={(e) => handleHandleChange(e.target.value)}
                   placeholder="hyderabad-royals"
                   maxLength={24}
-                  className="w-full min-h-[44px] pl-8 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition-all font-mono"
+                  className="w-full min-h-[44px] pl-8 pr-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-mono"
                 />
               </div>
             </div>
@@ -168,7 +167,7 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Description / Motto
             </label>
             <textarea
@@ -177,13 +176,13 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
               placeholder="What makes your Mandali special? Casual matches, tournament practice, or family hangout..."
               rows={2}
               maxLength={160}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition-all resize-none"
+              className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all resize-none font-medium"
             />
           </div>
 
           {/* Emblem Selection */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
               Community Emblem
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -197,12 +196,12 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
                     onClick={() => setEmblem(emb.id)}
                     className={`min-h-[54px] p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
                       isSelected
-                        ? `${emb.color} ring-2 ring-amber-400`
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                        ? `${emb.color} ring-2 ring-amber-500 shadow-sm`
+                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-700"
                     }`}
                   >
                     <IconComponent className="w-5 h-5" />
-                    <span className="text-[10px] font-medium truncate w-full text-center">
+                    <span className="text-[10px] font-bold truncate w-full text-center">
                       {emb.name.split(" ")[0]}
                     </span>
                   </button>
@@ -214,13 +213,13 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
           {/* Language & Visibility */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Primary Language
               </label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
               >
                 {LANGUAGES.map((lang) => (
                   <option key={lang} value={lang}>
@@ -231,17 +230,17 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Joining Access
               </label>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setVisibility("PUBLIC")}
-                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                     visibility === "PUBLIC"
-                      ? "bg-amber-500/10 border-amber-500/40 text-amber-400"
-                      : "bg-slate-950 border-slate-800 text-slate-400"
+                      ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 shadow-xs"
+                      : "bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                   }`}
                 >
                   Public (Instant)
@@ -249,10 +248,10 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setVisibility("INVITE_ONLY")}
-                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                     visibility === "INVITE_ONLY"
-                      ? "bg-amber-500/10 border-amber-500/40 text-amber-400"
-                      : "bg-slate-950 border-slate-800 text-slate-400"
+                      ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 shadow-xs"
+                      : "bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                   }`}
                 >
                   Invite Only
@@ -263,7 +262,7 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
 
           {/* Tags */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Focus Tags (Pick up to 4)
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -274,10 +273,10 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 ${
+                    className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${
                       isSelected
-                        ? "bg-amber-500/20 border-amber-500 text-amber-300"
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                        ? "bg-amber-500/20 border-amber-500 text-amber-800 dark:text-amber-300 shadow-xs"
+                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-700"
                     }`}
                   >
                     {isSelected && <Check className="w-3 h-3" />}
@@ -293,10 +292,10 @@ export const CreateMandaliModal: React.FC<CreateMandaliModalProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="w-full min-h-[48px] px-6 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/20 active:scale-[0.99] transition-all disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+              className="w-full min-h-[48px] px-6 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/25 active:scale-[0.99] transition-all disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
             >
-              <Crown className="w-4 h-4" />
-              {submitting ? "Establishing Mandali..." : "Create Mandali"}
+              <Zap className="w-4 h-4 fill-current" />
+              {submitting ? "Establishing Mandali..." : "Establish Mandali Now"}
             </button>
           </div>
         </form>

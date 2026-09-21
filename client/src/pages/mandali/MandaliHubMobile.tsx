@@ -1,15 +1,16 @@
 /**
- * BHALYAM Mandali — Mobile Hub Layout (< 768px)
+ * BHALYAM Mandali — Futuristic Mobile Hub Layout (< 768px)
  *
- * Dedicated mobile-first layout with 4-tab thumb navigation:
+ * FAANG/MAANG-grade mobile gaming HUD with 4-tab thumb navigation:
  * - Tab 1: Chat (Active text channel realtime messages + composer)
  * - Tab 2: Squads (Active party squads + form squad bottom sheet)
  * - Tab 3: Gnapakalu (Shared memories timeline)
  * - Tab 4: Members (Roster, presence, and roles)
  *
- * Rules:
+ * Requirements:
+ * - Full Light (`data-theme="light"`) and Dark (`data-theme="dark"`) mode support.
  * - Touch targets strictly >= 44x44px.
- * - Zero usage of Sparkles from lucide-react. Uses Crown, Flame, Shield, Trophy, Users.
+ * - Zero usage of Sparkles from lucide-react. Uses Crown, Flame, Shield, Trophy, Users, Zap.
  * - Bottom sheets for navigation drawers.
  * - WCAG 2.1 AA focus rings.
  */
@@ -28,6 +29,7 @@ import {
   Crown,
   LogOut,
   Hash,
+  Zap,
 } from "lucide-react";
 import type {
   Mandali,
@@ -112,27 +114,27 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
       {/* ── TOP APP BAR ── */}
-      <header className="h-14 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between z-20 flex-shrink-0">
+      <header className="h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/90 px-3 flex items-center justify-between z-20 flex-shrink-0 shadow-xs">
         <div className="flex items-center gap-2">
           <Link
             to="/mandali"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-amber-500"
             aria-label="Back to Mandalis"
           >
             <ChevronLeft className="w-5 h-5" />
           </Link>
 
           <div>
-            <h1 className="font-bold text-white text-sm leading-tight truncate max-w-[150px]">
+            <h1 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight truncate max-w-[150px]">
               {mandali.name}
             </h1>
             {/* Channel switch trigger */}
             <button
               type="button"
               onClick={() => setShowChannelDrawer(true)}
-              className="flex items-center gap-1 text-[11px] text-amber-400 font-semibold focus-visible:outline-none"
+              className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400 font-bold focus-visible:outline-none"
             >
               <span>#{activeChannel?.name || "lounge-chat"}</span>
               <ChevronDown className="w-3 h-3" />
@@ -144,7 +146,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           <button
             type="button"
             onClick={onLeaveMandali}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-rose-400 focus-visible:ring-2 focus-visible:ring-rose-400 rounded-xl"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 focus-visible:ring-2 focus-visible:ring-rose-400 rounded-xl"
             title="Leave Mandali"
             aria-label="Leave Mandali"
           >
@@ -154,14 +156,14 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
       </header>
 
       {/* ── MAIN TAB CONTENT ── */}
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto relative bg-slate-50/50 dark:bg-slate-950">
         {/* TAB 1: CHAT */}
         {activeTab === "chat" && (
           <div className="flex flex-col h-full justify-between">
             <div className="flex-1 p-3 overflow-y-auto space-y-3">
               {messages.length === 0 ? (
-                <div className="text-center py-16 text-slate-500 text-xs">
-                  Welcome to #{activeChannel?.name}! Start the chat.
+                <div className="text-center py-16 text-slate-500 text-xs font-medium">
+                  Welcome to #{activeChannel?.name}! Start the conversation.
                 </div>
               ) : (
                 messages.map((msg) => {
@@ -174,7 +176,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                       <img
                         src={`/Avatars/${msg.senderAvatar || "avatar_1"}.png`}
                         alt={msg.senderName}
-                        className="w-7 h-7 rounded-full bg-slate-800 object-cover flex-shrink-0 border border-slate-700 mt-1"
+                        className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700 mt-1"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = "/logo.png";
                         }}
@@ -182,21 +184,21 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
 
                       <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"}`}>
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="font-semibold text-[11px] text-white">
+                          <span className="font-bold text-[11px] text-slate-900 dark:text-white">
                             {msg.senderName}
                           </span>
                           {msg.senderRole === "OWNER" && (
-                            <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-400 font-bold">
+                            <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-800 dark:text-amber-400 font-extrabold">
                               Founder
                             </span>
                           )}
                         </div>
 
                         <div
-                          className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
+                          className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed shadow-xs ${
                             isMine
-                              ? "bg-amber-500 text-slate-950 font-medium rounded-tr-none"
-                              : "bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-semibold rounded-tr-none"
+                              : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
                           }`}
                         >
                           {msg.content}
@@ -212,10 +214,10 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                                 key={emoji}
                                 type="button"
                                 onClick={() => onReactMessage(msg.messageId, emoji)}
-                                className={`text-[10px] px-1.5 py-0.5 rounded-full border flex items-center gap-0.5 ${
+                                className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-0.5 ${
                                   hasReacted
-                                    ? "bg-amber-500/20 border-amber-400 text-amber-300"
-                                    : "bg-slate-900 border-slate-800 text-slate-400"
+                                    ? "bg-amber-500/20 border-amber-400 text-amber-900 dark:text-amber-300 shadow-xs"
+                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                                 }`}
                               >
                                 <span>{emoji}</span>
@@ -248,7 +250,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
             {/* Mobile Composer */}
             <form
               onSubmit={handleSend}
-              className="p-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center gap-2 flex-shrink-0"
+              className="p-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-2 flex-shrink-0"
             >
               <input
                 type="text"
@@ -256,12 +258,12 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={`Message #${activeChannel?.name || "chat"}...`}
                 maxLength={500}
-                className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:border-amber-400 focus:outline-none"
+                className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:border-amber-500 focus:outline-none font-medium"
               />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center disabled:opacity-50 active:scale-95"
+                className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center disabled:opacity-50 active:scale-95 shadow-sm font-bold"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
@@ -274,14 +276,14 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
         {activeTab === "squads" && (
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                <Gamepad2 className="w-4 h-4 text-amber-400" />
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                <Gamepad2 className="w-4 h-4 text-amber-500" />
                 Active Squads ({parties.length})
               </h3>
               <button
                 type="button"
                 onClick={() => setShowCreateSquad(true)}
-                className="min-h-[44px] px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1 shadow"
+                className="min-h-[44px] px-3.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1 shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Form Squad
@@ -289,16 +291,16 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
             </div>
 
             {parties.length === 0 ? (
-              <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40">
-                <Gamepad2 className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <h4 className="font-bold text-white text-sm mb-1">No Squads Active</h4>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto mb-3">
+              <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40">
+                <Gamepad2 className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto mb-2" />
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1">No Squads Active</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xs mx-auto mb-3 font-medium">
                   Form a party for Ludo, Hand Cricket, or Rummy to play with Mandali members.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowCreateSquad(true)}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-sm"
                 >
                   Form First Squad
                 </button>
@@ -323,12 +325,12 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
         {/* TAB 3: GNAPAKALU (MEMORIES) */}
         {activeTab === "gnapakalu" && (
           <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                <Trophy className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                <Trophy className="w-4 h-4 text-amber-500" />
                 Gnapakalu (జ్ఞాపకాలు) Archive
               </h3>
-              <span className="text-[10px] text-amber-400 font-semibold">Shared Memories</span>
+              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Shared Memories</span>
             </div>
 
             <GnapakaluTimeline memories={memories} />
@@ -338,12 +340,12 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
         {/* TAB 4: ROSTER / MEMBERS */}
         {activeTab === "members" && (
           <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-amber-500" />
                 Mandali Members ({members.length})
               </h3>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                 {members.filter((m) => m.presence === "online").length} Online
               </span>
             </div>
@@ -352,33 +354,33 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               {members.map((member) => (
                 <div
                   key={member.memberId}
-                  className="min-h-[48px] p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between"
+                  className="min-h-[48px] p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="relative">
                       <img
                         src={`/Avatars/${member.avatar || "avatar_1"}.png`}
                         alt={member.displayName}
-                        className="w-9 h-9 rounded-full bg-slate-800 object-cover border border-slate-700"
+                        className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover border border-slate-300 dark:border-slate-700"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = "/logo.png";
                         }}
                       />
                       <div
-                        className={`w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${
-                          member.presence === "online" ? "bg-emerald-500" : "bg-slate-500"
+                        className={`w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-white dark:border-slate-900 ${
+                          member.presence === "online" ? "bg-emerald-500" : "bg-slate-400"
                         }`}
                       />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-white text-xs leading-none">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-none">
                         {member.displayName}
                       </h4>
-                      <span className="text-[10px] text-slate-400 capitalize">{member.role}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize font-medium">{member.role}</span>
                     </div>
                   </div>
 
-                  {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-400" />}
+                  {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-500" />}
                 </div>
               ))}
             </div>
@@ -387,12 +389,12 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
       </main>
 
       {/* ── BOTTOM THUMB TAB BAR ── */}
-      <nav className="h-16 bg-slate-900 border-t border-slate-800 grid grid-cols-4 z-20 flex-shrink-0">
+      <nav className="h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800 grid grid-cols-4 z-20 flex-shrink-0 shadow-lg">
         <button
           type="button"
           onClick={() => setActiveTab("chat")}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors ${
-            activeTab === "chat" ? "text-amber-400 font-bold" : "text-slate-400"
+            activeTab === "chat" ? "text-amber-600 dark:text-amber-400 font-bold" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           <MessageSquare className="w-5 h-5" />
@@ -403,7 +405,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           type="button"
           onClick={() => setActiveTab("squads")}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors ${
-            activeTab === "squads" ? "text-amber-400 font-bold" : "text-slate-400"
+            activeTab === "squads" ? "text-amber-600 dark:text-amber-400 font-bold" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           <Gamepad2 className="w-5 h-5" />
@@ -414,7 +416,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           type="button"
           onClick={() => setActiveTab("gnapakalu")}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors ${
-            activeTab === "gnapakalu" ? "text-amber-400 font-bold" : "text-slate-400"
+            activeTab === "gnapakalu" ? "text-amber-600 dark:text-amber-400 font-bold" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           <Trophy className="w-5 h-5" />
@@ -425,7 +427,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           type="button"
           onClick={() => setActiveTab("members")}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors ${
-            activeTab === "members" ? "text-amber-400 font-bold" : "text-slate-400"
+            activeTab === "members" ? "text-amber-600 dark:text-amber-400 font-bold" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           <Users className="w-5 h-5" />
@@ -435,14 +437,14 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
 
       {/* ── CHANNEL DRAWER BOTTOM SHEET ── */}
       {showChannelDrawer && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end">
-          <div className="bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 max-h-[70vh] overflow-y-auto space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-bold text-white text-sm">Select Channel</h3>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col justify-end">
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-5 max-h-[70vh] overflow-y-auto space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Select Channel</h3>
               <button
                 type="button"
                 onClick={() => setShowChannelDrawer(false)}
-                className="min-h-[44px] min-w-[44px] text-slate-400 font-bold flex items-center justify-center"
+                className="min-h-[44px] min-w-[44px] text-slate-500 hover:text-slate-900 dark:text-slate-400 font-bold flex items-center justify-center"
               >
                 ✕
               </button>
@@ -458,10 +460,10 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                     setShowChannelDrawer(false);
                     setActiveTab("chat");
                   }}
-                  className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                  className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
                     ch.channelId === activeChannelId
-                      ? "bg-amber-500 text-slate-950 font-bold"
-                      : "bg-slate-950 text-slate-300 border border-slate-800"
+                      ? "bg-amber-500 text-slate-950 shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-800"
                   }`}
                 >
                   <Hash className="w-4 h-4" />
@@ -475,17 +477,17 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
 
       {/* ── SQUAD CREATION BOTTOM SHEET ── */}
       {showCreateSquad && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end">
-          <div className="bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                <Gamepad2 className="w-4 h-4 text-amber-400" />
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col justify-end">
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-5 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                <Gamepad2 className="w-4 h-4 text-amber-500" />
                 Form a Game Squad
               </h3>
               <button
                 type="button"
                 onClick={() => setShowCreateSquad(false)}
-                className="min-h-[44px] min-w-[44px] text-slate-400 font-bold flex items-center justify-center"
+                className="min-h-[44px] min-w-[44px] text-slate-500 hover:text-slate-900 dark:text-slate-400 font-bold flex items-center justify-center"
               >
                 ✕
               </button>
@@ -493,7 +495,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
 
             <form onSubmit={handleFormSquad} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Squad Name
                 </label>
                 <input
@@ -501,16 +503,16 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                   value={newSquadTitle}
                   onChange={(e) => setNewSquadTitle(e.target.value)}
                   placeholder="e.g. Hyderabad Quick Ludo"
-                  className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs"
+                  className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Game</label>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Game</label>
                 <select
                   value={newSquadGame}
                   onChange={(e) => setNewSquadGame(e.target.value as GameKind)}
-                  className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs capitalize"
+                  className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs capitalize font-medium"
                 >
                   <option value="ludo">Ludo (2-4 players)</option>
                   <option value="handcricket">Hand Cricket (2 players)</option>
@@ -523,7 +525,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full min-h-[48px] rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md"
+                  className="w-full min-h-[48px] rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 shadow-md"
                 >
                   Form Squad Now
                 </button>

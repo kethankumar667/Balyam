@@ -1,13 +1,14 @@
 /**
- * BHALYAM Mandali — Desktop Hub Layout (>= 1024px)
+ * BHALYAM Mandali — Futuristic Desktop Hub Layout (>= 1024px)
  *
- * 3-Column Gaming Lounge Experience:
- * - Left: Channels Rail & Community Crest
+ * FAANG/MAANG-grade 3-Column Command Lounge:
+ * - Left: Channels Rail & Holographic Crest
  * - Center: Realtime Channel Chat / Squad Party Lounge
  * - Right: Member Roster & Gnapakalu Memories Archive
  *
- * Rules:
- * - Zero usage of Sparkles from lucide-react. Uses Crown, Flame, Shield, Trophy, Users.
+ * Requirements:
+ * - Full Light (`data-theme="light"`) and Dark (`data-theme="dark"`) mode support.
+ * - Zero usage of Sparkles from lucide-react. Uses Crown, Flame, Shield, Trophy, Users, Zap.
  * - WCAG 2.1 AA focus rings.
  */
 
@@ -28,6 +29,7 @@ import {
   LogOut,
   ChevronLeft,
   Calendar,
+  Zap,
 } from "lucide-react";
 import type {
   Mandali,
@@ -110,42 +112,45 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none transition-colors duration-200">
       {/* ── COLUMN 1: Channels & Community Crest Rail ── */}
-      <aside className="w-72 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between flex-shrink-0">
+      <aside className="w-72 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/90 dark:border-slate-800/90 flex flex-col justify-between flex-shrink-0 shadow-xs">
         <div>
           {/* Header */}
-          <div className="p-4 border-b border-slate-800/80 bg-slate-950/40">
+          <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40">
             <Link
               to="/mandali"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-amber-400 mb-3 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 rounded p-0.5"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 mb-3 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 rounded p-0.5"
             >
               <ChevronLeft className="w-4 h-4" />
               All Mandalis
             </Link>
 
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black text-lg">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 font-black text-lg shadow-inner">
                 <Crown className="w-6 h-6" />
               </div>
               <div className="overflow-hidden">
-                <h1 className="font-black text-white text-base truncate leading-snug">
+                <h1 className="font-black text-slate-900 dark:text-white text-base truncate leading-snug">
                   {mandali.name}
                 </h1>
-                <p className="text-xs text-amber-400/90 font-mono">@{mandali.handle}</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400/90 font-mono font-semibold">@{mandali.handle}</p>
               </div>
             </div>
           </div>
 
           {/* Level & XP Strip */}
-          <div className="px-4 py-2.5 bg-slate-950/20 border-b border-slate-800/40 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium">Community Rank</span>
-            <span className="font-bold text-amber-400">Level {mandali.level}</span>
+          <div className="px-4 py-2.5 bg-slate-100/60 dark:bg-slate-950/30 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center justify-between text-xs">
+            <span className="text-slate-600 dark:text-slate-400 font-medium">Community Rank</span>
+            <span className="font-extrabold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5" />
+              Level {mandali.level}
+            </span>
           </div>
 
           {/* Channels Section */}
           <div className="p-3">
-            <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">
+            <h2 className="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-2">
               Channels
             </h2>
 
@@ -158,10 +163,10 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                     key={ch.channelId}
                     type="button"
                     onClick={() => onSelectChannel(ch.channelId)}
-                    className={`w-full min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
+                    className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
                       isActive
-                        ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20"
-                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     {isPartyType ? (
@@ -180,8 +185,8 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
         </div>
 
         {/* Footer Rail Actions */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="p-3 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-semibold">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>Voice Ready</span>
           </div>
@@ -189,7 +194,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           <button
             type="button"
             onClick={onLeaveMandali}
-            className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+            className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-rose-500/10 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
             title="Leave Mandali"
             aria-label="Leave Mandali"
           >
@@ -199,18 +204,18 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
       </aside>
 
       {/* ── COLUMN 2: Main Lounge (Chat or Parties) ── */}
-      <main className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+      <main className="flex-1 flex flex-col bg-slate-50/50 dark:bg-slate-950 relative overflow-hidden">
         {/* Channel Header Bar */}
-        <header className="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-900/40 backdrop-blur-sm z-10 flex-shrink-0">
+        <header className="h-16 border-b border-slate-200/90 dark:border-slate-800/80 px-6 flex items-center justify-between bg-white/70 dark:bg-slate-900/40 backdrop-blur-md z-10 flex-shrink-0 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 dark:bg-slate-800 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-500/20 dark:border-slate-700">
               {isPartyChannel ? <Gamepad2 className="w-4 h-4" /> : <Hash className="w-4 h-4" />}
             </div>
             <div>
-              <h2 className="font-bold text-white text-base leading-none">
+              <h2 className="font-extrabold text-slate-900 dark:text-white text-base leading-none">
                 #{activeChannel?.name || "lounge-chat"}
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
                 {activeChannel?.description || "Community conversation and play"}
               </p>
             </div>
@@ -221,7 +226,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             <button
               type="button"
               onClick={() => setShowCreateParty(true)}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
             >
               <Plus className="w-4 h-4" />
               Form Squad
@@ -234,17 +239,17 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           /* SQUAD PARTIES VIEW */
           <div className="flex-1 p-6 overflow-y-auto space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-                <Gamepad2 className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-300 flex items-center gap-2">
+                <Gamepad2 className="w-4 h-4 text-amber-500" />
                 Active Squads Forming ({parties.length})
               </h3>
             </div>
 
             {parties.length === 0 ? (
-              <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-slate-800 bg-slate-900/30">
-                <Gamepad2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <h4 className="text-base font-bold text-white mb-1">No Active Squads</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+              <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/40 dark:bg-slate-900/30">
+                <Gamepad2 className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+                <h4 className="text-base font-bold text-slate-900 dark:text-white mb-1">No Active Squads</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-4 font-medium">
                   Form a party for Ludo, Hand Cricket, Rummy, or UNO and rally your Mandali
                   teammates!
                 </p>
@@ -273,17 +278,17 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 
             {/* Create Party Form Modal Drawer */}
             {showCreateParty && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                    <h3 className="font-bold text-white text-base flex items-center gap-2">
-                      <Gamepad2 className="w-5 h-5 text-amber-400" />
+              <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                      <Gamepad2 className="w-5 h-5 text-amber-500" />
                       Form a Game Squad
                     </h3>
                     <button
                       type="button"
                       onClick={() => setShowCreateParty(false)}
-                      className="min-h-[44px] min-w-[44px] rounded-xl text-slate-400 hover:text-white flex items-center justify-center"
+                      className="min-h-[44px] min-w-[44px] rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center justify-center"
                     >
                       ✕
                     </button>
@@ -291,7 +296,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 
                   <form onSubmit={handleFormSquad} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Squad Name
                       </label>
                       <input
@@ -299,16 +304,16 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                         value={newPartyTitle}
                         onChange={(e) => setNewPartyTitle(e.target.value)}
                         placeholder="e.g. Hyderabad Weekend Ludo"
-                        className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm"
+                        className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Game</label>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Game</label>
                       <select
                         value={newPartyGame}
                         onChange={(e) => setNewPartyGame(e.target.value as GameKind)}
-                        className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm capitalize"
+                        className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm capitalize font-medium"
                       >
                         <option value="ludo">Ludo (2-4 players)</option>
                         <option value="handcricket">Hand Cricket (2 players)</option>
@@ -320,7 +325,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Slots
                       </label>
                       <input
@@ -329,14 +334,14 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                         max={6}
                         value={newPartySlots}
                         onChange={(e) => setNewPartySlots(Number(e.target.value))}
-                        className="w-full min-h-[44px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm"
+                        className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
                       />
                     </div>
 
                     <div className="pt-2">
                       <button
                         type="submit"
-                        className="w-full min-h-[48px] rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md"
+                        className="w-full min-h-[48px] rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 shadow-md"
                       >
                         Rally Squad
                       </button>
@@ -352,7 +357,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             {/* Messages Scroll Area */}
             <div className="flex-1 p-6 overflow-y-auto space-y-4">
               {messages.length === 0 ? (
-                <div className="text-center py-20 text-slate-500 text-sm">
+                <div className="text-center py-20 text-slate-500 dark:text-slate-500 text-sm font-medium">
                   Welcome to #{activeChannel?.name}! Be the first to start the conversation.
                 </div>
               ) : (
@@ -371,7 +376,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                       <img
                         src={`/Avatars/${msg.senderAvatar || "avatar_1"}.png`}
                         alt={msg.senderName}
-                        className="w-9 h-9 rounded-full bg-slate-800 object-cover flex-shrink-0 border border-slate-700"
+                        className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = "/logo.png";
                         }}
@@ -379,22 +384,22 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 
                       <div className={`max-w-[70%] ${isMine ? "items-end" : "items-start"}`}>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-xs text-white">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white">
                             {msg.senderName}
                           </span>
                           <span className="text-[10px] text-slate-500">{timeStr}</span>
                           {msg.senderRole === "OWNER" && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-bold">
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-400 font-bold">
                               Founder
                             </span>
                           )}
                         </div>
 
                         <div
-                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-xs ${
                             isMine
-                              ? "bg-amber-500 text-slate-950 font-medium rounded-tr-none"
-                              : "bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none"
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-semibold rounded-tr-none"
+                              : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
                           }`}
                         >
                           {msg.content}
@@ -410,14 +415,14 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                                 key={emoji}
                                 type="button"
                                 onClick={() => onReactMessage(msg.messageId, emoji)}
-                                className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all ${
+                                className={`text-xs px-2.5 py-0.5 rounded-full border flex items-center gap-1 transition-all ${
                                   hasReacted
-                                    ? "bg-amber-500/20 border-amber-400 text-amber-300"
-                                    : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"
+                                    ? "bg-amber-500/20 border-amber-400 text-amber-900 dark:text-amber-300 shadow-xs"
+                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-700"
                                 }`}
                               >
                                 <span>{emoji}</span>
-                                <span className="font-bold text-[10px]">{players.length}</span>
+                                <span className="font-extrabold text-[10px]">{players.length}</span>
                               </button>
                             );
                           })}
@@ -429,7 +434,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                                 key={emoji}
                                 type="button"
                                 onClick={() => onReactMessage(msg.messageId, emoji)}
-                                className="w-6 h-6 rounded-full hover:bg-slate-800 flex items-center justify-center text-xs transition-transform active:scale-125"
+                                className="w-6 h-6 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-xs transition-transform active:scale-125"
                               >
                                 {emoji}
                               </button>
@@ -446,7 +451,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             {/* Chat Composer */}
             <form
               onSubmit={handleSend}
-              className="p-4 bg-slate-900/60 border-t border-slate-800 flex items-center gap-3 flex-shrink-0"
+              className="p-4 bg-white/80 dark:bg-slate-900/60 border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-3 flex-shrink-0 backdrop-blur-md"
             >
               <div className="relative flex-1">
                 <input
@@ -455,11 +460,11 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                   onChange={(e) => setChatInput(e.target.value)}
                   placeholder={`Message #${activeChannel?.name || "channel"}...`}
                   maxLength={500}
-                  className="w-full min-h-[44px] pl-4 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  className="w-full min-h-[44px] pl-4 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-amber-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500"
                   aria-label="Add Emoji"
                 >
                   <Smile className="w-4 h-4" />
@@ -469,7 +474,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               <button
                 type="submit"
                 disabled={!chatInput.trim()}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center gap-1.5 shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm flex items-center gap-1.5 shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
               >
                 <Send className="w-4 h-4" />
                 <span>Send</span>
@@ -480,15 +485,15 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
       </main>
 
       {/* ── COLUMN 3: Roster & Gnapakalu Shelf ── */}
-      <aside className="w-80 bg-slate-900/90 border-l border-slate-800 flex flex-col justify-between flex-shrink-0 overflow-y-auto p-4 space-y-6">
+      <aside className="w-80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-l border-slate-200/90 dark:border-slate-800 flex flex-col justify-between flex-shrink-0 overflow-y-auto p-4 space-y-6 shadow-xs">
         {/* Members Roster */}
         <div>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-amber-400" />
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-amber-500" />
               Members ({members.length})
             </h3>
-            <span className="text-[11px] text-slate-400 font-semibold">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
               {members.filter((m) => m.presence === "online").length} Online
             </span>
           </div>
@@ -497,46 +502,46 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             {members.map((member) => (
               <div
                 key={member.memberId}
-                className="flex items-center justify-between p-2 rounded-xl bg-slate-950/40 border border-slate-800/60 hover:border-slate-700 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-2xs"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="relative">
                     <img
                       src={`/Avatars/${member.avatar || "avatar_1"}.png`}
                       alt={member.displayName}
-                      className="w-8 h-8 rounded-full bg-slate-800 object-cover border border-slate-700"
+                      className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 object-cover border border-slate-300 dark:border-slate-700"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = "/logo.png";
                       }}
                     />
                     <div
-                      className={`w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${
-                        member.presence === "online" ? "bg-emerald-500" : "bg-slate-500"
+                      className={`w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-white dark:border-slate-900 ${
+                        member.presence === "online" ? "bg-emerald-500" : "bg-slate-400"
                       }`}
                     />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-white text-xs leading-none">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-none">
                       {member.displayName}
                     </h4>
-                    <span className="text-[10px] text-slate-400 capitalize">{member.role}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize font-medium">{member.role}</span>
                   </div>
                 </div>
 
-                {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-400" />}
+                {member.role === "OWNER" && <Crown className="w-4 h-4 text-amber-500" />}
               </div>
             ))}
           </div>
         </div>
 
         {/* Gnapakalu (జ్ఞాపకాలు) Archive */}
-        <div className="pt-4 border-t border-slate-800">
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-500" />
               Gnapakalu Archive
             </h3>
-            <span className="text-[10px] text-amber-400 font-medium">Shared History</span>
+            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">Shared History</span>
           </div>
 
           <GnapakaluTimeline memories={memories.slice(0, 3)} />
