@@ -11,14 +11,14 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     const tag = typeof req.query.tag === "string" ? req.query.tag : undefined;
 
     const results = mandaliService.searchMandalis({ search, language, tag });
-    res.json({ mandalis: results });
+    res.json({ success: true, mandalis: results });
   });
 
   // Get Player's Mandalis
   router.get("/user/:playerId", (req, res) => {
     const playerId = req.params.playerId;
     const mandalis = mandaliService.getPlayerMandalis(playerId);
-    res.json({ mandalis });
+    res.json({ success: true, mandalis });
   });
 
   // Create Mandali

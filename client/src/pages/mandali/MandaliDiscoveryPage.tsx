@@ -27,9 +27,10 @@ import {
   Moon,
   Gamepad2,
 } from "lucide-react";
-import { useMandaliStore } from "../../store/mandaliStore";
+import { useMandaliStore, DEFAULT_PREVIEW_MANDALIS } from "../../store/mandaliStore";
 import { CreateMandaliModal } from "./CreateMandaliModal";
 import { useTheme } from "../../lib/useTheme";
+import BhalyamLogo from "../../components/bhalyam/BhalyamLogo";
 
 const LANGUAGES = ["All", "English", "Telugu", "Hindi", "Tamil", "Kannada"];
 const POPULAR_TAGS = ["All", "Casual", "Tournaments", "Ludo", "Hand Cricket", "Rummy", "Weekend Play"];
@@ -83,9 +84,9 @@ export default function MandaliDiscoveryPage(): JSX.Element {
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="flex items-center gap-2 font-black text-lg text-slate-900 dark:text-white hover:text-amber-500 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg p-1"
+            className="flex items-center gap-2.5 font-black text-lg text-slate-900 dark:text-white hover:text-amber-500 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg p-1"
           >
-            <img src="/logo.png" alt="BHALYAM" className="w-8 h-8 rounded-lg shadow-xs" />
+            <BhalyamLogo size={32} />
             <span className="tracking-tight font-extrabold">BHALYAM</span>
           </Link>
           <span className="text-slate-300 dark:text-slate-700 font-bold">/</span>
@@ -113,15 +114,15 @@ export default function MandaliDiscoveryPage(): JSX.Element {
             className="min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Found a</span> Mandali
+            <span>Create Mandali</span>
           </button>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Futuristic Hero Section */}
-        <section className="text-center sm:text-left py-8 px-6 sm:px-10 rounded-3xl bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/30 border border-slate-200/90 dark:border-slate-800 relative overflow-hidden shadow-lg transition-colors">
+        <section className="text-center sm:text-left py-6 sm:py-8 px-6 sm:px-10 rounded-3xl bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/30 border border-slate-200/90 dark:border-slate-800 relative overflow-hidden shadow-lg transition-colors">
           <div className="max-w-2xl relative z-10">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-400 text-xs font-bold mb-3 shadow-xs">
               <Zap className="w-3.5 h-3.5" />
@@ -139,7 +140,12 @@ export default function MandaliDiscoveryPage(): JSX.Element {
             <div className="mt-6 flex flex-wrap items-center gap-6 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 font-semibold">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-500" />
-                <span><strong className="text-slate-900 dark:text-white font-bold">{mandalis.length}</strong> Communities</span>
+                <span>
+                  <strong className="text-slate-900 dark:text-white font-bold">
+                    {Math.max(mandalis.length, DEFAULT_PREVIEW_MANDALIS.length)}
+                  </strong>{" "}
+                  Communities
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Gamepad2 className="w-4 h-4 text-emerald-500" />
@@ -275,26 +281,42 @@ export default function MandaliDiscoveryPage(): JSX.Element {
               ))}
             </div>
           ) : mandalis.length === 0 ? (
-            <div className="text-center py-16 px-4 bg-white/40 dark:bg-slate-900/40 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
+            <div className="text-center py-16 px-4 bg-white/60 dark:bg-slate-900/60 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 backdrop-blur-md">
               <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">No Mandalis Found</h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-4 font-medium">
-                We could not find any communities matching your filters. Found the first one!
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-5 font-medium">
+                No communities match your current filters. Try resetting the filters or create your own Mandali!
               </p>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(true)}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md"
-              >
-                Create Mandali
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedLanguage("All");
+                    setSelectedTag("All");
+                    setSearchQuery("");
+                    handleFilterChange("All", "All", "");
+                  }}
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs focus-visible:ring-2 focus-visible:ring-amber-500"
+                >
+                  Reset All Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(true)}
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-md focus-visible:ring-2 focus-visible:ring-amber-500"
+                >
+                  Create New Mandali
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {mandalis.map((m) => (
                 <div
                   key={m.id}
-                  className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/70 dark:hover:border-amber-500/70 rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-xl group relative overflow-hidden"
+                  className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/70 dark:hover:border-amber-500/70 rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-xl group relative overflow-hidden cursor-pointer min-h-[220px]"
+                  onClick={() => navigate(`/mandali/${m.handle}`)}
+
                 >
                   <div>
                     {/* Header */}
@@ -338,26 +360,39 @@ export default function MandaliDiscoveryPage(): JSX.Element {
                   </div>
 
                   {/* Footer & CTA */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-                      <Users className="w-3.5 h-3.5 text-slate-400" />
-                      <span>
-                        {m.memberCount} / {m.maxMembers}
-                      </span>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+                    {/* Member fill bar */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3 text-amber-500" />
+                          {m.memberCount.toLocaleString()} members
+                        </span>
+                        <span className="text-slate-400 dark:text-slate-600">{m.maxMembers} capacity</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
+                          style={{ width: `${Math.min(100, Math.round((m.memberCount / m.maxMembers) * 100))}%` }}
+                        />
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/mandali/${m.handle}`)}
-                      className="min-h-[44px] px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-800 dark:text-amber-400 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-                    >
-                      Enter Lounge
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/mandali/${m.handle}`); }}
+                        className="min-h-[36px] px-4 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-800 dark:text-amber-400 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+                      >
+                        Enter Lounge
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+
           )}
         </section>
       </main>

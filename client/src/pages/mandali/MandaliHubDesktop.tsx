@@ -44,7 +44,7 @@ import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import type { GameKind } from "@shared/types.js";
 
 function getAvatarUrl(avatar?: string): string {
-  if (!avatar) return "/logo.png";
+  if (!avatar) return "/Bhalyam-logo.png";
   if (avatar.startsWith("/") || avatar.startsWith("http")) return avatar;
   if (avatar.endsWith(".jpg") || avatar.endsWith(".png") || avatar.endsWith(".webp") || avatar.endsWith(".svg")) {
     return `/Avatars/${avatar}`;
@@ -387,7 +387,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                         alt={msg.senderName}
                         className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                          (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png";
                         }}
                       />
 
@@ -520,7 +520,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                       alt={member.displayName}
                       className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 object-cover border border-slate-300 dark:border-slate-700"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                        (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png";
                       }}
                     />
                     <div

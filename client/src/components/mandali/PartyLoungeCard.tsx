@@ -15,6 +15,15 @@ import React from "react";
 import { Gamepad2, Users, Play, LogOut, CheckCircle2, Crown, Zap } from "lucide-react";
 import type { MandaliParty } from "@shared/mandali/types.js";
 
+function getAvatarUrl(avatar?: string): string {
+  if (!avatar) return "/Bhalyam-logo.png";
+  if (avatar.startsWith("/") || avatar.startsWith("http")) return avatar;
+  if (avatar.endsWith(".jpg") || avatar.endsWith(".png") || avatar.endsWith(".webp") || avatar.endsWith(".svg")) {
+    return `/Avatars/${avatar}`;
+  }
+  return `/Avatars/${avatar}.png`;
+}
+
 export interface PartyLoungeCardProps {
   party: MandaliParty;
   currentUserId: string | null;
@@ -99,11 +108,11 @@ export const PartyLoungeCard: React.FC<PartyLoungeCardProps> = ({
                       <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 absolute -top-1.5 -right-1.5 drop-shadow" />
                     )}
                     <img
-                      src={`/Avatars/${member.avatar || "avatar_1"}.png`}
+                      src={getAvatarUrl(member.avatar)}
                       alt={member.displayName}
                       className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 object-cover border-2 border-amber-500/40"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                        (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png";
                       }}
                     />
                     <span className="text-[10px] text-slate-800 dark:text-slate-200 font-semibold truncate w-full text-center mt-1">

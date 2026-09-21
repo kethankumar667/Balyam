@@ -64,8 +64,11 @@ export class MandaliRepository {
       list = list.filter((m) => m.language.toLowerCase() === filter.language?.toLowerCase());
     }
 
-    if (filter?.tag) {
-      list = list.filter((m) => m.tags.includes(filter.tag!));
+    if (filter?.tag && filter.tag !== "All") {
+      const target = filter.tag.toLowerCase().trim();
+      list = list.filter((m) =>
+        m.tags.some((t) => t.toLowerCase().trim() === target)
+      );
     }
 
     return list.sort((a, b) => b.memberCount - a.memberCount);
@@ -1494,6 +1497,33 @@ export class MandaliRepository {
       celebratedBy: ["p_sneha_w", "p_varun_d", "p_priyanka_r"],
       timestamp: now - DAY * 1,
     });
+
+    /**
+     * Restore intended memberCount values after seed.
+     *
+     * saveMember() auto-updates memberCount to the actual ACTIVE roster size,
+     * which means after seeding placeholder rosters (7/6/5/4/4 members) it
+     * overwrites the community's claimed size (28/42/31/18/24).
+     *
+     * We restore the intended values here so the discovery cards correctly
+     * show the community's advertised population, not just the seeded roster.
+     * At runtime, saveMember() will continue to keep memberCount in sync with
+     * actual members — this restore is a seed-time-only correction.
+     */
+    const seedMemberCounts: Record<string, number> = {
+      mandali_ludo_kings: 28,
+      mandali_hc_warriors: 42,
+      mandali_rummy_royals: 31,
+      mandali_snl_explorers: 18,
+      mandali_uno_champs: 24,
+    };
+    for (const [id, count] of Object.entries(seedMemberCounts)) {
+      const m = this.mandalis.get(id);
+      if (m) {
+        m.memberCount = count;
+        m.updatedAt = now;
+      }
+    }
   }
 }
 

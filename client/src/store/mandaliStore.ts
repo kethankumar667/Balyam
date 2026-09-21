@@ -194,19 +194,39 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     try {
       const queryParams = new URLSearchParams();
       if (filter?.search) queryParams.set("search", filter.search);
-      if (filter?.language) queryParams.set("language", filter.language);
-      if (filter?.tag) queryParams.set("tag", filter.tag);
+      if (filter?.language && filter.language !== "All") queryParams.set("language", filter.language);
+      if (filter?.tag && filter.tag !== "All") queryParams.set("tag", filter.tag);
 
       const qs = queryParams.toString();
-      const res = await apiJson<{ success: boolean; mandalis: Mandali[] }>(`/api/mandali${qs ? `?${qs}` : ""}`);
-      if (res && res.success) {
+      const res = await apiJson<{ success?: boolean; mandalis?: Mandali[] }>(`/api/mandali${qs ? `?${qs}` : ""}`);
+      if (res && Array.isArray(res.mandalis)) {
         set({ mandalis: res.mandalis, isLoading: false });
-      } else {
-        set({ mandalis: DEFAULT_PREVIEW_MANDALIS, isLoading: false });
+        return;
       }
     } catch {
-      set({ mandalis: DEFAULT_PREVIEW_MANDALIS, isLoading: false });
+      // ignore network errors and fallback to client-filtered list
     }
+
+    // Client-side fallback filtering
+    let list = [...DEFAULT_PREVIEW_MANDALIS];
+    if (filter?.search?.trim()) {
+      const q = filter.search.toLowerCase().trim();
+      list = list.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.handle.toLowerCase().includes(q) ||
+          m.description.toLowerCase().includes(q)
+      );
+    }
+    if (filter?.language && filter.language !== "All") {
+      const lang = filter.language.toLowerCase();
+      list = list.filter((m) => m.language.toLowerCase() === lang);
+    }
+    if (filter?.tag && filter.tag !== "All") {
+      const tag = filter.tag.toLowerCase();
+      list = list.filter((m) => m.tags.some((t) => t.toLowerCase() === tag));
+    }
+    set({ mandalis: list, isLoading: false });
   },
 
   fetchMyMandalis: async () => {
