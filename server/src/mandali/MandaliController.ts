@@ -54,15 +54,68 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ mandali });
   });
 
-  // Get Mandali by ID
-  router.get("/:id", (req, res) => {
-    const mandali = mandaliService.getMandaliById(req.params.id);
-    if (!mandali) {
-      res.status(404).json({ error: "Mandali not found." });
+  /**
+   * GET /my — Mandalis the requesting player belongs to.
+   * Reads playerId from the JWT Bearer token's `sub` claim (base64 decode —
+   * no full verification needed here since this only returns community metadata
+   * visible to all members anyway). Must be registered BEFORE /:handleOrId.
+   */
+  router.get("/my", (req, res) => {
+    let playerId: string | null = null;
+
+    const auth = req.headers["authorization"];
+    if (auth && auth.startsWith("Bearer ")) {
+      try {
+        const token = auth.slice(7);
+        const [, payloadB64] = token.split(".");
+        if (payloadB64) {
+          const json = Buffer.from(payloadB64, "base64url").toString("utf8");
+          const payload = JSON.parse(json) as { sub?: string };
+          playerId = payload.sub ?? null;
+        }
+      } catch {
+        // malformed token — return empty
+      }
+    }
+
+    if (!playerId) {
+      res.json({ success: true, mandalis: [] });
       return;
     }
-    res.json({ mandali });
+
+    const mandalis = mandaliService.getPlayerMandalis(playerId);
+    res.json({ success: true, mandalis });
   });
+
+
+  // GET /:handleOrId — Full Mandali Hub Data (handle or id lookup, returns all sub-resources)
+  router.get("/:handleOrId", (req, res) => {
+
+    const raw = req.params.handleOrId;
+
+    // Try by handle first (strip leading @ if present)
+    const handle = raw.replace(/^@/, "");
+    let mandali = mandaliService.getMandaliByHandle(handle);
+
+    // Fallback: try by opaque ID
+    if (!mandali) {
+      mandali = mandaliService.getMandaliById(raw);
+    }
+
+    if (!mandali) {
+      res.status(404).json({ success: false, error: "Mandali not found." });
+      return;
+    }
+
+    const members = mandaliService.getMembers(mandali.id);
+    const channels = mandaliService.getChannels(mandali.id);
+    const parties = mandaliService.getParties(mandali.id);
+    const memories = mandaliService.getMemories(mandali.id);
+    const events = mandaliService.getEvents(mandali.id);
+
+    res.json({ success: true, mandali, members, channels, parties, memories, events });
+  });
+
 
   // Get Members
   router.get("/:id/members", (req, res) => {

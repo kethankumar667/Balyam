@@ -69,16 +69,7 @@ export default function MandaliHubPage(): JSX.Element {
     }
   }, [activeMandali?.id, playerId, initMandaliSocket, cleanupMandaliSocket]);
 
-  if (isLoading || !activeMandali) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-600 dark:text-slate-400 gap-3">
-        <div className="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
-        <p className="text-sm font-bold">Connecting to Mandali Lounge...</p>
-      </div>
-    );
-  }
-
-  if (errorMessage && !activeMandali) {
+  if (!isLoading && errorMessage && !activeMandali) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-center p-6">
         <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Mandali Not Found</h2>
@@ -93,6 +84,16 @@ export default function MandaliHubPage(): JSX.Element {
       </div>
     );
   }
+
+  if (isLoading || !activeMandali) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-600 dark:text-slate-400 gap-3">
+        <div className="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+        <p className="text-sm font-bold">Connecting to Mandali Lounge...</p>
+      </div>
+    );
+  }
+
 
   const isCurrentMember = members.some((m) => m.playerId === playerId);
   const activeChannelMessages = activeChannelId ? messages[activeChannelId] || [] : [];

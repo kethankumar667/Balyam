@@ -120,7 +120,8 @@ export default function MandaliDiscoveryPage(): JSX.Element {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-14 space-y-6 sm:space-y-8">
+
         {/* Futuristic Hero Section */}
         <section className="text-center sm:text-left py-6 sm:py-8 px-6 sm:px-10 rounded-3xl bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/30 border border-slate-200/90 dark:border-slate-800 relative overflow-hidden shadow-lg transition-colors">
           <div className="max-w-2xl relative z-10">
