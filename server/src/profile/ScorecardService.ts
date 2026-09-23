@@ -119,10 +119,14 @@ export class ScorecardService {
 
     const recentScores = [payload.score, ...(existingMode?.recentScores ?? [])].slice(0, 5);
 
-    const mergedSecondaryMetrics: Record<string, number | string> = {
-      ...(existingMode?.secondaryMetrics ?? {}),
-      ...(payload.secondaryMetrics ?? {}),
-    };
+    // Only replace secondaryMetrics when THIS match set a new personal best —
+    // otherwise a card would show the all-time best score alongside
+    // secondary stats from whatever match happened to be played most
+    // recently (possibly a much worse one), which is misleading rather than
+    // a snapshot of the best run itself.
+    const mergedSecondaryMetrics: Record<string, number | string> = isNewPersonalBest
+      ? { ...(existingMode?.secondaryMetrics ?? {}), ...(payload.secondaryMetrics ?? {}) }
+      : (existingMode?.secondaryMetrics ?? {});
 
     const radar = calculateRadarMetrics(timesPlayed, recentScores, payload.radarMetrics);
     const foilTier = determineFoilTier(timesPlayed, isNewPersonalBest, bestScore);

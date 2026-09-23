@@ -7,18 +7,26 @@ export function formatGameMetricValue(
   value: number | string | undefined | null,
   format: MetricDisplayFormat = "raw_number"
 ): string {
-  if (value === undefined || value === null) return "-";
+  if (value === undefined || value === null || value === "") return "-";
   const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (isNaN(num)) return String(value);
+  // A numeric NaN (e.g. an upstream divide-by-zero on a percentage/rate
+  // metric) must not render as the literal text "NaN" — that's what this
+  // was doing. A non-numeric STRING (never actually seen in practice, but
+  // the type allows it) still falls through to its own text as-is.
+  if (isNaN(num)) return typeof value === "number" ? "-" : String(value);
 
   switch (format) {
     case "duration_seconds": {
-      if (num < 60) {
-        return `${Math.round(num)}s`;
+      // Round the TOTAL seconds once, up front — rounding minutes and
+      // seconds separately let a value like 119.5 come out as "1m 60s"
+      // (secs rounds up to 60 before the minute carry happens).
+      const totalSecs = Math.round(num);
+      if (totalSecs < 60) {
+        return `${totalSecs}s`;
       }
-      const mins = Math.floor(num / 60);
-      const secs = Math.round(num % 60);
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
       return `${mins}m ${secs.toString().padStart(2, "0")}s`;
     }
 

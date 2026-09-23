@@ -205,7 +205,23 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       importance: "PRIMARY",
       icon: "Award",
     },
+    // `roundsWon` is first: it's the only one of these three keys RoomManager's
+    // extractParticipantScoreAndMetrics actually emits for uno today
+    // (server/src/rooms/RoomManager.ts) — GameStatisticsPage.tsx reads
+    // secondaryMetrics[0] as the card's "signature" stat, so an aspirational
+    // key here (wildCardsPlayed / drawFoursDeflected — neither is tracked
+    // yet) silently fell through to the wrong number under the wrong label.
     secondaryMetrics: [
+      {
+        key: "roundsWon",
+        label: "Rounds Won",
+        shortLabel: "Rounds Won",
+        description: "Total rounds where hand reached zero cards first",
+        format: "raw_number",
+        direction: "HIGHER_IS_BETTER",
+        importance: "SECONDARY",
+        icon: "Trophy",
+      },
       {
         key: "wildCardsPlayed",
         label: "Wild & Action Cards Played",
@@ -225,16 +241,6 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
         direction: "HIGHER_IS_BETTER",
         importance: "SECONDARY",
         icon: "ShieldCheck",
-      },
-      {
-        key: "roundsWon",
-        label: "Rounds Won",
-        shortLabel: "Rounds Won",
-        description: "Total rounds where hand reached zero cards first",
-        format: "raw_number",
-        direction: "HIGHER_IS_BETTER",
-        importance: "SECONDARY",
-        icon: "Trophy",
       },
     ],
   },
@@ -385,13 +391,19 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       importance: "PRIMARY",
       icon: "Trophy",
     },
+    // `boxesCaptured` is first: it's the only key RoomManager's
+    // extractParticipantScoreAndMetrics actually emits for dotsboxes today
+    // (server/src/rooms/RoomManager.ts) — `territoryPercentage` was never
+    // tracked, so GameStatisticsPage.tsx's signature-stat pick
+    // (secondaryMetrics[0]) fell through to the raw bestScore rendered with
+    // a misleading "%" suffix.
     secondaryMetrics: [
       {
-        key: "territoryPercentage",
-        label: "Territory Dominance",
-        shortLabel: "Territory %",
-        description: "Percentage of the total grid squares owned",
-        format: "percentage",
+        key: "boxesCaptured",
+        label: "Boxes Captured",
+        shortLabel: "Boxes",
+        description: "Total boxes claimed this match",
+        format: "boxes",
         direction: "HIGHER_IS_BETTER",
         importance: "SECONDARY",
         icon: "ShieldCheck",
@@ -430,14 +442,20 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       importance: "PRIMARY",
       icon: "Zap",
     },
+    // `discs` is first: it's the only key RoomManager's
+    // extractParticipantScoreAndMetrics actually emits for connect4 today
+    // (server/src/rooms/RoomManager.ts) — `centerControlRate` was never
+    // tracked, so GameStatisticsPage.tsx's signature-stat pick
+    // (secondaryMetrics[0]) fell through to the raw bestScore rendered with
+    // a misleading "%" suffix.
     secondaryMetrics: [
       {
-        key: "centerControlRate",
-        label: "Center Column Control",
-        shortLabel: "Center %",
-        description: "Percentage of central column slots occupied",
-        format: "percentage",
-        direction: "HIGHER_IS_BETTER",
+        key: "discs",
+        label: "Discs Used to Win",
+        shortLabel: "Discs",
+        description: "Discs placed before completing the winning line",
+        format: "discs",
+        direction: "LOWER_IS_BETTER",
         importance: "SECONDARY",
         icon: "ShieldCheck",
       },
@@ -475,14 +493,20 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       importance: "PRIMARY",
       icon: "Zap",
     },
+    // `moves` is first: it's the only key RoomManager's
+    // extractParticipantScoreAndMetrics actually emits for tictactoe today
+    // (server/src/rooms/RoomManager.ts) — `centerClaimed` was never
+    // tracked, so GameStatisticsPage.tsx's signature-stat pick
+    // (secondaryMetrics[0]) fell through to the raw bestScore under the
+    // wrong label.
     secondaryMetrics: [
       {
-        key: "centerClaimed",
-        label: "Center Cell Control",
-        shortLabel: "Center Claim",
-        description: "First-turn claims on the high-leverage central cell",
-        format: "raw_number",
-        direction: "HIGHER_IS_BETTER",
+        key: "moves",
+        label: "Moves Taken",
+        shortLabel: "Moves",
+        description: "Total moves played to reach the winning line",
+        format: "turns",
+        direction: "LOWER_IS_BETTER",
         importance: "SECONDARY",
         icon: "Target",
       },
@@ -720,12 +744,18 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       importance: "PRIMARY",
       icon: "Trophy",
     },
+    // `wordScore` is first: it's the only key RoomManager's
+    // extractParticipantScoreAndMetrics actually emits for wordbuilding
+    // today (server/src/rooms/RoomManager.ts) — `longestWordLength` was
+    // never tracked, so GameStatisticsPage.tsx's signature-stat pick
+    // (secondaryMetrics[0]) fell through to the raw bestScore under the
+    // wrong label.
     secondaryMetrics: [
       {
-        key: "longestWordLength",
-        label: "Longest Word Formed",
-        shortLabel: "Longest Word",
-        description: "Letter length of the largest word constructed",
+        key: "wordScore",
+        label: "Match Word Score",
+        shortLabel: "Word Score",
+        description: "Total points scored for validated words this match",
         format: "raw_number",
         direction: "HIGHER_IS_BETTER",
         importance: "SECONDARY",
