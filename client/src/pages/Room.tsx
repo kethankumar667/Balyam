@@ -45,7 +45,7 @@ import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPla
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
-import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState } from "@shared/types";
+import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState } from "@shared/types";
 
 import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
 
@@ -67,6 +67,7 @@ const CarromBoard = lazy(() => import("../games/carrom/CarromBoard"));
 const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
 const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
 const TicTacToeBoard = lazy(() => import("../games/tictactoe/TicTacToeBoard"));
+const Connect4Board = lazy(() => import("../games/connect4/Connect4Board"));
 
 // ── Lazy-loaded modals & conditional overlays (code-split) ──
 const BhalyamResultModal = lazy(() => import("../components/BhalyamResultModal"));
@@ -294,6 +295,7 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   // inside the padded page wrapper and its footer — the rematch button and the
   // mode rules — was clipped ~48px below the fold on a 390x844 phone.
   "tictactoe",
+  "connect4",
 ]);
 
 /**
@@ -538,6 +540,46 @@ function TicTacToeBoardContainer({
         onScorecardClose={handleScorecardClose}
       />
     </PassPhoneGate>
+  );
+}
+
+/**
+ * Connect 4 supports Pass & Play exactly like Tic Tac Toe: the host's socket plays the local
+ * seat's turn, so the board is told the ACTIVE seat as "self".
+ */
+function Connect4BoardContainer({
+  gameState,
+  roomState,
+  effectivePlayers,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+  handleScorecardClose,
+}: {
+  gameState: Connect4PublicState;
+  roomState: RoomPublicState;
+  effectivePlayers?: Player[];
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+  handleScorecardClose: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <Connect4Board
+      state={gameState}
+      players={players}
+      selfId={effectiveSelfId || ""}
+      messages={messages}
+      roomCode={roomState.code}
+      roomPhase={roomState.phase}
+      onLeave={requestLeaveConfirmation}
+      onScorecardClose={handleScorecardClose}
+    />
   );
 }
 
@@ -1583,6 +1625,7 @@ export default function Room() {
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
     tictactoe: "Tic Tac Toe",
+    connect4: "Connect 4",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -1619,7 +1662,7 @@ export default function Room() {
           // RoomHeader (and its Leave button) and the rematch/room-share
           // content that ternary put inside it.
           FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike
-            ? "bhalyam-font bhalyam-paper h-full min-h-screen overflow-hidden p-0"
+            ? "bhalyam-font bhalyam-paper h-full overflow-hidden p-0"
             : ludoInPlay
               ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
               : isLobbyLike || isGameStartingCeremony
@@ -1660,7 +1703,7 @@ export default function Room() {
             maxPlayers={viewModel.maxPlayers}
           />
         ) : (
-          roomState.game !== "rummy" && roomState.game !== "wordbuilding" && roomState.game !== "dotsboxes" && roomState.game !== "uno" && roomState.game !== "ludo" && roomState.game !== "carrom" && roomState.game !== "rps" && roomState.game !== "tictactoe" && (
+          !FULL_BLEED_GAMES.has(roomState.game) && roomState.game !== "wordbuilding" && roomState.game !== "ludo" && (
             <header
               className={
                 roomState.game === "stargame"
@@ -2036,6 +2079,18 @@ export default function Room() {
               {roomState.game === "tictactoe" && gameState != null && (
                 <TicTacToeBoardContainer
                   gameState={gameState as TicTacToePublicState}
+                  roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                  handleScorecardClose={handleScorecardClose}
+                />
+              )}
+
+              {roomState.game === "connect4" && gameState != null && (
+                <Connect4BoardContainer
+                  gameState={gameState as Connect4PublicState}
                   roomState={roomState}
                   effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}

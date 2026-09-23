@@ -50,6 +50,10 @@ import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.j
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig } from "./persistence/postgrest.js";
+import { MandaliRepository } from "./mandali/MandaliRepository.js";
+import { MandaliService } from "./mandali/MandaliService.js";
+import { createMandaliRouter } from "./mandali/MandaliController.js";
+import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -344,6 +348,15 @@ const game2048StatsService = new Game2048StatsService();
 app.use("/api/games/2048/stats", createGame2048StatsRouter(game2048StatsService));
 
 /**
+ * BHALYAM Mandali (మండలి) Communities & Social Lounge API.
+ * Server-authoritative persistent clans, roles, squad parties, and Gnapakalu memories.
+ */
+const mandaliRepository = new MandaliRepository();
+const mandaliService = new MandaliService(mandaliRepository, roomManager, io, economyService);
+app.use("/api/mandali", createMandaliRouter(mandaliService));
+
+
+/**
  * Operational surface. The gate lives ON this router (see
  * observability/OperationalController.ts), not beside it, so no handler here
  * can be reached — and no telemetry gathered — before authorization passes.
@@ -417,6 +430,7 @@ io.on("connection", (socket) => {
   });
   logger.info({ message: "Socket client connected", socketId: socket.id, module: "SOCKET" });
   registerSocketHandlers(io, socket, roomManager);
+  registerMandaliSocketHandlers(io, socket, mandaliService);
 
   socket.on("disconnect", () => {
     logger.info({ message: "Socket client disconnected", socketId: socket.id, module: "SOCKET" });

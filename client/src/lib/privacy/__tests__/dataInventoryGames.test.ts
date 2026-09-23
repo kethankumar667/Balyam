@@ -16,6 +16,8 @@ describe("privacy inventory covers the Sudoku and Tic Tac Toe storage keys", () 
     STORAGE_SUDOKU_SAVED,
     "bhalyam.sudoku.tutorial.seen.v1",
     "bhalyam.tictactoe.muted",
+    "bhalyam.connect4.muted",
+    "bhalyam.connect4.theme",
   ];
 
   it.each(gameKeys)("declares %s", (key) => {

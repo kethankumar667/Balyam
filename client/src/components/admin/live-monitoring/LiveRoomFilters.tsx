@@ -14,6 +14,7 @@ const AVAILABLE_GAMES: Array<{ key: GameKind | "all"; label: string }> = [
   { key: "rps", label: "Rock Paper Scissors" },
   { key: "stargame", label: "Star Game" },
   { key: "bingo", label: "Bingo" },
+  { key: "connect4", label: "Connect 4" },
   { key: "namesplaceanimal", label: "Name Place Animal" },
   { key: "tambola", label: "Tambola" },
   { key: "carrom", label: "Carrom" },

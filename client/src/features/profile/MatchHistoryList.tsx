@@ -37,6 +37,7 @@ const GAME_INFO: Record<string, { name: string; icon: string; mode: string }> = 
   bingo: { name: "Bingo", icon: "🎟️", mode: "4 Player Match" },
   rps: { name: "Rock Paper Scissors", icon: "✂️", mode: "2 Player Match" },
   wordbuilding: { name: "Word Building", icon: "🔤", mode: "2 Player Match" },
+  connect4: { name: "Connect 4", icon: "🟡", mode: "1v1 Match" },
 };
 
 export default function MatchHistoryList({
@@ -209,6 +210,7 @@ export default function MatchHistoryList({
                 <option value="snl">Snakes & Ladders</option>
                 <option value="uno">UNO Blast</option>
                 <option value="dotsboxes">Dots & Boxes</option>
+                <option value="connect4">Connect 4</option>
               </select>
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[10px] text-slate-400">
                 ⌄

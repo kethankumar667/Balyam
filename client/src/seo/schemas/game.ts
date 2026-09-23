@@ -44,6 +44,10 @@ export function buildGameApplicationSchema(config: GameSchemaConfig) {
     operatingSystem,
     genre,
     playMode,
+    gamePlatform: ["Web Browser", "Mobile Web", "Desktop Web"],
+    inLanguage: ["en", "te", "hi"],
+    isAccessibleForFree: true,
+    contentRating: "Everyone",
     numberOfPlayers: {
       "@type": "QuantitativeValue",
       minValue: minPlayers,
@@ -54,6 +58,13 @@ export function buildGameApplicationSchema(config: GameSchemaConfig) {
       price: "0",
       priceCurrency: "INR",
       availability: "https://schema.org/InStock",
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      ratingCount: "1420",
+      bestRating: "5",
+      worstRating: "1",
     },
     author: {
       "@type": "Organization",

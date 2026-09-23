@@ -122,6 +122,7 @@ class ScriptedFailureRepository implements EconomyRepository {
   retryTerminalIntent(id: string, op: string, r?: string) { return this.inner.retryTerminalIntent(id, op, r); }
   requeueExpiredTerminalIntentClaim(id: string, op: string, f?: boolean) { return this.inner.requeueExpiredTerminalIntentClaim(id, op, f); }
   adminAdjustWallet(input: Parameters<EconomyRepository["adminAdjustWallet"]>[0]) { return this.inner.adminAdjustWallet(input); }
+  transferWalletCoins(input: Parameters<EconomyRepository["transferWalletCoins"]>[0]) { return this.inner.transferWalletCoins(input); }
 }
 
 describe("Blocker 06 — DurableSettlementWorker", () => {

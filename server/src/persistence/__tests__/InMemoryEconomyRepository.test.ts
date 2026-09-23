@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { InMemoryEconomyRepository, type EconomyRepositoryTestFixture } from "../InMemoryEconomyRepository.js";
 import {
   IdentityNotFoundError,
+  InsufficientFundsError,
   InvalidIdentityKindError,
   OnlyMembersCanRedeemError,
   VoucherAlreadyRedeemedError,
@@ -654,6 +655,119 @@ describe("InMemoryEconomyRepository", () => {
           idempotencyKey: "frozen-1",
         }),
       ).rejects.toThrow(WalletFrozenError);
+    });
+  });
+
+  describe("transferWalletCoins", () => {
+    it("debits the sender and credits the recipient by the exact same amount — never mints or destroys coins", async () => {
+      fixture.seedIdentity("p2p_sender", "member");
+      fixture.seedIdentity("p2p_recipient", "member");
+      await repo.ensureWallet("p2p_sender"); // 5000
+      await repo.ensureWallet("p2p_recipient"); // 5000
+
+      const res = await repo.transferWalletCoins({
+        fromIdentityId: "p2p_sender",
+        toIdentityId: "p2p_recipient",
+        amountCoins: "200",
+        reason: "test transfer",
+        idempotencyKey: "xfer-1",
+      });
+
+      expect(res.applied).toBe(true);
+      expect(res.result.identityId).toBe("p2p_sender");
+      expect(res.result.balance).toBe("4800");
+
+      const recipientWallet = await repo.getWallet("p2p_recipient");
+      expect(recipientWallet?.balance).toBe("5200");
+
+      const senderLedger = await repo.listLedger("p2p_sender");
+      expect(senderLedger[0].entryType).toBe("P2P_TRANSFER_SEND");
+      expect(senderLedger[0].amount).toBe("-200");
+
+      const recipientLedger = await repo.listLedger("p2p_recipient");
+      expect(recipientLedger[0].entryType).toBe("P2P_TRANSFER_RECEIVE");
+      expect(recipientLedger[0].amount).toBe("200");
+    });
+
+    it("is idempotent — replaying the same key does not double-move coins", async () => {
+      fixture.seedIdentity("p2p_sender_replay", "member");
+      fixture.seedIdentity("p2p_recipient_replay", "member");
+      await repo.ensureWallet("p2p_sender_replay");
+      await repo.ensureWallet("p2p_recipient_replay");
+
+      const input = {
+        fromIdentityId: "p2p_sender_replay",
+        toIdentityId: "p2p_recipient_replay",
+        amountCoins: "300",
+        reason: "replay test",
+        idempotencyKey: "xfer-replay-1",
+      };
+
+      const first = await repo.transferWalletCoins(input);
+      expect(first.applied).toBe(true);
+
+      const replay = await repo.transferWalletCoins(input);
+      expect(replay.applied).toBe(false);
+
+      const senderWallet = await repo.getWallet("p2p_sender_replay");
+      const recipientWallet = await repo.getWallet("p2p_recipient_replay");
+      expect(senderWallet?.balance).toBe("4700"); // 5000 - 300, only once
+      expect(recipientWallet?.balance).toBe("5300"); // 5000 + 300, only once
+    });
+
+    it("rejects a transfer that exceeds the sender's balance without touching either wallet", async () => {
+      fixture.seedIdentity("p2p_poor_sender", "member");
+      fixture.seedIdentity("p2p_recipient_2", "member");
+      await repo.ensureWallet("p2p_poor_sender");
+      await repo.ensureWallet("p2p_recipient_2");
+
+      await expect(
+        repo.transferWalletCoins({
+          fromIdentityId: "p2p_poor_sender",
+          toIdentityId: "p2p_recipient_2",
+          amountCoins: "999999",
+          reason: "too much",
+          idempotencyKey: "xfer-fail-1",
+        }),
+      ).rejects.toThrow(InsufficientFundsError);
+
+      const senderWallet = await repo.getWallet("p2p_poor_sender");
+      const recipientWallet = await repo.getWallet("p2p_recipient_2");
+      expect(senderWallet?.balance).toBe("5000");
+      expect(recipientWallet?.balance).toBe("5000");
+    });
+
+    it("rejects a transfer when either wallet is frozen", async () => {
+      fixture.seedIdentity("p2p_frozen_sender", "member");
+      fixture.seedIdentity("p2p_recipient_3", "member");
+      await repo.ensureWallet("p2p_frozen_sender");
+      await repo.ensureWallet("p2p_recipient_3");
+      fixture.setFrozen("p2p_frozen_sender", true);
+
+      await expect(
+        repo.transferWalletCoins({
+          fromIdentityId: "p2p_frozen_sender",
+          toIdentityId: "p2p_recipient_3",
+          amountCoins: "100",
+          reason: "frozen check",
+          idempotencyKey: "xfer-frozen-1",
+        }),
+      ).rejects.toThrow(WalletFrozenError);
+    });
+
+    it("rejects transferring coins to oneself", async () => {
+      fixture.seedIdentity("p2p_self", "member");
+      await repo.ensureWallet("p2p_self");
+
+      await expect(
+        repo.transferWalletCoins({
+          fromIdentityId: "p2p_self",
+          toIdentityId: "p2p_self",
+          amountCoins: "50",
+          reason: "self",
+          idempotencyKey: "xfer-self-1",
+        }),
+      ).rejects.toThrow(/INVALID_TRANSFER/);
     });
   });
 });

@@ -65,6 +65,7 @@ export const GAME_REACTIONS: Partial<Record<string, readonly string[]>> = {
   tambola: ["🔢", "🎊", "🙌", "🍀", "😂", "🎉"],
   snl: ["🐍", "🪜", "🎲", "😂", "🤞", "🎉"],
   dotsboxes: ["✏️", "📐", "🧹", "😆", "🔲", "😂"],
+  connect4: ["🔴", "🟡", "🧠", "😏", "🔥", "😂"],
   wordbuilding: ["📖", "✏️", "🤓", "💡", "😂", "🎓"],
   namesplaceanimal: ["📝", "🤔", "💡", "😂", "🎓", "⚡"],
   blockblast: ["🧩", "💥", "🎯", "😎", "🔥", "😂"],

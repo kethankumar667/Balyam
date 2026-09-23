@@ -49,6 +49,7 @@ export default function RoomCodeShare({
     dotsboxes: "Dots & Boxes",
     stargame: "Star Game",
     bingo: "Bingo",
+    connect4: "Connect 4",
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
     snake: "Snake",

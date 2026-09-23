@@ -29,6 +29,7 @@ Before executing any engineering task in BHALYAM, AI agents must read and intern
 15. [`docs/ai/code-review-checklist.md`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/docs/ai/code-review-checklist.md) — Exhaustive pre-merge checklist across all quality dimensions.
 16. [`docs/ai/implementation-playbook.md`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/docs/ai/implementation-playbook.md) — Standardized step-by-step playbooks for new games, features, and fixes.
 17. [`docs/ai/prompting-guide.md`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/docs/ai/prompting-guide.md) — Mandatory **RIC-EFC** structure (Role, Intent, Context, Examples, Format, Constraints).
+18. [`docs/ai/new-game-checklist.md`](file:///c:/Users/GontlaKethanKumar/Desktop/copilot_workshop/copilot_training/MultiplayerGames/docs/ai/new-game-checklist.md) — **MANDATORY whenever a game is added or materially changed.** Every place a game must be wired, the security/privacy/economy/accessibility rules, the required tests, and the hand-back report. Where it disagrees with `implementation-playbook.md` (stale engine method names), the checklist wins.
 
 ---
 

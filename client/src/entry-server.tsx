@@ -45,6 +45,11 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import TournamentsPage from "./pages/TournamentsPage";
 import SocialHubPage from "./pages/SocialHubPage";
 import DesignSystemCatalogPage from "./pages/DesignSystemCatalogPage";
+import WriteReviewPage from "./pages/WriteReviewPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import TestimonialsPage from "./pages/TestimonialsPage";
+import Game2048Page from "./pages/Game2048Page";
+import SudokuPage from "./pages/SudokuPage";
 
 const ssrComponents: RouteComponents = {
   GamesPage,
@@ -75,6 +80,11 @@ const ssrComponents: RouteComponents = {
   TournamentsPage,
   SocialHubPage,
   DesignSystemCatalogPage,
+  WriteReviewPage,
+  FeedbackPage,
+  TestimonialsPage,
+  Game2048Page,
+  SudokuPage,
 };
 
 export function render(url: string) {

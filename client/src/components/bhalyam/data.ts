@@ -40,7 +40,8 @@ export type BhalyamGameSlug =
   | "carrom"
   | "2048"
   | "sudoku"
-  | "tictactoe";
+  | "tictactoe"
+  | "connect4";
 
 /**
  * Game filters.
@@ -196,7 +197,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Every school break had one.",
     playerRange: "2 Players",
     duration: "5–10 min",
-    paperBg: "linear-gradient(155deg, #3A1804 0%, #200C02 45%, #0F0501 100%)",
+    paperBg: "linear-gradient(155deg, #3A1E05 0%, #201002 45%, #0F0801 100%)",
     paperBorder: "rgba(245, 158, 11, 0.55)",
     btnGradient: { from: "#F59E0B", to: "#D97706", shadow: "#92400E" },
     blurb:
@@ -211,12 +212,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Cards on the classroom bench.",
     playerRange: "2–6 Players",
     duration: "10–20 min",
-    paperBg: "linear-gradient(155deg, #0A1E4A 0%, #05102A 45%, #020713 100%)",
-    paperBorder: "rgba(59, 130, 246, 0.55)",
-    btnGradient: { from: "#3B82F6", to: "#1D4ED8", shadow: "#1E3A8A" },
+    paperBg: "linear-gradient(155deg, #064E3B 0%, #022C22 45%, #01140F 100%)",
+    paperBorder: "rgba(16, 185, 129, 0.55)",
+    btnGradient: { from: "#059669", to: "#047857", shadow: "#064E3B" },
     blurb:
       "The family festival classic. Perfected during Sankranti gatherings, reimagined for your native gang.",
-    accent: { from: "#3B82F6", to: "#1D4ED8" },
+    accent: { from: "#10B981", to: "#047857" },
   },
   {
     slug: "ludo",
@@ -226,7 +227,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "One more game?",
     playerRange: "2–8 Players",
     duration: "10–30 min",
-    paperBg: "linear-gradient(155deg, #380711 0%, #1E0308 45%, #0D0104 100%)",
+    paperBg: "linear-gradient(155deg, #3D0814 0%, #22030A 45%, #0F0104 100%)",
     paperBorder: "rgba(239, 68, 68, 0.55)",
     btnGradient: { from: "#EF4444", to: "#DC2626", shadow: "#991B1B" },
     blurb:
@@ -241,7 +242,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Friendship ends at +4.",
     playerRange: "2–8 Players",
     duration: "10–20 min",
-    paperBg: "linear-gradient(155deg, #2A0944 0%, #160424 45%, #0B0212 100%)",
+    paperBg: "linear-gradient(155deg, #2D0845 0%, #170425 45%, #0C0213 100%)",
     paperBorder: "rgba(168, 85, 247, 0.55)",
     btnGradient: { from: "#A855F7", to: "#7E22CE", shadow: "#581C87" },
     blurb:
@@ -256,7 +257,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Draw the line. Claim the box.",
     playerRange: "2–6 Players",
     duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #053331 0%, #021C1B 45%, #010E0E 100%)",
+    paperBg: "linear-gradient(155deg, #063835 0%, #031F1D 45%, #010F0E 100%)",
     paperBorder: "rgba(20, 184, 166, 0.55)",
     btnGradient: { from: "#14B8A6", to: "#0D9488", shadow: "#115E59" },
     blurb:
@@ -271,7 +272,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Best of three. No cheating!",
     playerRange: "2 Players",
     duration: "2–5 min",
-    paperBg: "linear-gradient(155deg, #3C0D1C 0%, #22060F 45%, #100206 100%)",
+    paperBg: "linear-gradient(155deg, #3D0A1C 0%, #23050F 45%, #110207 100%)",
     paperBorder: "rgba(251, 113, 133, 0.55)",
     btnGradient: { from: "#FB7185", to: "#E11D48", shadow: "#9F1239" },
     blurb:
@@ -286,13 +287,29 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "3-piece limit. Zero draws. Pure tactical fun.",
     playerRange: "2 Players",
     duration: "2–5 min",
-    paperBg: "linear-gradient(155deg, #04253a 0%, #021422 45%, #01080e 100%)",
+    paperBg: "linear-gradient(155deg, #032C3A 0%, #011822 45%, #000B10 100%)",
     paperBorder: "rgba(6, 182, 212, 0.65)",
     btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#164E63" },
     blurb:
       "A classic evolution of the classic grid. Tic Tac Toe introduces the 3-piece limit rule where 4th moves evaporate your oldest mark. Fast, tactical, and the board can never lock into a draw.",
     accent: { from: "#06B6D4", to: "#EC4899" },
     tileImage: "/TicTacToeTile.png",
+  },
+  {
+    slug: "connect4",
+    tags: ["multiplayer", "board", "classroom"],
+    title: "Connect 4",
+    badge: "Classic",
+    nostalgiaQuote: "Drop, block, connect four.",
+    playerRange: "2 Players",
+    duration: "5–10 min",
+    paperBg: "linear-gradient(155deg, #0E2055 0%, #081338 45%, #03081C 100%)",
+    paperBorder: "rgba(59, 130, 246, 0.65)",
+    btnGradient: { from: "#3B82F6", to: "#1D4ED8", shadow: "#1E3A8A" },
+    blurb:
+      "Take turns dropping discs into a seven-column grid. Line up four across, up and down, or diagonally before the board fills. Quick to learn, tricky to win.",
+    accent: { from: "#3B82F6", to: "#FACC15" },
+    tileImage: "/Connect4Tile.png",
   },
   {
     slug: "bingo",
@@ -302,12 +319,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Strike 5 lines to shout BINGO!",
     playerRange: "2–8 Players",
     duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #342202 0%, #1C1201 45%, #0E0900 100%)",
-    paperBorder: "rgba(234, 179, 8, 0.55)",
-    btnGradient: { from: "#EAB308", to: "#CA8A04", shadow: "#854D0E" },
+    paperBg: "linear-gradient(155deg, #380824 0%, #200414 45%, #10010A 100%)",
+    paperBorder: "rgba(225, 29, 142, 0.55)",
+    btnGradient: { from: "#BE185D", to: "#831843", shadow: "#500724" },
     blurb:
       "Eyes down! Mark your ticket as the caller reads out the numbers — first full house wins.",
-    accent: { from: "#EAB308", to: "#CA8A04" },
+    accent: { from: "#DB2777", to: "#9D174D" },
   },
   {
     slug: "snl",
@@ -317,7 +334,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Climb high, avoid the 99 snake!",
     playerRange: "2–6 Players",
     duration: "10–20 min",
-    paperBg: "linear-gradient(155deg, #072F12 0%, #031B0A 45%, #010E05 100%)",
+    paperBg: "linear-gradient(155deg, #0B3815 0%, #05200B 45%, #021005 100%)",
     paperBorder: "rgba(34, 197, 94, 0.55)",
     btnGradient: { from: "#22C55E", to: "#16A34A", shadow: "#14532D" },
     blurb:
@@ -332,7 +349,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Spell words, build the chain.",
     playerRange: "2–6 Players",
     duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #06233B 0%, #031321 45%, #010A12 100%)",
+    paperBg: "linear-gradient(155deg, #052B4D 0%, #02172C 45%, #010B16 100%)",
     paperBorder: "rgba(14, 165, 233, 0.55)",
     btnGradient: { from: "#0EA5E9", to: "#0284C7", shadow: "#0369A1" },
     blurb:
@@ -348,9 +365,9 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Four identical chits. Slap the star!",
     playerRange: "2–8 Players",
     duration: "5–10 min",
-    paperBg: "linear-gradient(155deg, #3A2A04 0%, #201702 45%, #100B01 100%)",
+    paperBg: "linear-gradient(155deg, #3D2D03 0%, #221801 45%, #110B00 100%)",
     paperBorder: "rgba(250, 204, 21, 0.55)",
-    btnGradient: { from: "#FACC15", to: "#CA8A04", shadow: "#713F12" },
+    btnGradient: { from: "#FACC15", to: "#EAB308", shadow: "#854D0E" },
     blurb:
       "Pick a secret, slide the chits clockwise, and slap the STAR the instant you hold all four. Pure 90's terrace nostalgia.",
     accent: { from: "#FACC15", to: "#CA8A04" },
@@ -364,7 +381,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Checkmate the master.",
     playerRange: "2 Players",
     duration: "10–30 min",
-    paperBg: "linear-gradient(155deg, #1E293B 0%, #0F172A 45%, #020617 100%)",
+    paperBg: "linear-gradient(155deg, #242E3D 0%, #131B26 45%, #080D14 100%)",
     paperBorder: "rgba(148, 163, 184, 0.55)",
     btnGradient: { from: "#94A3B8", to: "#64748B", shadow: "#334155" },
     blurb:
@@ -380,9 +397,9 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Stop! Time is up!",
     playerRange: "2–6 Players",
     duration: "5–15 min",
-    paperBg: "linear-gradient(155deg, #361404 0%, #1E0A02 45%, #0E0501 100%)",
+    paperBg: "linear-gradient(155deg, #3D1603 0%, #230B01 45%, #110500 100%)",
     paperBorder: "rgba(249, 115, 22, 0.55)",
-    btnGradient: { from: "#F97316", to: "#EA580C", shadow: "#9A3412" },
+    btnGradient: { from: "#F97316", to: "#C2410C", shadow: "#7C2D12" },
     blurb: "Pick a letter, beat the clock. Whose Bombay was the most legit?",
     accent: { from: "#F97316", to: "#EA580C" },
   },
@@ -395,9 +412,9 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Early five, corners, full house!",
     playerRange: "2–10 Players",
     duration: "10–25 min",
-    paperBg: "linear-gradient(155deg, #380633 0%, #20031D 45%, #10010E 100%)",
+    paperBg: "linear-gradient(155deg, #3D0538 0%, #23021F 45%, #110110 100%)",
     paperBorder: "rgba(217, 70, 239, 0.55)",
-    btnGradient: { from: "#D946EF", to: "#C026D3", shadow: "#701A75" },
+    btnGradient: { from: "#D946EF", to: "#A21CAF", shadow: "#701A75" },
     blurb:
       "Eyes down, ticket out. Full house calling at the next wedding sangeet.",
     accent: { from: "#D946EF", to: "#C026D3" },
@@ -411,9 +428,9 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Retro Snake",
     playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #1C2B0E 0%, #0F1A07 45%, #070D03 100%)",
+    paperBg: "linear-gradient(155deg, #203108 0%, #111B04 45%, #080D02 100%)",
     paperBorder: "rgba(132, 204, 22, 0.55)",
-    btnGradient: { from: "#84CC16", to: "#65A30D", shadow: "#365314" },
+    btnGradient: { from: "#84CC16", to: "#4D7C0F", shadow: "#365314" },
     blurb:
       "Authentic Nokia 1100 monochrome 2D snake. 1-bit LCD graphics, classic & wrap-around modes, timed bonus insects, and pure square-wave buzzer nostalgia.",
     accent: { from: "#84CC16", to: "#65A30D" },
@@ -427,12 +444,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Retro Cricket",
     playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #092B19 0%, #04180D 45%, #020C06 100%)",
-    paperBorder: "rgba(16, 185, 129, 0.55)",
-    btnGradient: { from: "#10B981", to: "#059669", shadow: "#064E3B" },
+    paperBg: "linear-gradient(155deg, #073523 0%, #031F14 45%, #010F09 100%)",
+    paperBorder: "rgba(5, 150, 105, 0.55)",
+    btnGradient: { from: "#059669", to: "#064E3B", shadow: "#022C22" },
     blurb:
       "Authentic retro 90s monochrome 2D cricket. 1-bit LCD graphics, pitch bounce timing, and pure square-wave buzzer nostalgia.",
-    accent: { from: "#10B981", to: "#059669" },
+    accent: { from: "#34D399", to: "#064E3B" },
   },
   {
     slug: "roadrash",
@@ -443,12 +460,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Brick Racer",
     playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #2E1B04 0%, #190F02 45%, #0C0701 100%)",
-    paperBorder: "rgba(234, 179, 8, 0.55)",
-    btnGradient: { from: "#EAB308", to: "#CA8A04", shadow: "#854D0E" },
+    paperBg: "linear-gradient(155deg, #3D0707 0%, #220303 45%, #110101 100%)",
+    paperBorder: "rgba(244, 63, 94, 0.55)",
+    btnGradient: { from: "#E11D48", to: "#9F1239", shadow: "#4C0519" },
     blurb:
       "Authentic 9999-in-1 Brick Game Formula 1 racing. 10x20 LCD block matrix, 3-lane car dodging, nitro speed boost, and retro buzzer nostalgia.",
-    accent: { from: "#EAB308", to: "#CA8A04" },
+    accent: { from: "#F43F5E", to: "#9F1239" },
   },
   {
     slug: "brickblocks",
@@ -459,12 +476,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Brick Blocks",
     playerRange: "1 Player",
     duration: "3–15 min",
-    paperBg: "linear-gradient(155deg, #05263B 0%, #021522 45%, #010B11 100%)",
-    paperBorder: "rgba(6, 182, 212, 0.55)",
-    btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#0E7490" },
+    paperBg: "linear-gradient(155deg, #091D4A 0%, #040E29 45%, #020614 100%)",
+    paperBorder: "rgba(79, 70, 229, 0.55)",
+    btnGradient: { from: "#4F46E5", to: "#3730A3", shadow: "#1E1B4B" },
     blurb:
       "Authentic 9999-in-1 Brick Game falling blocks puzzle. 10x20 LCD matrix, Classic 7-tetrominoes & 12-pentomino Pentix modes, SRS wall kicks, ghost piece, and retro buzzer nostalgia.",
-    accent: { from: "#06B6D4", to: "#0891B2" },
+    accent: { from: "#6366F1", to: "#312E81" },
   },
   {
     slug: "breakout",
@@ -475,12 +492,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     title: "Brick Breakout",
     playerRange: "1 Player",
     duration: "3–15 min",
-    paperBg: "linear-gradient(155deg, #351508 0%, #1E0B04 45%, #0F0502 100%)",
-    paperBorder: "rgba(249, 115, 22, 0.55)",
-    btnGradient: { from: "#FB923C", to: "#EA580C", shadow: "#9A3412" },
+    paperBg: "linear-gradient(155deg, #3A1504 0%, #210A01 45%, #100400 100%)",
+    paperBorder: "rgba(251, 146, 60, 0.55)",
+    btnGradient: { from: "#FB923C", to: "#D97706", shadow: "#78350F" },
     blurb:
       "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
-    accent: { from: "#FB923C", to: "#EA580C" },
+    accent: { from: "#FDBA74", to: "#C2410C" },
   },
   {
     slug: "carrom",
@@ -491,12 +508,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Powder on board, thumb the striker!",
     playerRange: "2–4 Players",
     duration: "10–25 min",
-    paperBg: "linear-gradient(155deg, #2D1408 0%, #190A04 45%, #0C0502 100%)",
-    paperBorder: "rgba(194, 65, 12, 0.55)",
-    btnGradient: { from: "#C2410C", to: "#7C2D12", shadow: "#431407" },
+    paperBg: "linear-gradient(155deg, #301308 0%, #1B0903 45%, #0C0401 100%)",
+    paperBorder: "rgba(180, 83, 9, 0.55)",
+    btnGradient: { from: "#B45309", to: "#78350F", shadow: "#451A03" },
     blurb:
       "Powder on the board, thumb cocked, queen in the middle. Strike, rebound and cover her before your cousin does.",
-    accent: { from: "#C2410C", to: "#9A3412" },
+    accent: { from: "#D97706", to: "#78350F" },
   },
   {
     slug: "spacewar",
@@ -507,12 +524,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Blast invaders, save galaxy!",
     playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #04292B 0%, #021718 45%, #010C0C 100%)",
-    paperBorder: "rgba(45, 212, 191, 0.55)",
-    btnGradient: { from: "#2DD4BF", to: "#0D9488", shadow: "#115E59" },
+    paperBg: "linear-gradient(155deg, #1F0744 0%, #100325 45%, #070112 100%)",
+    paperBorder: "rgba(147, 51, 234, 0.55)",
+    btnGradient: { from: "#9333EA", to: "#581C87", shadow: "#2E1065" },
     blurb:
       "The legendary Nokia 3310 retro space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
-    accent: { from: "#2DD4BF", to: "#0D9488" },
+    accent: { from: "#A855F7", to: "#4C1D95" },
   },
   {
     slug: "2048",
@@ -523,12 +540,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "One more merge and I'll stop.",
     playerRange: "1 Player",
     duration: "3–10 min",
-    paperBg: "linear-gradient(155deg, #3A2A05 0%, #201603 45%, #0F0B01 100%)",
-    paperBorder: "rgba(237, 194, 46, 0.55)",
-    btnGradient: { from: "#EDC22E", to: "#CA8A04", shadow: "#78350F" },
+    paperBg: "linear-gradient(155deg, #352604 0%, #1D1401 45%, #0E0900 100%)",
+    paperBorder: "rgba(245, 158, 11, 0.65)",
+    btnGradient: { from: "#EAB308", to: "#B45309", shadow: "#78350F" },
     blurb:
       "The classic tile-merging puzzle, solo — four ways to play it. Battle drops garbage tiles onto your own board as merges pile up, Race times your sprint against your own best, Time Attack is a 2-minute score dash, and Zen strips away the clock for a calm slide with a few free undos.",
-    accent: { from: "#EDC22E", to: "#CA8A04" },
+    accent: { from: "#FCD34D", to: "#B45309" },
     tileImage: "/2048 Game Tile.png",
   },
   {
@@ -540,12 +557,12 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     nostalgiaQuote: "Pen, paper, and the Sunday morning coffee.",
     playerRange: "1 Player",
     duration: "3–15 min",
-    paperBg: "linear-gradient(155deg, #031D28 0%, #02111A 45%, #010A10 100%)",
-    paperBorder: "rgba(6, 182, 212, 0.55)",
-    btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#0E7490" },
+    paperBg: "linear-gradient(155deg, #15163B 0%, #0B0B23 45%, #050512 100%)",
+    paperBorder: "rgba(129, 140, 248, 0.55)",
+    btnGradient: { from: "#6366F1", to: "#4338CA", shadow: "#312E81" },
     blurb:
       "Futuristic Cyber-Matrix Sudoku powered by sudoku-gen. 4 cyber themes, Quantum Pencil candidate notes with auto-clearing, Neural Laser Hint scanner, and personal best tracking across 4 difficulty tiers.",
-    accent: { from: "#06B6D4", to: "#0891B2" },
+    accent: { from: "#818CF8", to: "#4F46E5" },
     tileImage: "/Sudoku Game Tile.png",
   },
 ];

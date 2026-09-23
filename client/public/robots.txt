@@ -15,20 +15,41 @@ Allow: /tournaments
 Allow: /social
 Allow: /favorites
 Allow: /recently-played
+Allow: /reviews/write
+Allow: /feedback
+Allow: /testimonials
+Allow: /design-system
 Allow: /login
 Allow: /signup
 Allow: /forgot-password
 Allow: /reset-password
 Allow: /verify-email
+
+# Nostalgic & Retro arcade games
 Allow: /nokiacricket
+Allow: /cricket2d
 Allow: /snake
+Allow: /nokiasnake
+Allow: /snake2d
 Allow: /brickracer
+Allow: /roadrash
+Allow: /racer
 Allow: /brickblocks
 Allow: /tetris
+Allow: /bricktetris
+Allow: /pentix
 Allow: /breakout
+Allow: /brickbreakout
+Allow: /brick-breakout
+Allow: /blockbreakout
+Allow: /2048
+Allow: /sudoku
 
-# Disallow private realtime rooms, dynamic sessions, and user profiles
+# Disallow administrative consoles, private rooms, dynamic sessions, and user profiles
+Disallow: /admin
+Disallow: /admin/
 Disallow: /profile
+Disallow: /profile/
 Disallow: /room/
 Disallow: /tv/
 Disallow: /diagnostics

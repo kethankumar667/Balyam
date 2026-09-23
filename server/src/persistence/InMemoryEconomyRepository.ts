@@ -1,5 +1,6 @@
 import {
   type AdminAdjustWalletInput,
+  type TransferWalletCoinsInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
@@ -690,6 +691,34 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   ): Promise<EconomyOperationResult<CoinWalletRecord>> {
     return this.mutex.runExclusive(`wallet:${input.identityId}`, () =>
       this.withRollback(() => this.creditWalletLocked(input)),
+    );
+  }
+
+  async transferWalletCoins(
+    input: TransferWalletCoinsInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    // Must reject BEFORE acquiring any lock: `KeyedMutex` is not re-entrant,
+    // so nesting `runExclusive(key, () => runExclusive(key, ...))` on the
+    // SAME key deadlocks forever (the inner call waits on the outer call's
+    // own still-pending chain). `transferWalletCoinsLocked` also validates
+    // this, but only AFTER both locks are held — too late to matter here.
+    if (input.fromIdentityId === input.toIdentityId) {
+      throw new Error("INVALID_TRANSFER: cannot transfer coins to the same identity");
+    }
+
+    // Deterministic lock ordering on both wallet keys — mirrors the Supabase
+    // RPC's row-lock ordering — so a concurrent opposite-direction transfer
+    // (B->A racing this A->B) can never hold one lock while waiting on the
+    // other.
+    const [firstKey, secondKey] =
+      input.fromIdentityId < input.toIdentityId
+        ? [input.fromIdentityId, input.toIdentityId]
+        : [input.toIdentityId, input.fromIdentityId];
+
+    return this.mutex.runExclusive(`wallet:${firstKey}`, () =>
+      this.mutex.runExclusive(`wallet:${secondKey}`, () =>
+        this.withRollback(() => this.transferWalletCoinsLocked(input)),
+      ),
     );
   }
 
@@ -1676,6 +1705,90 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       operation: "credit_wallet",
       idempotencyKey: input.idempotencyKey,
       result: clone(updated),
+    };
+  }
+
+  /**
+   * Atomic peer-to-peer transfer: debits `fromIdentityId`, credits
+   * `toIdentityId`, in one synchronous pass (no `await` between the two legs)
+   * wrapped in `withRollback` by the caller — either both legs land or
+   * neither does. Both wallet mutex keys are already held by the caller.
+   */
+  private transferWalletCoinsLocked(
+    input: TransferWalletCoinsInput,
+  ): EconomyOperationResult<CoinWalletRecord> {
+    if (!input.fromIdentityId || input.fromIdentityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.fromIdentityId);
+    }
+    if (!input.toIdentityId || input.toIdentityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.toIdentityId);
+    }
+    if (input.fromIdentityId === input.toIdentityId) {
+      throw new Error("INVALID_TRANSFER: cannot transfer coins to the same identity");
+    }
+    const amountBn = toBig(input.amountCoins);
+    if (amountBn <= 0n) {
+      throw new Error("INVALID_AMOUNT: transfer amount must be strictly greater than 0");
+    }
+
+    this.ensureWalletLocked(input.fromIdentityId);
+    this.ensureWalletLocked(input.toIdentityId);
+
+    // Idempotency: the SEND leg's key is the marker for "already applied" —
+    // both legs are logged in this same synchronous call, so if SEND is
+    // logged, RECEIVE provably is too.
+    const sendKey = `${input.idempotencyKey}:send`;
+    if (this.idempotencyLog.has(sendKey)) {
+      const wallet = this.wallets.get(input.fromIdentityId)!;
+      return {
+        applied: false,
+        operation: "transfer_wallet_coins",
+        idempotencyKey: input.idempotencyKey,
+        result: clone(wallet),
+      };
+    }
+
+    const fromWallet = this.wallets.get(input.fromIdentityId)!;
+    if (fromWallet.isFrozen) {
+      throw new WalletFrozenError(`Wallet for ${input.fromIdentityId} is frozen`);
+    }
+    const toWallet = this.wallets.get(input.toIdentityId)!;
+    if (toWallet.isFrozen) {
+      throw new WalletFrozenError(`Wallet for ${input.toIdentityId} is frozen`);
+    }
+    if (toBig(fromWallet.balance) < amountBn) {
+      throw new InsufficientFundsError(
+        `Transfer of ${input.amountCoins} exceeds wallet balance of ${fromWallet.balance}`,
+      );
+    }
+
+    const updatedFrom = this.applyWalletDebit(fromWallet, amountBn, {
+      entryType: "P2P_TRANSFER_SEND",
+      sourceKind: "mandali",
+      sourceId: input.toIdentityId,
+      idempotencyKey: sendKey,
+      description: input.reason || `Sent ${input.amountCoins} coins`,
+      lifetimeField: "lifetimeSpent",
+    });
+    this.wallets.set(input.fromIdentityId, updatedFrom);
+    this.logIdempotency(sendKey, "transfer_wallet_coins");
+
+    const updatedTo = this.applyWalletCredit(toWallet, amountBn, {
+      entryType: "P2P_TRANSFER_RECEIVE",
+      sourceKind: "mandali",
+      sourceId: input.fromIdentityId,
+      idempotencyKey: `${input.idempotencyKey}:receive`,
+      description: input.reason || `Received ${input.amountCoins} coins`,
+      lifetimeField: "lifetimeEarned",
+    });
+    this.wallets.set(input.toIdentityId, updatedTo);
+    this.logIdempotency(`${input.idempotencyKey}:receive`, "transfer_wallet_coins");
+
+    return {
+      applied: true,
+      operation: "transfer_wallet_coins",
+      idempotencyKey: input.idempotencyKey,
+      result: clone(updatedFrom),
     };
   }
 

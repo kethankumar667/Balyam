@@ -25,6 +25,7 @@ import {
   StarGameGlyph,
   BingoGlyph,
   BlockBlastGlyph,
+  Connect4Glyph,
   GamepadGlyph,
 } from "./icons";
 
@@ -77,6 +78,8 @@ function GameGlyph({ id, className = "w-12 h-12" }: { id: string; className?: st
     case "tetris":
     case "breakout":
       return <BlockBlastGlyph className={className} />;
+    case "connect4":
+      return <Connect4Glyph className={className} />;
     default:
       return <GamepadGlyph className={className} />;
   }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import {
   BarChart3,
@@ -17,6 +18,7 @@ import {
   Award,
 } from "lucide-react";
 import { useRoomStore } from "../store/roomStore";
+import { useScorecardStore } from "../store/scorecardStore";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import CountUp from "../components/CountUp";
 import CareerMetrics from "../features/profile/CareerMetrics";
@@ -24,6 +26,9 @@ import FavoriteGames from "../features/profile/FavoriteGames";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 
 import type { GameKind } from "@shared/types";
+import type { AllGameSlug } from "@shared/profile/Scorecard";
+import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
+import { formatGameMetricValue } from "../lib/metricFormatters";
 
 interface GameBreakdown {
   game: GameKind;
@@ -40,6 +45,7 @@ const GAME_BREAKDOWNS: GameBreakdown[] = [
   { game: "uno", label: "UNO Blast", icon: "🃏", tagline: "Reverse, draw four & shout UNO", specialStat: "WILD PLAYS" },
   { game: "snl", label: "Snakes & Ladders", icon: "🐍", tagline: "Climb ladders, dodge the snakes", specialStat: "LADDERS CLIMBED" },
   { game: "dotsboxes", label: "Dots & Boxes", icon: "⏹", tagline: "Corner the grid and own boxes", specialStat: "BOXES CAPTURED" },
+  { game: "connect4", label: "Connect 4", icon: "🟡", tagline: "Drop discs & connect four in a row", specialStat: "LINES CONNECTED" },
 ];
 
 /**
@@ -52,8 +58,17 @@ export default function GameStatisticsPage() {
   const currentName = useRoomStore((s) => s.playerName);
   const currentAvatar = useRoomStore((s) => s.avatarId);
 
-  const { profile, stats, achievements, isMember, openEditModal, openAvatarModal } =
+  const { profile, stats, achievements, isMember, openEditModal, openAvatarModal, effectivePlayerId } =
     useOutletContext<ProfileFamilyOutletContext>();
+
+  const archive = useScorecardStore((s) => s.archive);
+  const fetchScorecards = useScorecardStore((s) => s.fetchScorecards);
+
+  useEffect(() => {
+    if (effectivePlayerId && !archive) {
+      fetchScorecards(effectivePlayerId);
+    }
+  }, [effectivePlayerId, archive, fetchScorecards]);
 
   if (!isMember) {
     return <MemberLockedGate feature="profile" />;
@@ -349,6 +364,21 @@ export default function GameStatisticsPage() {
             const wins = gameStats?.wins || 0;
             const winRate = gameStats?.winRate || 0;
 
+            const gameSchema = getGameMetricSchema(item.game);
+            const gameCard = archive?.games?.[item.game as AllGameSlug];
+            const bestScore = gameCard ? Object.values(gameCard.modes)[0]?.bestScore : undefined;
+            const secondaryRecord = gameCard ? Object.values(gameCard.modes)[0]?.secondaryMetrics : undefined;
+
+            // Signature metric calculation: use real game-specific metric if available, otherwise format best score or win count
+            const metricDef = gameSchema.secondaryMetrics[0] || gameSchema.primaryRankMetric;
+            const metricVal = secondaryRecord?.[metricDef.key] ?? bestScore;
+            const formattedMetric = metricVal != null
+              ? formatGameMetricValue(metricVal, metricDef.format)
+              : wins > 0
+              ? `${wins}`
+              : "-";
+            const statTitle = metricDef.shortLabel || metricDef.label || item.specialStat;
+
             return (
               <div
                 key={item.game}
@@ -401,11 +431,11 @@ export default function GameStatisticsPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-[9px] font-black text-stone-400 dark:text-slate-400 block uppercase tracking-wider truncate">
-                        {item.specialStat}
+                      <span className="text-[9px] font-black text-stone-400 dark:text-slate-400 block uppercase tracking-wider truncate" title={statTitle}>
+                        {statTitle}
                       </span>
                       <span className="text-xs font-black text-amber-600 dark:text-amber-400">
-                        {wins > 0 ? wins * 2 : 0}
+                        {formattedMetric}
                       </span>
                     </div>
                   </div>

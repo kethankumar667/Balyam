@@ -100,6 +100,21 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
     return crumbs;
   }
 
+  // Mandali Communities
+  if (cleanPath === "/mandali") {
+    crumbs.push({ label: "Community", path: "/mandali" });
+    crumbs.push({ label: "Mandali (మండలి)" });
+    return crumbs;
+  }
+
+  if (cleanPath.startsWith("/mandali/")) {
+    const handle = cleanPath.split("/mandali/")[1] || "";
+    crumbs.push({ label: "Community", path: "/mandali" });
+    crumbs.push({ label: "Mandali (మండలి)", path: "/mandali" });
+    crumbs.push({ label: `@${handle}` });
+    return crumbs;
+  }
+
   // 4. Settings
   if (cleanPath.startsWith("/settings")) {
     crumbs.push({ label: "Settings", path: "/settings/preferences" });

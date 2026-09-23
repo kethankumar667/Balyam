@@ -21,12 +21,12 @@ export default function SudokuPage() {
   }, [setActiveGame]);
 
   return (
-    <div className="w-full min-h-dvh-safe h-dvh-safe overflow-y-auto overflow-x-hidden overscroll-none">
+    <main role="main" aria-label="Sudoku Cyber-Matrix Puzzle Game" className="w-full min-h-dvh-safe h-dvh-safe overflow-y-auto overflow-x-hidden overscroll-none">
       <h1 className="sr-only">Sudoku Cyber-Matrix — Futuristic Neural Puzzle</h1>
       <SudokuBoard
         initialDifficulty={initialDifficulty}
         onExit={() => navigate("/games")}
       />
-    </div>
+    </main>
   );
 }

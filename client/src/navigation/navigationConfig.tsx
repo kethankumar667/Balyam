@@ -94,6 +94,14 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/social"),
       },
       {
+        id: "home-mandali",
+        label: "Mandali (మండలి)",
+        icon: Crown,
+        path: "/mandali",
+        badge: { text: "New", variant: "amber" },
+        isActive: (p) => p.startsWith("/mandali"),
+      },
+      {
         id: "home-leaderboard",
         label: "Leaderboard",
         icon: Trophy,
