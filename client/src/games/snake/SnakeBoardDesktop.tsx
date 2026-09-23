@@ -53,7 +53,6 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
     if (myScore > bestScore) {
       setBestScore(myScore);
       localStorage.setItem("mpg.snake.best", myScore.toString());
-      void recordSoloScore("snake", "classic_walled", myScore);
     }
   }, [myScore, bestScore]);
 
@@ -86,14 +85,21 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
 
-  // Haptic feedback on game over finish
+  // Haptic feedback + scorecard submission on game over finish. Submitting
+  // here (gated on the isOver transition, exactly once) mirrors
+  // SnakeBoardMobile.tsx's pattern — without it, recordSoloScore fired on
+  // every live score tick that beat the previous best, posting a new
+  // "match" to the server mid-round and corrupting timesPlayed/recentScores.
   const prevOverRef = useRef(false);
   useEffect(() => {
     if (state.isOver && !prevOverRef.current) {
       haptics.win();
+      if (myScore > 0) {
+        void recordSoloScore("snake", "classic_walled", myScore);
+      }
     }
     prevOverRef.current = !!state.isOver;
-  }, [state.isOver, haptics]);
+  }, [state.isOver, haptics, myScore]);
 
   // Avatar lookup: `state.players` is the engine's public DTO and has no
   // `avatar` field, so seats look their picture up from the full room roster.

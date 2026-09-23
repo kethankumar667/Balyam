@@ -43,6 +43,17 @@ function saveCachedArchive(playerId: string, archive: PlayerScorecardArchive): v
   }
 }
 
+/**
+ * Monotonic request generation for fetchScorecards. Without this, a slow
+ * request for User A that resolves AFTER User B has already logged in (and
+ * fetched B's own archive) would overwrite the store with A's data —
+ * B's UI would silently show A's scorecards/personal bests. Every call
+ * captures the generation at the start; only the response matching the
+ * CURRENT generation is allowed to commit, so any newer call (same user
+ * refetching, or a different user logging in) always wins.
+ */
+let scorecardFetchGeneration = 0;
+
 export const useScorecardStore = create<ScorecardState>((set, get) => ({
   archive: null,
   loading: false,
@@ -52,6 +63,8 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
 
   fetchScorecards: async (playerId: string) => {
     if (!playerId) return;
+
+    const myGeneration = ++scorecardFetchGeneration;
 
     // Fast local optimistic load
     const cached = loadCachedArchive(playerId);
@@ -65,6 +78,10 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       const data = await apiJson<{ archive: PlayerScorecardArchive }>(
         `/api/profile/${playerId}/scorecards`
       );
+      // A newer fetchScorecards call (a different user logging in, or a
+      // refetch) started while this one was in flight — its result already
+      // won, so this stale response must not overwrite it.
+      if (myGeneration !== scorecardFetchGeneration) return;
       if (data?.archive) {
         saveCachedArchive(playerId, data.archive);
         set({ archive: data.archive, loading: false, error: null });
@@ -72,6 +89,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
         set({ loading: false });
       }
     } catch (err) {
+      if (myGeneration !== scorecardFetchGeneration) return;
       set({
         loading: false,
         error: err instanceof Error ? err.message : "Failed to load scorecards",
@@ -163,6 +181,9 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
 
   dismissPBModal: () => set({ lastNewPB: null }),
   clearScorecards: (playerId?: string) => {
+    // Invalidate any fetch still in flight from before this clear so it can
+    // never land afterward and resurrect the outgoing user's data.
+    scorecardFetchGeneration++;
     if (playerId) {
       try {
         localStorage.removeItem(`${STORAGE_KEY}.${playerId}`);

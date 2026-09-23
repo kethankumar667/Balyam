@@ -44,9 +44,10 @@ vi.mock("../../core/recovery/useRecovery", () => ({
 
 // Mock playerIdentity
 const mockApiFetch = vi.fn();
+const mockApiJson = vi.fn();
 vi.mock("../../lib/playerIdentity", () => ({
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
-  apiJson: vi.fn(),
+  apiJson: (...args: unknown[]) => mockApiJson(...args),
   usePlayerId: () => ({ playerId: "p_test_123", ready: true, kind: "member" }),
   currentGuestToken: () => null,
   ensureGuestToken: () => Promise.resolve(undefined),
@@ -465,14 +466,22 @@ describe("Production UX Resilience Audit Suite", () => {
   });
 
   describe("4. Empty States & Dynamic Filters in Feature Hubs", () => {
-    it("dynamically shows EmptyState when Leaderboard search matches 0 games and restores on clear", () => {
+    it("dynamically shows EmptyState when Leaderboard search matches 0 games and restores on clear", async () => {
+      // LeaderboardPage now shows a real loading state while its scorecard
+      // fetch is in flight (see the fake-data fix — a silent render during
+      // load used to be indistinguishable from "you haven't played
+      // anything"). Resolve with an empty archive so it settles immediately.
+      mockApiJson.mockResolvedValueOnce({
+        archive: { playerId: "p_test_123", games: {}, totalPersonalBestsBeaten: 0, updatedAt: Date.now() },
+      });
+
       render(
         <MemoryRouter>
           <LeaderboardPage />
         </MemoryRouter>
       );
 
-      const searchInput = screen.getByPlaceholderText(/search games.../i);
+      const searchInput = await screen.findByPlaceholderText(/search games.../i);
       fireEvent.change(searchInput, { target: { value: "ZzzUnknownGame999" } });
 
       expect(screen.getByText("No games found")).toBeInTheDocument();

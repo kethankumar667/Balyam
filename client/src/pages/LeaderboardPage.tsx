@@ -21,6 +21,8 @@ import {
   Search,
   X,
   Target,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -34,147 +36,15 @@ import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
 import { formatGameMetricValue } from "../lib/metricFormatters";
 
 /**
- * Initial target baseline benchmarks for unplayed games/modes.
- * When the user plays, their real score overrides this benchmark.
+ * Curated aspirational "Milestone Target" per mode — a designed goal to
+ * strive toward, shown next to a Target icon and explicitly labelled
+ * "Milestone Target," never attributed to another real player or claimed as
+ * a "Global Best." A mode with no entry here simply shows no milestone
+ * (see the `?? null` fallback at each use site) rather than a fabricated
+ * number — this table used to also silently fall back to `2480` for any
+ * untracked game/mode, which is meaningless for ~9 of the games below.
  */
-const INITIAL_MODE_BASELINES: Record<string, Record<string, number>> = {
-  breakout: {
-    classic: 1320,
-    moving_wall: 980,
-    time_attack: 1560,
-    endless: 2840,
-  },
-  "2048": {
-    daily: 2680,
-    battle: 2120,
-    timeattack: 1520,
-    zen: 2480,
-    race: 168,
-  },
-  sudoku: {
-    easy: 180,
-    medium: 320,
-    hard: 540,
-    expert: 780,
-  },
-  nokiasnake: {
-    classic_walled: 54,
-    speed_rush: 44,
-  },
-  snake: {
-    classic_walled: 64,
-    borderless_wrap: 78,
-    speed_rush: 50,
-  },
-  nokiacricket: {
-    "2_overs": 32,
-    "5_overs": 74,
-  },
-  roadrash: {
-    circuit_rush: 320,
-  },
-  brickblocks: {
-    classic: 3980,
-    pentix: 2700,
-  },
-  tetris: {
-    classic: 3980,
-    pentix: 2700,
-  },
-  handcricket: {
-    "2_overs": 18,
-    "1_over": 12,
-    "5_overs": 86,
-    t20: 142,
-    odi: 185,
-    galli: 48,
-  },
-  dotsboxes: {
-    grid_7x7: 32,
-    grid_5x5: 16,
-    grid_9x9: 48,
-    grid_4x4: 8,
-  },
-  wordbuilding: {
-    classroom_10x10: 118,
-    classroom_8x8: 74,
-    tournament_10x10: 140,
-    timed_sprint: 54,
-  },
-  carrom: {
-    classic: 18,
-    discpool: 10,
-    freestyle: 65,
-    points_carrom: 21,
-  },
-  rps: {
-    best_of_3: 2,
-    best_of_5: 4,
-    sudden_death: 1,
-  },
-  stargame: {
-    classic_5: 14,
-    sprint_3: 8,
-    marathon_10: 26,
-    classic: 11,
-  },
-  bingo: {
-    first_win: 23,
-    all_win: 38,
-    fast_2500: 22,
-    standard_5x5: 24,
-  },
-  namesplaceanimal: {
-    medium_5rds: 145,
-    hard_speed: 125,
-    marathon_10rds: 275,
-    standard_rounds: 135,
-  },
-  ludo: {
-    classic_4token: 42,
-    quick_2token: 24,
-  },
-  rummy: {
-    single: 12,
-    pool101: 45,
-    pool201: 85,
-    points_rummy: 10,
-  },
-  uno: {
-    single: 18,
-    race_300: 145,
-    race_500: 240,
-    race_1000: 480,
-    classic: 15,
-  },
-  snl: {
-    medium: 25,
-    easy: 18,
-    hard: 35,
-    extreme: 44,
-    classic_100: 28,
-  },
-  chess: {
-    blitz_3m: 16,
-    bullet_1m: 40,
-    rapid_10m: 34,
-  },
-  spacewar: {
-    arcade_survival: 2460,
-  },
-  blockblast: {
-    classic_endless: 5100,
-  },
-  tictactoe: {
-    quantum: 4,
-    classic: 3,
-  },
-  connect4: {
-    classic: 12,
-  },
-};
-
-const GLOBAL_MODE_BESTS: Record<string, Record<string, number>> = {
+const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
   breakout: {
     classic: 2480,
     moving_wall: 3120,
@@ -461,13 +331,10 @@ function getModeIcon(modeId: string): string {
   }
 }
 
-function formatScoreDate(timestamp?: number, isDefaultBreakoutClassic?: boolean): string {
+function formatScoreDate(timestamp?: number): string {
   if (timestamp) {
     const d = new Date(timestamp);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  if (isDefaultBreakoutClassic) {
-    return "Sep 17, 2026";
   }
   return "-";
 }
@@ -510,7 +377,7 @@ function getFoilTierInfo(tier: FoilTier) {
 export default function LeaderboardPage() {
   const { isSuperAdmin } = useAuthStore();
   const { playerId } = usePlayerId();
-  const { archive, fetchScorecards } = useScorecardStore();
+  const { archive, loading, error, fetchScorecards } = useScorecardStore();
   const haptics = useHaptics();
 
   const [selectedGame, setSelectedGame] = useState<AllGameSlug>("handcricket");
@@ -573,10 +440,10 @@ export default function LeaderboardPage() {
         recentScores = [localPB];
         achievedAt = Date.now();
       } else {
-        // Unplayed benchmark target
-        const baselines = INITIAL_MODE_BASELINES[selectedGame] ?? {};
-        const fallbackTarget = mode.scoringDirection === "LOWER_IS_BETTER" ? 25 : 100;
-        score = baselines[mode.modeId] ?? fallbackTarget;
+        // Genuinely unplayed — score stays 0 and isPersonalBest stays false.
+        // Render sites must check isPersonalBest before showing `score`;
+        // this used to fabricate a baseline number and display it as if it
+        // were the player's own real score.
         foilTier = "carbon";
         timesPlayed = 0;
         recentScores = [];
@@ -673,19 +540,58 @@ export default function LeaderboardPage() {
     return filteredGames.length === 0;
   }, [searchTerm, filteredGames]);
 
-  const globalBenchmark = GLOBAL_MODE_BESTS[selectedGame]?.[activeItem.modeId] ?? 2480;
-  const isBreakoutClassic = selectedGame === "breakout" && activeItem.modeId === "classic";
+  // null when no curated milestone exists for this mode — render sites must
+  // hide the "Milestone Target" UI rather than show a meaningless fallback.
+  const milestoneTarget = MODE_MILESTONE_TARGETS[selectedGame]?.[activeItem.modeId] ?? null;
   const gameSchema = getGameMetricSchema(selectedGame);
 
+  // null when the player hasn't played this mode yet, or no milestone is
+  // defined — there is nothing real to show progress against.
   const progressPercent = useMemo(() => {
+    if (!activeItem.isPersonalBest || milestoneTarget == null) return null;
     if (activeItem.scoringDirection === "LOWER_IS_BETTER") {
       if (activeItem.score <= 0) return 100;
-      return Math.min(100, Math.max(10, Math.round((globalBenchmark / Math.max(1, activeItem.score)) * 100)));
+      return Math.min(100, Math.max(10, Math.round((milestoneTarget / Math.max(1, activeItem.score)) * 100)));
     }
-    return Math.min(100, Math.max(5, Math.round((activeItem.score / Math.max(1, globalBenchmark)) * 100)));
-  }, [activeItem.score, activeItem.scoringDirection, globalBenchmark]);
+    return Math.min(100, Math.max(5, Math.round((activeItem.score / Math.max(1, milestoneTarget)) * 100)));
+  }, [activeItem.score, activeItem.scoringDirection, activeItem.isPersonalBest, milestoneTarget]);
 
   const foilInfo = getFoilTierInfo(activeItem.foilTier);
+
+  // A failed scorecard fetch must not silently render as "you haven't
+  // played anything" — that's indistinguishable from a real empty state and
+  // was the second half of the fabricated-data bug (see modeScores above).
+  if (loading && !archive) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center p-16 text-center">
+          <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mb-3" />
+          <span className="text-sm font-mono text-amber-600 dark:text-amber-400">
+            Loading scorecards...
+          </span>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error && !archive) {
+    return (
+      <AppLayout>
+        <div className="max-w-lg mx-auto mt-10 p-8 rounded-2xl bg-rose-950/40 border border-rose-800 text-center text-rose-300">
+          <AlertCircle className="w-8 h-8 text-rose-400 mx-auto mb-2" />
+          <h3 className="text-base font-bold mb-1">Scorecards Unavailable</h3>
+          <p className="text-xs text-rose-400/80 mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => playerId && fetchScorecards(playerId)}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all min-h-[44px]"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -699,7 +605,7 @@ export default function LeaderboardPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-500">
+                  <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
                     ⚡ Super Admin Mode
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950">
@@ -758,7 +664,7 @@ export default function LeaderboardPage() {
                 Records
               </span>
               <span className="text-xs font-black text-slate-900 dark:text-white leading-tight font-mono">
-                {totalPersonalBests || 2} PBs
+                {totalPersonalBests} PBs
               </span>
             </div>
           </Link>
@@ -974,36 +880,49 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-amber-500 dark:text-amber-400">
-                    {formatGameMetricValue(activeItem.score, gameSchema.primaryRankMetric.format)}
+                    {activeItem.isPersonalBest
+                      ? formatGameMetricValue(activeItem.score, gameSchema.primaryRankMetric.format)
+                      : "—"}
                   </span>
-                  {activeItem.isPersonalBest && (
+                  {activeItem.isPersonalBest ? (
                     <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wide">
                       Active Record
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-slate-500/15 text-slate-500 dark:text-slate-400 border border-slate-500/30 uppercase tracking-wide">
+                      Not Played Yet
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="text-left sm:text-right">
-                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block">
-                  Milestone Target:{" "}
-                  <strong className="text-slate-700 dark:text-slate-200">
-                    {formatGameMetricValue(globalBenchmark, gameSchema.primaryRankMetric.format)}
-                  </strong>
-                </span>
-                <span className="text-[10px] text-slate-400">
-                  {progressPercent}% Achieved
-                </span>
-              </div>
+              {milestoneTarget != null && (
+                <div className="text-left sm:text-right">
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block">
+                    Milestone Target:{" "}
+                    <strong className="text-slate-700 dark:text-slate-200">
+                      {formatGameMetricValue(milestoneTarget, gameSchema.primaryRankMetric.format)}
+                    </strong>
+                  </span>
+                  {progressPercent != null && (
+                    <span className="text-[10px] text-slate-400">
+                      {progressPercent}% Achieved
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Progress Meter Bar */}
-            <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-amber-500 to-orange-500 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+            {/* Progress Meter Bar — only meaningful once the player has a
+                real score to measure against a real milestone. */}
+            {progressPercent != null && (
+              <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            )}
 
             {/* Dynamic Game-Specific Telemetry Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2.5 border-t border-slate-200/60 dark:border-zinc-700/60">
@@ -1075,8 +994,7 @@ export default function LeaderboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
             {modeScores.map((m) => {
               const isSelected = m.modeId === activeItem.modeId;
-              const modeBenchmark = GLOBAL_MODE_BESTS[selectedGame]?.[m.modeId] ?? 2480;
-              const isBreakout = selectedGame === "breakout" && m.modeId === "classic";
+              const modeBenchmark = MODE_MILESTONE_TARGETS[selectedGame]?.[m.modeId] ?? null;
 
               return (
                 <button
@@ -1108,27 +1026,31 @@ export default function LeaderboardPage() {
                       <div className="flex items-center gap-1 text-amber-500">
                         <Crown className="w-3 h-3 fill-amber-400/20 shrink-0" />
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
-                          {formatGameMetricValue(m.score, gameSchema.primaryRankMetric.format)}
+                          {m.isPersonalBest
+                            ? formatGameMetricValue(m.score, gameSchema.primaryRankMetric.format)
+                            : "—"}
                         </span>
                       </div>
                       <span className="text-[9px] font-medium text-slate-400 truncate block">
-                        {gameSchema.primaryRankMetric.shortLabel}
+                        {m.isPersonalBest ? gameSchema.primaryRankMetric.shortLabel : "Not played"}
                       </span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                        <Target className="w-3 h-3 shrink-0" />
-                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
-                          {formatGameMetricValue(modeBenchmark, gameSchema.primaryRankMetric.format)}
-                        </span>
+                    {modeBenchmark != null && (
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                          <Target className="w-3 h-3 shrink-0" />
+                          <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-mono">
+                            {formatGameMetricValue(modeBenchmark, gameSchema.primaryRankMetric.format)}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-medium text-slate-400 truncate block">Target</span>
                       </div>
-                      <span className="text-[9px] font-medium text-slate-400 truncate block">Target</span>
-                    </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-zinc-700/60 w-full min-w-0">
                     <span>{m.timesPlayed} Played</span>
-                    <span>{formatScoreDate(m.achievedAt, isBreakout)}</span>
+                    <span>{formatScoreDate(m.achievedAt)}</span>
                   </div>
                 </button>
               );

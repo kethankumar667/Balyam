@@ -48,9 +48,6 @@ export class StateMachine {
     this.enemyManager = new EnemyCarManager();
     this.saveData = StorageService.load();
     this.updateStats();
-    if (this.saveData.highScore > 0) {
-      void recordSoloScore("roadrash", "circuit_rush", this.saveData.highScore);
-    }
   }
 
   public getCurrentTickInterval(): number {

@@ -307,6 +307,18 @@ export function useGame2048(): UseGame2048Result {
   const [undosLeft, setUndosLeft] = useState(0);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [stats, setStats] = useState<Stats>(() => loadStats());
+  // finish() needs the CURRENT stats to compute "did this improve a best,"
+  // but must not depend on `stats` directly (that would change its identity
+  // on every improvement, retriggering the Time Attack auto-finish effect
+  // below) and must not compute inside setStats' updater (React does not
+  // guarantee that runs synchronously before setStats() returns — it does
+  // not run inline with a batched update, which broke an earlier version of
+  // this fix outright: saveStats/syncGame2048Stats never fired). Keeping a
+  // ref in sync with the latest `stats` sidesteps both problems.
+  const statsRef = useRef(stats);
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
   const [isNewBest, setIsNewBest] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -457,56 +469,65 @@ export function useGame2048(): UseGame2048Result {
         }
       }
 
-      setStats((prev) => {
-        let improved = false;
-        const next: Stats = {
-          bestScore: { ...prev.bestScore },
-          bestRaceTimeMs: prev.bestRaceTimeMs,
-          bestRaceGhost: prev.bestRaceGhost,
-          dailyBestScore: prev.dailyBestScore,
-          dailyDate: prev.dailyDate,
-        };
-        if (m !== "race" && m !== "daily" && finalScore > prev.bestScore[m]) {
-          next.bestScore[m] = finalScore;
+      // Computed from statsRef (always current) rather than inside setStats'
+      // updater: React does not guarantee that updater runs synchronously
+      // before setStats() returns (it can run later, during the batched
+      // update's render pass), so side effects placed there — or code
+      // right after the call expecting the result — cannot rely on timing.
+      // Keeping the computation itself pure and side-effect-free, and only
+      // ever calling setStats when something actually improved, is what
+      // makes this safe under StrictMode's double-invoke too.
+      const prev = statsRef.current;
+      let improved = false;
+      const next: Stats = {
+        bestScore: { ...prev.bestScore },
+        bestRaceTimeMs: prev.bestRaceTimeMs,
+        bestRaceGhost: prev.bestRaceGhost,
+        dailyBestScore: prev.dailyBestScore,
+        dailyDate: prev.dailyDate,
+      };
+      if (m !== "race" && m !== "daily" && finalScore > prev.bestScore[m]) {
+        next.bestScore[m] = finalScore;
+        improved = true;
+      }
+      if (m === "daily") {
+        const today = getTodayStr();
+        const currentDaily = prev.dailyDate === today ? prev.dailyBestScore : 0;
+        if (finalScore > currentDaily) {
+          next.dailyBestScore = finalScore;
+          next.dailyDate = today;
           improved = true;
         }
-        if (m === "daily") {
-          const today = getTodayStr();
-          const currentDaily = prev.dailyDate === today ? prev.dailyBestScore : 0;
-          if (finalScore > currentDaily) {
-            next.dailyBestScore = finalScore;
-            next.dailyDate = today;
-            improved = true;
-          }
+      }
+      if (m === "race" && hitTarget && finalElapsedMs != null) {
+        if (prev.bestRaceTimeMs == null || finalElapsedMs < prev.bestRaceTimeMs) {
+          next.bestRaceTimeMs = finalElapsedMs;
+          next.bestRaceGhost = [...raceGhostRef.current];
+          improved = true;
         }
-        if (m === "race" && hitTarget && finalElapsedMs != null) {
-          if (prev.bestRaceTimeMs == null || finalElapsedMs < prev.bestRaceTimeMs) {
-            next.bestRaceTimeMs = finalElapsedMs;
-            next.bestRaceGhost = [...raceGhostRef.current];
-            improved = true;
-          }
-        }
-        if (improved) {
-          saveStats(next);
-          // Fire-and-forget: never blocks the game-over screen on network
-          // state, and the server merges rather than overwrites (see
-          // `Game2048StatsService.syncStats`), so an out-of-order or dropped
-          // push here just costs a slightly stale cloud copy, not a regression.
-          void syncGame2048Stats(next);
-        }
+      }
 
-        // Sync with universal Chrono-Scorecard system
-        try {
-          const currentMode = modeRef.current || "battle";
-          const scorecardScore = currentMode === "race" ? (finalElapsedMs ? Math.round(finalElapsedMs / 1000) : 0) : finalScore;
-          void recordSoloScore("2048", currentMode, scorecardScore);
-        } catch {
-          // Ignore
-        }
+      if (improved) {
+        statsRef.current = next;
+        setStats(next);
+        saveStats(next);
+        // Fire-and-forget: never blocks the game-over screen on network
+        // state, and the server merges rather than overwrites (see
+        // `Game2048StatsService.syncStats`), so an out-of-order or dropped
+        // push here just costs a slightly stale cloud copy, not a regression.
+        void syncGame2048Stats(next);
+      }
 
-        setIsNewBest(improved);
-        return improved ? next : prev;
-      });
+      // Sync with universal Chrono-Scorecard system
+      try {
+        const currentMode = modeRef.current || "battle";
+        const scorecardScore = currentMode === "race" ? (finalElapsedMs ? Math.round(finalElapsedMs / 1000) : 0) : finalScore;
+        void recordSoloScore("2048", currentMode, scorecardScore);
+      } catch {
+        // Ignore
+      }
+
+      setIsNewBest(improved);
     },
     [play, haptics]
   );
@@ -663,7 +684,15 @@ export function useGame2048(): UseGame2048Result {
       setGrid(nextGrid);
       setScore(nextScore);
       try {
-        useScorecardStore.getState().updateLivePace("2048", modeRef.current || "battle", nextScore);
+        // Race mode's personal best is stored as elapsed *seconds* (see finish(),
+        // which submits Math.round(finalElapsedMs / 1000)), not the tile-merge
+        // point score — feed the same unit here or GhostPaceHUD's ahead/behind
+        // comparison is meaningless (points vs. seconds).
+        const livePaceValue =
+          modeRef.current === "race" && startedAtRef.current != null
+            ? (Date.now() - startedAtRef.current) / 1000
+            : nextScore;
+        useScorecardStore.getState().updateLivePace("2048", modeRef.current || "battle", livePaceValue);
       } catch {
         // safe
       }

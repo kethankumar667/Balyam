@@ -12,6 +12,12 @@
 import { logger } from "../lib/logger.js";
 import { PostgrestClient, readPostgrestConfig, type PostgrestConfig } from "../persistence/postgrest.js";
 import { scorecardService } from "../profile/ScorecardService.js";
+import { MAX_RECORDABLE_SCORE } from "../profile/scoreValidation.js";
+
+/** A 2048 race can't plausibly complete in under this many milliseconds — it
+ *  takes multiple tile drops even with perfect RNG. Guards against a
+ *  fabricated near-zero "instant win" time (lower is better for a race). */
+const MIN_PLAUSIBLE_RACE_TIME_MS = 1000;
 
 export interface RaceGhostPoint {
   /** Milliseconds since the race started when this tile milestone was first reached. */
@@ -78,7 +84,12 @@ function isValidDateStr(v: unknown): v is string {
 export function sanitizeCandidateStats(input: unknown): Game2048Stats {
   const candidate = (input ?? {}) as Partial<Game2048Stats>;
   const bestScore = (candidate.bestScore ?? {}) as Record<string, unknown>;
-  const clampScore = (v: unknown): number => (isFiniteNumber(v) && v >= 0 ? Math.floor(v) : 0);
+  // Upper-bounded the same way scoreValidation.ts bounds every other solo
+  // score: nothing legitimate scores past a billion, and mergeGame2048Stats
+  // below can only ever grow a stored best (Math.max), so an unbounded
+  // candidate here would permanently inflate a public leaderboard entry.
+  const clampScore = (v: unknown): number =>
+    isFiniteNumber(v) && v >= 0 ? Math.floor(Math.min(v, MAX_RECORDABLE_SCORE)) : 0;
   const ghost = Array.isArray(candidate.bestRaceGhost) ? candidate.bestRaceGhost.filter(isRaceGhostPoint) : null;
   // A daily score is meaningless without a valid date to compare it against —
   // an invalid/missing date discards the score too, rather than storing an
@@ -92,7 +103,7 @@ export function sanitizeCandidateStats(input: unknown): Game2048Stats {
       zen: clampScore(bestScore.zen),
     },
     bestRaceTimeMs:
-      isFiniteNumber(candidate.bestRaceTimeMs) && candidate.bestRaceTimeMs >= 0
+      isFiniteNumber(candidate.bestRaceTimeMs) && candidate.bestRaceTimeMs >= MIN_PLAUSIBLE_RACE_TIME_MS
         ? Math.floor(candidate.bestRaceTimeMs)
         : null,
     bestRaceGhost: ghost && ghost.length > 0 ? ghost : null,

@@ -762,6 +762,15 @@ if (isSupabaseConfigured) {
       applySession(session);
       const userId = session?.user?.id ?? null;
       if (userId && userId !== syncedUserId) {
+        // A prior identity was synced and this session names a DIFFERENT
+        // one (a token refresh landing on another account, guest-to-member,
+        // etc.) — not every such transition passes through the explicit
+        // sign-out branch below. Clear the outgoing user's data first so a
+        // still-in-flight fetch for them has nothing stale left to resolve
+        // into once the incoming user's own fetch starts.
+        if (syncedUserId) {
+          clearUserDataOnSignOut(syncedUserId);
+        }
         syncedUserId = userId;
         void startProfileSync(userId, session?.user?.user_metadata);
         void syncUserDataOnLogin(userId);

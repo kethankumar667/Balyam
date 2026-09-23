@@ -82,9 +82,6 @@ export class StateMachine {
     this.saveData = StorageService.load();
     this.stateTimer = 1800; // Boot timer
     this.soundEngine.playNokiaBoot();
-    if (this.saveData.highScore > 0) {
-      void recordSoloScore("nokiacricket", "2_overs", this.saveData.highScore);
-    }
   }
 
   public getState(): GameState {

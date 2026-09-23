@@ -50,9 +50,6 @@ export class StateMachine {
     this.foodManager = new FoodManager();
     this.saveData = StorageService.load();
     this.updateStats();
-    if (this.saveData.highScore > 0) {
-      void recordSoloScore("nokiasnake", "classic_walled", this.saveData.highScore);
-    }
   }
 
   public getCurrentTickInterval(): number {
