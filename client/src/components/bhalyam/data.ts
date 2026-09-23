@@ -292,7 +292,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     btnGradient: { from: "#06B6D4", to: "#0891B2", shadow: "#164E63" },
     blurb:
       "A classic evolution of the classic grid. Tic Tac Toe introduces the 3-piece limit rule where 4th moves evaporate your oldest mark. Fast, tactical, and the board can never lock into a draw.",
-    accent: { from: "#06B6D4", to: "#EC4899" },
+    accent: { from: "#06B6D4", to: "#0891B2" },
     tileImage: "/TicTacToeTile.png",
   },
   {
@@ -308,7 +308,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     btnGradient: { from: "#3B82F6", to: "#1D4ED8", shadow: "#1E3A8A" },
     blurb:
       "Take turns dropping discs into a seven-column grid. Line up four across, up and down, or diagonally before the board fills. Quick to learn, tricky to win.",
-    accent: { from: "#3B82F6", to: "#FACC15" },
+    accent: { from: "#3B82F6", to: "#1D4ED8" },
     tileImage: "/Connect4Tile.png",
   },
   {

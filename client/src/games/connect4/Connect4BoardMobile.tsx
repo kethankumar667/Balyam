@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "../../lib/socket";
 import { HapticsManager } from "../../services/HapticsManager";
 import { connect4Audio } from "./connect4Audio";
@@ -7,6 +7,8 @@ import { Connect4Grid } from "./Connect4Grid";
 import type { Connect4BoardProps } from "./Connect4BoardProps";
 import { useConnect4Move } from "./useConnect4Move";
 import { describeConnect4Outcome } from "./connect4Outcome";
+import Chat from "../../components/Chat";
+import Modal from "../../components/Modal";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { Connect4TutorialModal, hasSeenConnect4Tutorial } from "./Connect4TutorialModal";
 import { Connect4ThemeModal } from "./Connect4ThemeModal";
@@ -21,12 +23,15 @@ import {
   BookOpen,
   AlertTriangle,
   Trophy,
+  MessageCircle,
+  X,
 } from "lucide-react";
 
 export default function Connect4BoardMobile({
   state,
   players,
   selfId,
+  messages,
   roomCode,
   onLeave,
 }: Connect4BoardProps) {
@@ -50,6 +55,14 @@ export default function Connect4BoardMobile({
   const [hoveredCol, setHoveredCol] = useState<number | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(() => !hasSeenConnect4Tutorial());
   const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // Unread-chat indicator on the chat icon — mirrors RummyBoardMobile's pattern.
+  const lastSeenChatRef = useRef(messages.length);
+  const hasUnreadChat = !chatOpen && messages.length > lastSeenChatRef.current;
+  useEffect(() => {
+    if (chatOpen) lastSeenChatRef.current = messages.length;
+  }, [chatOpen, messages.length]);
 
   const theme = useMemo(() => getConnect4Theme(themeId), [themeId]);
 
@@ -192,6 +205,19 @@ export default function Connect4BoardMobile({
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
           </button>
+
+          {/* Chat Button */}
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            className="relative min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 transition-colors cursor-pointer"
+            aria-label={hasUnreadChat ? "Open chat, unread messages" : "Open chat"}
+          >
+            <MessageCircle className="w-4 h-4" />
+            {hasUnreadChat && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-black/40" />
+            )}
+          </button>
         </div>
       </header>
 
@@ -301,6 +327,32 @@ export default function Connect4BoardMobile({
         theme={theme}
         onClose={() => setTutorialOpen(false)}
       />
+
+      {/* Chat Sheet */}
+      <Modal
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        ariaLabelledBy="connect4-chat-title"
+        mobileSheet
+        panelClassName="w-full max-w-lg h-[70dvh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-white/10 bg-black/90 backdrop-blur-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+          <h2 id="connect4-chat-title" className="text-sm font-bold text-white tracking-tight">
+            Chat
+          </h2>
+          <button
+            type="button"
+            onClick={() => setChatOpen(false)}
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            aria-label="Close chat"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 dark">
+          <Chat messages={messages} selfId={selfId} />
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -375,7 +375,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: true,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#0284C7", to: "#0C4A6E" },
+    accent: { from: "#F59E0B", to: "#D97706" },
     thumbnail: "/games/thumbnails/handcricket.svg",
     heroAsset: "/games/heroes/handcricket-hero.svg",
     howToPlay: [
@@ -406,7 +406,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: true,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#EA580C", to: "#7C2D12" },
+    accent: { from: "#22C55E", to: "#16A34A" },
     thumbnail: "/games/thumbnails/snl.svg",
     heroAsset: "/games/heroes/snl-hero.svg",
     howToPlay: [
@@ -437,7 +437,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: true,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#F59E0B", to: "#B45309" },
+    accent: { from: "#A855F7", to: "#7E22CE" },
     thumbnail: "/games/thumbnails/uno.svg",
     heroAsset: "/games/heroes/uno-hero.svg",
     howToPlay: [
@@ -468,7 +468,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: false,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#6366F1", to: "#312E81" },
+    accent: { from: "#14B8A6", to: "#0D9488" },
     thumbnail: "/games/thumbnails/dotsboxes.svg",
     heroAsset: "/games/heroes/dotsboxes-hero.svg",
     howToPlay: [
@@ -530,7 +530,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: false,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#475569", to: "#0F172A" },
+    accent: { from: "#475569", to: "#1E293B" },
     thumbnail: "/games/thumbnails/chess.svg",
     heroAsset: "/games/heroes/chess-hero.svg",
     howToPlay: [
@@ -561,7 +561,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     isPopular: false,
     isClassic: true,
     availability: "playable",
-    accent: { from: "#1D4ED8", to: "#0F172A" },
+    accent: { from: "#3B82F6", to: "#1D4ED8" },
     thumbnail: "/games/thumbnails/connect4.svg",
     heroAsset: "/games/heroes/connect4-hero.svg",
     howToPlay: [

@@ -294,17 +294,17 @@ export default function BhalyamResultModal({
                       )}
                     </div>
 
-                    <span className="truncate flex-1 font-extrabold text-[#2C1D11] flex items-center gap-1.5">
-                      <span>{p.name}</span>
-                      {p.id === selfId && <span className="text-xs text-[#7C6652] font-semibold">(you)</span>}
+                    <span className="min-w-0 flex-1 font-extrabold text-[#2C1D11] flex items-center gap-1.5">
+                      <span className="truncate">{p.name}</span>
+                      {p.id === selfId && <span className="shrink-0 text-xs text-[#7C6652] font-semibold">(you)</span>}
                       {isWinnerRow && <Crown className="w-4 h-4 text-amber-600 fill-amber-500/30 flex-shrink-0" aria-hidden />}
                       {rankNum === 2 && !isWinnerRow && hasDistinctPlacement && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 text-slate-700">
+                        <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/80 text-slate-700">
                           Runner-Up
                         </span>
                       )}
                       {rankNum === 3 && !isWinnerRow && hasDistinctPlacement && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/60 text-amber-800">
+                        <span className="shrink-0 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/60 text-amber-800">
                           3rd
                         </span>
                       )}
