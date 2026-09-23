@@ -2,7 +2,14 @@
  * Procedural Web Audio Synthesizer for Connect 4.
  * Generates dynamic futuristic sci-fi laser pulses, disc drop clacks,
  * and victory fanfares without external audio network dependencies.
+ *
+ * getContext() also gates on the global AudioManager mute, mirroring the
+ * pattern in games/rummy/sound.ts and games/ludo/sound.ts, so a player who
+ * muted sound everywhere doesn't keep hearing Connect 4 cues even though
+ * the per-Connect4 `muted` toggle (setMuted/toggleMute) is local, separate
+ * UI state for this game's own sound switch.
  */
+import { AudioManager } from "../../services/AudioManager";
 
 class Connect4AudioEngine {
   private ctx: AudioContext | null = null;
@@ -20,7 +27,7 @@ class Connect4AudioEngine {
   }
 
   private getContext(): AudioContext | null {
-    if (this.muted) return null;
+    if (this.muted || AudioManager.getInstance().getSettings().isMuted) return null;
     if (!this.ctx && typeof window !== "undefined") {
       const AudioCtx =
         window.AudioContext ||

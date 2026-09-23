@@ -54,5 +54,7 @@ Disallow: /room/
 Disallow: /tv/
 Disallow: /diagnostics
 Disallow: /preview/
+Disallow: /showcase/
+Disallow: /mandali/
 
 Sitemap: https://bhalyam.onrender.com/sitemap.xml

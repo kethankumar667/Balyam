@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-09-18T08:45:38.538Z",
-  "gitCommit": "9cce8a76",
+  "timestamp": "2026-09-23T04:38:34.677Z",
+  "gitCommit": "8eb490b8",
   "certificationState": "CLOSED BETA READY",
   "releaseApproved": true,
   "stateCapped": true,
@@ -12,23 +12,23 @@
     },
     "testIntegrity": {
       "status": "PASS",
-      "message": "336 test files clean (0 skipped, 0 focused)"
+      "message": "384 test files clean (0 skipped, 0 focused)"
     },
     "persistence": {
       "status": "PASS",
-      "message": "Verified against supabase-postgres (1d old)"
+      "message": "Verified against supabase-postgres (6d old)"
     },
     "accessibility": {
       "status": "PASS",
-      "message": "615 UI components & 22 rendered pages clean"
+      "message": "660 UI components & 22 rendered pages clean"
     },
     "mobile": {
       "status": "PASS",
       "message": "11 viewports certified (0 horizontal overflows, 44px targets)"
     },
     "bundleBudgets": {
-      "status": "WARN",
-      "message": "3 chunks exceeded budget"
+      "status": "PASS",
+      "message": "All 302 chunks within budgets"
     },
     "dependencyGovernance": {
       "status": "PASS",
@@ -53,7 +53,6 @@
   },
   "blockers": [],
   "advisories": [
-    "3 chunks exceeded bundle budget",
     "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
   ]
 }

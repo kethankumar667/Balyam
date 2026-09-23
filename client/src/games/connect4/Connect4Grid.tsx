@@ -57,6 +57,20 @@ export function Connect4Grid({
     if (!isMyTurn || disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keystrokes typed into chat or any other text field — otherwise
+      // typing a digit 1-7 while it's your turn silently drops a disc instead
+      // of (or in addition to) being typed into the input.
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       // Direct numeric drop: 1-7
       if (e.key >= "1" && e.key <= "7") {
         const colIdx = parseInt(e.key, 10) - 1;
