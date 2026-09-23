@@ -130,8 +130,8 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     service = new MandaliService(repo);
   });
 
-  it("creates a new Mandali with unique handle and founder member", () => {
-    const result = service.createMandali("player_1", "Kethan", "avatar_1", {
+  it("creates a new Mandali with unique handle and founder member", async () => {
+    const result = await service.createMandali("player_1", "Kethan", "avatar_1", {
       handle: "telugu-warriors",
       name: "Telugu Warriors",
       description: "Traditional games and weekend tournaments",
@@ -144,20 +144,20 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     expect(result.mandali?.handle).toBe("telugu-warriors");
     expect(result.mandali?.ownerId).toBe("player_1");
 
-    const members = service.getMembers(result.mandali!.id);
+    const members = await service.getMembers(result.mandali!.id);
     expect(members.length).toBe(1);
     expect(members[0]!.role).toBe("OWNER");
     expect(members[0]!.playerId).toBe("player_1");
   });
 
-  it("rejects duplicate handles", () => {
-    service.createMandali("p1", "User 1", "av1", {
+  it("rejects duplicate handles", async () => {
+    await service.createMandali("p1", "User 1", "av1", {
       handle: "unique-clan",
       name: "Clan 1",
       description: "Description",
     });
 
-    const dup = service.createMandali("p2", "User 2", "av2", {
+    const dup = await service.createMandali("p2", "User 2", "av2", {
       handle: "unique-clan",
       name: "Clan 2",
       description: "Another description",
@@ -167,8 +167,8 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     expect(dup.error).toContain("already taken");
   });
 
-  it("coordinates party formation and M-10 game launch handoff", () => {
-    const mandaliRes = service.createMandali("host_1", "Host", "av1", {
+  it("coordinates party formation and M-10 game launch handoff", async () => {
+    const mandaliRes = await service.createMandali("host_1", "Host", "av1", {
       handle: "ludo-squad-zone",
       name: "Ludo Squad Zone",
       description: "Ludo match lovers",
@@ -176,7 +176,7 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     const mandaliId = mandaliRes.mandali!.id;
 
     // Join another member
-    service.applyToMandali(mandaliId, "player_2", "Player Two", "av2");
+    await service.applyToMandali(mandaliId, "player_2", "Player Two", "av2");
 
     // Host creates party
     const partyRes = service.createParty(

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { Router, type Request, type Response } from "express";
 import { callerId, requireIdentity, requireMember } from "../auth/identity.js";
 import { requireOperationalAuth } from "../security/operationalAuth.js";
+import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { settlementViewFor } from "./settlementAccess.js";
 
@@ -377,6 +378,20 @@ function isNonNegativeInteger(v: unknown): v is number {
 
 export function createEconomyRouter(service: EconomyService): Router {
   const router = Router();
+
+  // No HTTP rate limiting existed on any economy route, including checkout
+  // commit and admin wallet adjustment. Reads stay unthrottled; every POST
+  // goes through one shared per-caller bucket — identity where the request
+  // has one by the time this runs, IP for the unauthenticated case (which
+  // the route's own requireIdentity/requireMember/requireOperationalAuth
+  // guard rejects anyway, this just stops that rejection itself from being
+  // hammered for free).
+  const mutationLimiter = rateLimitByCaller({
+    capacity: 20,
+    refillPerSec: 0.5,
+    keyOf: (req) => req.player?.playerId ?? callerIp(req),
+  });
+  router.use((req, res, next) => (req.method === "GET" ? next() : mutationLimiter(req, res, next)));
 
   /** GET /wallet — always the caller's own wallet; no addressable :playerId, mirrors profileRouter's reasoning. */
   router.get("/wallet", requireIdentity, async (req: Request, res: Response) => {

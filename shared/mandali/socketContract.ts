@@ -5,6 +5,25 @@ import type {
   MandaliMemory,
 } from "./types.js";
 
+/**
+ * Sent once per connection before any other `mandali:*` event. The server
+ * verifies `token` the same way HTTP requests are verified
+ * (`attachPlayerIdentity` in `server/src/auth/identity.ts`) and binds the
+ * result to `socket.data.mandaliPlayer` — every other Mandali handler reads
+ * identity from there, never from a payload field, so a client can no longer
+ * claim to be a different member by editing `playerId`/`leaderId` in an
+ * event payload.
+ */
+export interface MandaliAuthenticatePayload {
+  token: string;
+}
+
+export interface MandaliAuthenticateResult {
+  success: boolean;
+  playerId?: string;
+  error?: string;
+}
+
 export interface MandaliJoinRoomPayload {
   mandaliId: string;
   playerId: string;

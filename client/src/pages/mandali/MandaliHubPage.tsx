@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useViewport } from "../../lib/useViewport";
 import { useMandaliStore } from "../../store/mandaliStore";
 import { useAuthStore } from "../../store/authStore";
@@ -21,12 +21,18 @@ import { usePlayerId } from "../../lib/playerIdentity";
 import { MandaliHubDesktop } from "./MandaliHubDesktop";
 import { MandaliHubMobile } from "./MandaliHubMobile";
 import { CoinTransferModal } from "./CoinTransferModal";
+import InviteShareSheet from "../../components/mandali/InviteShareSheet";
+import GroupInfoModal from "../../components/mandali/GroupInfoModal";
+import MemberManagementSheet from "../../components/mandali/MemberManagementSheet";
+import PendingRequestsPanel from "../../components/mandali/PendingRequestsPanel";
 import { Play, Crown, Users, Zap } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 
 export default function MandaliHubPage(): JSX.Element {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite");
   const viewport = useViewport();
   const { playerId } = usePlayerId();
   const isMember = useAuthStore((s) => s.isMember);
@@ -34,7 +40,14 @@ export default function MandaliHubPage(): JSX.Element {
   const avatarId = useRoomStore((s) => s.avatarId);
 
   const [showCoinTransfer, setShowCoinTransfer] = useState(false);
+  const [coinTransferInitialType, setCoinTransferInitialType] = useState<"SEND" | "REQUEST">("SEND");
   const [preselectedMemberId, setPreselectedMemberId] = useState<string | undefined>(undefined);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showPendingRequests, setShowPendingRequests] = useState(false);
+  const [inviteInvitationId, setInviteInvitationId] = useState<string | undefined>(undefined);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const {
     activeMandali,
@@ -44,6 +57,8 @@ export default function MandaliHubPage(): JSX.Element {
     messages,
     parties,
     memories,
+    coinRequests,
+    pendingJoinRequests,
     activeGameLaunch,
     isLoading,
     errorMessage,
@@ -60,6 +75,19 @@ export default function MandaliHubPage(): JSX.Element {
     initMandaliSocket,
     cleanupMandaliSocket,
     clearActiveLaunch,
+    promoteMember,
+    demoteMember,
+    kickMember,
+    banMember,
+    transferOwnership,
+    createInviteLink,
+    resolveInviteLink,
+    fetchPendingJoinRequests,
+    decideJoinRequest,
+    pinMessage,
+    deleteMessage,
+    fundCoinRequest,
+    updateMandaliSettings,
   } = useMandaliStore();
 
   useEffect(() => {
@@ -67,6 +95,27 @@ export default function MandaliHubPage(): JSX.Element {
       fetchMandaliByHandleOrId(handle);
     }
   }, [handle, fetchMandaliByHandleOrId]);
+
+  // Resolve a `?invite=<token>` link once the Mandali loads. A valid,
+  // unexpired token unlocks a direct join (bypassing approval per the RPC's
+  // own rule) instead of the plain "preview only" visitor banner.
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    (async () => {
+      const result = await resolveInviteLink(inviteToken);
+      if (cancelled) return;
+      if (result.valid && result.invitationId) {
+        setInviteInvitationId(result.invitationId);
+        setInviteError(null);
+      } else {
+        setInviteError("This invite link is invalid, expired, or has been reset.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken, resolveInviteLink]);
 
   useEffect(() => {
     if (activeMandali?.id && playerId) {
@@ -76,6 +125,22 @@ export default function MandaliHubPage(): JSX.Element {
       };
     }
   }, [activeMandali?.id, playerId, initMandaliSocket, cleanupMandaliSocket]);
+
+  const selfMember = members.find((m) => m.playerId === playerId);
+  const selfRole: string = selfMember?.role ?? "MEMBER";
+  const isOwner = selfRole === "OWNER";
+  const isAdmin = selfRole === "ADMIN";
+  const canManageMembers = isOwner || isAdmin;
+  const canEditInfo = isOwner || isAdmin || activeMandali?.editPermission === "ALL";
+
+  // Only owners/admins ever need the pending-requests list — avoid an
+  // unnecessary fetch (and an unnecessary 403 for ordinary members) for
+  // everyone else.
+  useEffect(() => {
+    if (activeMandali?.id && canManageMembers) {
+      fetchPendingJoinRequests(activeMandali.id);
+    }
+  }, [activeMandali?.id, canManageMembers, fetchPendingJoinRequests]);
 
   if (!isLoading && errorMessage && !activeMandali) {
     return (
@@ -118,6 +183,13 @@ export default function MandaliHubPage(): JSX.Element {
 
   const handleOpenCoinTransfer = (memberId?: string) => {
     setPreselectedMemberId(memberId);
+    setCoinTransferInitialType("SEND");
+    setShowCoinTransfer(true);
+  };
+
+  const handleRequestCoins = () => {
+    setPreselectedMemberId(undefined);
+    setCoinTransferInitialType("REQUEST");
     setShowCoinTransfer(true);
   };
 
@@ -130,6 +202,12 @@ export default function MandaliHubPage(): JSX.Element {
     parties,
     memories,
     currentUserId: playerId,
+    selfId: playerId ?? "",
+    isOwner,
+    canManageMembers,
+    canEditInfo,
+    pendingRequestCount: pendingJoinRequests.length,
+    coinRequests,
     onSelectChannel: setActiveChannel,
     onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
     onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
@@ -139,6 +217,14 @@ export default function MandaliHubPage(): JSX.Element {
     onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),
     onLaunchParty: (partyId: string) => launchParty(partyId, playerId || undefined),
     onOpenCoinTransfer: handleOpenCoinTransfer,
+    onRequestCoins: handleRequestCoins,
+    onPayCoinRequest: fundCoinRequest,
+    onPinMessage: (channelId: string, messageId: string, pinned: boolean) => pinMessage(channelId, messageId, pinned),
+    onDeleteMessage: (channelId: string, messageId: string) => deleteMessage(channelId, messageId),
+    onOpenInvite: () => setShowInvite(true),
+    onOpenGroupInfo: () => setShowGroupInfo(true),
+    onOpenMembers: () => setShowMembers(true),
+    onOpenPendingRequests: () => setShowPendingRequests(true),
     onLeaveMandali: async () => {
       await leaveMandali(activeMandali.id);
       navigate("/mandali");
@@ -154,7 +240,11 @@ export default function MandaliHubPage(): JSX.Element {
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               <span>
-                {isMember
+                {inviteInvitationId
+                  ? `You've been invited to join ${activeMandali.name}!`
+                  : inviteError
+                  ? inviteError
+                  : isMember
                   ? `You are previewing ${activeMandali.name}. Join to chat in real-time and squad up!`
                   : `You are previewing ${activeMandali.name}. Sign in as a BHALYAM member to join, chat, and transfer coins.`}
               </span>
@@ -164,13 +254,23 @@ export default function MandaliHubPage(): JSX.Element {
                 <button
                   type="button"
                   onClick={async () => {
-                    const res = await joinMandali(activeMandali.id, undefined, {
-                      playerId: playerId || undefined,
-                      displayName: playerName || "Mandali Member",
-                      avatar: avatarId || "file_0000000084c48208b1f893419d784cf2_1.jpg",
-                    });
+                    const res = await joinMandali(
+                      activeMandali.id,
+                      undefined,
+                      {
+                        playerId: playerId || undefined,
+                        displayName: playerName || "Mandali Member",
+                        avatar: avatarId || "file_0000000084c48208b1f893419d784cf2_1.jpg",
+                      },
+                      inviteInvitationId
+                    );
                     if (!res.success) {
                       alert(res.error || "Failed to join");
+                      return;
+                    }
+                    if (inviteToken) {
+                      searchParams.delete("invite");
+                      setSearchParams(searchParams, { replace: true });
                     }
                   }}
                   className="min-h-[36px] px-4 py-1 rounded-lg bg-slate-950 text-amber-400 font-extrabold hover:bg-slate-900 transition-colors shadow"
@@ -248,12 +348,54 @@ export default function MandaliHubPage(): JSX.Element {
       {showCoinTransfer && activeMandali && (
         <CoinTransferModal
           mandaliId={activeMandali.id}
+          channelId={activeChannelId ?? undefined}
           members={members}
           currentUserId={playerId}
           preselectedMemberId={preselectedMemberId}
+          initialType={coinTransferInitialType}
           onClose={() => setShowCoinTransfer(false)}
         />
       )}
+
+      {activeMandali && (
+        <InviteShareSheet
+          open={showInvite}
+          onClose={() => setShowInvite(false)}
+          mandaliName={activeMandali.name}
+          mandaliHandle={activeMandali.handle}
+          onCreateLink={() => createInviteLink(activeMandali.id)}
+        />
+      )}
+
+      {activeMandali && (
+        <GroupInfoModal
+          open={showGroupInfo}
+          onClose={() => setShowGroupInfo(false)}
+          mandali={activeMandali}
+          canEditInfo={canEditInfo}
+          isOwner={isOwner}
+          onSave={(patch) => updateMandaliSettings(activeMandali.id, patch)}
+        />
+      )}
+
+      <MemberManagementSheet
+        open={showMembers}
+        onClose={() => setShowMembers(false)}
+        members={members}
+        selfId={playerId ?? ""}
+        onPromote={(targetId) => promoteMember(activeMandali.id, targetId)}
+        onDemote={(targetId) => demoteMember(activeMandali.id, targetId)}
+        onKick={(targetId) => kickMember(activeMandali.id, targetId)}
+        onBan={(targetId) => banMember(activeMandali.id, targetId)}
+        onTransferOwnership={(targetId) => transferOwnership(activeMandali.id, targetId)}
+      />
+
+      <PendingRequestsPanel
+        open={showPendingRequests}
+        onClose={() => setShowPendingRequests(false)}
+        requests={pendingJoinRequests}
+        onDecide={decideJoinRequest}
+      />
       </div>
     </AppLayout>
   );

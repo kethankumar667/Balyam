@@ -219,6 +219,67 @@ export async function ensureMemberIdentityProvisioned(userId: string): Promise<v
  * `auth-api` mode can be a network round trip. Neither can be mistaken for the
  * other — one is `bg1.…`, the other a JWT.
  */
+/**
+ * The verified identity behind a bearer token, or `null` for anything
+ * unresolvable — a wrong signature, an expired token, or a credential that
+ * matches neither a guest nor a member shape.
+ *
+ * Extracted out of `attachPlayerIdentity` so the same verification (guest
+ * HMAC first, then Supabase access token) can be reused outside Express —
+ * `MandaliSocketHandlers.ts`'s `mandali:authenticate` event calls this
+ * directly, because a Socket.IO connection has no `req` to attach a
+ * `player` onto and needed either its own copy of this logic or this.
+ */
+export async function resolvePlayerIdentity(
+  token: string | null | undefined,
+): Promise<PlayerIdentity | null> {
+  if (!token) return null;
+
+  const guestId = verifyGuestToken(token);
+  if (guestId) {
+    try {
+      await ensureGuestIdentityProvisioned(guestId);
+    } catch (err) {
+      // Provisioning is not memoized on failure (see the comment above),
+      // so the next request from this guest simply retries it. The guest
+      // still gets treated as themself for THIS request — a transient
+      // write failure must not be indistinguishable from an invalid token.
+      logger.warn({
+        message: `Guest identity provisioning failed for a resolved guest token: ${String(err)}`,
+        module: "AUTH",
+      });
+    }
+    return { kind: "guest", playerId: guestId };
+  }
+
+  try {
+    const account = await verifyAccessToken(token);
+    if (account) {
+      try {
+        await ensureMemberIdentityProvisioned(account.userId);
+      } catch (err) {
+        // Same reasoning as the guest branch above: not memoized on
+        // failure, so the next request retries it, and the member still
+        // gets treated as themself for THIS request rather than being
+        // silently signed out by a transient write failure.
+        logger.warn({
+          message: `Member identity provisioning failed for a resolved member token: ${String(err)}`,
+          module: "AUTH",
+        });
+      }
+      return { kind: "member", playerId: account.userId, email: account.email };
+    }
+  } catch (err) {
+    // An unresolvable credential is simply no identity. Downstream guards
+    // decide whether that is fatal for the route in question.
+    logger.warn({
+      message: `Identity resolution failed: ${String(err)}`,
+      module: "AUTH",
+    });
+  }
+  return null;
+}
+
 export function attachPlayerIdentity(req: Request, _res: Response, next: NextFunction): void {
   const token = bearer(req);
   if (!token) {
@@ -226,53 +287,8 @@ export function attachPlayerIdentity(req: Request, _res: Response, next: NextFun
     return;
   }
 
-  const guestId = verifyGuestToken(token);
-  if (guestId) {
-    void (async () => {
-      try {
-        await ensureGuestIdentityProvisioned(guestId);
-      } catch (err) {
-        // Provisioning is not memoized on failure (see the comment above),
-        // so the next request from this guest simply retries it. The guest
-        // still gets treated as themself for THIS request — a transient
-        // write failure must not be indistinguishable from an invalid token.
-        logger.warn({
-          message: `Guest identity provisioning failed for a resolved guest token: ${String(err)}`,
-          module: "AUTH",
-        });
-      }
-      req.player = { kind: "guest", playerId: guestId };
-      next();
-    })();
-    return;
-  }
-
   void (async () => {
-    try {
-      const account = await verifyAccessToken(token);
-      if (account) {
-        try {
-          await ensureMemberIdentityProvisioned(account.userId);
-        } catch (err) {
-          // Same reasoning as the guest branch above: not memoized on
-          // failure, so the next request retries it, and the member still
-          // gets treated as themself for THIS request rather than being
-          // silently signed out by a transient write failure.
-          logger.warn({
-            message: `Member identity provisioning failed for a resolved member token: ${String(err)}`,
-            module: "AUTH",
-          });
-        }
-        req.player = { kind: "member", playerId: account.userId, email: account.email };
-      }
-    } catch (err) {
-      // An unresolvable credential is simply no identity. Downstream guards
-      // decide whether that is fatal for the route in question.
-      logger.warn({
-        message: `Identity resolution failed for ${req.method} ${req.path}: ${String(err)}`,
-        module: "AUTH",
-      });
-    }
+    req.player = (await resolvePlayerIdentity(token)) ?? undefined;
     next();
   })();
 }

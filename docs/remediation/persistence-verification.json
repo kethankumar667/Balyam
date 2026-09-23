@@ -1,10 +1,10 @@
 {
-  "verifiedAt": "2026-09-17T06:17:11.810Z",
-  "run": "7a67925f",
+  "verifiedAt": "2026-09-23T15:06:56.939Z",
+  "run": "18dfae10",
   "project": "local://embedded-postgres-17 + postgrest-shim",
   "store": "supabase-postgres",
   "migration": "20260818000000_progression_persistence.sql",
-  "node": "v22.21.0",
+  "node": "v24.12.0",
   "scope": "Real PostgreSQL 17 + real server binary, restarted with SIGTERM. Supabase's own PostgREST and RLS enforcement under the authenticated role are NOT covered by this run.",
   "platform": "win32",
   "checks": [
@@ -24,7 +24,7 @@
       "name": "guest identity minted",
       "passed": true,
       "skipped": false,
-      "detail": "guest_ed229ac2017f605c246d2a31bb7cf8a3"
+      "detail": "guest_14b1bb0827de46ea2e49d9c2f37f868b"
     },
     {
       "name": "profile written through the real API",
@@ -48,7 +48,7 @@
       "name": "the write-behind queue drains on its own",
       "passed": true,
       "skipped": false,
-      "detail": "queue reached 0 pending after 218ms"
+      "detail": "queue reached 0 pending after 103ms"
     },
     {
       "name": "no progression write failed",
@@ -72,7 +72,7 @@
       "name": "the row is in PostgreSQL with no server running",
       "passed": true,
       "skipped": false,
-      "detail": "SELECT returned 1 row(s): {\"display_name\":\"Durability 7a67925f\"}"
+      "detail": "SELECT returned 1 row(s): {\"display_name\":\"Durability 18dfae10\"}"
     },
     {
       "name": "13 identical friend writes stored exactly one row",
@@ -90,13 +90,13 @@
       "name": "second server started and hydrated from the database",
       "passed": true,
       "skipped": false,
-      "detail": "Progression restored in 167ms: 1 profiles, 0 matches, 0 challenge claims, 0 season claims, 1 friendships, 0 parties"
+      "detail": "Progression restored in 255ms: 1 profiles, 0 matches, 0 challenge claims, 0 season claims, 1 friendships, 0 parties"
     },
     {
       "name": "the profile written by the DEAD process is served by the NEW one",
       "passed": true,
       "skipped": false,
-      "detail": "200 \"Durability 7a67925f\""
+      "detail": "200 \"Durability 18dfae10\""
     },
     {
       "name": "the friendship survived the restart",
@@ -108,7 +108,7 @@
       "name": "the guest identity still verifies after the restart",
       "passed": true,
       "skipped": false,
-      "detail": "{\"player\":{\"kind\":\"guest\",\"playerId\":\"guest_ed229ac2017f605c246d2a31bb7cf8a3\"}}"
+      "detail": "{\"player\":{\"kind\":\"guest\",\"playerId\":\"guest_14b1bb0827de46ea2e49d9c2f37f868b\"}}"
     }
   ],
   "passed": true

@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 import type { MandaliService } from "./MandaliService.js";
+import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 
 /**
  * The caller's identity, straight from `req.player` — set exclusively by the
@@ -23,25 +24,47 @@ function extractPlayerFromReq(req: Request): { playerId: string; isMember: boole
 export function createMandaliRouter(mandaliService: MandaliService): Router {
   const router = Router();
 
+  // Mandali had no HTTP rate limiting at all — every mutating route (create,
+  // join, message, react, party, coin transfer) could be hammered by a
+  // single caller. Reads stay unthrottled; every POST goes through one
+  // shared per-caller bucket, keyed by verified identity where available and
+  // falling back to IP only for the unauthenticated 401 case.
+  const mutationLimiter = rateLimitByCaller({
+    capacity: 20,
+    refillPerSec: 0.5,
+    keyOf: (req) => req.player?.playerId ?? callerIp(req),
+  });
+  router.use((req, res, next) => (req.method === "GET" ? next() : mutationLimiter(req, res, next)));
+
+  /** Owner/admin gate for the new membership-management routes — checked
+   * here rather than trusting the client to only show these actions to the
+   * right role, since the RPC itself also re-checks (belt and suspenders,
+   * not a substitute for either). */
+  async function requireOwnerOrAdmin(mandaliId: string, playerId: string): Promise<boolean> {
+    const members = await mandaliService.getMembers(mandaliId);
+    const member = members.find((m) => m.playerId === playerId);
+    const role: string = member?.role ?? "";
+    return member?.state === "ACTIVE" && (role === "OWNER" || role === "ADMIN");
+  }
+
   // Search/Browse Mandalis
-  router.get("/", (req, res) => {
+  router.get("/", async (req, res) => {
     const search = typeof req.query.search === "string" ? req.query.search : undefined;
     const language = typeof req.query.language === "string" ? req.query.language : undefined;
     const tag = typeof req.query.tag === "string" ? req.query.tag : undefined;
 
-    const results = mandaliService.searchMandalis({ search, language, tag });
+    const results = await mandaliService.searchMandalis({ search, language, tag });
     res.json({ success: true, mandalis: results });
   });
 
   // Get Player's Mandalis
-  router.get("/user/:playerId", (req, res) => {
-    const playerId = req.params.playerId;
-    const mandalis = mandaliService.getPlayerMandalis(playerId);
+  router.get("/user/:playerId", async (req, res) => {
+    const mandalis = await mandaliService.getPlayerMandalis(req.params.playerId);
     res.json({ success: true, mandalis });
   });
 
   // Create Mandali (Members Only)
-  router.post("/", (req, res) => {
+  router.post("/", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
     if (!playerInfo || !playerInfo.isMember) {
       res.status(403).json({
@@ -63,12 +86,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
-    const result = mandaliService.createMandali(
-      creatorId,
-      creatorName,
-      creatorAvatar,
-      payload
-    );
+    const result = await mandaliService.createMandali(creatorId, creatorName, creatorAvatar, payload);
 
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
@@ -78,10 +96,9 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.status(201).json({ success: true, mandali: result.mandali });
   });
 
-
   // Get Mandali by Handle
-  router.get("/handle/:handle", (req, res) => {
-    const mandali = mandaliService.getMandaliByHandle(req.params.handle);
+  router.get("/handle/:handle", async (req, res) => {
+    const mandali = await mandaliService.getMandaliByHandle(req.params.handle);
     if (!mandali) {
       res.status(404).json({ error: "Mandali not found." });
       return;
@@ -90,32 +107,47 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   /**
+   * POST /invite-links/resolve — resolve an invite token to a minimal
+   * public preview (name/emblem/description only — no members, no chat).
+   * A read, but a raw token in a query string ends up in logs/history, so
+   * this is POST-with-body rather than GET-with-query, per the redacted-log
+   * guidance this project already follows for other tokens.
+   */
+  router.post("/invite-links/resolve", async (req, res) => {
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    if (!token) {
+      res.status(400).json({ valid: false, error: "Missing invite token." });
+      return;
+    }
+    const result = await mandaliService.resolveInviteLink(token);
+    res.json(result);
+  });
+
+  /**
    * GET /my — Mandalis the requesting player belongs to.
    * Must be registered BEFORE /:handleOrId.
    */
-  router.get("/my", (req, res) => {
+  router.get("/my", async (req, res) => {
     if (!req.player) {
       res.json({ success: true, mandalis: [] });
       return;
     }
 
-    const mandalis = mandaliService.getPlayerMandalis(req.player.playerId);
+    const mandalis = await mandaliService.getPlayerMandalis(req.player.playerId);
     res.json({ success: true, mandalis });
   });
 
-
   // GET /:handleOrId — Full Mandali Hub Data (handle or id lookup, returns all sub-resources)
-  router.get("/:handleOrId", (req, res) => {
-
+  router.get("/:handleOrId", async (req, res) => {
     const raw = req.params.handleOrId;
 
     // Try by handle first (strip leading @ if present)
     const handle = raw.replace(/^@/, "");
-    let mandali = mandaliService.getMandaliByHandle(handle);
+    let mandali = await mandaliService.getMandaliByHandle(handle);
 
     // Fallback: try by opaque ID
     if (!mandali) {
-      mandali = mandaliService.getMandaliById(raw);
+      mandali = await mandaliService.getMandaliById(raw);
     }
 
     if (!mandali) {
@@ -123,24 +155,25 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
-    const members = mandaliService.getMembers(mandali.id);
-    const channels = mandaliService.getChannels(mandali.id);
-    const parties = mandaliService.getParties(mandali.id);
-    const memories = mandaliService.getMemories(mandali.id);
-    const events = mandaliService.getEvents(mandali.id);
+    const [members, channels, parties, memories, events] = await Promise.all([
+      mandaliService.getMembers(mandali.id),
+      mandaliService.getChannels(mandali.id),
+      Promise.resolve(mandaliService.getParties(mandali.id)),
+      Promise.resolve(mandaliService.getMemories(mandali.id)),
+      Promise.resolve(mandaliService.getEvents(mandali.id)),
+    ]);
 
     res.json({ success: true, mandali, members, channels, parties, memories, events });
   });
 
-
   // Get Members
-  router.get("/:id/members", (req, res) => {
-    const members = mandaliService.getMembers(req.params.id);
+  router.get("/:id/members", async (req, res) => {
+    const members = await mandaliService.getMembers(req.params.id);
     res.json({ members });
   });
 
   // Apply or Direct Join (Members Only)
-  router.post(["/:id/apply", "/:id/join"], (req, res) => {
+  router.post(["/:id/apply", "/:id/join"], async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
     if (!playerInfo || !playerInfo.isMember) {
       res.status(403).json({
@@ -153,32 +186,27 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     const displayName = req.body.displayName || "Member";
     const avatar = req.body.avatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
     const statement = req.body.statement;
+    const invitationId = typeof req.body.invitationId === "string" ? req.body.invitationId : undefined;
 
-    const result = mandaliService.applyToMandali(
-      req.params.id,
-      playerInfo.playerId,
-      displayName,
-      avatar,
-      statement
-    );
+    const result = await mandaliService.applyToMandali(req.params.id, playerInfo.playerId, displayName, avatar, statement, invitationId);
 
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
       return;
     }
 
-    res.json({ success: true });
+    res.json({ success: true, pending: result.pending ?? false });
   });
 
   // Leave Mandali
-  router.post("/:id/leave", (req, res) => {
+  router.post("/:id/leave", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
     if (!playerInfo) {
       res.status(401).json({ success: false, error: "Sign in to leave a Mandali." });
       return;
     }
 
-    const result = mandaliService.leaveMandali(req.params.id, playerInfo.playerId);
+    const result = await mandaliService.leaveMandali(req.params.id, playerInfo.playerId);
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
       return;
@@ -187,42 +215,185 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ success: true });
   });
 
+  // Edit Group Info & Settings — name/emblem/description/rules plus the
+  // edit/send/join-approval toggles. The RPC itself gates who may change
+  // what; this route just forwards whatever the caller included.
+  router.patch("/:id/settings", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to edit group info." });
+      return;
+    }
+    const { name, emblem, description, rules, editPermission, sendPermission, joinApproval } = req.body ?? {};
+    const result = await mandaliService.updateMandaliSettings({
+      mandaliId: req.params.id, actorId: playerInfo.playerId,
+      name, emblem, description, rules, editPermission, sendPermission, joinApproval,
+    });
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true, mandali: result.mandali });
+  });
+
+  /* ── Invite links ── */
+
+  router.post("/:id/invite-links", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to create an invite link." });
+      return;
+    }
+    const expiresInMs = typeof req.body?.expiresInMs === "number" ? req.body.expiresInMs : undefined;
+    const result = await mandaliService.createInviteLink(req.params.id, playerInfo.playerId, expiresInMs);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.status(201).json({ success: true, invitation: result.invitation });
+  });
+
+  /* ── Join-request approval ── */
+
+  router.get("/:id/join-requests", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !(await requireOwnerOrAdmin(req.params.id, playerInfo.playerId))) {
+      res.status(403).json({ success: false, error: "Only an owner or admin can view join requests." });
+      return;
+    }
+    const requests = await mandaliService.getPendingJoinRequests(req.params.id);
+    res.json({ success: true, requests });
+  });
+
+  // No mandaliId prefix — request IDs are globally unique and the RPC
+  // derives the Mandali from the request row itself.
+  router.post("/join-requests/:requestId/decide", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to decide a join request." });
+      return;
+    }
+    const approve = req.body?.approve === true;
+    const result = await mandaliService.decideJoinRequest(req.params.requestId, playerInfo.playerId, approve);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  /* ── Member management: promote / demote / kick / ban / transfer ownership ── */
+
+  router.post("/:id/members/:targetId/promote", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to promote a member." });
+      return;
+    }
+    const result = await mandaliService.promoteMember(req.params.id, playerInfo.playerId, req.params.targetId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  router.post("/:id/members/:targetId/demote", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to demote a member." });
+      return;
+    }
+    const result = await mandaliService.demoteMember(req.params.id, playerInfo.playerId, req.params.targetId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  router.post("/:id/members/:targetId/kick", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to remove a member." });
+      return;
+    }
+    const officer = (await mandaliService.getMembers(req.params.id)).find((m) => m.playerId === playerInfo.playerId);
+    const result = await mandaliService.kickMember(
+      req.params.id, playerInfo.playerId, officer?.displayName ?? "Officer", req.params.targetId,
+      typeof req.body?.reason === "string" ? req.body.reason : "Removed by officer"
+    );
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  router.post("/:id/members/:targetId/ban", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to ban a member." });
+      return;
+    }
+    const result = await mandaliService.banMember(req.params.id, playerInfo.playerId, req.params.targetId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  router.post("/:id/transfer-ownership", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to transfer ownership." });
+      return;
+    }
+    const newOwnerId = typeof req.body?.newOwnerId === "string" ? req.body.newOwnerId : "";
+    if (!newOwnerId) {
+      res.status(400).json({ success: false, error: "Missing newOwnerId." });
+      return;
+    }
+    const result = await mandaliService.transferOwnership(req.params.id, playerInfo.playerId, newOwnerId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true, mandali: result.mandali });
+  });
+
   // Get Channels
-  router.get("/:id/channels", (req, res) => {
-    const channels = mandaliService.getChannels(req.params.id);
+  router.get("/:id/channels", async (req, res) => {
+    const channels = await mandaliService.getChannels(req.params.id);
     res.json({ channels });
   });
 
   // Get Channel Messages — private community content, active members only.
-  router.get("/:id/channels/:channelId/messages", (req, res) => {
+  router.get("/:id/channels/:channelId/messages", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
-    if (!playerInfo || !mandaliService.isActiveMember(req.params.id, playerInfo.playerId)) {
+    if (!playerInfo || !(await mandaliService.isActiveMember(req.params.id, playerInfo.playerId))) {
       res.status(403).json({ error: "Only active members can read this channel." });
       return;
     }
 
     const limit = Number(req.query.limit) || 50;
-    const messages = mandaliService.getMessages(req.params.channelId, limit);
+    const messages = await mandaliService.getMessages(req.params.channelId, limit);
     res.json({ messages });
   });
 
   // Send Message
-  router.post("/:id/channels/:channelId/messages", (req, res) => {
+  router.post("/:id/channels/:channelId/messages", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
-    const { senderName, senderAvatar, content, replyToId } = req.body;
+    const { senderName, senderAvatar, content, replyToId, clientRequestId } = req.body;
     if (!playerInfo || !content) {
       res.status(400).json({ error: "Missing sender identity or content." });
       return;
     }
 
-    const result = mandaliService.sendMessage(
-      req.params.id,
-      req.params.channelId,
-      playerInfo.playerId,
-      senderName || "Member",
-      senderAvatar || "avatar_1",
-      content,
-      replyToId
+    const result = await mandaliService.sendMessage(
+      req.params.id, req.params.channelId, playerInfo.playerId,
+      senderName || "Member", senderAvatar || "avatar_1", content, replyToId, clientRequestId
     );
 
     if (!result.success) {
@@ -231,6 +402,37 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     }
 
     res.status(201).json({ message: result.message });
+  });
+
+  // Pin / unpin a message
+  router.post("/:id/channels/:channelId/messages/:messageId/pin", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to pin a message." });
+      return;
+    }
+    const pinned = req.body?.pinned !== false;
+    const result = await mandaliService.setMessagePin(req.params.messageId, playerInfo.playerId, pinned);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
+  });
+
+  // Delete for everyone / delete as admin — tombstones, never a hard delete.
+  router.delete("/:id/channels/:channelId/messages/:messageId", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to delete a message." });
+      return;
+    }
+    const result = await mandaliService.deleteMessage(req.params.messageId, playerInfo.playerId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true });
   });
 
   // React to Message
@@ -404,6 +606,50 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   router.get("/:id/coins/transfers", (req, res) => {
     const transfers = mandaliService.getCoinTransfers(req.params.id);
     res.json({ success: true, transfers });
+  });
+
+  /* ── Coin requests (the payable request card the chat feed actually renders) ── */
+
+  router.get("/:id/coin-requests", async (req, res) => {
+    const requests = await mandaliService.getCoinRequests(req.params.id);
+    res.json({ success: true, requests });
+  });
+
+  router.post("/:id/channels/:channelId/coin-requests", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to request coins." });
+      return;
+    }
+    const { payerId, amount, expiresInMs } = req.body;
+    if (!payerId || typeof amount !== "number") {
+      res.status(400).json({ success: false, error: "Invalid coin request parameters." });
+      return;
+    }
+    const result = await mandaliService.createCoinRequest({
+      mandaliId: req.params.id, channelId: req.params.channelId,
+      requesterId: playerInfo.playerId, payerId, amount, expiresInMs,
+    });
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.status(201).json({ success: true, request: result.request });
+  });
+
+  // No mandaliId prefix — same reasoning as join-requests/:requestId/decide.
+  router.post("/coin-requests/:requestId/fund", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to pay a coin request." });
+      return;
+    }
+    const result = await mandaliService.fundCoinRequest(req.params.requestId, playerInfo.playerId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true, request: result.request });
   });
 
   return router;

@@ -1,6 +1,8 @@
 import type { Server, Socket } from "socket.io";
 import type { MandaliService } from "./MandaliService.js";
 import type {
+  MandaliAuthenticatePayload,
+  MandaliAuthenticateResult,
   MandaliJoinRoomPayload,
   MandaliLeaveRoomPayload,
   MandaliSendMessagePayload,
@@ -11,16 +13,82 @@ import type {
   MandaliPartyLaunchPayload,
 } from "@shared/mandali/socketContract.js";
 import type { GameKind } from "@shared/types.js";
+import { resolvePlayerIdentity, type PlayerIdentity } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
+
+interface MandaliSocketData {
+  mandaliPlayer?: PlayerIdentity;
+}
+
+/**
+ * Every handler below used to trust `payload.playerId` / `payload.leaderId`
+ * verbatim — a client could claim to be any Mandali member with zero
+ * credentials, since nothing compared that claim against who the socket
+ * actually authenticated as. This mirrors the same bug the HTTP side had
+ * before `MandaliController.ts`'s `extractPlayerFromReq` was locked to
+ * `req.player`, except the socket transport had no equivalent of `req.player`
+ * to lock to at all.
+ *
+ * `mandali:authenticate` is the fix: the client sends its bearer token once
+ * per connection (the same token `apiFetch` already attaches to HTTP calls),
+ * verified here with the identical `resolvePlayerIdentity` the HTTP
+ * middleware uses, and the result is bound to `socket.data.mandaliPlayer` —
+ * per-connection state Socket.IO clears automatically on disconnect. Every
+ * other handler below reads identity from there, never from the payload;
+ * a payload's `playerId`/`leaderId` field is kept only where the wire
+ * contract still carries it for logging/display, and is never used for
+ * authorization or as the actor written to the database.
+ *
+ * This does not force the shared, unauthenticated game socket
+ * (`client/src/lib/socket.ts`) through a global auth gate — only the
+ * `mandali:*` events below check `socket.data.mandaliPlayer`. Ordinary room
+ * gameplay is untouched.
+ */
+function requireAuthenticatedActor(
+  socket: Socket,
+  ack: ((res: unknown) => void) | undefined,
+): string | null {
+  const data = socket.data as MandaliSocketData;
+  const playerId = data.mandaliPlayer?.playerId;
+  if (!playerId) {
+    ack?.({ success: false, error: "Not authenticated. Emit mandali:authenticate first." });
+    return null;
+  }
+  return playerId;
+}
 
 export function registerMandaliSocketHandlers(
   _io: Server,
   socket: Socket,
   mandaliService: MandaliService
 ): void {
+  // Authenticate this connection for Mandali actions. Must be emitted before
+  // any other mandali:* event; everything else refuses until this succeeds.
+  socket.on(
+    "mandali:authenticate",
+    async (payload: MandaliAuthenticatePayload, ack?: (res: MandaliAuthenticateResult) => void) => {
+      try {
+        const identity = await resolvePlayerIdentity(payload?.token);
+        if (!identity) {
+          ack?.({ success: false, error: "Invalid or expired credential" });
+          return;
+        }
+        (socket.data as MandaliSocketData).mandaliPlayer = identity;
+        ack?.({ success: true, playerId: identity.playerId });
+      } catch (err) {
+        logger.error({
+          message: `Mandali socket authentication failed: ${err instanceof Error ? err.message : String(err)}`,
+          module: "MANDALI_SOCKET",
+        });
+        ack?.({ success: false, error: "Internal error authenticating" });
+      }
+    }
+  );
+
   // Join the Mandali broadcast room
   socket.on("mandali:join_room", (payload: MandaliJoinRoomPayload) => {
-    if (!payload?.mandaliId) return;
+    const actorId = requireAuthenticatedActor(socket, undefined);
+    if (!actorId || !payload?.mandaliId) return;
     const roomName = `mandali:${payload.mandaliId}`;
     socket.join(roomName);
     logger.info({
@@ -41,20 +109,22 @@ export function registerMandaliSocketHandlers(
   });
 
   // Send a chat message within a Mandali channel
-  socket.on("mandali:chat:send", (payload: MandaliSendMessagePayload, ack?: (res: unknown) => void) => {
+  socket.on("mandali:chat:send", async (payload: MandaliSendMessagePayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.channelId || !payload?.playerId || !payload?.content) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.channelId || !payload?.content) {
         ack?.({ success: false, error: "Invalid chat payload" });
         return;
       }
-      const member = mandaliService.getRepository().getMember(payload.mandaliId, payload.playerId);
+      const member = mandaliService.getRepository().getMember(payload.mandaliId, actorId);
       const senderName = member?.displayName || "Player";
       const senderAvatar = member?.avatar || "avatar_1";
 
-      const result = mandaliService.sendMessage(
+      const result = await mandaliService.sendMessage(
         payload.mandaliId,
         payload.channelId,
-        payload.playerId,
+        actorId,
         senderName,
         senderAvatar,
         payload.content,
@@ -73,7 +143,9 @@ export function registerMandaliSocketHandlers(
   // Add or remove a reaction to a message
   socket.on("mandali:chat:react", (payload: MandaliReactMessagePayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.channelId || !payload?.messageId || !payload?.playerId || !payload?.emoji) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.channelId || !payload?.messageId || !payload?.emoji) {
         ack?.({ success: false, error: "Invalid reaction payload" });
         return;
       }
@@ -81,7 +153,7 @@ export function registerMandaliSocketHandlers(
         payload.mandaliId,
         payload.channelId,
         payload.messageId,
-        payload.playerId,
+        actorId,
         payload.emoji
       );
       ack?.(result);
@@ -97,17 +169,19 @@ export function registerMandaliSocketHandlers(
   // Create a game party
   socket.on("mandali:party:create", (payload: MandaliPartyCreatePayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.playerId || !payload?.game) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.game) {
         ack?.({ success: false, error: "Invalid party creation payload" });
         return;
       }
-      const member = mandaliService.getRepository().getMember(payload.mandaliId, payload.playerId);
+      const member = mandaliService.getRepository().getMember(payload.mandaliId, actorId);
       const leaderName = member?.displayName || "Leader";
       const leaderAvatar = member?.avatar || "avatar_1";
 
       const result = mandaliService.createParty(
         payload.mandaliId,
-        payload.playerId,
+        actorId,
         leaderName,
         leaderAvatar,
         payload.game as GameKind,
@@ -128,18 +202,20 @@ export function registerMandaliSocketHandlers(
   // Join a game party
   socket.on("mandali:party:join", (payload: MandaliPartyJoinPayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.partyId || !payload?.playerId) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.partyId) {
         ack?.({ success: false, error: "Invalid party join payload" });
         return;
       }
-      const member = mandaliService.getRepository().getMember(payload.mandaliId, payload.playerId);
+      const member = mandaliService.getRepository().getMember(payload.mandaliId, actorId);
       const displayName = member?.displayName || "Player";
       const avatar = member?.avatar || "avatar_1";
 
       const result = mandaliService.joinParty(
         payload.mandaliId,
         payload.partyId,
-        payload.playerId,
+        actorId,
         displayName,
         avatar
       );
@@ -156,11 +232,13 @@ export function registerMandaliSocketHandlers(
   // Leave a game party
   socket.on("mandali:party:leave", (payload: MandaliPartyLeavePayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.partyId || !payload?.playerId) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.partyId) {
         ack?.({ success: false, error: "Invalid party leave payload" });
         return;
       }
-      const result = mandaliService.leaveParty(payload.mandaliId, payload.partyId, payload.playerId);
+      const result = mandaliService.leaveParty(payload.mandaliId, payload.partyId, actorId);
       ack?.(result);
     } catch (err) {
       logger.error({
@@ -174,14 +252,16 @@ export function registerMandaliSocketHandlers(
   // Launch a game party (M-10 Handoff)
   socket.on("mandali:party:launch", (payload: MandaliPartyLaunchPayload, ack?: (res: unknown) => void) => {
     try {
-      if (!payload?.mandaliId || !payload?.partyId || !payload?.leaderId) {
+      const actorId = requireAuthenticatedActor(socket, ack);
+      if (!actorId) return;
+      if (!payload?.mandaliId || !payload?.partyId) {
         ack?.({ success: false, error: "Invalid party launch payload" });
         return;
       }
       const result = mandaliService.launchPartyToGame(
         payload.mandaliId,
         payload.partyId,
-        payload.leaderId
+        actorId
       );
       ack?.(result);
     } catch (err) {

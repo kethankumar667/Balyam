@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from "crypto";
 import type {
   Mandali,
   MandaliMember,
@@ -10,10 +11,141 @@ import type {
   MandaliApplication,
   MandaliInvitation,
   MandaliCoinTransfer,
+  MandaliInviteLink,
+  MandaliJoinRequestRecord,
+  MandaliCoinRequest,
+  MandaliCoinRequestStatus,
 } from "@shared/mandali/types.js";
 import { pickAvatarForName } from "@shared/avatars.js";
+import type { PostgrestClient } from "../persistence/postgrest.js";
+
+/** Raw PostgREST row shapes — snake_case, string timestamps. Mapped to the
+ * camelCase millisecond-epoch shared types immediately below each RPC/select
+ * call so nothing downstream ever sees a raw row. */
+interface MandaliRow {
+  id: string; handle: string; name: string; emblem: string; description: string; rules: string;
+  banner_gradient: string | null; language: string; region: string; tags: string[];
+  visibility: string; member_count: number; max_members: number; level: number; xp: number;
+  owner_identity_id: string; edit_permission: string; send_permission: string; join_approval: boolean;
+  created_at: string; updated_at: string;
+}
+interface MembershipRow {
+  mandali_id: string; identity_id: string; role: string; state: string;
+  display_name: string; avatar: string; joined_at: string;
+}
+interface ChannelRow {
+  channel_id: string; mandali_id: string; name: string; type: string;
+  is_archived: boolean; position: number;
+}
+interface MessageRow {
+  message_id: string; mandali_id: string; channel_id: string; sequence: number;
+  sender_identity_id: string; sender_role: string; kind: string; content: string;
+  reply_to_id: string | null; pinned: boolean; deleted_at: string | null;
+  created_at: string;
+}
+interface InvitationRow {
+  id: string; mandali_id: string; issuer_identity_id: string; status: string;
+  use_count: number; use_limit: number; expires_at: string; created_at: string;
+}
+interface JoinRequestRow {
+  id: string; mandali_id: string; requester_identity_id: string; invitation_id: string | null;
+  status: string; reviewer_identity_id: string | null; created_at: string; decided_at: string | null;
+}
+interface CoinRequestRow {
+  id: string; mandali_id: string; message_id: string | null; requester_identity_id: string;
+  payer_identity_id: string; amount: number; status: string; expires_at: string;
+  created_at: string; decided_at: string | null;
+}
+
+function toMs(iso: string | null): number {
+  return iso ? new Date(iso).getTime() : 0;
+}
+
+function rowToMandali(r: MandaliRow): Mandali {
+  return {
+    id: r.id, handle: r.handle, name: r.name, description: r.description, emblem: r.emblem,
+    bannerGradient: r.banner_gradient ?? undefined, language: r.language, region: r.region,
+    tags: r.tags, visibility: r.visibility as Mandali["visibility"],
+    memberCount: r.member_count, maxMembers: r.max_members, level: r.level, xp: r.xp,
+    ownerId: r.owner_identity_id, createdAt: toMs(r.created_at), updatedAt: toMs(r.updated_at),
+    rules: r.rules, editPermission: r.edit_permission as Mandali["editPermission"],
+    sendPermission: r.send_permission as Mandali["sendPermission"], joinApproval: r.join_approval,
+  };
+}
+
+function rowToMember(r: MembershipRow): MandaliMember {
+  return {
+    memberId: `${r.mandali_id}:${r.identity_id}`, mandaliId: r.mandali_id, playerId: r.identity_id,
+    displayName: r.display_name, avatar: r.avatar, role: r.role as MandaliMember["role"],
+    state: r.state as MandaliMember["state"], joinedAt: toMs(r.joined_at),
+    presence: "online", contributionScore: 0,
+  };
+}
+
+function rowToChannel(r: ChannelRow): MandaliChannel {
+  return {
+    channelId: r.channel_id, mandaliId: r.mandali_id, name: r.name,
+    type: r.type as MandaliChannel["type"], description: "", slowModeSeconds: 0,
+    isArchived: r.is_archived, position: r.position,
+  };
+}
+
+function rowToMessage(r: MessageRow, senderName: string, senderAvatar: string): MandaliMessage {
+  return {
+    messageId: r.message_id, channelId: r.channel_id, mandaliId: r.mandali_id,
+    senderId: r.sender_identity_id, senderName, senderAvatar,
+    senderRole: r.sender_role as MandaliMessage["senderRole"],
+    content: r.deleted_at ? "" : r.content, reactions: {}, replyToId: r.reply_to_id ?? undefined,
+    pinned: r.pinned, timestamp: toMs(r.created_at), kind: r.kind as MandaliMessage["kind"],
+  };
+}
+
+function rowToInviteLink(r: InvitationRow, token?: string): MandaliInviteLink {
+  return {
+    id: r.id, mandaliId: r.mandali_id, token, issuerIdentityId: r.issuer_identity_id,
+    status: r.status as MandaliInviteLink["status"], useCount: r.use_count, useLimit: r.use_limit,
+    expiresAt: toMs(r.expires_at), createdAt: toMs(r.created_at),
+  };
+}
+
+function rowToJoinRequest(r: JoinRequestRow): MandaliJoinRequestRecord {
+  return {
+    id: r.id, mandaliId: r.mandali_id, requesterIdentityId: r.requester_identity_id,
+    invitationId: r.invitation_id, status: r.status as MandaliJoinRequestRecord["status"],
+    reviewerIdentityId: r.reviewer_identity_id, createdAt: toMs(r.created_at),
+    decidedAt: r.decided_at ? toMs(r.decided_at) : null,
+  };
+}
+
+function rowToCoinRequest(r: CoinRequestRow): MandaliCoinRequest {
+  return {
+    id: r.id, mandaliId: r.mandali_id, messageId: r.message_id,
+    requesterIdentityId: r.requester_identity_id, payerIdentityId: r.payer_identity_id,
+    amount: r.amount, status: r.status as MandaliCoinRequestStatus,
+    expiresAt: toMs(r.expires_at), createdAt: toMs(r.created_at),
+    decidedAt: r.decided_at ? toMs(r.decided_at) : null,
+  };
+}
+
+/** 32 random bytes — a plain SHA-256 of this much entropy is not
+ * brute-forceable, so unlike a low-entropy secret this needs no HMAC key,
+ * just a stable, deterministic lookup hash. */
+function mintInviteToken(): { token: string; hash: string } {
+  const token = randomBytes(32).toString("base64url");
+  return { token, hash: createHash("sha256").update(token).digest("hex") };
+}
 
 export class MandaliRepository {
+  /** Non-null enables the durable Postgres-backed path for the actions this
+   * migration covers (mandali/membership CRUD, invites, join requests,
+   * messages, coin requests). Parties/events/memories/legacy applications
+   * are out of this release's durability scope and stay in-memory either
+   * way — see MANDALI plan's explicit scope boundary. */
+  private readonly postgres: PostgrestClient | null;
+
+  public isDurable(): boolean {
+    return this.postgres !== null;
+  }
   private mandalis = new Map<string, Mandali>();
   private mandalisByHandle = new Map<string, string>(); // handle.toLowerCase() -> id
   private members = new Map<string, Map<string, MandaliMember>>(); // mandaliId -> (playerId -> member)
@@ -29,8 +161,14 @@ export class MandaliRepository {
   private coinTransfers = new Map<string, MandaliCoinTransfer[]>(); // mandaliId -> coin transfers
 
 
-  constructor() {
-    this.seedDefaultMandalis();
+  constructor(postgres: PostgrestClient | null = null) {
+    this.postgres = postgres;
+    // Durable mode serves real data from Postgres only — the fake demo
+    // seed communities exist for the in-memory dev/test fallback and would
+    // otherwise show up alongside real Mandalis in a configured environment.
+    if (!this.postgres) {
+      this.seedDefaultMandalis();
+    }
   }
 
   /* ── Mandali Core ── */
@@ -287,6 +425,255 @@ export class MandaliRepository {
     list.push(transfer);
     if (list.length > 100) list.shift();
     this.coinTransfers.set(transfer.mandaliId, list);
+  }
+
+  /* ── Durable (Postgres-backed) reads and RPCs ──
+   * Every method below requires isDurable() — callers (MandaliService) check
+   * that once and branch, rather than each method silently no-op'ing. */
+
+  private pg(): PostgrestClient {
+    if (!this.postgres) throw new Error("MandaliRepository: durable method called without a Postgres client");
+    return this.postgres;
+  }
+
+  public async getByIdDurable(id: string): Promise<Mandali | undefined> {
+    const rows = await this.pg().select<MandaliRow>("mandalis", `id=eq.${encodeURIComponent(id)}`);
+    return rows[0] ? rowToMandali(rows[0]) : undefined;
+  }
+
+  public async getByHandleDurable(handle: string): Promise<Mandali | undefined> {
+    const clean = handle.toLowerCase().replace(/^@/, "");
+    const rows = await this.pg().select<MandaliRow>("mandalis", `handle=eq.${encodeURIComponent(clean)}`);
+    return rows[0] ? rowToMandali(rows[0]) : undefined;
+  }
+
+  public async getAllDurable(filter?: { search?: string; language?: string; tag?: string }): Promise<Mandali[]> {
+    const params = ["visibility=neq.HIDDEN", "order=member_count.desc"];
+    if (filter?.language && filter.language !== "All") {
+      params.push(`language=eq.${encodeURIComponent(filter.language)}`);
+    }
+    if (filter?.tag && filter.tag !== "All") {
+      params.push(`tags=cs.{${encodeURIComponent(filter.tag)}}`);
+    }
+    if (filter?.search) {
+      const q = encodeURIComponent(filter.search);
+      params.push(`or=(name.ilike.*${q}*,handle.ilike.*${q}*,description.ilike.*${q}*)`);
+    }
+    const rows = await this.pg().select<MandaliRow>("mandalis", params.join("&"));
+    return rows.map(rowToMandali);
+  }
+
+  public async getMemberDurable(mandaliId: string, identityId: string): Promise<MandaliMember | undefined> {
+    const rows = await this.pg().select<MembershipRow>(
+      "mandali_memberships",
+      `mandali_id=eq.${encodeURIComponent(mandaliId)}&identity_id=eq.${encodeURIComponent(identityId)}`
+    );
+    return rows[0] ? rowToMember(rows[0]) : undefined;
+  }
+
+  public async getMembersDurable(mandaliId: string): Promise<MandaliMember[]> {
+    const rows = await this.pg().select<MembershipRow>(
+      "mandali_memberships",
+      `mandali_id=eq.${encodeURIComponent(mandaliId)}&state=eq.ACTIVE&order=joined_at.asc`
+    );
+    return rows.map(rowToMember);
+  }
+
+  public async getPlayerMandalisDurable(identityId: string): Promise<Mandali[]> {
+    const memberships = await this.pg().select<MembershipRow>(
+      "mandali_memberships",
+      `identity_id=eq.${encodeURIComponent(identityId)}&state=eq.ACTIVE`
+    );
+    if (memberships.length === 0) return [];
+    const ids = memberships.map((m) => m.mandali_id).join(",");
+    const rows = await this.pg().select<MandaliRow>("mandalis", `id=in.(${ids})`);
+    return rows.map(rowToMandali);
+  }
+
+  public async getChannelsDurable(mandaliId: string): Promise<MandaliChannel[]> {
+    const rows = await this.pg().select<ChannelRow>(
+      "mandali_channels",
+      `mandali_id=eq.${encodeURIComponent(mandaliId)}&order=position.asc`
+    );
+    return rows.map(rowToChannel);
+  }
+
+  public async getMessagesDurable(channelId: string, limit = 50): Promise<MandaliMessage[]> {
+    const rows = await this.pg().select<MessageRow>(
+      "mandali_messages",
+      `channel_id=eq.${encodeURIComponent(channelId)}&order=sequence.desc&limit=${limit}`
+    );
+    if (rows.length === 0) return [];
+    const senderIds = Array.from(new Set(rows.map((r) => r.sender_identity_id)));
+    const senders = await this.pg().select<MembershipRow>(
+      "mandali_memberships",
+      `identity_id=in.(${senderIds.join(",")})&mandali_id=eq.${encodeURIComponent(rows[0].mandali_id)}`
+    );
+    const byId = new Map(senders.map((s) => [s.identity_id, s]));
+    return rows
+      .slice()
+      .reverse()
+      .map((r) => {
+        const sender = byId.get(r.sender_identity_id);
+        return rowToMessage(r, sender?.display_name ?? "Member", sender?.avatar ?? "avatar_1");
+      });
+  }
+
+  public async createMandaliDurable(args: {
+    mandaliId: string; handle: string; name: string; emblem: string; description: string;
+    ownerIdentityId: string; ownerDisplayName: string; ownerAvatar: string;
+    bannerGradient?: string; language?: string; region?: string; tags?: string[]; visibility?: string;
+  }): Promise<Mandali> {
+    const result = await this.pg().rpc<MandaliRow>("create_mandali_with_owner", {
+      p_mandali_id: args.mandaliId, p_handle: args.handle, p_name: args.name, p_emblem: args.emblem,
+      p_description: args.description, p_owner_identity_id: args.ownerIdentityId,
+      p_owner_display_name: args.ownerDisplayName, p_owner_avatar: args.ownerAvatar,
+      p_banner_gradient: args.bannerGradient ?? null, p_language: args.language ?? "English",
+      p_region: args.region ?? "All India", p_tags: args.tags ?? ["Lounge", "Casual"],
+      p_visibility: args.visibility ?? "PUBLIC",
+    });
+    return rowToMandali(result);
+  }
+
+  public async updateMandaliSettingsDurable(args: {
+    mandaliId: string; actorIdentityId: string; name?: string; emblem?: string;
+    description?: string; rules?: string; editPermission?: "ADMIN" | "ALL";
+    sendPermission?: "ADMIN" | "ALL"; joinApproval?: boolean;
+  }): Promise<Mandali> {
+    const result = await this.pg().rpc<MandaliRow>("update_mandali_settings", {
+      p_mandali_id: args.mandaliId, p_actor_identity_id: args.actorIdentityId,
+      p_name: args.name ?? null, p_emblem: args.emblem ?? null, p_description: args.description ?? null,
+      p_rules: args.rules ?? null, p_edit_permission: args.editPermission ?? null,
+      p_send_permission: args.sendPermission ?? null, p_join_approval: args.joinApproval ?? null,
+    });
+    return rowToMandali(result);
+  }
+
+  public async createJoinRequestDurable(args: {
+    requestId: string; mandaliId: string; requesterIdentityId: string;
+    requesterDisplayName: string; requesterAvatar: string; invitationId?: string | null;
+  }): Promise<{ autoApproved: boolean; request?: MandaliJoinRequestRecord }> {
+    const result = await this.pg().rpc<{ autoApproved: boolean; request?: JoinRequestRow }>(
+      "create_join_request",
+      {
+        p_request_id: args.requestId, p_mandali_id: args.mandaliId,
+        p_requester_identity_id: args.requesterIdentityId, p_requester_display_name: args.requesterDisplayName,
+        p_requester_avatar: args.requesterAvatar, p_invitation_id: args.invitationId ?? null,
+      }
+    );
+    return { autoApproved: result.autoApproved, request: result.request ? rowToJoinRequest(result.request) : undefined };
+  }
+
+  public async getJoinRequestsDurable(mandaliId: string, status = "PENDING"): Promise<MandaliJoinRequestRecord[]> {
+    const rows = await this.pg().select<JoinRequestRow>(
+      "mandali_join_requests",
+      `mandali_id=eq.${encodeURIComponent(mandaliId)}&status=eq.${encodeURIComponent(status)}&order=created_at.asc`
+    );
+    return rows.map(rowToJoinRequest);
+  }
+
+  public async decideJoinRequestDurable(
+    requestId: string, reviewerIdentityId: string, approve: boolean
+  ): Promise<MandaliJoinRequestRecord> {
+    const result = await this.pg().rpc<{ request: JoinRequestRow }>("decide_join_request", {
+      p_request_id: requestId, p_reviewer_identity_id: reviewerIdentityId, p_approve: approve,
+    });
+    return rowToJoinRequest(result.request);
+  }
+
+  public async transitionMembershipDurable(
+    mandaliId: string, actorIdentityId: string, targetIdentityId: string,
+    action: "PROMOTE" | "DEMOTE" | "KICK" | "BAN" | "LEAVE"
+  ): Promise<void> {
+    await this.pg().rpc("transition_membership", {
+      p_mandali_id: mandaliId, p_actor_identity_id: actorIdentityId,
+      p_target_identity_id: targetIdentityId, p_action: action,
+    });
+  }
+
+  public async transferOwnershipDurable(
+    mandaliId: string, currentOwnerIdentityId: string, newOwnerIdentityId: string
+  ): Promise<Mandali> {
+    const result = await this.pg().rpc<MandaliRow>("transfer_mandali_ownership", {
+      p_mandali_id: mandaliId, p_current_owner_identity_id: currentOwnerIdentityId,
+      p_new_owner_identity_id: newOwnerIdentityId,
+    });
+    return rowToMandali(result);
+  }
+
+  public async createInviteLinkDurable(
+    invitationId: string, mandaliId: string, issuerIdentityId: string,
+    expiresAt: number, useLimit = 100
+  ): Promise<MandaliInviteLink> {
+    const { token, hash } = mintInviteToken();
+    const result = await this.pg().rpc<InvitationRow>("create_invitation", {
+      p_invitation_id: invitationId, p_mandali_id: mandaliId, p_issuer_identity_id: issuerIdentityId,
+      p_token_hash: hash, p_expires_at: new Date(expiresAt).toISOString(), p_use_limit: useLimit,
+    });
+    return rowToInviteLink(result, token);
+  }
+
+  public async resolveInviteLinkDurable(rawToken: string): Promise<
+    { valid: false } | { valid: true; invitationId: string; mandaliId: string; name: string; emblem: string; description: string }
+  > {
+    const hash = createHash("sha256").update(rawToken).digest("hex");
+    return this.pg().rpc("resolve_invitation", { p_token_hash: hash });
+  }
+
+  public async sendMessageDurable(args: {
+    messageId: string; mandaliId: string; channelId: string; senderIdentityId: string;
+    content: string; replyToId?: string; clientRequestId?: string;
+  }): Promise<{ deduplicated: boolean; message: MandaliMessage }> {
+    const result = await this.pg().rpc<{ deduplicated: boolean; message: MessageRow }>("send_mandali_message", {
+      p_message_id: args.messageId, p_mandali_id: args.mandaliId, p_channel_id: args.channelId,
+      p_sender_identity_id: args.senderIdentityId, p_content: args.content,
+      p_reply_to_id: args.replyToId ?? null, p_client_request_id: args.clientRequestId ?? null,
+    });
+    const sender = await this.getMemberDurable(args.mandaliId, args.senderIdentityId);
+    return {
+      deduplicated: result.deduplicated,
+      message: rowToMessage(result.message, sender?.displayName ?? "Member", sender?.avatar ?? "avatar_1"),
+    };
+  }
+
+  public async setMessagePinDurable(messageId: string, actorIdentityId: string, pinned: boolean): Promise<void> {
+    await this.pg().rpc("set_message_pin", { p_message_id: messageId, p_actor_identity_id: actorIdentityId, p_pinned: pinned });
+  }
+
+  public async deleteMessageDurable(messageId: string, actorIdentityId: string): Promise<void> {
+    await this.pg().rpc("delete_mandali_message", { p_message_id: messageId, p_actor_identity_id: actorIdentityId });
+  }
+
+  public async createCoinRequestDurable(args: {
+    requestId: string; mandaliId: string; channelId: string;
+    requesterIdentityId: string; payerIdentityId: string; amount: number; expiresAt: number;
+  }): Promise<MandaliCoinRequest> {
+    const result = await this.pg().rpc<CoinRequestRow>("create_coin_request", {
+      p_request_id: args.requestId, p_mandali_id: args.mandaliId, p_channel_id: args.channelId,
+      p_requester_identity_id: args.requesterIdentityId, p_payer_identity_id: args.payerIdentityId,
+      p_amount: args.amount, p_expires_at: new Date(args.expiresAt).toISOString(),
+    });
+    return rowToCoinRequest(result);
+  }
+
+  public async fundCoinRequestDurable(
+    requestId: string, payerIdentityId: string, idempotencyKey: string
+  ): Promise<{ alreadyFunded: boolean; request: MandaliCoinRequest }> {
+    const result = await this.pg().rpc<{ alreadyFunded: boolean; request: CoinRequestRow }>("fund_coin_request", {
+      p_request_id: requestId, p_payer_identity_id: payerIdentityId, p_idempotency_key: idempotencyKey,
+    });
+    return { alreadyFunded: result.alreadyFunded, request: rowToCoinRequest(result.request) };
+  }
+
+  /** So the client can render a coin-request card's live amount/status/payer
+   * next to the chat message that announces it — a plain read, no RPC
+   * needed since nothing here mutates or needs a transactional invariant. */
+  public async getCoinRequestsDurable(mandaliId: string): Promise<MandaliCoinRequest[]> {
+    const rows = await this.pg().select<CoinRequestRow>(
+      "mandali_coin_requests",
+      `mandali_id=eq.${encodeURIComponent(mandaliId)}&order=created_at.desc`
+    );
+    return rows.map(rowToCoinRequest);
   }
 
   /* ── Default Seed Data ── */

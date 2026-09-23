@@ -22,6 +22,7 @@ import {
   Trophy,
   Crown,
   Shield,
+  ShieldCheck,
   Flame,
   Send,
   Plus,
@@ -31,6 +32,11 @@ import {
   Calendar,
   Zap,
   Coins,
+  Link2,
+  Info,
+  UserCheck,
+  Pin,
+  Trash2,
 } from "lucide-react";
 import type {
   Mandali,
@@ -39,9 +45,11 @@ import type {
   MandaliMessage,
   MandaliParty,
   MandaliMemory,
+  MandaliCoinRequest,
 } from "@shared/mandali/types.js";
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
+import CoinRequestCard from "../../components/mandali/CoinRequestCard";
 import type { GameKind } from "@shared/types.js";
 
 function getAvatarUrl(avatar?: string): string {
@@ -62,6 +70,12 @@ export interface MandaliHubDesktopProps {
   parties: MandaliParty[];
   memories: MandaliMemory[];
   currentUserId: string | null;
+  selfId: string;
+  isOwner: boolean;
+  canManageMembers: boolean;
+  canEditInfo: boolean;
+  pendingRequestCount: number;
+  coinRequests: Record<string, MandaliCoinRequest>;
   onSelectChannel: (channelId: string) => void;
   onSendMessage: (content: string) => void;
   onReactMessage: (messageId: string, emoji: string) => void;
@@ -70,6 +84,14 @@ export interface MandaliHubDesktopProps {
   onLeaveParty: (partyId: string) => void;
   onLaunchParty: (partyId: string) => void;
   onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
+  onRequestCoins: () => void;
+  onPayCoinRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  onPinMessage: (channelId: string, messageId: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>;
+  onDeleteMessage: (channelId: string, messageId: string) => Promise<{ success: boolean; error?: string }>;
+  onOpenInvite: () => void;
+  onOpenGroupInfo: () => void;
+  onOpenMembers: () => void;
+  onOpenPendingRequests: () => void;
   onLeaveMandali: () => void;
 }
 
@@ -84,6 +106,12 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   parties,
   memories,
   currentUserId,
+  selfId,
+  isOwner,
+  canManageMembers,
+  canEditInfo: _canEditInfo,
+  pendingRequestCount,
+  coinRequests,
   onSelectChannel,
   onSendMessage,
   onReactMessage,
@@ -92,6 +120,14 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onLeaveParty,
   onLaunchParty,
   onOpenCoinTransfer,
+  onRequestCoins,
+  onPayCoinRequest,
+  onPinMessage,
+  onDeleteMessage,
+  onOpenInvite,
+  onOpenGroupInfo,
+  onOpenMembers,
+  onOpenPendingRequests,
   onLeaveMandali,
 }) => {
   const [chatInput, setChatInput] = useState("");
@@ -158,6 +194,51 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               <Zap className="w-3.5 h-3.5" />
               Level {mandali.level}
             </span>
+          </div>
+
+          {/* Group Management Actions */}
+          <div className="px-3 py-2.5 border-b border-slate-200/60 dark:border-slate-800/40 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={onOpenInvite}
+              className="min-h-[40px] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Invite
+            </button>
+            <button
+              type="button"
+              onClick={onOpenGroupInfo}
+              className="min-h-[40px] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5" />
+              Group Info
+            </button>
+            {canManageMembers && (
+              <button
+                type="button"
+                onClick={onOpenMembers}
+                className="min-h-[40px] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5" />
+                Manage
+              </button>
+            )}
+            {canManageMembers && (
+              <button
+                type="button"
+                onClick={onOpenPendingRequests}
+                className="relative min-h-[40px] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                Requests
+                {pendingRequestCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center">
+                    {pendingRequestCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Channels Section */}
@@ -379,6 +460,37 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                     hour: "2-digit",
                     minute: "2-digit",
                   });
+                  const canModerate = isMine || canManageMembers;
+
+                  if (msg.kind === "SYSTEM") {
+                    return (
+                      <div key={msg.messageId} className="flex justify-center">
+                        <span className="text-[11px] px-3 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-medium">
+                          {msg.content}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (msg.kind === "COIN_REQUEST") {
+                    return (
+                      <div key={msg.messageId} className={`flex gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                        <img
+                          src={getAvatarUrl(msg.senderAvatar)}
+                          alt=""
+                          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
+                        />
+                        <CoinRequestCard
+                          message={msg}
+                          request={coinRequests[msg.messageId]}
+                          selfId={selfId}
+                          members={members}
+                          onPay={onPayCoinRequest}
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div
@@ -405,16 +517,45 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                               Founder
                             </span>
                           )}
+                          {msg.pinned && <Pin className="w-3 h-3 text-amber-500" />}
                         </div>
 
-                        <div
-                          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-xs ${
-                            isMine
-                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-semibold rounded-tr-none"
-                              : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
-                          }`}
-                        >
-                          {msg.content}
+                        <div className="relative">
+                          <div
+                            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-xs ${
+                              isMine
+                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-semibold rounded-tr-none"
+                                : "bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
+                            }`}
+                          >
+                            {msg.content ? msg.content : <span className="italic opacity-60">Message deleted</span>}
+                          </div>
+
+                          {/* Pin / delete — opacity-0 hover reveal, matches the reaction picker pattern below */}
+                          {msg.content && (
+                            <div className={`absolute top-0 ${isMine ? "-left-14" : "-right-14"} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
+                              {canManageMembers && (
+                                <button
+                                  type="button"
+                                  onClick={() => onPinMessage(msg.channelId, msg.messageId, !msg.pinned)}
+                                  aria-label={msg.pinned ? "Unpin message" : "Pin message"}
+                                  className="w-6 h-6 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
+                                >
+                                  <Pin className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {canModerate && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteMessage(msg.channelId, msg.messageId)}
+                                  aria-label="Delete message"
+                                  className="w-6 h-6 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Reactions Bar */}
@@ -465,6 +606,16 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               onSubmit={handleSend}
               className="p-4 bg-white/80 dark:bg-slate-900/60 border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-3 flex-shrink-0 backdrop-blur-md"
             >
+              <button
+                type="button"
+                onClick={onRequestCoins}
+                title="Request coins from a member"
+                aria-label="Request coins"
+                className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0"
+              >
+                <Coins className="w-4 h-4" />
+              </button>
+
               <div className="relative flex-1">
                 <input
                   type="text"

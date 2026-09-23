@@ -49,7 +49,7 @@ import { Game2048StatsService } from "./games2048/Game2048StatsService.js";
 import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.js";
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
-import { readPostgrestConfig } from "./persistence/postgrest.js";
+import { readPostgrestConfig, PostgrestClient } from "./persistence/postgrest.js";
 import { MandaliRepository } from "./mandali/MandaliRepository.js";
 import { MandaliService } from "./mandali/MandaliService.js";
 import { createMandaliRouter } from "./mandali/MandaliController.js";
@@ -351,7 +351,20 @@ app.use("/api/games/2048/stats", createGame2048StatsRouter(game2048StatsService)
  * BHALYAM Mandali (మండలి) Communities & Social Lounge API.
  * Server-authoritative persistent clans, roles, squad parties, and Gnapakalu memories.
  */
-const mandaliRepository = new MandaliRepository();
+const mandaliPostgrestConfig = economyStoreStatus().kind === "supabase" ? readPostgrestConfig() : null;
+const mandaliRepository = new MandaliRepository(
+  mandaliPostgrestConfig ? new PostgrestClient(mandaliPostgrestConfig) : null
+);
+if (mandaliRepository.isDurable()) {
+  logger.info({ message: "Mandali is running on durable Postgres storage.", module: "MANDALI" });
+} else {
+  logger.warn({
+    message:
+      "Mandali is running on in-memory storage — every community, member, message and coin request " +
+      "is lost on restart/redeploy. Configure Supabase to enable durable storage.",
+    module: "MANDALI",
+  });
+}
 const mandaliService = new MandaliService(mandaliRepository, roomManager, io, economyService);
 app.use("/api/mandali", createMandaliRouter(mandaliService));
 

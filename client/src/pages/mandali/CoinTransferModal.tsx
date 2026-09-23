@@ -19,9 +19,14 @@ import { useMandaliStore } from "../../store/mandaliStore";
 
 interface CoinTransferModalProps {
   mandaliId: string;
+  /** Needed only for REQUEST mode — the payable coin-request card posts
+   * into this channel. SEND mode ignores it (a direct transfer isn't a
+   * chat card). */
+  channelId?: string;
   members: MandaliMember[];
   currentUserId: string | null;
   preselectedMemberId?: string;
+  initialType?: CoinTransferType;
   onClose: () => void;
 }
 
@@ -29,19 +34,21 @@ const PRESET_AMOUNTS = [50, 100, 250, 500];
 
 export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
   mandaliId,
+  channelId,
   members,
   currentUserId,
   preselectedMemberId,
+  initialType = "SEND",
   onClose,
 }) => {
   const { balance, refetch: refetchWallet } = useWallet();
-  const { transferCoins, isSubmitting } = useMandaliStore();
+  const { transferCoins, createCoinRequest, isSubmitting } = useMandaliStore();
 
   const otherMembers = members.filter(
     (m) => m.playerId !== currentUserId && m.state === "ACTIVE"
   );
 
-  const [type, setType] = useState<CoinTransferType>("SEND");
+  const [type, setType] = useState<CoinTransferType>(initialType);
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>(
     preselectedMemberId || (otherMembers.length > 0 ? otherMembers[0].playerId : "")
   );
@@ -75,27 +82,40 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
       return;
     }
 
-    const res = await transferCoins(mandaliId, {
-      toPlayerId: selectedRecipientId,
-      amount: effectiveAmount,
-      type,
-      note: note.trim() || undefined,
-    });
+    const targetName =
+      otherMembers.find((m) => m.playerId === selectedRecipientId)?.displayName || "Member";
 
+    if (type === "SEND") {
+      const res = await transferCoins(mandaliId, {
+        toPlayerId: selectedRecipientId,
+        amount: effectiveAmount,
+        type: "SEND",
+        note: note.trim() || undefined,
+      });
+      if (res.success) {
+        refetchWallet();
+        setSuccessMessage(`Successfully transferred ${effectiveAmount.toLocaleString()} coins to @${targetName}!`);
+        setTimeout(onClose, 1600);
+      } else {
+        setErrorMessage(res.error || "Transfer failed. Please try again.");
+      }
+      return;
+    }
+
+    // REQUEST mode posts an actual payable card into the channel — the
+    // designated member (selectedRecipientId here is who's being ASKED,
+    // i.e. the payer) taps "Pay" on it to complete the transfer. Requires
+    // a channel to post into; the caller must pass one for REQUEST mode.
+    if (!channelId) {
+      setErrorMessage("Open this from within a channel to request coins.");
+      return;
+    }
+    const res = await createCoinRequest(mandaliId, channelId, selectedRecipientId, effectiveAmount);
     if (res.success) {
-      refetchWallet();
-      const targetName =
-        otherMembers.find((m) => m.playerId === selectedRecipientId)?.displayName || "Member";
-      setSuccessMessage(
-        type === "SEND"
-          ? `Successfully transferred ${effectiveAmount.toLocaleString()} coins to @${targetName}!`
-          : `Requested ${effectiveAmount.toLocaleString()} coins from @${targetName}!`
-      );
-      setTimeout(() => {
-        onClose();
-      }, 1600);
+      setSuccessMessage(`Requested ${effectiveAmount.toLocaleString()} coins from @${targetName}!`);
+      setTimeout(onClose, 1600);
     } else {
-      setErrorMessage(res.error || "Transfer failed. Please try again.");
+      setErrorMessage(res.error || "Could not create the coin request. Please try again.");
     }
   };
 

@@ -22,6 +22,9 @@ import type {
   CreateMandaliPayload,
   MandaliCoinTransfer,
   CoinTransferPayload,
+  MandaliInviteLink,
+  MandaliJoinRequestRecord,
+  MandaliCoinRequest,
 } from "@shared/mandali/types.js";
 import type {
   MandaliPartyLaunchedBroadcast,
@@ -30,7 +33,7 @@ import type {
   MandaliMemoryCreatedBroadcast,
 } from "@shared/mandali/socketContract.js";
 import type { GameKind } from "@shared/types.js";
-import { apiFetch, apiJson } from "../lib/playerIdentity";
+import { apiFetch, apiJson, getPlayerCredential } from "../lib/playerIdentity";
 import { getSocket } from "../lib/socket";
 import { useAuthStore } from "./authStore";
 
@@ -47,6 +50,10 @@ export interface MandaliStore {
   memories: MandaliMemory[];
   events: MandaliEvent[];
   coinTransfers: MandaliCoinTransfer[];
+  /** Payable coin-request records (distinct from the legacy `coinTransfers`
+   * SEND/notice-only REQUEST above) — keyed by their linked chat messageId
+   * so CoinRequestCard can look one up per COIN_REQUEST message. */
+  coinRequests: Record<string, MandaliCoinRequest>;
 
   // Launch Handoff tracking
   activeGameLaunch: MandaliPartyLaunchedBroadcast | null;
@@ -62,8 +69,33 @@ export interface MandaliStore {
   setActiveChannel: (channelId: string) => void;
   fetchMessages: (channelId: string) => Promise<void>;
   createMandali: (payload: CreateMandaliPayload) => Promise<{ success: boolean; mandali?: Mandali; error?: string }>;
-  joinMandali: (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }) => Promise<{ success: boolean; error?: string }>;
+  joinMandali: (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }, invitationId?: string) => Promise<{ success: boolean; error?: string }>;
   leaveMandali: (mandaliId: string) => Promise<{ success: boolean; error?: string }>;
+
+  // WhatsApp-parity: member management, invite links, join approval
+  promoteMember: (mandaliId: string, targetId: string) => Promise<{ success: boolean; error?: string }>;
+  demoteMember: (mandaliId: string, targetId: string) => Promise<{ success: boolean; error?: string }>;
+  kickMember: (mandaliId: string, targetId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  banMember: (mandaliId: string, targetId: string) => Promise<{ success: boolean; error?: string }>;
+  transferOwnership: (mandaliId: string, newOwnerId: string) => Promise<{ success: boolean; error?: string }>;
+  updateMandaliSettings: (mandaliId: string, patch: {
+    name?: string; emblem?: string; description?: string; rules?: string;
+    editPermission?: "ADMIN" | "ALL"; sendPermission?: "ADMIN" | "ALL"; joinApproval?: boolean;
+  }) => Promise<{ success: boolean; mandali?: Mandali; error?: string }>;
+  createInviteLink: (mandaliId: string, expiresInMs?: number) => Promise<{ success: boolean; invitation?: MandaliInviteLink; error?: string }>;
+  resolveInviteLink: (token: string) => Promise<{ valid: boolean; invitationId?: string; mandaliId?: string; name?: string; emblem?: string; description?: string }>;
+  pendingJoinRequests: MandaliJoinRequestRecord[];
+  fetchPendingJoinRequests: (mandaliId: string) => Promise<void>;
+  fetchCoinRequests: (mandaliId: string) => Promise<void>;
+  decideJoinRequest: (requestId: string, approve: boolean) => Promise<{ success: boolean; error?: string }>;
+
+  // Chat power features
+  pinMessage: (channelId: string, messageId: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>;
+  deleteMessage: (channelId: string, messageId: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Payable coin-request cards
+  createCoinRequest: (mandaliId: string, channelId: string, payerId: string, amount: number, expiresInMs?: number) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string }>;
+  fundCoinRequest: (requestId: string) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string }>;
 
   // Coin Transfers
   fetchCoinTransfers: (mandaliId: string) => Promise<void>;
@@ -180,6 +212,40 @@ export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
 ];
 
 let socketListenersBound = false;
+let mandaliReconnectHandler: (() => void) | null = null;
+
+/**
+ * Tracks whether THIS socket connection has completed `mandali:authenticate`.
+ * Reset on every reconnect (Socket.IO clears `socket.data` server-side on
+ * disconnect, so a stale "authenticated" flag here would silently desync
+ * from the server's actual per-connection state and every action would fail
+ * with "Not authenticated" until a page refresh).
+ */
+let mandaliSocketAuthenticatedFor: string | null = null;
+
+/**
+ * Authenticates the current socket for Mandali actions, once per connection.
+ * Every `mandali:*` server handler now requires this — see
+ * `MandaliSocketHandlers.ts`'s `requireAuthenticatedActor`.
+ */
+async function authenticateMandaliSocket(): Promise<void> {
+  const socket = getSocket();
+  if (mandaliSocketAuthenticatedFor === socket.id && socket.connected) return;
+
+  const credential = await getPlayerCredential();
+  if (!credential) return;
+
+  await new Promise<void>((resolve) => {
+    socket.emit(
+      "mandali:authenticate" as any,
+      { token: credential.token },
+      (res: { success: boolean }) => {
+        if (res?.success) mandaliSocketAuthenticatedFor = socket.id ?? null;
+        resolve();
+      }
+    );
+  });
+}
 
 function resolveCurrentPlayerId(passedId?: string): string {
   if (passedId && passedId !== "me") return passedId;
@@ -207,6 +273,8 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   events: [],
   coinTransfers: [],
   activeGameLaunch: null,
+  pendingJoinRequests: [],
+  coinRequests: {},
   isLoading: false,
   isSubmitting: false,
   errorMessage: null,
@@ -292,6 +360,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         if (defaultChannel) {
           get().fetchMessages(defaultChannel.channelId);
         }
+        get().fetchCoinRequests(res.mandali.id);
         return true;
       } else {
         set({ isLoading: false, errorMessage: "Mandali not found." });
@@ -362,7 +431,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     }
   },
 
-  joinMandali: async (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }) => {
+  joinMandali: async (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }, invitationId?: string) => {
     set({ isSubmitting: true });
     try {
       const storedName = typeof localStorage !== "undefined" ? localStorage.getItem("mpg.playerName") : null;
@@ -373,7 +442,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
 
       const res = await apiFetch(`/api/mandali/${mandaliId}/join`, {
         method: "POST",
-        body: JSON.stringify({ playerId, displayName, avatar, statement }),
+        body: JSON.stringify({ playerId, displayName, avatar, statement, invitationId }),
       });
       const data = (await res.json()) as { success: boolean; error?: string };
       set({ isSubmitting: false });
@@ -408,6 +477,235 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       return { success: false, error: data.error || "Failed to leave Mandali" };
     } catch (err) {
       set({ isSubmitting: false });
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  promoteMember: async (mandaliId: string, targetId: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/members/${targetId}/promote`, { method: "POST" });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) await get().fetchMandaliByHandleOrId(mandaliId);
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  demoteMember: async (mandaliId: string, targetId: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/members/${targetId}/demote`, { method: "POST" });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) await get().fetchMandaliByHandleOrId(mandaliId);
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  kickMember: async (mandaliId: string, targetId: string, reason?: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/members/${targetId}/kick`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) await get().fetchMandaliByHandleOrId(mandaliId);
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  banMember: async (mandaliId: string, targetId: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/members/${targetId}/ban`, { method: "POST" });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) await get().fetchMandaliByHandleOrId(mandaliId);
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  transferOwnership: async (mandaliId: string, newOwnerId: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/transfer-ownership`, {
+        method: "POST",
+        body: JSON.stringify({ newOwnerId }),
+      });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) await get().fetchMandaliByHandleOrId(mandaliId);
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  updateMandaliSettings: async (mandaliId: string, patch) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/settings`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      const data = (await res.json()) as { success: boolean; mandali?: Mandali; error?: string };
+      if (data.success && data.mandali) {
+        set((state) => ({
+          activeMandali: state.activeMandali?.id === mandaliId ? data.mandali! : state.activeMandali,
+        }));
+      }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  createInviteLink: async (mandaliId: string, expiresInMs?: number) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/invite-links`, {
+        method: "POST",
+        body: JSON.stringify({ expiresInMs }),
+      });
+      const data = (await res.json()) as { success: boolean; invitation?: MandaliInviteLink; error?: string };
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  resolveInviteLink: async (token: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/invite-links/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      });
+      return (await res.json()) as { valid: boolean; invitationId?: string; mandaliId?: string; name?: string; emblem?: string; description?: string };
+    } catch {
+      return { valid: false };
+    }
+  },
+
+  fetchPendingJoinRequests: async (mandaliId: string) => {
+    try {
+      const res = await apiJson<{ success: boolean; requests: MandaliJoinRequestRecord[] }>(
+        `/api/mandali/${mandaliId}/join-requests`
+      );
+      if (res?.success) set({ pendingJoinRequests: res.requests });
+    } catch {
+      // ignore
+    }
+  },
+
+  decideJoinRequest: async (requestId: string, approve: boolean) => {
+    try {
+      const res = await apiFetch(`/api/mandali/join-requests/${requestId}/decide`, {
+        method: "POST",
+        body: JSON.stringify({ approve }),
+      });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) {
+        set((state) => ({ pendingJoinRequests: state.pendingJoinRequests.filter((r) => r.id !== requestId) }));
+      }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  pinMessage: async (channelId: string, messageId: string, pinned: boolean) => {
+    const { activeMandali } = get();
+    if (!activeMandali) return { success: false, error: "No active Mandali" };
+    try {
+      const res = await apiFetch(`/api/mandali/${activeMandali.id}/channels/${channelId}/messages/${messageId}/pin`, {
+        method: "POST",
+        body: JSON.stringify({ pinned }),
+      });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) {
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [channelId]: (state.messages[channelId] || []).map((m) => (m.messageId === messageId ? { ...m, pinned } : m)),
+          },
+        }));
+      }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  deleteMessage: async (channelId: string, messageId: string) => {
+    const { activeMandali } = get();
+    if (!activeMandali) return { success: false, error: "No active Mandali" };
+    try {
+      const res = await apiFetch(`/api/mandali/${activeMandali.id}/channels/${channelId}/messages/${messageId}`, {
+        method: "DELETE",
+      });
+      const data = (await res.json()) as { success: boolean; error?: string };
+      if (data.success) {
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [channelId]: (state.messages[channelId] || []).map((m) =>
+              m.messageId === messageId ? { ...m, content: "" } : m
+            ),
+          },
+        }));
+      }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  fetchCoinRequests: async (mandaliId: string) => {
+    try {
+      const res = await apiJson<{ success: boolean; requests: MandaliCoinRequest[] }>(
+        `/api/mandali/${mandaliId}/coin-requests`
+      );
+      if (res?.success) {
+        const byMessageId: Record<string, MandaliCoinRequest> = {};
+        for (const r of res.requests) {
+          if (r.messageId) byMessageId[r.messageId] = r;
+        }
+        set({ coinRequests: byMessageId });
+      }
+    } catch {
+      // ignore
+    }
+  },
+
+  createCoinRequest: async (mandaliId: string, channelId: string, payerId: string, amount: number, expiresInMs?: number) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${mandaliId}/channels/${channelId}/coin-requests`, {
+        method: "POST",
+        body: JSON.stringify({ payerId, amount, expiresInMs }),
+      });
+      const data = (await res.json()) as { success: boolean; request?: MandaliCoinRequest; error?: string };
+      if (data.success) {
+        await get().fetchMessages(channelId);
+        await get().fetchCoinRequests(mandaliId);
+      }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  fundCoinRequest: async (requestId: string) => {
+    const { activeChannelId, activeMandali } = get();
+    try {
+      const res = await apiFetch(`/api/mandali/coin-requests/${requestId}/fund`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as { success: boolean; request?: MandaliCoinRequest; error?: string };
+      if (data.success) {
+        if (activeChannelId) await get().fetchMessages(activeChannelId);
+        if (activeMandali) await get().fetchCoinRequests(activeMandali.id);
+      }
+      return data;
+    } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Network error" };
     }
   },
@@ -453,7 +751,24 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
 
   initMandaliSocket: (mandaliId: string, playerId: string) => {
     const socket = getSocket();
-    socket.emit("mandali:join_room" as any, { mandaliId, playerId });
+
+    const joinCurrentMandali = () => {
+      void (async () => {
+        await authenticateMandaliSocket();
+        socket.emit("mandali:join_room" as any, { mandaliId, playerId });
+      })();
+    };
+    joinCurrentMandali();
+
+    // A reconnect gets a fresh server-side socket.data — re-authenticate and
+    // rejoin the broadcast room, or every action silently fails until a
+    // manual refresh. Only one of these is ever live at a time: replacing it
+    // (rather than stacking a new listener per call) avoids re-joining a
+    // Mandali the caller already navigated away from, and avoids leaking a
+    // listener per hub visit.
+    if (mandaliReconnectHandler) socket.off("connect", mandaliReconnectHandler);
+    mandaliReconnectHandler = joinCurrentMandali;
+    socket.on("connect", mandaliReconnectHandler);
 
     if (!socketListenersBound) {
       socketListenersBound = true;
@@ -548,6 +863,10 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   cleanupMandaliSocket: (mandaliId: string, playerId: string) => {
     const socket = getSocket();
     socket.emit("mandali:leave_room" as any, { mandaliId, playerId });
+    if (mandaliReconnectHandler) {
+      socket.off("connect", mandaliReconnectHandler);
+      mandaliReconnectHandler = null;
+    }
   },
 
   sendMessage: async (content: string, playerId?: string, replyToId?: string) => {

@@ -31,6 +31,12 @@ import {
   Hash,
   Zap,
   Coins,
+  Link2,
+  Info,
+  ShieldCheck,
+  UserCheck,
+  Pin,
+  Trash2,
 } from "lucide-react";
 import type {
   Mandali,
@@ -39,9 +45,11 @@ import type {
   MandaliMessage,
   MandaliParty,
   MandaliMemory,
+  MandaliCoinRequest,
 } from "@shared/mandali/types.js";
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
+import CoinRequestCard from "../../components/mandali/CoinRequestCard";
 import type { GameKind } from "@shared/types.js";
 
 function getAvatarUrl(avatar?: string): string {
@@ -71,6 +79,20 @@ export interface MandaliHubMobileProps {
   onLaunchParty: (partyId: string) => void;
   onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
   onLeaveMandali: () => void;
+  selfId: string | null;
+  isOwner: boolean;
+  canManageMembers: boolean;
+  canEditInfo: boolean;
+  pendingRequestCount: number;
+  coinRequests: Record<string, MandaliCoinRequest>;
+  onRequestCoins: () => void;
+  onPayCoinRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  onPinMessage: (channelId: string, messageId: string, pinned: boolean) => void;
+  onDeleteMessage: (channelId: string, messageId: string) => void;
+  onOpenInvite: () => void;
+  onOpenGroupInfo: () => void;
+  onOpenMembers: () => void;
+  onOpenPendingRequests: () => void;
 }
 
 type MobileTab = "chat" | "squads" | "gnapakalu" | "members";
@@ -95,6 +117,20 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   onLaunchParty,
   onOpenCoinTransfer,
   onLeaveMandali,
+  selfId,
+  isOwner: _isOwner,
+  canManageMembers,
+  canEditInfo: _canEditInfo,
+  pendingRequestCount,
+  coinRequests,
+  onRequestCoins,
+  onPayCoinRequest,
+  onPinMessage,
+  onDeleteMessage,
+  onOpenInvite,
+  onOpenGroupInfo,
+  onOpenMembers,
+  onOpenPendingRequests,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>("chat");
   const [showChannelDrawer, setShowChannelDrawer] = useState(false);
@@ -180,10 +216,42 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               ) : (
                 messages.map((msg) => {
                   const isMine = msg.senderId === currentUserId;
+                  const canModerate = isMine || canManageMembers;
+
+                  if (msg.kind === "SYSTEM") {
+                    return (
+                      <div key={msg.messageId} className="flex justify-center">
+                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-medium">
+                          {msg.content}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (msg.kind === "COIN_REQUEST") {
+                    return (
+                      <div key={msg.messageId} className={`flex gap-2.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                        <img
+                          src={getAvatarUrl(msg.senderAvatar)}
+                          alt=""
+                          className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700 mt-1"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
+                        />
+                        <CoinRequestCard
+                          message={msg}
+                          request={coinRequests[msg.messageId]}
+                          selfId={selfId}
+                          members={members}
+                          onPay={onPayCoinRequest}
+                        />
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={msg.messageId}
-                      className={`flex gap-2.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}
+                      className={`flex gap-2.5 group ${isMine ? "flex-row-reverse" : "flex-row"}`}
                     >
                       <img
                         src={getAvatarUrl(msg.senderAvatar)}
@@ -204,6 +272,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                               Founder
                             </span>
                           )}
+                          {msg.pinned && <Pin className="w-2.5 h-2.5 text-amber-500" />}
                         </div>
 
                         <div
@@ -213,8 +282,33 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                               : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
                           }`}
                         >
-                          {msg.content}
+                          {msg.content ? msg.content : <span className="italic opacity-60">Message deleted</span>}
                         </div>
+
+                        {msg.content && (canManageMembers || canModerate) && (
+                          <div className="flex items-center gap-2.5 mt-0.5 px-1">
+                            {canManageMembers && (
+                              <button
+                                type="button"
+                                onClick={() => onPinMessage(msg.channelId, msg.messageId, !msg.pinned)}
+                                className="min-h-[24px] min-w-[24px] flex items-center justify-center text-slate-400 active:text-amber-500"
+                                aria-label={msg.pinned ? "Unpin message" : "Pin message"}
+                              >
+                                <Pin className="w-3 h-3" />
+                              </button>
+                            )}
+                            {canModerate && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteMessage(msg.channelId, msg.messageId)}
+                                className="min-h-[24px] min-w-[24px] flex items-center justify-center text-slate-400 active:text-rose-500"
+                                aria-label="Delete message"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {/* Reactions Bar */}
                         <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -264,6 +358,14 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               onSubmit={handleSend}
               className="p-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-2 flex-shrink-0"
             >
+              <button
+                type="button"
+                onClick={onRequestCoins}
+                aria-label="Request coins"
+                className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500/15 active:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center flex-shrink-0"
+              >
+                <Coins className="w-4 h-4" />
+              </button>
               <input
                 type="text"
                 value={chatInput}
@@ -375,6 +477,51 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               >
                 Send / Request
               </button>
+            </div>
+
+            {/* Group Management Actions */}
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={onOpenInvite}
+                className="min-h-[56px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"
+              >
+                <Link2 className="w-4 h-4" />
+                <span className="text-[9px] font-bold">Invite</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenGroupInfo}
+                className="min-h-[56px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"
+              >
+                <Info className="w-4 h-4" />
+                <span className="text-[9px] font-bold">Group Info</span>
+              </button>
+              {canManageMembers && (
+                <button
+                  type="button"
+                  onClick={onOpenMembers}
+                  className="min-h-[56px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-[9px] font-bold">Manage</span>
+                </button>
+              )}
+              {canManageMembers && (
+                <button
+                  type="button"
+                  onClick={onOpenPendingRequests}
+                  className="relative min-h-[56px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span className="text-[9px] font-bold">Requests</span>
+                  {pendingRequestCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center">
+                      {pendingRequestCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="space-y-2">

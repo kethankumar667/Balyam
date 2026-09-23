@@ -26,6 +26,25 @@ function clampText(value: string, maxLen: number): string {
   return value.trim().slice(0, maxLen);
 }
 
+/**
+ * Every durable RPC raises a Postgres exception shaped `CODE: human message`
+ * (e.g. `FORBIDDEN: only the owner may promote or demote`). `PostgrestError`
+ * (postgrest.ts) stores the whole PostgREST JSON error body as its
+ * `.message`, so the human text has to be pulled out of that body's own
+ * `"message"` field first — matching `SupabaseEconomyRepository.mapError`'s
+ * approach of pattern-testing `err.message` directly rather than assuming
+ * it is already the plain RAISE EXCEPTION text. An unrecognisable failure
+ * (network, timeout, a bug) falls back to a generic message instead of
+ * leaking a raw driver error to the client.
+ */
+function durableErrorMessage(err: unknown, fallback: string): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const jsonMessage = raw.match(/"message"\s*:\s*"([^"]*)"/)?.[1];
+  const pgMessage = jsonMessage ?? raw;
+  const withoutCode = pgMessage.match(/^[A-Z_]+:\s*(.+)$/)?.[1];
+  return withoutCode ?? (jsonMessage ? pgMessage : fallback);
+}
+
 export class MandaliService {
   constructor(
     private readonly repository: MandaliRepository,
@@ -41,28 +60,28 @@ export class MandaliService {
 
   /* ── Mandali Discovery & Creation ── */
 
-  public searchMandalis(filter?: {
+  public async searchMandalis(filter?: {
     search?: string;
     language?: string;
     tag?: string;
-  }): Mandali[] {
-    return this.repository.getAll(filter);
+  }): Promise<Mandali[]> {
+    return this.repository.isDurable() ? this.repository.getAllDurable(filter) : this.repository.getAll(filter);
   }
 
-  public getMandaliById(id: string): Mandali | undefined {
-    return this.repository.getById(id);
+  public async getMandaliById(id: string): Promise<Mandali | undefined> {
+    return this.repository.isDurable() ? this.repository.getByIdDurable(id) : this.repository.getById(id);
   }
 
-  public getMandaliByHandle(handle: string): Mandali | undefined {
-    return this.repository.getByHandle(handle);
+  public async getMandaliByHandle(handle: string): Promise<Mandali | undefined> {
+    return this.repository.isDurable() ? this.repository.getByHandleDurable(handle) : this.repository.getByHandle(handle);
   }
 
-  public createMandali(
+  public async createMandali(
     creatorId: string,
     creatorName: string,
     creatorAvatar: string,
     payload: CreateMandaliPayload
-  ): { success: boolean; mandali?: Mandali; error?: string } {
+  ): Promise<{ success: boolean; mandali?: Mandali; error?: string }> {
     const cleanHandle = payload.handle.trim().toLowerCase().replace(/^@/, "");
     if (!cleanHandle || cleanHandle.length < 3 || cleanHandle.length > 24) {
       return { success: false, error: "Handle must be between 3 and 24 alphanumeric characters." };
@@ -70,6 +89,29 @@ export class MandaliService {
 
     if (!/^[a-z0-9_-]+$/.test(cleanHandle)) {
       return { success: false, error: "Handle can only contain lowercase letters, numbers, hyphens and underscores." };
+    }
+
+    if (this.repository.isDurable()) {
+      try {
+        const mandali = await this.repository.createMandaliDurable({
+          mandaliId: `mandali_${nanoid(10)}`,
+          handle: cleanHandle,
+          name: clampText(payload.name, 60),
+          emblem: payload.emblem || "pawn_amber",
+          description: clampText(payload.description, 500),
+          ownerIdentityId: creatorId,
+          ownerDisplayName: creatorName,
+          ownerAvatar: creatorAvatar,
+          bannerGradient: payload.bannerGradient,
+          language: payload.language,
+          region: payload.region,
+          tags: payload.tags,
+          visibility: payload.visibility,
+        });
+        return { success: true, mandali };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not create Mandali.") };
+      }
     }
 
     const existing = this.repository.getByHandle(cleanHandle);
@@ -162,28 +204,68 @@ export class MandaliService {
     return { success: true, mandali };
   }
 
+  public async updateMandaliSettings(args: {
+    mandaliId: string; actorId: string; name?: string; emblem?: string; description?: string;
+    rules?: string; editPermission?: "ADMIN" | "ALL"; sendPermission?: "ADMIN" | "ALL"; joinApproval?: boolean;
+  }): Promise<{ success: boolean; mandali?: Mandali; error?: string }> {
+    const guard = this.requireDurable("Editing group info");
+    if (guard) return guard;
+    try {
+      const mandali = await this.repository.updateMandaliSettingsDurable({
+        mandaliId: args.mandaliId, actorIdentityId: args.actorId, name: args.name, emblem: args.emblem,
+        description: args.description, rules: args.rules, editPermission: args.editPermission,
+        sendPermission: args.sendPermission, joinApproval: args.joinApproval,
+      });
+      return { success: true, mandali };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not update group info.") };
+    }
+  }
+
   /* ── Membership Operations ── */
 
-  public getMembers(mandaliId: string): MandaliMember[] {
-    return this.repository.getMembers(mandaliId);
+  public async getMembers(mandaliId: string): Promise<MandaliMember[]> {
+    return this.repository.isDurable() ? this.repository.getMembersDurable(mandaliId) : this.repository.getMembers(mandaliId);
   }
 
   /** Server-side membership gate — the only trustworthy way to answer "can this caller see private community content?" */
-  public isActiveMember(mandaliId: string, playerId: string): boolean {
-    return this.repository.getMember(mandaliId, playerId)?.state === "ACTIVE";
+  public async isActiveMember(mandaliId: string, playerId: string): Promise<boolean> {
+    const member = this.repository.isDurable()
+      ? await this.repository.getMemberDurable(mandaliId, playerId)
+      : this.repository.getMember(mandaliId, playerId);
+    return member?.state === "ACTIVE";
   }
 
-  public getPlayerMandalis(playerId: string): Mandali[] {
-    return this.repository.getPlayerMandalis(playerId);
+  public async getPlayerMandalis(playerId: string): Promise<Mandali[]> {
+    return this.repository.isDurable()
+      ? this.repository.getPlayerMandalisDurable(playerId)
+      : this.repository.getPlayerMandalis(playerId);
   }
 
-  public applyToMandali(
+  public async applyToMandali(
     mandaliId: string,
     playerId: string,
     displayName: string,
     avatar: string,
-    statement?: string
-  ): { success: boolean; error?: string } {
+    statement?: string,
+    invitationId?: string
+  ): Promise<{ success: boolean; pending?: boolean; error?: string }> {
+    if (this.repository.isDurable()) {
+      try {
+        const result = await this.repository.createJoinRequestDurable({
+          requestId: `jr_${nanoid(10)}`,
+          mandaliId,
+          requesterIdentityId: playerId,
+          requesterDisplayName: displayName,
+          requesterAvatar: avatar,
+          invitationId,
+        });
+        return { success: true, pending: !result.autoApproved };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not join this Mandali.") };
+      }
+    }
+
     const mandali = this.repository.getById(mandaliId);
     if (!mandali) return { success: false, error: "Mandali not found." };
 
@@ -244,7 +326,16 @@ export class MandaliService {
     return { success: true };
   }
 
-  public leaveMandali(mandaliId: string, playerId: string): { success: boolean; error?: string } {
+  public async leaveMandali(mandaliId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+    if (this.repository.isDurable()) {
+      try {
+        await this.repository.transitionMembershipDurable(mandaliId, playerId, playerId, "LEAVE");
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not leave this Mandali.") };
+      }
+    }
+
     const member = this.repository.getMember(mandaliId, playerId);
     if (!member || member.state !== "ACTIVE") {
       return { success: false, error: "You are not an active member of this Mandali." };
@@ -277,13 +368,22 @@ export class MandaliService {
     return { success: true };
   }
 
-  public kickMember(
+  public async kickMember(
     mandaliId: string,
     officerId: string,
     officerName: string,
     targetPlayerId: string,
     reason: string
-  ): { success: boolean; error?: string } {
+  ): Promise<{ success: boolean; error?: string }> {
+    if (this.repository.isDurable()) {
+      try {
+        await this.repository.transitionMembershipDurable(mandaliId, officerId, targetPlayerId, "KICK");
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not remove this member.") };
+      }
+    }
+
     const officer = this.repository.getMember(mandaliId, officerId);
     if (!hasMandaliPermission(officer?.role, "KICK_MEMBERS")) {
       return { success: false, error: "Insufficient permissions to kick members." };
@@ -319,25 +419,139 @@ export class MandaliService {
     return { success: true };
   }
 
+  /* ── Promote / demote / ban / transfer ownership ──
+   * Net-new actions with no prior implementation at all (not even dead
+   * in-memory code) — durable-only. Building a second, parallel in-memory
+   * implementation of ownership-transfer's "exactly one owner" invariant
+   * for a storage mode that only ever existed as a dev/test fallback is
+   * not a good trade; the error names the real reason rather than pretending
+   * to support it. */
+  private requireDurable(action: string): { success: false; error: string } | null {
+    if (this.repository.isDurable()) return null;
+    return { success: false, error: `${action} requires durable storage to be configured.` };
+  }
+
+  public async promoteMember(mandaliId: string, actorId: string, targetId: string): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Promoting a member");
+    if (guard) return guard;
+    try {
+      await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "PROMOTE");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not promote this member.") };
+    }
+  }
+
+  public async demoteMember(mandaliId: string, actorId: string, targetId: string): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Demoting a member");
+    if (guard) return guard;
+    try {
+      await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "DEMOTE");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not demote this member.") };
+    }
+  }
+
+  public async banMember(mandaliId: string, actorId: string, targetId: string): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Banning a member");
+    if (guard) return guard;
+    try {
+      await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "BAN");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not ban this member.") };
+    }
+  }
+
+  public async transferOwnership(mandaliId: string, currentOwnerId: string, newOwnerId: string): Promise<{ success: boolean; mandali?: Mandali; error?: string }> {
+    const guard = this.requireDurable("Transferring ownership");
+    if (guard) return guard;
+    try {
+      const mandali = await this.repository.transferOwnershipDurable(mandaliId, currentOwnerId, newOwnerId);
+      return { success: true, mandali };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not transfer ownership.") };
+    }
+  }
+
+  /* ── Invite links & join-request approval ── */
+
+  public async createInviteLink(
+    mandaliId: string, issuerId: string, expiresInMs = 7 * 24 * 60 * 60 * 1000
+  ): Promise<{ success: boolean; invitation?: import("@shared/mandali/types.js").MandaliInviteLink; error?: string }> {
+    const guard = this.requireDurable("Creating an invite link");
+    if (guard) return guard;
+    try {
+      const invitation = await this.repository.createInviteLinkDurable(
+        `inv_${nanoid(10)}`, mandaliId, issuerId, Date.now() + expiresInMs
+      );
+      return { success: true, invitation };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not create an invite link.") };
+    }
+  }
+
+  public async resolveInviteLink(token: string) {
+    if (!this.repository.isDurable()) {
+      return { valid: false as const };
+    }
+    return this.repository.resolveInviteLinkDurable(token);
+  }
+
+  public async getPendingJoinRequests(mandaliId: string): Promise<import("@shared/mandali/types.js").MandaliJoinRequestRecord[]> {
+    if (!this.repository.isDurable()) return [];
+    return this.repository.getJoinRequestsDurable(mandaliId, "PENDING");
+  }
+
+  public async decideJoinRequest(
+    requestId: string, reviewerId: string, approve: boolean
+  ): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Deciding a join request");
+    if (guard) return guard;
+    try {
+      await this.repository.decideJoinRequestDurable(requestId, reviewerId, approve);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not decide this join request.") };
+    }
+  }
+
   /* ── Realtime Channels & Messages ── */
 
-  public getChannels(mandaliId: string): MandaliChannel[] {
-    return this.repository.getChannels(mandaliId);
+  public async getChannels(mandaliId: string): Promise<MandaliChannel[]> {
+    return this.repository.isDurable() ? this.repository.getChannelsDurable(mandaliId) : this.repository.getChannels(mandaliId);
   }
 
-  public getMessages(channelId: string, limit = 50): MandaliMessage[] {
-    return this.repository.getMessages(channelId, limit);
+  public async getMessages(channelId: string, limit = 50): Promise<MandaliMessage[]> {
+    return this.repository.isDurable() ? this.repository.getMessagesDurable(channelId, limit) : this.repository.getMessages(channelId, limit);
   }
 
-  public sendMessage(
+  public async sendMessage(
     mandaliId: string,
     channelId: string,
     senderId: string,
     senderName: string,
     senderAvatar: string,
     content: string,
-    replyToId?: string
-  ): { success: boolean; message?: MandaliMessage; error?: string } {
+    replyToId?: string,
+    clientRequestId?: string
+  ): Promise<{ success: boolean; message?: MandaliMessage; error?: string }> {
+    if (this.repository.isDurable()) {
+      try {
+        const { message } = await this.repository.sendMessageDurable({
+          messageId: `msg_${nanoid(10)}`, mandaliId, channelId, senderIdentityId: senderId,
+          content: clampText(content, 2000), replyToId, clientRequestId,
+        });
+        if (this.io) {
+          this.io.to(`mandali:${mandaliId}`).emit("mandali:chat:message" as any, { mandaliId, channelId, message });
+        }
+        return { success: true, message };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not send this message.") };
+      }
+    }
+
     const member = this.repository.getMember(mandaliId, senderId);
     if (!member || member.state !== "ACTIVE") {
       return { success: false, error: "Must be an active member to post messages." };
@@ -378,6 +592,71 @@ export class MandaliService {
     }
 
     return { success: true, message };
+  }
+
+  public async setMessagePin(messageId: string, actorId: string, pinned: boolean): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Pinning a message");
+    if (guard) return guard;
+    try {
+      await this.repository.setMessagePinDurable(messageId, actorId, pinned);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not update this message's pin state.") };
+    }
+  }
+
+  public async deleteMessage(messageId: string, actorId: string): Promise<{ success: boolean; error?: string }> {
+    const guard = this.requireDurable("Deleting a message");
+    if (guard) return guard;
+    try {
+      await this.repository.deleteMessageDurable(messageId, actorId);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not delete this message.") };
+    }
+  }
+
+  /* ── Coin requests (payable request cards) ──
+   * Distinct from the existing transferCoins()'s SEND/REQUEST below — that
+   * method's SEND path is the existing, already-tested atomic wallet
+   * transfer and stays untouched; its REQUEST path is a fire-and-forget
+   * notice with no way to actually pay it. These two methods are the new,
+   * payable coin-request feature: create a request naming one designated
+   * payer, and let that payer fund it via the same atomic transfer RPC. */
+  public async createCoinRequest(args: {
+    mandaliId: string; channelId: string; requesterId: string; payerId: string;
+    amount: number; expiresInMs?: number;
+  }): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
+    const guard = this.requireDurable("Requesting coins");
+    if (guard) return guard;
+    try {
+      const request = await this.repository.createCoinRequestDurable({
+        requestId: `cr_${nanoid(10)}`, mandaliId: args.mandaliId, channelId: args.channelId,
+        requesterIdentityId: args.requesterId, payerIdentityId: args.payerId, amount: Math.floor(args.amount),
+        expiresAt: Date.now() + (args.expiresInMs ?? 24 * 60 * 60 * 1000),
+      });
+      return { success: true, request };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not create this coin request.") };
+    }
+  }
+
+  public async fundCoinRequest(
+    requestId: string, payerId: string
+  ): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
+    const guard = this.requireDurable("Paying a coin request");
+    if (guard) return guard;
+    try {
+      const { request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
+      return { success: true, request };
+    } catch (err) {
+      return { success: false, error: durableErrorMessage(err, "Could not pay this coin request.") };
+    }
+  }
+
+  public async getCoinRequests(mandaliId: string): Promise<import("@shared/mandali/types.js").MandaliCoinRequest[]> {
+    if (!this.repository.isDurable()) return [];
+    return this.repository.getCoinRequestsDurable(mandaliId);
   }
 
   public reactToMessage(
