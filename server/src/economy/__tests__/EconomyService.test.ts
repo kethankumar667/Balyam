@@ -205,6 +205,9 @@ class ScriptedFailureRepository implements EconomyRepository {
   adminAdjustWallet(input: Parameters<EconomyRepository["adminAdjustWallet"]>[0]) {
     return this.invoke("adminAdjustWallet", () => this.inner.adminAdjustWallet(input));
   }
+  transferWalletCoins(input: Parameters<EconomyRepository["transferWalletCoins"]>[0]) {
+    return this.invoke("transferWalletCoins", () => this.inner.transferWalletCoins(input));
+  }
 }
 
 /* ═══════════════════════ wallet & ledger ═════════════════════════════════ */

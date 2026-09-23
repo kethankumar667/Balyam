@@ -1,42 +1,23 @@
 import { Router, type Request } from "express";
 import type { MandaliService } from "./MandaliService.js";
 
+/**
+ * The caller's identity, straight from `req.player` — set exclusively by the
+ * globally-mounted `attachPlayerIdentity` middleware (server/src/auth/identity.ts),
+ * which verifies a guest HMAC token or a Supabase access token before setting it.
+ *
+ * This function used to also accept a hand-decoded (unverified) JWT payload and,
+ * failing that, a bare `x-account-kind` header plus `req.body.playerId`/`creatorId`
+ * — meaning anyone could claim to be any member with zero credentials. Per
+ * identity.ts's own rule: a body/header id is an ARGUMENT, never evidence of who
+ * is asking. Only `req.player` is trustworthy.
+ */
 function extractPlayerFromReq(req: Request): { playerId: string; isMember: boolean } | null {
-  if (req.player) {
-    return {
-      playerId: req.player.playerId,
-      isMember: req.player.kind === "member",
-    };
-  }
-
-  const auth = req.headers["authorization"];
-  if (auth && auth.startsWith("Bearer ")) {
-    try {
-      const token = auth.slice(7);
-      const [, payloadB64] = token.split(".");
-      if (payloadB64) {
-        const json = Buffer.from(payloadB64, "base64url").toString("utf8");
-        const payload = JSON.parse(json) as { sub?: string };
-        if (payload.sub) {
-          return { playerId: payload.sub, isMember: true };
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  const accountKind = req.headers["x-account-kind"];
-  const bodyPlayerId = typeof req.body?.playerId === "string" ? req.body.playerId : null;
-  const creatorId = typeof req.body?.creatorId === "string" ? req.body.creatorId : null;
-  const id = bodyPlayerId || creatorId;
-
-  if (id) {
-    const isMember = accountKind === "member" || (!id.startsWith("guest_") && !id.startsWith("bg_"));
-    return { playerId: id, isMember };
-  }
-
-  return null;
+  if (!req.player) return null;
+  return {
+    playerId: req.player.playerId,
+    isMember: req.player.kind === "member",
+  };
 }
 
 export function createMandaliRouter(mandaliService: MandaliService): Router {
@@ -110,34 +91,15 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   /**
    * GET /my — Mandalis the requesting player belongs to.
-   * Reads playerId from the JWT Bearer token's `sub` claim (base64 decode —
-   * no full verification needed here since this only returns community metadata
-   * visible to all members anyway). Must be registered BEFORE /:handleOrId.
+   * Must be registered BEFORE /:handleOrId.
    */
   router.get("/my", (req, res) => {
-    let playerId: string | null = null;
-
-    const auth = req.headers["authorization"];
-    if (auth && auth.startsWith("Bearer ")) {
-      try {
-        const token = auth.slice(7);
-        const [, payloadB64] = token.split(".");
-        if (payloadB64) {
-          const json = Buffer.from(payloadB64, "base64url").toString("utf8");
-          const payload = JSON.parse(json) as { sub?: string };
-          playerId = payload.sub ?? null;
-        }
-      } catch {
-        // malformed token — return empty
-      }
-    }
-
-    if (!playerId) {
+    if (!req.player) {
       res.json({ success: true, mandalis: [] });
       return;
     }
 
-    const mandalis = mandaliService.getPlayerMandalis(playerId);
+    const mandalis = mandaliService.getPlayerMandalis(req.player.playerId);
     res.json({ success: true, mandalis });
   });
 
@@ -188,14 +150,13 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
-    const playerId = playerInfo.playerId || req.body.playerId;
     const displayName = req.body.displayName || "Member";
     const avatar = req.body.avatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
     const statement = req.body.statement;
 
     const result = mandaliService.applyToMandali(
       req.params.id,
-      playerId,
+      playerInfo.playerId,
       displayName,
       avatar,
       statement
@@ -212,13 +173,12 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   // Leave Mandali
   router.post("/:id/leave", (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
-    const playerId = playerInfo?.playerId || req.body.playerId;
-    if (!playerId) {
-      res.status(400).json({ success: false, error: "Missing playerId." });
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to leave a Mandali." });
       return;
     }
 
-    const result = mandaliService.leaveMandali(req.params.id, playerId);
+    const result = mandaliService.leaveMandali(req.params.id, playerInfo.playerId);
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
       return;
@@ -233,8 +193,14 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ channels });
   });
 
-  // Get Channel Messages
+  // Get Channel Messages — private community content, active members only.
   router.get("/:id/channels/:channelId/messages", (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !mandaliService.isActiveMember(req.params.id, playerInfo.playerId)) {
+      res.status(403).json({ error: "Only active members can read this channel." });
+      return;
+    }
+
     const limit = Number(req.query.limit) || 50;
     const messages = mandaliService.getMessages(req.params.channelId, limit);
     res.json({ messages });
@@ -242,16 +208,17 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Send Message
   router.post("/:id/channels/:channelId/messages", (req, res) => {
-    const { senderId, senderName, senderAvatar, content, replyToId } = req.body;
-    if (!senderId || !content) {
-      res.status(400).json({ error: "Missing senderId or content." });
+    const playerInfo = extractPlayerFromReq(req);
+    const { senderName, senderAvatar, content, replyToId } = req.body;
+    if (!playerInfo || !content) {
+      res.status(400).json({ error: "Missing sender identity or content." });
       return;
     }
 
     const result = mandaliService.sendMessage(
       req.params.id,
       req.params.channelId,
-      senderId,
+      playerInfo.playerId,
       senderName || "Member",
       senderAvatar || "avatar_1",
       content,
@@ -268,9 +235,10 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // React to Message
   router.post("/:id/channels/:channelId/messages/:messageId/react", (req, res) => {
-    const { playerId, emoji } = req.body;
-    if (!playerId || !emoji) {
-      res.status(400).json({ error: "Missing playerId or emoji." });
+    const playerInfo = extractPlayerFromReq(req);
+    const { emoji } = req.body;
+    if (!playerInfo || !emoji) {
+      res.status(400).json({ error: "Missing sender identity or emoji." });
       return;
     }
 
@@ -278,7 +246,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       req.params.id,
       req.params.channelId,
       req.params.messageId,
-      playerId,
+      playerInfo.playerId,
       emoji
     );
 
@@ -298,15 +266,16 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Create Party
   router.post("/:id/parties", (req, res) => {
-    const { leaderId, leaderName, leaderAvatar, game, modeId, title, slots } = req.body;
-    if (!leaderId || !game) {
-      res.status(400).json({ error: "Missing required party parameters." });
+    const playerInfo = extractPlayerFromReq(req);
+    const { leaderName, leaderAvatar, game, modeId, title, slots } = req.body;
+    if (!playerInfo || !game) {
+      res.status(400).json({ error: "Missing sender identity or game." });
       return;
     }
 
     const result = mandaliService.createParty(
       req.params.id,
-      leaderId,
+      playerInfo.playerId,
       leaderName || "Leader",
       leaderAvatar || "avatar_1",
       game,
@@ -325,16 +294,17 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Join Party
   router.post("/:id/parties/:partyId/join", (req, res) => {
-    const { playerId, displayName, avatar } = req.body;
-    if (!playerId) {
-      res.status(400).json({ error: "Missing playerId." });
+    const playerInfo = extractPlayerFromReq(req);
+    const { displayName, avatar } = req.body;
+    if (!playerInfo) {
+      res.status(401).json({ error: "Sign in to join a party." });
       return;
     }
 
     const result = mandaliService.joinParty(
       req.params.id,
       req.params.partyId,
-      playerId,
+      playerInfo.playerId,
       displayName || "Player",
       avatar || "avatar_1"
     );
@@ -349,13 +319,13 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Leave Party
   router.post("/:id/parties/:partyId/leave", (req, res) => {
-    const { playerId } = req.body;
-    if (!playerId) {
-      res.status(400).json({ error: "Missing playerId." });
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ error: "Sign in to leave a party." });
       return;
     }
 
-    const result = mandaliService.leaveParty(req.params.id, req.params.partyId, playerId);
+    const result = mandaliService.leaveParty(req.params.id, req.params.partyId, playerInfo.playerId);
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;
@@ -366,16 +336,16 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Launch Party to Game Handoff (M-10)
   router.post("/:id/parties/:partyId/launch", (req, res) => {
-    const { leaderId } = req.body;
-    if (!leaderId) {
-      res.status(400).json({ error: "Missing leaderId." });
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ error: "Sign in to launch a party." });
       return;
     }
 
     const result = mandaliService.launchPartyToGame(
       req.params.id,
       req.params.partyId,
-      leaderId
+      playerInfo.playerId
     );
 
     if (!result.success) {

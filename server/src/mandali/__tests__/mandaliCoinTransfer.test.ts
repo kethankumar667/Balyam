@@ -1,20 +1,39 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { MandaliRepository } from "../MandaliRepository.js";
 import { MandaliService } from "../MandaliService.js";
+import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+import { EconomyService } from "../../economy/EconomyService.js";
+
+const SENDER = "p_rajesh_ludo";
+const RECIPIENT = "p_sai_kittu";
 
 describe("Mandali Coin Transfers & Clan Economy", () => {
   let repository: MandaliRepository;
+  let economyRepo: InMemoryEconomyRepository;
+  let economyService: EconomyService;
   let service: MandaliService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     repository = new MandaliRepository();
-    service = new MandaliService(repository);
+    economyRepo = new InMemoryEconomyRepository();
+    economyService = new EconomyService(economyRepo);
+    // Both members exist in default seed mandali_ludo_kings (ownerId: p_rajesh_ludo, member: p_sai_kittu)
+    economyRepo.testFixture.seedIdentity(SENDER, "member");
+    economyRepo.testFixture.seedIdentity(RECIPIENT, "member");
+    await economyRepo.ensureWallet(SENDER); // starter grant: 5000 coins
+    await economyRepo.ensureWallet(RECIPIENT); // starter grant: 5000 coins
+    service = new MandaliService(repository, undefined, undefined, economyService);
   });
 
-  it("allows active members to send coins to each other", async () => {
-    // Both members exist in default seed mandali_ludo_kings (ownerId: p_rajesh_ludo, member: p_sai_kittu)
-    const result = await service.transferCoins("mandali_ludo_kings", "p_rajesh_ludo", {
-      toPlayerId: "p_sai_kittu",
+  it("moves coins from sender to recipient — debits one wallet, credits the other, conserves total supply", async () => {
+    const before = {
+      sender: BigInt((await economyService.getWallet(SENDER)).balance),
+      recipient: BigInt((await economyService.getWallet(RECIPIENT)).balance),
+    };
+    const totalBefore = before.sender + before.recipient;
+
+    const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: RECIPIENT,
       amount: 150,
       type: "SEND",
       note: "Prize for Ludo victory!",
@@ -27,15 +46,63 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
     expect(result.transfer?.status).toBe("COMPLETED");
     expect(result.transfer?.fromPlayerName).toBe("Rajesh Maharajah");
 
+    const after = {
+      sender: BigInt((await economyService.getWallet(SENDER)).balance),
+      recipient: BigInt((await economyService.getWallet(RECIPIENT)).balance),
+    };
+
+    // The bug this regression-tests: a naive fix that calls a credit-only
+    // primitive on both "sides" leaves the sender's balance UNCHANGED (or
+    // increased) instead of decreased. Assert the actual debit happened.
+    expect(after.sender).toBe(before.sender - 150n);
+    expect(after.recipient).toBe(before.recipient + 150n);
+    expect(after.sender + after.recipient).toBe(totalBefore); // no coins minted or destroyed
+
     // History check
     const transfers = service.getCoinTransfers("mandali_ludo_kings");
     expect(transfers.length).toBeGreaterThanOrEqual(1);
     expect(transfers[0].amount).toBe(150);
   });
 
+  it("rejects a send that exceeds the sender's real wallet balance, without moving any coins", async () => {
+    const before = {
+      sender: BigInt((await economyService.getWallet(SENDER)).balance),
+      recipient: BigInt((await economyService.getWallet(RECIPIENT)).balance),
+    };
+
+    const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: RECIPIENT,
+      amount: 999_999,
+      type: "SEND",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/insufficient/i);
+
+    const after = {
+      sender: BigInt((await economyService.getWallet(SENDER)).balance),
+      recipient: BigInt((await economyService.getWallet(RECIPIENT)).balance),
+    };
+    expect(after.sender).toBe(before.sender);
+    expect(after.recipient).toBe(before.recipient);
+  });
+
+  it("fails honestly (no fake success, no transfer recorded) when no economy layer is wired in", async () => {
+    const noEconomyService = new MandaliService(repository); // economyService omitted, as production could in principle do
+
+    const result = await noEconomyService.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: RECIPIENT,
+      amount: 150,
+      type: "SEND",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.transfer).toBeUndefined();
+  });
+
   it("allows active members to request coins from each other", async () => {
-    const result = await service.transferCoins("mandali_ludo_kings", "p_sai_kittu", {
-      toPlayerId: "p_rajesh_ludo",
+    const result = await service.transferCoins("mandali_ludo_kings", RECIPIENT, {
+      toPlayerId: SENDER,
       amount: 75,
       type: "REQUEST",
       note: "Need entry fee for squad match",
@@ -48,8 +115,8 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
   });
 
   it("refuses coin transfers to oneself", async () => {
-    const result = await service.transferCoins("mandali_ludo_kings", "p_rajesh_ludo", {
-      toPlayerId: "p_rajesh_ludo",
+    const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: SENDER,
       amount: 100,
       type: "SEND",
     });
@@ -60,7 +127,7 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
 
   it("refuses transfers from non-members or non-active members", async () => {
     const result = await service.transferCoins("mandali_ludo_kings", "stranger_1", {
-      toPlayerId: "p_rajesh_ludo",
+      toPlayerId: SENDER,
       amount: 50,
       type: "SEND",
     });
@@ -70,8 +137,8 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
   });
 
   it("refuses invalid transfer amounts", async () => {
-    const result = await service.transferCoins("mandali_ludo_kings", "p_rajesh_ludo", {
-      toPlayerId: "p_sai_kittu",
+    const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: RECIPIENT,
       amount: -25,
       type: "SEND",
     });

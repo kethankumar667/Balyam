@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { logger } from "../lib/logger.js";
 import {
   type AdminAdjustWalletInput,
+  type TransferWalletCoinsInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
@@ -1184,6 +1185,51 @@ export class EconomyService {
       }),
     );
     this.logOutcome("adminAdjustWallet", null, startedAt, outcome.applied);
+    return outcome;
+  }
+
+  /**
+   * Atomic peer-to-peer wallet transfer (e.g. Mandali's "Send Coins").
+   * Debits `fromIdentityId` and credits `toIdentityId` in one transaction —
+   * never two independent calls, which is exactly the bug this replaces (see
+   * `transfer_wallet_coins`'s migration header for the full incident).
+   */
+  async transferWalletCoins(
+    input: TransferWalletCoinsInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const startedAt = this.now();
+    if (!input.fromIdentityId || typeof input.fromIdentityId !== "string" || input.fromIdentityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.fromIdentityId);
+    }
+    if (!input.toIdentityId || typeof input.toIdentityId !== "string" || input.toIdentityId.trim().length === 0) {
+      throw new InvalidIdentityIdError(input.toIdentityId);
+    }
+    if (input.fromIdentityId.trim() === input.toIdentityId.trim()) {
+      throw new InvalidRequestError("cannot transfer coins to the same identity");
+    }
+    let amountBn: bigint;
+    try {
+      amountBn = BigInt(input.amountCoins);
+    } catch {
+      throw new InvalidRequestError("amountCoins must be a valid integer string");
+    }
+    if (amountBn <= 0n) {
+      throw new InvalidRequestError("amountCoins must be strictly greater than 0");
+    }
+    if (!input.idempotencyKey || input.idempotencyKey.trim().length === 0) {
+      throw new InvalidRequestError("idempotencyKey must be provided");
+    }
+
+    const outcome = await this.withoutRetry("transferWalletCoins", null, () =>
+      this.repository.transferWalletCoins({
+        fromIdentityId: input.fromIdentityId.trim(),
+        toIdentityId: input.toIdentityId.trim(),
+        amountCoins: amountBn.toString(),
+        reason: input.reason?.trim() || "",
+        idempotencyKey: input.idempotencyKey.trim(),
+      }),
+    );
+    this.logOutcome("transferWalletCoins", null, startedAt, outcome.applied);
     return outcome;
   }
 }

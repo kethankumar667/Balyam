@@ -189,6 +189,7 @@ class FailNTimesRepository implements EconomyRepository {
   retryTerminalIntent(id: string, op: string, r?: string) { return this.inner.retryTerminalIntent(id, op, r); }
   requeueExpiredTerminalIntentClaim(id: string, op: string, f?: boolean) { return this.inner.requeueExpiredTerminalIntentClaim(id, op, f); }
   adminAdjustWallet(i: Parameters<EconomyRepository["adminAdjustWallet"]>[0]) { return this.inner.adminAdjustWallet(i); }
+  transferWalletCoins(i: Parameters<EconomyRepository["transferWalletCoins"]>[0]) { return this.inner.transferWalletCoins(i); }
 }
 
 function freshFailingEconomy(failTimes: number): { repo: InMemoryEconomyRepository; service: EconomyService } {

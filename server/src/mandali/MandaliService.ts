@@ -19,6 +19,12 @@ import type { RoomManager } from "../rooms/RoomManager.js";
 import type { GameKind } from "@shared/types.js";
 import { logger } from "../lib/logger.js";
 import type { EconomyService } from "../economy/EconomyService.js";
+import { InsufficientFundsError, WalletFrozenError } from "../persistence/EconomyRepository.js";
+
+/** Every free-text field here is stored and re-broadcast to other members — cap it, don't trust client-side limits alone. */
+function clampText(value: string, maxLen: number): string {
+  return value.trim().slice(0, maxLen);
+}
 
 export class MandaliService {
   constructor(
@@ -77,8 +83,8 @@ export class MandaliService {
     const mandali: Mandali = {
       id: mandaliId,
       handle: cleanHandle,
-      name: payload.name.trim(),
-      description: payload.description.trim(),
+      name: clampText(payload.name, 60),
+      description: clampText(payload.description, 500),
       emblem: payload.emblem || "pawn_amber",
       bannerGradient: payload.bannerGradient || "from-amber-600 via-orange-600 to-slate-900",
       language: payload.language || "English",
@@ -162,6 +168,11 @@ export class MandaliService {
     return this.repository.getMembers(mandaliId);
   }
 
+  /** Server-side membership gate — the only trustworthy way to answer "can this caller see private community content?" */
+  public isActiveMember(mandaliId: string, playerId: string): boolean {
+    return this.repository.getMember(mandaliId, playerId)?.state === "ACTIVE";
+  }
+
   public getPlayerMandalis(playerId: string): Mandali[] {
     return this.repository.getPlayerMandalis(playerId);
   }
@@ -224,7 +235,7 @@ export class MandaliService {
       playerId,
       displayName,
       avatar,
-      statement,
+      statement: statement ? clampText(statement, 300) : statement,
       state: "SUBMITTED",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -349,7 +360,7 @@ export class MandaliService {
       senderName,
       senderAvatar,
       senderRole: member.role,
-      content: content.trim(),
+      content: clampText(content, 1000),
       reactions: {},
       replyToId,
       timestamp: Date.now(),
@@ -438,7 +449,7 @@ export class MandaliService {
       leaderName,
       game,
       modeId,
-      title: title.trim() || `${game.toUpperCase()} Squad`,
+      title: clampText(title, 60) || `${game.toUpperCase()} Squad`,
       slots: Math.max(2, Math.min(8, slots)),
       members: [
         {
@@ -632,8 +643,8 @@ export class MandaliService {
     const event: MandaliEvent = {
       eventId: `evt_${nanoid(8)}`,
       mandaliId,
-      title: payload.title.trim(),
-      description: payload.description.trim(),
+      title: clampText(payload.title, 100),
+      description: clampText(payload.description, 500),
       game: payload.game,
       scheduledAt: payload.scheduledAt,
       hostId,
@@ -682,38 +693,42 @@ export class MandaliService {
     const now = Date.now();
 
     if (payload.type === "SEND") {
-      if (this.economyService) {
-        try {
-          const senderWallet = await this.economyService.getWallet(fromPlayerId);
-          if (BigInt(senderWallet.balance) < BigInt(amount)) {
-            return { success: false, error: `Insufficient funds. Your wallet has ${senderWallet.balance} coins.` };
-          }
+      // Coins are real wallet balance, not a Mandali-internal fiction — if
+      // there is no economy layer wired in, a "successful" send would just
+      // be a lie (the transfer record would show coins moving that never
+      // did). Fail honestly instead of silently no-op'ing.
+      if (!this.economyService) {
+        return { success: false, error: "Coin transfers are temporarily unavailable." };
+      }
 
-          // Debit sender
-          await this.economyService.adminAdjustWallet({
-            identityId: fromPlayerId,
-            amountCoins: String(amount),
-            adminPrincipalId: `mandali:${mandaliId}`,
-            reason: `Sent ${amount} coins to ${toMember.displayName} in Mandali`,
-            idempotencyKey: `mnd_send:${transferId}:${fromPlayerId}`,
-            entryType: "ADMIN_ADJUSTMENT",
-          });
-
-          // Credit recipient
-          await this.economyService.adminAdjustWallet({
-            identityId: payload.toPlayerId,
-            amountCoins: String(amount),
-            adminPrincipalId: `mandali:${mandaliId}`,
-            reason: `Received ${amount} coins from ${fromMember.displayName} in Mandali`,
-            idempotencyKey: `mnd_recv:${transferId}:${payload.toPlayerId}`,
-            entryType: "ADMIN_ADJUSTMENT",
-          });
-        } catch (err) {
-          logger.warn({
-            message: `[MANDALI] Economy wallet transfer warning: ${String(err)}`,
-            module: "MANDALI",
-          });
+      try {
+        // Atomic — debits fromPlayerId and credits toPlayerId in ONE
+        // transaction (see transfer_wallet_coins). Previously this made two
+        // independent adminAdjustWallet calls (a credit-only primitive),
+        // which credited BOTH wallets instead of moving coins between them.
+        await this.economyService.transferWalletCoins({
+          fromIdentityId: fromPlayerId,
+          toIdentityId: payload.toPlayerId,
+          amountCoins: String(amount),
+          reason: payload.note || `Mandali coin transfer in ${mandaliId}`,
+          idempotencyKey: `mnd_transfer:${transferId}`,
+        });
+      } catch (err) {
+        logger.warn({
+          message: `[MANDALI] Coin transfer failed: ${err instanceof Error ? err.message : String(err)}`,
+          module: "MANDALI",
+        });
+        // Two shapes reach here: the Supabase RPC's raw "INSUFFICIENT_FUNDS: ..."
+        // exception text, and the in-memory repository's typed error classes
+        // with human-readable messages — check both.
+        const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof InsufficientFundsError || message.includes("INSUFFICIENT_FUNDS")) {
+          return { success: false, error: "Insufficient funds for this transfer." };
         }
+        if (err instanceof WalletFrozenError || message.includes("WALLET_FROZEN")) {
+          return { success: false, error: "One of these wallets is frozen and cannot transfer coins." };
+        }
+        return { success: false, error: "Coin transfer failed. Please try again." };
       }
 
       const transfer: MandaliCoinTransfer = {
@@ -726,7 +741,7 @@ export class MandaliService {
         amount,
         type: "SEND",
         status: "COMPLETED",
-        note: payload.note?.trim(),
+        note: payload.note ? clampText(payload.note, 280) : payload.note,
         timestamp: now,
       };
 
@@ -766,7 +781,7 @@ export class MandaliService {
         amount,
         type: "REQUEST",
         status: "PENDING",
-        note: payload.note?.trim(),
+        note: payload.note ? clampText(payload.note, 280) : payload.note,
         timestamp: now,
       };
 

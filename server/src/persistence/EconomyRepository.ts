@@ -69,7 +69,9 @@ export type WalletLedgerEntryType =
   | "ADMIN_ADJUSTMENT"
   | "DAILY_REWARD_CREDIT"
   | "COSMETIC_PURCHASE"
-  | "COSMETIC_REFUND";
+  | "COSMETIC_REFUND"
+  | "P2P_TRANSFER_SEND"
+  | "P2P_TRANSFER_RECEIVE";
 
 /* ═══════════════════════════ Output DTOs (repository models) ════════════ */
 
@@ -365,6 +367,15 @@ export interface AdminAdjustWalletInput {
    * human operator's action.
    */
   entryType?: WalletLedgerEntryType;
+}
+
+export interface TransferWalletCoinsInput {
+  fromIdentityId: string;
+  toIdentityId: string;
+  amountCoins: string;
+  reason: string;
+  /** One key for the whole transfer — both ledger legs derive their own sub-keys from it, atomically. */
+  idempotencyKey: string;
 }
 
 export interface DebitWalletInput {
@@ -850,6 +861,17 @@ export interface EconomyRepository {
    */
   adminAdjustWallet(
     input: AdminAdjustWalletInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /**
+   * Atomic peer-to-peer wallet transfer — debits `fromIdentityId` and credits
+   * `toIdentityId` in a single transaction, all-or-nothing. Both wallets are
+   * locked under a deterministic ordering to prevent deadlocks between
+   * concurrent opposite-direction transfers. Returns the SENDER's resulting
+   * wallet in `result`.
+   */
+  transferWalletCoins(
+    input: TransferWalletCoinsInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
   /**

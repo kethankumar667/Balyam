@@ -27,6 +27,7 @@ import {
   WalletFrozenError,
   WalletNotFoundError,
   type AdminAdjustWalletInput,
+  type TransferWalletCoinsInput,
   type ClaimTerminalIntentResult,
   type CoinLedgerEntryRecord,
   type CoinWalletRecord,
@@ -952,6 +953,29 @@ export class SupabaseEconomyRepository implements EconomyRepository {
           }
           throw fallbackErr;
         }
+      }
+      throw err;
+    }
+  }
+
+  async transferWalletCoins(
+    input: TransferWalletCoinsInput,
+  ): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    try {
+      const envelope = await this.rpc<RawEnvelope<WalletRow>>("transfer_wallet_coins", {
+        p_from_identity_id: input.fromIdentityId,
+        p_to_identity_id: input.toIdentityId,
+        p_amount: input.amountCoins,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
+      });
+      return { ...envelope, result: toWallet(envelope.result) };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Could not find the function") || msg.includes("PGRST202")) {
+        throw new EconomyInfrastructureError(
+          "Database function transfer_wallet_coins is missing. Please run migration 20260930000000_mandali_p2p_wallet_transfer.sql in Supabase SQL Editor.",
+        );
       }
       throw err;
     }
