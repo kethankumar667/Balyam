@@ -205,11 +205,49 @@ Apple sign-in remains honestly inert: it needs a paid Apple developer account.
 - [x] Authenticated seats via server-signed seat tokens
 - [x] Guest / member permission model with server-sealed guest rooms
 - [x] DPDP surfaces: consent record, data inventory, export and erase
-- [x] **581 server tests + 264 client tests** (vitest)
+- [x] **2,263 server tests (180 files) + 1,812 client tests (207 files)** (vitest)
 
 Not done: a verified account backend (see the honesty note above), persistence
 of any kind (rooms live in server memory and die with the process), and a TURN
 server for players behind symmetric NATs.
+
+## Recent Updates (2026-09-23)
+
+A pass across three in-flight branches (already merged to `main`) plus a
+follow-up cleanup round, focused on the scorecard/leaderboard/metrics system
+and Connect4:
+
+- **Leaderboard & scorecard integrity** — stopped the leaderboard from
+  showing fabricated scores as real player/global data; closed a
+  cross-account data leak caused by a stale in-flight scorecard fetch
+  resolving after a different user had already signed in; fixed a bug that
+  paired a personal-best score with an unrelated recent match's secondary
+  stats.
+- **Score submission correctness** — added score-bound validation for
+  cloud-synced 2048 scores and fixed a race in its ghost-pace metric; stopped
+  three arcade games resubmitting their high score on every boot; gated
+  Snake's desktop score submission to match end instead of firing on every
+  live tick.
+- **Metric display fixes** — stopped metric values literally rendering the
+  string `"NaN"`; fixed duration formatting overflowing past 60 seconds
+  (e.g. "1m 60s"); corrected the "signature stat" shown on UNO, Dots & Boxes,
+  Connect4, Tic-Tac-Toe and Word Building scorecards, which had been pointing
+  at metric keys the server never actually tracks.
+- **Cleanup & test coverage** — deleted an unused, untested-in-production
+  duplicate metric formatter; added real HTTP-level auth-boundary and
+  score-validation tests for the scorecard record endpoint (not just
+  in-process service tests); added cross-account isolation tests covering
+  the scorecard fetch-race fix.
+- **Connect4** — SEO metadata and tile color palette synced with the live
+  catalog, mobile chat sheet brought to parity with desktop, audio mute now
+  respected inside the SFX engine, Runner-Up/3rd-place badge clipping fixed
+  on mobile, and the ~90%-duplicated Mobile/Desktop board logic (theme,
+  timer, threat detection, sound/haptic effects, rematch handling) extracted
+  into a shared `useConnect4Board` hook so the two layouts can't drift out of
+  sync.
+
+All of the above passed a full typecheck + test + production-build
+verification pass before landing.
 
 ### Voice chat notes
 - Click **🎙 Connect mic** in the room to join the voice mesh. Browser will prompt for mic permission.
@@ -238,8 +276,8 @@ server for players behind symmetric NATs.
 
 ## Tests
 ```bash
-cd server && npm test    # 581 tests
-cd client && npm test    # 264 tests
+cd server && npm test    # 2,263 tests
+cd client && npm test    # 1,812 tests
 ```
 Type-check either side with `npm run typecheck`.
 
