@@ -11,6 +11,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { GameCatalogueItem } from "@shared/catalog";
+import { BHALYAM_GAMES, getGameAccent } from "./data";
 import {
   HandCricketGlyph,
   SnakeLadderGlyph,
@@ -101,6 +102,16 @@ export const GameTile = memo(function GameTile({
   const isComingSoon = game.availability === "coming_soon" || (!isAvailable && !disabled);
   const showPopular = isPopular !== undefined ? isPopular : game.isPopular;
 
+  /**
+   * shared/catalog.ts's own `accent` field only ever fed this showcase page
+   * and had drifted from the colors the real homepage renders (e.g.
+   * namesplaceanimal was purple here, orange everywhere else). data.ts is
+   * what GameCard/GamesSection actually use, so prefer it here too; fall
+   * back to the catalog's accent only for a slug data.ts doesn't carry.
+   */
+  const dataEntry = BHALYAM_GAMES.find((g) => g.slug === game.id);
+  const accent = dataEntry ? getGameAccent(dataEntry) : game.accent;
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isAvailable) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -135,7 +146,7 @@ export const GameTile = memo(function GameTile({
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs relative overflow-hidden"
             style={{
-              background: `linear-gradient(135deg, ${game.accent.from}, ${game.accent.to})`,
+              background: `linear-gradient(135deg, ${accent.from}, ${accent.to})`,
             }}
           >
             <div className="w-6 h-6 flex items-center justify-center">
@@ -218,7 +229,7 @@ export const GameTile = memo(function GameTile({
         <div
           className="relative h-48 sm:h-56 w-full flex items-center justify-center text-white overflow-hidden p-6"
           style={{
-            background: `linear-gradient(135deg, ${game.accent.from}, ${game.accent.to})`,
+            background: `linear-gradient(135deg, ${accent.from}, ${accent.to})`,
           }}
         >
           {/* Subtle Ambient Radial Glow */}
@@ -334,7 +345,7 @@ export const GameTile = memo(function GameTile({
       <div
         className="relative h-40 sm:h-44 w-full flex items-center justify-center text-white overflow-hidden p-4"
         style={{
-          background: `linear-gradient(135deg, ${game.accent.from}, ${game.accent.to})`,
+          background: `linear-gradient(135deg, ${accent.from}, ${accent.to})`,
         }}
       >
         {/* Subtle Ambient Radial Highlight */}
