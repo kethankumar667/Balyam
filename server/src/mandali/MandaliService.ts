@@ -13,6 +13,7 @@ import type {
   CoinTransferPayload,
 } from "@shared/mandali/types.js";
 import { hasMandaliPermission } from "@shared/mandali/permissions.js";
+import { MANDALI_COIN_AMOUNT, MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import { MandaliRepository } from "./MandaliRepository.js";
 import { MembershipStateMachine } from "./MembershipStateMachine.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
@@ -56,6 +57,21 @@ export class MandaliService {
 
   public getRepository(): MandaliRepository {
     return this.repository;
+  }
+
+  /** Push an event to everyone currently viewing this Mandali. No-op without a socket server (unit tests). */
+  private emitToMandali(mandaliId: string, event: string, payload: unknown): void {
+    this.io?.to(`mandali:${mandaliId}`).emit(event as any, payload);
+  }
+
+  /**
+   * Tell open clients that something about this Mandali changed (members,
+   * roles, settings, pins, deletions) so they refresh instead of showing a
+   * stale view until a manual reload. Clients treat it as "refetch", not as
+   * data, so a missed or duplicated event can never corrupt their state.
+   */
+  private notifyChanged(mandaliId: string, reason: string): void {
+    this.emitToMandali(mandaliId, "mandali:changed", { mandaliId, reason });
   }
 
   /* ── Mandali Discovery & Creation ── */
@@ -216,6 +232,7 @@ export class MandaliService {
         description: args.description, rules: args.rules, editPermission: args.editPermission,
         sendPermission: args.sendPermission, joinApproval: args.joinApproval,
       });
+      this.notifyChanged(args.mandaliId, "settings");
       return { success: true, mandali };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not update group info.") };
@@ -260,6 +277,7 @@ export class MandaliService {
           requesterAvatar: avatar,
           invitationId,
         });
+        this.notifyChanged(mandaliId, result.autoApproved ? "member-joined" : "join-requested");
         return { success: true, pending: !result.autoApproved };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not join this Mandali.") };
@@ -330,6 +348,7 @@ export class MandaliService {
     if (this.repository.isDurable()) {
       try {
         await this.repository.transitionMembershipDurable(mandaliId, playerId, playerId, "LEAVE");
+        this.notifyChanged(mandaliId, "member-left");
         return { success: true };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not leave this Mandali.") };
@@ -378,6 +397,7 @@ export class MandaliService {
     if (this.repository.isDurable()) {
       try {
         await this.repository.transitionMembershipDurable(mandaliId, officerId, targetPlayerId, "KICK");
+        this.notifyChanged(mandaliId, "member-removed");
         return { success: true };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not remove this member.") };
@@ -436,6 +456,7 @@ export class MandaliService {
     if (guard) return guard;
     try {
       await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "PROMOTE");
+      this.notifyChanged(mandaliId, "member-promoted");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not promote this member.") };
@@ -447,6 +468,7 @@ export class MandaliService {
     if (guard) return guard;
     try {
       await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "DEMOTE");
+      this.notifyChanged(mandaliId, "member-demoted");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not demote this member.") };
@@ -458,6 +480,7 @@ export class MandaliService {
     if (guard) return guard;
     try {
       await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "BAN");
+      this.notifyChanged(mandaliId, "member-banned");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not ban this member.") };
@@ -469,6 +492,7 @@ export class MandaliService {
     if (guard) return guard;
     try {
       const mandali = await this.repository.transferOwnershipDurable(mandaliId, currentOwnerId, newOwnerId);
+      this.notifyChanged(mandaliId, "ownership-transferred");
       return { success: true, mandali };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not transfer ownership.") };
@@ -510,7 +534,8 @@ export class MandaliService {
     const guard = this.requireDurable("Deciding a join request");
     if (guard) return guard;
     try {
-      await this.repository.decideJoinRequestDurable(requestId, reviewerId, approve);
+      const decided = await this.repository.decideJoinRequestDurable(requestId, reviewerId, approve);
+      this.notifyChanged(decided.mandaliId, approve ? "member-joined" : "join-declined");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not decide this join request.") };
@@ -594,22 +619,24 @@ export class MandaliService {
     return { success: true, message };
   }
 
-  public async setMessagePin(messageId: string, actorId: string, pinned: boolean): Promise<{ success: boolean; error?: string }> {
+  public async setMessagePin(mandaliId: string, messageId: string, actorId: string, pinned: boolean): Promise<{ success: boolean; error?: string }> {
     const guard = this.requireDurable("Pinning a message");
     if (guard) return guard;
     try {
       await this.repository.setMessagePinDurable(messageId, actorId, pinned);
+      this.notifyChanged(mandaliId, "message-pinned");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not update this message's pin state.") };
     }
   }
 
-  public async deleteMessage(messageId: string, actorId: string): Promise<{ success: boolean; error?: string }> {
+  public async deleteMessage(mandaliId: string, messageId: string, actorId: string): Promise<{ success: boolean; error?: string }> {
     const guard = this.requireDurable("Deleting a message");
     if (guard) return guard;
     try {
       await this.repository.deleteMessageDurable(messageId, actorId);
+      this.notifyChanged(mandaliId, "message-deleted");
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not delete this message.") };
@@ -626,19 +653,56 @@ export class MandaliService {
   public async createCoinRequest(args: {
     mandaliId: string; channelId: string; requesterId: string; payerId: string;
     amount: number; expiresInMs?: number;
-  }): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
+  }): Promise<{
+    success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest;
+    error?: string; retryAfterMs?: number;
+  }> {
     const guard = this.requireDurable("Requesting coins");
     if (guard) return guard;
+    if (Math.floor(args.amount) !== MANDALI_COIN_AMOUNT) {
+      return { success: false, error: `Coin requests are always ${MANDALI_COIN_AMOUNT} coins.` };
+    }
     try {
       const request = await this.repository.createCoinRequestDurable({
         requestId: `cr_${nanoid(10)}`, mandaliId: args.mandaliId, channelId: args.channelId,
-        requesterIdentityId: args.requesterId, payerIdentityId: args.payerId, amount: Math.floor(args.amount),
+        requesterIdentityId: args.requesterId, payerIdentityId: args.payerId, amount: MANDALI_COIN_AMOUNT,
         expiresAt: Date.now() + (args.expiresInMs ?? 24 * 60 * 60 * 1000),
+        cooldownSeconds: MANDALI_COIN_REQUEST_COOLDOWN_MS / 1000,
       });
+      // The card is created inside the database function, so the normal chat
+      // broadcast in sendMessage never fires for it. Without this, only the
+      // requester (who refetches) ever sees the card and nobody else is told
+      // they were asked. Carry the request too: a card with no request record
+      // renders as plain text with no Pay button.
+      const message = request.messageId
+        ? await this.repository.getMessageByIdDurable(request.messageId).catch(() => undefined)
+        : undefined;
+      this.emitToMandali(args.mandaliId, "mandali:coin_request:updated", { mandaliId: args.mandaliId, request, message });
       return { success: true, request };
     } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const retrySeconds = Number(raw.match(/COOLDOWN:\s*retry_after_seconds=(\d+)/)?.[1]);
+      if (Number.isFinite(retrySeconds)) {
+        return {
+          success: false,
+          retryAfterMs: retrySeconds * 1000,
+          error: "You have already requested coins recently. You can ask again when the timer ends.",
+        };
+      }
       return { success: false, error: durableErrorMessage(err, "Could not create this coin request.") };
     }
+  }
+
+  /**
+   * How long until this person may post another coin request. Read-only, for
+   * the countdown in the UI — the database still enforces the limit
+   * atomically, so a stale answer here can never let a request through.
+   */
+  public async getCoinRequestCooldown(identityId: string): Promise<{ retryAfterMs: number }> {
+    if (!this.repository.isDurable()) return { retryAfterMs: 0 };
+    const lastAt = await this.repository.getLastCoinRequestAtDurable(identityId);
+    if (lastAt === null) return { retryAfterMs: 0 };
+    return { retryAfterMs: Math.max(0, lastAt + MANDALI_COIN_REQUEST_COOLDOWN_MS - Date.now()) };
   }
 
   public async fundCoinRequest(
@@ -648,6 +712,7 @@ export class MandaliService {
     if (guard) return guard;
     try {
       const { request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
+      this.emitToMandali(request.mandaliId, "mandali:coin_request:updated", { mandaliId: request.mandaliId, request });
       return { success: true, request };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not pay this coin request.") };
@@ -949,12 +1014,25 @@ export class MandaliService {
     fromPlayerId: string,
     payload: CoinTransferPayload
   ): Promise<{ success: boolean; transfer?: MandaliCoinTransfer; error?: string }> {
-    const fromMember = this.repository.getMember(mandaliId, fromPlayerId);
+    // Asking for coins goes through createCoinRequest (payable card, 4-hour
+    // limit). Accepting REQUEST here would be a side door around that limit.
+    if (payload.type !== "SEND") {
+      return { success: false, error: "Use Request Coins to ask a member for coins." };
+    }
+
+    // In durable mode the in-memory member map is empty (members live in
+    // Postgres), so reading it here would reject every real member.
+    const durable = this.repository.isDurable();
+    const fromMember = durable
+      ? await this.repository.getMemberDurable(mandaliId, fromPlayerId)
+      : this.repository.getMember(mandaliId, fromPlayerId);
     if (!fromMember || fromMember.state !== "ACTIVE") {
       return { success: false, error: "Sender must be an active member of this Mandali." };
     }
 
-    const toMember = this.repository.getMember(mandaliId, payload.toPlayerId);
+    const toMember = durable
+      ? await this.repository.getMemberDurable(mandaliId, payload.toPlayerId)
+      : this.repository.getMember(mandaliId, payload.toPlayerId);
     if (!toMember || toMember.state !== "ACTIVE") {
       return { success: false, error: "Recipient must be an active member of this Mandali." };
     }
@@ -964,130 +1042,89 @@ export class MandaliService {
     }
 
     const amount = Math.floor(payload.amount);
-    if (!amount || amount <= 0) {
-      return { success: false, error: "Transfer amount must be a positive integer." };
+    if (amount !== MANDALI_COIN_AMOUNT) {
+      return { success: false, error: `Coins can only be sent in ${MANDALI_COIN_AMOUNT}-coin transfers.` };
     }
 
     const transferId = `ctx_${nanoid(10)}`;
-    const now = Date.now();
 
-    if (payload.type === "SEND") {
-      // Coins are real wallet balance, not a Mandali-internal fiction — if
-      // there is no economy layer wired in, a "successful" send would just
-      // be a lie (the transfer record would show coins moving that never
-      // did). Fail honestly instead of silently no-op'ing.
-      if (!this.economyService) {
-        return { success: false, error: "Coin transfers are temporarily unavailable." };
-      }
-
-      try {
-        // Atomic — debits fromPlayerId and credits toPlayerId in ONE
-        // transaction (see transfer_wallet_coins). Previously this made two
-        // independent adminAdjustWallet calls (a credit-only primitive),
-        // which credited BOTH wallets instead of moving coins between them.
-        await this.economyService.transferWalletCoins({
-          fromIdentityId: fromPlayerId,
-          toIdentityId: payload.toPlayerId,
-          amountCoins: String(amount),
-          reason: payload.note || `Mandali coin transfer in ${mandaliId}`,
-          idempotencyKey: `mnd_transfer:${transferId}`,
-        });
-      } catch (err) {
-        logger.warn({
-          message: `[MANDALI] Coin transfer failed: ${err instanceof Error ? err.message : String(err)}`,
-          module: "MANDALI",
-        });
-        // Two shapes reach here: the Supabase RPC's raw "INSUFFICIENT_FUNDS: ..."
-        // exception text, and the in-memory repository's typed error classes
-        // with human-readable messages — check both.
-        const message = err instanceof Error ? err.message : String(err);
-        if (err instanceof InsufficientFundsError || message.includes("INSUFFICIENT_FUNDS")) {
-          return { success: false, error: "Insufficient funds for this transfer." };
-        }
-        if (err instanceof WalletFrozenError || message.includes("WALLET_FROZEN")) {
-          return { success: false, error: "One of these wallets is frozen and cannot transfer coins." };
-        }
-        return { success: false, error: "Coin transfer failed. Please try again." };
-      }
-
-      const transfer: MandaliCoinTransfer = {
-        transferId,
-        mandaliId,
-        fromPlayerId,
-        fromPlayerName: fromMember.displayName,
-        toPlayerId: payload.toPlayerId,
-        toPlayerName: toMember.displayName,
-        amount,
-        type: "SEND",
-        status: "COMPLETED",
-        note: payload.note ? clampText(payload.note, 280) : payload.note,
-        timestamp: now,
-      };
-
-      this.repository.saveCoinTransfer(transfer);
-
-      // Post system announcement message into lounge-chat
-      const channels = this.repository.getChannels(mandaliId);
-      const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];
-      if (chatChannel) {
-        this.sendMessage(
-          mandaliId,
-          chatChannel.channelId,
-          fromPlayerId,
-          fromMember.displayName,
-          fromMember.avatar,
-          `🪙 Sent ${amount} coins to @${toMember.displayName}${payload.note ? ` • "${payload.note}"` : ""}`
-        );
-      }
-
-      if (this.io) {
-        this.io.to(`mandali:${mandaliId}`).emit("mandali:coin_transfer" as any, {
-          mandaliId,
-          transfer,
-        });
-      }
-
-      return { success: true, transfer };
-    } else {
-      // REQUEST
-      const transfer: MandaliCoinTransfer = {
-        transferId,
-        mandaliId,
-        fromPlayerId,
-        fromPlayerName: fromMember.displayName,
-        toPlayerId: payload.toPlayerId,
-        toPlayerName: toMember.displayName,
-        amount,
-        type: "REQUEST",
-        status: "PENDING",
-        note: payload.note ? clampText(payload.note, 280) : payload.note,
-        timestamp: now,
-      };
-
-      this.repository.saveCoinTransfer(transfer);
-
-      const channels = this.repository.getChannels(mandaliId);
-      const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];
-      if (chatChannel) {
-        this.sendMessage(
-          mandaliId,
-          chatChannel.channelId,
-          fromPlayerId,
-          fromMember.displayName,
-          fromMember.avatar,
-          `🪙 Requested ${amount} coins from @${toMember.displayName}${payload.note ? ` • "${payload.note}"` : ""}`
-        );
-      }
-
-      if (this.io) {
-        this.io.to(`mandali:${mandaliId}`).emit("mandali:coin_transfer" as any, {
-          mandaliId,
-          transfer,
-        });
-      }
-
-      return { success: true, transfer };
+    // Coins are real wallet balance, not a Mandali-internal fiction — if
+    // there is no economy layer wired in, a "successful" send would just
+    // be a lie (the transfer record would show coins moving that never
+    // did). Fail honestly instead of silently no-op'ing.
+    if (!this.economyService) {
+      return { success: false, error: "Coin transfers are temporarily unavailable." };
     }
+
+    try {
+      // Atomic — debits fromPlayerId and credits toPlayerId in ONE
+      // transaction (see transfer_wallet_coins). Previously this made two
+      // independent adminAdjustWallet calls (a credit-only primitive),
+      // which credited BOTH wallets instead of moving coins between them.
+      await this.economyService.transferWalletCoins({
+        fromIdentityId: fromPlayerId,
+        toIdentityId: payload.toPlayerId,
+        amountCoins: String(amount),
+        reason: payload.note || `Mandali coin transfer in ${mandaliId}`,
+        idempotencyKey: `mnd_transfer:${transferId}`,
+      });
+    } catch (err) {
+      logger.warn({
+        message: `[MANDALI] Coin transfer failed: ${err instanceof Error ? err.message : String(err)}`,
+        module: "MANDALI",
+      });
+      // Two shapes reach here: the Supabase RPC's raw "INSUFFICIENT_FUNDS: ..."
+      // exception text, and the in-memory repository's typed error classes
+      // with human-readable messages — check both.
+      const message = err instanceof Error ? err.message : String(err);
+      if (err instanceof InsufficientFundsError || message.includes("INSUFFICIENT_FUNDS")) {
+        return { success: false, error: "Insufficient funds for this transfer." };
+      }
+      if (err instanceof WalletFrozenError || message.includes("WALLET_FROZEN")) {
+        return { success: false, error: "One of these wallets is frozen and cannot transfer coins." };
+      }
+      return { success: false, error: "Coin transfer failed. Please try again." };
+    }
+
+    const transfer: MandaliCoinTransfer = {
+      transferId,
+      mandaliId,
+      fromPlayerId,
+      fromPlayerName: fromMember.displayName,
+      toPlayerId: payload.toPlayerId,
+      toPlayerName: toMember.displayName,
+      amount,
+      type: "SEND",
+      status: "COMPLETED",
+      note: payload.note ? clampText(payload.note, 280) : payload.note,
+      timestamp: Date.now(),
+    };
+
+    this.repository.saveCoinTransfer(transfer);
+
+    // Post system announcement message into lounge-chat
+    const channels = durable
+      ? await this.repository.getChannelsDurable(mandaliId)
+      : this.repository.getChannels(mandaliId);
+    const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];
+    if (chatChannel) {
+      void this.sendMessage(
+        mandaliId,
+        chatChannel.channelId,
+        fromPlayerId,
+        fromMember.displayName,
+        fromMember.avatar,
+        `🪙 Sent ${amount} coins to @${toMember.displayName}${payload.note ? ` • "${payload.note}"` : ""}`
+      );
+    }
+
+    if (this.io) {
+      this.io.to(`mandali:${mandaliId}`).emit("mandali:coin_transfer" as any, {
+        mandaliId,
+        transfer,
+      });
+    }
+
+    return { success: true, transfer };
   }
 }
-

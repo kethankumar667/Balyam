@@ -11,10 +11,13 @@
  * - WCAG 2.1 AA focus rings.
  */
 
-import React, { useState } from "react";
-import { Coins, Send, ArrowUpRight, ArrowDownLeft, Users, CheckCircle2, AlertCircle, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Coins, Send, ArrowUpRight, ArrowDownLeft, Users, CheckCircle2, AlertCircle, X, Clock } from "lucide-react";
 import type { MandaliMember, CoinTransferType } from "@shared/mandali/types.js";
+import { MANDALI_COIN_AMOUNT, MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import { useWallet } from "../../hooks/useEconomy";
+import { useCountdown } from "../../hooks/useCountdown";
+import { formatCountdown } from "../../lib/formatCountdown";
 import { useMandaliStore } from "../../store/mandaliStore";
 
 interface CoinTransferModalProps {
@@ -30,7 +33,7 @@ interface CoinTransferModalProps {
   onClose: () => void;
 }
 
-const PRESET_AMOUNTS = [50, 100, 250, 500];
+const COOLDOWN_HOURS = MANDALI_COIN_REQUEST_COOLDOWN_MS / (60 * 60 * 1000);
 
 export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
   mandaliId,
@@ -42,7 +45,15 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
   onClose,
 }) => {
   const { balance, refetch: refetchWallet } = useWallet();
-  const { transferCoins, createCoinRequest, isSubmitting } = useMandaliStore();
+  const { transferCoins, createCoinRequest, isSubmitting, coinRequestCooldownEndsAt, fetchCoinRequestCooldown } =
+    useMandaliStore();
+  const cooldownRemainingMs = useCountdown(coinRequestCooldownEndsAt);
+
+  // The database enforces the limit; this just makes sure the countdown shown
+  // here starts from the server's clock rather than a stale local guess.
+  useEffect(() => {
+    void fetchCoinRequestCooldown();
+  }, [fetchCoinRequestCooldown]);
 
   const otherMembers = members.filter(
     (m) => m.playerId !== currentUserId && m.state === "ACTIVE"
@@ -52,16 +63,15 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>(
     preselectedMemberId || (otherMembers.length > 0 ? otherMembers[0].playerId : "")
   );
-  const [amount, setAmount] = useState<number>(100);
-  const [customAmount, setCustomAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const numericBalance = balance ? parseInt(balance, 10) : 0;
-  const effectiveAmount = customAmount ? parseInt(customAmount, 10) || 0 : amount;
+  const effectiveAmount = MANDALI_COIN_AMOUNT;
 
   const isBalanceSufficient = type === "REQUEST" || effectiveAmount <= numericBalance;
+  const isCoolingDown = type === "REQUEST" && cooldownRemainingMs > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,10 +82,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
       return;
     }
 
-    if (effectiveAmount <= 0) {
-      setErrorMessage("Please choose a valid coin amount greater than 0.");
-      return;
-    }
+    if (isCoolingDown) return;
 
     if (type === "SEND" && effectiveAmount > numericBalance) {
       setErrorMessage(`Insufficient coins. Your balance is ${numericBalance.toLocaleString()} coins.`);
@@ -240,47 +247,47 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               </select>
             </div>
 
-            {/* Amount Selection */}
+            {/* Amount — fixed for every Mandali send and request */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Amount (Coins)
-              </label>
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {PRESET_AMOUNTS.map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => {
-                      setAmount(amt);
-                      setCustomAmount("");
-                    }}
-                    className={`min-h-[44px] rounded-xl text-xs font-bold border transition-all ${
-                      !customAmount && amount === amt
-                        ? "bg-amber-500/20 border-amber-500 text-amber-900 dark:text-amber-300 font-extrabold"
-                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300"
-                    }`}
-                  >
-                    🪙 {amt}
-                  </button>
-                ))}
+              <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Amount</span>
+              <div className="flex items-center justify-between px-4 min-h-[48px] rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-amber-300">
+                  <Coins className="w-4 h-4 text-amber-500" />
+                  {MANDALI_COIN_AMOUNT} coins
+                </span>
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Fixed for every transfer
+                </span>
               </div>
-
-              <input
-                type="number"
-                min="10"
-                max="50000"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                placeholder="Or enter custom amount..."
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
 
               {type === "SEND" && !isBalanceSufficient && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1">
-                  Exceeds your current balance of {numericBalance.toLocaleString()} coins.
+                  Not enough coins — you have {numericBalance.toLocaleString()}.
                 </p>
               )}
             </div>
+
+            {type === "REQUEST" && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs font-semibold ${
+                  isCoolingDown
+                    ? "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300"
+                    : "bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                {isCoolingDown ? (
+                  <span>
+                    You can request coins again in{" "}
+                    <span className="font-mono font-extrabold tabular-nums">{formatCountdown(cooldownRemainingMs)}</span>
+                  </span>
+                ) : (
+                  <span>You can request coins once every {COOLDOWN_HOURS} hours.</span>
+                )}
+              </div>
+            )}
 
             {/* Note (Optional) */}
             <div>
@@ -301,16 +308,18 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting || !!successMessage || !isBalanceSufficient || effectiveAmount <= 0}
+              disabled={isSubmitting || !!successMessage || !isBalanceSufficient || isCoolingDown}
               className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
             >
               <Send className="w-4 h-4" />
               <span>
                 {isSubmitting
                   ? "Processing..."
+                  : isCoolingDown
+                  ? `Available in ${formatCountdown(cooldownRemainingMs)}`
                   : type === "SEND"
-                  ? `Send ${effectiveAmount.toLocaleString()} Coins`
-                  : `Request ${effectiveAmount.toLocaleString()} Coins`}
+                  ? `Send ${effectiveAmount} Coins`
+                  : `Request ${effectiveAmount} Coins`}
               </span>
             </button>
           </form>

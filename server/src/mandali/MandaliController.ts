@@ -137,6 +137,20 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ success: true, mandalis });
   });
 
+  /**
+   * GET /coin-request-cooldown — ms until the caller may post another coin
+   * request (0 = now). Drives the countdown in the UI; the database is what
+   * actually enforces the limit. Must be registered BEFORE /:handleOrId.
+   */
+  router.get("/coin-request-cooldown", async (req, res) => {
+    if (!req.player) {
+      res.json({ success: true, retryAfterMs: 0 });
+      return;
+    }
+    const { retryAfterMs } = await mandaliService.getCoinRequestCooldown(req.player.playerId);
+    res.json({ success: true, retryAfterMs });
+  });
+
   // GET /:handleOrId — Full Mandali Hub Data (handle or id lookup, returns all sub-resources)
   router.get("/:handleOrId", async (req, res) => {
     const raw = req.params.handleOrId;
@@ -412,7 +426,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
     const pinned = req.body?.pinned !== false;
-    const result = await mandaliService.setMessagePin(req.params.messageId, playerInfo.playerId, pinned);
+    const result = await mandaliService.setMessagePin(req.params.id, req.params.messageId, playerInfo.playerId, pinned);
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
       return;
@@ -427,7 +441,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       res.status(401).json({ success: false, error: "Sign in to delete a message." });
       return;
     }
-    const result = await mandaliService.deleteMessage(req.params.messageId, playerInfo.playerId);
+    const result = await mandaliService.deleteMessage(req.params.id, req.params.messageId, playerInfo.playerId);
     if (!result.success) {
       res.status(400).json({ success: false, error: result.error });
       return;
@@ -617,8 +631,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   router.post("/:id/channels/:channelId/coin-requests", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
-    if (!playerInfo) {
-      res.status(401).json({ success: false, error: "Sign in to request coins." });
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({ success: false, error: "Only signed-in members can request coins." });
       return;
     }
     const { payerId, amount, expiresInMs } = req.body;
@@ -631,6 +645,10 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       requesterId: playerInfo.playerId, payerId, amount, expiresInMs,
     });
     if (!result.success) {
+      if (result.retryAfterMs !== undefined) {
+        res.status(429).json({ success: false, error: result.error, retryAfterMs: result.retryAfterMs });
+        return;
+      }
       res.status(400).json({ success: false, error: result.error });
       return;
     }
@@ -640,8 +658,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   // No mandaliId prefix — same reasoning as join-requests/:requestId/decide.
   router.post("/coin-requests/:requestId/fund", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
-    if (!playerInfo) {
-      res.status(401).json({ success: false, error: "Sign in to pay a coin request." });
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({ success: false, error: "Only signed-in members can pay a coin request." });
       return;
     }
     const result = await mandaliService.fundCoinRequest(req.params.requestId, playerInfo.playerId);

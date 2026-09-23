@@ -636,6 +636,16 @@ export class MandaliRepository {
     };
   }
 
+  public async getMessageByIdDurable(messageId: string): Promise<MandaliMessage | undefined> {
+    const rows = await this.pg().select<MessageRow>(
+      "mandali_messages",
+      `message_id=eq.${encodeURIComponent(messageId)}&limit=1`
+    );
+    if (rows.length === 0) return undefined;
+    const sender = await this.getMemberDurable(rows[0].mandali_id, rows[0].sender_identity_id);
+    return rowToMessage(rows[0], sender?.displayName ?? "Member", sender?.avatar ?? "avatar_1");
+  }
+
   public async setMessagePinDurable(messageId: string, actorIdentityId: string, pinned: boolean): Promise<void> {
     await this.pg().rpc("set_message_pin", { p_message_id: messageId, p_actor_identity_id: actorIdentityId, p_pinned: pinned });
   }
@@ -647,13 +657,24 @@ export class MandaliRepository {
   public async createCoinRequestDurable(args: {
     requestId: string; mandaliId: string; channelId: string;
     requesterIdentityId: string; payerIdentityId: string; amount: number; expiresAt: number;
+    cooldownSeconds: number;
   }): Promise<MandaliCoinRequest> {
     const result = await this.pg().rpc<CoinRequestRow>("create_coin_request", {
       p_request_id: args.requestId, p_mandali_id: args.mandaliId, p_channel_id: args.channelId,
       p_requester_identity_id: args.requesterIdentityId, p_payer_identity_id: args.payerIdentityId,
       p_amount: args.amount, p_expires_at: new Date(args.expiresAt).toISOString(),
+      p_cooldown_seconds: args.cooldownSeconds,
     });
     return rowToCoinRequest(result);
+  }
+
+  /** Epoch ms of this person's most recent coin request in any Mandali, or null if they have never asked. */
+  public async getLastCoinRequestAtDurable(requesterIdentityId: string): Promise<number | null> {
+    const rows = await this.pg().select<{ created_at: string }>(
+      "mandali_coin_requests",
+      `select=created_at&requester_identity_id=eq.${encodeURIComponent(requesterIdentityId)}&order=created_at.desc&limit=1`
+    );
+    return rows.length > 0 ? toMs(rows[0].created_at) : null;
   }
 
   public async fundCoinRequestDurable(

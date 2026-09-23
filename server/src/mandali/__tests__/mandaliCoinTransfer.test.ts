@@ -34,14 +34,14 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
 
     const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
       toPlayerId: RECIPIENT,
-      amount: 150,
+      amount: 100,
       type: "SEND",
       note: "Prize for Ludo victory!",
     });
 
     expect(result.success).toBe(true);
     expect(result.transfer).toBeDefined();
-    expect(result.transfer?.amount).toBe(150);
+    expect(result.transfer?.amount).toBe(100);
     expect(result.transfer?.type).toBe("SEND");
     expect(result.transfer?.status).toBe("COMPLETED");
     expect(result.transfer?.fromPlayerName).toBe("Rajesh Maharajah");
@@ -54,17 +54,28 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
     // The bug this regression-tests: a naive fix that calls a credit-only
     // primitive on both "sides" leaves the sender's balance UNCHANGED (or
     // increased) instead of decreased. Assert the actual debit happened.
-    expect(after.sender).toBe(before.sender - 150n);
-    expect(after.recipient).toBe(before.recipient + 150n);
+    expect(after.sender).toBe(before.sender - 100n);
+    expect(after.recipient).toBe(before.recipient + 100n);
     expect(after.sender + after.recipient).toBe(totalBefore); // no coins minted or destroyed
 
     // History check
     const transfers = service.getCoinTransfers("mandali_ludo_kings");
     expect(transfers.length).toBeGreaterThanOrEqual(1);
-    expect(transfers[0].amount).toBe(150);
+    expect(transfers[0].amount).toBe(100);
   });
 
   it("rejects a send that exceeds the sender's real wallet balance, without moving any coins", async () => {
+    // Fixed 100-coin sends can no longer overspend by asking for a huge
+    // number, so drain the sender down to 50 and try to send 100.
+    const drained = BigInt((await economyService.getWallet(SENDER)).balance) - 50n;
+    await economyService.transferWalletCoins({
+      fromIdentityId: SENDER,
+      toIdentityId: RECIPIENT,
+      amountCoins: String(drained),
+      reason: "test: drain sender",
+      idempotencyKey: "test-drain-sender",
+    });
+
     const before = {
       sender: BigInt((await economyService.getWallet(SENDER)).balance),
       recipient: BigInt((await economyService.getWallet(RECIPIENT)).balance),
@@ -72,7 +83,7 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
 
     const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
       toPlayerId: RECIPIENT,
-      amount: 999_999,
+      amount: 100,
       type: "SEND",
     });
 
@@ -92,7 +103,7 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
 
     const result = await noEconomyService.transferCoins("mandali_ludo_kings", SENDER, {
       toPlayerId: RECIPIENT,
-      amount: 150,
+      amount: 100,
       type: "SEND",
     });
 
@@ -100,18 +111,31 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
     expect(result.transfer).toBeUndefined();
   });
 
-  it("allows active members to request coins from each other", async () => {
+  it("refuses the legacy REQUEST type — asking for coins goes through the rate-limited request flow", async () => {
     const result = await service.transferCoins("mandali_ludo_kings", RECIPIENT, {
       toPlayerId: SENDER,
-      amount: 75,
+      amount: 100,
       type: "REQUEST",
       note: "Need entry fee for squad match",
     });
 
-    expect(result.success).toBe(true);
-    expect(result.transfer?.type).toBe("REQUEST");
-    expect(result.transfer?.status).toBe("PENDING");
-    expect(result.transfer?.amount).toBe(75);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/request coins/i);
+    expect(service.getCoinTransfers("mandali_ludo_kings")).toHaveLength(0);
+  });
+
+  it.each([1, 50, 99, 101, 150, 5000])("refuses a send of %i coins — the amount is always 100", async (amount) => {
+    const before = BigInt((await economyService.getWallet(SENDER)).balance);
+
+    const result = await service.transferCoins("mandali_ludo_kings", SENDER, {
+      toPlayerId: RECIPIENT,
+      amount,
+      type: "SEND",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("100-coin");
+    expect(BigInt((await economyService.getWallet(SENDER)).balance)).toBe(before);
   });
 
   it("refuses coin transfers to oneself", async () => {
@@ -144,6 +168,6 @@ describe("Mandali Coin Transfers & Clan Economy", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("must be a positive integer");
+    expect(result.error).toContain("100-coin");
   });
 });

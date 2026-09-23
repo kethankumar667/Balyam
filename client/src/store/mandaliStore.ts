@@ -11,6 +11,8 @@
  */
 
 import { create } from "zustand";
+import { refreshCurrentWallet } from "../hooks/useEconomy";
+import { MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import type {
   Mandali,
   MandaliMember,
@@ -54,6 +56,8 @@ export interface MandaliStore {
    * SEND/notice-only REQUEST above) — keyed by their linked chat messageId
    * so CoinRequestCard can look one up per COIN_REQUEST message. */
   coinRequests: Record<string, MandaliCoinRequest>;
+  /** Epoch ms when this person may post their next coin request; null = they may ask now. */
+  coinRequestCooldownEndsAt: number | null;
 
   // Launch Handoff tracking
   activeGameLaunch: MandaliPartyLaunchedBroadcast | null;
@@ -94,7 +98,10 @@ export interface MandaliStore {
   deleteMessage: (channelId: string, messageId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Payable coin-request cards
-  createCoinRequest: (mandaliId: string, channelId: string, payerId: string, amount: number, expiresInMs?: number) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string }>;
+  createCoinRequest: (mandaliId: string, channelId: string, payerId: string, amount: number, expiresInMs?: number) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string; retryAfterMs?: number }>;
+  fetchCoinRequestCooldown: () => Promise<void>;
+  /** Re-read the open Mandali without the loading screen — driven by the server's mandali:changed event. */
+  refreshActiveMandali: () => Promise<void>;
   fundCoinRequest: (requestId: string) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string }>;
 
   // Coin Transfers
@@ -212,6 +219,7 @@ export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
 ];
 
 let socketListenersBound = false;
+let mandaliRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let mandaliReconnectHandler: (() => void) | null = null;
 
 /**
@@ -275,6 +283,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   activeGameLaunch: null,
   pendingJoinRequests: [],
   coinRequests: {},
+  coinRequestCooldownEndsAt: null,
   isLoading: false,
   isSubmitting: false,
   errorMessage: null,
@@ -682,10 +691,14 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         method: "POST",
         body: JSON.stringify({ payerId, amount, expiresInMs }),
       });
-      const data = (await res.json()) as { success: boolean; request?: MandaliCoinRequest; error?: string };
+      const data = (await res.json()) as { success: boolean; request?: MandaliCoinRequest; error?: string; retryAfterMs?: number };
       if (data.success) {
+        set({ coinRequestCooldownEndsAt: Date.now() + MANDALI_COIN_REQUEST_COOLDOWN_MS });
         await get().fetchMessages(channelId);
         await get().fetchCoinRequests(mandaliId);
+        void get().fetchCoinRequestCooldown();
+      } else if (typeof data.retryAfterMs === "number") {
+        set({ coinRequestCooldownEndsAt: Date.now() + data.retryAfterMs });
       }
       return data;
     } catch (err) {
@@ -701,6 +714,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       });
       const data = (await res.json()) as { success: boolean; request?: MandaliCoinRequest; error?: string };
       if (data.success) {
+        void refreshCurrentWallet();
         if (activeChannelId) await get().fetchMessages(activeChannelId);
         if (activeMandali) await get().fetchCoinRequests(activeMandali.id);
       }
@@ -708,6 +722,47 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Network error" };
     }
+  },
+
+  fetchCoinRequestCooldown: async () => {
+    const res = await apiJson<{ success: boolean; retryAfterMs: number }>("/api/mandali/coin-request-cooldown");
+    if (res?.success) {
+      set({ coinRequestCooldownEndsAt: res.retryAfterMs > 0 ? Date.now() + res.retryAfterMs : null });
+    }
+  },
+
+  refreshActiveMandali: async () => {
+    const { activeMandali, activeChannelId } = get();
+    if (!activeMandali) return;
+    const res = await apiJson<{
+      success: boolean;
+      mandali: Mandali;
+      members: MandaliMember[];
+      channels: MandaliChannel[];
+      parties: MandaliParty[];
+      memories: MandaliMemory[];
+      events: MandaliEvent[];
+    }>(`/api/mandali/${encodeURIComponent(activeMandali.id)}`);
+    if (!res?.success) return;
+
+    const keepChannel = res.channels.some((c) => c.channelId === activeChannelId);
+    set({
+      activeMandali: res.mandali,
+      members: res.members,
+      channels: res.channels,
+      parties: res.parties,
+      memories: res.memories,
+      events: res.events,
+      activeChannelId: keepChannel ? activeChannelId : res.channels[0]?.channelId ?? null,
+    });
+
+    const channelId = get().activeChannelId;
+    if (channelId) await get().fetchMessages(channelId);
+    await get().fetchCoinRequests(res.mandali.id);
+
+    const me = res.members.find((m) => m.playerId === resolveCurrentPlayerId());
+    const role: string = me?.role ?? "";
+    if (role === "OWNER" || role === "ADMIN") await get().fetchPendingJoinRequests(res.mandali.id);
   },
 
   fetchCoinTransfers: async (mandaliId: string) => {
@@ -857,12 +912,54 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
           coinTransfers: [payload.transfer, ...state.coinTransfers],
         }));
       });
+
+      // A coin request card is created inside the database, so it never
+      // arrives as an ordinary chat message. This event carries the request
+      // record (which the card needs in order to show a Pay button) and the
+      // message itself, so everyone in the room sees it the moment it lands.
+      socket.on("mandali:coin_request:updated" as any, (payload: { mandaliId: string; request: MandaliCoinRequest; message?: MandaliMessage }) => {
+        const { activeMandali } = get();
+        if (!activeMandali || activeMandali.id !== payload.mandaliId) return;
+        const { request, message } = payload;
+
+        set((state) => {
+          const coinRequests = request.messageId
+            ? { ...state.coinRequests, [request.messageId]: request }
+            : state.coinRequests;
+          if (!message) return { coinRequests };
+          const current = state.messages[message.channelId] || [];
+          if (current.some((m) => m.messageId === message.messageId)) return { coinRequests };
+          return { coinRequests, messages: { ...state.messages, [message.channelId]: [...current, message] } };
+        });
+
+        if (request.status === "FUNDED") {
+          const me = resolveCurrentPlayerId();
+          if (request.requesterIdentityId === me || request.payerIdentityId === me) void refreshCurrentWallet();
+        }
+      });
+
+      // Something about the Mandali changed (members, roles, settings, pins,
+      // deletions). Refetch rather than patching state from the event, and
+      // coalesce a burst of changes into one refresh.
+      socket.on("mandali:changed" as any, (payload: { mandaliId: string }) => {
+        const { activeMandali } = get();
+        if (!activeMandali || activeMandali.id !== payload.mandaliId) return;
+        if (mandaliRefreshTimer) clearTimeout(mandaliRefreshTimer);
+        mandaliRefreshTimer = setTimeout(() => {
+          mandaliRefreshTimer = null;
+          void get().refreshActiveMandali();
+        }, 250);
+      });
     }
   },
 
   cleanupMandaliSocket: (mandaliId: string, playerId: string) => {
     const socket = getSocket();
     socket.emit("mandali:leave_room" as any, { mandaliId, playerId });
+    if (mandaliRefreshTimer) {
+      clearTimeout(mandaliRefreshTimer);
+      mandaliRefreshTimer = null;
+    }
     if (mandaliReconnectHandler) {
       socket.off("connect", mandaliReconnectHandler);
       mandaliReconnectHandler = null;

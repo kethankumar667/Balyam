@@ -25,6 +25,7 @@ import InviteShareSheet from "../../components/mandali/InviteShareSheet";
 import GroupInfoModal from "../../components/mandali/GroupInfoModal";
 import MemberManagementSheet from "../../components/mandali/MemberManagementSheet";
 import PendingRequestsPanel from "../../components/mandali/PendingRequestsPanel";
+import IncomingCoinRequestBanner from "../../components/mandali/IncomingCoinRequestBanner";
 import { Play, Crown, Users, Zap } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 
@@ -174,6 +175,12 @@ export default function MandaliHubPage(): JSX.Element {
   const isCurrentMember = members.some((m) => m.playerId === playerId);
   const activeChannelMessages = activeChannelId ? messages[activeChannelId] || [] : [];
 
+  // Requests where I am the person being asked, still open and unexpired.
+  const now = Date.now();
+  const incomingCoinRequests = Object.values(coinRequests)
+    .filter((r) => r.payerIdentityId === playerId && r.status === "OPEN" && r.expiresAt > now)
+    .sort((a, b) => a.createdAt - b.createdAt);
+
   const handleLaunchToRoom = () => {
     if (!activeGameLaunch) return;
     const targetRoom = activeGameLaunch.roomCode;
@@ -288,6 +295,10 @@ export default function MandaliHubPage(): JSX.Element {
               )}
             </div>
           </div>
+        )}
+
+        {isCurrentMember && (
+          <IncomingCoinRequestBanner requests={incomingCoinRequests} members={members} onPay={fundCoinRequest} />
         )}
 
         {/* Responsive Viewport Switcher */}

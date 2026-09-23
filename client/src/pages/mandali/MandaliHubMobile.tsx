@@ -15,7 +15,7 @@
  * - WCAG 2.1 AA focus rings.
  */
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   MessageSquare,
@@ -37,6 +37,7 @@ import {
   UserCheck,
   Pin,
   Trash2,
+  Smile,
 } from "lucide-react";
 import type {
   Mandali,
@@ -50,6 +51,7 @@ import type {
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import CoinRequestCard from "../../components/mandali/CoinRequestCard";
+import EmojiPicker, { insertAtCaret } from "../../components/mandali/EmojiPicker";
 import type { GameKind } from "@shared/types.js";
 
 function getAvatarUrl(avatar?: string): string {
@@ -97,6 +99,8 @@ export interface MandaliHubMobileProps {
 
 type MobileTab = "chat" | "squads" | "gnapakalu" | "members";
 
+const CHAT_MAX_LENGTH = 500;
+
 const EMOJI_REACTIONS = ["🔥", "👑", "🎯", "👏", "❤️"];
 
 export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
@@ -136,6 +140,18 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   const [showChannelDrawer, setShowChannelDrawer] = useState(false);
   const [showCreateSquad, setShowCreateSquad] = useState(false);
   const [chatInput, setChatInput] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+
+  const handleEmojiSelect = (emoji: string) => {
+    const result = insertAtCaret(chatInputRef.current, chatInput, emoji, CHAT_MAX_LENGTH);
+    if (!result) return;
+    setChatInput(result.next);
+    requestAnimationFrame(() => {
+      chatInputRef.current?.focus();
+      chatInputRef.current?.setSelectionRange(result.caret, result.caret);
+    });
+  };
   const [newSquadGame, setNewSquadGame] = useState<GameKind>("ludo");
   const [newSquadTitle, setNewSquadTitle] = useState("");
   const [newSquadSlots, setNewSquadSlots] = useState(4);
@@ -146,6 +162,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
     e.preventDefault();
     if (!chatInput.trim()) return;
     onSendMessage(chatInput.trim());
+    setShowEmoji(false);
     setChatInput("");
   };
 
@@ -356,7 +373,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
             {/* Mobile Composer */}
             <form
               onSubmit={handleSend}
-              className="p-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-2 flex-shrink-0"
+              className="relative p-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-2 flex-shrink-0"
             >
               <button
                 type="button"
@@ -366,14 +383,28 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
               >
                 <Coins className="w-4 h-4" />
               </button>
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder={`Message #${activeChannel?.name || "chat"}...`}
-                maxLength={500}
-                className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:border-amber-500 focus:outline-none font-medium"
-              />
+              <div className="relative flex-1">
+                <input
+                  ref={chatInputRef}
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder={`Message #${activeChannel?.name || "chat"}...`}
+                  maxLength={CHAT_MAX_LENGTH}
+                  className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:border-amber-500 focus:outline-none font-medium"
+                />
+                <button
+                  type="button"
+                  data-emoji-trigger
+                  onClick={() => setShowEmoji((open) => !open)}
+                  aria-expanded={showEmoji}
+                  aria-label="Add Emoji"
+                  className="absolute right-0 top-0 h-full min-w-[44px] flex items-center justify-center text-slate-500 active:text-amber-500"
+                >
+                  <Smile className="w-4 h-4" />
+                </button>
+              </div>
+              <EmojiPicker fullWidth open={showEmoji} onSelect={handleEmojiSelect} onClose={() => setShowEmoji(false)} />
               <button
                 type="submit"
                 disabled={!chatInput.trim()}

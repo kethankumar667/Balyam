@@ -12,7 +12,7 @@
  * - WCAG 2.1 AA focus rings.
  */
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Hash,
@@ -50,6 +50,7 @@ import type {
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import CoinRequestCard from "../../components/mandali/CoinRequestCard";
+import EmojiPicker, { insertAtCaret } from "../../components/mandali/EmojiPicker";
 import type { GameKind } from "@shared/types.js";
 
 function getAvatarUrl(avatar?: string): string {
@@ -95,6 +96,8 @@ export interface MandaliHubDesktopProps {
   onLeaveMandali: () => void;
 }
 
+const CHAT_MAX_LENGTH = 500;
+
 const EMOJI_REACTIONS = ["🔥", "👑", "🎯", "👏", "❤️"];
 
 export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
@@ -131,6 +134,18 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onLeaveMandali,
 }) => {
   const [chatInput, setChatInput] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+
+  const handleEmojiSelect = (emoji: string) => {
+    const result = insertAtCaret(chatInputRef.current, chatInput, emoji, CHAT_MAX_LENGTH);
+    if (!result) return;
+    setChatInput(result.next);
+    requestAnimationFrame(() => {
+      chatInputRef.current?.focus();
+      chatInputRef.current?.setSelectionRange(result.caret, result.caret);
+    });
+  };
   const [showCreateParty, setShowCreateParty] = useState(false);
   const [newPartyGame, setNewPartyGame] = useState<GameKind>("ludo");
   const [newPartyTitle, setNewPartyTitle] = useState("");
@@ -144,6 +159,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
     e.preventDefault();
     if (!chatInput.trim()) return;
     onSendMessage(chatInput.trim());
+    setShowEmoji(false);
     setChatInput("");
   };
 
@@ -618,16 +634,21 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 
               <div className="relative flex-1">
                 <input
+                  ref={chatInputRef}
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   placeholder={`Message #${activeChannel?.name || "channel"}...`}
-                  maxLength={500}
-                  className="w-full min-h-[44px] pl-4 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                  maxLength={CHAT_MAX_LENGTH}
+                  className="w-full min-h-[44px] pl-4 pr-12 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
                 />
+                <EmojiPicker open={showEmoji} onSelect={handleEmojiSelect} onClose={() => setShowEmoji(false)} />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500"
+                  data-emoji-trigger
+                  onClick={() => setShowEmoji((open) => !open)}
+                  aria-expanded={showEmoji}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500"
                   aria-label="Add Emoji"
                 >
                   <Smile className="w-4 h-4" />
