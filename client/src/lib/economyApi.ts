@@ -17,7 +17,9 @@ export type WalletLedgerEntryType =
   | "MATCH_PRIZE_CREDIT"
   | "VOUCHER_REDEMPTION"
   | "MATCH_REFUND"
-  | "ADMIN_ADJUSTMENT";
+  | "ADMIN_ADJUSTMENT"
+  | "P2P_TRANSFER_SEND"
+  | "P2P_TRANSFER_RECEIVE";
 
 export interface CoinWalletRecord {
   identityId: string;

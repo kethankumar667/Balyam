@@ -36,8 +36,21 @@ export interface WalletDrawerProps {
   onClose: () => void;
 }
 
-function mapEntryToDeltaType(entryType: string): { type: CoinDeltaType; label: string } {
+/**
+ * Direction and label for a ledger row.
+ *
+ * `amount` is the ledger's SIGNED amount (a debit is stored negative). It is
+ * the fallback for any entry type not listed below: an unknown type used to
+ * default to CREDIT, so a new kind of debit would silently render as coins
+ * coming in — the exact bug P2P sends had. Sign is the source of truth; the
+ * named cases only supply friendlier labels.
+ */
+export function mapEntryToDeltaType(entryType: string, amount: string): { type: CoinDeltaType; label: string } {
   switch (entryType) {
+    case "P2P_TRANSFER_SEND":
+      return { type: "DEBIT", label: "Coins Sent" };
+    case "P2P_TRANSFER_RECEIVE":
+      return { type: "CREDIT", label: "Coins Received" };
     case "STARTER_GRANT":
       return { type: "CREDIT", label: "Starter Grant" };
     case "MATCH_PRIZE_CREDIT":
@@ -57,7 +70,7 @@ function mapEntryToDeltaType(entryType: string): { type: CoinDeltaType; label: s
     case "DAILY_REWARD_CREDIT":
       return { type: "CREDIT", label: "Daily Reward" };
     default:
-      return { type: "CREDIT", label: entryType };
+      return { type: amount.trim().startsWith("-") ? "DEBIT" : "CREDIT", label: entryType };
   }
 }
 
@@ -383,7 +396,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                   ) : (
                     <div className="space-y-2">
                       {entries.map((entry) => {
-                        const { type, label } = mapEntryToDeltaType(entry.entryType);
+                        const { type, label } = mapEntryToDeltaType(entry.entryType, entry.amount);
                         const gameName = friendlyGameName(entry.gameKind);
                         return (
                           <div
@@ -485,7 +498,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                           <span className="text-ink-lo dark:text-text-lo">Amount:</span>
                           <CoinDelta
                             delta={selectedEntry.amount}
-                            type={mapEntryToDeltaType(selectedEntry.entryType).type}
+                            type={mapEntryToDeltaType(selectedEntry.entryType, selectedEntry.amount).type}
                             size="sm"
                           />
                         </div>

@@ -326,6 +326,10 @@ export function PlayerInvestigationTab() {
       case "SOLO_ENTRY_DEBIT":
       case "BOT_ENTRY_DEBIT":
         return <StatusBadge status="critical" label="Entry Debit" />;
+      case "P2P_TRANSFER_SEND":
+        return <StatusBadge status="critical" label="Coins Sent" />;
+      case "P2P_TRANSFER_RECEIVE":
+        return <StatusBadge status="active" label="Coins Received" />;
       default:
         return <StatusBadge status="inactive" label={entryType} />;
     }

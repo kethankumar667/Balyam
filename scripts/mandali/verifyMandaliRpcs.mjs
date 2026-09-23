@@ -322,6 +322,100 @@ async function main() {
       const again = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, payer, key]);
       check("fund", "paying a funded request again is a harmless no-op", again.ok && (await balance(payer)) === after.p, again.error);
     }
+    // ── 6. Chat retention ───────────────────────────────────────────────
+    console.log("\n6. Chat retention — one year");
+    {
+      const owner = await person();
+      const member = await person();
+      const reactor = await person();
+      const payer = await person();
+      const mid = await makeMandali(owner);
+      for (const p of [member, reactor, payer]) await join(admin, mid, p);
+      const channel = `${mid}_lounge-chat`;
+
+      const send = (id, who, text) =>
+        admin.query(`select public.send_mandali_message($1, $2, $3, $4, $5, null, null)`, [id, mid, channel, who, text]);
+      const age = (id, days) =>
+        admin.query(`update public.mandali_messages set created_at = now() - make_interval(days => $2) where message_id = $1`, [id, days]);
+      const exists = async (id) =>
+        (await admin.query(`select count(*)::int as n from public.mandali_messages where message_id = $1`, [id])).rows[0].n === 1;
+
+      const [oldA, oldB, oldC, oldPinned, fresh, justInside, reply] =
+        ["oldA", "oldB", "oldC", "oldP", "new", "in", "rep"].map((t) => uid(t));
+      for (const id of [oldA, oldB, oldC, oldPinned, fresh, justInside]) await send(id, member, `text ${id}`);
+      await age(oldA, 400);
+      await age(oldB, 500);
+      await age(oldC, 366);
+      await age(oldPinned, 700);
+      await age(justInside, 364);
+      await admin.query(`select public.set_message_pin($1, $2, true)`, [oldPinned, owner]);
+
+      // A new message quoting an old one, and a reaction on an old one.
+      await admin.query(`select public.send_mandali_message($1, $2, $3, $4, 'quoting', $5, null)`, [reply, mid, channel, member, oldA]);
+      await admin.query(`insert into public.mandali_message_reactions (message_id, identity_id, emoji) values ($1, $2, 'x')`, [oldA, reactor]);
+
+      // A coin request whose card message is over a year old.
+      const cr = await requestCoins(admin, mid, member, payer);
+      await age(`${cr.requestId}_card`, 400);
+
+      const pruned = await attempt(admin, `select public.prune_expired_mandali_messages() as n`);
+      check("retention", "prune reports how many messages it removed (5 old ones)", pruned.ok && pruned.rows[0].n === 5, pruned.error ?? `n=${pruned.rows?.[0]?.n}`);
+      check("retention", "messages older than a year are gone — including a pinned one",
+        !(await exists(oldA)) && !(await exists(oldB)) && !(await exists(oldC)) && !(await exists(oldPinned)));
+      check("retention", "messages inside the year are kept (364 days and today)", (await exists(justInside)) && (await exists(fresh)));
+
+      const quoting = (await admin.query(`select reply_to_id from public.mandali_messages where message_id = $1`, [reply])).rows[0];
+      check("retention", "a newer message that quoted a deleted one survives, minus the quote", quoting && quoting.reply_to_id === null);
+      const reactions = (await admin.query(`select count(*)::int as n from public.mandali_message_reactions where message_id = $1`, [oldA])).rows[0].n;
+      check("retention", "reactions on deleted messages go with them", reactions === 0);
+      const request = (await admin.query(`select status, message_id from public.mandali_coin_requests where id = $1`, [cr.requestId])).rows[0];
+      check("retention", "the coin request record is kept; only its chat card is removed", request && request.message_id === null, JSON.stringify(request));
+
+      const again = await attempt(admin, `select public.prune_expired_mandali_messages() as n`);
+      check("retention", "running it again removes nothing", again.ok && again.rows[0].n === 0);
+
+      // Batching: 5 old messages, batch size 2.
+      const backlog = [];
+      for (let i = 0; i < 5; i++) {
+        const id = uid("bk");
+        await send(id, member, `backlog ${i}`);
+        await age(id, 800 + i);
+        backlog.push(id);
+      }
+      const batched = await attempt(admin, `select public.prune_expired_mandali_messages(365, 2) as n`);
+      const left = (await Promise.all(backlog.map(exists))).filter(Boolean).length;
+      check("retention", "a backlog larger than one batch is fully cleared", batched.ok && batched.rows[0].n === 5 && left === 0, `n=${batched.rows?.[0]?.n} left=${left}`);
+
+      // Two servers pruning at the same moment.
+      const race = [];
+      for (let i = 0; i < 6; i++) {
+        const id = uid("rc");
+        await send(id, member, `race ${i}`);
+        await age(id, 900 + i);
+        race.push(id);
+      }
+      const [c1, c2] = [await open(), await open()];
+      const both = await Promise.all([
+        attempt(c1, `select public.prune_expired_mandali_messages(365, 2) as n`),
+        attempt(c2, `select public.prune_expired_mandali_messages(365, 2) as n`),
+      ]);
+      await c1.end();
+      await c2.end();
+      const raceLeft = (await Promise.all(race.map(exists))).filter(Boolean).length;
+      const removed = both.reduce((sum, r) => sum + (r.ok ? r.rows[0].n : 0), 0);
+      check("retention", "two simultaneous prunes never error and never double-count",
+        both.every((r) => r.ok) && removed === 6 && raceLeft === 0, `removed=${removed} left=${raceLeft} errors=${both.filter((r) => !r.ok).map((r) => r.error.slice(0, 50))}`);
+
+      const bad = await attempt(admin, `select public.prune_expired_mandali_messages(0)`);
+      check("retention", "a zero-day retention is refused rather than wiping everything", !bad.ok && /INVALID_RETENTION/.test(bad.error), bad.error);
+
+      // "Delete for everyone" must actually erase the text.
+      const doomedText = uid("del");
+      await send(doomedText, member, "this must not linger in the database");
+      await admin.query(`select public.delete_mandali_message($1, $2)`, [doomedText, member]);
+      const erased = (await admin.query(`select content, deleted_at from public.mandali_messages where message_id = $1`, [doomedText])).rows[0];
+      check("retention", "deleting a message erases its text, not just hides it", erased.content === "" && erased.deleted_at !== null, JSON.stringify(erased));
+    }
   } finally {
     await admin.end();
     await pg.stop();

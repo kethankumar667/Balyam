@@ -668,6 +668,14 @@ export class MandaliRepository {
     return rowToCoinRequest(result);
   }
 
+  /** Deletes chat older than `retentionDays`; returns how many messages were removed. */
+  public async pruneExpiredMessagesDurable(retentionDays: number): Promise<number> {
+    const removed = await this.pg().rpc<number>("prune_expired_mandali_messages", {
+      p_retention_days: retentionDays,
+    });
+    return Number(removed) || 0;
+  }
+
   /** Epoch ms of this person's most recent coin request in any Mandali, or null if they have never asked. */
   public async getLastCoinRequestAtDurable(requesterIdentityId: string): Promise<number | null> {
     const rows = await this.pg().select<{ created_at: string }>(

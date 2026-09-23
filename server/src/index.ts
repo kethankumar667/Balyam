@@ -51,6 +51,7 @@ import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
 import { createCosmeticsRouter } from "./cosmetics/CosmeticsController.js";
 import { readPostgrestConfig, PostgrestClient } from "./persistence/postgrest.js";
 import { MandaliRepository } from "./mandali/MandaliRepository.js";
+import { startMandaliRetentionJob } from "./mandali/MandaliRetentionJob.js";
 import { MandaliService } from "./mandali/MandaliService.js";
 import { createMandaliRouter } from "./mandali/MandaliController.js";
 import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
@@ -355,8 +356,10 @@ const mandaliPostgrestConfig = economyStoreStatus().kind === "supabase" ? readPo
 const mandaliRepository = new MandaliRepository(
   mandaliPostgrestConfig ? new PostgrestClient(mandaliPostgrestConfig) : null
 );
+let stopMandaliRetention: (() => void) | null = null;
 if (mandaliRepository.isDurable()) {
   logger.info({ message: "Mandali is running on durable Postgres storage.", module: "MANDALI" });
+  stopMandaliRetention = startMandaliRetentionJob(mandaliRepository);
 } else {
   logger.warn({
     message:
@@ -612,6 +615,7 @@ startKeepAlive();
 function shutdown(signal: string): void {
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
   globalRateLimiter.destroy();
+  stopMandaliRetention?.();
   io.close();
 
   // Stop accepting, and hang up connections that are merely idle. Without
