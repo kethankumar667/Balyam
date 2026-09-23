@@ -14,6 +14,8 @@ import {
   RotateCcw,
   Trophy,
   Flame,
+  Keyboard,
+  Palette,
 } from "lucide-react";
 import { HapticsManager } from "../../services/HapticsManager";
 import { connect4Audio } from "./connect4Audio";
@@ -384,7 +386,10 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
             <div className="space-y-3 text-sm text-slate-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-700/60">
-                  <div className="font-bold text-cyan-300 text-xs mb-1">⌨ Keyboard Shortcuts</div>
+                  <div className="font-bold text-cyan-300 text-xs mb-1 flex items-center gap-1.5">
+                    <Keyboard className="w-3.5 h-3.5" aria-hidden="true" />
+                    Keyboard Shortcuts
+                  </div>
                   <ul className="text-xs text-slate-300 space-y-1">
                     <li><strong className="text-white">1 – 7</strong> : Quick drop directly in column</li>
                     <li><strong className="text-white">← / →</strong> : Select column to target</li>
@@ -392,7 +397,10 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
                   </ul>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-700/60">
-                  <div className="font-bold text-amber-300 text-xs mb-1">🎨 Master Themes & Audio</div>
+                  <div className="font-bold text-amber-300 text-xs mb-1 flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5" aria-hidden="true" />
+                    Master Themes & Audio
+                  </div>
                   <ul className="text-xs text-slate-300 space-y-1">
                     <li>Toggle between <span className="text-amber-400 font-semibold">Royal Parlour</span>, <span className="text-cyan-300 font-semibold">Cyber-Arcade</span>, and <span className="text-yellow-300 font-semibold">Championship Lounge</span>.</li>
                     <li>Toggle acoustic audio & device haptic rumble.</li>

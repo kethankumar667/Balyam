@@ -570,16 +570,18 @@ function Connect4BoardContainer({
   const activeP = players.find((p: Player) => p.id === activePid);
   const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
   return (
-    <Connect4Board
-      state={gameState}
-      players={players}
-      selfId={effectiveSelfId || ""}
-      messages={messages}
-      roomCode={roomState.code}
-      roomPhase={roomState.phase}
-      onLeave={requestLeaveConfirmation}
-      onScorecardClose={handleScorecardClose}
-    />
+    <PassPhoneGate activePlayerId={activePid} players={players} isHost={isHost}>
+      <Connect4Board
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId || ""}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+        onScorecardClose={handleScorecardClose}
+      />
+    </PassPhoneGate>
   );
 }
 

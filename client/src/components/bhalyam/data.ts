@@ -383,10 +383,10 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     duration: "10–30 min",
     paperBg: "linear-gradient(155deg, #242E3D 0%, #131B26 45%, #080D14 100%)",
     paperBorder: "rgba(148, 163, 184, 0.55)",
-    btnGradient: { from: "#94A3B8", to: "#64748B", shadow: "#334155" },
+    btnGradient: { from: "#475569", to: "#1E293B", shadow: "#0F172A" },
     blurb:
       "The ultimate 64-square battlefield. Real-time Bullet/Blitz/Rapid timers, 3D piece skins, move evaluation, and AI Bot tiers.",
-    accent: { from: "#94A3B8", to: "#64748B" },
+    accent: { from: "#475569", to: "#1E293B" },
   },
   {
     slug: "namesplaceanimal",
@@ -446,7 +446,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     duration: "3–10 min",
     paperBg: "linear-gradient(155deg, #073523 0%, #031F14 45%, #010F09 100%)",
     paperBorder: "rgba(5, 150, 105, 0.55)",
-    btnGradient: { from: "#059669", to: "#064E3B", shadow: "#022C22" },
+    btnGradient: { from: "#0D9488", to: "#065F46", shadow: "#022C22" },
     blurb:
       "Authentic retro 90s monochrome 2D cricket. 1-bit LCD graphics, pitch bounce timing, and pure square-wave buzzer nostalgia.",
     accent: { from: "#34D399", to: "#064E3B" },

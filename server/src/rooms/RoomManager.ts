@@ -2078,7 +2078,7 @@ export class RoomManager {
       // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, and Tic Tac Toe"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, Tic Tac Toe, and Connect 4"
       );
       return;
     }
