@@ -363,7 +363,10 @@ export default function MandaliHubPage(): JSX.Element {
           onClose={() => setShowInvite(false)}
           mandaliName={activeMandali.name}
           mandaliHandle={activeMandali.handle}
-          onCreateLink={() => createInviteLink(activeMandali.id)}
+          onCreateLink={async () => {
+            const res = await createInviteLink(activeMandali.id);
+            return { success: res.success, token: res.invitation?.token, error: res.error };
+          }}
         />
       )}
 
