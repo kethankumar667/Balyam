@@ -1019,64 +1019,6 @@ export function getGameMetricSchema(game: AllGameSlug): GameMetricSchema {
   };
 }
 
-/**
- * Shared metric display formatter across client & server.
- */
-export function formatGameMetricDisplay(
-  value: number | string | undefined | null,
-  format: MetricDisplayFormat
-): string {
-  if (value === undefined || value === null) return "-";
-
-  const numeric = typeof value === "number" ? value : Number(value);
-  const isNum = !isNaN(numeric);
-
-  switch (format) {
-    case "runs":
-      return isNum ? `${numeric} runs` : String(value);
-
-    case "turns":
-      return isNum ? `${numeric} turns` : String(value);
-
-    case "penalty_pts":
-      if (isNum && numeric === 0) return "0 pts (Pure Show)";
-      return isNum ? `${numeric} pts` : `${value} pts`;
-
-    case "apples":
-      return isNum ? `${numeric} 🍎` : String(value);
-
-    case "boxes":
-      return isNum ? `${numeric} boxes` : String(value);
-
-    case "tiles":
-      return isNum ? `${numeric} tiles` : String(value);
-
-    case "discs":
-      return isNum ? `${numeric} discs` : String(value);
-
-    case "lines":
-      return isNum ? `${numeric} lines` : String(value);
-
-    case "coins":
-      return isNum ? `${numeric} coins` : String(value);
-
-    case "duration_seconds": {
-      if (!isNum) return String(value);
-      const mins = Math.floor(numeric / 60);
-      const secs = numeric % 60;
-      if (mins === 0) return `${secs}s`;
-      return `${mins}m ${secs}s`;
-    }
-
-    case "percentage":
-      return isNum ? `${Math.round(numeric)}%` : `${value}%`;
-
-    case "raw_number":
-    default:
-      return String(value);
-  }
-}
-
 /* ──────────────────────────────────────────────────────────────────────────
  * Performance Ranking & Gamification Engine
  * ────────────────────────────────────────────────────────────────────────── */

@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   GAME_METRIC_SCHEMAS,
   getGameMetricSchema,
-  formatGameMetricDisplay,
   calculatePerformanceRank,
   getNextMilestoneTarget,
   derivePlayerArchetype,
@@ -27,17 +26,12 @@ describe("MetricRegistry & Polymorphic Telemetry", () => {
     expect(handcricketSchema.primaryRankMetric.direction).toBe("HIGHER_IS_BETTER");
   });
 
-  it("formats metric displays correctly across types", () => {
-    expect(formatGameMetricDisplay(45, "runs")).toBe("45 runs");
-    expect(formatGameMetricDisplay(18, "turns")).toBe("18 turns");
-    expect(formatGameMetricDisplay(0, "penalty_pts")).toBe("0 pts (Pure Show)");
-    expect(formatGameMetricDisplay(25, "penalty_pts")).toBe("25 pts");
-    expect(formatGameMetricDisplay(32, "apples")).toBe("32 🍎");
-    expect(formatGameMetricDisplay(8, "boxes")).toBe("8 boxes");
-    expect(formatGameMetricDisplay(12, "discs")).toBe("12 discs");
-    expect(formatGameMetricDisplay(65, "duration_seconds")).toBe("1m 5s");
-    expect(formatGameMetricDisplay(85, "percentage")).toBe("85%");
-  });
+  // Metric-display formatting is covered by
+  // client/src/lib/__tests__/metricFormatters.test.ts — that's the formatter
+  // actually wired into every production UI surface (Leaderboard,
+  // GameStatisticsPage, ChronoScorecardDeck, ModeScorecardsLeaderboard).
+  // This file used to test a second, unused duplicate (formatGameMetricDisplay,
+  // now deleted) that no production code ever called.
 
   it("ScorecardService projects secondary metrics to mode leaderboard", () => {
     const service = new ScorecardService();
