@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Coins, Send, ArrowUpRight, ArrowDownLeft, Users, CheckCircle2, AlertCircle, X, Clock } from "lucide-react";
+import { Coins, Send, ArrowUpRight, ArrowDownLeft, Users, CheckCircle2, AlertCircle, X, Clock, Info } from "lucide-react";
 import type { MandaliMember, CoinTransferType } from "@shared/mandali/types.js";
 import { MANDALI_COIN_AMOUNT, MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import { useWallet } from "../../hooks/useEconomy";
@@ -184,7 +184,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               setType("SEND");
               setErrorMessage(null);
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
               type === "SEND"
                 ? "bg-amber-500 text-slate-950 shadow-md scale-[1.02]"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -199,7 +199,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               setType("REQUEST");
               setErrorMessage(null);
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
+            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
               type === "REQUEST"
                 ? "bg-amber-500 text-slate-950 shadow-md scale-[1.02]"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -237,7 +237,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 id="member-select"
                 value={selectedRecipientId}
                 onChange={(e) => setSelectedRecipientId(e.target.value)}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
               >
                 {otherMembers.map((m) => (
                   <option key={m.playerId} value={m.playerId}>
@@ -247,53 +247,94 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               </select>
             </div>
 
-            {/* Amount — fixed for every Mandali send and request */}
+            {/* Amount Section — Redesigned according to the condition */}
             <div>
-              <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Amount</span>
-              <div className="flex items-center justify-between px-4 min-h-[48px] rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-amber-300">
-                  <Coins className="w-4 h-4 text-amber-500" />
-                  {MANDALI_COIN_AMOUNT} coins
-                </span>
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                  Fixed for every transfer
-                </span>
-              </div>
+              <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {type === "SEND" ? "Transfer Amount" : "Request Amount"}
+              </span>
 
-              {type === "SEND" && !isBalanceSufficient && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1">
-                  Not enough coins — you have {numericBalance.toLocaleString()}.
-                </p>
+              {type === "REQUEST" ? (
+                <div className="space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-amber-300">
+                        <Coins className="w-5 h-5 text-amber-500" />
+                        {MANDALI_COIN_AMOUNT} coins
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                        Fixed Clan Request
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1.5 pt-2 border-t border-amber-500/20 leading-relaxed font-medium">
+                      <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <span>Coin requests are always 100 coins to keep clan support balanced.</span>
+                    </div>
+                  </div>
+
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={`flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                      isCoolingDown
+                        ? "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300"
+                        : "bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    {isCoolingDown ? (
+                      <span>
+                        You can request coins again in{" "}
+                        <span className="font-mono font-extrabold tabular-nums">{formatCountdown(cooldownRemainingMs)}</span>
+                      </span>
+                    ) : (
+                      <span>You can request coins once every {COOLDOWN_HOURS} hours.</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-amber-300">
+                        <Coins className="w-5 h-5 text-amber-500" />
+                        {MANDALI_COIN_AMOUNT} coins
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        Fixed for every transfer
+                      </span>
+                    </div>
+
+                    {isBalanceSufficient && (
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2 border-t border-amber-500/20 flex items-center justify-between font-medium">
+                        <span>Balance after send:</span>
+                        <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">
+                          {(numericBalance - effectiveAmount).toLocaleString()} coins
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isBalanceSufficient && (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Not enough coins — you have {numericBalance.toLocaleString()}.</span>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
-            {type === "REQUEST" && (
-              <div
-                role="status"
-                aria-live="polite"
-                className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs font-semibold ${
-                  isCoolingDown
-                    ? "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300"
-                    : "bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                {isCoolingDown ? (
-                  <span>
-                    You can request coins again in{" "}
-                    <span className="font-mono font-extrabold tabular-nums">{formatCountdown(cooldownRemainingMs)}</span>
-                  </span>
-                ) : (
-                  <span>You can request coins once every {COOLDOWN_HOURS} hours.</span>
-                )}
-              </div>
-            )}
-
             {/* Note (Optional) */}
             <div>
-              <label htmlFor="transfer-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Note (Optional)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="transfer-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Note (Optional)
+                </label>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
+                  {note.length}/80
+                </span>
+              </div>
               <input
                 id="transfer-note"
                 type="text"
@@ -301,7 +342,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. GG in Ludo death match!"
-                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
               />
             </div>
 

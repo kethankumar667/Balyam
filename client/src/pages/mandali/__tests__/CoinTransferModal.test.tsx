@@ -52,12 +52,22 @@ describe("CoinTransferModal", () => {
     expect(screen.getByRole("button", { name: "Send 100 Coins" })).toBeTruthy();
   });
 
-  it("explains the 4-hour limit and allows a request when there is no cooldown", () => {
+  it("explains that coin requests are always 100 coins and allows a request when there is no cooldown", () => {
     renderModal("REQUEST");
 
+    expect(screen.getByText(/Coin requests are always 100 coins/i)).toBeTruthy();
+    expect(screen.getByText("Fixed Clan Request")).toBeTruthy();
     expect(screen.getByText(/once every 4 hours/i)).toBeTruthy();
     const submit = screen.getByRole("button", { name: "Request 100 Coins" }) as HTMLButtonElement;
     expect(submit.disabled).toBe(false);
+  });
+
+  it("shows the remaining balance after sending coins in SEND mode", () => {
+    renderModal("SEND");
+
+    expect(screen.getByText("Fixed for every transfer")).toBeTruthy();
+    expect(screen.getByText(/Balance after send:/i)).toBeTruthy();
+    expect(screen.getByText("4,900 coins")).toBeTruthy();
   });
 
   it("shows the countdown and blocks the request while cooling down", () => {
