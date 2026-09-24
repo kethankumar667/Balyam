@@ -3651,12 +3651,19 @@ export class RoomManager {
           secondaryMetrics,
         };
       });
+      // When THIS match began, not when the room was created. A rematch reuses
+      // the room, so keying on `createdAt` gave every match after the first the
+      // same id as the first — and the store, which treats a repeated id as a
+      // replay, dropped its history and its XP. It also made `durationMs` count
+      // the lobby, and for a rematch everything since the room opened.
+      const startedAt = room.matchStartedAt ?? room.createdAt;
+      const finishedAt = Date.now();
       profileService.recordMatchFinished({
         roomCode: room.code,
         game: room.game,
-        startedAt: room.createdAt,
-        finishedAt: Date.now(),
-        durationMs: Math.max(1000, Date.now() - room.createdAt),
+        startedAt,
+        finishedAt,
+        durationMs: Math.max(1000, finishedAt - startedAt),
         winnerId: winnerId ?? undefined,
         modeId: resolveModeId(
           room.game,
