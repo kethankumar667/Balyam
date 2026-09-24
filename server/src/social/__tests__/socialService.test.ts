@@ -13,6 +13,7 @@ describe("Social & Friends Subsystem Suite", () => {
   describe("FriendsService", () => {
     it("adds and retrieves friends", () => {
       const friend = friendsService.addFriend("p1", "p2", "Bob", "🦁");
+      friendsService.addFriend("p2", "p1", "Alice", "🦊");
       expect(friend.playerId).toBe("p1");
       expect(friend.friendPlayerId).toBe("p2");
 
@@ -27,6 +28,7 @@ describe("Social & Friends Subsystem Suite", () => {
 
     it("removes friends cleanly", () => {
       friendsService.addFriend("p1", "p2", "Bob");
+      friendsService.addFriend("p2", "p1", "Alice");
       expect(friendsService.isFriend("p1", "p2")).toBe(true);
 
       const removed = friendsService.removeFriend("p1", "p2");

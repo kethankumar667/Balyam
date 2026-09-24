@@ -55,17 +55,26 @@ export class FriendsService {
       friendFriends.delete(playerId);
     }
 
+    if (removed) {
+      progressionSync.friendRemoved(playerId, friendPlayerId);
+      progressionSync.friendRemoved(friendPlayerId, playerId);
+    }
+
     return removed;
   }
 
   public getFriends(playerId: string): Friend[] {
     const friends = this.friendsMap.get(playerId);
     if (!friends) return [];
-    return Array.from(friends.values());
+    return Array.from(friends.values()).filter((f) =>
+      this.friendsMap.get(f.friendPlayerId)?.has(playerId)
+    );
   }
 
   public isFriend(playerId: string, targetId: string): boolean {
-    return this.friendsMap.get(playerId)?.has(targetId) || false;
+    const forward = this.friendsMap.get(playerId)?.has(targetId) ?? false;
+    const reverse = this.friendsMap.get(targetId)?.has(playerId) ?? false;
+    return forward && reverse;
   }
 
   public recordMatchTogether(

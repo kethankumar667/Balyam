@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FriendRequest } from "@shared/social/FriendRequest";
 import { AddFriendUserIcon } from "../../design-system/icons";
+import SeatAvatar from "../../components/profile/SeatAvatar";
+import { errorMessage } from "../../lib/errorMessage";
 
 interface FriendRequestPanelProps {
   incoming: FriendRequest[];
@@ -8,6 +10,7 @@ interface FriendRequestPanelProps {
   onSendRequest: (recipientId: string) => Promise<void>;
   onAccept: (requestId: string) => Promise<void>;
   onDecline: (requestId: string) => Promise<void>;
+  onCancelRequest?: (requestId: string) => Promise<void>;
 }
 
 export default function FriendRequestPanel({
@@ -16,9 +19,11 @@ export default function FriendRequestPanel({
   onSendRequest,
   onAccept,
   onDecline,
+  onCancelRequest,
 }: FriendRequestPanelProps) {
   const [targetIdInput, setTargetIdInput] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +33,22 @@ export default function FriendRequestPanel({
       setTargetIdInput("");
       setFeedback("Friend request dispatched!");
       setTimeout(() => setFeedback(null), 3000);
-    } catch (err: any) {
-      setFeedback(err.message || "Failed to send request");
+    } catch (err: unknown) {
+      setFeedback(errorMessage(err, "Failed to send request"));
       setTimeout(() => setFeedback(null), 3000);
+    }
+  };
+
+  const handleCancel = async (requestId: string) => {
+    if (!onCancelRequest || cancellingId) return;
+    try {
+      setCancellingId(requestId);
+      await onCancelRequest(requestId);
+    } catch (err: unknown) {
+      setFeedback(errorMessage(err, "Failed to cancel friend request"));
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -60,7 +78,7 @@ export default function FriendRequestPanel({
           </button>
         </form>
         {feedback && (
-          <p className="text-xs font-mono text-amber-500 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl">
+          <p role="alert" className="text-xs font-mono text-amber-500 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl">
             {feedback}
           </p>
         )}
@@ -83,7 +101,12 @@ export default function FriendRequestPanel({
                 className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{req.senderAvatar || "👤"}</span>
+                  <SeatAvatar
+                    avatar={req.senderAvatar}
+                    name={req.senderName}
+                    className="w-12 h-12 rounded-2xl border border-[var(--auth-field-edge)] flex-shrink-0"
+                    textClassName="text-xl"
+                  />
                   <div>
                     <h5 className="font-bold text-sm text-[var(--auth-ink)]">{req.senderName}</h5>
                     <span className="text-[10px] font-mono text-[var(--auth-ink-soft)] block">
@@ -126,12 +149,27 @@ export default function FriendRequestPanel({
             {outgoing.map((req) => (
               <div
                 key={req.id}
-                className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-xl p-3.5 flex items-center justify-between text-xs font-mono"
+                className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-xl p-3.5 flex items-center justify-between text-xs font-mono gap-3"
               >
-                <span className="text-[var(--auth-ink)]">Invite sent to ID: <strong>{req.recipientId}</strong></span>
-                <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                  PENDING
+                <span className="text-[var(--auth-ink)]">
+                  Invite sent to ID: <strong>{req.recipientId}</strong>
                 </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                    PENDING
+                  </span>
+                  {onCancelRequest && (
+                    <button
+                      type="button"
+                      disabled={cancellingId === req.id}
+                      onClick={() => handleCancel(req.id)}
+                      className="min-h-[44px] px-3 py-2 bg-[var(--auth-field)] hover:bg-rose-500/15 text-[var(--auth-ink-soft)] hover:text-rose-500 text-xs rounded-xl border border-[var(--auth-field-edge)] hover:border-rose-500/30 transition font-mono uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                      aria-label={`Cancel friend request to ${req.recipientId}`}
+                    >
+                      {cancellingId === req.id ? "Cancelling…" : "Cancel"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

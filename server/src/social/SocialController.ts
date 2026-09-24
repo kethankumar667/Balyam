@@ -8,6 +8,10 @@ import {
   requireParticipantParams,
   callerId,
 } from "../auth/identity.js";
+import { rateLimitByCaller } from "../lib/httpRateLimiter.js";
+import { CANCEL_REQUEST_MINUTE_BURST } from "./limits.js";
+import { friendRequestSendLimiters } from "./requestLimiters.js";
+import { presentationFor } from "./callerPresentation.js";
 
 /**
  * Friends, requests and presence.
@@ -55,29 +59,31 @@ router.get("/requests/:playerId", requireSelfParam(), (req: Request, res: Respon
 /**
  * PRIVATE — send a request.
  *
- * The sender is the caller, full stop. `senderName` and `senderAvatar` stay in
- * the body because they are how the caller chooses to present themselves, and
- * misrepresenting your own display name is a moderation question rather than
- * an authorization one.
+ * The sender is the caller, full stop. The name and avatar the recipient sees
+ * are the caller's stored profile, not anything in the body: a body value is
+ * stored and shown on another player's screen, so it is ignored (see
+ * `presentationFor`). The send limits are shared with the ranking route.
  */
-router.post("/requests/send", requireIdentity, (req: Request, res: Response) => {
-  const { senderName, recipientId, senderAvatar } = req.body ?? {};
-  if (!recipientId || typeof recipientId !== "string") {
-    res.status(400).json({ success: false, error: "Missing recipientId" });
-    return;
-  }
-  try {
-    const request = friendRequestsService.sendRequest(
-      callerId(req),
-      typeof senderName === "string" ? senderName : "Player",
-      recipientId,
-      senderAvatar,
-    );
-    res.json({ success: true, request });
-  } catch (err) {
-    res.status(400).json({ success: false, error: (err as Error).message });
-  }
-});
+router.post(
+  "/requests/send",
+  requireIdentity,
+  ...friendRequestSendLimiters,
+  (req: Request, res: Response) => {
+    const { recipientId } = req.body ?? {};
+    if (!recipientId || typeof recipientId !== "string") {
+      res.status(400).json({ success: false, error: "Missing recipientId" });
+      return;
+    }
+    try {
+      const me = callerId(req);
+      const { displayName, avatar } = presentationFor(me);
+      const request = friendRequestsService.sendRequest(me, displayName, recipientId, avatar);
+      res.json({ success: true, request });
+    } catch (err) {
+      res.status(400).json({ success: false, error: (err as Error).message });
+    }
+  },
+);
 
 /**
  * PRIVATE — accept a request addressed to you.
@@ -99,15 +105,13 @@ router.post("/requests/:requestId/accept", requireIdentity, (req: Request, res: 
     return;
   }
 
-  const { recipientName, recipientAvatar } = req.body ?? {};
+  // The accepter's name and avatar land on the SENDER's friends list, so they
+  // come from the accepter's stored profile, not from the body.
+  const { displayName, avatar } = presentationFor(callerId(req));
   try {
     res.json({
       success: true,
-      request: friendRequestsService.acceptRequest(
-        req.params.requestId,
-        typeof recipientName === "string" ? recipientName : "Player",
-        recipientAvatar,
-      ),
+      request: friendRequestsService.acceptRequest(req.params.requestId, displayName, avatar),
     });
   } catch (err) {
     res.status(400).json({ success: false, error: (err as Error).message });
@@ -136,6 +140,38 @@ router.post("/requests/:requestId/decline", requireIdentity, (req: Request, res:
     res.status(400).json({ success: false, error: (err as Error).message });
   }
 });
+
+/**
+ * PRIVATE — cancel an outgoing request sent by you.
+ *
+ * The caller must be the sender of the request. Third parties or the recipient
+ * attempting to cancel receive a 403.
+ */
+router.post(
+  "/requests/:requestId/cancel",
+  requireIdentity,
+  rateLimitByCaller({
+    capacity: CANCEL_REQUEST_MINUTE_BURST,
+    refillPerSec: CANCEL_REQUEST_MINUTE_BURST / 60,
+    keyOf: (req) => callerId(req),
+  }),
+  (req: Request, res: Response) => {
+    const request = friendRequestsService.getRequest(req.params.requestId);
+    if (!request) {
+      res.status(404).json({ success: false, error: "Friend request not found" });
+      return;
+    }
+    if (request.senderId !== callerId(req)) {
+      res.status(403).json({ success: false, error: "That request was not sent by you." });
+      return;
+    }
+    try {
+      res.json({ success: true, request: friendRequestsService.cancelRequest(req.params.requestId) });
+    } catch (err) {
+      res.status(400).json({ success: false, error: (err as Error).message });
+    }
+  },
+);
 
 /** PRIVATE — set YOUR presence. Setting someone else's is impersonation. */
 router.post("/presence/:playerId", requireSelfParam(), (req: Request, res: Response) => {

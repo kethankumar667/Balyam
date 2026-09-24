@@ -1,29 +1,169 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Users, Swords, MessageSquare, ShieldCheck, UserPlus, Circle, Gamepad2 } from "lucide-react";
+import { Users, ShieldCheck, Inbox } from "lucide-react";
 import ComingSoonGate from "../components/common/ComingSoonGate";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
+import { usePlayerId } from "../lib/playerIdentity";
+import FriendRequestPanel from "../features/social/FriendRequestPanel";
+import FriendsList from "../features/social/FriendsList";
+import type { FriendRequest } from "@shared/social/FriendRequest";
+import type { Friend } from "@shared/social/Friend";
+import type { PlayerPresence } from "@shared/social/Presence";
+import {
+  getFriendRequests,
+  getFriends,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  cancelFriendRequest,
+  removeFriend,
+} from "../lib/api/social";
+import { errorMessage } from "../lib/errorMessage";
 
-interface OnlineFriend {
-  id: string;
-  name: string;
-  avatar: string;
-  status: "in-game" | "online" | "idle";
-  activity: string;
+type LoadState = "loading" | "ready" | "error";
+
+/**
+ * No presence is passed: presence today is whatever a client last asserted, and
+ * nothing asserts it, so any status shown here would be invented. `FriendsList`
+ * shows no status for a friend with no entry. The presence work replaces this.
+ */
+const NO_PRESENCE: Record<string, PlayerPresence> = {};
+
+function ListSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-busy="true" aria-label={label} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {[0, 1, 2, 3].map((n) => (
+        <div
+          key={n}
+          className="h-24 rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] animate-pulse motion-reduce:animate-none"
+        />
+      ))}
+    </div>
+  );
 }
 
-const MOCK_FRIENDS: OnlineFriend[] = [
-  { id: "f1", name: "Aditi_Pro", avatar: "A", status: "in-game", activity: "Playing Hand Cricket" },
-  { id: "f2", name: "Vikram_HC", avatar: "V", status: "online", activity: "In Lounge Lobby" },
-  { id: "f3", name: "Sneha_Ace", avatar: "S", status: "in-game", activity: "Playing Ludo • Room #X92K4L" },
-  { id: "f4", name: "Rahul_King", avatar: "R", status: "idle", activity: "Away for 5m" },
-];
+function LoadFailure({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="p-6 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-center space-y-3"
+    >
+      <p className="text-sm font-bold text-rose-500">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="min-h-[44px] px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-black font-mono uppercase transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
 
 export default function SocialHubPage() {
   const { isSuperAdmin, capabilities } = useAuthStore();
-  const [friends, setFriends] = useState<OnlineFriend[]>(MOCK_FRIENDS);
-  const [invited, setInvited] = useState<Record<string, boolean>>({});
+  const { playerId } = usePlayerId();
+  const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendsState, setFriendsState] = useState<LoadState>("loading");
+  const [friendsError, setFriendsError] = useState<string | null>(null);
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
+  const [requestsState, setRequestsState] = useState<LoadState>("loading");
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  /**
+   * `silent` is a refresh after an action: the lists on screen stay put and a
+   * failure becomes the banner. Without it (first load, Retry) a failure takes
+   * over the tab, so an empty list is never mistaken for "nothing here".
+   */
+  const loadFriends = useCallback(
+    async (silent = false) => {
+      if (!playerId) return;
+      if (!silent) setFriendsState("loading");
+      try {
+        const res = await getFriends(playerId);
+        setFriends(res.friends);
+        setFriendsState("ready");
+      } catch (err: unknown) {
+        if (silent) {
+          setActionError(errorMessage(err, "Couldn't refresh your friends list."));
+          return;
+        }
+        setFriendsError(errorMessage(err, "Couldn't load your friends."));
+        setFriendsState("error");
+      }
+    },
+    [playerId],
+  );
+
+  const loadRequests = useCallback(
+    async (silent = false) => {
+      if (!playerId) return;
+      if (!silent) setRequestsState("loading");
+      try {
+        const res = await getFriendRequests(playerId);
+        setIncomingRequests(res.incoming);
+        setOutgoingRequests(res.outgoing);
+        setRequestsState("ready");
+      } catch (err: unknown) {
+        if (silent) {
+          setActionError(errorMessage(err, "Couldn't refresh your friend requests."));
+          return;
+        }
+        setRequestsError(errorMessage(err, "Couldn't load your friend requests."));
+        setRequestsState("error");
+      }
+    },
+    [playerId],
+  );
+
+  useEffect(() => {
+    void loadFriends();
+    void loadRequests();
+  }, [loadFriends, loadRequests]);
+
+  /**
+   * Runs one request action. A failure is shown in the banner AND rethrown so
+   * the panel can stop its own "sent!" feedback; the refresh after a success is
+   * silent and never turns a completed action into a failure.
+   */
+  const runAction = async (action: () => Promise<unknown>, fallback: string, alsoFriends = false) => {
+    setActionError(null);
+    try {
+      await action();
+    } catch (err: unknown) {
+      setActionError(errorMessage(err, fallback));
+      throw err;
+    }
+    await loadRequests(true);
+    if (alsoFriends) await loadFriends(true);
+  };
+
+  const handleSendFriendRequest = (recipientId: string) =>
+    runAction(() => sendFriendRequest(recipientId), "Failed to send friend request", true);
+
+  const handleAcceptRequest = (requestId: string) =>
+    runAction(() => acceptFriendRequest(requestId), "Failed to accept friend request", true);
+
+  const handleDeclineRequest = (requestId: string) =>
+    runAction(() => declineFriendRequest(requestId), "Failed to decline friend request");
+
+  const handleCancelRequest = (requestId: string) =>
+    runAction(async () => {
+      await cancelFriendRequest(requestId);
+      setOutgoingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    }, "Failed to cancel friend request");
+
+  /** A rejection propagates to the confirm dialog, which shows it and stays open. */
+  const handleRemoveFriend = async (friendPlayerId: string) => {
+    if (!playerId) return;
+    await removeFriend(playerId, friendPlayerId);
+    setFriends((prev) => prev.filter((f) => f.friendPlayerId !== friendPlayerId));
+    void loadFriends(true);
+  };
 
   if (!isSuperAdmin && !capabilities.unlockAllFeatures) {
     return (
@@ -44,12 +184,13 @@ export default function SocialHubPage() {
     );
   }
 
-  const handleInvite = (id: string) => {
-    setInvited((prev) => ({ ...prev, [id]: true }));
-    setTimeout(() => {
-      setInvited((prev) => ({ ...prev, [id]: false }));
-    }, 4000);
-  };
+  const requestCount = incomingRequests.length + outgoingRequests.length;
+  const tabClass = (tab: "friends" | "requests") =>
+    `min-h-[44px] px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
+      activeTab === tab
+        ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
+        : "bg-[var(--chrome-panel)] text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] border border-[var(--chrome-border)]"
+    }`;
 
   return (
     <AppLayout>
@@ -63,14 +204,15 @@ export default function SocialHubPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-500">
-                  ⚡ Super Admin Sandbox Active
+                  ⚡ Super Admin Access Active
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-zinc-950">
                   Feature Unlocked
                 </span>
               </div>
               <p className="text-xs text-[var(--chrome-ink-soft)]">
-                You have full access to test, manage presence, and simulate Social Squads & Player Invites.
+                The Social Hub is still locked for players. Your role unlocks it, and what you see here is
+                real data on your own account.
               </p>
             </div>
           </div>
@@ -92,92 +234,72 @@ export default function SocialHubPage() {
               Social Hub & Player Network
             </h1>
             <p className="text-xs sm:text-sm text-[var(--chrome-ink-soft)] mt-1">
-              Active Friends, Presence Status & Direct Match Challenges
+              Your friends and friend requests
             </p>
           </div>
         </div>
 
-        {/* Friends & Presence Cards / Empty State */}
-        {friends.length === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="p-8 text-center bg-[var(--chrome-panel)] border border-[var(--chrome-border)] rounded-3xl space-y-4"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl mx-auto">
-              👥
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-[var(--chrome-ink)]">No online friends yet</h3>
-              <p className="text-xs text-[var(--chrome-ink-soft)] max-w-sm mx-auto">
-                Invite your friends or share room codes to start building your lounge squad.
-              </p>
-            </div>
-            <Link
-              to="/games"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 font-bold text-xs shadow-sm transition min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            >
-              Explore Games to Play
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {friends.map((f) => (
-              <div
-                key={f.id}
-                className="rounded-3xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] p-5 flex items-center justify-between gap-4 shadow-sm"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="relative w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-500 text-base shrink-0">
-                    {f.avatar}
-                    <span
-                      className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[var(--chrome-panel)] ${
-                        f.status === "in-game"
-                          ? "bg-purple-500"
-                          : f.status === "online"
-                          ? "bg-emerald-500"
-                          : "bg-amber-500"
-                      }`}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-[var(--chrome-ink)] truncate">
-                      {f.name}
-                    </h3>
-                    <p className="text-xs text-[var(--chrome-ink-soft)] flex items-center gap-1.5 mt-0.5 truncate">
-                      <span
-                        className={`inline-block w-1.5 h-1.5 rounded-full ${
-                          f.status === "in-game"
-                            ? "bg-purple-500"
-                            : f.status === "online"
-                            ? "bg-emerald-500"
-                            : "bg-amber-500"
-                        }`}
-                      />
-                      <span>{f.activity}</span>
-                    </p>
-                  </div>
-                </div>
+        {/* Navigation Category Tabs */}
+        <div className="flex items-center gap-2 border-b border-[var(--chrome-border)] pb-3 text-xs font-bold font-mono">
+          <button type="button" onClick={() => setActiveTab("friends")} className={tabClass("friends")}>
+            <Users className="w-4 h-4" />
+            Friends{friendsState === "ready" ? ` (${friends.length})` : ""}
+          </button>
+          <button type="button" onClick={() => setActiveTab("requests")} className={tabClass("requests")}>
+            <Inbox className="w-4 h-4" />
+            Requests{requestsState === "ready" ? ` (${requestCount})` : ""}
+          </button>
+        </div>
 
-                <div className="shrink-0 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleInvite(f.id)}
-                    disabled={invited[f.id]}
-                    aria-label={invited[f.id] ? `Challenge sent to ${f.name}` : `Challenge ${f.name} to a game`}
-                    className={`inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer ${
-                      invited[f.id]
-                        ? "bg-emerald-500 text-zinc-950 font-black"
-                        : "bg-amber-500 hover:bg-amber-400 text-zinc-950"
-                    }`}
-                  >
-                    <Swords className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>{invited[f.id] ? "Invited!" : "Challenge"}</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+        {/* Global Action Error Banner */}
+        {actionError && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-mono flex items-center justify-between"
+          >
+            <span>{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="text-xs font-bold hover:underline px-2 py-1 min-h-[44px]"
+            >
+              Dismiss
+            </button>
           </div>
+        )}
+
+        {/* Tab Content */}
+        {activeTab === "friends" && friendsState === "loading" && <ListSkeleton label="Loading your friends" />}
+        {activeTab === "friends" && friendsState === "error" && (
+          <LoadFailure message={friendsError ?? "Couldn't load your friends."} onRetry={() => void loadFriends()} />
+        )}
+        {activeTab === "friends" && friendsState === "ready" && (
+          <FriendsList
+            friends={friends}
+            presences={NO_PRESENCE}
+            onRemoveFriend={handleRemoveFriend}
+            onOpenInviteModal={() => setActiveTab("requests")}
+          />
+        )}
+
+        {activeTab === "requests" && requestsState === "loading" && (
+          <ListSkeleton label="Loading your friend requests" />
+        )}
+        {activeTab === "requests" && requestsState === "error" && (
+          <LoadFailure
+            message={requestsError ?? "Couldn't load your friend requests."}
+            onRetry={() => void loadRequests()}
+          />
+        )}
+        {activeTab === "requests" && requestsState === "ready" && (
+          <FriendRequestPanel
+            incoming={incomingRequests}
+            outgoing={outgoingRequests}
+            onSendRequest={handleSendFriendRequest}
+            onAccept={handleAcceptRequest}
+            onDecline={handleDeclineRequest}
+            onCancelRequest={handleCancelRequest}
+          />
         )}
       </div>
     </AppLayout>

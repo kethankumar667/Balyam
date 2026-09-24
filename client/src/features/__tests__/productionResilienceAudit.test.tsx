@@ -496,16 +496,34 @@ describe("Production UX Resilience Audit Suite", () => {
       expect(screen.queryByText("No games found")).not.toBeInTheDocument();
     });
 
-    it("renders active lounge friends in SocialHubPage", () => {
-      render(
-        <MemoryRouter>
-          <SocialHubPage />
-        </MemoryRouter>
-      );
+    it("renders the caller's real friends in SocialHubPage and none of the old invented ones", async () => {
+      mockApiFetch.mockImplementation(async (path: unknown) => ({
+        ok: true,
+        json: async () =>
+          String(path).includes("/api/social/friends/")
+            ? {
+                success: true,
+                friends: [
+                  { playerId: "p_test_123", friendPlayerId: "p_sai", displayName: "Sai Kumar", createdAt: 1 },
+                ],
+              }
+            : { success: true, incoming: [], outgoing: [] },
+      }));
 
-      expect(screen.getByText("Social Hub")).toBeInTheDocument();
-      expect(screen.getByText(/Active Friends, Presence Status & Direct Match Challenges/i)).toBeInTheDocument();
-      expect(screen.getByText("Aditi_Pro")).toBeInTheDocument();
+      try {
+        render(
+          <MemoryRouter>
+            <SocialHubPage />
+          </MemoryRouter>
+        );
+
+        expect(screen.getByText("Social Hub")).toBeInTheDocument();
+        expect(screen.getByText(/Your friends and friend requests/i)).toBeInTheDocument();
+        expect(await screen.findByText("Sai Kumar")).toBeInTheDocument();
+        expect(screen.queryByText("Aditi_Pro")).not.toBeInTheDocument();
+      } finally {
+        mockApiFetch.mockReset();
+      }
     });
   });
 
