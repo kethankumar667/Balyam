@@ -1,27 +1,44 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Users, ShieldCheck, Inbox } from "lucide-react";
+import { Users, ShieldCheck, Inbox, Ban } from "lucide-react";
 import ComingSoonGate from "../components/common/ComingSoonGate";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuthStore } from "../store/authStore";
 import { usePlayerId } from "../lib/playerIdentity";
 import FriendRequestPanel from "../features/social/FriendRequestPanel";
 import FriendsList from "../features/social/FriendsList";
+import BlockedPlayersPanel from "../features/social/BlockedPlayersPanel";
+import SharedHistoryModal from "../features/social/SharedHistoryModal";
+import { useLoadable, type LoadState } from "../features/social/useLoadable";
 import type { FriendRequest } from "@shared/social/FriendRequest";
-import type { Friend } from "@shared/social/Friend";
+import type { Friend, SharedHistory } from "@shared/social/Friend";
+import type { BlockedPlayer } from "@shared/social/Block";
 import type { PlayerPresence } from "@shared/social/Presence";
+import type { ReportReason } from "@shared/social/Report";
 import {
   getFriendRequests,
   getFriends,
+  getBlockedPlayers,
+  getSharedHistory,
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
   cancelFriendRequest,
   removeFriend,
+  blockPlayer,
+  unblockPlayer,
+  reportPlayer,
 } from "../lib/api/social";
 import { errorMessage } from "../lib/errorMessage";
 
-type LoadState = "loading" | "ready" | "error";
+type Tab = "friends" | "requests" | "blocked";
+
+interface RequestLists {
+  incoming: FriendRequest[];
+  outgoing: FriendRequest[];
+}
+
+const NO_REQUESTS: RequestLists = { incoming: [], outgoing: [] };
 
 /**
  * No presence is passed: presence today is whatever a client last asserted, and
@@ -61,76 +78,85 @@ function LoadFailure({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
+/** A loading skeleton, or the error with Retry, or — once loaded — the content. Never an empty list standing in for a failure. */
+function LoadGate({
+  state,
+  error,
+  loadingLabel,
+  onRetry,
+  children,
+}: {
+  state: LoadState;
+  error: string | null;
+  loadingLabel: string;
+  onRetry: () => void;
+  children: ReactNode;
+}) {
+  if (state === "loading") return <ListSkeleton label={loadingLabel} />;
+  if (state === "error") return <LoadFailure message={error ?? "Something went wrong."} onRetry={onRetry} />;
+  return <>{children}</>;
+}
+
 export default function SocialHubPage() {
   const { isSuperAdmin, capabilities } = useAuthStore();
   const { playerId } = usePlayerId();
-  const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [friendsState, setFriendsState] = useState<LoadState>("loading");
-  const [friendsError, setFriendsError] = useState<string | null>(null);
-  const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
-  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
-  const [requestsState, setRequestsState] = useState<LoadState>("loading");
-  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("friends");
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const friends = useLoadable<Friend[]>([], async (id) => (await getFriends(id)).friends ?? [], {
+    key: playerId,
+    loadFailed: "Couldn't load your friends.",
+    refreshFailed: "Couldn't refresh your friends list.",
+    onRefreshError: setActionError,
+  });
+
+  const requests = useLoadable<RequestLists>(
+    NO_REQUESTS,
+    async (id) => {
+      const res = await getFriendRequests(id);
+      return { incoming: res.incoming ?? [], outgoing: res.outgoing ?? [] };
+    },
+    {
+      key: playerId,
+      loadFailed: "Couldn't load your friend requests.",
+      refreshFailed: "Couldn't refresh your friend requests.",
+      onRefreshError: setActionError,
+    },
+  );
+
+  const blocked = useLoadable<BlockedPlayer[]>([], async (id) => (await getBlockedPlayers(id)).blocked ?? [], {
+    key: playerId,
+    loadFailed: "Couldn't load your blocked players.",
+    refreshFailed: "Couldn't refresh your blocked players.",
+    onRefreshError: setActionError,
+  });
+
   /**
-   * `silent` is a refresh after an action: the lists on screen stay put and a
-   * failure becomes the banner. Without it (first load, Retry) a failure takes
-   * over the tab, so an empty list is never mistaken for "nothing here".
+   * The friendship timeline of whichever friend's History button was pressed.
+   * It loads when a friend is chosen (the key is that friend) and not before,
+   * so nothing is fetched for a timeline nobody opened.
    */
-  const loadFriends = useCallback(
-    async (silent = false) => {
-      if (!playerId) return;
-      if (!silent) setFriendsState("loading");
-      try {
-        const res = await getFriends(playerId);
-        setFriends(res.friends);
-        setFriendsState("ready");
-      } catch (err: unknown) {
-        if (silent) {
-          setActionError(errorMessage(err, "Couldn't refresh your friends list."));
-          return;
-        }
-        setFriendsError(errorMessage(err, "Couldn't load your friends."));
-        setFriendsState("error");
-      }
+  const [historyFriend, setHistoryFriend] = useState<Friend | null>(null);
+  const timeline = useLoadable<SharedHistory | null>(
+    null,
+    async (friendId) => {
+      if (!playerId) throw new Error("You need to be signed in to see this.");
+      return (await getSharedHistory(playerId, friendId)).history;
     },
-    [playerId],
-  );
-
-  const loadRequests = useCallback(
-    async (silent = false) => {
-      if (!playerId) return;
-      if (!silent) setRequestsState("loading");
-      try {
-        const res = await getFriendRequests(playerId);
-        setIncomingRequests(res.incoming);
-        setOutgoingRequests(res.outgoing);
-        setRequestsState("ready");
-      } catch (err: unknown) {
-        if (silent) {
-          setActionError(errorMessage(err, "Couldn't refresh your friend requests."));
-          return;
-        }
-        setRequestsError(errorMessage(err, "Couldn't load your friend requests."));
-        setRequestsState("error");
-      }
+    {
+      key: playerId && historyFriend ? historyFriend.friendPlayerId : null,
+      loadFailed: "Couldn't load your timeline.",
+      refreshFailed: "Couldn't refresh your timeline.",
+      onRefreshError: setActionError,
     },
-    [playerId],
   );
-
-  useEffect(() => {
-    void loadFriends();
-    void loadRequests();
-  }, [loadFriends, loadRequests]);
 
   /**
    * Runs one request action. A failure is shown in the banner AND rethrown so
    * the panel can stop its own "sent!" feedback; the refresh after a success is
    * silent and never turns a completed action into a failure.
    */
-  const runAction = async (action: () => Promise<unknown>, fallback: string, alsoFriends = false) => {
+  const runRequestAction = async (action: () => Promise<unknown>, fallback: string, alsoFriends = false) => {
     setActionError(null);
     try {
       await action();
@@ -138,31 +164,51 @@ export default function SocialHubPage() {
       setActionError(errorMessage(err, fallback));
       throw err;
     }
-    await loadRequests(true);
-    if (alsoFriends) await loadFriends(true);
+    await requests.reload(true);
+    if (alsoFriends) await friends.reload(true);
   };
 
   const handleSendFriendRequest = (recipientId: string) =>
-    runAction(() => sendFriendRequest(recipientId), "Failed to send friend request", true);
+    runRequestAction(() => sendFriendRequest(recipientId), "Failed to send friend request", true);
 
   const handleAcceptRequest = (requestId: string) =>
-    runAction(() => acceptFriendRequest(requestId), "Failed to accept friend request", true);
+    runRequestAction(() => acceptFriendRequest(requestId), "Failed to accept friend request", true);
 
   const handleDeclineRequest = (requestId: string) =>
-    runAction(() => declineFriendRequest(requestId), "Failed to decline friend request");
+    runRequestAction(() => declineFriendRequest(requestId), "Failed to decline friend request");
 
   const handleCancelRequest = (requestId: string) =>
-    runAction(async () => {
+    runRequestAction(async () => {
       await cancelFriendRequest(requestId);
-      setOutgoingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      requests.setData((prev) => ({ ...prev, outgoing: prev.outgoing.filter((r) => r.id !== requestId) }));
     }, "Failed to cancel friend request");
 
   /** A rejection propagates to the confirm dialog, which shows it and stays open. */
   const handleRemoveFriend = async (friendPlayerId: string) => {
     if (!playerId) return;
     await removeFriend(playerId, friendPlayerId);
-    setFriends((prev) => prev.filter((f) => f.friendPlayerId !== friendPlayerId));
-    void loadFriends(true);
+    friends.setData((prev) => prev.filter((f) => f.friendPlayerId !== friendPlayerId));
+    void friends.reload(true);
+  };
+
+  /** Blocking also ends the friendship and any pending requests, so all three lists are refreshed. */
+  const handleBlockFriend = async (friend: Friend) => {
+    await blockPlayer(friend.friendPlayerId);
+    friends.setData((prev) => prev.filter((f) => f.friendPlayerId !== friend.friendPlayerId));
+    void friends.reload(true);
+    void requests.reload(true);
+    void blocked.reload(true);
+  };
+
+  const handleReportFriend = async (friend: Friend, reason: ReportReason) => {
+    await reportPlayer(friend.friendPlayerId, reason);
+  };
+
+  /** A rejection propagates to the panel, which keeps the row and shows why. */
+  const handleUnblock = async (targetId: string) => {
+    await unblockPlayer(targetId);
+    blocked.setData((prev) => prev.filter((p) => p.playerId !== targetId));
+    void blocked.reload(true);
   };
 
   if (!isSuperAdmin && !capabilities.unlockAllFeatures) {
@@ -184,8 +230,10 @@ export default function SocialHubPage() {
     );
   }
 
-  const requestCount = incomingRequests.length + outgoingRequests.length;
-  const tabClass = (tab: "friends" | "requests") =>
+  /** The count appears only once its list has loaded — never a made-up 0. */
+  const countOf = (state: LoadState, n: number) => (state === "ready" ? ` (${n})` : "");
+  const requestCount = requests.data.incoming.length + requests.data.outgoing.length;
+  const tabClass = (tab: Tab) =>
     `min-h-[44px] px-4 py-2.5 rounded-xl transition flex items-center gap-2 ${
       activeTab === tab
         ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
@@ -234,20 +282,24 @@ export default function SocialHubPage() {
               Social Hub & Player Network
             </h1>
             <p className="text-xs sm:text-sm text-[var(--chrome-ink-soft)] mt-1">
-              Your friends and friend requests
+              Your friends, friend requests and blocked players
             </p>
           </div>
         </div>
 
         {/* Navigation Category Tabs */}
-        <div className="flex items-center gap-2 border-b border-[var(--chrome-border)] pb-3 text-xs font-bold font-mono">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--chrome-border)] pb-3 text-xs font-bold font-mono">
           <button type="button" onClick={() => setActiveTab("friends")} className={tabClass("friends")}>
             <Users className="w-4 h-4" />
-            Friends{friendsState === "ready" ? ` (${friends.length})` : ""}
+            Friends{countOf(friends.state, friends.data.length)}
           </button>
           <button type="button" onClick={() => setActiveTab("requests")} className={tabClass("requests")}>
             <Inbox className="w-4 h-4" />
-            Requests{requestsState === "ready" ? ` (${requestCount})` : ""}
+            Requests{countOf(requests.state, requestCount)}
+          </button>
+          <button type="button" onClick={() => setActiveTab("blocked")} className={tabClass("blocked")}>
+            <Ban className="w-4 h-4" />
+            Blocked{countOf(blocked.state, blocked.data.length)}
           </button>
         </div>
 
@@ -269,38 +321,62 @@ export default function SocialHubPage() {
         )}
 
         {/* Tab Content */}
-        {activeTab === "friends" && friendsState === "loading" && <ListSkeleton label="Loading your friends" />}
-        {activeTab === "friends" && friendsState === "error" && (
-          <LoadFailure message={friendsError ?? "Couldn't load your friends."} onRetry={() => void loadFriends()} />
-        )}
-        {activeTab === "friends" && friendsState === "ready" && (
-          <FriendsList
-            friends={friends}
-            presences={NO_PRESENCE}
-            onRemoveFriend={handleRemoveFriend}
-            onOpenInviteModal={() => setActiveTab("requests")}
-          />
+        {activeTab === "friends" && (
+          <LoadGate
+            state={friends.state}
+            error={friends.error}
+            loadingLabel="Loading your friends"
+            onRetry={() => void friends.reload()}
+          >
+            <FriendsList
+              friends={friends.data}
+              presences={NO_PRESENCE}
+              onRemoveFriend={handleRemoveFriend}
+              onBlockFriend={handleBlockFriend}
+              onReportFriend={handleReportFriend}
+              onViewHistory={setHistoryFriend}
+              onOpenInviteModal={() => setActiveTab("requests")}
+            />
+          </LoadGate>
         )}
 
-        {activeTab === "requests" && requestsState === "loading" && (
-          <ListSkeleton label="Loading your friend requests" />
+        {activeTab === "requests" && (
+          <LoadGate
+            state={requests.state}
+            error={requests.error}
+            loadingLabel="Loading your friend requests"
+            onRetry={() => void requests.reload()}
+          >
+            <FriendRequestPanel
+              incoming={requests.data.incoming}
+              outgoing={requests.data.outgoing}
+              onSendRequest={handleSendFriendRequest}
+              onAccept={handleAcceptRequest}
+              onDecline={handleDeclineRequest}
+              onCancelRequest={handleCancelRequest}
+            />
+          </LoadGate>
         )}
-        {activeTab === "requests" && requestsState === "error" && (
-          <LoadFailure
-            message={requestsError ?? "Couldn't load your friend requests."}
-            onRetry={() => void loadRequests()}
-          />
+
+        {activeTab === "blocked" && (
+          <LoadGate
+            state={blocked.state}
+            error={blocked.error}
+            loadingLabel="Loading your blocked players"
+            onRetry={() => void blocked.reload()}
+          >
+            <BlockedPlayersPanel blocked={blocked.data} onUnblock={handleUnblock} />
+          </LoadGate>
         )}
-        {activeTab === "requests" && requestsState === "ready" && (
-          <FriendRequestPanel
-            incoming={incomingRequests}
-            outgoing={outgoingRequests}
-            onSendRequest={handleSendFriendRequest}
-            onAccept={handleAcceptRequest}
-            onDecline={handleDeclineRequest}
-            onCancelRequest={handleCancelRequest}
-          />
-        )}
+
+        <SharedHistoryModal
+          friend={historyFriend}
+          history={timeline.data}
+          state={timeline.state}
+          error={timeline.error}
+          onRetry={() => void timeline.reload()}
+          onClose={() => setHistoryFriend(null)}
+        />
       </div>
     </AppLayout>
   );

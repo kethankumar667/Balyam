@@ -389,6 +389,159 @@ function contractSuite(name: string, make: () => Promise<ProgressionRepository>)
       expect(await repo.listFriends(PLAYER)).toHaveLength(0);
     });
 
+    /* ── blocks & reports ── */
+
+    it("adds a block once, refuses a self-block, lists it, and removes it", async () => {
+      const block = { blockerId: PLAYER, blockedId: OTHER, createdAt: Date.now() };
+      expect((await repo.addBlock(block)).applied).toBe(true);
+      expect((await repo.addBlock(block)).applied).toBe(false);
+      expect((await repo.addBlock({ ...block, blockedId: PLAYER })).applied).toBe(false);
+
+      const mine = (await repo.listAllBlocks()).filter((b) => b.blockerId === PLAYER);
+      expect(mine).toHaveLength(1);
+      expect(mine[0].blockedId).toBe(OTHER);
+
+      expect(await repo.removeBlock(PLAYER, OTHER)).toBe(true);
+      expect((await repo.listAllBlocks()).filter((b) => b.blockerId === PLAYER)).toHaveLength(0);
+    });
+
+    it("keeps a block directional: removing the reverse pair removes nothing", async () => {
+      await repo.addBlock({ blockerId: PLAYER, blockedId: OTHER, createdAt: Date.now() });
+
+      await repo.removeBlock(OTHER, PLAYER);
+
+      expect((await repo.listAllBlocks()).filter((b) => b.blockerId === PLAYER)).toHaveLength(1);
+      await repo.removeBlock(PLAYER, OTHER);
+    });
+
+    it("stores a report, lists it for its reporter, and prunes only the old ones", async () => {
+      const now = Date.now();
+      const old = { id: freshId("rep"), reporterId: PLAYER, reportedId: OTHER, reason: "SPAM", createdAt: now - 400 * 86_400_000 };
+      const recent = { id: freshId("rep"), reporterId: PLAYER, reportedId: OTHER, reason: "CHEATING", createdAt: now };
+      await repo.saveReport(old);
+      await repo.saveReport(recent);
+
+      expect(await repo.listReportsBy(PLAYER)).toHaveLength(2);
+
+      const removed = await repo.pruneReportsBefore(now - 365 * 86_400_000);
+
+      expect(removed).toBeGreaterThanOrEqual(1);
+      const left = await repo.listReportsBy(PLAYER);
+      expect(left.map((r) => r.id)).toEqual([recent.id]);
+    });
+
+    /* ── friendship history ── */
+
+    /** The pair the tables store: the smaller id first. */
+    const orderedPlayers = (): [string, string] => (PLAYER < OTHER ? [PLAYER, OTHER] : [OTHER, PLAYER]);
+
+    it("claims a match once — true the first time, false for every repeat", async () => {
+      const matchId = freshId("m");
+
+      expect(await repo.claimFriendshipMatch(matchId)).toBe(true);
+      expect(await repo.claimFriendshipMatch(matchId)).toBe(false);
+    });
+
+    it("lets exactly one of several simultaneous claims win", async () => {
+      const matchId = freshId("m");
+
+      const results = await Promise.all(Array.from({ length: 8 }, () => repo.claimFriendshipMatch(matchId)));
+
+      expect(results.filter(Boolean)).toHaveLength(1);
+    });
+
+    it("round-trips a pair, overwrites it on save, and reports null for a pair it has not seen", async () => {
+      const [low, high] = orderedPlayers();
+      expect(await repo.getFriendshipPair(low, high)).toBeNull();
+
+      const first = {
+        playerLow: low,
+        playerHigh: high,
+        matchesTogether: 3,
+        winsTogether: 1,
+        tournamentsTogether: 0,
+        firstMatchAt: 1_700_000_000_000,
+        lastMatchAt: 1_700_000_100_000,
+        currentDailyStreak: 2,
+        bestDailyStreak: 5,
+        streakLastDay: "2026-03-11",
+      };
+      await repo.saveFriendshipPair(first);
+      expect(await repo.getFriendshipPair(low, high)).toEqual(first);
+
+      await repo.saveFriendshipPair({ ...first, matchesTogether: 4, currentDailyStreak: 3 });
+      const after = await repo.getFriendshipPair(low, high);
+      expect(after?.matchesTogether).toBe(4);
+      expect(after?.currentDailyStreak).toBe(3);
+    });
+
+    it("keeps null dates null", async () => {
+      const [low, high] = orderedPlayers();
+      const empty = {
+        playerLow: low,
+        playerHigh: high,
+        matchesTogether: 0,
+        winsTogether: 0,
+        tournamentsTogether: 0,
+        firstMatchAt: null,
+        lastMatchAt: null,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        streakLastDay: null,
+      };
+
+      await repo.saveFriendshipPair(empty);
+
+      expect(await repo.getFriendshipPair(low, high)).toEqual(empty);
+    });
+
+    it("refuses a pair whose ids are out of order", async () => {
+      const [low, high] = orderedPlayers();
+      const swapped = {
+        playerLow: high,
+        playerHigh: low,
+        matchesTogether: 1,
+        winsTogether: 0,
+        tournamentsTogether: 0,
+        firstMatchAt: null,
+        lastMatchAt: null,
+        currentDailyStreak: 0,
+        bestDailyStreak: 0,
+        streakLastDay: null,
+      };
+
+      await expect(repo.saveFriendshipPair(swapped)).rejects.toThrow();
+    });
+
+    it("adds each milestone kind once and lists them oldest first", async () => {
+      const [low, high] = orderedPlayers();
+      const at = 1_700_000_000_000;
+
+      await repo.addFriendshipMilestones([
+        { playerLow: low, playerHigh: high, kind: "MATCHES_10", reachedAt: at + 5000, matchId: "m_b" },
+        { playerLow: low, playerHigh: high, kind: "FIRST_MATCH", reachedAt: at, matchId: "m_a" },
+      ]);
+      // A repeat of a kind is left as it was, not overwritten.
+      await repo.addFriendshipMilestones([
+        { playerLow: low, playerHigh: high, kind: "FIRST_MATCH", reachedAt: at + 99_999, matchId: "m_other" },
+      ]);
+
+      const list = await repo.listFriendshipMilestones(low, high);
+      expect(list.map((m) => m.kind)).toEqual(["FIRST_MATCH", "MATCHES_10"]);
+      expect(list[0]).toMatchObject({ reachedAt: at, matchId: "m_a" });
+    });
+
+    it("stores a milestone with no match, as FRIENDS_SINCE has none", async () => {
+      const [low, high] = orderedPlayers();
+
+      await repo.addFriendshipMilestones([
+        { playerLow: low, playerHigh: high, kind: "FRIENDS_SINCE", reachedAt: 1_700_000_000_000, matchId: null },
+      ]);
+
+      const list = await repo.listFriendshipMilestones(low, high);
+      expect(list[0].matchId).toBeNull();
+    });
+
     /* ── concurrency ── */
 
     it("awards a concurrent reward exactly once", async () => {

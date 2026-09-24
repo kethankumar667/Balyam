@@ -7,6 +7,7 @@ import { seasonService } from "../seasons/SeasonService.js";
 import { friendsService } from "../social/FriendsService.js";
 import { recentPlayersService } from "../ranking/RecentPlayersService.js";
 import { friendRequestsService } from "../social/FriendRequestsService.js";
+import { blockRegistry } from "../social/BlockRegistry.js";
 import { partyService } from "../party/PartyService.js";
 import { SeasonEngine } from "../seasons/SeasonEngine.js";
 import type { GameKind } from "@shared/types.js";
@@ -46,6 +47,7 @@ export interface HydrationReport {
   seasonClaims: number;
   friends: number;
   friendRequests: number;
+  blocks: number;
   parties: number;
   invitations: number;
   durationMs: number;
@@ -69,6 +71,7 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     seasonClaims: 0,
     friends: 0,
     friendRequests: 0,
+    blocks: 0,
     parties: 0,
     invitations: 0,
     durationMs: 0,
@@ -225,6 +228,10 @@ export async function hydrateProgression(): Promise<HydrationReport> {
     friendEdges.map((f) => ({ playerId: f.playerId, friendPlayerId: f.friendPlayerId })),
   );
   friendRequestsService.hydrate(requests);
+  // Blocks are loaded before the server accepts a single request, so no request
+  // can be served against a block list that has not been read yet.
+  const blocks = await repo.listAllBlocks();
+  blockRegistry.hydrate(blocks);
   partyService.hydrate(
     parties.map((p) => ({
       id: p.id,
@@ -254,6 +261,7 @@ export async function hydrateProgression(): Promise<HydrationReport> {
   report.seasonClaims = seasonClaims.length;
   report.friends = friendEdges.length;
   report.friendRequests = requests.length;
+  report.blocks = blocks.length;
   report.parties = parties.length;
   report.invitations = invitations.length;
   report.durationMs = Date.now() - started;
