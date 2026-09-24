@@ -2,11 +2,8 @@ import { PostgrestClient, type PostgrestConfig } from "./postgrest.js";
 import type {
   Applied,
   AchievementUnlock,
-  BlockRecord,
   ChallengeClaimRecord,
   FriendEdge,
-  FriendshipMilestoneRecord,
-  FriendshipPairRecord,
   FriendRequestRecord,
   IdentityRecord,
   MatchPage,
@@ -17,7 +14,6 @@ import type {
   PartyRecord,
   ProfileRecord,
   ProgressionRepository,
-  ReportRecord,
   RewardAuditRecord,
   SeasonClaimRecord,
   SeasonSnapshotRecord,
@@ -50,32 +46,6 @@ import type {
 
 const ms = (iso: string | null | undefined): number => (iso ? Date.parse(iso) : 0);
 const iso = (epochMs: number): string => new Date(epochMs).toISOString();
-
-interface FriendshipPairRow {
-  player_low: string;
-  player_high: string;
-  matches_together: number;
-  wins_together: number;
-  tournaments_together: number;
-  first_match_at: string | null;
-  last_match_at: string | null;
-  current_daily_streak: number;
-  best_daily_streak: number;
-  streak_last_day: string | null;
-}
-
-const toFriendshipPair = (r: FriendshipPairRow): FriendshipPairRecord => ({
-  playerLow: r.player_low,
-  playerHigh: r.player_high,
-  matchesTogether: r.matches_together,
-  winsTogether: r.wins_together,
-  tournamentsTogether: r.tournaments_together,
-  firstMatchAt: r.first_match_at === null ? null : ms(r.first_match_at),
-  lastMatchAt: r.last_match_at === null ? null : ms(r.last_match_at),
-  currentDailyStreak: r.current_daily_streak,
-  bestDailyStreak: r.best_daily_streak,
-  streakLastDay: r.streak_last_day,
-});
 
 export class SupabaseProgressionRepository implements ProgressionRepository {
   readonly kind = "supabase" as const;
@@ -414,161 +384,6 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       `or=(sender_id.eq.${p},recipient_id.eq.${p})&order=created_at.desc`,
     );
     return rows.map(SupabaseProgressionRepository.toRequest);
-  }
-
-  /* ── blocks & reports ── */
-
-  async addBlock(record: BlockRecord): Promise<Applied> {
-    // The table also refuses this (`player_blocks_no_self`); asking is cheaper than the round trip.
-    if (record.blockerId === record.blockedId) return { applied: false };
-    const written = await this.db.insertIgnoringDuplicates(
-      "player_blocks",
-      [
-        {
-          blocker_id: record.blockerId,
-          blocked_id: record.blockedId,
-          created_at: iso(record.createdAt),
-        },
-      ],
-      "blocker_id,blocked_id",
-    );
-    return { applied: written.length > 0 };
-  }
-
-  async removeBlock(blockerId: string, blockedId: string): Promise<boolean> {
-    await this.db.delete(
-      "player_blocks",
-      `blocker_id=eq.${encodeURIComponent(blockerId)}&blocked_id=eq.${encodeURIComponent(blockedId)}`,
-    );
-    return true;
-  }
-
-  async listAllBlocks(): Promise<BlockRecord[]> {
-    // PostgREST caps a single response, so a boot-time read of the whole table pages through it.
-    const pageSize = 1000;
-    const all: BlockRecord[] = [];
-    for (let offset = 0; ; offset += pageSize) {
-      const rows = await this.db.select<{ blocker_id: string; blocked_id: string; created_at: string }>(
-        "player_blocks",
-        `order=created_at.asc,blocker_id.asc,blocked_id.asc&limit=${pageSize}&offset=${offset}`,
-      );
-      for (const r of rows) {
-        all.push({ blockerId: r.blocker_id, blockedId: r.blocked_id, createdAt: ms(r.created_at) });
-      }
-      if (rows.length < pageSize) return all;
-    }
-  }
-
-  async saveReport(record: ReportRecord): Promise<void> {
-    await this.db.insert("player_reports", [
-      {
-        id: record.id,
-        reporter_id: record.reporterId,
-        reported_id: record.reportedId,
-        reason: record.reason,
-        created_at: iso(record.createdAt),
-      },
-    ]);
-  }
-
-  async listReportsBy(reporterId: string): Promise<ReportRecord[]> {
-    const rows = await this.db.select<{
-      id: string;
-      reporter_id: string;
-      reported_id: string;
-      reason: string;
-      created_at: string;
-    }>("player_reports", `reporter_id=eq.${encodeURIComponent(reporterId)}&order=created_at.desc&limit=100`);
-    return rows.map((r) => ({
-      id: r.id,
-      reporterId: r.reporter_id,
-      reportedId: r.reported_id,
-      reason: r.reason,
-      createdAt: ms(r.created_at),
-    }));
-  }
-
-  async pruneReportsBefore(cutoffMs: number): Promise<number> {
-    const query = `created_at=lt.${encodeURIComponent(iso(cutoffMs))}`;
-    const count = await this.db.count("player_reports", query);
-    if (count > 0) await this.db.delete("player_reports", query);
-    return count;
-  }
-
-  /* ── friendship history ── */
-
-  async claimFriendshipMatch(matchId: string): Promise<boolean> {
-    // The primary key is the arbiter: a repeat writes nothing and comes back empty.
-    const written = await this.db.insertIgnoringDuplicates(
-      "friendship_processed_matches",
-      [{ match_id: matchId }],
-      "match_id",
-    );
-    return written.length > 0;
-  }
-
-  async getFriendshipPair(playerLow: string, playerHigh: string): Promise<FriendshipPairRecord | null> {
-    const rows = await this.db.select<FriendshipPairRow>(
-      "friendship_pairs",
-      `player_low=eq.${encodeURIComponent(playerLow)}&player_high=eq.${encodeURIComponent(playerHigh)}&limit=1`,
-    );
-    return rows[0] ? toFriendshipPair(rows[0]) : null;
-  }
-
-  async saveFriendshipPair(record: FriendshipPairRecord): Promise<void> {
-    await this.db.upsert(
-      "friendship_pairs",
-      [
-        {
-          player_low: record.playerLow,
-          player_high: record.playerHigh,
-          matches_together: record.matchesTogether,
-          wins_together: record.winsTogether,
-          tournaments_together: record.tournamentsTogether,
-          first_match_at: record.firstMatchAt === null ? null : iso(record.firstMatchAt),
-          last_match_at: record.lastMatchAt === null ? null : iso(record.lastMatchAt),
-          current_daily_streak: record.currentDailyStreak,
-          best_daily_streak: record.bestDailyStreak,
-          streak_last_day: record.streakLastDay,
-        },
-      ],
-      "player_low,player_high",
-    );
-  }
-
-  async listFriendshipMilestones(playerLow: string, playerHigh: string): Promise<FriendshipMilestoneRecord[]> {
-    const rows = await this.db.select<{
-      player_low: string;
-      player_high: string;
-      kind: string;
-      reached_at: string;
-      match_id: string | null;
-    }>(
-      "friendship_milestones",
-      `player_low=eq.${encodeURIComponent(playerLow)}&player_high=eq.${encodeURIComponent(playerHigh)}&order=reached_at.asc`,
-    );
-    return rows.map((r) => ({
-      playerLow: r.player_low,
-      playerHigh: r.player_high,
-      kind: r.kind,
-      reachedAt: ms(r.reached_at),
-      matchId: r.match_id,
-    }));
-  }
-
-  async addFriendshipMilestones(records: FriendshipMilestoneRecord[]): Promise<void> {
-    if (records.length === 0) return;
-    await this.db.insertIgnoringDuplicates(
-      "friendship_milestones",
-      records.map((r) => ({
-        player_low: r.playerLow,
-        player_high: r.playerHigh,
-        kind: r.kind,
-        reached_at: iso(r.reachedAt),
-        match_id: r.matchId,
-      })),
-      "player_low,player_high,kind",
-    );
   }
 
   /* ── parties ── */

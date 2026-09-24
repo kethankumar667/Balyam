@@ -1,16 +1,6 @@
-import { nanoid } from "nanoid";
 import type { FriendRequest } from "@shared/social/FriendRequest.js";
 import { friendsService } from "./FriendsService.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
-import { blockRegistry } from "./BlockRegistry.js";
-import { friendshipHistoryService } from "./FriendshipHistoryService.js";
-import { UNABLE_TO_SEND_REQUEST } from "./refusals.js";
-import {
-  FRIEND_REQUEST_TTL_MS,
-  FRIEND_REQUEST_DECLINE_COOLDOWN_MS,
-  MAX_PENDING_OUTGOING_REQUESTS,
-  MAX_FRIENDS_PER_PLAYER,
-} from "./limits.js";
 
 export class FriendRequestsService {
   private static instance: FriendRequestsService;
@@ -25,22 +15,6 @@ export class FriendRequestsService {
     return FriendRequestsService.instance;
   }
 
-  private isExpired(req: FriendRequest, now = Date.now()): boolean {
-    return now - req.createdAt > FRIEND_REQUEST_TTL_MS;
-  }
-
-  /**
-   * Every request the service hands out, and every one it hands to the
-   * persistence queue, is a copy of the stored one.
-   *
-   * Returning the stored object let a caller change a request's status by
-   * assigning to it, and the queue reads its argument only when it runs — so
-   * a later change could rewrite what an earlier save persisted.
-   */
-  private snapshot(request: FriendRequest): FriendRequest {
-    return { ...request };
-  }
-
   public sendRequest(
     senderId: string,
     senderName: string,
@@ -51,86 +25,22 @@ export class FriendRequestsService {
       throw new Error("Cannot send friend request to yourself");
     }
 
-    // Here, in the service, so EVERY route that creates a request is covered —
-    // there are two, and a check written in one route was missing from the other.
-    // Either direction, and the same words as any other refusal on this path.
-    if (blockRegistry.isBlockedEitherWay(senderId, recipientId)) {
-      throw new Error(UNABLE_TO_SEND_REQUEST);
-    }
-
     if (friendsService.isFriend(senderId, recipientId)) {
       throw new Error("Already friends with this player");
     }
 
-    if (friendsService.getFriends(senderId).length >= MAX_FRIENDS_PER_PLAYER) {
-      throw new Error("Friend limit reached");
-    }
-
-    if (friendsService.getFriends(recipientId).length >= MAX_FRIENDS_PER_PLAYER) {
-      throw new Error(UNABLE_TO_SEND_REQUEST);
-    }
-
-    const now = Date.now();
-
-    // 7-day re-request cooldown after recipient declined (R3.5)
+    // Check existing pending request
     for (const req of this.requests.values()) {
       if (
         req.senderId === senderId &&
         req.recipientId === recipientId &&
-        req.status === "DECLINED"
+        req.status === "PENDING"
       ) {
-        const declinedAt = req.updatedAt ?? req.createdAt;
-        if (now - declinedAt < FRIEND_REQUEST_DECLINE_COOLDOWN_MS) {
-          throw new Error(UNABLE_TO_SEND_REQUEST);
-        }
+        return req;
       }
     }
 
-    // Expire any pending request in either direction between this pair before proceeding (F2)
-    for (const req of this.requests.values()) {
-      if (
-        ((req.senderId === senderId && req.recipientId === recipientId) ||
-          (req.senderId === recipientId && req.recipientId === senderId)) &&
-        req.status === "PENDING" &&
-        this.isExpired(req, now)
-      ) {
-        req.status = "EXPIRED";
-        req.updatedAt = now;
-        progressionSync.friendRequestSaved(this.snapshot(req));
-      }
-    }
-
-    // Mutual request (D5): if recipient has an active pending request to sender, auto-accept it
-    for (const req of this.requests.values()) {
-      if (
-        req.senderId === recipientId &&
-        req.recipientId === senderId &&
-        req.status === "PENDING" &&
-        !this.isExpired(req, now)
-      ) {
-        return this.acceptRequest(req.id, senderName, senderAvatar);
-      }
-    }
-
-    // Check existing pending request in the same direction
-    for (const req of this.requests.values()) {
-      if (
-        req.senderId === senderId &&
-        req.recipientId === recipientId &&
-        req.status === "PENDING" &&
-        !this.isExpired(req, now)
-      ) {
-        return this.snapshot(req);
-      }
-    }
-
-    // Enforce max pending outgoing requests (R5.2)
-    const activeOutgoing = this.getOutgoingRequests(senderId);
-    if (activeOutgoing.length >= MAX_PENDING_OUTGOING_REQUESTS) {
-      throw new Error("Maximum pending outgoing friend requests limit reached");
-    }
-
-    const id = `req_${nanoid()}`;
+    const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const request: FriendRequest = {
       id,
       senderId,
@@ -138,12 +48,12 @@ export class FriendRequestsService {
       senderAvatar,
       recipientId,
       status: "PENDING",
-      createdAt: now,
+      createdAt: Date.now(),
     };
 
     this.requests.set(id, request);
-    progressionSync.friendRequestSaved(this.snapshot(request));
-    return this.snapshot(request);
+    progressionSync.friendRequestSaved(request);
+    return request;
   }
 
   /**
@@ -156,8 +66,7 @@ export class FriendRequestsService {
    * request object, and the boundary stays in one visible place.
    */
   public getRequest(requestId: string): FriendRequest | undefined {
-    const request = this.requests.get(requestId);
-    return request ? this.snapshot(request) : undefined;
+    return this.requests.get(requestId);
   }
 
   public acceptRequest(
@@ -168,16 +77,10 @@ export class FriendRequestsService {
     const request = this.requests.get(requestId);
     if (!request) throw new Error("Friend request not found");
     if (request.status !== "PENDING") throw new Error("Friend request is not pending");
-    if (this.isExpired(request)) throw new Error("Friend request has expired");
-    // Blocking resolves every pending request between the pair, so one should not
-    // exist here. If one does, a friendship must still not be made out of it.
-    if (blockRegistry.isBlockedEitherWay(request.senderId, request.recipientId)) {
-      throw new Error("Friend request is not pending");
-    }
 
     request.status = "ACCEPTED";
     request.updatedAt = Date.now();
-    progressionSync.friendRequestSaved(this.snapshot(request));
+    progressionSync.friendRequestSaved(request);
 
     // Establish bidirectional friendship
     friendsService.addFriend(
@@ -193,71 +96,30 @@ export class FriendRequestsService {
       recipientAvatar
     );
 
-    // The moment they became friends is the first line of their timeline.
-    // Fire-and-forget: recording it never rejects and must not delay accepting.
-    void friendshipHistoryService.recordFriendsSince(request.senderId, request.recipientId);
-
-    return this.snapshot(request);
+    return request;
   }
 
   public declineRequest(requestId: string): FriendRequest {
     const request = this.requests.get(requestId);
     if (!request) throw new Error("Friend request not found");
     if (request.status !== "PENDING") throw new Error("Friend request is not pending");
-    if (this.isExpired(request)) throw new Error("Friend request has expired");
 
     request.status = "DECLINED";
     request.updatedAt = Date.now();
-    progressionSync.friendRequestSaved(this.snapshot(request));
-    return this.snapshot(request);
-  }
-
-  public cancelRequest(requestId: string): FriendRequest {
-    const request = this.requests.get(requestId);
-    if (!request) throw new Error("Friend request not found");
-    if (request.status !== "PENDING") throw new Error("Friend request is not pending");
-    if (this.isExpired(request)) throw new Error("Friend request has expired");
-
-    request.status = "CANCELLED";
-    request.updatedAt = Date.now();
-    progressionSync.friendRequestSaved(this.snapshot(request));
-    return this.snapshot(request);
-  }
-
-  /**
-   * Ends every pending request between a blocker and the person they blocked.
-   *
-   * What the OTHER player sees is the point: a request the blocker had sent
-   * becomes "cancelled" and one they had received becomes "declined". Both are
-   * ordinary ways a request goes away, so neither tells the blocked player why.
-   * Returns how many were resolved. Safe to repeat.
-   */
-  public resolvePendingBetween(blockerId: string, otherId: string): number {
-    let resolved = 0;
-    for (const request of this.requests.values()) {
-      if (request.status !== "PENDING") continue;
-      const sentByBlocker = request.senderId === blockerId && request.recipientId === otherId;
-      const sentToBlocker = request.senderId === otherId && request.recipientId === blockerId;
-      if (!sentByBlocker && !sentToBlocker) continue;
-
-      request.status = sentByBlocker ? "CANCELLED" : "DECLINED";
-      request.updatedAt = Date.now();
-      progressionSync.friendRequestSaved(this.snapshot(request));
-      resolved += 1;
-    }
-    return resolved;
+    progressionSync.friendRequestSaved(request);
+    return request;
   }
 
   public getIncomingRequests(playerId: string): FriendRequest[] {
-    return Array.from(this.requests.values())
-      .filter((r) => r.recipientId === playerId && r.status === "PENDING" && !this.isExpired(r))
-      .map((r) => this.snapshot(r));
+    return Array.from(this.requests.values()).filter(
+      (r) => r.recipientId === playerId && r.status === "PENDING"
+    );
   }
 
   public getOutgoingRequests(playerId: string): FriendRequest[] {
-    return Array.from(this.requests.values())
-      .filter((r) => r.senderId === playerId && r.status === "PENDING" && !this.isExpired(r))
-      .map((r) => this.snapshot(r));
+    return Array.from(this.requests.values()).filter(
+      (r) => r.senderId === playerId && r.status === "PENDING"
+    );
   }
 
   /**
@@ -268,7 +130,7 @@ export class FriendRequestsService {
    * time, re-establishing a friendship somebody had already undone.
    */
   public hydrate(requests: FriendRequest[]): void {
-    for (const request of requests) this.requests.set(request.id, { ...request });
+    for (const request of requests) this.requests.set(request.id, request);
   }
 
   public clear(): void {

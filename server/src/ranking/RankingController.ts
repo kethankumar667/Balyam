@@ -6,9 +6,6 @@ import { recentPlayersService } from "./RecentPlayersService.js";
 import { XPEngine } from "./XPEngine.js";
 import { scorecardService } from "../profile/ScorecardService.js";
 import { profileService } from "../profile/ProfileService.js";
-import { friendRequestsService } from "../social/FriendRequestsService.js";
-import { friendRequestSendLimiters } from "../social/requestLimiters.js";
-import { presentationFor } from "../social/callerPresentation.js";
 import type { AllGameSlug } from "@shared/profile/Scorecard.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
 import type { GameKind } from "@shared/types.js";
@@ -121,33 +118,15 @@ rankingRouter.get("/friends/:playerId", requireSelfParam(), (req: Request, res: 
   res.json({ friends: recentPlayersService.getFriends(callerId(req)) });
 });
 
-/**
- * PRIVATE — send a friend request to someone (preserves consent).
- *
- * Shares the send limits with `POST /api/social/requests/send`: this route
- * reaches the same service, so without the same buckets it was a way around them.
- */
-rankingRouter.post(
-  "/friends/:playerId",
-  requireSelfParam(),
-  ...friendRequestSendLimiters,
-  (req: Request, res: Response) => {
-    const { friendId } = req.body ?? {};
-    if (!friendId || typeof friendId !== "string") {
-      res.status(400).json({ error: "Missing or invalid friendId" });
-      return;
-    }
-    const caller = callerId(req);
-    const { displayName, avatar } = presentationFor(caller);
-
-    try {
-      const request = friendRequestsService.sendRequest(caller, displayName, friendId, avatar);
-      res.json({ success: true, request });
-    } catch (err) {
-      res.status(400).json({ error: (err as Error).message });
-    }
-  },
-);
+/** PRIVATE — add a friend to YOUR list. */
+rankingRouter.post("/friends/:playerId", requireSelfParam(), (req: Request, res: Response) => {
+  const { friendId } = req.body ?? {};
+  if (!friendId || typeof friendId !== "string") {
+    res.status(400).json({ error: "Missing or invalid friendId" });
+    return;
+  }
+  res.json({ success: recentPlayersService.addFriend(callerId(req), friendId) });
+});
 
 /** PRIVATE — remove one from YOUR list. */
 rankingRouter.delete(

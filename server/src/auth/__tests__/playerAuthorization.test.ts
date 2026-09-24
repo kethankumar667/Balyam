@@ -272,18 +272,7 @@ describe("P0-2 — user A acting on user B", () => {
     expect(res.status).toBe(403);
   });
 
-  it("does not let one of the two read their history unless they are friends", async () => {
-    // Being a participant is not enough any more: the history is only shown
-    // between friends (see sharedHistoryRoute.test.ts for the full rules).
-    const res = await server.request(`/api/social/shared-history/${ALICE}/${BOB}`, {
-      token: mintToken(ALICE),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("lets either friend read their own head-to-head history", async () => {
-    friendsService.addFriend(ALICE, BOB, "Bob");
-    friendsService.addFriend(BOB, ALICE, "Alice");
+  it("lets either participant read their own head-to-head history", async () => {
     for (const who of [ALICE, BOB]) {
       const res = await server.request(`/api/social/shared-history/${ALICE}/${BOB}`, {
         token: mintToken(who),

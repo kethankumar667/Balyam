@@ -8,13 +8,6 @@ import {
   requireParticipantParams,
   callerId,
 } from "../auth/identity.js";
-import { rateLimitByCaller } from "../lib/httpRateLimiter.js";
-import { CANCEL_REQUEST_MINUTE_BURST } from "./limits.js";
-import { friendRequestSendLimiters } from "./requestLimiters.js";
-import { presentationFor } from "./callerPresentation.js";
-import { blockRegistry } from "./BlockRegistry.js";
-import { friendshipHistoryService } from "./FriendshipHistoryService.js";
-import { logger } from "../lib/logger.js";
 
 /**
  * Friends, requests and presence.
@@ -62,31 +55,29 @@ router.get("/requests/:playerId", requireSelfParam(), (req: Request, res: Respon
 /**
  * PRIVATE — send a request.
  *
- * The sender is the caller, full stop. The name and avatar the recipient sees
- * are the caller's stored profile, not anything in the body: a body value is
- * stored and shown on another player's screen, so it is ignored (see
- * `presentationFor`). The send limits are shared with the ranking route.
+ * The sender is the caller, full stop. `senderName` and `senderAvatar` stay in
+ * the body because they are how the caller chooses to present themselves, and
+ * misrepresenting your own display name is a moderation question rather than
+ * an authorization one.
  */
-router.post(
-  "/requests/send",
-  requireIdentity,
-  ...friendRequestSendLimiters,
-  (req: Request, res: Response) => {
-    const { recipientId } = req.body ?? {};
-    if (!recipientId || typeof recipientId !== "string") {
-      res.status(400).json({ success: false, error: "Missing recipientId" });
-      return;
-    }
-    try {
-      const me = callerId(req);
-      const { displayName, avatar } = presentationFor(me);
-      const request = friendRequestsService.sendRequest(me, displayName, recipientId, avatar);
-      res.json({ success: true, request });
-    } catch (err) {
-      res.status(400).json({ success: false, error: (err as Error).message });
-    }
-  },
-);
+router.post("/requests/send", requireIdentity, (req: Request, res: Response) => {
+  const { senderName, recipientId, senderAvatar } = req.body ?? {};
+  if (!recipientId || typeof recipientId !== "string") {
+    res.status(400).json({ success: false, error: "Missing recipientId" });
+    return;
+  }
+  try {
+    const request = friendRequestsService.sendRequest(
+      callerId(req),
+      typeof senderName === "string" ? senderName : "Player",
+      recipientId,
+      senderAvatar,
+    );
+    res.json({ success: true, request });
+  } catch (err) {
+    res.status(400).json({ success: false, error: (err as Error).message });
+  }
+});
 
 /**
  * PRIVATE — accept a request addressed to you.
@@ -108,13 +99,15 @@ router.post("/requests/:requestId/accept", requireIdentity, (req: Request, res: 
     return;
   }
 
-  // The accepter's name and avatar land on the SENDER's friends list, so they
-  // come from the accepter's stored profile, not from the body.
-  const { displayName, avatar } = presentationFor(callerId(req));
+  const { recipientName, recipientAvatar } = req.body ?? {};
   try {
     res.json({
       success: true,
-      request: friendRequestsService.acceptRequest(req.params.requestId, displayName, avatar),
+      request: friendRequestsService.acceptRequest(
+        req.params.requestId,
+        typeof recipientName === "string" ? recipientName : "Player",
+        recipientAvatar,
+      ),
     });
   } catch (err) {
     res.status(400).json({ success: false, error: (err as Error).message });
@@ -144,38 +137,6 @@ router.post("/requests/:requestId/decline", requireIdentity, (req: Request, res:
   }
 });
 
-/**
- * PRIVATE — cancel an outgoing request sent by you.
- *
- * The caller must be the sender of the request. Third parties or the recipient
- * attempting to cancel receive a 403.
- */
-router.post(
-  "/requests/:requestId/cancel",
-  requireIdentity,
-  rateLimitByCaller({
-    capacity: CANCEL_REQUEST_MINUTE_BURST,
-    refillPerSec: CANCEL_REQUEST_MINUTE_BURST / 60,
-    keyOf: (req) => callerId(req),
-  }),
-  (req: Request, res: Response) => {
-    const request = friendRequestsService.getRequest(req.params.requestId);
-    if (!request) {
-      res.status(404).json({ success: false, error: "Friend request not found" });
-      return;
-    }
-    if (request.senderId !== callerId(req)) {
-      res.status(403).json({ success: false, error: "That request was not sent by you." });
-      return;
-    }
-    try {
-      res.json({ success: true, request: friendRequestsService.cancelRequest(req.params.requestId) });
-    } catch (err) {
-      res.status(400).json({ success: false, error: (err as Error).message });
-    }
-  },
-);
-
 /** PRIVATE — set YOUR presence. Setting someone else's is impersonation. */
 router.post("/presence/:playerId", requireSelfParam(), (req: Request, res: Response) => {
   const { status, activityDetail } = req.body ?? {};
@@ -198,36 +159,19 @@ router.post("/presence/query", requireIdentity, (req: Request, res: Response) =>
 });
 
 /**
- * PRIVATE — the shared history and timeline of two FRIENDS.
+ * PRIVATE — head-to-head history between two players.
  *
- * Belongs to the two of them and to nobody else, so the caller must be one of
- * the two AND they must be friends (and not blocked). History is recorded for
- * every pair that ever shared a match, so it is already waiting the day two
- * players become friends — but a pair of strangers, or of players one of whom
- * has blocked the other, is never readable, not even by one of its own members.
- *
- * A pair that stops being friends keeps its history; it is simply not shown,
- * and comes back if they are friends again.
+ * Belongs to both of them and to nobody else, so the caller must be one of the
+ * two. A third party asking about two strangers gets a 403.
  */
 router.get(
   "/shared-history/:p1/:p2",
   requireParticipantParams("p1", "p2"),
-  async (req: Request, res: Response) => {
-    const { p1, p2 } = req.params;
-    if (p1 === p2 || !friendsService.isFriend(p1, p2) || blockRegistry.isBlockedEitherWay(p1, p2)) {
-      res.status(403).json({ success: false, error: "Shared history is only available between friends." });
-      return;
-    }
-    try {
-      // URL order is kept, so `playerId`/`friendPlayerId` read as they always did.
-      res.json({ success: true, history: await friendshipHistoryService.getHistory(p1, p2) });
-    } catch (err) {
-      logger.error({
-        message: `Shared history read failed for ${callerId(req)}: ${err instanceof Error ? err.message : String(err)}`,
-        module: "SOCIAL",
-      });
-      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
-    }
+  (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      history: friendsService.getSharedHistory(req.params.p1, req.params.p2),
+    });
   },
 );
 

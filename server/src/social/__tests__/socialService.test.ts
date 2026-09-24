@@ -13,7 +13,6 @@ describe("Social & Friends Subsystem Suite", () => {
   describe("FriendsService", () => {
     it("adds and retrieves friends", () => {
       const friend = friendsService.addFriend("p1", "p2", "Bob", "🦁");
-      friendsService.addFriend("p2", "p1", "Alice", "🦊");
       expect(friend.playerId).toBe("p1");
       expect(friend.friendPlayerId).toBe("p2");
 
@@ -28,7 +27,6 @@ describe("Social & Friends Subsystem Suite", () => {
 
     it("removes friends cleanly", () => {
       friendsService.addFriend("p1", "p2", "Bob");
-      friendsService.addFriend("p2", "p1", "Alice");
       expect(friendsService.isFriend("p1", "p2")).toBe(true);
 
       const removed = friendsService.removeFriend("p1", "p2");
@@ -36,8 +34,15 @@ describe("Social & Friends Subsystem Suite", () => {
       expect(friendsService.isFriend("p1", "p2")).toBe(false);
     });
 
-    // Shared history moved to FriendshipHistoryService, which stores it durably;
-    // see friendshipHistory.test.ts and sharedHistoryRoute.test.ts.
+    it("tracks and updates shared history", () => {
+      friendsService.recordMatchTogether("p1", "p2", true, false);
+      friendsService.recordMatchTogether("p1", "p2", false, true);
+
+      const history = friendsService.getSharedHistory("p1", "p2");
+      expect(history.matchesPlayedTogether).toBe(2);
+      expect(history.winsTogether).toBe(1);
+      expect(history.tournamentsTogether).toBe(1);
+    });
   });
 
   describe("FriendRequestsService", () => {

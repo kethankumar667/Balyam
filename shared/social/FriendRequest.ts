@@ -1,4 +1,4 @@
-export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED";
 
 export interface FriendRequest {
   id: string;

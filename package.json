@@ -34,7 +34,6 @@
     "verify:schema": "node scripts/persistence/verifySchema.mjs",
     "verify:durability": "node scripts/persistence/verifyDurability.mjs",
     "verify:mandali": "node scripts/mandali/verifyMandaliRpcs.mjs",
-    "verify:social": "node scripts/social/verifySocialMigrations.mjs",
     "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs",
     "design:colors": "node scripts/design-audit/colors.mjs",
     "design:tokens": "node scripts/design-audit/tokens.mjs",

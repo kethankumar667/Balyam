@@ -3,8 +3,6 @@ import type { PartyMember } from "@shared/party/PartyMember.js";
 import type { GameKind } from "@shared/types.js";
 import { PartyEngine } from "./PartyEngine.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
-import { blockRegistry } from "../social/BlockRegistry.js";
-import { UNABLE_TO_INVITE } from "../social/refusals.js";
 
 export class PartyService {
   private static instance: PartyService;
@@ -77,8 +75,6 @@ export class PartyService {
   ): PartyInvitation {
     const party = this.parties.get(partyId);
     if (!party) throw new Error("Party not found");
-    // Either direction. Nothing in the message says why.
-    if (blockRegistry.isBlockedEitherWay(inviterId, inviteeId)) throw new Error(UNABLE_TO_INVITE);
     if (party.members.length >= party.maxMembers) throw new Error("Party is full");
 
     const id = `pinv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -114,11 +110,6 @@ export class PartyService {
     const invite = this.invitations.get(invitationId);
     if (!invite) throw new Error("Party invitation not found");
     if (invite.status !== "PENDING") throw new Error("Invitation is not pending");
-    // Blocking declines pending invitations between the pair; if one survived
-    // anyway, joining through it would put two blocked players in one party.
-    if (blockRegistry.isBlockedEitherWay(invite.inviterId, invite.inviteeId)) {
-      throw new Error("Invitation is not pending");
-    }
 
     const party = this.parties.get(invite.partyId);
     if (!party) throw new Error("Party no longer exists");
@@ -160,26 +151,6 @@ export class PartyService {
     return Array.from(this.invitations.values()).filter(
       (inv) => inv.inviteeId === playerId && inv.status === "PENDING"
     );
-  }
-
-  /**
-   * Declines every pending invitation between two players, either way round.
-   * Used when one blocks the other. Returns how many were declined; safe to repeat.
-   */
-  public declinePendingInvitationsBetween(a: string, b: string): number {
-    let declined = 0;
-    for (const invite of this.invitations.values()) {
-      if (invite.status !== "PENDING") continue;
-      const between =
-        (invite.inviterId === a && invite.inviteeId === b) ||
-        (invite.inviterId === b && invite.inviteeId === a);
-      if (!between) continue;
-
-      invite.status = "DECLINED";
-      progressionSync.invitationSaved({ ...invite });
-      declined += 1;
-    }
-    return declined;
   }
 
   public setMemberReady(playerId: string, isReady: boolean): Party {

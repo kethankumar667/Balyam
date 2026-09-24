@@ -96,7 +96,7 @@ export interface FriendEdge {
   createdAt: number;
 }
 
-export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED";
 
 export interface FriendRequestRecord {
   id: string;
@@ -107,49 +107,6 @@ export interface FriendRequestRecord {
   status: FriendRequestStatus;
   createdAt: number;
   updatedAt: number;
-}
-
-/** One directed block: `blockerId` will not be reached by, or able to reach, `blockedId`. */
-export interface BlockRecord {
-  blockerId: string;
-  blockedId: string;
-  createdAt: number;
-}
-
-/** One player reporting another. `reason` is a member of `REPORT_REASONS`; there is no free text. */
-export interface ReportRecord {
-  id: string;
-  reporterId: string;
-  reportedId: string;
-  reason: string;
-  createdAt: number;
-}
-
-/**
- * What the server remembers about one pair of players. Stored once per pair
- * with `playerLow < playerHigh`, so (a, b) and (b, a) are the same row.
- */
-export interface FriendshipPairRecord {
-  playerLow: string;
-  playerHigh: string;
-  matchesTogether: number;
-  winsTogether: number;
-  tournamentsTogether: number;
-  firstMatchAt: number | null;
-  lastMatchAt: number | null;
-  currentDailyStreak: number;
-  bestDailyStreak: number;
-  /** IST calendar day (`YYYY-MM-DD`) the streak last advanced on. */
-  streakLastDay: string | null;
-}
-
-/** One moment in a friendship (`kind` is a member of `FRIENDSHIP_MILESTONE_KINDS`). */
-export interface FriendshipMilestoneRecord {
-  playerLow: string;
-  playerHigh: string;
-  kind: string;
-  reachedAt: number;
-  matchId: string | null;
 }
 
 /**
@@ -333,33 +290,6 @@ export interface ProgressionRepository {
   saveFriendRequest(record: FriendRequestRecord): Promise<void>;
   getFriendRequest(id: string): Promise<FriendRequestRecord | null>;
   listFriendRequests(playerId: string): Promise<FriendRequestRecord[]>;
-
-  /* blocks & reports */
-  addBlock(record: BlockRecord): Promise<Applied>;
-  removeBlock(blockerId: string, blockedId: string): Promise<boolean>;
-  /** Every block, for boot-time hydration. */
-  listAllBlocks(): Promise<BlockRecord[]>;
-  saveReport(record: ReportRecord): Promise<void>;
-  /** A reporter's own reports, newest first. */
-  listReportsBy(reporterId: string): Promise<ReportRecord[]>;
-  /** Deletes reports created before `cutoffMs` and returns how many went. */
-  pruneReportsBefore(cutoffMs: number): Promise<number>;
-
-  /* friendship history */
-
-  /**
-   * Marks a match as counted toward friendships. `true` the first time, `false`
-   * for a repeat — the store, not the process, is the arbiter, so a match that
-   * is replayed (a host failover, a retry, a restart) cannot be counted twice.
-   */
-  claimFriendshipMatch(matchId: string): Promise<boolean>;
-  getFriendshipPair(playerLow: string, playerHigh: string): Promise<FriendshipPairRecord | null>;
-  /** Insert or overwrite. Refuses a pair whose ids are not in order. */
-  saveFriendshipPair(record: FriendshipPairRecord): Promise<void>;
-  /** A pair's milestones, oldest first. */
-  listFriendshipMilestones(playerLow: string, playerHigh: string): Promise<FriendshipMilestoneRecord[]>;
-  /** Adds milestones the pair does not already have; an existing kind is left as it was. */
-  addFriendshipMilestones(records: FriendshipMilestoneRecord[]): Promise<void>;
 
   /* parties */
   saveParty(record: PartyRecord): Promise<void>;

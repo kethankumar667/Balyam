@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import FriendsList from "../FriendsList";
 import FriendRequestPanel from "../FriendRequestPanel";
 import OnlineFriendsPanel from "../OnlineFriendsPanel";
@@ -148,53 +148,10 @@ describe("Social & Party UI Components Suite", () => {
     expect(screen.queryByText("Rohan")).toBeNull();
   });
 
-  it("renders FriendsList without party/history buttons or a status when no handlers or presence are given (G2)", () => {
-    render(
-      <FriendsList
-        friends={[{ playerId: "p1", friendPlayerId: "p2", displayName: "Diya", createdAt: Date.now() }]}
-        presences={{}}
-        onRemoveFriend={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText("Diya")).toBeDefined();
-    expect(screen.getByRole("button", { name: /remove diya from friends/i })).toBeDefined();
-    expect(screen.queryByRole("button", { name: /party invite/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /view shared history/i })).toBeNull();
-    expect(screen.queryByText("Offline")).toBeNull();
-    expect(screen.queryByRole("combobox", { name: /filter friends by status/i })).toBeNull();
-  });
-
-  it("never prints a request's avatar value as text (G3)", () => {
-    render(
-      <FriendRequestPanel
-        incoming={[
-          {
-            id: "req_x",
-            senderId: "p_x",
-            senderName: "Mallory",
-            senderAvatar: "../../evil",
-            recipientId: "p1",
-            status: "PENDING",
-            createdAt: Date.now(),
-          },
-        ]}
-        outgoing={[]}
-        onSendRequest={vi.fn()}
-        onAccept={vi.fn()}
-        onDecline={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText("Mallory")).toBeDefined();
-    expect(screen.queryByText("../../evil")).toBeNull();
-  });
-
-  it("renders FriendRequestPanel for sending, accepting, and cancelling requests", () => {
+  it("renders FriendRequestPanel for sending and managing requests", () => {
     const onSendRequest = vi.fn();
     const onAccept = vi.fn();
     const onDecline = vi.fn();
-    const onCancelRequest = vi.fn();
 
     render(
       <FriendRequestPanel
@@ -222,7 +179,6 @@ describe("Social & Party UI Components Suite", () => {
         onSendRequest={onSendRequest}
         onAccept={onAccept}
         onDecline={onDecline}
-        onCancelRequest={onCancelRequest}
       />
     );
 
@@ -232,153 +188,6 @@ describe("Social & Party UI Components Suite", () => {
 
     fireEvent.click(screen.getByText("Accept"));
     expect(onAccept).toHaveBeenCalledWith("req_1");
-
-    // Test Cancel outgoing request
-    const cancelBtn = screen.getByRole("button", { name: /Cancel friend request to p_friend_target/i });
-    expect(cancelBtn).toBeDefined();
-    fireEvent.click(cancelBtn);
-    expect(onCancelRequest).toHaveBeenCalledWith("req_2");
-  });
-
-  it("requires confirmation modal before unfriending in FriendsList", async () => {
-    const onRemoveFriend = vi.fn().mockResolvedValue(undefined);
-    const friends = [
-      {
-        playerId: "p1",
-        friendPlayerId: "p2",
-        displayName: "Diya",
-        avatar: "👑",
-        createdAt: Date.now(),
-      },
-    ];
-    const presences = {};
-
-    render(
-      <FriendsList
-        friends={friends}
-        presences={presences}
-        onRemoveFriend={onRemoveFriend}
-        onInviteToParty={vi.fn()}
-        onViewHistory={vi.fn()}
-      />
-    );
-
-    // Click remove button on friend card
-    const removeBtn = screen.getByRole("button", { name: /Remove Diya from friends/i });
-    act(() => {
-      fireEvent.click(removeBtn);
-    });
-
-    // Confirm dialog must appear with explanation
-    expect(screen.getByText(/Are you sure you want to remove/i)).toBeDefined();
-    expect(onRemoveFriend).not.toHaveBeenCalled();
-
-    // Cancel in modal dismisses dialog without calling onRemoveFriend
-    const cancelModalBtn = screen.getByRole("button", { name: "Cancel" });
-    act(() => {
-      fireEvent.click(cancelModalBtn);
-    });
-    expect(screen.queryByText(/Are you sure you want to remove/i)).toBeNull();
-    expect(onRemoveFriend).not.toHaveBeenCalled();
-
-    // Open again and confirm with focus check (F5)
-    let resolveRemove: () => void = () => {};
-    const pendingPromise = new Promise<void>((resolve) => {
-      resolveRemove = resolve;
-    });
-    onRemoveFriend.mockReturnValueOnce(pendingPromise);
-
-    act(() => {
-      fireEvent.click(removeBtn);
-    });
-    const confirmRemoveBtn = screen.getByRole("button", { name: "Remove Friend" });
-    confirmRemoveBtn.focus();
-    expect(document.activeElement).toBe(confirmRemoveBtn);
-
-    // Click confirm; while pending, button should show "Removing…" and keep focus (F5)
-    act(() => {
-      fireEvent.click(confirmRemoveBtn);
-    });
-    expect(screen.getByText("Removing…")).toBeDefined();
-    expect(document.activeElement).toBe(confirmRemoveBtn);
-
-    // Resolve removal
-    await act(async () => {
-      resolveRemove();
-    });
-    expect(onRemoveFriend).toHaveBeenCalledWith("p2");
-    expect(screen.queryByText(/Are you sure you want to remove/i)).toBeNull();
-  });
-
-  it("displays visible error in modal when unfriend fails without closing modal (F6)", async () => {
-    const onRemoveFriend = vi.fn().mockRejectedValue(new Error("Network connection lost"));
-    const friends = [
-      {
-        playerId: "p1",
-        friendPlayerId: "p2",
-        displayName: "Diya",
-        avatar: "👑",
-        createdAt: Date.now(),
-      },
-    ];
-
-    render(
-      <FriendsList
-        friends={friends}
-        presences={{}}
-        onRemoveFriend={onRemoveFriend}
-        onInviteToParty={vi.fn()}
-        onViewHistory={vi.fn()}
-      />
-    );
-
-    // Open unfriend modal
-    const removeBtn = screen.getByRole("button", { name: /Remove Diya from friends/i });
-    act(() => {
-      fireEvent.click(removeBtn);
-    });
-
-    const confirmRemoveBtn = screen.getByRole("button", { name: "Remove Friend" });
-    await act(async () => {
-      fireEvent.click(confirmRemoveBtn);
-    });
-
-    // Error must be visible in modal and modal remains open
-    expect(screen.getByText(/Network connection lost/i)).toBeDefined();
-    expect(screen.getByText(/Are you sure you want to remove/i)).toBeDefined();
-  });
-
-  it("handles async onCancelRequest rejection and displays feedback error (F6)", async () => {
-    const onCancelRequest = vi.fn().mockRejectedValue(new Error("Cancel failed on server"));
-
-    render(
-      <FriendRequestPanel
-        incoming={[]}
-        outgoing={[
-          {
-            id: "req_cancel_fail",
-            senderId: "p1",
-            senderName: "Aarav",
-            recipientId: "p_target_fail",
-            status: "PENDING",
-            createdAt: Date.now(),
-          },
-        ]}
-        onSendRequest={vi.fn()}
-        onAccept={vi.fn()}
-        onDecline={vi.fn()}
-        onCancelRequest={onCancelRequest}
-      />
-    );
-
-    const cancelBtn = screen.getByRole("button", { name: /Cancel friend request to p_target_fail/i });
-    await act(async () => {
-      fireEvent.click(cancelBtn);
-    });
-
-    expect(onCancelRequest).toHaveBeenCalledWith("req_cancel_fail");
-    // Visible error feedback rendered
-    expect(screen.getByText(/Cancel failed on server/i)).toBeDefined();
   });
 
   it("renders PartyPanel for unformed party state and active party lobby", () => {
@@ -475,15 +284,12 @@ describe("Social & Party UI Components Suite", () => {
           tournamentsTogether: 3,
           lastPlayedAt: Date.now(),
         }}
-        state="ready"
-        error={null}
-        onRetry={vi.fn()}
+        isOpen={true}
         onClose={onClose}
       />
     );
 
-    // The full timeline behaviour is covered in friendshipTimeline.test.tsx.
-    expect(screen.getByText(/You & Bob/i)).toBeDefined();
+    expect(screen.getByText(/Battles with Bob/i)).toBeDefined();
     expect(screen.getByText("12")).toBeDefined();
     expect(screen.getByText("9")).toBeDefined();
   });
