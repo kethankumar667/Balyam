@@ -100,6 +100,8 @@ export interface MandaliStore {
   // Payable coin-request cards
   createCoinRequest: (mandaliId: string, channelId: string, payerId: string, amount: number, expiresInMs?: number) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string; retryAfterMs?: number }>;
   fetchCoinRequestCooldown: () => Promise<void>;
+  /** Post the room you are in as a joinable card in this Mandali's chat. */
+  shareRoomToMandali: (mandaliId: string, roomCode: string) => Promise<{ success: boolean; alreadyShared?: boolean; error?: string; retryAfterMs?: number }>;
   /** Re-read the open Mandali without the loading screen — driven by the server's mandali:changed event. */
   refreshActiveMandali: () => Promise<void>;
   fundCoinRequest: (requestId: string) => Promise<{ success: boolean; request?: MandaliCoinRequest; error?: string }>;
@@ -236,7 +238,7 @@ let mandaliSocketAuthenticatedFor: string | null = null;
  * Every `mandali:*` server handler now requires this — see
  * `MandaliSocketHandlers.ts`'s `requireAuthenticatedActor`.
  */
-async function authenticateMandaliSocket(): Promise<void> {
+export async function authenticateMandaliSocket(): Promise<void> {
   const socket = getSocket();
   if (mandaliSocketAuthenticatedFor === socket.id && socket.connected) return;
 
@@ -722,6 +724,21 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         if (activeChannelId) await get().fetchMessages(activeChannelId);
         if (activeMandali) await get().fetchCoinRequests(activeMandali.id);
       }
+      return data;
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  shareRoomToMandali: async (mandaliId: string, roomCode: string) => {
+    try {
+      const res = await apiFetch(`/api/mandali/${encodeURIComponent(mandaliId)}/room-invites`, {
+        method: "POST",
+        body: JSON.stringify({ roomCode }),
+      });
+      const data = (await res.json()) as {
+        success: boolean; alreadyShared?: boolean; error?: string; retryAfterMs?: number;
+      };
       return data;
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Network error" };

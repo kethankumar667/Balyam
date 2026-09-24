@@ -6302,6 +6302,45 @@ export class RoomManager {
     };
   }
 
+  /**
+   * A read-only snapshot for a room shared into chat: enough to say "3 of 4,
+   * still open" and nothing that identifies who is inside. Null when there is
+   * no such room.
+   */
+  getRoomSummary(code: string): {
+    code: string;
+    game: GameKind;
+    phase: Room["phase"];
+    players: number;
+    maxPlayers: number;
+    sealed: boolean;
+    name: string | null;
+    hostName: string | null;
+  } | null {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) return null;
+    return {
+      code: room.code,
+      game: room.game,
+      phase: room.phase,
+      players: room.players.size,
+      maxPlayers: getGameLimits(room.game).max,
+      sealed: !!room.sealed,
+      name: room.name,
+      hostName: room.players.get(room.hostId)?.name ?? null,
+    };
+  }
+
+  /** Whether this signed-in identity currently holds a seat in the room. */
+  isIdentityInRoom(code: string, identityId: string): boolean {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) return false;
+    for (const player of room.players.values()) {
+      if (player.identityId === identityId) return true;
+    }
+    return false;
+  }
+
   protected lookup(socketId: string): { room: Room | null; player: Player | null } {
     const code = this.socketToRoom.get(socketId);
     if (!code) return { room: null, player: null };

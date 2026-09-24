@@ -16,7 +16,10 @@ import {
   ShieldCheck,
   Trash2,
   Award,
+  MessagesSquare,
+  Gamepad2,
 } from "lucide-react";
+import MandaliInviteActions from "../../../components/mandali/MandaliInviteActions";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
 import { useRoomStore } from "../../../store/roomStore";
@@ -392,7 +395,7 @@ function NotificationsPanelBody({
   onOpenJoin: () => void;
   isDark: boolean;
 }) {
-  const [filterTab, setFilterTab] = useState<"all" | "invites" | "rewards">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "invites" | "chats">("all");
   const navigate = useNavigate();
 
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -402,8 +405,8 @@ function NotificationsPanelBody({
   };
 
   const filteredNotifs = notifications.filter((n) => {
-    if (filterTab === "invites") return n.type === "invite" || n.type === "gang";
-    if (filterTab === "rewards") return n.type === "reward" || n.type === "trophy";
+    if (filterTab === "invites") return n.type === "invite" || n.type === "gang" || n.type === "mandali_invite";
+    if (filterTab === "chats") return n.type === "mandali";
     return true;
   });
 
@@ -411,7 +414,7 @@ function NotificationsPanelBody({
     <>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {(["all", "invites", "rewards"] as const).map((tab) => (
+          {(["all", "invites", "chats"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -466,6 +469,14 @@ function NotificationsPanelBody({
               animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: index * 0.04, ...bhalyamSpring } }}
               exit={{ opacity: 0, x: -24, scale: 0.96, transition: { duration: 0.18 } }}
               onClick={() => {
+                if (item.type === "mandali" && item.mandaliHandle) {
+                  // A digest is read by going to the conversation it summarises.
+                  onClose();
+                  navigate(`/mandali/${item.mandaliHandle}`);
+                  return;
+                }
+                // Looking at a shared room must not wipe the rest of that Mandali's news.
+                if (item.type === "mandali_invite") return;
                 if (item.unread) {
                   onUpdateNotifications((prev) =>
                     prev.map((n) => (n.id === item.id ? { ...n, unread: false } : n))
@@ -485,8 +496,10 @@ function NotificationsPanelBody({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2.5">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    item.type === "invite"
+                    item.type === "invite" || item.type === "mandali_invite"
                       ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+                      : item.type === "mandali"
+                      ? "bg-sky-500/15 text-sky-500 border border-sky-500/30"
                       : item.type === "reward"
                       ? "bg-purple-500/15 text-purple-500 border border-purple-500/30"
                       : item.type === "gang"
@@ -495,6 +508,10 @@ function NotificationsPanelBody({
                   }`}>
                     {item.type === "invite" ? (
                       <Mail className="w-4.5 h-4.5" />
+                    ) : item.type === "mandali" ? (
+                      <MessagesSquare className="w-4.5 h-4.5" />
+                    ) : item.type === "mandali_invite" ? (
+                      <Gamepad2 className="w-4.5 h-4.5" />
                     ) : item.type === "reward" ? (
                       <Award className="w-4.5 h-4.5" />
                     ) : item.type === "gang" ? (
@@ -519,6 +536,20 @@ function NotificationsPanelBody({
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0 mt-1" />
                 )}
               </div>
+
+              {item.type === "mandali_invite" && item.roomCode && (
+                <MandaliInviteActions
+                  roomCode={item.roomCode}
+                  isDark={isDark}
+                  onEnterRoom={(code) => {
+                    onClose();
+                    navigate(`/room/${code}`);
+                  }}
+                  onDismiss={() => {
+                    onUpdateNotifications((prev) => prev.filter((n) => n.id !== item.id));
+                  }}
+                />
+              )}
 
               {item.type === "invite" && (
                 <div className="mt-3 pt-2.5 border-t border-white/10 dark:border-white/10 flex items-center gap-2">

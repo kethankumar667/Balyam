@@ -5,10 +5,9 @@ import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
 import Breadcrumbs from "../navigation/Breadcrumbs";
 import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
-import { type NotificationItem, INITIAL_NOTIFICATIONS } from "../../lib/profileNotifications";
+import { useMandaliInbox } from "../../hooks/useMandaliInbox";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
-import { useAuthStore } from "../../store/authStore";
 
 const FallingPetals = lazy(() => import("../../animations/app/FallingPetals"));
 const JoinRoomModal = lazy(() => import("../bhalyam/JoinRoomModal"));
@@ -97,7 +96,8 @@ export default function AppLayout({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  // Real Mandali notifications, live — see useMandaliInbox. Guests get none.
+  const { items: notifications, update: setNotifications } = useMandaliInbox();
 
   // Automatically close mobile menu on route change
   useEffect(() => {
@@ -126,25 +126,6 @@ export default function AppLayout({
       };
     }
   }, [mobileMenuOpen]);
-
-  /**
-   * `INITIAL_NOTIFICATIONS` is dummy design/dev-reference data (see its own
-   * comment in BhalyamHome.tsx) — never a guest's real notifications, since
-   * there is no backend that produces those yet. Guests always start empty;
-   * only a signed-in member sees the sample set, and only once auth has
-   * actually resolved (`ready`) so a guest mid-load never gets a one-frame
-   * flash of it.
-   *
-   * The `else` matters as much as the `if`: this is plain component state,
-   * not a store `signOut()` can reach, so without it a member's sample
-   * notifications — and the header's unread badge — survived sign-out
-   * untouched. This effect re-syncs on every isMember change, both ways.
-   */
-  const { isMember, ready } = useAuthStore();
-  useEffect(() => {
-    if (!ready) return;
-    setNotifications(isMember ? INITIAL_NOTIFICATIONS : []);
-  }, [ready, isMember]);
 
   /**
    * Drop the drawer when the chrome goes away.

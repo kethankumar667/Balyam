@@ -74,6 +74,9 @@ export function registerMandaliSocketHandlers(
           return;
         }
         (socket.data as MandaliSocketData).mandaliPlayer = identity;
+        // A personal room, so "something new in one of your Mandalis" can reach
+        // this person anywhere in the app — not only while a hub page is open.
+        void socket.join(`user:${identity.playerId}`);
         ack?.({ success: true, playerId: identity.playerId });
       } catch (err) {
         logger.error({

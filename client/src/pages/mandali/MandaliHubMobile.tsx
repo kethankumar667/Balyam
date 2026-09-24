@@ -38,7 +38,10 @@ import {
   Pin,
   Trash2,
   Smile,
+  Bell,
+  BellOff,
 } from "lucide-react";
+import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
   MandaliMember,
@@ -51,6 +54,7 @@ import type {
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import CoinRequestCard from "../../components/mandali/CoinRequestCard";
+import RoomInviteCard from "../../components/mandali/RoomInviteCard";
 import EmojiPicker, { insertAtCaret } from "../../components/mandali/EmojiPicker";
 import type { GameKind } from "@shared/types.js";
 
@@ -96,6 +100,8 @@ export interface MandaliHubMobileProps {
   onOpenGroupInfo: () => void;
   onOpenMembers: () => void;
   onOpenPendingRequests: () => void;
+  notificationLevel?: NotificationLevel;
+  onOpenNotificationSettings?: () => void;
 }
 
 type MobileTab = "chat" | "squads" | "gnapakalu" | "members";
@@ -137,6 +143,8 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   onOpenGroupInfo,
   onOpenMembers,
   onOpenPendingRequests,
+  notificationLevel = "ALL",
+  onOpenNotificationSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>("chat");
   const [showChannelDrawer, setShowChannelDrawer] = useState(false);
@@ -243,6 +251,20 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                         <span className="text-[10px] px-2.5 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-medium">
                           {msg.content}
                         </span>
+                      </div>
+                    );
+                  }
+
+                  if (msg.kind === "ROOM_INVITE") {
+                    return (
+                      <div key={msg.messageId} className={`flex gap-2.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                        <img
+                          src={getAvatarUrl(msg.senderAvatar)}
+                          alt=""
+                          className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700 mt-1"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
+                        />
+                        <RoomInviteCard message={msg} selfId={selfId} />
                       </div>
                     );
                   }
@@ -534,6 +556,21 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                 <Info className="w-4 h-4" />
                 <span className="text-[9px] font-bold">Group Info</span>
               </button>
+              {onOpenNotificationSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenNotificationSettings}
+                  aria-label={`Notifications: ${
+                    notificationLevel === "ALL" ? "all messages" : notificationLevel === "MUTED" ? "muted" : "invites only"
+                  }`}
+                  className="min-h-[56px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 text-slate-600 dark:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800"
+                >
+                  {notificationLevel === "MUTED" ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                  <span className="text-[9px] font-bold">
+                    {notificationLevel === "ALL" ? "Alerts" : notificationLevel === "MUTED" ? "Muted" : "Invites"}
+                  </span>
+                </button>
+              )}
               {canManageMembers && (
                 <button
                   type="button"

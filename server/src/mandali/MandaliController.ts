@@ -151,6 +151,36 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ success: true, retryAfterMs });
   });
 
+  /**
+   * GET /notifications/digests — one summary per Mandali the caller belongs
+   * to: what they missed, in a single item each. Must be registered BEFORE
+   * /:handleOrId.
+   */
+  router.get("/notifications/digests", async (req, res) => {
+    if (!req.player) {
+      res.json({ success: true, digests: [] });
+      return;
+    }
+    const digests = await mandaliService.getDigests(req.player.playerId);
+    res.json({ success: true, digests });
+  });
+
+  /**
+   * GET /room-invites/status?codes=ABC234,XYZ789 — where shared rooms stand
+   * right now (open / full / in progress / closed). A GET on purpose: cards
+   * poll it, and the mutation rate limiter must not be spent on reads. Only
+   * codes that were shared into one of the caller's own Mandalis are answered.
+   */
+  router.get("/room-invites/status", async (req, res) => {
+    if (!req.player) {
+      res.json({ success: true, statuses: [] });
+      return;
+    }
+    const raw = typeof req.query.codes === "string" ? req.query.codes : "";
+    const statuses = await mandaliService.getRoomInviteStatuses(req.player.playerId, raw.split(","));
+    res.json({ success: true, statuses });
+  });
+
   // GET /:handleOrId — Full Mandali Hub Data (handle or id lookup, returns all sub-resources)
   router.get("/:handleOrId", async (req, res) => {
     const raw = req.params.handleOrId;
@@ -394,6 +424,69 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     const limit = Number(req.query.limit) || 50;
     const messages = await mandaliService.getMessages(req.params.channelId, limit);
     res.json({ success: true, messages });
+  });
+
+  // Share the room you are in as a joinable card in this Mandali's chat.
+  router.post("/:id/room-invites", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo || !playerInfo.isMember) {
+      res.status(403).json({ success: false, error: "Only signed-in members can share a room to a Mandali." });
+      return;
+    }
+    const roomCode = typeof req.body?.roomCode === "string" ? req.body.roomCode : "";
+    const channelId = typeof req.body?.channelId === "string" ? req.body.channelId : undefined;
+    if (!roomCode) {
+      res.status(400).json({ success: false, error: "Missing room code." });
+      return;
+    }
+
+    const result = await mandaliService.shareRoomInvite({
+      mandaliId: req.params.id, senderId: playerInfo.playerId, roomCode, channelId,
+    });
+    if (!result.success) {
+      if (result.retryAfterMs !== undefined) {
+        res.status(429).json({ success: false, error: result.error, retryAfterMs: result.retryAfterMs });
+        return;
+      }
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.status(result.deduplicated ? 200 : 201).json({
+      success: true, message: result.message, alreadyShared: result.deduplicated === true,
+    });
+  });
+
+  // Move my read pointer to now (I have looked at this Mandali).
+  router.post("/:id/read", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to track what you have read." });
+      return;
+    }
+    const result = await mandaliService.markRead(req.params.id, playerInfo.playerId);
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true, previous: result.previous, current: result.current });
+  });
+
+  // How loud this Mandali may be for me: ALL, INVITES_ONLY or MUTED.
+  router.patch("/:id/notification-level", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to change notification settings." });
+      return;
+    }
+    const level = typeof req.body?.level === "string" ? req.body.level : "";
+    const result = await mandaliService.setNotificationLevel(
+      req.params.id, playerInfo.playerId, level as "ALL" | "INVITES_ONLY" | "MUTED"
+    );
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+    res.json({ success: true, level });
   });
 
   // Send Message

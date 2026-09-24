@@ -126,7 +126,16 @@ export interface MandaliChannel {
   position: number;
 }
 
-export type MandaliMessageKind = "TEXT" | "SYSTEM" | "COIN_REQUEST";
+export type MandaliMessageKind = "TEXT" | "SYSTEM" | "COIN_REQUEST" | "ROOM_INVITE";
+
+/** What a shared-room card needs to draw itself before any live status arrives. */
+export interface RoomInviteMetadata {
+  game: GameKind;
+  gameName: string;
+  maxPlayers: number;
+  roomName?: string;
+  hostName?: string;
+}
 
 export interface MandaliMessage {
   messageId: string;
@@ -143,6 +152,10 @@ export interface MandaliMessage {
   timestamp: number;
   edited?: boolean;
   kind?: MandaliMessageKind;
+  /** Set for kind "ROOM_INVITE": the shared room's code. */
+  roomCode?: string;
+  /** Set for kind "ROOM_INVITE". */
+  roomInvite?: RoomInviteMetadata;
 }
 
 export interface MandaliPartyMember {

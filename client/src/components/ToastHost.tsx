@@ -74,6 +74,20 @@ export default function ToastHost() {
             <span className="flex-1 min-w-0 font-body font-bold text-[13px] leading-snug pt-0.5">
               {t.message}
             </span>
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  t.action?.onClick();
+                  toastStore.dismiss(t.id);
+                }}
+                className="flex-shrink-0 min-h-[44px] px-3.5 rounded-full inline-flex items-center justify-center cursor-pointer
+                           bg-amber-500 hover:bg-amber-400 text-slate-950 font-body font-extrabold text-[12px]
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 transition"
+              >
+                {t.action.label}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => toastStore.dismiss(t.id)}

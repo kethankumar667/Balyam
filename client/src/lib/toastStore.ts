@@ -8,10 +8,24 @@
 
 export type ToastType = "default" | "success" | "error" | "info" | "warning";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface ToastOptions {
+  /** A toast with the same key is updated in place instead of stacking another. */
+  key?: string;
+  /** One button on the toast, e.g. "Join". */
+  action?: ToastAction;
+}
+
 export interface ToastRecord {
   id: string;
   message: string;
   type: ToastType;
+  key?: string;
+  action?: ToastAction;
 }
 
 type Listener = () => void;
@@ -34,16 +48,32 @@ class ToastStore {
     this.listeners.forEach((listener) => listener());
   }
 
-  show(message: string, type: ToastType = "default", duration: number = DEFAULT_DURATION_MS): string {
-    const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this.toasts = [...this.toasts, { id, message, type }];
+  show(
+    message: string,
+    type: ToastType = "default",
+    duration: number = DEFAULT_DURATION_MS,
+    options: ToastOptions = {},
+  ): string {
+    const existing = options.key ? this.toasts.find((t) => t.key === options.key) : undefined;
+    const id = existing?.id ?? `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const record: ToastRecord = { id, message, type, key: options.key, action: options.action };
+
+    this.toasts = existing
+      ? this.toasts.map((t) => (t.id === id ? record : t))
+      : [...this.toasts, record];
     this.notify();
+
+    const running = this.timers.get(id);
+    if (running) clearTimeout(running);
     this.timers.set(
       id,
       setTimeout(() => this.dismiss(id), duration),
     );
     return id;
   }
+
+  /** True while a toast with this key is on screen. */
+  isShowing = (key: string): boolean => this.toasts.some((t) => t.key === key);
 
   dismiss = (id: string): void => {
     const timer = this.timers.get(id);

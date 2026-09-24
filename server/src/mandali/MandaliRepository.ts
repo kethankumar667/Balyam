@@ -15,7 +15,10 @@ import type {
   MandaliJoinRequestRecord,
   MandaliCoinRequest,
   MandaliCoinRequestStatus,
+  RoomInviteMetadata,
 } from "@shared/mandali/types.js";
+import type { MandaliDigest, NotificationLevel } from "@shared/mandali/notifications.js";
+import { buildDigests } from "./digest.js";
 import { pickAvatarForName } from "@shared/avatars.js";
 import type { PostgrestClient } from "../persistence/postgrest.js";
 
@@ -42,6 +45,7 @@ interface MessageRow {
   sender_identity_id: string; sender_role: string; kind: string; content: string;
   reply_to_id: string | null; pinned: boolean; deleted_at: string | null;
   created_at: string;
+  room_code?: string | null; metadata?: Record<string, unknown> | null;
 }
 interface InvitationRow {
   id: string; mandali_id: string; issuer_identity_id: string; status: string;
@@ -97,6 +101,9 @@ function rowToMessage(r: MessageRow, senderName: string, senderAvatar: string): 
     senderRole: r.sender_role as MandaliMessage["senderRole"],
     content: r.deleted_at ? "" : r.content, reactions: {}, replyToId: r.reply_to_id ?? undefined,
     pinned: r.pinned, timestamp: toMs(r.created_at), kind: r.kind as MandaliMessage["kind"],
+    ...(r.kind === "ROOM_INVITE" && r.room_code
+      ? { roomCode: r.room_code, roomInvite: (r.metadata ?? undefined) as RoomInviteMetadata | undefined }
+      : {}),
   };
 }
 
@@ -159,6 +166,8 @@ export class MandaliRepository {
   private memories = new Map<string, MandaliMemory[]>(); // mandaliId -> memories (Gnapakalu)
   private auditLogs = new Map<string, MandaliAuditLog[]>(); // mandaliId -> logs
   private coinTransfers = new Map<string, MandaliCoinTransfer[]>(); // mandaliId -> coin transfers
+  private readPointers = new Map<string, number>(); // "mandaliId:playerId" -> epoch ms
+  private notificationLevels = new Map<string, NotificationLevel>(); // "mandaliId:playerId" -> level
 
 
   constructor(postgres: PostgrestClient | null = null) {
@@ -340,6 +349,77 @@ export class MandaliRepository {
       }
     }
     this.messages.set(message.channelId, msgs);
+  }
+
+  /* ── Room invites, read state and digests (in-memory) ── */
+
+  private pointerKey(mandaliId: string, playerId: string): string {
+    return `${mandaliId}:${playerId}`;
+  }
+
+  /** Where this member has read up to. The first time it is asked, everything that already exists counts as read. */
+  public getReadPointer(mandaliId: string, playerId: string): number {
+    const key = this.pointerKey(mandaliId, playerId);
+    const existing = this.readPointers.get(key);
+    if (existing !== undefined) return existing;
+    const now = Date.now();
+    this.readPointers.set(key, now);
+    return now;
+  }
+
+  public markRead(mandaliId: string, playerId: string): { previous: number; current: number } {
+    const previous = this.getReadPointer(mandaliId, playerId);
+    const current = Math.max(previous, Date.now());
+    this.readPointers.set(this.pointerKey(mandaliId, playerId), current);
+    return { previous, current };
+  }
+
+  public getNotificationLevel(mandaliId: string, playerId: string): NotificationLevel {
+    return this.notificationLevels.get(this.pointerKey(mandaliId, playerId)) ?? "ALL";
+  }
+
+  public setNotificationLevel(mandaliId: string, playerId: string, level: NotificationLevel): void {
+    this.notificationLevels.set(this.pointerKey(mandaliId, playerId), level);
+  }
+
+  public getDigests(playerId: string): MandaliDigest[] {
+    const mandalis = this.getPlayerMandalis(playerId);
+    const everything = Array.from(this.messages.values()).flat();
+    return buildDigests({
+      playerId,
+      mandalis,
+      messages: everything,
+      readPointer: (id) => this.getReadPointer(id, playerId),
+      level: (id) => this.getNotificationLevel(id, playerId),
+      nameOf: (id, who) => this.getMember(id, who)?.displayName ?? "Member",
+    });
+  }
+
+  /** A live (not deleted) invite for this room in this Mandali, posted since `sinceMs`. */
+  public findRecentRoomInvite(mandaliId: string, roomCode: string, sinceMs: number): MandaliMessage | undefined {
+    return Array.from(this.messages.values())
+      .flat()
+      .filter((m) => m.mandaliId === mandaliId && m.kind === "ROOM_INVITE" && m.roomCode === roomCode && m.timestamp >= sinceMs)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+  }
+
+  public countRoomInvitesBy(mandaliId: string, senderId: string, sinceMs: number): { count: number; oldest: number | null } {
+    const mine = Array.from(this.messages.values())
+      .flat()
+      .filter((m) => m.mandaliId === mandaliId && m.kind === "ROOM_INVITE" && m.senderId === senderId && m.timestamp >= sinceMs)
+      .map((m) => m.timestamp);
+    return { count: mine.length, oldest: mine.length ? Math.min(...mine) : null };
+  }
+
+  /** Which of these room codes were shared into a Mandali this person belongs to. */
+  public getVisibleInviteCodes(playerId: string, codes: readonly string[]): Set<string> {
+    const mine = new Set(this.getPlayerMandalis(playerId).map((m) => m.id));
+    const wanted = new Set(codes);
+    const found = new Set<string>();
+    for (const m of Array.from(this.messages.values()).flat()) {
+      if (m.kind === "ROOM_INVITE" && m.roomCode && wanted.has(m.roomCode) && mine.has(m.mandaliId)) found.add(m.roomCode);
+    }
+    return found;
   }
 
   /* ── Parties ── */
@@ -666,6 +746,53 @@ export class MandaliRepository {
       p_cooldown_seconds: args.cooldownSeconds,
     });
     return rowToCoinRequest(result);
+  }
+
+  public async postRoomInviteDurable(args: {
+    messageId: string; mandaliId: string; channelId: string; senderIdentityId: string;
+    roomCode: string; metadata: RoomInviteMetadata;
+  }): Promise<{ deduplicated: boolean; message: MandaliMessage }> {
+    const result = await this.pg().rpc<{ deduplicated: boolean; message: MessageRow }>("post_mandali_room_invite", {
+      p_message_id: args.messageId, p_mandali_id: args.mandaliId, p_channel_id: args.channelId,
+      p_sender_identity_id: args.senderIdentityId, p_room_code: args.roomCode, p_metadata: args.metadata,
+    });
+    const sender = await this.getMemberDurable(args.mandaliId, args.senderIdentityId);
+    return {
+      deduplicated: result.deduplicated,
+      message: rowToMessage(result.message, sender?.displayName ?? "Member", sender?.avatar ?? "avatar_1"),
+    };
+  }
+
+  public async markReadDurable(mandaliId: string, identityId: string): Promise<{ previous: number; current: number }> {
+    const result = await this.pg().rpc<{ previous: string; current: string }>("mark_mandali_read", {
+      p_mandali_id: mandaliId, p_identity_id: identityId,
+    });
+    return { previous: toMs(result.previous), current: toMs(result.current) };
+  }
+
+  public async setNotificationLevelDurable(mandaliId: string, identityId: string, level: NotificationLevel): Promise<void> {
+    await this.pg().rpc("set_mandali_notification_level", {
+      p_mandali_id: mandaliId, p_identity_id: identityId, p_level: level,
+    });
+  }
+
+  public async getDigestsDurable(identityId: string): Promise<MandaliDigest[]> {
+    const result = await this.pg().rpc<MandaliDigest[] | null>("get_mandali_digests", { p_identity_id: identityId });
+    return Array.isArray(result) ? result : [];
+  }
+
+  /** Which of these room codes were shared into a Mandali this person belongs to. Codes must already be validated. */
+  public async getVisibleInviteCodesDurable(identityId: string, codes: readonly string[]): Promise<Set<string>> {
+    if (codes.length === 0) return new Set();
+    const mandalis = await this.getPlayerMandalisDurable(identityId);
+    if (mandalis.length === 0) return new Set();
+    const ids = mandalis.map((m) => encodeURIComponent(m.id)).join(",");
+    const wanted = codes.map(encodeURIComponent).join(",");
+    const rows = await this.pg().select<{ room_code: string }>(
+      "mandali_messages",
+      `select=room_code&kind=eq.ROOM_INVITE&deleted_at=is.null&mandali_id=in.(${ids})&room_code=in.(${wanted})`
+    );
+    return new Set(rows.map((r) => r.room_code));
   }
 
   /** Deletes chat older than `retentionDays`; returns how many messages were removed. */

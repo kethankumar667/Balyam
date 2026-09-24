@@ -28,6 +28,10 @@ import GroupInfoModal from "../../components/mandali/GroupInfoModal";
 import MemberManagementSheet from "../../components/mandali/MemberManagementSheet";
 import PendingRequestsPanel from "../../components/mandali/PendingRequestsPanel";
 import IncomingCoinRequestBanner from "../../components/mandali/IncomingCoinRequestBanner";
+import NotificationLevelSheet from "../../components/mandali/NotificationLevelSheet";
+import { useMandaliReadTracking } from "../../hooks/useMandaliReadTracking";
+import { useMandaliInboxStore } from "../../store/mandaliInboxStore";
+import { insertUnreadDivider } from "../../lib/mandaliUnreadDivider";
 import { Play, Crown, Users, Zap } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 
@@ -49,6 +53,7 @@ export default function MandaliHubPage(): JSX.Element {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showPendingRequests, setShowPendingRequests] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [inviteInvitationId, setInviteInvitationId] = useState<string | undefined>(undefined);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -144,6 +149,18 @@ export default function MandaliHubPage(): JSX.Element {
   const canManageMembers = isOwner || isAdmin;
   const canEditInfo = isOwner || isAdmin || activeMandali?.editPermission === "ALL";
 
+  // What the member had not read on arrival (for the "New messages" line), and
+  // keeping their read pointer current while they are here.
+  const unreadSince = useMandaliReadTracking(
+    activeMandali?.id ?? null,
+    isMember && Boolean(selfMember),
+    activeChannelId ? messages[activeChannelId]?.length ?? 0 : 0
+  );
+  const notificationLevel = useMandaliInboxStore(
+    (s) => s.digests.find((d) => d.mandaliId === activeMandali?.id)?.level ?? "ALL"
+  );
+  const setNotificationLevel = useMandaliInboxStore((s) => s.setLevel);
+
   // Only owners/admins ever need the pending-requests list — avoid an
   // unnecessary fetch (and an unnecessary 403 for ordinary members) for
   // everyone else.
@@ -209,7 +226,9 @@ export default function MandaliHubPage(): JSX.Element {
     members,
     channels,
     activeChannelId,
-    messages: activeChannelMessages,
+    messages: insertUnreadDivider(activeChannelMessages, unreadSince, playerId) as typeof activeChannelMessages,
+    notificationLevel,
+    onOpenNotificationSettings: () => setShowNotificationSettings(true),
     parties,
     memories,
     currentUserId: playerId,
@@ -417,6 +436,16 @@ export default function MandaliHubPage(): JSX.Element {
         onBan={(targetId) => banMember(activeMandali.id, targetId)}
         onTransferOwnership={(targetId) => transferOwnership(activeMandali.id, targetId)}
       />
+
+      {isCurrentMember && (
+        <NotificationLevelSheet
+          open={showNotificationSettings}
+          onClose={() => setShowNotificationSettings(false)}
+          mandaliName={activeMandali.name}
+          level={notificationLevel}
+          onChange={(level) => setNotificationLevel(activeMandali.id, level)}
+        />
+      )}
 
       <PendingRequestsPanel
         open={showPendingRequests}

@@ -416,6 +416,135 @@ async function main() {
       const erased = (await admin.query(`select content, deleted_at from public.mandali_messages where message_id = $1`, [doomedText])).rows[0];
       check("retention", "deleting a message erases its text, not just hides it", erased.content === "" && erased.deleted_at !== null, JSON.stringify(erased));
     }
+    // ── 7. Room invites ─────────────────────────────────────────────────
+    console.log("\n7. Room invites shared into chat");
+    {
+      const owner = await person();
+      const a = await person();
+      const b = await person();
+      const outsider = await person();
+      const mid = await makeMandali(owner);
+      for (const p of [a, b]) await join(admin, mid, p);
+      const ch = `${mid}_lounge-chat`;
+      const meta = { game: "ludo", gameName: "Ludo", maxPlayers: 4, roomName: "Friday" };
+      const post = (client, who, code, channel = ch, metadata = meta) =>
+        attempt(
+          client,
+          `select public.post_mandali_room_invite($1, $2, $3, $4, $5, $6::jsonb) as r`,
+          [uid("inv"), mid, channel, who, code, JSON.stringify(metadata)],
+        );
+
+      const first = await post(admin, owner, "ABC234");
+      const stored = (await admin.query(`select kind, room_code, metadata, content from public.mandali_messages where message_id = $1`,
+        [first.rows?.[0]?.r?.message?.message_id ?? ""])).rows[0];
+      check("invite", "posts a ROOM_INVITE card carrying the room code and its details",
+        first.ok && stored?.kind === "ROOM_INVITE" && stored.room_code === "ABC234" && stored.metadata?.gameName === "Ludo",
+        first.error ?? JSON.stringify(stored));
+      check("invite", "the text fallback names the game and the code, for clients that do not know the card",
+        /Ludo/.test(stored?.content ?? "") && /ABC234/.test(stored?.content ?? ""), stored?.content);
+
+      const again = await post(admin, a, "ABC234");
+      check("invite", "sharing the same room again inside 10 minutes reuses the first card",
+        again.ok && again.rows[0].r.deduplicated === true &&
+          again.rows[0].r.message.message_id === first.rows[0].r.message.message_id);
+
+      const badCode = await post(admin, a, "abc-1");
+      check("invite", "a malformed room code is refused", !badCode.ok && /INVALID_ROOM_CODE/.test(badCode.error), badCode.error);
+      const stranger = await post(admin, outsider, "STR234");
+      check("invite", "someone who is not a member cannot post one", !stranger.ok && /NOT_ACTIVE_MEMBER/.test(stranger.error), stranger.error);
+      const announce = await post(admin, a, "ANN234", `${mid}_announcements`);
+      check("invite", "a plain member cannot post into the announcements channel", !announce.ok && /FORBIDDEN/.test(announce.error), announce.error);
+
+      const codes = ["RATE22", "RATE33", "RATE44", "RATE55", "RATE66", "RATE77"];
+      const posted = [];
+      for (const c of codes) posted.push(await post(admin, a, c));
+      const capped = await post(admin, a, "RATE88");
+      const retry = Number((capped.error?.match(/retry_after_seconds=(\d+)/) ?? [])[1]);
+      check("invite", "at most 6 invites per person per hour, then a retry time",
+        posted.every((p) => p.ok) && !capped.ok && /RATE_LIMITED/.test(capped.error) && retry > 0 && retry <= 3600,
+        capped.error);
+
+      const [c1, c2, c3] = [await open(), await open(), await open()];
+      const burst = await Promise.all([c1, c2, c3].map((c) => post(c, b, "RACE22")));
+      await Promise.all([c1.end(), c2.end(), c3.end()]);
+      const rows = Number((await admin.query(
+        `select count(*)::int as n from public.mandali_messages where mandali_id = $1 and room_code = 'RACE22'`, [mid],
+      )).rows[0].n);
+      check("invite", "three simultaneous shares of one room → exactly one card", burst.every((r) => r.ok) && rows === 1, `rows=${rows}`);
+    }
+
+    // ── 8. Read state and the digest ────────────────────────────────────
+    console.log("\n8. Read state and the notification digest");
+    {
+      const owner = await person();
+      const ann = await person();
+      const bob = await person();
+      const reader = await person();
+      const mid = await makeMandali(owner);
+      for (const p of [ann, bob, reader]) await join(admin, mid, p);
+      await admin.query(`update public.mandali_memberships set display_name = 'Ann' where identity_id = $1`, [ann]);
+      await admin.query(`update public.mandali_memberships set display_name = 'Bob' where identity_id = $1`, [bob]);
+      const quiet = await makeMandali(owner);
+      await join(admin, quiet, reader);
+
+      const ch = `${mid}_lounge-chat`;
+      await admin.query(`update public.mandali_memberships set last_read_at = now() - interval '1 hour' where identity_id = $1`, [reader]);
+      const send = (who, text) =>
+        admin.query(`select public.send_mandali_message($1, $2, $3, $4, $5, null, null)`, [uid("d"), mid, ch, who, text]);
+
+      for (let i = 0; i < 3; i++) await send(bob, `bob ${i}`);
+      await admin.query(
+        `select public.post_mandali_room_invite($1, $2, $3, $4, 'ZED234', $5::jsonb)`,
+        [uid("inv"), mid, ch, bob, JSON.stringify({ game: "ludo", gameName: "Ludo", maxPlayers: 4 })],
+      );
+      for (let i = 0; i < 2; i++) await send(ann, `ann ${i}`);
+      await send(reader, "my own message");
+      const gone = uid("gone");
+      await admin.query(`select public.send_mandali_message($1, $2, $3, $4, 'deleted soon', null, null)`, [gone, mid, ch, ann]);
+      await admin.query(`select public.delete_mandali_message($1, $2)`, [gone, ann]);
+      const sys = uid("sys");
+      await admin.query(`select public.send_mandali_message($1, $2, $3, $4, 'Ann joined', null, null)`, [sys, mid, ch, ann]);
+      await admin.query(`update public.mandali_messages set kind = 'SYSTEM' where message_id = $1`, [sys]);
+      await send(ann, "see you there");
+
+      const digestOf = async () => (await admin.query(`select public.get_mandali_digests($1) as d`, [reader])).rows[0].d;
+      const rows = await digestOf();
+      const row = rows.find((r) => r.mandaliId === mid);
+      check("digest", "one row per Mandali the person belongs to", rows.length === 2, `rows=${rows.length}`);
+      check("digest", "counts only what others wrote and is worth reading: not my own, not deleted, not system chatter",
+        row.unreadCount === 7, `unreadCount=${row.unreadCount} (expected 7: 3 Bob + 1 invite + 3 Ann)`);
+      check("digest", "says how many different people wrote", row.senderCount === 2, `senderCount=${row.senderCount}`);
+      check("digest", "names the top writers by volume", row.topSenders[0]?.name === "Bob" && row.topSenders[0]?.count === 4 && row.topSenders[1]?.name === "Ann",
+        JSON.stringify(row.topSenders));
+      check("digest", "includes the latest message for a preview", row.latest?.senderName === "Ann" && row.latest?.preview === "see you there", JSON.stringify(row.latest));
+      check("digest", "lists the unread room invite so it can be shown on its own",
+        row.invites.length === 1 && row.invites[0].roomCode === "ZED234" && row.invites[0].senderName === "Bob", JSON.stringify(row.invites));
+      const quietRow = rows.find((r) => r.mandaliId === quiet);
+      check("digest", "a quiet Mandali reports nothing unread", quietRow.unreadCount === 0 && quietRow.latest === null);
+      check("digest", "the busy Mandali is listed first", rows[0].mandaliId === mid);
+
+      const marked = await attempt(admin, `select public.mark_mandali_read($1, $2) as r`, [mid, reader]);
+      const previous = new Date(marked.rows?.[0]?.r?.previous).getTime();
+      check("read", "marking read returns where the pointer was, for the new-messages line",
+        marked.ok && Math.abs(previous - (Date.now() - 3600_000)) < 120_000, marked.error);
+      const afterRead = (await digestOf()).find((r) => r.mandaliId === mid);
+      check("read", "after reading, nothing is unread", afterRead.unreadCount === 0 && afterRead.invites.length === 0);
+      await send(bob, "one more");
+      const later = (await digestOf()).find((r) => r.mandaliId === mid);
+      check("read", "a message after that counts as unread again", later.unreadCount === 1);
+      const backwards = await attempt(admin, `select public.mark_mandali_read($1, $2)`, [mid, await person()]);
+      check("read", "a non-member cannot move a read pointer", !backwards.ok && /NOT_ACTIVE_MEMBER/.test(backwards.error), backwards.error);
+
+      const muted = await attempt(admin, `select public.set_mandali_notification_level($1, $2, 'MUTED') as l`, [mid, reader]);
+      const mutedRow = (await digestOf()).find((r) => r.mandaliId === mid);
+      check("level", "a Mandali can be muted, and the digest reports it", muted.ok && mutedRow.level === "MUTED", muted.error);
+      const badLevel = await attempt(admin, `select public.set_mandali_notification_level($1, $2, 'LOUD')`, [mid, reader]);
+      check("level", "an unknown level is refused", !badLevel.ok && /INVALID_LEVEL/.test(badLevel.error), badLevel.error);
+
+      await admin.query(`select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, reader]);
+      const afterLeave = await digestOf();
+      check("digest", "a Mandali the person left no longer appears", !afterLeave.some((r) => r.mandaliId === mid));
+    }
   } finally {
     await admin.end();
     await pg.stop();

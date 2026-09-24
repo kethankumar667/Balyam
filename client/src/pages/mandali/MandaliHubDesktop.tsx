@@ -37,7 +37,10 @@ import {
   UserCheck,
   Pin,
   Trash2,
+  Bell,
+  BellOff,
 } from "lucide-react";
+import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
   MandaliMember,
@@ -50,6 +53,7 @@ import type {
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import CoinRequestCard from "../../components/mandali/CoinRequestCard";
+import RoomInviteCard from "../../components/mandali/RoomInviteCard";
 import EmojiPicker, { insertAtCaret } from "../../components/mandali/EmojiPicker";
 import type { GameKind } from "@shared/types.js";
 
@@ -95,6 +99,8 @@ export interface MandaliHubDesktopProps {
   onOpenMembers: () => void;
   onOpenPendingRequests: () => void;
   onLeaveMandali: () => void;
+  notificationLevel?: NotificationLevel;
+  onOpenNotificationSettings?: () => void;
 }
 
 const CHAT_MAX_LENGTH = 500;
@@ -134,6 +140,8 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onOpenMembers,
   onOpenPendingRequests,
   onLeaveMandali,
+  notificationLevel = "ALL",
+  onOpenNotificationSettings,
 }) => {
   const [chatInput, setChatInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
@@ -232,6 +240,19 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               <Info className="w-3.5 h-3.5" />
               Group Info
             </button>
+            {onOpenNotificationSettings && (
+              <button
+                type="button"
+                onClick={onOpenNotificationSettings}
+                aria-label={`Notifications: ${
+                  notificationLevel === "ALL" ? "all messages" : notificationLevel === "MUTED" ? "muted" : "invites only"
+                }`}
+                className="min-h-[40px] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                {notificationLevel === "MUTED" ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                {notificationLevel === "ALL" ? "Alerts" : notificationLevel === "MUTED" ? "Muted" : "Invites only"}
+              </button>
+            )}
             {canManageMembers && (
               <button
                 type="button"
@@ -486,6 +507,20 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                         <span className="text-[11px] px-3 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-medium">
                           {msg.content}
                         </span>
+                      </div>
+                    );
+                  }
+
+                  if (msg.kind === "ROOM_INVITE") {
+                    return (
+                      <div key={msg.messageId} className={`flex gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                        <img
+                          src={getAvatarUrl(msg.senderAvatar)}
+                          alt=""
+                          className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 object-cover flex-shrink-0 border border-slate-300 dark:border-slate-700"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
+                        />
+                        <RoomInviteCard message={msg} selfId={selfId} />
                       </div>
                     );
                   }

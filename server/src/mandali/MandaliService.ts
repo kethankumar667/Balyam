@@ -13,6 +13,15 @@ import type {
   CoinTransferPayload,
 } from "@shared/mandali/types.js";
 import { hasMandaliPermission } from "@shared/mandali/permissions.js";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog.js";
+import type { RoomInviteMetadata } from "@shared/mandali/types.js";
+import type {
+  MandaliActivityEvent,
+  MandaliDigest,
+  NotificationLevel,
+  RoomInviteState,
+  RoomInviteStatus,
+} from "@shared/mandali/notifications.js";
 import { MANDALI_COIN_AMOUNT, MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import { MandaliRepository } from "./MandaliRepository.js";
 import { MembershipStateMachine } from "./MembershipStateMachine.js";
@@ -21,6 +30,14 @@ import type { GameKind } from "@shared/types.js";
 import { logger } from "../lib/logger.js";
 import type { EconomyService } from "../economy/EconomyService.js";
 import { InsufficientFundsError, WalletFrozenError } from "../persistence/EconomyRepository.js";
+
+const ROOM_INVITE_DEDUPE_MS = 10 * 60 * 1000;
+const ROOM_INVITE_MAX_PER_HOUR = 6;
+const HOUR_MS = 60 * 60 * 1000;
+const ACTIVITY_PREVIEW_LENGTH = 120;
+const MEMBER_CACHE_TTL_MS = 30 * 1000;
+const ROOM_CODE_PATTERN = /^[A-Z0-9]{4,10}$/;
+const MAX_STATUS_CODES = 20;
 
 /** Every free-text field here is stored and re-broadcast to other members — cap it, don't trust client-side limits alone. */
 function clampText(value: string, maxLen: number): string {
@@ -47,6 +64,8 @@ function durableErrorMessage(err: unknown, fallback: string): string {
 }
 
 export class MandaliService {
+  private readonly memberIdCache = new Map<string, { ids: string[]; at: number }>();
+
   constructor(
     private readonly repository: MandaliRepository,
     private readonly roomManager?: RoomManager,
@@ -71,7 +90,56 @@ export class MandaliService {
    * data, so a missed or duplicated event can never corrupt their state.
    */
   private notifyChanged(mandaliId: string, reason: string): void {
+    this.memberIdCache.delete(mandaliId);
     this.emitToMandali(mandaliId, "mandali:changed", { mandaliId, reason });
+  }
+
+  /**
+   * Who is an active member right now — the audience for activity events.
+   * Cached briefly (a busy chat would otherwise query membership on every
+   * message) and cleared the moment membership changes, so someone who is
+   * removed stops receiving events immediately rather than after the TTL.
+   */
+  private async activeMemberIds(mandaliId: string): Promise<string[]> {
+    if (!this.repository.isDurable()) {
+      return this.repository.getMembers(mandaliId).filter((m) => m.state === "ACTIVE").map((m) => m.playerId);
+    }
+    const cached = this.memberIdCache.get(mandaliId);
+    if (cached && Date.now() - cached.at < MEMBER_CACHE_TTL_MS) return cached.ids;
+    const ids = (await this.repository.getMembersDurable(mandaliId)).map((m) => m.playerId);
+    this.memberIdCache.set(mandaliId, { ids, at: Date.now() });
+    return ids;
+  }
+
+  /**
+   * Tell every active member — wherever they are in the app — that something
+   * new was said, so their notification centre can summarise it. Each
+   * authenticated socket sits in its own `user:<id>` room; sending to the
+   * current members' rooms means a removed member simply is not addressed.
+   */
+  private async emitActivity(message: MandaliMessage): Promise<void> {
+    if (!this.io) return;
+    try {
+      const ids = await this.activeMemberIds(message.mandaliId);
+      if (ids.length === 0) return;
+      const event: MandaliActivityEvent = {
+        mandaliId: message.mandaliId,
+        channelId: message.channelId,
+        messageId: message.messageId,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        kind: message.kind ?? "TEXT",
+        preview: message.content.slice(0, ACTIVITY_PREVIEW_LENGTH),
+        at: message.timestamp,
+        ...(message.roomCode ? { roomCode: message.roomCode, roomInvite: message.roomInvite } : {}),
+      };
+      this.io.to(ids.map((id) => `user:${id}`)).emit("mandali:activity" as any, event);
+    } catch (err) {
+      logger.warn({
+        message: `[MANDALI] Could not fan out activity: ${err instanceof Error ? err.message : String(err)}`,
+        module: "MANDALI",
+      });
+    }
   }
 
   /* ── Mandali Discovery & Creation ── */
@@ -571,6 +639,7 @@ export class MandaliService {
         if (this.io) {
           this.io.to(`mandali:${mandaliId}`).emit("mandali:chat:message" as any, { mandaliId, channelId, message });
         }
+        void this.emitActivity(message);
         return { success: true, message };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not send this message.") };
@@ -615,8 +684,200 @@ export class MandaliService {
         message,
       });
     }
+    void this.emitActivity(message);
 
     return { success: true, message };
+  }
+
+  /* ── Shared rooms ── */
+
+  private roomInviteState(summary: NonNullable<ReturnType<RoomManager["getRoomSummary"]>> | null): RoomInviteState {
+    if (!summary) return "CLOSED";
+    if (summary.phase === "playing") return "IN_PROGRESS";
+    if (summary.phase === "finished" || summary.sealed) return "CLOSED";
+    return summary.players >= summary.maxPlayers ? "FULL" : "OPEN";
+  }
+
+  /**
+   * Post the room the sender is sitting in into a Mandali's chat as a
+   * joinable card. Only someone actually in the room may share it, only while
+   * it is still a lobby with a free seat — a card for a room nobody can enter
+   * is just noise.
+   */
+  public async shareRoomInvite(args: {
+    mandaliId: string; senderId: string; roomCode: string; channelId?: string;
+  }): Promise<{
+    success: boolean; message?: MandaliMessage; deduplicated?: boolean; error?: string; retryAfterMs?: number;
+  }> {
+    if (!this.roomManager) return { success: false, error: "Sharing a room is not available right now." };
+
+    const code = args.roomCode.trim().toUpperCase();
+    if (!ROOM_CODE_PATTERN.test(code)) return { success: false, error: "That does not look like a room code." };
+
+    const summary = this.roomManager.getRoomSummary(code);
+    if (!summary) return { success: false, error: "That room is not open any more." };
+    if (!this.roomManager.isIdentityInRoom(code, args.senderId)) {
+      return { success: false, error: "You can only share a room you are in." };
+    }
+    if (summary.sealed) return { success: false, error: "This room is private and cannot take new players." };
+    if (summary.phase !== "lobby") return { success: false, error: "That match has already started, so it cannot be shared." };
+    if (summary.players >= summary.maxPlayers) {
+      return { success: false, error: "Your room is full, so nobody could join from the chat." };
+    }
+
+    const durable = this.repository.isDurable();
+    const channels = durable
+      ? await this.repository.getChannelsDurable(args.mandaliId)
+      : this.repository.getChannels(args.mandaliId);
+    const channel =
+      (args.channelId ? channels.find((c) => c.channelId === args.channelId) : undefined) ??
+      channels.find((c) => c.type === "TEXT");
+    if (!channel) return { success: false, error: "This Mandali has no chat channel to post in." };
+
+    const metadata: RoomInviteMetadata = {
+      game: summary.game,
+      gameName: GAME_DISPLAY_NAMES[summary.game] ?? summary.game,
+      maxPlayers: summary.maxPlayers,
+      ...(summary.name ? { roomName: clampText(summary.name, 40) } : {}),
+      ...(summary.hostName ? { hostName: clampText(summary.hostName, 20) } : {}),
+    };
+
+    let message: MandaliMessage;
+    let deduplicated = false;
+
+    if (durable) {
+      try {
+        const result = await this.repository.postRoomInviteDurable({
+          messageId: `msg_${nanoid(10)}`, mandaliId: args.mandaliId, channelId: channel.channelId,
+          senderIdentityId: args.senderId, roomCode: code, metadata,
+        });
+        message = result.message;
+        deduplicated = result.deduplicated;
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : String(err);
+        const retrySeconds = Number(raw.match(/RATE_LIMITED:\s*retry_after_seconds=(\d+)/)?.[1]);
+        if (Number.isFinite(retrySeconds)) {
+          return {
+            success: false,
+            retryAfterMs: retrySeconds * 1000,
+            error: `You have shared a lot of rooms here lately. Try again in ${Math.ceil(retrySeconds / 60)} minutes.`,
+          };
+        }
+        return { success: false, error: durableErrorMessage(err, "Could not share this room.") };
+      }
+    } else {
+      const member = this.repository.getMember(args.mandaliId, args.senderId);
+      if (!member || member.state !== "ACTIVE") return { success: false, error: "Only members can share a room here." };
+
+      const now = Date.now();
+      const existing = this.repository.findRecentRoomInvite(args.mandaliId, code, now - ROOM_INVITE_DEDUPE_MS);
+      if (existing) {
+        return { success: true, message: existing, deduplicated: true };
+      }
+      const { count, oldest } = this.repository.countRoomInvitesBy(args.mandaliId, args.senderId, now - HOUR_MS);
+      if (count >= ROOM_INVITE_MAX_PER_HOUR && oldest !== null) {
+        const retryAfterMs = oldest + HOUR_MS - now;
+        return {
+          success: false,
+          retryAfterMs,
+          error: `You have shared a lot of rooms here lately. Try again in ${Math.ceil(retryAfterMs / 60000)} minutes.`,
+        };
+      }
+
+      message = {
+        messageId: `msg_${nanoid(10)}`,
+        channelId: channel.channelId,
+        mandaliId: args.mandaliId,
+        senderId: args.senderId,
+        senderName: member.displayName,
+        senderAvatar: member.avatar,
+        senderRole: member.role,
+        content: `🎮 ${metadata.gameName} room ${code} — tap Join to play`,
+        reactions: {},
+        timestamp: now,
+        kind: "ROOM_INVITE",
+        roomCode: code,
+        roomInvite: metadata,
+      };
+      this.repository.saveMessage(message);
+    }
+
+    if (!deduplicated) {
+      this.io?.to(`mandali:${args.mandaliId}`).emit("mandali:chat:message" as any, {
+        mandaliId: args.mandaliId, channelId: channel.channelId, message,
+      });
+      void this.emitActivity(message);
+    }
+    return { success: true, message, deduplicated };
+  }
+
+  /**
+   * Live standing of rooms that were shared into Mandalis this person belongs
+   * to. A code that was never shared to them is simply not answered — this is
+   * not a lookup for arbitrary rooms.
+   */
+  public async getRoomInviteStatuses(playerId: string, rawCodes: readonly string[]): Promise<RoomInviteStatus[]> {
+    if (!this.roomManager) return [];
+    const codes = Array.from(
+      new Set(rawCodes.map((c) => c.trim().toUpperCase()).filter((c) => ROOM_CODE_PATTERN.test(c)))
+    ).slice(0, MAX_STATUS_CODES);
+    if (codes.length === 0) return [];
+
+    const visible = this.repository.isDurable()
+      ? await this.repository.getVisibleInviteCodesDurable(playerId, codes)
+      : this.repository.getVisibleInviteCodes(playerId, codes);
+
+    return codes
+      .filter((code) => visible.has(code))
+      .map((code) => {
+        const summary = this.roomManager!.getRoomSummary(code);
+        return {
+          code,
+          state: this.roomInviteState(summary),
+          players: summary?.players ?? 0,
+          maxPlayers: summary?.maxPlayers ?? 0,
+          youAreIn: this.roomManager!.isIdentityInRoom(code, playerId),
+        };
+      });
+  }
+
+  /* ── Notifications: read state and the digest ── */
+
+  public async getDigests(playerId: string): Promise<MandaliDigest[]> {
+    return this.repository.isDurable() ? this.repository.getDigestsDurable(playerId) : this.repository.getDigests(playerId);
+  }
+
+  public async markRead(
+    mandaliId: string, playerId: string
+  ): Promise<{ success: boolean; previous?: number; current?: number; error?: string }> {
+    if (this.repository.isDurable()) {
+      try {
+        return { success: true, ...(await this.repository.markReadDurable(mandaliId, playerId)) };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not update your read status.") };
+      }
+    }
+    const member = this.repository.getMember(mandaliId, playerId);
+    if (!member || member.state !== "ACTIVE") return { success: false, error: "You are not a member of this Mandali." };
+    return { success: true, ...this.repository.markRead(mandaliId, playerId) };
+  }
+
+  public async setNotificationLevel(
+    mandaliId: string, playerId: string, level: NotificationLevel
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!["ALL", "INVITES_ONLY", "MUTED"].includes(level)) return { success: false, error: "Unknown notification setting." };
+    if (this.repository.isDurable()) {
+      try {
+        await this.repository.setNotificationLevelDurable(mandaliId, playerId, level);
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: durableErrorMessage(err, "Could not change this setting.") };
+      }
+    }
+    const member = this.repository.getMember(mandaliId, playerId);
+    if (!member || member.state !== "ACTIVE") return { success: false, error: "You are not a member of this Mandali." };
+    this.repository.setNotificationLevel(mandaliId, playerId, level);
+    return { success: true };
   }
 
   public async setMessagePin(mandaliId: string, messageId: string, actorId: string, pinned: boolean): Promise<{ success: boolean; error?: string }> {

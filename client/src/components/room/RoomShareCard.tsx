@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
-import { Users, QrCode, Copy, Share2, Check } from "lucide-react";
+import { Users, QrCode, Copy, Share2, Check, MessagesSquare } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
+import ShareToMandaliSheet from "../mandali/ShareToMandaliSheet";
+import { useAuthStore } from "../../store/authStore";
 import { useHaptics } from "../../hooks/useHaptics";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 
@@ -16,6 +18,9 @@ export default function RoomShareCard({
 }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [mandaliOpen, setMandaliOpen] = useState(false);
+  // Mandali groups need an account, so guests are not offered the button.
+  const isMember = useAuthStore((s) => s.isMember);
   const haptics = useHaptics();
 
   const roomUrl = `${window.location.origin}/room/${code}`;
@@ -127,7 +132,7 @@ export default function RoomShareCard({
           </div>
 
           {/* Right Action Cluster */}
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 self-end md:self-center">
             <button
               type="button"
               onClick={copyCode}
@@ -157,6 +162,22 @@ export default function RoomShareCard({
               <span>Share</span>
             </button>
 
+            {isMember && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.subtle();
+                  setMandaliOpen(true);
+                }}
+                title="Share this room in a Mandali's chat"
+                aria-label="Share this room to a Mandali"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-100 border border-stone-200/90 dark:border-slate-700 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <MessagesSquare size={15} className="stroke-[2.5]" aria-hidden />
+                <span>Mandali</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setQrOpen(true)}
@@ -180,6 +201,15 @@ export default function RoomShareCard({
           </div>
         </div>
       </div>
+
+      {isMember && (
+        <ShareToMandaliSheet
+          open={mandaliOpen}
+          onClose={() => setMandaliOpen(false)}
+          roomCode={code}
+          gameName={gameName}
+        />
+      )}
 
       <QrCodeModal
         open={qrOpen}
