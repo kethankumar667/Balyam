@@ -331,8 +331,10 @@ export class MandaliRepository {
     this.channels.set(channel.mandaliId, list.sort((a, b) => a.position - b.position));
   }
 
-  public getMessages(channelId: string, limit = 50): MandaliMessage[] {
-    const msgs = this.messages.get(channelId) ?? [];
+  /** `sinceMs`: only what was said at or after that moment (a member's join time). */
+  public getMessages(channelId: string, limit = 50, sinceMs?: number): MandaliMessage[] {
+    const all = this.messages.get(channelId) ?? [];
+    const msgs = sinceMs === undefined ? all : all.filter((m) => m.timestamp >= sinceMs);
     return msgs.slice(-limit);
   }
 
@@ -368,7 +370,8 @@ export class MandaliRepository {
   }
 
   public markRead(mandaliId: string, playerId: string): { previous: number; current: number } {
-    const previous = this.getReadPointer(mandaliId, playerId);
+    // Never earlier than the moment they joined: what came before is not theirs to have missed.
+    const previous = Math.max(this.getReadPointer(mandaliId, playerId), this.getMember(mandaliId, playerId)?.joinedAt ?? 0);
     const current = Math.max(previous, Date.now());
     this.readPointers.set(this.pointerKey(mandaliId, playerId), current);
     return { previous, current };
@@ -389,7 +392,7 @@ export class MandaliRepository {
       playerId,
       mandalis,
       messages: everything,
-      readPointer: (id) => this.getReadPointer(id, playerId),
+      readPointer: (id) => Math.max(this.getReadPointer(id, playerId), this.getMember(id, playerId)?.joinedAt ?? 0),
       level: (id) => this.getNotificationLevel(id, playerId),
       nameOf: (id, who) => this.getMember(id, who)?.displayName ?? "Member",
     });
@@ -578,10 +581,12 @@ export class MandaliRepository {
     return rows.map(rowToChannel);
   }
 
-  public async getMessagesDurable(channelId: string, limit = 50): Promise<MandaliMessage[]> {
+  /** `sinceMs`: only what was said at or after that moment (a member's join time). */
+  public async getMessagesDurable(channelId: string, limit = 50, sinceMs?: number): Promise<MandaliMessage[]> {
+    const since = sinceMs === undefined ? "" : `&created_at=gte.${encodeURIComponent(new Date(sinceMs).toISOString())}`;
     const rows = await this.pg().select<MessageRow>(
       "mandali_messages",
-      `channel_id=eq.${encodeURIComponent(channelId)}&order=sequence.desc&limit=${limit}`
+      `channel_id=eq.${encodeURIComponent(channelId)}${since}&order=sequence.desc&limit=${limit}`
     );
     if (rows.length === 0) return [];
     const senderIds = Array.from(new Set(rows.map((r) => r.sender_identity_id)));
@@ -713,6 +718,25 @@ export class MandaliRepository {
     return {
       deduplicated: result.deduplicated,
       message: rowToMessage(result.message, sender?.displayName ?? "Member", sender?.avatar ?? "avatar_1"),
+    };
+  }
+
+  /**
+   * A line the system says in the group's main chat about `actorIdentityId`
+   * (who must be an active member) — "X joined the Mandali". Repeating the same
+   * `messageId` returns the notice already posted.
+   */
+  public async postSystemMessageDurable(args: {
+    messageId: string; mandaliId: string; actorIdentityId: string; content: string;
+  }): Promise<{ deduplicated: boolean; message: MandaliMessage }> {
+    const result = await this.pg().rpc<{ deduplicated: boolean; message: MessageRow }>("post_mandali_system_message", {
+      p_message_id: args.messageId, p_mandali_id: args.mandaliId,
+      p_actor_identity_id: args.actorIdentityId, p_content: args.content,
+    });
+    const actor = await this.getMemberDurable(args.mandaliId, args.actorIdentityId);
+    return {
+      deduplicated: result.deduplicated,
+      message: rowToMessage(result.message, actor?.displayName ?? "Member", actor?.avatar ?? "avatar_1"),
     };
   }
 

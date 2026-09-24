@@ -488,7 +488,12 @@ async function main() {
       await join(admin, quiet, reader);
 
       const ch = `${mid}_lounge-chat`;
-      await admin.query(`update public.mandali_memberships set last_read_at = now() - interval '1 hour' where identity_id = $1`, [reader]);
+      // A member who joined two hours ago and last read an hour ago. (The read pointer can no longer
+      // start before the join — see section 9 — so the join is back-dated as well.)
+      await admin.query(
+        `update public.mandali_memberships set last_read_at = now() - interval '1 hour', joined_at = now() - interval '2 hours' where identity_id = $1`,
+        [reader],
+      );
       const send = (who, text) =>
         admin.query(`select public.send_mandali_message($1, $2, $3, $4, $5, null, null)`, [uid("d"), mid, ch, who, text]);
 
@@ -544,6 +549,78 @@ async function main() {
       await admin.query(`select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, reader]);
       const afterLeave = await digestOf();
       check("digest", "a Mandali the person left no longer appears", !afterLeave.some((r) => r.mandaliId === mid));
+    }
+
+    // ── 9. Join notice, and a newcomer's history starting at their join ──
+    console.log("\n9. Join notice and history cut-off");
+    {
+      const owner = await person();
+      const early = await person();
+      const late = await person();
+      const mid = await makeMandali(owner);
+      await join(admin, mid, early);
+      const ch = `${mid}_lounge-chat`;
+      const sendAs = (who, text) =>
+        admin.query(`select public.send_mandali_message($1, $2, $3, $4, $5, null, null)`, [uid("h"), mid, ch, who, text]);
+      const digestFor = async (who) =>
+        (await admin.query(`select public.get_mandali_digests($1) as d`, [who])).rows[0].d.find((r) => r.mandaliId === mid);
+      const joinedAt = async (who) =>
+        (await admin.query(`select joined_at from public.mandali_memberships where mandali_id = $1 and identity_id = $2`, [mid, who]))
+          .rows[0].joined_at;
+
+      await sendAs(early, "before the newcomer");
+      await sendAs(owner, "the plan is a secret");
+      await join(admin, mid, late);
+
+      const noticeId = uid("sys");
+      const notice = await attempt(admin, `select public.post_mandali_system_message($1, $2, $3, 'Late joined the Mandali') as r`, [noticeId, mid, late]);
+      const line = notice.rows?.[0]?.r?.message;
+      check("notice", "posts a SYSTEM line in the group's main chat, about the person who joined",
+        notice.ok && line.kind === "SYSTEM" && line.channel_id === ch && line.sender_identity_id === late && line.content === "Late joined the Mandali",
+        notice.error ?? JSON.stringify(line));
+
+      const again = await attempt(admin, `select public.post_mandali_system_message($1, $2, $3, 'Late joined the Mandali') as r`, [noticeId, mid, late]);
+      const lines = (await admin.query(`select count(*)::int as n from public.mandali_messages where message_id = $1`, [noticeId])).rows[0].n;
+      check("notice", "posting the same notice twice stores one line", again.ok && again.rows[0].r.deduplicated === true && lines === 1, again.error);
+
+      const stranger = await attempt(admin, `select public.post_mandali_system_message($1, $2, $3, 'Nobody joined') as r`, [uid("sys"), mid, await person()]);
+      check("notice", "it cannot be posted about someone who is not a member", !stranger.ok && /NOT_ACTIVE_MEMBER/.test(stranger.error), stranger.error);
+
+      const empty = await attempt(admin, `select public.post_mandali_system_message($1, $2, $3, '   ') as r`, [uid("sys"), mid, late]);
+      check("notice", "an empty notice is refused", !empty.ok && /EMPTY_MESSAGE/.test(empty.error), empty.error);
+
+      await sendAs(early, "welcome");
+      const seqs = (await admin.query(`select sequence from public.mandali_messages where channel_id = $1 order by sequence`, [ch])).rows.map((r) => Number(r.sequence));
+      check("notice", "the notice takes its place in the chat's numbering, with no gaps or repeats",
+        seqs.every((s, i) => s === i + 1), `sequences=${seqs.join(",")}`);
+
+      const fresh = await digestFor(late);
+      check("cutoff", "what was said before joining is not 'new' to the newcomer — only what came after",
+        fresh.unreadCount === 1 && fresh.latest?.preview === "welcome", JSON.stringify({ n: fresh.unreadCount, latest: fresh.latest }));
+      check("cutoff", "the newcomer's own arrival line is not counted as a missed message", fresh.unreadCount === 1);
+      const others = await digestFor(early);
+      check("cutoff", "the others are not told the arrival line is a 'new message' either (only the owner's real message counts)",
+        others.unreadCount === 1, `n=${others.unreadCount}`);
+      check("cutoff", "the digest's read boundary is never earlier than the join",
+        new Date(fresh.lastReadAt).getTime() >= new Date(await joinedAt(late)).getTime());
+
+      // A pointer left over from a previous stay must not pull the past back in.
+      await admin.query(`update public.mandali_memberships set last_read_at = now() - interval '1 day' where mandali_id = $1 and identity_id = $2`, [mid, late]);
+      const stale = await digestFor(late);
+      check("cutoff", "an old read pointer from a previous stay cannot make the past count as new", stale.unreadCount === 1, `n=${stale.unreadCount}`);
+      const marked = await attempt(admin, `select public.mark_mandali_read($1, $2) as r`, [mid, late]);
+      check("cutoff", "'where you had read up to' is never earlier than the join",
+        marked.ok && new Date(marked.rows[0].r.previous).getTime() >= new Date(await joinedAt(late)).getTime(), marked.error);
+
+      // Leave, miss some conversation, come back: the join time moves, so that gap is not theirs either.
+      await admin.query(`select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, late]);
+      await sendAs(owner, "said while you were away");
+      const back = await join(admin, mid, late);
+      const away = (await admin.query(`select created_at from public.mandali_messages where content = 'said while you were away' and mandali_id = $1`, [mid])).rows[0].created_at;
+      check("cutoff", "rejoining stamps a new join time, after what was said while away",
+        back.ok && new Date(await joinedAt(late)).getTime() > new Date(away).getTime(), back.error);
+      const rejoined = await digestFor(late);
+      check("cutoff", "a rejoiner is not shown the time they were away as new", rejoined.unreadCount === 0, `n=${rejoined.unreadCount}`);
     }
   } finally {
     await admin.end();

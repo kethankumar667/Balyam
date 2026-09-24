@@ -16,7 +16,7 @@ const UNREAD_CAP = 1000;
 const MAX_INVITES = 5;
 const MAX_TOP_SENDERS = 3;
 
-export type ActivityOutcome = "applied" | "unknown-mandali" | "own-message" | "duplicate" | "viewing";
+export type ActivityOutcome = "applied" | "unknown-mandali" | "own-message" | "duplicate" | "viewing" | "system";
 
 interface MandaliInboxState {
   digests: MandaliDigest[];
@@ -106,6 +106,8 @@ export const useMandaliInboxStore = create<MandaliInboxState>((set, get) => ({
 
   applyActivity: (event, selfId) => {
     if (selfId && event.senderId === selfId) return "own-message";
+    // "Charan joined" is news, not a missed message — the server's digest leaves it out, so this does too.
+    if (event.kind === "SYSTEM") return "system";
     // Being read as it arrives is not "missed". The hub marks it read on its own schedule.
     if (
       get().viewingMandaliId === event.mandaliId &&

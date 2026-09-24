@@ -51,4 +51,21 @@ describe("decideToast", () => {
     expect(decideToast(ctx({ level: "INVITES_ONLY" }))).toBe("none");
     expect(decideToast(ctx({ level: "INVITES_ONLY", chatToastOnScreen: true }))).toBe("none");
   });
+
+  describe("a group notice (someone joined)", () => {
+    it("is told at the loudest setting only", () => {
+      expect(decideToast(ctx({ isNotice: true }))).toBe("notice");
+      expect(decideToast(ctx({ isNotice: true, level: "INVITES_ONLY" }))).toBe("none");
+      expect(decideToast(ctx({ isNotice: true, level: "MUTED" }))).toBe("none");
+    });
+
+    it("never interrupts a match or the chat being read", () => {
+      expect(decideToast(ctx({ isNotice: true, isInRoom: true }))).toBe("none");
+      expect(decideToast(ctx({ isNotice: true, isViewingThisMandali: true }))).toBe("none");
+    });
+
+    it("is not held back by the chat cooldown or a chat toast already up", () => {
+      expect(decideToast(ctx({ isNotice: true, chatToastOnScreen: true, lastChatToastAt: 999_999 }))).toBe("notice");
+    });
+  });
 });

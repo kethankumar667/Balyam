@@ -16,6 +16,8 @@ export type ToastDecision =
   | "none"
   /** A room was shared: its own toast, with a Join button. */
   | "invite"
+  /** Something happened in the group that is not chat — e.g. a new member joined. */
+  | "notice"
   /** First chat toast for this Mandali in a while. */
   | "chat-new"
   /** A chat toast for this Mandali is still on screen — update its count. */
@@ -24,6 +26,8 @@ export type ToastDecision =
 export interface ToastContext {
   level: NotificationLevel;
   isInvite: boolean;
+  /** A group event rather than a message — "Charan joined the Mandali". */
+  isNotice?: boolean;
   /** The member is looking at this Mandali's chat right now. */
   isViewingThisMandali: boolean;
   /** The member is inside a room — never interrupt a match. */
@@ -37,6 +41,9 @@ export function decideToast(ctx: ToastContext): ToastDecision {
   if (ctx.level === "MUTED") return "none";
   if (ctx.isInRoom) return "none";
   if (ctx.isViewingThisMandali) return "none";
+
+  // Notices are a courtesy, so they follow the loudest setting only.
+  if (ctx.isNotice) return ctx.level === "ALL" ? "notice" : "none";
 
   if (ctx.isInvite) return "invite";
 

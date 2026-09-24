@@ -346,6 +346,7 @@ export class MandaliService {
           invitationId,
         });
         this.notifyChanged(mandaliId, result.autoApproved ? "member-joined" : "join-requested");
+        if (result.autoApproved) void this.announceJoin(mandaliId, playerId);
         return { success: true, pending: !result.autoApproved };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not join this Mandali.") };
@@ -393,6 +394,8 @@ export class MandaliService {
         timestamp: Date.now(),
       });
 
+      this.memberIdCache.delete(mandaliId);
+      void this.announceJoin(mandaliId, playerId);
       return { success: true };
     }
 
@@ -604,6 +607,7 @@ export class MandaliService {
     try {
       const decided = await this.repository.decideJoinRequestDurable(requestId, reviewerId, approve);
       this.notifyChanged(decided.mandaliId, approve ? "member-joined" : "join-declined");
+      if (approve) void this.announceJoin(decided.mandaliId, decided.requesterIdentityId);
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not decide this join request.") };
@@ -616,8 +620,60 @@ export class MandaliService {
     return this.repository.isDurable() ? this.repository.getChannelsDurable(mandaliId) : this.repository.getChannels(mandaliId);
   }
 
-  public async getMessages(channelId: string, limit = 50): Promise<MandaliMessage[]> {
-    return this.repository.isDurable() ? this.repository.getMessagesDurable(channelId, limit) : this.repository.getMessages(channelId, limit);
+  /** `sinceMs`: a member sees only what was said from the moment they joined. */
+  public async getMessages(channelId: string, limit = 50, sinceMs?: number): Promise<MandaliMessage[]> {
+    return this.repository.isDurable()
+      ? this.repository.getMessagesDurable(channelId, limit, sinceMs)
+      : this.repository.getMessages(channelId, limit, sinceMs);
+  }
+
+  /** When this person's current membership began, or `null` if they are not an active member. */
+  public async getMemberJoinedAt(mandaliId: string, playerId: string): Promise<number | null> {
+    const member = this.repository.isDurable()
+      ? await this.repository.getMemberDurable(mandaliId, playerId)
+      : this.repository.getMember(mandaliId, playerId);
+    return member?.state === "ACTIVE" ? member.joinedAt : null;
+  }
+
+  /**
+   * Tell the group someone joined: a line in the main chat (live for anyone
+   * reading it, stored for anyone who reads later) and an activity event so
+   * members elsewhere in the app are told too. Never throws — a join has
+   * already succeeded and must not be undone by a failed announcement.
+   */
+  private async announceJoin(mandaliId: string, playerId: string): Promise<void> {
+    try {
+      let message: MandaliMessage;
+      if (this.repository.isDurable()) {
+        const member = await this.repository.getMemberDurable(mandaliId, playerId);
+        const name = clampText(member?.displayName ?? "A new member", 40);
+        ({ message } = await this.repository.postSystemMessageDurable({
+          messageId: `sys_${nanoid(10)}`, mandaliId, actorIdentityId: playerId, content: `${name} joined the Mandali`,
+        }));
+      } else {
+        const member = this.repository.getMember(mandaliId, playerId);
+        const channel = this.repository.getChannels(mandaliId).find((c) => c.type === "TEXT" && !c.isArchived);
+        if (!member || !channel) return;
+        message = {
+          messageId: `sys_${nanoid(10)}`, channelId: channel.channelId, mandaliId, senderId: playerId,
+          senderName: member.displayName, senderAvatar: member.avatar, senderRole: member.role,
+          content: `${clampText(member.displayName, 40)} joined the Mandali`, reactions: {},
+          timestamp: Date.now(), kind: "SYSTEM",
+        };
+        this.repository.saveMessage(message);
+      }
+      if (this.io) {
+        this.io.to(`mandali:${mandaliId}`).emit("mandali:chat:message" as any, {
+          mandaliId, channelId: message.channelId, message,
+        });
+      }
+      void this.emitActivity(message);
+    } catch (err) {
+      logger.warn({
+        message: `[MANDALI] Could not announce a new member: ${err instanceof Error ? err.message : String(err)}`,
+        module: "MANDALI",
+      });
+    }
   }
 
   public async sendMessage(
@@ -980,9 +1036,12 @@ export class MandaliService {
     }
   }
 
-  public async getCoinRequests(mandaliId: string): Promise<import("@shared/mandali/types.js").MandaliCoinRequest[]> {
+  public async getCoinRequests(
+    mandaliId: string, sinceMs?: number
+  ): Promise<import("@shared/mandali/types.js").MandaliCoinRequest[]> {
     if (!this.repository.isDurable()) return [];
-    return this.repository.getCoinRequestsDurable(mandaliId);
+    const requests = await this.repository.getCoinRequestsDurable(mandaliId);
+    return sinceMs === undefined ? requests : requests.filter((r) => r.createdAt >= sinceMs);
   }
 
   public reactToMessage(
@@ -1266,8 +1325,9 @@ export class MandaliService {
 
   /* ── Member Coin Transfers & Requests ── */
 
-  public getCoinTransfers(mandaliId: string): MandaliCoinTransfer[] {
-    return this.repository.getCoinTransfers(mandaliId);
+  public getCoinTransfers(mandaliId: string, sinceMs?: number): MandaliCoinTransfer[] {
+    const transfers = this.repository.getCoinTransfers(mandaliId);
+    return sinceMs === undefined ? transfers : transfers.filter((t) => t.timestamp >= sinceMs);
   }
 
   public async transferCoins(

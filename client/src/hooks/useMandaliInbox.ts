@@ -22,6 +22,7 @@ import { useAuthStore } from "../store/authStore";
 
 const INVITE_TOAST_MS = 10_000;
 const CHAT_TOAST_MS = 6_000;
+const NOTICE_TOAST_MS = 5_000;
 const chatToastKey = (mandaliId: string): string => `mandali-chat:${mandaliId}`;
 
 /**
@@ -81,6 +82,31 @@ export function useMandaliInbox(): {
 
     const onActivity = (event: MandaliActivityEvent) => {
       const outcome = store.getState().applyActivity(event, userId);
+      if (outcome === "system") {
+        // A group event, such as "Charan joined the Mandali". Not a missed message
+        // (the bell does not count it), but worth a word if they are elsewhere.
+        const digest = store.getState().digests.find((d) => d.mandaliId === event.mandaliId);
+        if (!digest) return;
+        const decision = decideToast({
+          level: digest.level,
+          isInvite: false,
+          isNotice: true,
+          isViewingThisMandali:
+            store.getState().viewingMandaliId === event.mandaliId && document.visibilityState === "visible",
+          isInRoom: pathnameRef.current.startsWith("/room/"),
+          chatToastOnScreen: false,
+          lastChatToastAt: null,
+          now: Date.now(),
+        });
+        if (decision === "notice") {
+          // One per Mandali, updated in place, so a burst of arrivals is one toast, not a stack.
+          toastStore.show(`${digest.name} · ${event.preview}`, "info", NOTICE_TOAST_MS, {
+            key: `mandali-notice:${event.mandaliId}`,
+            action: { label: "Open", onClick: () => navigateRef.current(`/mandali/${digest.handle}`) },
+          });
+        }
+        return;
+      }
       if (outcome === "unknown-mandali") {
         // A Mandali this device has not heard of yet — most likely one just joined.
         void store.getState().refresh();

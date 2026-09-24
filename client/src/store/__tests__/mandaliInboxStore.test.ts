@@ -151,6 +151,22 @@ describe("useMandaliInboxStore", () => {
     });
   });
 
+  describe("system notices", () => {
+    it("are not counted as missed messages — 'Charan joined' is news, not chat", () => {
+      const joined = event({ kind: "SYSTEM", senderId: "charan", senderName: "Charan", preview: "Charan joined the Mandali" });
+
+      expect(state().applyActivity(joined, "me")).toBe("system");
+
+      expect(inbox().unreadCount).toBe(0);
+      expect(inbox().latest).toBeNull();
+      expect(inbox().senderCount).toBe(0);
+    });
+
+    it("about yourself are ignored — you know you just joined", () => {
+      expect(state().applyActivity(event({ kind: "SYSTEM", senderId: "me" }), "me")).toBe("own-message");
+    });
+  });
+
   describe("markRead", () => {
     beforeEach(() => {
       useMandaliInboxStore.setState({
