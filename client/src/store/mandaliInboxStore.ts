@@ -32,6 +32,8 @@ interface MandaliInboxState {
   markRead: (mandaliId: string) => Promise<{ previous: number } | null>;
   setLevel: (mandaliId: string, level: NotificationLevel) => Promise<boolean>;
   dismissInvite: (messageId: string) => void;
+  /** The Mandali was deleted: drop its summary. Nothing else about anyone else's changes. */
+  forget: (mandaliId: string) => void;
   setViewing: (mandaliId: string | null) => void;
   reset: () => void;
 }
@@ -175,6 +177,13 @@ export const useMandaliInboxStore = create<MandaliInboxState>((set, get) => ({
 
   dismissInvite: (messageId) =>
     set((state) => ({ dismissedInvites: { ...state.dismissedInvites, [messageId]: true } })),
+
+  forget: (mandaliId) =>
+    set((state) =>
+      state.digests.some((d) => d.mandaliId === mandaliId)
+        ? { digests: state.digests.filter((d) => d.mandaliId !== mandaliId) }
+        : state,
+    ),
 
   setViewing: (mandaliId) => set({ viewingMandaliId: mandaliId }),
 

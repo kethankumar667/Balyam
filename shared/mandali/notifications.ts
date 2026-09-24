@@ -61,6 +61,17 @@ export interface RoomInviteStatus {
   youAreIn: boolean;
 }
 
+/**
+ * Sent to everyone who was in a Mandali when its owner deletes it — to the
+ * Mandali's own room and to each member's personal room, so it reaches them
+ * whether they were reading the chat or somewhere else in the app. Carries the
+ * name because by the time it arrives there is nothing left to look it up in.
+ */
+export interface MandaliDeletedEvent {
+  mandaliId: string;
+  name: string;
+}
+
 /** Sent to every connected member of a Mandali when something new is said in it. */
 export interface MandaliActivityEvent {
   mandaliId: string;

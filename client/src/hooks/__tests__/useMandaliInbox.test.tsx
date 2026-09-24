@@ -21,9 +21,14 @@ const io = vi.hoisted(() => {
 });
 const api = vi.hoisted(() => ({ apiJson: vi.fn(), apiFetch: vi.fn() }));
 const join = vi.hoisted(() => vi.fn());
+/** Stands in for the Mandali store's "forget this Mandali" — true means it was news to this client. */
+const deleted = vi.hoisted(() => ({ apply: vi.fn() }));
 
 vi.mock("../../lib/socket", () => ({ getSocket: () => io.socket }));
-vi.mock("../../store/mandaliStore", () => ({ authenticateMandaliSocket: vi.fn(async () => undefined) }));
+vi.mock("../../store/mandaliStore", () => ({
+  authenticateMandaliSocket: vi.fn(async () => undefined),
+  useMandaliStore: { getState: () => ({ applyMandaliDeleted: deleted.apply }) },
+}));
 vi.mock("../../lib/playerIdentity", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/playerIdentity")>()),
   apiJson: api.apiJson,
@@ -90,6 +95,8 @@ describe("useMandaliInbox", () => {
     api.apiFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, previous: 0 }) });
     join.mockReset();
     join.mockResolvedValue({ ok: true, code: "ABC234" });
+    deleted.apply.mockReset();
+    deleted.apply.mockReturnValue(true);
     useMandaliInboxStore.getState().reset();
     resetChatToastCooldown();
     useAuthStore.setState({ isMember: true, userId: "me", ready: true } as never);
@@ -108,6 +115,7 @@ describe("useMandaliInbox", () => {
 
     expect(result.current.items).toEqual([]);
     expect(io.handlers.get("mandali:activity")).toBeUndefined();
+    expect(io.handlers.get("mandali:deleted")).toBeUndefined();
     expect(api.apiJson).not.toHaveBeenCalled();
   });
 
@@ -367,6 +375,72 @@ describe("useMandaliInbox", () => {
     });
   });
 
+  describe("the owner deletes a Mandali", () => {
+    const deletedEvent = { mandaliId: "m1", name: "Ludo Lounge" };
+
+    it("tells a member, in one line, wherever they are in the app", async () => {
+      await mount([digest("m1", "Ludo Lounge")], "/games");
+
+      act(() => io.fire("mandali:deleted", deletedEvent));
+
+      expect(deleted.apply).toHaveBeenCalledWith("m1");
+      expect(toasts()).toHaveLength(1);
+      expect(toasts()[0].message).toBe("“Ludo Lounge” was deleted by its owner.");
+    });
+
+    it("stays quiet for the owner who has just deleted it themselves", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+      deleted.apply.mockReturnValue(false);
+
+      act(() => io.fire("mandali:deleted", deletedEvent));
+
+      expect(deleted.apply).toHaveBeenCalledWith("m1");
+      expect(toasts()).toHaveLength(0);
+    });
+
+    it("shows one toast even if the same event arrives twice (two tabs, a reconnect)", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:deleted", deletedEvent));
+      act(() => io.fire("mandali:deleted", deletedEvent));
+
+      expect(toasts()).toHaveLength(1);
+    });
+
+    it.each([
+      ["nothing", undefined],
+      ["no id", { name: "Ludo Lounge" }],
+      ["a numeric id", { mandaliId: 7, name: "Ludo Lounge" }],
+      ["an object as the id", { mandaliId: { $ne: null }, name: "Ludo Lounge" }],
+      ["an empty id", { mandaliId: "", name: "Ludo Lounge" }],
+    ])("ignores a malformed event (%s) without touching anything", async (_label, payload) => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:deleted", payload));
+
+      expect(deleted.apply).not.toHaveBeenCalled();
+      expect(toasts()).toHaveLength(0);
+    });
+
+    it("copes with a missing name by saying 'A Mandali'", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:deleted", { mandaliId: "m1" }));
+
+      expect(toasts()[0].message).toBe("A Mandali you were in was deleted by its owner.");
+    });
+
+    it("shows the name as plain text, however odd, and keeps a very long one short", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:deleted", { mandaliId: "m1", name: `<b>${"x".repeat(200)}</b>` }));
+
+      const message = toasts()[0].message;
+      expect(message.startsWith("“<b>x")).toBe(true);
+      expect(message.length).toBeLessThan(120);
+    });
+  });
+
   it("clears everything when the member signs out", async () => {
     const { result } = await mount([digest("m1", "Ludo Lounge", { unreadCount: 2, senderCount: 1, topSenders: [{ name: "A", count: 2 }] })]);
     expect(result.current.items).toHaveLength(1);
@@ -383,5 +457,6 @@ describe("useMandaliInbox", () => {
     unmount();
 
     expect(io.handlers.get("mandali:activity")?.size ?? 0).toBe(0);
+    expect(io.handlers.get("mandali:deleted")?.size ?? 0).toBe(0);
   });
 });

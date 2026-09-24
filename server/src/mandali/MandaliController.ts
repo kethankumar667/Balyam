@@ -1,6 +1,14 @@
 import { Router, type Request, type Response } from "express";
-import type { MandaliService } from "./MandaliService.js";
+import type { DeleteMandaliFailure, MandaliService } from "./MandaliService.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
+
+/** HTTP status for each way a delete can be refused. */
+const DELETE_FAILURE_STATUS: Record<DeleteMandaliFailure, number> = {
+  NOT_FOUND: 404,
+  FORBIDDEN: 403,
+  CONFIRMATION_MISMATCH: 400,
+  FAILED: 500,
+};
 
 /**
  * The caller's identity, straight from `req.player` — set exclusively by the
@@ -429,6 +437,27 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
     res.json({ success: true, mandali: result.mandali });
+  });
+
+  // Delete a Mandali (owner only). The confirmation is the Mandali's own
+  // handle, typed by the owner; the actor is only ever the verified caller.
+  router.delete("/:id", async (req, res) => {
+    const playerInfo = extractPlayerFromReq(req);
+    if (!playerInfo) {
+      res.status(401).json({ success: false, error: "Sign in to delete a Mandali." });
+      return;
+    }
+    if (!playerInfo.isMember) {
+      res.status(403).json({ success: false, error: "Only the owner can delete this Mandali." });
+      return;
+    }
+    const confirmHandle = typeof req.body?.confirmHandle === "string" ? req.body.confirmHandle : "";
+    const result = await mandaliService.deleteMandali(req.params.id, playerInfo.playerId, confirmHandle);
+    if (result.success) {
+      res.json({ success: true });
+      return;
+    }
+    res.status(DELETE_FAILURE_STATUS[result.code]).json({ success: false, error: result.error });
   });
 
   // Get Channels

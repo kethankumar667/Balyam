@@ -12,8 +12,8 @@
  * - Zero usage of Sparkles from lucide-react.
  */
 
-import { useEffect, useState } from "react";
-import { Info, Save, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Info, Save, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import Modal from "../Modal.js";
 import type { Mandali } from "@shared/mandali/types.js";
 
@@ -29,7 +29,15 @@ export interface GroupInfoModalProps {
     name?: string; description?: string; rules?: string;
     editPermission?: "ADMIN" | "ALL"; sendPermission?: "ADMIN" | "ALL"; joinApproval?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
+  /**
+   * Owner only. Deletes the whole Mandali; the argument is the handle the owner
+   * typed to confirm. Omit it and the delete control is not offered at all.
+   */
+  onDelete?: (confirmHandle: string) => Promise<{ success: boolean; error?: string }>;
 }
+
+/** What someone types to confirm: case, spacing and a leading @ are not part of the handle. */
+const normaliseHandle = (typed: string): string => typed.trim().toLowerCase().replace(/^@/, "");
 
 function SettingToggle({
   label, description, value, onChange, disabled,
@@ -63,7 +71,7 @@ function SettingToggle({
   );
 }
 
-export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, isOwner, onSave }: GroupInfoModalProps) {
+export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, isOwner, onSave, onDelete }: GroupInfoModalProps) {
   const [name, setName] = useState(mandali.name);
   const [description, setDescription] = useState(mandali.description);
   const [rules, setRules] = useState(mandali.rules ?? "");
@@ -72,6 +80,27 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
   const [joinApproval, setJoinApproval] = useState(mandali.joinApproval ?? false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [typedHandle, setTypedHandle] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteInputRef = useRef<HTMLInputElement>(null);
+  /** A ref, not state: a double click lands before the re-render that would disable the button. */
+  const deleteInFlight = useRef(false);
+  const canConfirmDelete = normaliseHandle(typedHandle) === mandali.handle.toLowerCase();
+
+  // Tied to `open` alone, not to `mandali`: live updates hand this sheet a fresh
+  // Mandali object all the time, and that must not wipe a half-typed confirmation.
+  useEffect(() => {
+    if (open) return;
+    setConfirmingDelete(false);
+    setTypedHandle("");
+    setDeleteError(null);
+  }, [open]);
+
+  useEffect(() => {
+    if (confirmingDelete) deleteInputRef.current?.focus();
+  }, [confirmingDelete]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +129,33 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
       onClose();
     } else {
       setError(result.error ?? "Could not save changes.");
+    }
+  };
+
+  const cancelDelete = () => {
+    setConfirmingDelete(false);
+    setTypedHandle("");
+    setDeleteError(null);
+  };
+
+  const handleDelete = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!onDelete || !canConfirmDelete || deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await onDelete(typedHandle);
+      if (result.success) {
+        onClose();
+      } else {
+        setDeleteError(result.error ?? "Could not delete this Mandali.");
+      }
+    } catch {
+      setDeleteError("Could not delete this Mandali. Please try again.");
+    } finally {
+      deleteInFlight.current = false;
+      setIsDeleting(false);
     }
   };
 
@@ -186,6 +242,78 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
             disabled={!isOwner}
           />
         </div>
+
+        {isOwner && onDelete && (
+          <div className="mt-5 pt-4 border-t border-rose-200 dark:border-rose-900/60">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
+              Danger zone
+            </h3>
+            {!confirmingDelete ? (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="w-full min-h-[44px] rounded-xl font-semibold text-sm border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                Delete Mandali…
+              </button>
+            ) : (
+              <form
+                onSubmit={handleDelete}
+                className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3.5 space-y-3"
+              >
+                <div role="alert" className="flex gap-2 text-xs text-rose-800 dark:text-rose-200">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  <p>
+                    This is permanent and cannot be undone. Every message in “{mandali.name}” is erased and every
+                    member is removed from the Mandali. Coins already sent between members are not returned or
+                    affected.
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="mandali-delete-confirm" className="block text-xs font-semibold text-rose-900 dark:text-rose-100 mb-1">
+                    Type <strong className="font-black">{mandali.handle}</strong> to confirm
+                  </label>
+                  <input
+                    id="mandali-delete-confirm"
+                    ref={deleteInputRef}
+                    value={typedHandle}
+                    onChange={(e) => setTypedHandle(e.target.value)}
+                    disabled={isDeleting}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    className="w-full min-h-[44px] rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 px-3.5 text-sm text-slate-900 dark:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+                  />
+                </div>
+                {deleteError && (
+                  <p className="text-xs text-rose-700 dark:text-rose-300" role="alert">
+                    {deleteError}
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelDelete}
+                    disabled={isDeleting}
+                    className="flex-1 min-h-[44px] rounded-xl font-semibold text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Keep Mandali
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!canConfirmDelete || isDeleting}
+                    aria-busy={isDeleting}
+                    className="flex-1 min-h-[44px] rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-400"
+                  >
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
+                    Delete forever
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="mt-3 text-xs text-rose-600 dark:text-rose-400" role="alert">

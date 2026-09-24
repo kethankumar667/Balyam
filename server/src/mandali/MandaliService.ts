@@ -17,6 +17,7 @@ import { GAME_DISPLAY_NAMES } from "@shared/catalog.js";
 import type { RoomInviteMetadata } from "@shared/mandali/types.js";
 import type {
   MandaliActivityEvent,
+  MandaliDeletedEvent,
   MandaliDigest,
   NotificationLevel,
   RoomInviteState,
@@ -61,6 +62,32 @@ function durableErrorMessage(err: unknown, fallback: string): string {
   const pgMessage = jsonMessage ?? raw;
   const withoutCode = pgMessage.match(/^[A-Z_]+:\s*(.+)$/)?.[1];
   return withoutCode ?? (jsonMessage ? pgMessage : fallback);
+}
+
+/** What the host is told when they try to leave without handing the group to someone. */
+export const HOST_MUST_HAND_OVER = "You are the host. Make someone else the host before you leave.";
+
+export type DeleteMandaliFailure = "NOT_FOUND" | "FORBIDDEN" | "CONFIRMATION_MISMATCH" | "FAILED";
+export type DeleteMandaliResult =
+  | { success: true }
+  | { success: false; code: DeleteMandaliFailure; error: string };
+
+/** What someone types to confirm: case, spacing and a leading @ are not part of the handle. */
+function normaliseHandle(typed: string): string {
+  return typed.trim().toLowerCase().replace(/^@/, "");
+}
+
+/** Map the database function's own refusals onto the codes callers act on. */
+function deleteFailure(err: unknown): DeleteMandaliResult {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (raw.includes("MANDALI_NOT_FOUND")) {
+    return { success: false, code: "NOT_FOUND", error: "This Mandali no longer exists." };
+  }
+  if (raw.includes("FORBIDDEN")) {
+    return { success: false, code: "FORBIDDEN", error: "Only the owner can delete this Mandali." };
+  }
+  logger.error({ message: `[MANDALI] Delete failed: ${raw}`, module: "MANDALI" });
+  return { success: false, code: "FAILED", error: "Could not delete this Mandali. Nothing was changed. Please try again." };
 }
 
 export class MandaliService {
@@ -420,8 +447,11 @@ export class MandaliService {
       try {
         await this.repository.transitionMembershipDurable(mandaliId, playerId, playerId, "LEAVE");
         this.notifyChanged(mandaliId, "member-left");
+        this.evictFromMandaliRoom(mandaliId, playerId);
         return { success: true };
       } catch (err) {
+        const raw = err instanceof Error ? err.message : String(err);
+        if (raw.includes("OWNER_MUST_TRANSFER")) return { success: false, error: HOST_MUST_HAND_OVER };
         return { success: false, error: durableErrorMessage(err, "Could not leave this Mandali.") };
       }
     }
@@ -432,7 +462,7 @@ export class MandaliService {
     }
 
     if (member.role === "OWNER") {
-      return { success: false, error: "Owners cannot leave a Mandali without transferring ownership first." };
+      return { success: false, error: HOST_MUST_HAND_OVER };
     }
 
     const transition = MembershipStateMachine.transitionMembership(
@@ -455,6 +485,8 @@ export class MandaliService {
       this.repository.saveAuditLog({ logId: `log_${nanoid(8)}`, ...transition.auditEntry });
     }
 
+    this.notifyChanged(mandaliId, "member-left");
+    this.evictFromMandaliRoom(mandaliId, playerId);
     return { success: true };
   }
 
@@ -469,6 +501,7 @@ export class MandaliService {
       try {
         await this.repository.transitionMembershipDurable(mandaliId, officerId, targetPlayerId, "KICK");
         this.notifyChanged(mandaliId, "member-removed");
+        this.evictFromMandaliRoom(mandaliId, targetPlayerId);
         return { success: true };
       } catch (err) {
         return { success: false, error: durableErrorMessage(err, "Could not remove this member.") };
@@ -552,6 +585,7 @@ export class MandaliService {
     try {
       await this.repository.transitionMembershipDurable(mandaliId, actorId, targetId, "BAN");
       this.notifyChanged(mandaliId, "member-banned");
+      this.evictFromMandaliRoom(mandaliId, targetId);
       return { success: true };
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not ban this member.") };
@@ -568,6 +602,90 @@ export class MandaliService {
     } catch (err) {
       return { success: false, error: durableErrorMessage(err, "Could not transfer ownership.") };
     }
+  }
+
+  /**
+   * Delete a Mandali for good. Permanent, and it takes the conversation with it.
+   *
+   * Three independent guards, in this order so a stranger learns nothing:
+   *   1. the caller must be the owner — checked here for a fast, quiet refusal,
+   *      and again inside the database function, which is the real arbiter
+   *      (ownership can change between this read and that call);
+   *   2. the caller must have typed the Mandali's handle, so a stale screen or
+   *      a stray request cannot delete the wrong group;
+   *   3. only then is anything removed.
+   *
+   * Members are told AFTER the delete succeeds and BEFORE their sockets are
+   * pulled out of the room — the other way round the announcement would reach
+   * nobody who was watching the chat.
+   */
+  public async deleteMandali(mandaliId: string, actorId: string, confirmHandle: string): Promise<DeleteMandaliResult> {
+    const mandali = await this.getMandaliById(mandaliId);
+    if (!mandali) return { success: false, code: "NOT_FOUND", error: "This Mandali no longer exists." };
+    if (mandali.ownerId !== actorId) {
+      return { success: false, code: "FORBIDDEN", error: "Only the owner can delete this Mandali." };
+    }
+    if (normaliseHandle(confirmHandle) !== mandali.handle.toLowerCase()) {
+      return { success: false, code: "CONFIRMATION_MISMATCH", error: "Type the Mandali's handle exactly to confirm." };
+    }
+
+    let name = mandali.name;
+    let memberIds: string[];
+    try {
+      if (this.repository.isDurable()) {
+        const deleted = await this.repository.deleteMandaliDurable(mandaliId, actorId);
+        name = deleted.name || name;
+        memberIds = deleted.memberIds;
+      } else {
+        memberIds = this.repository.getMembers(mandaliId).filter((m) => m.state === "ACTIVE").map((m) => m.playerId);
+      }
+    } catch (err) {
+      return deleteFailure(err);
+    }
+
+    this.repository.purgeMandali(mandaliId);
+    this.memberIdCache.delete(mandaliId);
+    this.announceDeleted({ mandaliId, name }, memberIds);
+    logger.info({ message: `[MANDALI] ${mandaliId} deleted by its owner (${memberIds.length} members)`, module: "MANDALI" });
+    return { success: true };
+  }
+
+  /**
+   * End someone's live access to a Mandali after they leave or are removed.
+   * Their membership is already gone, but every tab or device they have open is
+   * still sitting in the Mandali's room and would keep receiving the chat until
+   * it reconnected. All of a person's authenticated sockets share their
+   * personal `user:<id>` room, so one call reaches every one of them.
+   */
+  private evictFromMandaliRoom(mandaliId: string, playerId: string): void {
+    try {
+      this.io?.in(`user:${playerId}`).socketsLeave(`mandali:${mandaliId}`);
+    } catch (err) {
+      this.logSocketFailure("evict a member from the Mandali room", err);
+    }
+  }
+
+  /**
+   * Both socket helpers run AFTER the change is already committed. A failure here
+   * must not turn a completed leave or delete into an error response, so it is
+   * logged and swallowed.
+   */
+  private announceDeleted(event: MandaliDeletedEvent, memberIds: string[]): void {
+    if (!this.io) return;
+    try {
+      const room = `mandali:${event.mandaliId}`;
+      this.io.to([room, ...memberIds.map((id) => `user:${id}`)]).emit("mandali:deleted" as any, event);
+      this.io.in(room).socketsLeave(room);
+    } catch (err) {
+      this.logSocketFailure("announce a deleted Mandali", err);
+    }
+  }
+
+  private logSocketFailure(what: string, err: unknown): void {
+    logger.warn({
+      message: `[MANDALI] Could not ${what}: ${err instanceof Error ? err.message : String(err)}`,
+      module: "MANDALI",
+    });
   }
 
   /* ── Invite links & join-request approval ── */
