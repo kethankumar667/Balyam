@@ -209,6 +209,70 @@ describe("useMandaliInbox", () => {
     });
   });
 
+  describe("a new member joins", () => {
+    const joined = (over: Partial<MandaliActivityEvent> = {}) =>
+      event({ kind: "SYSTEM", senderId: "charan", senderName: "Charan", preview: "Charan joined the Mandali", ...over });
+
+    it("tells members elsewhere in the app in one line, without counting it as a missed message", async () => {
+      const { result } = await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:activity", joined()));
+
+      expect(toasts()).toHaveLength(1);
+      expect(toasts()[0].message).toBe("Ludo Lounge · Charan joined the Mandali");
+      expect(toasts()[0].action?.label).toBe("Open");
+      expect(result.current.items).toEqual([]);
+    });
+
+    it("shows a run of arrivals as one toast that updates, not a stack", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      for (const name of ["Charan", "Divya", "Esha"]) {
+        act(() => io.fire("mandali:activity", joined({ senderId: name, preview: `${name} joined the Mandali` })));
+      }
+
+      expect(toasts()).toHaveLength(1);
+      expect(toasts()[0].message).toBe("Ludo Lounge · Esha joined the Mandali");
+    });
+
+    it("opens the Mandali from the toast", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+      act(() => io.fire("mandali:activity", joined()));
+
+      act(() => toasts()[0].action!.onClick());
+
+      expect(currentPath).toBe("/mandali/m1");
+    });
+
+    it("does not tell the person who just joined about themselves", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:activity", joined({ senderId: "me" })));
+
+      expect(toasts()).toHaveLength(0);
+    });
+
+    it.each([["MUTED"], ["INVITES_ONLY"]] as const)("stays silent when the Mandali is %s", async (level) => {
+      await mount([digest("m1", "Ludo Lounge", { level })]);
+
+      act(() => io.fire("mandali:activity", joined()));
+
+      expect(toasts()).toHaveLength(0);
+    });
+
+    it("stays silent mid-match and while that chat is being read", async () => {
+      await mount([digest("m1", "Ludo Lounge")], "/room/XYZ789");
+      act(() => io.fire("mandali:activity", joined()));
+      expect(toasts()).toHaveLength(0);
+
+      cleanup();
+      await mount([digest("m1", "Ludo Lounge")]);
+      act(() => useMandaliInboxStore.getState().setViewing("m1"));
+      act(() => io.fire("mandali:activity", joined()));
+      expect(toasts()).toHaveLength(0);
+    });
+  });
+
   describe("when a Mandali must not interrupt", () => {
     it("MUTED: no toast and no row, even for an invitation", async () => {
       const { result } = await mount([digest("m1", "Ludo Lounge", { level: "MUTED" })]);

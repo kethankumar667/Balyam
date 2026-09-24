@@ -446,8 +446,11 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
+    // A member's history starts the moment they joined — what was said before
+    // that is not theirs, however the group's earlier conversation went.
+    const joinedAt = await mandaliService.getMemberJoinedAt(req.params.id, playerInfo.playerId);
     const limit = Number(req.query.limit) || 50;
-    const messages = await mandaliService.getMessages(req.params.channelId, limit);
+    const messages = await mandaliService.getMessages(req.params.channelId, limit, joinedAt ?? Date.now());
     res.json({ success: true, messages });
   });
 
@@ -740,7 +743,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   // Get Coin Transfers History
   router.get("/:id/coins/transfers", async (req, res) => {
     if (!(await requireActiveMember(req, res, req.params.id))) return;
-    const transfers = mandaliService.getCoinTransfers(req.params.id);
+    const joinedAt = await mandaliService.getMemberJoinedAt(req.params.id, extractPlayerFromReq(req)?.playerId ?? "");
+    const transfers = mandaliService.getCoinTransfers(req.params.id, joinedAt ?? Date.now());
     res.json({ success: true, transfers });
   });
 
@@ -748,7 +752,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   router.get("/:id/coin-requests", async (req, res) => {
     if (!(await requireActiveMember(req, res, req.params.id))) return;
-    const requests = await mandaliService.getCoinRequests(req.params.id);
+    const joinedAt = await mandaliService.getMemberJoinedAt(req.params.id, extractPlayerFromReq(req)?.playerId ?? "");
+    const requests = await mandaliService.getCoinRequests(req.params.id, joinedAt ?? Date.now());
     res.json({ success: true, requests });
   });
 

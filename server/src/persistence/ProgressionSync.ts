@@ -350,7 +350,7 @@ class ProgressionSync {
     senderName?: string;
     senderAvatar?: string;
     recipientId: string;
-    status: "PENDING" | "ACCEPTED" | "DECLINED";
+    status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
     createdAt: number;
     updatedAt?: number;
   }): void {

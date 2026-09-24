@@ -96,7 +96,7 @@ export interface FriendEdge {
   createdAt: number;
 }
 
-export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED";
+export type FriendRequestStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
 
 export interface FriendRequestRecord {
   id: string;
