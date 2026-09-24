@@ -133,14 +133,17 @@ export default function MandaliHubPage(): JSX.Element {
     };
   }, [inviteToken, resolveInviteLink]);
 
+  // The live channel is for members. A visitor looking at the storefront has
+  // nothing to listen to (and the server would not let them in anyway).
+  const isMemberOfActive = members.some((m) => m.playerId === playerId);
   useEffect(() => {
-    if (activeMandali?.id && playerId) {
+    if (activeMandali?.id && playerId && isMemberOfActive) {
       initMandaliSocket(activeMandali.id, playerId);
       return () => {
         cleanupMandaliSocket(activeMandali.id, playerId);
       };
     }
-  }, [activeMandali?.id, playerId, initMandaliSocket, cleanupMandaliSocket]);
+  }, [activeMandali?.id, playerId, isMemberOfActive, initMandaliSocket, cleanupMandaliSocket]);
 
   const selfMember = members.find((m) => m.playerId === playerId);
   const selfRole: string = selfMember?.role ?? "MEMBER";
@@ -327,7 +330,28 @@ export default function MandaliHubPage(): JSX.Element {
 
         {/* Responsive Viewport Switcher */}
         <div className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden">
-          {viewport === "desktop" ? (
+          {!isCurrentMember ? (
+            // Someone who is not in this Mandali sees its storefront — never its
+            // conversation or its controls. The server sends them nothing more.
+            <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
+              <div className="w-full max-w-md text-center rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+                  <Crown className="w-7 h-7" />
+                </div>
+                <h1 className="text-xl font-black text-slate-900 dark:text-white">{activeMandali.name}</h1>
+                <p className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 mt-0.5">@{activeMandali.handle}</p>
+                {activeMandali.description && (
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">{activeMandali.description}</p>
+                )}
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-3">
+                  {activeMandali.memberCount} of {activeMandali.maxMembers} members
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
+                  Join to read the conversation and play with the group.
+                </p>
+              </div>
+            </div>
+          ) : viewport === "desktop" ? (
             <MandaliHubDesktop {...sharedProps} />
           ) : (
             <MandaliHubMobile {...sharedProps} />

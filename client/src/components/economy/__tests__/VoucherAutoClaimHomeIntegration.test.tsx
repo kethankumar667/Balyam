@@ -15,6 +15,7 @@ vi.mock("../../../lib/socket", () => ({
     connected: true,
   })),
   getApiBaseUrl: vi.fn(() => "http://localhost:3000"),
+  disconnectSocket: vi.fn(),
 }));
 
 describe("Voucher Auto-Claim Post-Signup Home Flow", () => {

@@ -101,9 +101,13 @@ const mockAuthState: MockAuthState = {
 };
 
 vi.mock("../../store/authStore", () => ({
-  useAuthStore: <T,>(selector?: (state: MockAuthState) => T): T | MockAuthState => {
-    return selector ? selector(mockAuthState) : mockAuthState;
-  },
+  useAuthStore: Object.assign(
+    <T,>(selector?: (state: MockAuthState) => T): T | MockAuthState => {
+      return selector ? selector(mockAuthState) : mockAuthState;
+    },
+    // Modules that watch the account (mandaliStore) subscribe when imported.
+    { subscribe: () => () => undefined }
+  ),
   currentAccessToken: () => "mock-token",
   currentAccountKind: () => "member",
   currentGuestToken: () => null,

@@ -36,8 +36,10 @@ import type {
 } from "@shared/mandali/socketContract.js";
 import type { GameKind } from "@shared/types.js";
 import { apiFetch, apiJson, getPlayerCredential } from "../lib/playerIdentity";
-import { getSocket } from "../lib/socket";
+import { getSocket, disconnectSocket } from "../lib/socket";
 import { useAuthStore } from "./authStore";
+import { useMandaliInboxStore } from "./mandaliInboxStore";
+import { useRoomInviteStatusStore } from "./roomInviteStatusStore";
 
 export interface MandaliStore {
   // Discovery & Communities
@@ -1136,3 +1138,55 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     set({ activeGameLaunch: null });
   },
 }));
+
+/**
+ * Forget everything that belonged to the account that just left.
+ *
+ * Clearing storage is not enough: the chat history, member list and coin
+ * requests of the Mandali someone was reading live in this store's memory, and
+ * the socket they authenticated on keeps delivering that Mandali's live
+ * messages. Without this, signing out on a Mandali page leaves a guest looking
+ * at the group's private conversation. The public browse directory (`mandalis`)
+ * is deliberately kept.
+ */
+export function resetMandaliSession(): void {
+  if (mandaliRefreshTimer) {
+    clearTimeout(mandaliRefreshTimer);
+    mandaliRefreshTimer = null;
+  }
+  mandaliReconnectHandler = null;
+  mandaliSocketAuthenticatedFor = null;
+  // The listeners were bound to the socket being dropped; a new one needs them again.
+  socketListenersBound = false;
+  disconnectSocket();
+
+  useMandaliStore.setState({
+    myMandalis: [],
+    activeMandali: null,
+    members: [],
+    channels: [],
+    activeChannelId: null,
+    messages: {},
+    parties: [],
+    memories: [],
+    events: [],
+    coinTransfers: [],
+    activeGameLaunch: null,
+    pendingJoinRequests: [],
+    coinRequests: {},
+    coinRequestCooldownEndsAt: null,
+    isLoading: false,
+    isSubmitting: false,
+    errorMessage: null,
+  });
+  useMandaliInboxStore.getState().reset();
+  useRoomInviteStatusStore.setState({ statuses: {} });
+}
+
+// Every way an account can go away — the sign-out button, an expired session,
+// another tab signing out, switching to a different account — passes through
+// the auth store, so watching it covers them all.
+useAuthStore.subscribe((state, prev) => {
+  const leftAccount = (prev.userId !== null && state.userId !== prev.userId) || (prev.isMember && !state.isMember);
+  if (leftAccount) resetMandaliSession();
+});

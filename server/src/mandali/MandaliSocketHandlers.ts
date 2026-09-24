@@ -73,6 +73,14 @@ export function registerMandaliSocketHandlers(
           ack?.({ success: false, error: "Invalid or expired credential" });
           return;
         }
+        // Re-authenticating as someone else must not keep the last person's
+        // rooms: their personal feed and every Mandali chat they had joined.
+        const previous = (socket.data as MandaliSocketData).mandaliPlayer;
+        if (previous && previous.playerId !== identity.playerId) {
+          for (const room of [...socket.rooms]) {
+            if (room === `user:${previous.playerId}` || room.startsWith("mandali:")) void socket.leave(room);
+          }
+        }
         (socket.data as MandaliSocketData).mandaliPlayer = identity;
         // A personal room, so "something new in one of your Mandalis" can reach
         // this person anywhere in the app — not only while a hub page is open.
@@ -89,9 +97,17 @@ export function registerMandaliSocketHandlers(
   );
 
   // Join the Mandali broadcast room
-  socket.on("mandali:join_room", (payload: MandaliJoinRoomPayload) => {
+  socket.on("mandali:join_room", async (payload: MandaliJoinRoomPayload) => {
     const actorId = requireAuthenticatedActor(socket, undefined);
     if (!actorId || !payload?.mandaliId) return;
+    // The room carries the group's live conversation. Being authenticated is
+    // not being a member: a guest, or a member of some other Mandali, gets
+    // nothing from this one.
+    try {
+      if (!(await mandaliService.isActiveMember(payload.mandaliId, actorId))) return;
+    } catch {
+      return;
+    }
     const roomName = `mandali:${payload.mandaliId}`;
     socket.join(roomName);
     logger.info({

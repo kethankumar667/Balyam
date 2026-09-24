@@ -389,7 +389,16 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
             <Route path="/mandali" element={<MandaliDiscoveryPage />} />
-            <Route path="/mandali/:handle" element={<MandaliHubPage />} />
+            {/* A Mandali's chat, members and controls are for signed-in members.
+                A signed-out visitor is sent to sign in and brought back after. */}
+            <Route
+              path="/mandali/:handle"
+              element={
+                <ProtectedRoute>
+                  <MandaliHubPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/design-system" element={<DesignSystemCatalogPage />} />
 
             {/* Help & Trust Architecture */}

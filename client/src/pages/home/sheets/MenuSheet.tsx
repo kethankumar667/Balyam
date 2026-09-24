@@ -16,6 +16,7 @@ import BhalyamLogo from "../../../components/bhalyam/BhalyamLogo";
 import { useTheme } from "../../../lib/useTheme";
 import GlobalSettings from "../../../components/GlobalSettings";
 import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
+import { useSignOut } from "../../../hooks/useSignOut";
 import { SheetShell, SheetAction } from "./SheetShell";
 
 /**
@@ -43,7 +44,7 @@ export function MenuSheet({
   // session to "Sign in" here, with no way to find "Sign out" at all.
   const signedIn = identity.mode !== "guest";
   const email = useAuthStore((s) => s.email);
-  const signOut = useAuthStore((s) => s.signOut);
+  const signOutAndLeave = useSignOut();
 
   return (
     <SheetShell
@@ -129,8 +130,8 @@ export function MenuSheet({
             label="Sign out / Log out"
             hint={email ? `Signed in as ${email}` : "Log out from this device"}
             onClick={() => {
-              signOut();
               onClose();
+              void signOutAndLeave();
             }}
             icon={<LogOut className="w-5 h-5 text-red-500" />}
           />

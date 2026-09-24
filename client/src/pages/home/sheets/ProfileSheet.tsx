@@ -20,6 +20,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 import MandaliInviteActions from "../../../components/mandali/MandaliInviteActions";
+import { useSignOut } from "../../../hooks/useSignOut";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
 import { useRoomStore } from "../../../store/roomStore";
@@ -60,6 +61,8 @@ export function ProfileSheet({
   const named = playerName.trim().length > 0;
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+  const signOutAndLeave = useSignOut();
+  const navigateHome = useNavigate();
   const identity = useIdentityPresentation();
   // "Has some kind of signed-in identity to show a membership/account panel
   // for" — true for a verified member AND for local fallback (a local-flag
@@ -313,7 +316,8 @@ export function ProfileSheet({
           <button
             type="button"
             onClick={() => {
-              useAuthStore.getState().signOut();
+              onClose();
+              void signOutAndLeave();
             }}
             className="w-full h-11 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700
                        font-extrabold text-sm inline-flex items-center justify-center gap-2
@@ -369,7 +373,10 @@ export function ProfileSheet({
     <DeleteAccountModal
       open={showDeleteModal}
       onClose={() => setShowDeleteModal(false)}
-      onSuccess={onClose}
+      onSuccess={() => {
+        onClose();
+        navigateHome("/", { replace: true });
+      }}
     />
     </>
   );

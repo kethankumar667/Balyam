@@ -1,4 +1,4 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import type { MandaliService } from "./MandaliService.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 
@@ -45,6 +45,19 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     const member = members.find((m) => m.playerId === playerId);
     const role: string = member?.role ?? "";
     return member?.state === "ACTIVE" && (role === "OWNER" || role === "ADMIN");
+  }
+
+  /**
+   * Private community content — who is in the group, what it says, what it
+   * spends — is for active members only. Sends the 403 itself; callers just
+   * `return` when this resolves false. A guest, a signed-out browser, and a
+   * signed-in stranger are all the same answer here.
+   */
+  async function requireActiveMember(req: Request, res: Response, mandaliId: string): Promise<boolean> {
+    const playerInfo = extractPlayerFromReq(req);
+    if (playerInfo && (await mandaliService.isActiveMember(mandaliId, playerInfo.playerId))) return true;
+    res.status(403).json({ success: false, error: "Only active members can view this Mandali's content." });
+    return false;
   }
 
   // Search/Browse Mandalis
@@ -199,6 +212,16 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
+    // Anyone may see what a Mandali IS (name, description, size) — that is its
+    // storefront. What is INSIDE it is for members. A visitor gets the storefront
+    // and empty lists, so the page can offer "Join" without exposing a thing.
+    const viewer = extractPlayerFromReq(req);
+    const viewerIsMember = viewer ? await mandaliService.isActiveMember(mandali.id, viewer.playerId) : false;
+    if (!viewerIsMember) {
+      res.json({ success: true, mandali, members: [], channels: [], parties: [], memories: [], events: [] });
+      return;
+    }
+
     const [members, channels, parties, memories, events] = await Promise.all([
       mandaliService.getMembers(mandali.id),
       mandaliService.getChannels(mandali.id),
@@ -212,6 +235,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Get Members
   router.get("/:id/members", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const members = await mandaliService.getMembers(req.params.id);
     res.json({ members });
   });
@@ -409,6 +433,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
   // Get Channels
   router.get("/:id/channels", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const channels = await mandaliService.getChannels(req.params.id);
     res.json({ channels });
   });
@@ -568,7 +593,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   // Get Parties
-  router.get("/:id/parties", (req, res) => {
+  router.get("/:id/parties", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const parties = mandaliService.getParties(req.params.id);
     res.json({ parties });
   });
@@ -666,13 +692,15 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   // Get Events
-  router.get("/:id/events", (req, res) => {
+  router.get("/:id/events", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const events = mandaliService.getEvents(req.params.id);
     res.json({ events });
   });
 
   // Get Memories (Gnapakalu)
-  router.get("/:id/memories", (req, res) => {
+  router.get("/:id/memories", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const memories = mandaliService.getMemories(req.params.id);
     res.json({ memories });
   });
@@ -710,7 +738,8 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   // Get Coin Transfers History
-  router.get("/:id/coins/transfers", (req, res) => {
+  router.get("/:id/coins/transfers", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const transfers = mandaliService.getCoinTransfers(req.params.id);
     res.json({ success: true, transfers });
   });
@@ -718,6 +747,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   /* ── Coin requests (the payable request card the chat feed actually renders) ── */
 
   router.get("/:id/coin-requests", async (req, res) => {
+    if (!(await requireActiveMember(req, res, req.params.id))) return;
     const requests = await mandaliService.getCoinRequests(req.params.id);
     res.json({ success: true, requests });
   });
