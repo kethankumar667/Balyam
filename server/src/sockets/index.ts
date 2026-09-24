@@ -8,6 +8,7 @@ import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { sanitizeClientTelemetry } from "./telemetry.js";
+import { registerSessionHandlers } from "./socketSession.js";
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -29,6 +30,10 @@ const MACHINE_EVENTS = new Set<string>([
   "room:spectate",
   "room:stopSpectate",
   "telemetry:client",
+  // The client re-presents its credential on its own schedule (connect,
+  // reconnect, token refresh) — that is not a person at the keyboard.
+  "session:authenticate",
+  "session:end",
 ]);
 
 export function registerSocketHandlers(
@@ -54,6 +59,8 @@ export function registerSocketHandlers(
     rooms.noteSocketActivity(socket.id);
     next();
   });
+
+  registerSessionHandlers(socket);
 
   /**
    * Both room entry points resolve the account kind before touching the

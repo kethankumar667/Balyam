@@ -1,3 +1,4 @@
+import type { SessionAuthenticatePayload, SessionAuthenticateResult } from "./social/Session.js";
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
 
 /**
@@ -3330,6 +3331,17 @@ export interface ClientToServerEvents {
    * to ask "are you really there?" and force a reconnect if not.
    */
   "net:ping": (ack: () => void) => void;
+  /**
+   * Prove which person this connection belongs to. Carries the bearer token
+   * only, never a player id — see `shared/social/Session.ts`. Every social
+   * socket event reads the identity this binds, not anything in its payload.
+   */
+  "session:authenticate": (
+    payload: SessionAuthenticatePayload,
+    ack: (response: SessionAuthenticateResult) => void
+  ) => void;
+  /** Sign this connection out of its identity (sign-out, account switch). */
+  "session:end": (ack?: () => void) => void;
   /**
    * Smart TV / Party Mode: watch a room without taking a seat. A spectator
    * receives public state only and cannot send moves.

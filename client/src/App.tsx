@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ConsentModal from "./components/privacy/ConsentModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
+import { installSocketSession } from "./lib/socketSession";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 
@@ -327,6 +328,7 @@ export default function App({ components = {} }: AppProps) {
   useEffect(() => {
     enforceConsentOnLoad();
     getSocket();
+    return installSocketSession();
   }, []);
   useAdminAutoCheck();
   useStructuredData();
