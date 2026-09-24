@@ -58,6 +58,12 @@ const BUNDLE_BUDGETS = {
   // Room is the core real-time multiplayer hub orchestrating WebSockets, WebRTC mesh signaling,
   // ConnectionStateManager, soundboard reactions, chat, turn timers, and scorecard/rematch lifecycle.
   "Room-*.js": 360,
+  // The Mandali hub is a whole community screen on one lazily loaded route: chat,
+  // coin transfers and requests, room-invite cards, parties, digests and moderation.
+  // It was over the 100 KB default at 116 KB; this is an explicit budget with a
+  // little headroom, not a licence to grow — trimming it (splitting the moderation
+  // and coin panels out) is the way to bring it back down.
+  "MandaliHubPage-*.js": 130,
   "SettingsPage-*.js": 50,
   "ProfilePage-*.js": 45,
   "SignUpPage-*.js": 45,

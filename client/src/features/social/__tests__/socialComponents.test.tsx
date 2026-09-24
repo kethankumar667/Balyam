@@ -475,12 +475,15 @@ describe("Social & Party UI Components Suite", () => {
           tournamentsTogether: 3,
           lastPlayedAt: Date.now(),
         }}
-        isOpen={true}
+        state="ready"
+        error={null}
+        onRetry={vi.fn()}
         onClose={onClose}
       />
     );
 
-    expect(screen.getByText(/Battles with Bob/i)).toBeDefined();
+    // The full timeline behaviour is covered in friendshipTimeline.test.tsx.
+    expect(screen.getByText(/You & Bob/i)).toBeDefined();
     expect(screen.getByText("12")).toBeDefined();
     expect(screen.getByText("9")).toBeDefined();
   });

@@ -88,6 +88,8 @@ import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
 import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
 import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
+import { friendshipHistoryService } from "../social/FriendshipHistoryService.js";
+import { friendshipMatchFrom } from "../social/matchToFriendship.js";
 import {
   sanitizePublicPresentation,
   getDefaultCosmetic,
@@ -3651,12 +3653,19 @@ export class RoomManager {
           secondaryMetrics,
         };
       });
+      // When THIS match began, not when the room was created. A rematch reuses
+      // the room, so keying on `createdAt` gave every match after the first the
+      // same id as the first — and the store, which treats a repeated id as a
+      // replay, dropped its history and its XP. It also made `durationMs` count
+      // the lobby, and for a rematch everything since the room opened.
+      const startedAt = room.matchStartedAt ?? room.createdAt;
+      const finishedAt = Date.now();
       profileService.recordMatchFinished({
         roomCode: room.code,
         game: room.game,
-        startedAt: room.createdAt,
-        finishedAt: Date.now(),
-        durationMs: Math.max(1000, Date.now() - room.createdAt),
+        startedAt,
+        finishedAt,
+        durationMs: Math.max(1000, finishedAt - startedAt),
         winnerId: winnerId ?? undefined,
         modeId: resolveModeId(
           room.game,
@@ -3669,6 +3678,21 @@ export class RoomManager {
         game: room.game,
         participants,
       });
+      // Friendship history: every pair of VERIFIED humans at the table. It is
+      // keyed on `identityId`, not the per-room seat id `p.id` above, because a
+      // friendship is between accounts. Fire-and-forget — it never rejects, and
+      // the store's claim on the match id keeps a repeated finish from counting
+      // twice. It shares the match's id with match history (same room code and
+      // start time), so the two always agree on what a match is.
+      void friendshipHistoryService.recordMatch(
+        friendshipMatchFrom({
+          roomCode: room.code,
+          startedAt,
+          finishedAt,
+          seats: Array.from(room.players.values()),
+          winnerSeatId: winnerId ?? null,
+        }),
+      );
       rankingService.invalidateCache();
     } catch (err) {
       logger.warn({ message: `Failed to record match in profile/ranking service: ${String(err)}`, module: "PROFILE" });

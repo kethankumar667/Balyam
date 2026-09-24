@@ -1,12 +1,10 @@
-import type { Friend, SharedHistory } from "@shared/social/Friend.js";
+import type { Friend } from "@shared/social/Friend.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
 
 export class FriendsService {
   private static instance: FriendsService;
   // Key: playerId -> Map<friendPlayerId, Friend>
   private friendsMap = new Map<string, Map<string, Friend>>();
-  // Key: `${p1}:${p2}` (sorted) -> SharedHistory
-  private sharedHistoryMap = new Map<string, SharedHistory>();
 
   private constructor() {}
 
@@ -77,44 +75,6 @@ export class FriendsService {
     return forward && reverse;
   }
 
-  public recordMatchTogether(
-    p1: string,
-    p2: string,
-    wonTogether: boolean,
-    isTournament = false
-  ): void {
-    const key = [p1, p2].sort().join(":");
-    const existing = this.sharedHistoryMap.get(key) || {
-      playerId: p1,
-      friendPlayerId: p2,
-      matchesPlayedTogether: 0,
-      winsTogether: 0,
-      tournamentsTogether: 0,
-      lastPlayedAt: Date.now(),
-    };
-
-    existing.matchesPlayedTogether += 1;
-    if (wonTogether) existing.winsTogether += 1;
-    if (isTournament) existing.tournamentsTogether += 1;
-    existing.lastPlayedAt = Date.now();
-
-    this.sharedHistoryMap.set(key, existing);
-  }
-
-  public getSharedHistory(p1: string, p2: string): SharedHistory {
-    const key = [p1, p2].sort().join(":");
-    return (
-      this.sharedHistoryMap.get(key) || {
-        playerId: p1,
-        friendPlayerId: p2,
-        matchesPlayedTogether: 0,
-        winsTogether: 0,
-        tournamentsTogether: 0,
-        lastPlayedAt: 0,
-      }
-    );
-  }
-
   /** Refill the friendship graph from the durable store at boot. */
   public hydrate(edges: Friend[]): void {
     for (const edge of edges) {
@@ -125,7 +85,6 @@ export class FriendsService {
 
   public clear(): void {
     this.friendsMap.clear();
-    this.sharedHistoryMap.clear();
   }
 }
 

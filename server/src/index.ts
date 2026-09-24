@@ -42,6 +42,9 @@ import { supportRouter } from "./support/SupportController.js";
 import { rankingRouter } from "./ranking/RankingController.js";
 import { tournamentRouter, seasonRouter } from "./tournaments/TournamentController.js";
 import socialRouter from "./social/SocialController.js";
+import blockRouter from "./social/BlockController.js";
+import { startReportRetentionJob } from "./social/ReportRetention.js";
+import { friendshipHistoryService } from "./social/FriendshipHistoryService.js";
 import partyRouter from "./party/PartyController.js";
 import { StreakService } from "./streak/StreakService.js";
 import { createStreakRouter } from "./streak/StreakController.js";
@@ -149,7 +152,11 @@ app.use("/api/ranking", rankingRouter);
 app.use("/api/tournaments", tournamentRouter);
 app.use("/api/seasons", seasonRouter);
 app.use("/api/social", socialRouter);
+app.use("/api/social", blockRouter);
 app.use("/api/parties", partyRouter);
+
+/** Reports name two people, so they are deleted after a year rather than kept forever. */
+const stopReportRetention = startReportRetentionJob();
 
 // Telemetry & Health endpoint
 app.get("/health", (_req, res) => {
@@ -616,6 +623,7 @@ function shutdown(signal: string): void {
   logger.warn({ message: `Received ${signal}, starting graceful shutdown...`, module: "SERVER" });
   globalRateLimiter.destroy();
   stopMandaliRetention?.();
+  stopReportRetention();
   io.close();
 
   // Stop accepting, and hang up connections that are merely idle. Without
@@ -640,6 +648,7 @@ function shutdown(signal: string): void {
   roomManager.stopEconomyRecovery();
   void Promise.all([
     progressionSync.drain().catch(() => undefined),
+    friendshipHistoryService.drain().catch(() => undefined),
     // Speed, not the durability guarantee, now — see
     // DurableSettlementWorker's own header. A terminal intent is already
     // durably persisted (via `attemptSettlementPersistence`/

@@ -2,6 +2,9 @@ import { nanoid } from "nanoid";
 import type { FriendRequest } from "@shared/social/FriendRequest.js";
 import { friendsService } from "./FriendsService.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
+import { blockRegistry } from "./BlockRegistry.js";
+import { friendshipHistoryService } from "./FriendshipHistoryService.js";
+import { UNABLE_TO_SEND_REQUEST } from "./refusals.js";
 import {
   FRIEND_REQUEST_TTL_MS,
   FRIEND_REQUEST_DECLINE_COOLDOWN_MS,
@@ -48,6 +51,13 @@ export class FriendRequestsService {
       throw new Error("Cannot send friend request to yourself");
     }
 
+    // Here, in the service, so EVERY route that creates a request is covered —
+    // there are two, and a check written in one route was missing from the other.
+    // Either direction, and the same words as any other refusal on this path.
+    if (blockRegistry.isBlockedEitherWay(senderId, recipientId)) {
+      throw new Error(UNABLE_TO_SEND_REQUEST);
+    }
+
     if (friendsService.isFriend(senderId, recipientId)) {
       throw new Error("Already friends with this player");
     }
@@ -57,7 +67,7 @@ export class FriendRequestsService {
     }
 
     if (friendsService.getFriends(recipientId).length >= MAX_FRIENDS_PER_PLAYER) {
-      throw new Error("Unable to send friend request to this player");
+      throw new Error(UNABLE_TO_SEND_REQUEST);
     }
 
     const now = Date.now();
@@ -71,7 +81,7 @@ export class FriendRequestsService {
       ) {
         const declinedAt = req.updatedAt ?? req.createdAt;
         if (now - declinedAt < FRIEND_REQUEST_DECLINE_COOLDOWN_MS) {
-          throw new Error("Unable to send friend request to this player");
+          throw new Error(UNABLE_TO_SEND_REQUEST);
         }
       }
     }
@@ -159,6 +169,11 @@ export class FriendRequestsService {
     if (!request) throw new Error("Friend request not found");
     if (request.status !== "PENDING") throw new Error("Friend request is not pending");
     if (this.isExpired(request)) throw new Error("Friend request has expired");
+    // Blocking resolves every pending request between the pair, so one should not
+    // exist here. If one does, a friendship must still not be made out of it.
+    if (blockRegistry.isBlockedEitherWay(request.senderId, request.recipientId)) {
+      throw new Error("Friend request is not pending");
+    }
 
     request.status = "ACCEPTED";
     request.updatedAt = Date.now();
@@ -177,6 +192,10 @@ export class FriendRequestsService {
       recipientName,
       recipientAvatar
     );
+
+    // The moment they became friends is the first line of their timeline.
+    // Fire-and-forget: recording it never rejects and must not delay accepting.
+    void friendshipHistoryService.recordFriendsSince(request.senderId, request.recipientId);
 
     return this.snapshot(request);
   }
@@ -203,6 +222,30 @@ export class FriendRequestsService {
     request.updatedAt = Date.now();
     progressionSync.friendRequestSaved(this.snapshot(request));
     return this.snapshot(request);
+  }
+
+  /**
+   * Ends every pending request between a blocker and the person they blocked.
+   *
+   * What the OTHER player sees is the point: a request the blocker had sent
+   * becomes "cancelled" and one they had received becomes "declined". Both are
+   * ordinary ways a request goes away, so neither tells the blocked player why.
+   * Returns how many were resolved. Safe to repeat.
+   */
+  public resolvePendingBetween(blockerId: string, otherId: string): number {
+    let resolved = 0;
+    for (const request of this.requests.values()) {
+      if (request.status !== "PENDING") continue;
+      const sentByBlocker = request.senderId === blockerId && request.recipientId === otherId;
+      const sentToBlocker = request.senderId === otherId && request.recipientId === blockerId;
+      if (!sentByBlocker && !sentToBlocker) continue;
+
+      request.status = sentByBlocker ? "CANCELLED" : "DECLINED";
+      request.updatedAt = Date.now();
+      progressionSync.friendRequestSaved(this.snapshot(request));
+      resolved += 1;
+    }
+    return resolved;
   }
 
   public getIncomingRequests(playerId: string): FriendRequest[] {

@@ -24,3 +24,19 @@ export const MAX_FRIENDS_PER_PLAYER = 1000;
 /** Max friend request cancel actions per minute (burst). */
 export const CANCEL_REQUEST_MINUTE_BURST = 20;
 
+/** Blocking and unblocking share one bucket of this many actions per hour. */
+export const BLOCK_ACTIONS_HOURLY_LIMIT = 30;
+
+/** Max players one player can have blocked at once. */
+export const MAX_BLOCKS_PER_PLAYER = 1000;
+
+/** Max reports per hour, and per day, from one player. */
+export const REPORTS_HOURLY_LIMIT = 5;
+export const REPORTS_DAILY_LIMIT = 20;
+
+/** How long a report is kept before the retention job deletes it. */
+export const REPORT_RETENTION_DAYS = 365;
+
+/** Longest player id a client may name. Real ids (UUID, `p_…`, `guest_…`) are well under this. */
+export const MAX_PLAYER_ID_LENGTH = 128;
+

@@ -518,7 +518,7 @@ describe("Production UX Resilience Audit Suite", () => {
         );
 
         expect(screen.getByText("Social Hub")).toBeInTheDocument();
-        expect(screen.getByText(/Your friends and friend requests/i)).toBeInTheDocument();
+        expect(screen.getByText(/Your friends, friend requests and blocked players/i)).toBeInTheDocument();
         expect(await screen.findByText("Sai Kumar")).toBeInTheDocument();
         expect(screen.queryByText("Aditi_Pro")).not.toBeInTheDocument();
       } finally {
@@ -626,9 +626,11 @@ describe("Production UX Resilience Audit Suite", () => {
         expect(screen.getByRole("alert")).toHaveTextContent(/Could not load detailed scorecard timeline/i);
       });
 
-      // Verify no fabricated numbers are injected
-      expect(screen.queryByText(/24/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/42/)).not.toBeInTheDocument();
+      // Verify no fabricated numbers are injected. Exact, standalone values: a
+      // regex for "24" also matched any date on the 24th ("Sep 24, 2026") and made
+      // this fail for one day of every month.
+      expect(screen.queryByText("24")).not.toBeInTheDocument();
+      expect(screen.queryByText("42")).not.toBeInTheDocument();
 
       const retryDetailBtn = screen.getByRole("button", { name: /retry loading match details/i });
       fireEvent.click(retryDetailBtn);

@@ -12,6 +12,9 @@ import { rateLimitByCaller } from "../lib/httpRateLimiter.js";
 import { CANCEL_REQUEST_MINUTE_BURST } from "./limits.js";
 import { friendRequestSendLimiters } from "./requestLimiters.js";
 import { presentationFor } from "./callerPresentation.js";
+import { blockRegistry } from "./BlockRegistry.js";
+import { friendshipHistoryService } from "./FriendshipHistoryService.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * Friends, requests and presence.
@@ -195,19 +198,36 @@ router.post("/presence/query", requireIdentity, (req: Request, res: Response) =>
 });
 
 /**
- * PRIVATE — head-to-head history between two players.
+ * PRIVATE — the shared history and timeline of two FRIENDS.
  *
- * Belongs to both of them and to nobody else, so the caller must be one of the
- * two. A third party asking about two strangers gets a 403.
+ * Belongs to the two of them and to nobody else, so the caller must be one of
+ * the two AND they must be friends (and not blocked). History is recorded for
+ * every pair that ever shared a match, so it is already waiting the day two
+ * players become friends — but a pair of strangers, or of players one of whom
+ * has blocked the other, is never readable, not even by one of its own members.
+ *
+ * A pair that stops being friends keeps its history; it is simply not shown,
+ * and comes back if they are friends again.
  */
 router.get(
   "/shared-history/:p1/:p2",
   requireParticipantParams("p1", "p2"),
-  (req: Request, res: Response) => {
-    res.json({
-      success: true,
-      history: friendsService.getSharedHistory(req.params.p1, req.params.p2),
-    });
+  async (req: Request, res: Response) => {
+    const { p1, p2 } = req.params;
+    if (p1 === p2 || !friendsService.isFriend(p1, p2) || blockRegistry.isBlockedEitherWay(p1, p2)) {
+      res.status(403).json({ success: false, error: "Shared history is only available between friends." });
+      return;
+    }
+    try {
+      // URL order is kept, so `playerId`/`friendPlayerId` read as they always did.
+      res.json({ success: true, history: await friendshipHistoryService.getHistory(p1, p2) });
+    } catch (err) {
+      logger.error({
+        message: `Shared history read failed for ${callerId(req)}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "SOCIAL",
+      });
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   },
 );
 

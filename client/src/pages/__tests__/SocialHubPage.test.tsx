@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import type { Friend } from "@shared/social/Friend";
+import type { Friend, SharedHistory } from "@shared/social/Friend";
 import type { FriendRequest } from "@shared/social/FriendRequest";
+import type { BlockedPlayer } from "@shared/social/Block";
 import SocialHubPage from "../SocialHubPage";
 import { useAuthStore } from "../../store/authStore";
 import * as socialApi from "../../lib/api/social";
@@ -27,6 +28,11 @@ vi.mock("../../lib/api/social", () => ({
   declineFriendRequest: vi.fn(),
   cancelFriendRequest: vi.fn(),
   removeFriend: vi.fn(),
+  getBlockedPlayers: vi.fn(),
+  getSharedHistory: vi.fn(),
+  blockPlayer: vi.fn(),
+  unblockPlayer: vi.fn(),
+  reportPlayer: vi.fn(),
 }));
 
 const api = vi.mocked(socialApi);
@@ -60,6 +66,7 @@ describe("SocialHubPage — real friends and requests (WP0)", () => {
     useAuthStore.setState({ isSuperAdmin: true });
     api.getFriends.mockResolvedValue({ success: true, friends: [] });
     api.getFriendRequests.mockResolvedValue(noRequests);
+    api.getBlockedPlayers.mockResolvedValue({ success: true, blocked: [] });
   });
 
   describe("Friends tab (G2)", () => {
@@ -138,6 +145,231 @@ describe("SocialHubPage — real friends and requests (WP0)", () => {
       expect(screen.getByRole("status", { name: /loading your friends/i })).toBeDefined();
       release({ success: true, friends: [SAI] });
       expect(await screen.findByText("Sai Kumar")).toBeDefined();
+    });
+  });
+
+  describe("Friendship timeline (WP5)", () => {
+    const TIMELINE: SharedHistory = {
+      playerId: ME,
+      friendPlayerId: "player_sai",
+      matchesPlayedTogether: 12,
+      winsTogether: 0,
+      tournamentsTogether: 0,
+      lastPlayedAt: 1_700_000_000_000,
+      firstPlayedAt: 1_690_000_000_000,
+      currentStreakDays: 3,
+      bestStreakDays: 5,
+      milestones: [
+        { kind: "FRIENDS_SINCE", reachedAt: 1_680_000_000_000 },
+        { kind: "FIRST_MATCH", reachedAt: 1_690_000_000_000, matchId: "m1" },
+        { kind: "MATCHES_10", reachedAt: 1_695_000_000_000, matchId: "m10" },
+      ],
+    };
+
+    async function openTimeline() {
+      fireEvent.click(await screen.findByRole("button", { name: /view shared history with sai kumar/i }));
+    }
+
+    it("opens the friend's timeline from their History button, asking for exactly that friend", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      api.getSharedHistory.mockResolvedValue({ success: true, history: TIMELINE });
+      renderPage();
+      expect(api.getSharedHistory).not.toHaveBeenCalled();
+
+      await openTimeline();
+
+      await waitFor(() => expect(api.getSharedHistory).toHaveBeenCalledWith(ME, "player_sai"));
+      expect(await screen.findByText("3-day streak")).toBeDefined();
+      expect(screen.getByText("Became friends")).toBeDefined();
+      expect(screen.getByText("10 matches together")).toBeDefined();
+    });
+
+    it("fetches nothing for a timeline nobody opened", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      renderPage();
+      await screen.findByText("Sai Kumar");
+
+      expect(api.getSharedHistory).not.toHaveBeenCalled();
+    });
+
+    it("shows a loading state first", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      let release: (value: { success: true; history: SharedHistory }) => void = () => {};
+      api.getSharedHistory.mockReturnValue(new Promise((resolve) => (release = resolve)));
+      renderPage();
+
+      await openTimeline();
+
+      expect(await screen.findByRole("status", { name: /loading your timeline/i })).toBeDefined();
+      release({ success: true, history: TIMELINE });
+      expect(await screen.findByText("3-day streak")).toBeDefined();
+    });
+
+    it("shows why and offers Retry when the timeline cannot load, and recovers", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      api.getSharedHistory.mockRejectedValueOnce(new Error("Shared history is only available between friends."));
+      renderPage();
+
+      await openTimeline();
+
+      expect(await screen.findByText("Shared history is only available between friends.")).toBeDefined();
+      api.getSharedHistory.mockResolvedValue({ success: true, history: TIMELINE });
+      fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+      expect(await screen.findByText("3-day streak")).toBeDefined();
+    });
+
+    it("closes, and loads again for the next friend who is opened", async () => {
+      const KAVYA: Friend = { playerId: ME, friendPlayerId: "player_kavya", displayName: "Kavya", createdAt: 1 };
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI, KAVYA] });
+      api.getSharedHistory.mockResolvedValue({ success: true, history: TIMELINE });
+      renderPage();
+
+      await openTimeline();
+      await screen.findByText("3-day streak");
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: /you & sai kumar/i })).toBeNull());
+
+      api.getSharedHistory.mockResolvedValue({
+        success: true,
+        history: { ...TIMELINE, friendPlayerId: "player_kavya", currentStreakDays: 0, bestStreakDays: 0, matchesPlayedTogether: 2, milestones: [] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /view shared history with kavya/i }));
+
+      await waitFor(() => expect(api.getSharedHistory).toHaveBeenLastCalledWith(ME, "player_kavya"));
+      expect(await screen.findByText("None active")).toBeDefined();
+    });
+  });
+
+  describe("Blocking and reporting (WP1)", () => {
+    const BLOCKED_SAI: BlockedPlayer = {
+      playerId: "player_sai",
+      displayName: "Sai Kumar",
+      blockedAt: 1_700_000_000_000,
+    };
+
+    async function openBlockedTab() {
+      fireEvent.click(await screen.findByRole("button", { name: /^blocked/i }));
+    }
+
+    it("blocks a friend after a confirm that says what happens, and moves them to the Blocked tab", async () => {
+      api.getFriends.mockResolvedValueOnce({ success: true, friends: [SAI] });
+      api.getBlockedPlayers
+        .mockResolvedValueOnce({ success: true, blocked: [] })
+        .mockResolvedValue({ success: true, blocked: [BLOCKED_SAI] });
+      api.blockPlayer.mockResolvedValue({ success: true, alreadyBlocked: false });
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: /^block sai kumar$/i }));
+      expect(api.blockPlayer).not.toHaveBeenCalled();
+      expect(screen.getByText(/they are not told/i)).toBeDefined();
+      fireEvent.click(screen.getByRole("button", { name: /^block$/i }));
+
+      await waitFor(() => expect(api.blockPlayer).toHaveBeenCalledWith("player_sai"));
+      await waitFor(() => expect(screen.queryByText("Sai Kumar")).toBeNull());
+
+      await openBlockedTab();
+      expect(await screen.findByText("Sai Kumar")).toBeDefined();
+      expect(screen.getByRole("button", { name: /unblock sai kumar/i })).toBeDefined();
+    });
+
+    it("keeps the friend and shows why in the dialog when blocking fails", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      api.blockPlayer.mockRejectedValue(new Error("Your block list is full"));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: /^block sai kumar$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^block$/i }));
+
+      expect(await screen.findByText("Your block list is full")).toBeDefined();
+      expect(screen.getAllByText("Sai Kumar").length).toBeGreaterThan(0);
+    });
+
+    it("reports a friend with the reason chosen, and confirms it was sent", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      api.reportPlayer.mockResolvedValue({ success: true });
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: /^report sai kumar$/i }));
+      const send = screen.getByRole("button", { name: /send report/i }) as HTMLButtonElement;
+      expect(send.disabled).toBe(true);
+
+      fireEvent.click(screen.getByLabelText("Spam"));
+      expect(send.disabled).toBe(false);
+      fireEvent.click(send);
+
+      await waitFor(() => expect(api.reportPlayer).toHaveBeenCalledWith("player_sai", "SPAM"));
+      expect(await screen.findByText("Your report was sent.")).toBeDefined();
+    });
+
+    it("keeps the report dialog open and shows why when sending fails", async () => {
+      api.getFriends.mockResolvedValue({ success: true, friends: [SAI] });
+      api.reportPlayer.mockRejectedValue(new Error("Slow down and try again shortly."));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: /^report sai kumar$/i }));
+      fireEvent.click(screen.getByLabelText("Harassment or bullying"));
+      fireEvent.click(screen.getByRole("button", { name: /send report/i }));
+
+      expect(await screen.findByText("Slow down and try again shortly.")).toBeDefined();
+      expect(screen.queryByText("Your report was sent.")).toBeNull();
+    });
+
+    it("lists blocked players and unblocks one", async () => {
+      api.getBlockedPlayers
+        .mockResolvedValueOnce({ success: true, blocked: [BLOCKED_SAI] })
+        .mockResolvedValue({ success: true, blocked: [] });
+      api.unblockPlayer.mockResolvedValue({ success: true, removed: true });
+      renderPage();
+      await openBlockedTab();
+
+      expect(await screen.findByText("Sai Kumar")).toBeDefined();
+      fireEvent.click(screen.getByRole("button", { name: /unblock sai kumar/i }));
+
+      await waitFor(() => expect(api.unblockPlayer).toHaveBeenCalledWith("player_sai"));
+      await waitFor(() => expect(screen.queryByText("Sai Kumar")).toBeNull());
+      expect(screen.getByText(/haven.t blocked anyone/i)).toBeDefined();
+    });
+
+    it("keeps the row and shows why when unblocking fails", async () => {
+      api.getBlockedPlayers.mockResolvedValue({ success: true, blocked: [BLOCKED_SAI] });
+      api.unblockPlayer.mockRejectedValue(new Error("Couldn't reach the server"));
+      renderPage();
+      await openBlockedTab();
+
+      fireEvent.click(await screen.findByRole("button", { name: /unblock sai kumar/i }));
+
+      expect(await screen.findByText("Couldn't reach the server")).toBeDefined();
+      expect(screen.getByText("Sai Kumar")).toBeDefined();
+    });
+
+    it("says so plainly when nobody is blocked", async () => {
+      renderPage();
+      await openBlockedTab();
+
+      expect(await screen.findByText(/haven.t blocked anyone/i)).toBeDefined();
+    });
+
+    it("shows a load error with Retry instead of an empty list, and recovers", async () => {
+      api.getBlockedPlayers.mockRejectedValueOnce(new Error("Blocked list unavailable"));
+      renderPage();
+      await openBlockedTab();
+
+      expect(await screen.findByText("Blocked list unavailable")).toBeDefined();
+      expect(screen.queryByText(/haven.t blocked anyone/i)).toBeNull();
+
+      api.getBlockedPlayers.mockResolvedValue({ success: true, blocked: [BLOCKED_SAI] });
+      fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+      expect(await screen.findByText("Sai Kumar")).toBeDefined();
+    });
+
+    it("shows a tab count only once that list has loaded", async () => {
+      let release: (value: { success: true; blocked: BlockedPlayer[] }) => void = () => {};
+      api.getBlockedPlayers.mockReturnValue(new Promise((resolve) => (release = resolve)));
+      renderPage();
+
+      expect(await screen.findByRole("button", { name: "Blocked" })).toBeDefined();
+      release({ success: true, blocked: [BLOCKED_SAI] });
+      expect(await screen.findByRole("button", { name: "Blocked (1)" })).toBeDefined();
     });
   });
 

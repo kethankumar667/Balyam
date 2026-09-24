@@ -344,6 +344,30 @@ class ProgressionSync {
     this.enqueue("removeFriend", (r) => r.removeFriend(playerId, friendPlayerId));
   }
 
+  /**
+   * Blocks and reports carry no `identitySeen`, unlike friendships: both ends
+   * of a block already exist (the blocker is signed in, and the route refuses
+   * a target the store has never seen), and writing an identity row for
+   * whatever id a client typed would let one request mint junk rows.
+   */
+  blockAdded(record: { blockerId: string; blockedId: string; createdAt: number }): void {
+    this.enqueue("addBlock", (r) => r.addBlock({ ...record }));
+  }
+
+  blockRemoved(blockerId: string, blockedId: string): void {
+    this.enqueue("removeBlock", (r) => r.removeBlock(blockerId, blockedId));
+  }
+
+  reportSaved(record: {
+    id: string;
+    reporterId: string;
+    reportedId: string;
+    reason: string;
+    createdAt: number;
+  }): void {
+    this.enqueue("saveReport", (r) => r.saveReport({ ...record }));
+  }
+
   friendRequestSaved(request: {
     id: string;
     senderId: string;

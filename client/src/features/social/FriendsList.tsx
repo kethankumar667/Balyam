@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
+import { Ban, Flag } from "lucide-react";
 import type { Friend } from "@shared/social/Friend";
 import type { PlayerPresence } from "@shared/social/Presence";
+import type { ReportReason } from "@shared/social/Report";
 import {
   FriendUserIcon,
   RemoveFriendUserIcon,
@@ -11,8 +13,8 @@ import {
 } from "../../design-system/icons";
 import { SocialEmptyArtwork } from "./SocialArtwork";
 import SeatAvatar from "../../components/profile/SeatAvatar";
-import Modal from "../../components/Modal";
-import { errorMessage } from "../../lib/errorMessage";
+import ConfirmDialog from "./ConfirmDialog";
+import ReportPlayerDialog from "./ReportPlayerDialog";
 
 type StatusFilter = "ALL" | "ONLINE" | "IN_GAME" | "OFFLINE";
 
@@ -25,6 +27,10 @@ interface FriendsListProps {
   onInviteToParty?: (friend: Friend) => void;
   /** The button is rendered only when a handler is supplied. */
   onViewHistory?: (friend: Friend) => void;
+  /** The Block button is rendered only when a handler is supplied. A rejection keeps the dialog open. */
+  onBlockFriend?: (friend: Friend) => Promise<void>;
+  /** The Report button is rendered only when a handler is supplied. A rejection keeps the dialog open. */
+  onReportFriend?: (friend: Friend, reason: ReportReason) => Promise<void>;
   onOpenInviteModal?: () => void;
 }
 
@@ -34,6 +40,8 @@ export default function FriendsList({
   onRemoveFriend,
   onInviteToParty,
   onViewHistory,
+  onBlockFriend,
+  onReportFriend,
   onOpenInviteModal,
 }: FriendsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,17 +49,9 @@ export default function FriendsList({
   // With no presence data at all, "online only" would just empty the list.
   const hasPresenceData = Object.keys(presences).length > 0;
   const [unfriendTarget, setUnfriendTarget] = useState<Friend | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
-
-  const isRemovingRef = useRef(isRemoving);
-  isRemovingRef.current = isRemoving;
-
-  const handleCloseModal = useCallback(() => {
-    if (isRemovingRef.current) return;
-    setUnfriendTarget(null);
-    setRemoveError(null);
-  }, []);
+  const [blockTarget, setBlockTarget] = useState<Friend | null>(null);
+  const [reportTarget, setReportTarget] = useState<Friend | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const filteredFriends = friends.filter((f) => {
     const matchesSearch =
@@ -72,6 +72,22 @@ export default function FriendsList({
 
   return (
     <div className="space-y-4">
+      {notice && (
+        <div
+          role="status"
+          className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-mono flex items-center justify-between"
+        >
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="text-xs font-bold hover:underline px-2 py-1 min-h-[44px]"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Search & Status Filter Controls */}
       <div className="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-2xl p-3.5 flex flex-col sm:flex-row items-center gap-3 shadow-xs">
         {/* Search Input */}
@@ -212,6 +228,33 @@ export default function FriendsList({
                     <RemoveFriendUserIcon size={14} />
                   </button>
                 </div>
+
+                {(onReportFriend || onBlockFriend) && (
+                  <div className="flex items-center justify-end gap-2 text-xs">
+                    {onReportFriend && (
+                      <button
+                        type="button"
+                        onClick={() => setReportTarget(f)}
+                        className="min-h-[44px] px-3 rounded-xl text-[var(--auth-ink-soft)] hover:text-amber-500 hover:bg-amber-500/10 transition flex items-center gap-1.5 font-mono font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                        aria-label={`Report ${f.displayName}`}
+                      >
+                        <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                        Report
+                      </button>
+                    )}
+                    {onBlockFriend && (
+                      <button
+                        type="button"
+                        onClick={() => setBlockTarget(f)}
+                        className="min-h-[44px] px-3 rounded-xl text-[var(--auth-ink-soft)] hover:text-rose-500 hover:bg-rose-500/10 transition flex items-center gap-1.5 font-mono font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                        aria-label={`Block ${f.displayName}`}
+                      >
+                        <Ban className="w-3.5 h-3.5" aria-hidden="true" />
+                        Block
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -219,71 +262,52 @@ export default function FriendsList({
       )}
 
       {unfriendTarget && (
-        <Modal
-          open={Boolean(unfriendTarget)}
-          onClose={handleCloseModal}
-          ariaLabelledBy="unfriend-modal-title"
-          ariaDescribedBy="unfriend-modal-desc"
-          panelClassName="bg-[var(--auth-card)] border border-[var(--auth-card-edge)] rounded-3xl p-6 max-w-sm w-full mx-auto space-y-4 shadow-xl"
-        >
-          <div className="space-y-2">
-            <h3
-              id="unfriend-modal-title"
-              className="text-base font-extrabold text-[var(--auth-ink)]"
-            >
-              Remove Friend
-            </h3>
-            <p
-              id="unfriend-modal-desc"
-              className="text-xs text-[var(--auth-ink-soft)] leading-relaxed"
-            >
+        <ConfirmDialog
+          idPrefix="unfriend"
+          title="Remove Friend"
+          description={
+            <>
               Are you sure you want to remove{" "}
               <strong className="text-[var(--auth-ink)]">{unfriendTarget.displayName}</strong> from your
               friends list?
-            </p>
-          </div>
+            </>
+          }
+          confirmLabel="Remove Friend"
+          busyLabel="Removing…"
+          fallbackError="Failed to remove friend. Please try again."
+          onConfirm={() => onRemoveFriend(unfriendTarget.friendPlayerId)}
+          onClose={() => setUnfriendTarget(null)}
+        />
+      )}
 
-          {removeError && (
-            <p
-              role="alert"
-              className="text-xs font-mono text-rose-500 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl"
-            >
-              {removeError}
-            </p>
-          )}
+      {blockTarget && onBlockFriend && (
+        <ConfirmDialog
+          idPrefix="block"
+          title="Block player"
+          description={
+            <>
+              Block <strong className="text-[var(--auth-ink)]">{blockTarget.displayName}</strong>? They will
+              be removed from your friends, any pending requests between you will end, and they won&apos;t be
+              able to send you friend requests or party invites. They are not told.
+            </>
+          }
+          confirmLabel="Block"
+          busyLabel="Blocking…"
+          fallbackError="Couldn't block this player. Please try again."
+          onConfirm={() => onBlockFriend(blockTarget)}
+          onClose={() => setBlockTarget(null)}
+        />
+      )}
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              disabled={isRemoving}
-              onClick={handleCloseModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl border border-[var(--auth-field-edge)] bg-[var(--auth-field)] text-xs font-mono font-bold text-[var(--auth-ink)] hover:bg-[var(--auth-field-edge)] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              aria-busy={isRemoving}
-              aria-disabled={isRemoving}
-              onClick={async () => {
-                if (isRemoving) return;
-                try {
-                  setIsRemoving(true);
-                  setRemoveError(null);
-                  await onRemoveFriend(unfriendTarget.friendPlayerId);
-                  setUnfriendTarget(null);
-                } catch (err: unknown) {
-                  setRemoveError(errorMessage(err, "Failed to remove friend. Please try again."));
-                } finally {
-                  setIsRemoving(false);
-                }
-              }}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-mono font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-            >
-              {isRemoving ? "Removing…" : "Remove Friend"}
-            </button>
-          </div>
-        </Modal>
+      {reportTarget && onReportFriend && (
+        <ReportPlayerDialog
+          playerName={reportTarget.displayName}
+          onReport={async (reason) => {
+            await onReportFriend(reportTarget, reason);
+            setNotice("Your report was sent.");
+          }}
+          onClose={() => setReportTarget(null)}
+        />
       )}
     </div>
   );

@@ -36,15 +36,8 @@ describe("Social & Friends Subsystem Suite", () => {
       expect(friendsService.isFriend("p1", "p2")).toBe(false);
     });
 
-    it("tracks and updates shared history", () => {
-      friendsService.recordMatchTogether("p1", "p2", true, false);
-      friendsService.recordMatchTogether("p1", "p2", false, true);
-
-      const history = friendsService.getSharedHistory("p1", "p2");
-      expect(history.matchesPlayedTogether).toBe(2);
-      expect(history.winsTogether).toBe(1);
-      expect(history.tournamentsTogether).toBe(1);
-    });
+    // Shared history moved to FriendshipHistoryService, which stores it durably;
+    // see friendshipHistory.test.ts and sharedHistoryRoute.test.ts.
   });
 
   describe("FriendRequestsService", () => {
