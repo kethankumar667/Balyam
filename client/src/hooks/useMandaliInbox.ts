@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { MandaliActivityEvent } from "@shared/mandali/notifications.js";
+import type { MandaliActivityEvent, MandaliDeletedEvent } from "@shared/mandali/notifications.js";
 import { getSocket } from "../lib/socket";
 import { toastStore } from "../lib/toastStore";
 import { joinRoomByCode, joinFailureMessage } from "../lib/roomJoin";
 import { decideToast } from "../lib/mandaliToastPolicy";
 import { chatMessageCount, digestsToItems } from "../lib/mandaliNotificationItems";
 import type { NotificationItem } from "../lib/profileNotifications";
-import { authenticateMandaliSocket } from "../store/mandaliStore";
+import { authenticateMandaliSocket, useMandaliStore } from "../store/mandaliStore";
 import { useMandaliInboxStore } from "../store/mandaliInboxStore";
 import { useAuthStore } from "../store/authStore";
 
@@ -23,6 +23,7 @@ import { useAuthStore } from "../store/authStore";
 const INVITE_TOAST_MS = 10_000;
 const CHAT_TOAST_MS = 6_000;
 const NOTICE_TOAST_MS = 5_000;
+const DELETED_NAME_MAX_LENGTH = 40;
 const chatToastKey = (mandaliId: string): string => `mandali-chat:${mandaliId}`;
 
 /**
@@ -154,6 +155,26 @@ export function useMandaliInbox(): {
       }
     };
 
+    /**
+     * The owner deleted a Mandali this member was in. It arrives on the member's
+     * personal room, so it is heard on every page, not only inside the Mandali.
+     * The store forgets the group and says whether that was news: the owner who
+     * did it, or a second copy of this event, gets no toast.
+     */
+    const onDeleted = (payload: unknown) => {
+      const event = payload as Partial<MandaliDeletedEvent> | null | undefined;
+      const mandaliId = event?.mandaliId;
+      if (typeof mandaliId !== "string" || mandaliId.length === 0) return;
+      if (!useMandaliStore.getState().applyMandaliDeleted(mandaliId)) return;
+      const name = typeof event?.name === "string" ? event.name.trim().slice(0, DELETED_NAME_MAX_LENGTH) : "";
+      toastStore.show(
+        name ? `“${name}” was deleted by its owner.` : "A Mandali you were in was deleted by its owner.",
+        "info",
+        NOTICE_TOAST_MS,
+        { key: `mandali-deleted:${mandaliId}` },
+      );
+    };
+
     const sync = () => {
       void authenticateMandaliSocket().then(() => {
         if (!cancelled) void store.getState().refresh();
@@ -166,12 +187,14 @@ export function useMandaliInbox(): {
     sync();
     socket.on("connect", sync);
     socket.on("mandali:activity" as any, onActivity);
+    socket.on("mandali:deleted" as any, onDeleted);
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       cancelled = true;
       socket.off("connect", sync);
       socket.off("mandali:activity" as any, onActivity);
+      socket.off("mandali:deleted" as any, onDeleted);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [enabled, userId]);

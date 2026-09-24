@@ -229,6 +229,34 @@ export class MandaliRepository {
     this.mandalisByHandle.set(mandali.handle.toLowerCase(), mandali.id);
   }
 
+  /**
+   * Forget everything held in memory about one Mandali.
+   *
+   * Deleting the database rows is not enough: parties, events and memories
+   * live only here (see the durability scope note on `postgres`), and in
+   * memory-only mode this is the whole store. Anything left behind would keep
+   * answering for a Mandali that no longer exists, and would hold its handle.
+   */
+  public purgeMandali(mandaliId: string): void {
+    const mandali = this.mandalis.get(mandaliId);
+    if (mandali) this.mandalisByHandle.delete(mandali.handle.toLowerCase());
+    this.mandalis.delete(mandaliId);
+    this.members.delete(mandaliId);
+    this.applications.delete(mandaliId);
+    this.invitations.delete(mandaliId);
+    for (const channel of this.channels.get(mandaliId) ?? []) this.messages.delete(channel.channelId);
+    this.channels.delete(mandaliId);
+    for (const partyId of this.mandaliParties.get(mandaliId) ?? []) this.parties.delete(partyId);
+    this.mandaliParties.delete(mandaliId);
+    this.events.delete(mandaliId);
+    this.memories.delete(mandaliId);
+    this.auditLogs.delete(mandaliId);
+    this.coinTransfers.delete(mandaliId);
+    const prefix = `${mandaliId}:`;
+    for (const key of [...this.readPointers.keys()]) if (key.startsWith(prefix)) this.readPointers.delete(key);
+    for (const key of [...this.notificationLevels.keys()]) if (key.startsWith(prefix)) this.notificationLevels.delete(key);
+  }
+
   /* ── Members ── */
 
   public getMembers(mandaliId: string): MandaliMember[] {
@@ -684,6 +712,21 @@ export class MandaliRepository {
       p_new_owner_identity_id: newOwnerIdentityId,
     });
     return rowToMandali(result);
+  }
+
+  /**
+   * Delete a Mandali and everything hanging off it. The database function
+   * checks that the caller is the owner and deletes in one transaction; every
+   * table that points at a Mandali cascades. It returns who was in it, taken
+   * in the same transaction, so the people told are exactly the people who lost it.
+   */
+  public async deleteMandaliDurable(
+    mandaliId: string, actorIdentityId: string
+  ): Promise<{ name: string; memberIds: string[] }> {
+    const result = await this.pg().rpc<{ name: string; member_ids: string[] | null }>("delete_mandali", {
+      p_mandali_id: mandaliId, p_actor_identity_id: actorIdentityId,
+    });
+    return { name: result.name, memberIds: result.member_ids ?? [] };
   }
 
   public async createInviteLinkDurable(

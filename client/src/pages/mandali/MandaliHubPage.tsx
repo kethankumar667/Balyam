@@ -15,6 +15,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useViewport } from "../../lib/useViewport";
 import { useMandaliStore } from "../../store/mandaliStore";
+import { toastStore } from "../../lib/toastStore";
+import { useLeaveWhenMandaliGone } from "./useLeaveWhenMandaliGone";
 import { useAuthStore } from "../../store/authStore";
 import { useRoomStore } from "../../store/roomStore";
 import { usePlayerId } from "../../lib/playerIdentity";
@@ -26,6 +28,8 @@ import { useCoinRequestAction } from "./useCoinRequestAction";
 import InviteShareSheet from "../../components/mandali/InviteShareSheet";
 import GroupInfoModal from "../../components/mandali/GroupInfoModal";
 import MemberManagementSheet from "../../components/mandali/MemberManagementSheet";
+import LeaveMandaliDialog from "../../components/mandali/LeaveMandaliDialog";
+import { leaveMandaliFlow } from "./mandaliLeaveFlow";
 import PendingRequestsPanel from "../../components/mandali/PendingRequestsPanel";
 import IncomingCoinRequestBanner from "../../components/mandali/IncomingCoinRequestBanner";
 import NotificationLevelSheet from "../../components/mandali/NotificationLevelSheet";
@@ -38,6 +42,8 @@ import AppLayout from "../../components/layout/AppLayout";
 export default function MandaliHubPage(): JSX.Element {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
+  // The owner deleting this Mandali while it is open (for them or anyone else) takes everyone back to the list.
+  useLeaveWhenMandaliGone();
   const [searchParams, setSearchParams] = useSearchParams();
   const inviteToken = searchParams.get("invite");
   const viewport = useViewport();
@@ -51,6 +57,7 @@ export default function MandaliHubPage(): JSX.Element {
   const [preselectedMemberId, setPreselectedMemberId] = useState<string | undefined>(undefined);
   const [showInvite, setShowInvite] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showPendingRequests, setShowPendingRequests] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
@@ -96,6 +103,7 @@ export default function MandaliHubPage(): JSX.Element {
     deleteMessage,
     fundCoinRequest,
     updateMandaliSettings,
+    deleteMandali,
   } = useMandaliStore();
 
   const coinRequest = useCoinRequestAction({
@@ -259,10 +267,8 @@ export default function MandaliHubPage(): JSX.Element {
     onOpenGroupInfo: () => setShowGroupInfo(true),
     onOpenMembers: () => setShowMembers(true),
     onOpenPendingRequests: () => setShowPendingRequests(true),
-    onLeaveMandali: async () => {
-      await leaveMandali(activeMandali.id);
-      navigate("/mandali");
-    },
+    // Opens the confirmation. Both layouts share this, so it is the one place leaving is started.
+    onLeaveMandali: () => setShowLeave(true),
   };
 
   return (
@@ -446,6 +452,32 @@ export default function MandaliHubPage(): JSX.Element {
           canEditInfo={canEditInfo}
           isOwner={isOwner}
           onSave={(patch) => updateMandaliSettings(activeMandali.id, patch)}
+          onDelete={async (confirmHandle) => {
+            const result = await deleteMandali(activeMandali.id, confirmHandle);
+            if (result.success) toastStore.show(`“${activeMandali.name}” was deleted.`, "success");
+            return result;
+          }}
+        />
+      )}
+
+      {activeMandali && (
+        <LeaveMandaliDialog
+          open={showLeave}
+          onClose={() => setShowLeave(false)}
+          mandaliName={activeMandali.name}
+          isOwner={isOwner}
+          candidates={members
+            .filter((m) => m.playerId !== playerId && m.state === "ACTIVE")
+            .map((m) => ({ playerId: m.playerId, displayName: m.displayName, role: m.role }))}
+          onLeave={async (newHostId) => {
+            const result = await leaveMandaliFlow({ transferOwnership, leaveMandali }, activeMandali.id, newHostId);
+            if (result.success) navigate("/mandali", { replace: true });
+            return result;
+          }}
+          onDeleteInstead={() => {
+            setShowLeave(false);
+            setShowGroupInfo(true);
+          }}
         />
       )}
 

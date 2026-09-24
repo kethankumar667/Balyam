@@ -616,11 +616,137 @@ async function main() {
       await admin.query(`select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, late]);
       await sendAs(owner, "said while you were away");
       const back = await join(admin, mid, late);
-      const away = (await admin.query(`select created_at from public.mandali_messages where content = 'said while you were away' and mandali_id = $1`, [mid])).rows[0].created_at;
-      check("cutoff", "rejoining stamps a new join time, after what was said while away",
-        back.ok && new Date(await joinedAt(late)).getTime() > new Date(away).getTime(), back.error);
+      // Compared inside Postgres, at microsecond precision: as JavaScript dates both would be
+      // truncated to milliseconds, and a fast machine can put the message and the rejoin in the same one.
+      const joinedAfter = (await admin.query(
+        `select m.joined_at > x.created_at as after
+           from public.mandali_memberships m, public.mandali_messages x
+          where m.mandali_id = $1 and m.identity_id = $2
+            and x.mandali_id = $1 and x.content = 'said while you were away'`,
+        [mid, late],
+      )).rows[0].after;
+      check("cutoff", "rejoining stamps a new join time, after what was said while away", back.ok && joinedAfter === true, back.error);
       const rejoined = await digestFor(late);
       check("cutoff", "a rejoiner is not shown the time they were away as new", rejoined.unreadCount === 0, `n=${rejoined.unreadCount}`);
+    }
+
+    // ── 10. The owner deletes the Mandali ───────────────────────────────
+    console.log("\n10. Owner deletes the Mandali");
+    {
+      const owner = await person();
+      const admin1 = await person();
+      const member = await person();
+      const leaver = await person();
+      const stranger = await person();
+      const mid = await makeMandali(owner);
+      const bystander = await makeMandali(await person());
+      const ch = `${mid}_lounge-chat`;
+      await join(admin, mid, admin1);
+      await join(admin, mid, member);
+      await join(admin, mid, leaver);
+      await admin.query(`select public.transition_membership($1, $2, $3, 'PROMOTE')`, [mid, owner, admin1]);
+      await admin.query(`select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, leaver]);
+      await admin.query(`select public.send_mandali_message($1, $2, $3, $4, 'this will be gone', null, null)`, [uid("h"), mid, ch, member]);
+      await admin.query(`select public.create_invitation($1, $2, $3, $4, now() + interval '1 day', 10)`, [uid("inv"), mid, owner, uid("hash")]);
+      await requestCoins(admin, mid, member, owner);
+      await admin.query(`insert into public.mandali_notifications (id, mandali_id, recipient_identity_id, kind) values ($1, $2, $3, 'test')`, [uid("ntf"), mid, member]);
+
+      const childTables = ["mandali_memberships", "mandali_invitations", "mandali_channels", "mandali_messages",
+        "mandali_coin_requests", "mandali_notifications", "mandali_audit_log"];
+      const rowsIn = async (t, id = mid) =>
+        Number((await admin.query(`select count(*)::int as n from public.${t} where mandali_id = $1`, [id])).rows[0].n);
+      const populated = await Promise.all(childTables.map((t) => rowsIn(t)));
+      check("delete", "the group has rows in every table that hangs off it", populated.every((n) => n > 0), populated.join(","));
+      const bystanderMembers = await rowsIn("mandali_memberships", bystander);
+      const balancesBefore = await Promise.all([owner, admin1, member, leaver].map(balance));
+
+      for (const [who, label] of [[admin1, "an admin"], [member, "an ordinary member"], [leaver, "someone who left"], [stranger, "a stranger"]]) {
+        const refused = await attempt(admin, `select public.delete_mandali($1, $2)`, [mid, who]);
+        check("delete", `${label} cannot delete it`, !refused.ok && /FORBIDDEN/.test(refused.error), refused.error);
+      }
+      check("delete", "refused attempts remove nothing", (await rowsIn("mandali_memberships")) === populated[0]);
+
+      const gone = await attempt(admin, `select public.delete_mandali($1, $2) as r`, ["m_never_existed", owner]);
+      check("delete", "a Mandali that does not exist is reported as not found", !gone.ok && /MANDALI_NOT_FOUND/.test(gone.error), gone.error);
+
+      const done = await attempt(admin, `select public.delete_mandali($1, $2) as r`, [mid, owner]);
+      const told = [...(done.rows?.[0]?.r?.member_ids ?? [])].sort();
+      check("delete", "the owner deletes it", done.ok, done.error);
+      check("delete", "it reports exactly the ACTIVE members to tell (not the one who left)",
+        JSON.stringify(told) === JSON.stringify([owner, admin1, member].sort()), JSON.stringify(told));
+      check("delete", "the Mandali itself is gone",
+        (await admin.query(`select 1 from public.mandalis where id = $1`, [mid])).rowCount === 0);
+      const left = await Promise.all(childTables.map((t) => rowsIn(t)));
+      check("delete", "every table that hung off it is emptied by the one delete", left.every((n) => n === 0), left.join(","));
+      check("delete", "another Mandali is untouched", (await rowsIn("mandali_memberships", bystander)) === bystanderMembers);
+
+      const balancesAfter = await Promise.all([owner, admin1, member, leaver].map(balance));
+      check("delete", "no member's coin balance changes", balancesBefore.every((b, i) => b === balancesAfter[i]),
+        `${balancesBefore} -> ${balancesAfter}`);
+
+      const twice = await attempt(admin, `select public.delete_mandali($1, $2)`, [mid, owner]);
+      check("delete", "deleting a second time finds nothing", !twice.ok && /MANDALI_NOT_FOUND/.test(twice.error), twice.error);
+
+      const priv = (await admin.query(
+        `select has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+                has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth,
+                has_function_privilege('service_role', p.oid, 'EXECUTE') as svc
+           from pg_proc p where p.proname = 'delete_mandali' and p.pronamespace = 'public'::regnamespace`,
+      )).rows[0];
+      check("delete", "only the service role may call it", priv.anon === false && priv.auth === false && priv.svc === true, JSON.stringify(priv));
+    }
+
+    // ── 11. Leaving, and the host handing over first ────────────────────
+    console.log("\n11. Leaving and host handover");
+    {
+      const owner = await person();
+      const member = await person();
+      const heir = await person();
+      const stranger = await person();
+      const mid = await makeMandali(owner);
+      await join(admin, mid, member);
+      await join(admin, mid, heir);
+      const roleOf = async (who) =>
+        (await admin.query(`select role, state from public.mandali_memberships where mandali_id = $1 and identity_id = $2`, [mid, who])).rows[0];
+      const leave = (who) => attempt(admin, `select public.transition_membership($1, $2, $2, 'LEAVE')`, [mid, who]);
+      const count = async () => Number((await admin.query(`select member_count from public.mandalis where id = $1`, [mid])).rows[0].member_count);
+
+      check("leave", "the group starts with three members", (await count()) === 3, String(await count()));
+
+      const left = await leave(member);
+      check("leave", "an ordinary member can leave", left.ok, left.error);
+      check("leave", "they are marked as having left", (await roleOf(member)).state === "LEFT");
+      check("leave", "the member count drops by one", (await count()) === 2, String(await count()));
+
+      const twice = await leave(member);
+      check("leave", "leaving twice is refused", !twice.ok && /TARGET_NOT_ACTIVE_MEMBER/.test(twice.error), twice.error);
+      const outsider = await leave(stranger);
+      check("leave", "someone who was never in the group cannot 'leave' it", !outsider.ok && /TARGET_NOT_ACTIVE_MEMBER/.test(outsider.error), outsider.error);
+
+      const someoneElse = await attempt(admin, `select public.transition_membership($1, $2, $3, 'LEAVE')`, [mid, heir, owner]);
+      check("leave", "nobody can make somebody else leave through LEAVE", !someoneElse.ok && /FORBIDDEN/.test(someoneElse.error), someoneElse.error);
+      check("leave", "and the host is still in place after that attempt", (await roleOf(owner)).state === "ACTIVE");
+
+      const hostLeaves = await leave(owner);
+      check("leave", "the host cannot simply leave", !hostLeaves.ok && /OWNER_MUST_TRANSFER/.test(hostLeaves.error), hostLeaves.error);
+      check("leave", "the refused host is still the owner, still active",
+        (await roleOf(owner)).role === "OWNER" && (await roleOf(owner)).state === "ACTIVE");
+      check("leave", "and the member count is unchanged", (await count()) === 2, String(await count()));
+
+      const handOver = await attempt(admin, `select public.transfer_mandali_ownership($1, $2, $3)`, [mid, owner, heir]);
+      check("leave", "the host hands the group to another active member", handOver.ok, handOver.error);
+      check("leave", "the heir is now the owner", (await roleOf(heir)).role === "OWNER");
+      check("leave", "the old host is now an admin", (await roleOf(owner)).role === "ADMIN");
+
+      const nowLeaves = await leave(owner);
+      check("leave", "the former host can now leave like anyone else", nowLeaves.ok, nowLeaves.error);
+      check("leave", "they have left, and the heir still owns the group",
+        (await roleOf(owner)).state === "LEFT" && (await roleOf(heir)).role === "OWNER" && (await count()) === 1, String(await count()));
+
+      const other = await makeMandali(await person());
+      const toOutsider = await attempt(admin, `select public.transfer_mandali_ownership($1, $2, $3)`, [other, (await admin.query(`select owner_identity_id from public.mandalis where id = $1`, [other])).rows[0].owner_identity_id, stranger]);
+      check("leave", "ownership cannot be handed to someone who is not an active member of the group",
+        !toOutsider.ok && /TARGET_NOT_ACTIVE_MEMBER/.test(toOutsider.error), toOutsider.error);
     }
   } finally {
     await admin.end();

@@ -77,6 +77,14 @@ export interface MandaliStore {
   createMandali: (payload: CreateMandaliPayload) => Promise<{ success: boolean; mandali?: Mandali; error?: string }>;
   joinMandali: (mandaliId: string, statement?: string, userDetails?: { playerId?: string; displayName?: string; avatar?: string }, invitationId?: string) => Promise<{ success: boolean; error?: string }>;
   leaveMandali: (mandaliId: string) => Promise<{ success: boolean; error?: string }>;
+  /** Owner only. Deletes the Mandali for everyone; `confirmHandle` is what the owner typed to confirm. */
+  deleteMandali: (mandaliId: string, confirmHandle: string) => Promise<{ success: boolean; error?: string }>;
+  /**
+   * A Mandali was deleted (by this owner, or announced by the server): forget it
+   * everywhere. Returns whether that was news to this client — false the second
+   * time, and false for the owner who has just done it themselves.
+   */
+  applyMandaliDeleted: (mandaliId: string) => boolean;
 
   // WhatsApp-parity: member management, invite links, join approval
   promoteMember: (mandaliId: string, targetId: string) => Promise<{ success: boolean; error?: string }>;
@@ -221,6 +229,23 @@ export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
     updatedAt: Date.now(),
   },
 ];
+
+/** Everything the store holds about the one Mandali that is open. Cleared when that Mandali stops existing. */
+const NO_OPEN_MANDALI: Partial<MandaliStore> = {
+  activeMandali: null,
+  members: [],
+  channels: [],
+  activeChannelId: null,
+  messages: {},
+  parties: [],
+  memories: [],
+  events: [],
+  coinTransfers: [],
+  activeGameLaunch: null,
+  pendingJoinRequests: [],
+  coinRequests: {},
+  coinRequestCooldownEndsAt: null,
+};
 
 let socketListenersBound = false;
 let mandaliRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -496,6 +521,43 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       set({ isSubmitting: false });
       return { success: false, error: err instanceof Error ? err.message : "Network error" };
     }
+  },
+
+  deleteMandali: async (mandaliId: string, confirmHandle: string) => {
+    set({ isSubmitting: true });
+    try {
+      const res = await apiFetch(`/api/mandali/${encodeURIComponent(mandaliId)}`, {
+        method: "DELETE",
+        body: JSON.stringify({ confirmHandle }),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      set({ isSubmitting: false });
+      if (data.success === true) {
+        get().applyMandaliDeleted(mandaliId);
+        return { success: true };
+      }
+      return { success: false, error: data.error || "Could not delete this Mandali." };
+    } catch (err) {
+      set({ isSubmitting: false });
+      return { success: false, error: err instanceof Error ? err.message : "Network error" };
+    }
+  },
+
+  applyMandaliDeleted: (mandaliId: string) => {
+    const state = get();
+    const inInbox = useMandaliInboxStore.getState().digests.some((d) => d.mandaliId === mandaliId);
+    const wasOpen = state.activeMandali?.id === mandaliId;
+    const known = inInbox || wasOpen || state.myMandalis.some((m) => m.id === mandaliId) ||
+      state.mandalis.some((m) => m.id === mandaliId);
+    if (!known) return false;
+
+    useMandaliInboxStore.getState().forget(mandaliId);
+    set((s) => ({
+      mandalis: s.mandalis.filter((m) => m.id !== mandaliId),
+      myMandalis: s.myMandalis.filter((m) => m.id !== mandaliId),
+      ...(wasOpen ? NO_OPEN_MANDALI : {}),
+    }));
+    return true;
   },
 
   promoteMember: async (mandaliId: string, targetId: string) => {
