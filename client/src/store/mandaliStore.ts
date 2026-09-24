@@ -391,14 +391,18 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
     if (!activeMandali) return;
 
     try {
-      const res = await apiJson<{ success: boolean; messages: MandaliMessage[] }>(
+      const res = await apiJson<{ success?: boolean; messages?: MandaliMessage[] }>(
         `/api/mandali/${activeMandali.id}/channels/${channelId}/messages`
       );
-      if (res && res.success) {
+      // Key on the data, not on a `success` flag: this endpoint used to reply
+      // `{ messages }` with no flag, so history was fetched on every refresh
+      // and then silently discarded — only live messages ever showed.
+      const history = res?.messages;
+      if (Array.isArray(history)) {
         set((state) => ({
           messages: {
             ...state.messages,
-            [channelId]: res.messages,
+            [channelId]: history,
           },
         }));
       }

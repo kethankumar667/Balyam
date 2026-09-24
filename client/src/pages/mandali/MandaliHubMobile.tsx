@@ -88,6 +88,7 @@ export interface MandaliHubMobileProps {
   pendingRequestCount: number;
   coinRequests: Record<string, MandaliCoinRequest>;
   onRequestCoins: () => void;
+  isCoinRequestCoolingDown?: boolean;
   onPayCoinRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   onPinMessage: (channelId: string, messageId: string, pinned: boolean) => void;
   onDeleteMessage: (channelId: string, messageId: string) => void;
@@ -128,6 +129,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   pendingRequestCount,
   coinRequests,
   onRequestCoins,
+  isCoinRequestCoolingDown,
   onPayCoinRequest,
   onPinMessage,
   onDeleteMessage,
@@ -377,11 +379,15 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
             >
               <button
                 type="button"
-                onClick={onRequestCoins}
-                aria-label="Request coins"
-                className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500/15 active:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center flex-shrink-0"
+                onClick={() => onRequestCoins()}
+                aria-label={isCoinRequestCoolingDown ? "Request coins — on cooldown, tap to see the time left" : "Request coins"}
+                title={isCoinRequestCoolingDown ? "Coin request on cooldown" : "Request 100 coins"}
+                className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500/15 active:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center flex-shrink-0 relative focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
               >
                 <Coins className="w-4 h-4" />
+                {isCoinRequestCoolingDown && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white dark:border-slate-900" />
+                )}
               </button>
               <div className="relative flex-1">
                 <input

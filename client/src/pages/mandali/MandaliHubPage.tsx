@@ -21,6 +21,8 @@ import { usePlayerId } from "../../lib/playerIdentity";
 import { MandaliHubDesktop } from "./MandaliHubDesktop";
 import { MandaliHubMobile } from "./MandaliHubMobile";
 import { CoinTransferModal } from "./CoinTransferModal";
+import { CoinRequestCooldownModal } from "./CoinRequestCooldownModal";
+import { useCoinRequestAction } from "./useCoinRequestAction";
 import InviteShareSheet from "../../components/mandali/InviteShareSheet";
 import GroupInfoModal from "../../components/mandali/GroupInfoModal";
 import MemberManagementSheet from "../../components/mandali/MemberManagementSheet";
@@ -90,6 +92,14 @@ export default function MandaliHubPage(): JSX.Element {
     fundCoinRequest,
     updateMandaliSettings,
   } = useMandaliStore();
+
+  const coinRequest = useCoinRequestAction({
+    mandaliId: activeMandali?.id ?? null,
+    playerId,
+    members,
+    channels,
+    activeChannelId,
+  });
 
   useEffect(() => {
     if (handle) {
@@ -194,12 +204,6 @@ export default function MandaliHubPage(): JSX.Element {
     setShowCoinTransfer(true);
   };
 
-  const handleRequestCoins = () => {
-    setPreselectedMemberId(undefined);
-    setCoinTransferInitialType("REQUEST");
-    setShowCoinTransfer(true);
-  };
-
   const sharedProps = {
     mandali: activeMandali,
     members,
@@ -215,6 +219,7 @@ export default function MandaliHubPage(): JSX.Element {
     canEditInfo,
     pendingRequestCount: pendingJoinRequests.length,
     coinRequests,
+    isCoinRequestCoolingDown: coinRequest.isCoolingDown,
     onSelectChannel: setActiveChannel,
     onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
     onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
@@ -224,7 +229,7 @@ export default function MandaliHubPage(): JSX.Element {
     onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),
     onLaunchParty: (partyId: string) => launchParty(partyId, playerId || undefined),
     onOpenCoinTransfer: handleOpenCoinTransfer,
-    onRequestCoins: handleRequestCoins,
+    onRequestCoins: () => void coinRequest.requestCoins(),
     onPayCoinRequest: fundCoinRequest,
     onPinMessage: (channelId: string, messageId: string, pinned: boolean) => pinMessage(channelId, messageId, pinned),
     onDeleteMessage: (channelId: string, messageId: string) => deleteMessage(channelId, messageId),
@@ -355,7 +360,7 @@ export default function MandaliHubPage(): JSX.Element {
         </div>
       )}
 
-      {/* Coin Transfer Modal */}
+      {/* Coin Transfer Modal (For sending coins) */}
       {showCoinTransfer && activeMandali && (
         <CoinTransferModal
           mandaliId={activeMandali.id}
@@ -365,6 +370,15 @@ export default function MandaliHubPage(): JSX.Element {
           preselectedMemberId={preselectedMemberId}
           initialType={coinTransferInitialType}
           onClose={() => setShowCoinTransfer(false)}
+        />
+      )}
+
+      {/* Coin Request Cooldown Modal (Shown when under cooling period) */}
+      {coinRequest.showCooldown && (
+        <CoinRequestCooldownModal
+          cooldownEndsAt={coinRequest.cooldownEndsAt}
+          onClose={coinRequest.closeCooldown}
+          onRequestCoins={() => void coinRequest.requestCoins()}
         />
       )}
 

@@ -86,6 +86,7 @@ export interface MandaliHubDesktopProps {
   onLaunchParty: (partyId: string) => void;
   onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
   onRequestCoins: () => void;
+  isCoinRequestCoolingDown?: boolean;
   onPayCoinRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   onPinMessage: (channelId: string, messageId: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>;
   onDeleteMessage: (channelId: string, messageId: string) => Promise<{ success: boolean; error?: string }>;
@@ -124,6 +125,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onLaunchParty,
   onOpenCoinTransfer,
   onRequestCoins,
+  isCoinRequestCoolingDown,
   onPayCoinRequest,
   onPinMessage,
   onDeleteMessage,
@@ -624,12 +626,15 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             >
               <button
                 type="button"
-                onClick={onRequestCoins}
-                title="Request coins from a member"
-                aria-label="Request coins"
-                className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0"
+                onClick={() => onRequestCoins()}
+                title={isCoinRequestCoolingDown ? "Coin request on cooldown (tap to check remaining time)" : "Request 100 coins (Instant)"}
+                aria-label={isCoinRequestCoolingDown ? "Request coins — on cooldown, tap to see the time left" : "Request coins"}
+                className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0 relative focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
               >
                 <Coins className="w-4 h-4" />
+                {isCoinRequestCoolingDown && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white dark:border-slate-900" />
+                )}
               </button>
 
               <div className="relative flex-1">

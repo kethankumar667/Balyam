@@ -57,6 +57,8 @@ describe("CoinTransferModal", () => {
 
     expect(screen.getByText(/Coin requests are always 100 coins/i)).toBeTruthy();
     expect(screen.getByText("Fixed Clan Request")).toBeTruthy();
+    expect(screen.getByText(/Posts a payable request card in chat/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText("e.g. Need entry fee for squad match!")).toBeTruthy();
     expect(screen.getByText(/once every 4 hours/i)).toBeTruthy();
     const submit = screen.getByRole("button", { name: "Request 100 Coins" }) as HTMLButtonElement;
     expect(submit.disabled).toBe(false);
@@ -68,6 +70,7 @@ describe("CoinTransferModal", () => {
     expect(screen.getByText("Fixed for every transfer")).toBeTruthy();
     expect(screen.getByText(/Balance after send:/i)).toBeTruthy();
     expect(screen.getByText("4,900 coins")).toBeTruthy();
+    expect(screen.getByPlaceholderText("e.g. GG in Ludo death match!")).toBeTruthy();
   });
 
   it("shows the countdown and blocks the request while cooling down", () => {
@@ -75,7 +78,8 @@ describe("CoinTransferModal", () => {
     renderModal("REQUEST");
 
     // Shown twice on purpose: in the notice, and on the disabled button.
-    expect(screen.getByRole("status").textContent).toMatch(/You can request coins again in\s*2h 30m 0s/);
+    expect(screen.getByRole("timer").textContent).toMatch(/You can request coins again in\s*2h 30m 0s/);
+    expect(screen.getByTitle("Cooldown active")).toBeTruthy();
     const submit = screen.getByRole("button", { name: /Available in 2h 30m 0s/ }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
   });

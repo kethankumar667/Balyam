@@ -45,9 +45,23 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
   onClose,
 }) => {
   const { balance, refetch: refetchWallet } = useWallet();
-  const { transferCoins, createCoinRequest, isSubmitting, coinRequestCooldownEndsAt, fetchCoinRequestCooldown } =
-    useMandaliStore();
+  const {
+    transferCoins,
+    createCoinRequest,
+    isSubmitting,
+    coinRequestCooldownEndsAt,
+    fetchCoinRequestCooldown,
+    channels = [],
+    activeChannelId: storeActiveChannelId,
+  } = useMandaliStore();
   const cooldownRemainingMs = useCountdown(coinRequestCooldownEndsAt);
+
+  // Fallback to active channel or first text channel in the lounge if channelId isn't explicitly passed
+  const effectiveChannelId =
+    channelId ||
+    storeActiveChannelId ||
+    channels.find((c) => c.type === "TEXT")?.channelId ||
+    channels[0]?.channelId;
 
   // The database enforces the limit; this just makes sure the countdown shown
   // here starts from the server's clock rather than a stale local guess.
@@ -72,6 +86,8 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
 
   const isBalanceSufficient = type === "REQUEST" || effectiveAmount <= numericBalance;
   const isCoolingDown = type === "REQUEST" && cooldownRemainingMs > 0;
+  const targetMember = otherMembers.find((m) => m.playerId === selectedRecipientId);
+  const targetName = targetMember?.displayName || "Member";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,9 +104,6 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
       setErrorMessage(`Insufficient coins. Your balance is ${numericBalance.toLocaleString()} coins.`);
       return;
     }
-
-    const targetName =
-      otherMembers.find((m) => m.playerId === selectedRecipientId)?.displayName || "Member";
 
     if (type === "SEND") {
       const res = await transferCoins(mandaliId, {
@@ -111,13 +124,12 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
 
     // REQUEST mode posts an actual payable card into the channel — the
     // designated member (selectedRecipientId here is who's being ASKED,
-    // i.e. the payer) taps "Pay" on it to complete the transfer. Requires
-    // a channel to post into; the caller must pass one for REQUEST mode.
-    if (!channelId) {
+    // i.e. the payer) taps "Pay" on it to complete the transfer.
+    if (!effectiveChannelId) {
       setErrorMessage("Open this from within a channel to request coins.");
       return;
     }
-    const res = await createCoinRequest(mandaliId, channelId, selectedRecipientId, effectiveAmount);
+    const res = await createCoinRequest(mandaliId, effectiveChannelId, selectedRecipientId, effectiveAmount);
     if (res.success) {
       setSuccessMessage(`Requested ${effectiveAmount.toLocaleString()} coins from @${targetName}!`);
       setTimeout(onClose, 1600);
@@ -207,6 +219,9 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
           >
             <ArrowDownLeft className="w-4 h-4" />
             <span>Request Coins</span>
+            {isCoolingDown && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" title="Cooldown active" />
+            )}
           </button>
         </div>
 
@@ -245,6 +260,16 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                   </option>
                 ))}
               </select>
+
+              {type === "REQUEST" && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 font-medium">
+                  <Send className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                  <span>
+                    Posts a payable request card in chat — coins transfer when{" "}
+                    <strong className="text-slate-700 dark:text-slate-300">@{targetName}</strong> taps Pay.
+                  </span>
+                </p>
+              )}
             </div>
 
             {/* Amount Section — Redesigned according to the condition */}
@@ -272,9 +297,16 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                     </div>
                   </div>
 
+                  {!effectiveChannelId && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>No active chat channel found to post your request card.</span>
+                    </div>
+                  )}
+
+                  {/* A timer, not a live region: the countdown changes every second and must not be read out each time. */}
                   <div
-                    role="status"
-                    aria-live="polite"
+                    role={isCoolingDown ? "timer" : undefined}
                     className={`flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
                       isCoolingDown
                         ? "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300"
@@ -305,8 +337,13 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                       </span>
                     </div>
 
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1.5 pt-2 border-t border-amber-500/20 leading-relaxed font-medium">
+                      <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <span>Transfers are fixed at 100 coins to keep clan economy balanced and safe.</span>
+                    </div>
+
                     {isBalanceSufficient && (
-                      <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-2 border-t border-amber-500/20 flex items-center justify-between font-medium">
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-1.5 border-t border-amber-500/15 flex items-center justify-between font-medium">
                         <span>Balance after send:</span>
                         <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">
                           {(numericBalance - effectiveAmount).toLocaleString()} coins
@@ -329,7 +366,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="transfer-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Note (Optional)
+                  {type === "SEND" ? "Note (Optional)" : "Reason for Request (Optional)"}
                 </label>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
                   {note.length}/80
@@ -341,7 +378,11 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 maxLength={80}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="e.g. GG in Ludo death match!"
+                placeholder={
+                  type === "SEND"
+                    ? "e.g. GG in Ludo death match!"
+                    : "e.g. Need entry fee for squad match!"
+                }
                 className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
               />
             </div>
@@ -349,7 +390,13 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting || !!successMessage || !isBalanceSufficient || isCoolingDown}
+              disabled={
+                isSubmitting ||
+                !!successMessage ||
+                !isBalanceSufficient ||
+                isCoolingDown ||
+                (type === "REQUEST" && !effectiveChannelId)
+              }
               className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
             >
               <Send className="w-4 h-4" />

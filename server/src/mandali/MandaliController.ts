@@ -393,7 +393,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
     const limit = Number(req.query.limit) || 50;
     const messages = await mandaliService.getMessages(req.params.channelId, limit);
-    res.json({ messages });
+    res.json({ success: true, messages });
   });
 
   // Send Message

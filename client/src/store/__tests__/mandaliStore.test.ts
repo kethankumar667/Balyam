@@ -1,4 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+const apiJsonMock = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/playerIdentity", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/playerIdentity")>()),
+  apiJson: apiJsonMock,
+}));
+
 import { useMandaliStore } from "../mandaliStore";
 
 describe("Mandali Client Store", () => {
@@ -32,6 +39,43 @@ describe("Mandali Client Store", () => {
   it("updates active channel", () => {
     useMandaliStore.getState().setActiveChannel("ch_test_lounge");
     expect(useMandaliStore.getState().activeChannelId).toBe("ch_test_lounge");
+  });
+
+  describe("loading chat history after a page refresh", () => {
+    const message = (id: string, content: string) => ({
+      messageId: id, channelId: "ch1", mandaliId: "m1", senderId: "p1", senderName: "A",
+      senderAvatar: "a1", senderRole: "MEMBER", content, reactions: {}, timestamp: 1,
+    });
+
+    beforeEach(() => {
+      apiJsonMock.mockReset();
+      useMandaliStore.setState({ activeMandali: { id: "m1" } as never });
+    });
+
+    it("shows the stored messages when the server replies { messages } with no success flag (how it always replied)", async () => {
+      apiJsonMock.mockResolvedValue({ messages: [message("a", "hi from A"), message("b", "hi from B")] });
+
+      await useMandaliStore.getState().fetchMessages("ch1");
+
+      expect(useMandaliStore.getState().messages["ch1"].map((m) => m.content)).toEqual(["hi from A", "hi from B"]);
+    });
+
+    it("shows them when the reply carries success: true", async () => {
+      apiJsonMock.mockResolvedValue({ success: true, messages: [message("a", "hello")] });
+
+      await useMandaliStore.getState().fetchMessages("ch1");
+
+      expect(useMandaliStore.getState().messages["ch1"]).toHaveLength(1);
+    });
+
+    it("keeps what is on screen if the request fails, instead of wiping the chat", async () => {
+      useMandaliStore.setState({ messages: { ch1: [message("a", "already here") as never] } });
+      apiJsonMock.mockResolvedValue(null);
+
+      await useMandaliStore.getState().fetchMessages("ch1");
+
+      expect(useMandaliStore.getState().messages["ch1"]).toHaveLength(1);
+    });
   });
 
   it("clears active game launch overlay", () => {
