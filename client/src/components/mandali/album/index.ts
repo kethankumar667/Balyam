@@ -16,6 +16,7 @@ export { Composer } from "./Composer";
 export { GroupMenu } from "./GroupMenu";
 export { MessageFeed } from "./MessageFeed";
 export { PeopleList } from "./PeopleList";
+export { usePanelCollapse, type PanelSide, type PanelState } from "./usePanelCollapse";
 export { StartGameSheet } from "./StartGameSheet";
 export { roleLabelKey } from "./roleLabel";
 export { COVER_CLOTHS, coverClothClass, coverClothFor } from "./coverCloth";

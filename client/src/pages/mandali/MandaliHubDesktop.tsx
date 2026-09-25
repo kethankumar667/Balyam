@@ -15,7 +15,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Gamepad2, Hash, Megaphone, Plus } from "lucide-react";
+import { ChevronLeft, Gamepad2, Hash, Megaphone, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
@@ -31,6 +31,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import {
+  AlbumAvatar,
   AlbumButton,
   AlbumCover,
   Composer,
@@ -38,6 +39,7 @@ import {
   MessageFeed,
   PeopleList,
   StartGameSheet,
+  usePanelCollapse,
 } from "../../components/mandali/album";
 
 export interface MandaliHubDesktopProps {
@@ -76,6 +78,9 @@ export interface MandaliHubDesktopProps {
   notificationLevel?: NotificationLevel;
   onOpenNotificationSettings?: () => void;
 }
+
+/** How many faces stay visible in the folded people strip. */
+const PEOPLE_SHOWN_WHEN_FOLDED = 6;
 
 /** How many memories the facing page shows before the full list on the Memories screen. */
 const MEMORIES_ON_FACING_PAGE = 3;
@@ -116,23 +121,84 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 }) => {
   const { t } = useTranslation();
   const [startOpen, setStartOpen] = useState(false);
+  // Either side panel can be folded away to give the conversation the whole width; it is remembered.
+  const { collapsed, toggle } = usePanelCollapse();
 
   const activeChannel = channels.find((c) => c.channelId === activeChannelId) ?? channels[0];
   const isPlayRoom = activeChannel?.type === "PARTY_FINDING" || Boolean(activeChannel?.name.includes("squad"));
   const onlineCount = members.filter((m) => m.presence === "online" || m.presence === "in-game").length;
+  const isHere = (presence: MandaliMember["presence"]) => presence === "online" || presence === "in-game";
 
   return (
     <div className="album-surface flex h-full min-h-0 w-full flex-1 overflow-hidden">
       {/* ── Left: the cover, the menu, the rooms ── */}
-      <aside className="album-scroll flex w-64 flex-shrink-0 flex-col overflow-y-auto border-r border-album-line bg-album-page xl:w-72">
+      <aside
+        id="mandali-left-panel"
+        className={`album-scroll flex flex-shrink-0 flex-col overflow-y-auto border-r border-album-line bg-album-page transition-[width] duration-200 motion-reduce:transition-none ${
+          collapsed.left ? "w-16" : "w-64 xl:w-72"
+        }`}
+      >
+        {collapsed.left ? (
+          <div className="flex flex-col items-center gap-3 py-3">
+            <AlbumButton
+              variant="ghost"
+              size="icon"
+              onClick={() => toggle("left")}
+              aria-label={t("mandali.panel.showLeft")}
+              title={t("mandali.panel.showLeft")}
+              aria-expanded={false}
+              aria-controls="mandali-left-panel"
+            >
+              <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+            </AlbumButton>
+            <nav aria-label={t("mandali.rooms.title")}>
+              <ul className="m-0 flex list-none flex-col items-center gap-1 p-0">
+                {channels.map((channel) => {
+                  const current = channel.channelId === activeChannelId;
+                  const Icon = channel.type === "PARTY_FINDING" ? Gamepad2 : channel.type === "ANNOUNCEMENT" ? Megaphone : Hash;
+                  return (
+                    <li key={channel.channelId}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectChannel(channel.channelId)}
+                        aria-current={current ? "true" : undefined}
+                        aria-label={channel.name}
+                        title={channel.name}
+                        className={`album-focus flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors ${
+                          current ? "bg-album-foilfill/20 text-album-foil" : "text-album-ink2 hover:bg-album-field"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          </div>
+        ) : (
+        <>
         <div className="p-4 pb-3">
-          <Link
-            to="/mandali"
-            className="album-focus -ml-1 mb-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg pl-1 pr-3 text-sm font-semibold text-album-ink2 transition-colors hover:text-album-foil"
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            {t("mandali.back.all")}
-          </Link>
+          <div className="mb-2 flex items-center justify-between">
+            <Link
+              to="/mandali"
+              className="album-focus -ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg pl-1 pr-3 text-sm font-semibold text-album-ink2 transition-colors hover:text-album-foil"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              {t("mandali.back.all")}
+            </Link>
+            <AlbumButton
+              variant="ghost"
+              size="icon"
+              onClick={() => toggle("left")}
+              aria-label={t("mandali.panel.hideLeft")}
+              title={t("mandali.panel.hideLeft")}
+              aria-expanded={true}
+              aria-controls="mandali-left-panel"
+            >
+              <PanelLeftClose className="h-5 w-5" aria-hidden="true" />
+            </AlbumButton>
+          </div>
           <AlbumCover
             variant="card"
             mandaliId={mandali.id}
@@ -189,6 +255,8 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             onLeave={onLeaveMandali}
           />
         </nav>
+        </>
+        )}
       </aside>
 
       {/* ── Middle: the page ── */}
@@ -260,9 +328,40 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
       </main>
 
       {/* ── Right: the facing page ── */}
-      <aside className="album-scroll w-64 flex-shrink-0 space-y-6 overflow-y-auto border-l border-album-line bg-album-raised p-4 shadow-[inset_10px_0_14px_-12px_rgb(0_0_0/0.35)] xl:w-72 xl:p-5">
+      <aside
+        id="mandali-right-panel"
+        className={`album-scroll flex-shrink-0 overflow-y-auto border-l border-album-line bg-album-raised shadow-[inset_10px_0_14px_-12px_rgb(0_0_0/0.35)] transition-[width] duration-200 motion-reduce:transition-none ${
+          collapsed.right ? "w-16 py-3" : "w-64 space-y-6 p-4 xl:w-72 xl:p-5"
+        }`}
+      >
+        {collapsed.right ? (
+          <div className="flex flex-col items-center gap-3">
+            <AlbumButton
+              variant="ghost"
+              size="icon"
+              onClick={() => toggle("right")}
+              aria-label={t("mandali.panel.showRight")}
+              title={t("mandali.panel.showRight")}
+              aria-expanded={false}
+              aria-controls="mandali-right-panel"
+            >
+              <PanelRightOpen className="h-5 w-5" aria-hidden="true" />
+            </AlbumButton>
+            <ul aria-label={t("mandali.people.title")} className="m-0 flex list-none flex-col items-center gap-2.5 p-0">
+              {members.slice(0, PEOPLE_SHOWN_WHEN_FOLDED).map((member) => (
+                <li key={member.playerId} title={member.displayName}>
+                  <AlbumAvatar avatar={member.avatar} name={member.displayName} size="sm" online={isHere(member.presence)} />
+                </li>
+              ))}
+            </ul>
+            {members.length > PEOPLE_SHOWN_WHEN_FOLDED && (
+              <p className="m-0 text-sm font-semibold text-album-ink3">+{members.length - PEOPLE_SHOWN_WHEN_FOLDED}</p>
+            )}
+          </div>
+        ) : (
+        <>
         <section aria-labelledby="mandali-people">
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <div>
               <h2 id="mandali-people" className="m-0 text-lg font-semibold text-album-ink">
                 {t("mandali.people.title")}
@@ -272,6 +371,18 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                 {onlineCount > 0 ? ` · ${t("mandali.people.online", { count: onlineCount })}` : ""}
               </p>
             </div>
+            <AlbumButton
+              variant="ghost"
+              size="icon"
+              onClick={() => toggle("right")}
+              aria-label={t("mandali.panel.hideRight")}
+              title={t("mandali.panel.hideRight")}
+              aria-expanded={true}
+              aria-controls="mandali-right-panel"
+              className="-mr-2 -mt-1"
+            >
+              <PanelRightClose className="h-5 w-5" aria-hidden="true" />
+            </AlbumButton>
           </div>
           <PeopleList members={members} currentUserId={currentUserId} onCoinsWith={onOpenCoinTransfer ? (id) => onOpenCoinTransfer(id) : undefined} />
         </section>
@@ -284,6 +395,8 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           <p className="mb-3 mt-1 text-sm text-album-ink3">{t("mandali.memories.hint")}</p>
           <GnapakaluTimeline memories={memories.slice(0, MEMORIES_ON_FACING_PAGE)} compact />
         </section>
+        </>
+        )}
       </aside>
 
       <StartGameSheet open={startOpen} onClose={() => setStartOpen(false)} onStart={(game, title, seats) => onCreateParty(game, "casual", title, seats)} />

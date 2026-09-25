@@ -14,6 +14,10 @@ export const mandaliEn = {
   "mandali.back.all": "All your Mandalis",
   "mandali.rooms.title": "Rooms",
   "mandali.rooms.default": "Everyday conversation",
+  "mandali.panel.hideLeft": "Fold away rooms and options",
+  "mandali.panel.showLeft": "Show rooms and options",
+  "mandali.panel.hideRight": "Fold away people and memories",
+  "mandali.panel.showRight": "Show people and memories",
 
   /* ── The four tabs on a phone ── */
   "mandali.tab.chat": "Chat",
