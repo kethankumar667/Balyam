@@ -330,7 +330,7 @@ export default function PartyScreen() {
       />
 
       {/* Main Content Area based on Room Phase */}
-      <main className="flex-1 w-full flex flex-col justify-center items-center overflow-hidden">
+      <main className="flex-1 w-full flex flex-col justify-center items-center min-h-0 overflow-hidden">
         {room.phase === "lobby" && (
           <TvLobbyView
             roomCode={room.code}
@@ -366,7 +366,7 @@ export default function PartyScreen() {
 function TvShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-between p-4 sm:p-6 overflow-hidden select-none bg-[#0B0F19] text-[#F8FAFC]"
+      className="fixed inset-0 flex flex-col items-center justify-between p-2.5 sm:p-4 overflow-hidden select-none bg-[#0B0F19] text-[#F8FAFC]"
       style={{
         backgroundImage:
           "radial-gradient(ellipse at 50% 10%, rgba(245, 158, 11, 0.12) 0%, rgba(11, 15, 25, 0.98) 70%)",
