@@ -78,8 +78,14 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
       onClose={onClose}
       mobileSheet
       ariaLabelledBy="share-mandali-title"
-      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-white dark:bg-[#27221e] bg-album-raised border border-stone-200 dark:border-stone-800 border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelStyle={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
     >
+      {/* Pull handle (mobile bottom-sheet only) */}
+      <div className="md:hidden flex justify-center -mt-2 pb-2.5">
+        <span aria-hidden className="w-10 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
+      </div>
+
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 id="share-mandali-title" className="text-base font-semibold text-album-ink">
@@ -196,7 +202,7 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[48px] rounded-2xl bg-album-field hover:bg-album-line text-album-ink font-semibold text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
+                className="min-h-[48px] rounded-2xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 bg-album-field hover:bg-album-line text-stone-900 dark:text-stone-100 text-album-ink font-semibold text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
               >
                 {sharedTo.length > 0 ? "Done" : "Cancel"}
               </button>
@@ -204,7 +210,7 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
                 type="button"
                 onClick={handleShare}
                 disabled={!selected || sharing || alreadyShared}
-                className="min-h-[48px] rounded-2xl bg-album-foilfill text-album-onfoil font-semibold text-[15px] shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
+                className="min-h-[48px] rounded-2xl bg-amber-600 hover:bg-amber-500 bg-album-foilfill text-white dark:text-stone-950 text-album-onfoil font-semibold text-[15px] shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
               >
                 {sharing ? (
                   <>

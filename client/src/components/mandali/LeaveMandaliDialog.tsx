@@ -85,8 +85,11 @@ export default function LeaveMandaliDialog({
   const confirmLabel = hostMustChoose ? (chosen ? `Make ${chosen.displayName} host & leave` : "Make host & leave") : "Leave";
 
   return (
-    <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="leave-mandali-title">
-      <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6">
+    <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="leave-mandali-title" panelClassName="w-full max-w-md">
+      <div
+        className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white dark:bg-[#27221e] bg-album-raised border border-stone-200 dark:border-stone-800 border-album-line shadow-2xl p-5 sm:p-6"
+        style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+      >
         <div className="flex items-center gap-2 mb-3">
           <LogOut className="w-4 h-4 text-album-danger" aria-hidden="true" />
           <h2 id="leave-mandali-title" className="text-base font-semibold text-album-ink">

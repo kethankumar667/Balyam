@@ -1,5 +1,6 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
+@import "./components/mandali/album/album.css";
 
 /* Every family this stylesheet needs (Fredoka, Kalam, Patrick Hand, Nunito,
    JetBrains Mono, Poppins, Noto Sans Telugu, Caveat) is now loaded by the

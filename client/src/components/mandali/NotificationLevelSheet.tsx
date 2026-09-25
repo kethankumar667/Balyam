@@ -76,8 +76,14 @@ export default function NotificationLevelSheet({ open, onClose, mandaliName, lev
       onClose={onClose}
       mobileSheet
       ariaLabelledBy="notification-level-title"
-      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-white dark:bg-[#27221e] bg-album-raised border border-stone-200 dark:border-stone-800 border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelStyle={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
     >
+      {/* Pull handle (mobile bottom-sheet only) */}
+      <div className="md:hidden flex justify-center -mt-2 pb-2.5">
+        <span aria-hidden className="w-10 h-1.5 rounded-full bg-stone-300 dark:bg-stone-600" />
+      </div>
+
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h2 id="notification-level-title" className="text-base font-semibold text-album-ink">

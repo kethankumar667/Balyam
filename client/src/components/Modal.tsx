@@ -88,6 +88,7 @@ export default function Modal({
   if (!open) return null;
 
   const align = mobileSheet ? "items-end md:items-center" : "items-center";
+  const padding = mobileSheet ? "p-0 md:p-4" : "p-4";
 
   // Portalled to `document.body` rather than rendered in place. A caller
   // nested a few levels under a `position:relative` ancestor with an
@@ -100,7 +101,7 @@ export default function Modal({
   // nested-context trap by construction, for this and every other modal.
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex ${align} justify-center p-4 ${BACKDROP} ${className}`}
+      className={`fixed inset-0 z-50 flex ${align} justify-center ${padding} ${BACKDROP} ${className}`}
       style={zIndex !== undefined ? { zIndex } : undefined}
       onMouseDown={(e) => {
         if (closeOnBackdropClick && onClose && e.target === e.currentTarget) onClose();

@@ -82,8 +82,18 @@ export default function InviteShareSheet({ open, onClose, mandaliName, mandaliHa
   };
 
   return (
-    <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="invite-share-title" closeOnBackdropClick>
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6">
+    <Modal
+      open={open}
+      onClose={onClose}
+      mobileSheet
+      ariaLabelledBy="invite-share-title"
+      closeOnBackdropClick
+      panelClassName="w-full max-w-md"
+    >
+      <div
+        className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white dark:bg-[#27221e] bg-album-raised border border-stone-200 dark:border-stone-800 border-album-line shadow-2xl p-5 sm:p-6"
+        style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))" }}
+      >
         <div className="flex items-center gap-2 mb-1">
           <Link2 className="w-4 h-4 text-album-foil" />
           <h2 id="invite-share-title" className="text-base font-semibold text-album-ink">
