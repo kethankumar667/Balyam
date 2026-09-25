@@ -83,7 +83,14 @@ describe("computePrizePoolFor", () => {
 
 /* ═══════════ the real path: commit debits → settle → wallets ═══════════ */
 
-async function playTable(opts: { seats: number; stakePerSeat: string; gameKind: string; winnerIndex: number }) {
+async function playTable(opts: {
+  seats: number;
+  stakePerSeat: string;
+  gameKind: string;
+  winnerIndex: number;
+  /** Simulates a database without the game-kind migration: the settlement row never learns its game. */
+  rowKnowsGame?: boolean;
+}) {
   const repo = new InMemoryEconomyRepository();
   const service = new EconomyService(repo, { delay: async () => undefined });
   const ids = Array.from({ length: opts.seats }, (_, i) => `member_${i}`);
@@ -98,7 +105,7 @@ async function playTable(opts: { seats: number; stakePerSeat: string; gameKind: 
     humanSeatCount: opts.seats,
     botSeatCount: 0,
     isSolo: false,
-    gameKind: opts.gameKind,
+    gameKind: opts.rowKnowsGame === false ? undefined : opts.gameKind,
     participantDebits: ids.map((identityId) => ({ identityId, identityKind: "member" as const, amountCoins: opts.stakePerSeat })),
   });
   // Winner first, the rest in seat order — exactly what economyPlacements builds for Rummy.
@@ -108,6 +115,8 @@ async function playTable(opts: { seats: number; stakePerSeat: string; gameKind: 
     matchId: "m_rummy",
     isValidRanking: true,
     participants: order.map((identityId, i) => ({ identityId, identityKind: "member" as const, placement: i + 1 })),
+    // What RoomManager sends: the room's own game.
+    gameKind: opts.gameKind,
   });
   const balances: Record<string, string> = {};
   for (const id of ids) balances[id] = (await service.getWallet(id)).balance;
@@ -137,6 +146,20 @@ describe("Rummy settlement — through the real economy path", () => {
     const { balances } = await playTable({ seats: 5, stakePerSeat: "320", gameKind: "rummy", winnerIndex: 0 });
     const total = Object.values(balances).reduce((sum, b) => sum + BigInt(b), 0n);
     expect(total).toBe(5000n);
+  });
+
+  it("pays the whole pot even when the settlement row never recorded its game (database without the game-kind migration)", async () => {
+    const { result, balances, ids } = await playTable({
+      seats: 2,
+      stakePerSeat: "160",
+      gameKind: "rummy",
+      winnerIndex: 0,
+      rowKnowsGame: false,
+    });
+    expect(result.settlement.gameKind ?? null).toBeNull(); // the row really is blind to the game
+    expect(result.settlement.totalWorldBankCut).toBe("0");
+    expect(balances[ids[0]!]).toBe("1160"); // 1000 - 160 + 320, NOT 1000 - 160 + 256
+    expect(balances[ids[1]!]).toBe("840");
   });
 
   it("the same table for another game still pays the 20% cut — Rummy's rule is not global", async () => {

@@ -5,7 +5,6 @@ import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import RematchPanel from "../../components/RematchPanel";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
-import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
@@ -112,8 +111,6 @@ export default function DotsBoxesScorecardModal({
 
   const winnerPrizes = winnerPrizesFor(settlement);
   const selfRanked = rankedPlayers.find((p) => p.pid === selfId);
-  const myRank = selfRanked ? selfRanked.rank - 1 : -1;
-  const selfIsGuest = players.find((p) => p.id === selfId)?.isGuest ?? false;
 
   return (
     <Modal
@@ -398,10 +395,6 @@ export default function DotsBoxesScorecardModal({
             : "border-slate-800/80 bg-[#0C0F2D]/95"
         }`}
       >
-        {myRank >= 0 && (
-          <PlayerSettlementSummary settlement={settlement} myRank={myRank} isGuest={selfIsGuest} />
-        )}
-
         {/* Rematch Panel */}
         <RematchPanel players={players} selfId={selfId} className="w-full" />
 

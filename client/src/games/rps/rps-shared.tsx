@@ -6,7 +6,6 @@ import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
-import PlayerSettlementSummary from "../../components/economy/PlayerSettlementSummary";
 import type { MatchEconomySettlementRecord } from "../../lib/economyApi";
 import {
   CheckIcon,
@@ -877,12 +876,6 @@ export function RpsScorecardModal({
             <div className="text-xl font-black" style={{ color: "rgba(255,255,255,0.60)" }}>{state.history.length}</div>
           </div>
         </div>
-
-        {typeof myRank === "number" && (
-          <div className="mt-4 mx-6">
-            <PlayerSettlementSummary settlement={settlement ?? null} myRank={myRank} isGuest={!!isGuest} />
-          </div>
-        )}
 
         {/* Round-by-round history */}
         {state.history.length > 0 && (

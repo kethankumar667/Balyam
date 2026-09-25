@@ -439,6 +439,8 @@ export interface SettlementIntentPayload {
   isValidRanking: boolean;
   participants: TerminalIntentParticipant[];
   refundReason?: string;
+  /** The room's game, so a replayed settlement applies the same prize rule as the original. Absent on intents written before this field existed. */
+  gameKind?: string;
 }
 export interface RefundIntentPayload {
   operationKind: "REFUND";

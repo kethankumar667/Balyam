@@ -248,6 +248,8 @@ export class DurableSettlementWorker {
       isValidRanking: request.isValidRanking,
       participants: request.participants,
       refundReason: request.refundReason,
+      // Stored so a replay after a crash pays by the same rule as the first attempt; omitted when unknown.
+      ...(request.gameKind ? { gameKind: request.gameKind } : {}),
     };
     const outcome = await this.service.createTerminalIntent({
       matchId: request.matchId,
@@ -354,6 +356,7 @@ export class DurableSettlementWorker {
           isValidRanking: intent.payload.isValidRanking,
           participants: intent.payload.participants,
           refundReason: intent.payload.refundReason,
+          gameKind: intent.payload.gameKind,
         });
         if (result.applied && result.issuedVouchers.length > 0) {
           try {

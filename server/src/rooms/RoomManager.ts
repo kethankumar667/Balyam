@@ -3770,8 +3770,10 @@ export class RoomManager {
       departedIds,
     });
 
+    // `gameKind` is the room's own game — it picks the prize rule (Rummy: whole pot, no cut) and is
+    // stored with the durable intent, so a retry or replay pays exactly what the first attempt would.
     const request: SettleMatchEconomyRequest = isValidRanking
-      ? { matchId, isValidRanking: true as const, participants }
+      ? { matchId, isValidRanking: true as const, participants, gameKind: room.game }
       : { matchId, isValidRanking: false as const, participants: [], refundReason: reason ?? "Ranking unavailable or ambiguous" };
 
     // Stored BEFORE the first attempt begins — see `terminalPayload`'s own

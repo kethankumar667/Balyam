@@ -284,6 +284,14 @@ export interface SettleMatchEconomyRequest {
   isValidRanking: boolean;
   participants: SettlementParticipantOutcome[];
   refundReason?: string;
+  /**
+   * The game this match was played in, stated by the SERVER (`room.game`), never by a client.
+   * It decides which prize rule applies (Rummy pays the whole pot, no cut). It travels with the
+   * request — and through the durable intent — rather than being read back from the settlement
+   * row, because the row's `game_kind` is filled only when the database has the ledger-labels
+   * migration, and a money rule must not silently change with a cosmetic column.
+   */
+  gameKind?: string;
 }
 
 /**
@@ -758,11 +766,12 @@ export class EconomyService {
     // The schedule row's existence was already proven at commit time
     // (commitMatchEntry could not have succeeded for this seatCount
     // without one); it is no longer re-consulted here at all.
-    // Keyed by the game the SERVER recorded at commit time — never by anything a client sent.
+    // Keyed by the game the SERVER named (the room's own `game`, carried on the request), falling
+    // back to what was recorded at commit time — never by anything a client sent.
     const { worldBankCut, winnerPrizes } = computePrizePool(
       toBig(settlement.totalCollected),
       settlement.seatCount,
-      settlement.gameKind,
+      request.gameKind ?? settlement.gameKind,
     );
     const prizeFor = (placement: number): bigint => winnerPrizes[placement - 1] ?? 0n;
 
