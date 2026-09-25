@@ -123,7 +123,7 @@ export function MessageFeed({
         aria-label={t("mandali.feed.label")}
         aria-live="polite"
         aria-relevant="additions"
-        className={`album-scroll h-full overflow-y-auto ${gutter} pb-4 pt-1`}
+        className={`album-scroll h-full overflow-y-auto ${gutter} pb-5 pt-4`}
       >
         {days.map((day) => (
           <section key={day.key} aria-label={day.label}>
@@ -220,7 +220,11 @@ function Row({
   const { t } = useTranslation();
 
   if (message.kind === "SYSTEM") {
-    return <p className="m-0 my-2 text-center text-sm leading-snug text-album-ink3">{message.content}</p>;
+    return (
+      <p className="mx-auto my-4 flex max-w-md items-center gap-3 px-3 text-center text-sm leading-snug text-album-ink3 before:h-px before:flex-1 before:bg-album-line after:h-px after:flex-1 after:bg-album-line">
+        {message.content}
+      </p>
+    );
   }
 
   const withFace = (card: ReactNode) => (
@@ -255,7 +259,7 @@ function Row({
   };
 
   return (
-    <div className={`group flex gap-2.5 ${isRun ? "mt-0.5" : "mt-3"} ${isMine ? "flex-row-reverse" : ""}`}>
+    <div className={`group flex gap-2.5 ${isRun ? "mt-0.5" : "mt-4"} ${isMine ? "flex-row-reverse" : ""}`}>
       {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" className="mt-0.5" />)}
 
       <div className={`flex min-w-0 ${bubbleWidth} flex-col ${isMine ? "items-end" : "items-start"}`}>

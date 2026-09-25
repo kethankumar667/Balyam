@@ -88,8 +88,10 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
       ? t("mandali.coin.anyoneCanPay")
       : t("mandali.coin.activeMembersOnly");
 
+  const openStatus = isOpen ? { Icon: Clock, label: t("mandali.coin.open") } : null;
+
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-album-line bg-album-raised px-3 py-2">
+    <div className="w-full max-w-sm rounded-xl border border-album-line border-l-4 border-l-album-foil bg-album-raised px-3 py-2.5">
       <div className="flex min-h-[44px] items-center gap-3">
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-album-foilfill/20 text-album-foil">
           <Coins className="h-4 w-4" aria-hidden="true" />
@@ -102,7 +104,14 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
               {outcome.label}
             </p>
           ) : (
-            isOpen && <p className="m-0 truncate text-[13px] text-album-ink3">{openHint}</p>
+            isOpen && (
+              <p className="m-0 flex min-w-0 items-center gap-1.5 truncate text-[13px] text-album-ink3">
+                {openStatus && <openStatus.Icon className="h-3.5 w-3.5 flex-shrink-0 text-album-foil" aria-hidden="true" />}
+                <span className="flex-shrink-0 font-semibold text-album-ink2">{openStatus?.label}</span>
+                <span className="flex-shrink-0" aria-hidden="true">·</span>
+                <span className="min-w-0 truncate">{openHint}</span>
+              </p>
+            )
           )}
         </div>
         {isOpen && canPay && (

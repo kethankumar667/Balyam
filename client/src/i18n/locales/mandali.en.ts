@@ -144,6 +144,7 @@ export const mandaliEn = {
   "mandali.coin.anyoneCanPay": "Anyone in the group can pay",
   "mandali.coin.waitingForAnyone": "Waiting for someone in the group to pay",
   "mandali.coin.activeMembersOnly": "Only active members can pay",
+  "mandali.coin.open": "Open",
   "mandali.coin.paidBy": "Paid by {{name}}",
   "mandali.coin.paidByYou": "You paid",
   "mandali.coin.cancelled": "Cancelled",

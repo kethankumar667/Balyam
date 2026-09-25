@@ -260,7 +260,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
       </main>
 
       {/* ── Right: the facing page ── */}
-      <aside className="album-scroll w-72 flex-shrink-0 space-y-7 overflow-y-auto border-l border-album-line bg-album-raised p-5 shadow-[inset_10px_0_14px_-12px_rgb(0_0_0/0.35)] xl:w-80">
+      <aside className="album-scroll w-64 flex-shrink-0 space-y-6 overflow-y-auto border-l border-album-line bg-album-raised p-4 shadow-[inset_10px_0_14px_-12px_rgb(0_0_0/0.35)] xl:w-72 xl:p-5">
         <section aria-labelledby="mandali-people">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div>
@@ -282,7 +282,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             <span className="album-hand text-2xl font-normal text-album-foil">{t("mandali.memories.script")}</span>
           </h2>
           <p className="mb-3 mt-1 text-sm text-album-ink3">{t("mandali.memories.hint")}</p>
-          <GnapakaluTimeline memories={memories.slice(0, MEMORIES_ON_FACING_PAGE)} />
+          <GnapakaluTimeline memories={memories.slice(0, MEMORIES_ON_FACING_PAGE)} compact />
         </section>
       </aside>
 
