@@ -21,6 +21,8 @@ import BoardPreviewPill from "../components/BoardPreviewPill";
 import PassPhoneGate from "../components/PassPhoneGate";
 import { normalizeWinnerId, rankMatchPlayers } from "../lib/matchRanking";
 import { useMatchSettlement } from "../hooks/useMatchSettlement";
+import { useMatchPayout } from "../hooks/useMatchPayout";
+import MatchPayoutBanner from "../components/economy/MatchPayoutBanner";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
 import RoomHeader from "../components/room/RoomHeader";
 import ParticipantPanel from "../components/room/ParticipantPanel";
@@ -1552,7 +1554,16 @@ export default function Room() {
   // that itself, but it can be dismissed before the payout lands — and then nothing
   // would reload the wallet, leaving the balance chip on the debited figure. The room
   // page outlives the result screen, so it watches too (one extra cheap request).
-  useMatchSettlement(deriveTerminalMatchId(roomState));
+  const terminalMatchId = deriveTerminalMatchId(roomState);
+  const { settlement: terminalSettlement } = useMatchSettlement(terminalMatchId);
+
+  // Tell the player, in words, what landed in their wallet — for every game, whether or
+  // not its own scorecard is open. Keyed by match id so a rematch announces its own payout.
+  const matchPayout = useMatchPayout(terminalMatchId, terminalSettlement);
+  const [dismissedPayoutMatchId, setDismissedPayoutMatchId] = useState<string | null>(null);
+  const dismissMatchPayout = useCallback(() => {
+    setDismissedPayoutMatchId(matchPayout?.matchId ?? null);
+  }, [matchPayout?.matchId]);
 
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
@@ -2212,6 +2223,10 @@ export default function Room() {
           onClose={() => setShowInGameLeaveModal(false)}
           onConfirm={leaveRoom}
         />
+
+        {matchPayout && matchPayout.matchId !== dismissedPayoutMatchId && (
+          <MatchPayoutBanner payout={matchPayout} onDismiss={dismissMatchPayout} />
+        )}
 
         {wonVoucher && (
           <VoucherWonModal
