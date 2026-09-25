@@ -113,6 +113,46 @@ describe("Mandali live updates", () => {
     expect(event?.payload.request.status).toBe("FUNDED");
   });
 
+  it("tells a second member that someone else already paid, instead of reporting success", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: PAYER } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/already paid/i);
+    expect(emitted).toHaveLength(0);
+  });
+
+  it("treats a retry by the member who did pay as a plain success", async () => {
+    const { io } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(result.success).toBe(true);
+    expect(result.request?.fundedByIdentityId).toBe("guest_bystander");
+  });
+
+  it("surfaces the database's refusal when a non-member tries to pay", async () => {
+    const { io } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => { throw postgrestError("NOT_ACTIVE_MEMBER: only members of this Mandali can pay its coin requests"); },
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    const result = await service.fundCoinRequest("cr_1", "guest_outsider");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("only members of this Mandali can pay its coin requests");
+  });
+
   it("does not broadcast when the request is refused", async () => {
     const { io, emitted } = fakeIo();
     const { client } = fakePostgrest({ rpc: () => { throw postgrestError("COOLDOWN: retry_after_seconds=60"); } });

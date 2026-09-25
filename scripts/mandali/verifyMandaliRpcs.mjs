@@ -300,27 +300,49 @@ async function main() {
       const created = await requestCoins(admin, mid, requester, payer);
       const reqId = created.requestId;
 
-      const before = { r: await balance(requester), p: await balance(payer) };
-      const wrong = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, bystander, "k-wrong"]);
-      check("fund", "only the designated payer can fund", !wrong.ok && /FORBIDDEN/.test(wrong.error), wrong.error);
+      const outsider = await person();
+      const outsiderTry = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, outsider, "k-outsider"]);
+      check("fund", "someone outside the Mandali cannot pay", !outsiderTry.ok && /NOT_ACTIVE_MEMBER/.test(outsiderTry.error), outsiderTry.error);
+      const selfTry = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, requester, "k-self"]);
+      check("fund", "the requester cannot pay their own request", !selfTry.ok && /INVALID_REQUEST/.test(selfTry.error), selfTry.error);
 
+      // Any member may pay, so the race that matters is two DIFFERENT members
+      // tapping at once — the one who was asked and a bystander.
+      const before = { r: await balance(requester), p: await balance(payer), b: await balance(bystander) };
       const [c1, c2] = [await open(), await open()];
       const key = `mnd_coin_req:${reqId}`;
       const both = await Promise.all([
         attempt(c1, `select public.fund_coin_request($1, $2, $3)`, [reqId, payer, key]),
-        attempt(c2, `select public.fund_coin_request($1, $2, $3)`, [reqId, payer, key]),
+        attempt(c2, `select public.fund_coin_request($1, $2, $3)`, [reqId, bystander, key]),
       ]);
       await c1.end();
       await c2.end();
-      const after = { r: await balance(requester), p: await balance(payer) };
-      check("fund", "two simultaneous 'Pay' taps → the payer is debited exactly once",
-        after.p === before.p - BigInt(COIN_AMOUNT) && after.r === before.r + BigInt(COIN_AMOUNT),
-        `payer ${before.p}→${after.p}, requester ${before.r}→${after.r}, results=${both.map((b) => (b.ok ? "ok" : b.error.slice(0, 30)))}`);
-      check("fund", "no coins minted or destroyed", after.p + after.r === before.p + before.r);
-      const status = (await admin.query(`select status from public.mandali_coin_requests where id = $1`, [reqId])).rows[0].status;
-      check("fund", "request ends FUNDED", status === "FUNDED", status);
-      const again = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, payer, key]);
-      check("fund", "paying a funded request again is a harmless no-op", again.ok && (await balance(payer)) === after.p, again.error);
+      const after = { r: await balance(requester), p: await balance(payer), b: await balance(bystander) };
+      const row = (await admin.query(
+        `select status, funded_by_identity_id from public.mandali_coin_requests where id = $1`, [reqId],
+      )).rows[0];
+      const winner = row.funded_by_identity_id;
+      const debitedPayer = before.p - after.p;
+      const debitedBystander = before.b - after.b;
+      check("fund", "two members paying at once → exactly one of them is debited, once",
+        debitedPayer + debitedBystander === BigInt(COIN_AMOUNT) && (debitedPayer === 0n || debitedBystander === 0n),
+        `payer -${debitedPayer}, bystander -${debitedBystander}, results=${both.map((b) => (b.ok ? "ok" : b.error.slice(0, 30)))}`);
+      check("fund", "the requester is credited exactly once", after.r === before.r + BigInt(COIN_AMOUNT), `${before.r}→${after.r}`);
+      check("fund", "no coins minted or destroyed", after.p + after.r + after.b === before.p + before.r + before.b);
+      check("fund", "request ends FUNDED", row.status === "FUNDED", row.status);
+      check("fund", "the row records whoever actually paid",
+        (winner === payer && debitedPayer > 0n) || (winner === bystander && debitedBystander > 0n), winner);
+      const again = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [reqId, bystander, key]);
+      check("fund", "paying a funded request again is a harmless no-op",
+        again.ok && (await balance(bystander)) === after.b && (await balance(payer)) === after.p, again.error);
+
+      // A request from someone who has since left the group is not payable.
+      const leaver = await person();
+      await join(admin, mid, leaver);
+      const leaverReq = await requestCoins(admin, mid, leaver, payer);
+      await admin.query(`update public.mandali_memberships set state = 'LEFT' where mandali_id = $1 and identity_id = $2`, [mid, leaver]);
+      const toLeaver = await attempt(admin, `select public.fund_coin_request($1, $2, $3)`, [leaverReq.requestId, bystander, "k-leaver"]);
+      check("fund", "a request from someone who left cannot be paid", !toLeaver.ok && /REQUESTER_NOT_ACTIVE/.test(toLeaver.error), toLeaver.error);
     }
     // ── 6. Chat retention ───────────────────────────────────────────────
     console.log("\n6. Chat retention — one year");

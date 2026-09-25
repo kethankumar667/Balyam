@@ -55,7 +55,8 @@ describe("useCoinRequestAction", () => {
 
     expect(store.createCoinRequest).toHaveBeenCalledWith("m1", "c1", "owner", 100);
     expect(result.current.showCooldown).toBe(false);
-    expect(toastMock.success).toHaveBeenCalledWith(expect.stringContaining("Name owner"));
+    // Anyone can pay, so the confirmation speaks to the group rather than naming one person.
+    expect(toastMock.success).toHaveBeenCalledWith(expect.stringContaining("Asked the group"));
   });
 
   it("sends nothing and shows the countdown dialog while cooling down", async () => {

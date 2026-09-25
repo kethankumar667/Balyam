@@ -1083,8 +1083,9 @@ export class MandaliService {
    * method's SEND path is the existing, already-tested atomic wallet
    * transfer and stays untouched; its REQUEST path is a fire-and-forget
    * notice with no way to actually pay it. These two methods are the new,
-   * payable coin-request feature: create a request naming one designated
-   * payer, and let that payer fund it via the same atomic transfer RPC. */
+   * payable coin-request feature: create a request addressed to one member,
+   * and let any active member of the group fund it via the same atomic
+   * transfer RPC (see 20261011000000_mandali_coin_request_any_member_pays). */
   public async createCoinRequest(args: {
     mandaliId: string; channelId: string; requesterId: string; payerId: string;
     amount: number; expiresInMs?: number;
@@ -1146,7 +1147,14 @@ export class MandaliService {
     const guard = this.requireDurable("Paying a coin request");
     if (guard) return guard;
     try {
-      const { request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
+      const { alreadyFunded, request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
+      // Now that anyone in the group can pay, two people can tap at once. The
+      // database lets only the first through; the second must hear that
+      // someone beat them to it, not a success that implies their coins moved.
+      // A retry by the person who did pay is still a plain success.
+      if (alreadyFunded && request.fundedByIdentityId && request.fundedByIdentityId !== payerId) {
+        return { success: false, request, error: "Someone in the group has already paid this request." };
+      }
       this.emitToMandali(request.mandaliId, "mandali:coin_request:updated", { mandaliId: request.mandaliId, request });
       return { success: true, request };
     } catch (err) {

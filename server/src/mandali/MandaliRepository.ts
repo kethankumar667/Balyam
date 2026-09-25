@@ -59,6 +59,8 @@ interface CoinRequestRow {
   id: string; mandali_id: string; message_id: string | null; requester_identity_id: string;
   payer_identity_id: string; amount: number; status: string; expires_at: string;
   created_at: string; decided_at: string | null;
+  /** Optional in the type so rows from a database without the column still map. */
+  funded_by_identity_id?: string | null;
 }
 
 function toMs(iso: string | null): number {
@@ -128,6 +130,7 @@ function rowToCoinRequest(r: CoinRequestRow): MandaliCoinRequest {
   return {
     id: r.id, mandaliId: r.mandali_id, messageId: r.message_id,
     requesterIdentityId: r.requester_identity_id, payerIdentityId: r.payer_identity_id,
+    fundedByIdentityId: r.funded_by_identity_id ?? null,
     amount: r.amount, status: r.status as MandaliCoinRequestStatus,
     expiresAt: toMs(r.expires_at), createdAt: toMs(r.created_at),
     decidedAt: r.decided_at ? toMs(r.decided_at) : null,
