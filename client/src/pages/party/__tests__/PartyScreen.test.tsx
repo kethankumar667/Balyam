@@ -22,6 +22,18 @@ vi.mock("../../../store/authStore", () => ({
   }),
 }));
 
+// Mock canvas particles for HappyDOM test environment
+vi.mock("../../../animations/particles/comicBursts", () => ({
+  fireComicDustBurst: vi.fn(),
+  fireStarSparkleBurst: vi.fn(),
+  fireFireworksBurst: vi.fn(),
+}));
+
+vi.mock("../../../games/uno/uno-confetti", () => ({
+  fireUnoDeclareConfetti: vi.fn(),
+  fireUnoWinConfetti: vi.fn(),
+}));
+
 const mockPlayers: Player[] = [
   {
     id: "p1",
@@ -231,5 +243,79 @@ describe("PartyScreen (TV Mode Spectator Experience)", () => {
     expect(mockSocket.off).toHaveBeenCalledWith("room:state", expect.any(Function));
     expect(mockSocket.off).toHaveBeenCalledWith("game:state", expect.any(Function));
     expect(mockSocket.emit).toHaveBeenCalledWith("room:stopSpectate");
+  });
+
+  it("renders Hand Cricket energetic TV screen with mode toggler and stats", async () => {
+    let roomStateListener: ((state: RoomPublicState) => void) | null = null;
+    let gameStateListener: ((state: Record<string, unknown>) => void) | null = null;
+
+    mockSocket.on.mockImplementation((event, listener) => {
+      if (event === "room:state") roomStateListener = listener;
+      if (event === "game:state") gameStateListener = listener;
+    });
+
+    mockSocket.emit.mockImplementation((event, payload, cb) => {
+      if (event === "room:spectate" && typeof cb === "function") {
+        cb({ ok: true });
+      }
+    });
+
+    renderPartyScreen("TV1234");
+
+    const hcRoom: RoomPublicState = {
+      ...mockLobbyRoom,
+      game: "handcricket",
+      phase: "playing",
+    };
+
+    if (roomStateListener) {
+      (roomStateListener as (state: RoomPublicState) => void)(hcRoom);
+    }
+
+    if (gameStateListener) {
+      (gameStateListener as (state: Record<string, unknown>) => void)({
+        phase: "innings1",
+        options: { format: "t20" },
+        teamSelections: {},
+        playerOrder: ["p1", "p2"],
+        innings1: {
+          runs: 9,
+          wickets: 1,
+          balls: 3,
+          overs: 10,
+          battingPlayerId: "p1",
+          bowlingPlayerId: "p2",
+          history: [
+            { ballNumber: 1, overNumber: 0, ballInOver: 1, runs: 4, isFour: true, isSix: false, isWicket: false, batterPick: 4, bowlerPick: 1 },
+            { ballNumber: 2, overNumber: 0, ballInOver: 2, runs: 1, isFour: false, isSix: false, isWicket: false, batterPick: 1, bowlerPick: 2 },
+            { ballNumber: 3, overNumber: 0, ballInOver: 3, runs: 4, isFour: true, isSix: false, isWicket: true, batterPick: 4, bowlerPick: 4 },
+          ],
+        },
+      });
+    }
+
+    await waitFor(() => {
+      // Score and overs rendered
+      expect(screen.getByText("9/1")).toBeDefined();
+      expect(screen.getByText("(0.3 Ovs)")).toBeDefined();
+
+      // Theme mode toggler chips rendered
+      expect(screen.getByText("📺 Broadcast")).toBeDefined();
+      expect(screen.getByText("🏏 Cricbuzz")).toBeDefined();
+      expect(screen.getByText("📼 Rerun")).toBeDefined();
+      expect(screen.getByText("📓 Classic")).toBeDefined();
+
+      // Batting & Bowling cards rendered
+      expect(screen.getByText("🏏 Batting")).toBeDefined();
+      expect(screen.getByText("🎯 Bowling")).toBeDefined();
+    });
+
+    // Test clicking Cricbuzz theme mode toggler
+    const cricbuzzBtn = screen.getByText("🏏 Cricbuzz");
+    fireEvent.click(cricbuzzBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("cricbuzz live")).toBeDefined();
+    });
   });
 });
