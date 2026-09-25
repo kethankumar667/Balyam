@@ -1,43 +1,108 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Tv, Sparkles as _SparklesForbidden, LogIn, UserPlus } from "lucide-react";
 import type { Player, RoomPublicState } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { useCapabilities } from "../store/authStore";
+import { TvHeader } from "./party/TvHeader";
+import { TvLobbyView } from "./party/TvLobbyView";
+import { TvGameArena } from "./party/TvGameArena";
+import { TvVictoryPodium } from "./party/TvVictoryPodium";
+import { useTvAudio } from "./party/useTvAudio";
+import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
 
 /**
- * Smart TV / Party Mode — the big-screen view of a room.
+ * Smart TV / Party Mode — the big-screen living-room spectator experience.
  *
- * Open `/tv/<CODE>` on a TV, console browser or laptop plugged into a
- * projector; phones stay the controllers. This screen takes no seat, so it
- * does not consume a player slot or stall a turn waiting for it to move.
+ * Open `/tv/<CODE>` on a TV, console browser, or laptop plugged into a TV/projector.
+ * Seated players hold their smartphones as wireless gamepad controllers.
  *
- * It receives PUBLIC state only (see RoomManager.broadcastGameState). That is
- * a security boundary, not a styling choice: a TV in a living room is the
- * least private surface in the app, and private state must never reach it.
- * Consequently this view shows the roster, scores, turn and room code — the
- * things a room wants shared — and never a hand.
- *
- * Everything is sized for three metres away: nothing here is smaller than
- * roughly 2vh, because the usual mobile type scale is unreadable across a room.
+ * Security & Boundary Guarantee:
+ * - This spectator screen takes ZERO player seats.
+ * - It receives ONLY public room and game states (room.engine.getPublicState()).
+ * - Private player cards and hidden hands NEVER reach this screen.
+ * - Sized for 10-foot viewing (3+ meters away) with high-contrast arcade styling.
  */
 export default function PartyScreen() {
   const { code } = useParams<{ code: string }>();
   const [room, setRoom] = useState<RoomPublicState | null>(null);
+  const [gameState, setGameState] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const canSpectate = useCapabilities().spectate;
 
+  // Active turn extraction
+  const activeTurn = useMemo<TvActiveTurnInfo>(() => {
+    const defaultTurn: TvActiveTurnInfo = {
+      playerId: "",
+      name: "Waiting...",
+      deadlineMs: null,
+    };
+
+    if (!room || !gameState) {
+      if (room?.players?.[0]) {
+        return {
+          playerId: room.players[0].id,
+          name: room.players[0].name,
+          avatar: room.players[0].avatar,
+          color: undefined,
+          deadlineMs: null,
+        };
+      }
+      return defaultTurn;
+    }
+
+    // Try turnPlayerId first (standard across Rummy, Ludo, SnL, UNO, etc.)
+    const turnPlayerId =
+      (gameState.turnPlayerId as string | undefined) ??
+      (gameState.batterId as string | undefined) ??
+      (gameState.activePlayerId as string | undefined);
+
+    const player = room.players.find((p) => p.id === turnPlayerId) ?? room.players[0];
+
+    const deadlineMs =
+      typeof gameState.turnDeadline === "number"
+        ? gameState.turnDeadline
+        : typeof gameState.arrangeDeadline === "number"
+        ? gameState.arrangeDeadline
+        : null;
+
+    const actionText =
+      typeof gameState.turnPhase === "string"
+        ? gameState.turnPhase
+        : typeof gameState.turnAction === "string"
+        ? gameState.turnAction
+        : typeof gameState.lastAction === "string"
+        ? gameState.lastAction
+        : undefined;
+
+    return {
+      playerId: player?.id ?? "",
+      name: player?.name ?? "Player",
+      avatar: player?.avatar,
+      color: undefined,
+      actionText,
+      deadlineMs,
+    };
+  }, [room, gameState]);
+
+  // Audio system hook
+  const { isAudioUnlocked, isMuted, unlockAudio, toggleMute } = useTvAudio({
+    phase: room?.phase ?? "lobby",
+    turnDeadline: activeTurn.deadlineMs,
+    activePlayerId: activeTurn.playerId,
+  });
+
+  // Socket spectator subscription & lifecycle
   useEffect(() => {
     if (!code) return;
-    // Attaching a screen is a code-led way into a room, which is the thing a
-    // guest does not get — shared/permissions.ts. Bailing before the emit
-    // keeps a guest from burning a socket round-trip on a refusal, and the
-    // server rejects a sealed room anyway if this check is ever bypassed.
     if (!canSpectate) return;
+
     const socket = getSocket();
+    const upperCode = code.toUpperCase();
 
     const attach = () => {
-      socket.emit("room:spectate", code.toUpperCase(), (res) => {
+      socket.emit("room:spectate", upperCode, (res) => {
         if (res.ok) {
           setConnected(true);
           setError(null);
@@ -47,36 +112,51 @@ export default function PartyScreen() {
       });
     };
 
-    const onRoomState = (state: RoomPublicState) => setRoom(state);
+    const onRoomState = (state: RoomPublicState) => {
+      setRoom(state);
+    };
+
+    const onGameState = (st: unknown) => {
+      setGameState(st as Record<string, unknown> | null);
+    };
 
     socket.on("room:state", onRoomState);
-    // Re-attach after a reconnect; the server forgets screens on disconnect.
+    socket.on("game:state", onGameState);
     socket.on("connect", attach);
+
     attach();
 
     return () => {
       socket.off("room:state", onRoomState);
+      socket.off("game:state", onGameState);
       socket.off("connect", attach);
       socket.emit("room:stopSpectate");
     };
   }, [code, canSpectate]);
 
-  // A TV is left on for hours; a sleeping display defeats the point.
+  // Screen WakeLock: prevents TV/monitor from sleeping during long game sessions
   useEffect(() => {
     let lock: WakeLockSentinel | null = null;
     let cancelled = false;
+
     const request = async () => {
       try {
-        lock = await navigator.wakeLock?.request("screen");
+        if ("wakeLock" in navigator) {
+          lock = await navigator.wakeLock.request("screen");
+        }
       } catch {
-        // Unsupported or denied — the screen may sleep, which is survivable.
+        // Ignored if denied or unsupported
       }
     };
+
     void request();
+
     const onVisible = () => {
       if (document.visibilityState === "visible" && !cancelled) void request();
     };
+
     document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
@@ -84,132 +164,213 @@ export default function PartyScreen() {
     };
   }, []);
 
-  const players: Player[] = useMemo(() => room?.players ?? [], [room]);
+  // Global Keyboard Shortcuts (Space: Audio Mute Toggle, F: Fullscreen)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
 
-  // Checked before `error` and `!room`, both of which would otherwise render
-  // "Connecting…" forever for a guest whose effect never fired.
+      if (e.code === "Space") {
+        e.preventDefault();
+        toggleMute();
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          void document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          void document.exitFullscreen().catch(() => {});
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [toggleMute]);
+
+  // Compute Victory Podium entries when finished
+  const podiumEntries = useMemo<TvPodiumEntry[]>(() => {
+    if (!room || room.phase !== "finished") return [];
+
+    const players = room.lastMatchPlayers ?? room.players;
+    const winnerId = (gameState?.winnerId as string | undefined) ?? (gameState?.winner as string | undefined);
+
+    // If there is an explicit champion or winnerId
+    if (winnerId) {
+      const winner = players.find((p) => p.id === winnerId);
+      const others = players.filter((p) => p.id !== winnerId);
+      const result: TvPodiumEntry[] = [];
+
+      if (winner) {
+        result.push({
+          rank: 1,
+          playerId: winner.id,
+          name: winner.name,
+          avatar: winner.avatar,
+          scoreOrStat: "Champion",
+          isHost: winner.isHost,
+          isBot: winner.isBot,
+        });
+      }
+
+      others.forEach((p, idx) => {
+        result.push({
+          rank: idx + 2,
+          playerId: p.id,
+          name: p.name,
+          avatar: p.avatar,
+          scoreOrStat: `#${idx + 2}`,
+          isHost: p.isHost,
+          isBot: p.isBot,
+        });
+      });
+
+      return result;
+    }
+
+    // Default ranking based on order
+    return players.map((p, idx) => ({
+      rank: idx + 1,
+      playerId: p.id,
+      name: p.name,
+      avatar: p.avatar,
+      scoreOrStat: idx === 0 ? "1st Place" : `#${idx + 1}`,
+      isHost: p.isHost,
+      isBot: p.isBot,
+    }));
+  }, [room, gameState]);
+
+  const hostPlayer = useMemo(() => {
+    return room?.players.find((p) => p.isHost);
+  }, [room]);
+
+  // Gate check: guest accounts see TV instructions
   if (!canSpectate) {
     return (
-      <Shell>
-        <p className="text-[4vh] font-bold text-[#F6EDDB]">Party Mode needs an account</p>
-        <p className="text-[2.4vh] text-[#C8A66B] max-w-[60vw] text-center">
-          Putting a room on the big screen is part of hosting. Sign in on this device, or
-          ask whoever opened the table to cast it from theirs.
-        </p>
-        <Link
-          to="/signup?from=tv"
-          className="mt-[2vh] rounded-full bg-[#E4B128] px-[3vw] py-[1.4vh]
-                     text-[2.4vh] font-extrabold text-[#3A2A12]
-                     hover:brightness-105 focus:outline-none focus-visible:ring-4
-                     focus-visible:ring-[#E4B128]/60 transition-[filter] duration-200"
-        >
-          Create a free account
-        </Link>
-      </Shell>
+      <TvShell>
+        <div className="w-full max-w-xl p-8 rounded-3xl bg-black/60 border border-amber-900/50 shadow-2xl backdrop-blur-md text-center flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-2">
+            <Tv className="w-8 h-8" />
+          </div>
+          <h2 className="text-3xl font-black text-amber-100">Party Mode Needs an Account</h2>
+          <p className="text-sm sm:text-base text-amber-200/80 leading-relaxed">
+            Putting a table on the big screen is an account feature. Sign in or create a free member
+            account to host the living-room TV arcade!
+          </p>
+          <div className="flex items-center gap-3 mt-4">
+            <Link
+              to="/signup?from=tv"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-bold text-sm shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Create Free Account</span>
+            </Link>
+            <Link
+              to="/login?from=tv"
+              className="px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 border border-amber-900/40 text-amber-200 font-bold text-sm active:scale-95 transition-all flex items-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In</span>
+            </Link>
+          </div>
+        </div>
+      </TvShell>
     );
   }
 
   if (error) {
     return (
-      <Shell>
-        <p className="text-[4vh] font-bold text-[#F6EDDB]">{error}</p>
-        <p className="text-[2.4vh] text-[#C8A66B]">Check the room code and try again.</p>
-      </Shell>
+      <TvShell>
+        <div className="p-8 rounded-3xl bg-black/70 border border-rose-900/50 shadow-2xl text-center max-w-md">
+          <h2 className="text-2xl font-black text-rose-300 mb-2">{error}</h2>
+          <p className="text-sm text-stone-400 mb-6">
+            Please check the 6-character room code on the host&apos;s phone.
+          </p>
+          <Link
+            to="/"
+            className="px-6 py-2.5 rounded-xl bg-amber-500 text-stone-950 font-bold text-sm hover:bg-amber-400 transition"
+          >
+            Return to Lounge
+          </Link>
+        </div>
+      </TvShell>
     );
   }
 
   if (!room) {
     return (
-      <Shell>
-        <p className="text-[3vh] text-[#C8A66B]">
-          {connected ? "Waiting for the room…" : "Connecting…"}
-        </p>
-      </Shell>
+      <TvShell>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <Tv className="w-8 h-8 animate-pulse" />
+          </div>
+          <p className="text-xl font-bold font-mono tracking-wider text-amber-200/90">
+            {connected ? "SYNCING ROOM BROADCAST…" : "CONNECTING TO STADIUM…"}
+          </p>
+        </div>
+      </TvShell>
     );
   }
 
   return (
-    <Shell>
-      <header className="flex items-baseline justify-between gap-[3vw] w-full">
-        <div>
-          <h1 className="text-[6vh] leading-none font-black tracking-tight text-[#F6EDDB]">
-            {room.name || "BHALYAM"}
-          </h1>
-          <p className="text-[2.4vh] uppercase tracking-[0.3em] text-[#C8A66B] mt-[1vh]">
-            {room.game}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[2.2vh] uppercase tracking-[0.3em] text-[#C8A66B]">Join with code</p>
-          {/* The single most important thing on a party screen: how to get in. */}
-          <p className="text-[9vh] leading-none font-black tabular-nums tracking-[0.12em] text-[#E6A11E]">
-            {room.code}
-          </p>
-        </div>
-      </header>
+    <TvShell>
+      {/* Top TV Status Bar */}
+      <TvHeader
+        roomCode={room.code}
+        game={room.game}
+        roomName={room.name}
+        phase={room.phase}
+        spectatorCount={room.spectatorCount}
+        isAudioUnlocked={isAudioUnlocked}
+        isMuted={isMuted}
+        onToggleAudio={toggleMute}
+      />
 
-      <div className="flex-1 w-full flex flex-col justify-center gap-[2vh]">
-        <p className="text-[2.4vh] uppercase tracking-[0.3em] text-[#C8A66B]">
-          {room.phase === "lobby"
-            ? `Waiting to start · ${players.length}/${room.maxPlayers} seats`
-            : room.phase === "finished"
-            ? "Match over"
-            : "In play"}
-        </p>
+      {/* Main Content Area based on Room Phase */}
+      <main className="flex-1 w-full flex flex-col justify-center items-center overflow-hidden">
+        {room.phase === "lobby" && (
+          <TvLobbyView
+            roomCode={room.code}
+            players={room.players}
+            maxPlayers={room.maxPlayers}
+            game={room.game}
+            isAudioUnlocked={isAudioUnlocked}
+            onUnlockAudio={unlockAudio}
+          />
+        )}
 
-        <ul className="grid grid-cols-2 gap-[2vh] w-full">
-          {players.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-[2vw] rounded-[1.5vh] px-[2vw] py-[2vh]"
-              style={{
-                background: p.isConnected ? "rgba(246,237,219,0.10)" : "rgba(246,237,219,0.04)",
-                border: `2px solid ${p.isConnected ? "#C8A66B" : "#5C4A38"}`,
-              }}
-            >
-              <span className="text-[4.5vh] font-black text-[#F6EDDB] truncate flex-1">
-                {p.name}
-              </span>
-              {p.isHost && (
-                <span className="text-[2vh] font-bold uppercase tracking-widest text-[#E6A11E]">
-                  Host
-                </span>
-              )}
-              {p.isBot && (
-                <span className="text-[2vh] font-bold uppercase tracking-widest text-[#8A7865]">
-                  Bot
-                </span>
-              )}
-              {!p.isConnected && (
-                <span className="text-[2vh] font-bold uppercase tracking-widest text-[#B45309]">
-                  Away
-                </span>
-              )}
-              {room.phase === "lobby" && p.isReady && (
-                <span className="text-[3vh]" aria-label="Ready">
-                  ✓
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+        {room.phase === "playing" && (
+          <TvGameArena
+            room={room}
+            gameState={gameState}
+            activeTurn={activeTurn}
+          />
+        )}
 
-      <footer className="w-full flex items-center justify-between text-[2vh] text-[#8A7865]">
-        <span>Phones are the controllers — this screen is display only.</span>
-        <span className="tabular-nums">
-          {room.spectatorCount ?? 1} screen{(room.spectatorCount ?? 1) === 1 ? "" : "s"}
-        </span>
-      </footer>
-    </Shell>
+        {room.phase === "finished" && (
+          <TvVictoryPodium
+            entries={podiumEntries}
+            roomName={room.name}
+            gameName={room.game.toUpperCase()}
+            hostPlayer={hostPlayer}
+          />
+        )}
+      </main>
+    </TvShell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function TvShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center gap-[3vh] p-[4vh] overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #2B2118 0%, #17110C 100%)" }}
+      className="fixed inset-0 flex flex-col items-center justify-between p-4 sm:p-6 overflow-hidden select-none bg-[#0B0F19] text-[#F8FAFC]"
+      style={{
+        backgroundImage:
+          "radial-gradient(ellipse at 50% 10%, rgba(245, 158, 11, 0.12) 0%, rgba(11, 15, 25, 0.98) 70%)",
+      }}
     >
       {children}
     </div>
