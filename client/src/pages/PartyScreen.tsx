@@ -9,6 +9,10 @@ import { TvLobbyView } from "./party/TvLobbyView";
 import { TvGameArena } from "./party/TvGameArena";
 import { TvVictoryPodium } from "./party/TvVictoryPodium";
 import { useTvAudio } from "./party/useTvAudio";
+import { useTvScreenShake } from "./party/useTvScreenShake";
+import { TvCrowdReactions } from "./party/TvCrowdReactions";
+import { TvClimaxBanner, isGameInClimax } from "./party/TvClimaxBanner";
+import { TvCommentaryTicker } from "./party/TvCommentaryTicker";
 import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
 
 /**
@@ -92,6 +96,17 @@ export default function PartyScreen() {
     turnDeadline: activeTurn.deadlineMs,
     activePlayerId: activeTurn.playerId,
   });
+
+  // Screen shake engine
+  const { shakeLevel, triggerShake } = useTvScreenShake({
+    game: room?.game,
+    gameState,
+  });
+
+  // Climax / Sudden Death status
+  const inClimax = useMemo(() => {
+    return room ? isGameInClimax(room.game, gameState) : false;
+  }, [room, gameState]);
 
   // Socket spectator subscription & lifecycle
   useEffect(() => {
@@ -316,7 +331,7 @@ export default function PartyScreen() {
   }
 
   return (
-    <TvShell>
+    <TvShell shakeLevel={shakeLevel} inClimax={inClimax}>
       {/* Top TV Status Bar */}
       <TvHeader
         roomCode={room.code}
@@ -327,10 +342,11 @@ export default function PartyScreen() {
         isAudioUnlocked={isAudioUnlocked}
         isMuted={isMuted}
         onToggleAudio={toggleMute}
+        climaxBanner={<TvClimaxBanner game={room.game} gameState={gameState} />}
       />
 
       {/* Main Content Area based on Room Phase */}
-      <main className="flex-1 w-full flex flex-col justify-center items-center min-h-0 overflow-hidden">
+      <main className="flex-1 w-full flex flex-col justify-center items-center min-h-0 overflow-hidden relative">
         {room.phase === "lobby" && (
           <TvLobbyView
             roomCode={room.code}
@@ -358,18 +374,52 @@ export default function PartyScreen() {
             hostPlayer={hostPlayer}
           />
         )}
+
+        {/* Live Audience Reactions & Throwables Canvas */}
+        <TvCrowdReactions
+          players={room.players}
+          onTriggerShake={triggerShake}
+        />
       </main>
+
+      {/* Live Play-by-Play Commentary Lower-Third Ticker during Active Match */}
+      {room.phase === "playing" && (
+        <TvCommentaryTicker
+          game={room.game}
+          gameState={gameState}
+          players={room.players}
+          activePlayerName={activeTurn.name}
+        />
+      )}
     </TvShell>
   );
 }
 
-function TvShell({ children }: { children: React.ReactNode }) {
+function TvShell({
+  children,
+  shakeLevel = "none",
+  inClimax = false,
+}: {
+  children: React.ReactNode;
+  shakeLevel?: "none" | "subtle" | "intense";
+  inClimax?: boolean;
+}) {
+  const shakeClass =
+    shakeLevel === "intense"
+      ? "tv-shake-intense"
+      : shakeLevel === "subtle"
+      ? "tv-shake-subtle"
+      : "";
+
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-between p-2.5 sm:p-4 overflow-hidden select-none bg-[#0B0F19] text-[#F8FAFC]"
+      className={`fixed inset-0 flex flex-col items-center justify-between p-2.5 sm:p-4 overflow-hidden select-none bg-[#0B0F19] text-[#F8FAFC] transition-all duration-300 ${shakeClass} ${
+        inClimax ? "tv-climax-border border-4 border-amber-500/80" : ""
+      }`}
       style={{
-        backgroundImage:
-          "radial-gradient(ellipse at 50% 10%, rgba(245, 158, 11, 0.12) 0%, rgba(11, 15, 25, 0.98) 70%)",
+        backgroundImage: inClimax
+          ? "radial-gradient(ellipse at 50% 10%, rgba(239, 68, 68, 0.25) 0%, rgba(11, 15, 25, 0.98) 70%)"
+          : "radial-gradient(ellipse at 50% 10%, rgba(245, 158, 11, 0.12) 0%, rgba(11, 15, 25, 0.98) 70%)",
       }}
     >
       {children}

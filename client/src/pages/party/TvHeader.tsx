@@ -11,6 +11,7 @@ export interface TvHeaderProps {
   isAudioUnlocked: boolean;
   isMuted: boolean;
   onToggleAudio: () => void;
+  climaxBanner?: React.ReactNode;
 }
 
 export function TvHeader({
@@ -22,6 +23,7 @@ export function TvHeader({
   isAudioUnlocked,
   isMuted,
   onToggleAudio,
+  climaxBanner,
 }: TvHeaderProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -80,6 +82,13 @@ export function TvHeader({
           </p>
         </div>
       </div>
+
+      {/* Center: Optional Climax / Sudden Death Banner */}
+      {climaxBanner && (
+        <div className="flex items-center justify-center">
+          {climaxBanner}
+        </div>
+      )}
 
       {/* Right: Controls & Code Badge */}
       <div className="flex items-center gap-3 sm:gap-4">
