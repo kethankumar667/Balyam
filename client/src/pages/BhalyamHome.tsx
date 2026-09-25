@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
-import { WelcomeModal, journeyTracker } from "../features/onboarding";
+import { WelcomeModal, WelcomeTourPrompt, useWelcomeTour } from "../features/onboarding";
 import { type BhalyamGameSlug } from "../components/bhalyam/data";
 import { getSocket } from "../lib/socket";
 import { usePlayerSnapshot } from "../hooks/usePlayerSnapshot";
@@ -41,9 +41,6 @@ import { getPendingVouchers, type PendingVoucherData } from "../components/econo
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
-  const [welcomeOpen, setWelcomeOpen] = useState(() => {
-    return !journeyTracker.getState().hasCompletedWelcome;
-  });
   const isMember = useAuthStore((s) => s.isMember);
   const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
   // A queue, not a single voucher: a guest who won more than once before
@@ -60,6 +57,11 @@ export default function BhalyamHome() {
   }, [hasMemberAccount]);
 
   const currentVoucher = pendingVouchers[0] ?? null;
+
+  // The welcome tour opens by itself at most once per visit, and never over
+  // something the person is already doing (a voucher, a game sheet, joining a room).
+  // Otherwise it is a quiet prompt on this page and a button in the Help pages.
+  const tour = useWelcomeTour({ suppressed: Boolean(currentVoucher) || sheetGame !== null || joinOpen });
 
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
@@ -78,6 +80,7 @@ export default function BhalyamHome() {
       <div className="bhalyam-home bhalyam-font min-h-full bhalyam-paper flex flex-col">
         <FallingPetals />
         <div className="relative z-10 mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
+          {tour.showPrompt && <WelcomeTourPrompt onStart={tour.start} onDismiss={tour.dismissPrompt} />}
           <Hero
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
@@ -102,8 +105,8 @@ export default function BhalyamHome() {
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
         <WelcomeModal
-          open={welcomeOpen && !currentVoucher}
-          onClose={() => setWelcomeOpen(false)}
+          open={tour.open && !currentVoucher}
+          onClose={tour.close}
           onStartQuest={() => setSheetGame("uno")}
         />
         <VoucherRedemptionModal

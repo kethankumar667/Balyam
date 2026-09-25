@@ -2,6 +2,7 @@ import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
+  Compass,
   User,
   Info,
   BookOpen,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import AppLayout from "./AppLayout";
 import { HapticsManager } from "../../services/HapticsManager";
+import { WelcomeModal, useWelcomeTour } from "../../features/onboarding";
 
 interface HelpLayoutProps {
   children: ReactNode;
@@ -42,6 +44,8 @@ export default function HelpLayout({
 }: HelpLayoutProps) {
   const { pathname } = useLocation();
   const [showBackToTop, setShowBackToTop] = useState(false);
+  // Help pages never open the tour by themselves; this is where someone comes to replay it.
+  const tour = useWelcomeTour({ suppressed: true });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,6 +88,18 @@ export default function HelpLayout({
             </Link>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  handleTabClick();
+                  tour.start();
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-stone-700 dark:text-slate-300 bg-white/80 dark:bg-[#151A2E]/80 border border-stone-200/80 dark:border-[#222A44] hover:bg-stone-100 dark:hover:bg-slate-800 transition shadow-2xs min-h-[44px] cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2"
+              >
+                <Compass className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Welcome tour</span>
+              </button>
+              <WelcomeModal open={tour.open} onClose={tour.close} />
               <Link
                 to="/profile"
                 onClick={handleTabClick}
