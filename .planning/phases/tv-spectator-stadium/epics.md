@@ -12,7 +12,9 @@ This document details the development epics, user stories, acceptance criteria, 
 | **EPIC-TV-02** | Turn Telemetry & Anti-Cutoff Layouts | Pillar 3, Pillar 4 | `TvPlayerList.tsx`, `TvTurnTimer.tsx`, `TvGameArena.tsx` | Complete |
 | **EPIC-TV-03** | Per-Game 3D Stadiums & Animation Parity | Pillar 1, Pillar 2 | `TvGameArena.tsx`, `*Animations.tsx` across 11 games | Complete |
 | **EPIC-TV-04** | Multi-Theme TV Engines & Host Sync | Pillar 2 | `TvGameArena.tsx`, `hc-skin.ts`, `HandCricketThemeSwitcher.tsx` | Complete |
-| **EPIC-TV-05** | Big-Screen Performance & TV Ergonomics | Pillar 4 | `TvScreen.tsx`, `TvGameArena.tsx`, `PartyScreen.test.tsx` | Complete |
+| **EPIC-TV-05** | Big-Screen Performance & TV Ergonomics | Pillar 4 | `PartyScreen.tsx`, `TvGameArena.tsx`, `PartyScreen.test.tsx` | Complete |
+| **EPIC-TV-06** | Interactive Crowd Reactions & Seismic Impact FX | Pillar 1, Pillar 4 | `TvCrowdReactions.tsx`, `useTvScreenShake.ts`, `index.css` | Complete |
+| **EPIC-TV-07** | Climax Sudden Death & Play-by-Play Commentary Ticker | Pillar 1, Pillar 2 | `TvClimaxBanner.tsx`, `TvCommentaryTicker.tsx`, `PartyScreen.tsx` | Complete |
 
 ---
 
@@ -156,4 +158,50 @@ This document details the development epics, user stories, acceptance criteria, 
   - `F` toggles fullscreen mode.
   - `Space` or `M` toggles mute/unmute.
   - `Esc` exits fullscreen mode.
-- **Status**: Verified in `TvScreen.tsx`.
+- **Status**: Verified in `PartyScreen.tsx`.
+
+---
+
+### EPIC-TV-06: Interactive Crowd Reactions & Seismic Impact FX
+
+#### Story TV-06.1: Live Phone-to-TV Crowd Reactions & Throwables
+- **As a** spectator with a smartphone in the living room,
+- **I want** my emoji reactions and throwables (`🍅` tomato, `🩴` chappal, `🧨` cracker, `🔥` flame) to fly across the TV screen in real-time,
+- **So that** the audience can actively cheer, roast, and participate from the couch.
+- **Acceptance Criteria**:
+  - Listens to `room:reaction` socket events.
+  - Generates floating bubbles for cheers (`🔥`, `🎉`, `💀`) and parabolic ballistic arcs with splatters for throwables (`🍅` SPLAT!, `🩴` WHACK!).
+  - Displays a "STADIUM HYPE OVERLOAD" marquee combo banner when $\ge 3$ reactions occur within 4 seconds.
+- **Status**: Verified in `TvCrowdReactions.tsx` and `TvStadiumFX.test.tsx`.
+
+#### Story TV-06.2: Seismic Screen Shake & Impact Feedback
+- **As an** audience member watching monumental game plays,
+- **I want** the TV viewport to visibly tremble with dynamic screen shake when a 6 is rolled, a boundary is hit, a wicket falls, or a pawn is killed,
+- **So that** the physical impact and weight of the move can be felt across the entire living room.
+- **Acceptance Criteria**:
+  - Automatically triggers `.tv-shake-intense` on lucky 6s, wickets, boundary sixes, snake bites, and +4 wild cards.
+  - Automatically triggers `.tv-shake-subtle` on ladder climbs, fours, and throwable impacts.
+- **Status**: Verified in `useTvScreenShake.ts` and `index.css`.
+
+---
+
+### EPIC-TV-07: Climax Sudden Death & Play-by-Play Commentary Ticker
+
+#### Story TV-07.1: Climax Sudden Death Atmosphere
+- **As a** spectator,
+- **I want** the stadium to transform into an urgent red-alert mode when a match reaches its climax (e.g. 3 pawns in home, square 90+, final over chase),
+- **So that** the entire room feels the thrill and pressure of match point.
+- **Acceptance Criteria**:
+  - Displays `"CLIMAX • MATCH POINT"` badge with flame animations in `TvHeader`.
+  - Puts an animated pulsing neon border (`.tv-climax-border`) around the stadium screen.
+- **Status**: Verified in `TvClimaxBanner.tsx` and `PartyScreen.tsx`.
+
+#### Story TV-07.2: Live Play-by-Play Sports Commentary Ticker
+- **As an** audience member,
+- **I want** a sports-broadcast style lower-third ticker with witty, high-energy play-by-play commentary,
+- **So that** the broadcast feels like an ESPN or Star Sports live show.
+- **Acceptance Criteria**:
+  - Displays `"LIVE"` badge with real-time commentary updates on rolls, captures, boundaries, wickets, and action cards.
+  - Includes room telemetry and seated player counts.
+- **Status**: Verified in `TvCommentaryTicker.tsx` and `TvStadiumFX.test.tsx`.
+
