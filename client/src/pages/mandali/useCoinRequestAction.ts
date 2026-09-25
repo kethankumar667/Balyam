@@ -61,7 +61,7 @@ export function useCoinRequestAction({ mandaliId, playerId, members, channels, a
     try {
       const result = await createCoinRequest(mandaliId, channelId, payer.playerId, MANDALI_COIN_AMOUNT);
       if (result.success) {
-        toast.success(`Asked @${payer.displayName} for ${MANDALI_COIN_AMOUNT} coins.`);
+        toast.success(`Asked the group for ${MANDALI_COIN_AMOUNT} coins.`);
       } else if (typeof result.retryAfterMs === "number") {
         setShowCooldown(true);
       } else {

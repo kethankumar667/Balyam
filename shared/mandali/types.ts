@@ -310,8 +310,14 @@ export interface MandaliCoinRequest {
   messageId?: string | null;
   /** Asks for coins — receives the transfer once funded. */
   requesterIdentityId: string;
-  /** The one designated recipient of the ask — pays. */
+  /**
+   * Who the request was addressed to when it was posted — they get the
+   * "asked you" banner. Not a permission: any active member other than the
+   * requester may pay it.
+   */
   payerIdentityId: string;
+  /** Who actually paid, once FUNDED. Null while open, and on rows from before this was recorded. */
+  fundedByIdentityId?: string | null;
   amount: number;
   status: MandaliCoinRequestStatus;
   expiresAt: number;

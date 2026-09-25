@@ -787,6 +787,11 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         void refreshCurrentWallet();
         if (activeChannelId) await get().fetchMessages(activeChannelId);
         if (activeMandali) await get().fetchCoinRequests(activeMandali.id);
+      } else if (activeMandali) {
+        // Anyone in the group can pay, so the usual refusal is "someone beat
+        // you to it". Refetch so the card settles to "Paid by …" even if the
+        // live broadcast from the winning payment was missed.
+        void get().fetchCoinRequests(activeMandali.id);
       }
       return data;
     } catch (err) {

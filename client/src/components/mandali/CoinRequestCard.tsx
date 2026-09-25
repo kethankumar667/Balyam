@@ -1,13 +1,20 @@
 /**
  * BHALYAM Mandali — a request for coins, pinned into the chat.
  *
- * The person who was asked sees one clear thing to do (pay); everyone else sees
- * the same card settle to "Paid" once it lands. Status is a plain word with an
- * icon, never colour alone.
+ * A request is posted to the whole group: anyone in the Mandali other than the
+ * person asking can pay it, and the first one to do so settles it for
+ * everyone. The server decides who got there first; this card only offers the
+ * button and then shows whatever the server says.
+ *
+ * It is one compact row, not a panel. A chat can carry several of these a day,
+ * and each one used to take roughly three message-heights of the page. The
+ * amount, who asked, and the one action all fit in a single line, with the
+ * outcome ("Paid by Geetha") replacing the action once it lands.
  *
  * Requirements:
  * - Light and dark themes both flip fully (panels and ink together).
  * - 44x44px touch targets.
+ * - Status is a word with an icon, never colour alone.
  * - Zero usage of Sparkles from lucide-react.
  */
 
@@ -38,13 +45,25 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
 
   const nameOf = (playerId: string) => members.find((m) => m.playerId === playerId)?.displayName ?? t("mandali.coin.someone");
   const requesterName = nameOf(request.requesterIdentityId);
-  const isDesignatedPayer = selfId === request.payerIdentityId;
+  const isRequester = selfId === request.requesterIdentityId;
+  // Only a current member may pay; the server checks this too, but offering a
+  // button that is certain to be refused would be a broken promise.
+  const canPay = !isRequester && members.some((m) => m.playerId === selfId && m.state === "ACTIVE");
   const isExpired = request.status === "OPEN" && request.expiresAt <= Date.now();
   const isOpen = request.status === "OPEN" && !isExpired;
 
+  // Rows funded before the payer was recorded fall back to who was asked,
+  // which was the only person allowed to pay at the time.
+  const paidByName = nameOf(request.fundedByIdentityId ?? request.payerIdentityId);
+  const paidBySelf = (request.fundedByIdentityId ?? request.payerIdentityId) === selfId;
+
   const outcome =
     request.status === "FUNDED"
-      ? { Icon: CheckCircle2, label: t("mandali.coin.paid"), tone: "text-album-success" }
+      ? {
+          Icon: CheckCircle2,
+          label: paidBySelf ? t("mandali.coin.paidByYou") : t("mandali.coin.paidBy", { name: paidByName }),
+          tone: "text-album-success",
+        }
       : request.status === "CANCELLED"
         ? { Icon: XCircle, label: t("mandali.coin.cancelled"), tone: "text-album-ink3" }
         : isExpired || request.status === "EXPIRED"
@@ -59,50 +78,47 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
     if (!result.success) setLocalError(result.error ?? t("mandali.coin.payError"));
   };
 
+  const headline = isRequester
+    ? t("mandali.coin.youAsked", { amount: request.amount })
+    : t("mandali.coin.asked", { name: requesterName, amount: request.amount });
+
+  const openHint = isRequester ? t("mandali.coin.waitingForAnyone") : t("mandali.coin.anyoneCanPay");
+
   return (
-    <div className="album-corners w-full max-w-sm rounded-2xl border border-album-line bg-album-raised p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-album-foilfill/20 text-album-foil">
-          <Coins className="h-5 w-5" aria-hidden="true" />
+    <div className="w-full max-w-sm rounded-2xl border border-album-line bg-album-raised px-3 py-2">
+      <div className="flex min-h-[44px] items-center gap-3">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-album-foilfill/20 text-album-foil">
+          <Coins className="h-4 w-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-sm font-semibold leading-snug text-album-ink">{t("mandali.coin.title")}</p>
-          <p className="m-0 truncate text-[13px] text-album-ink3">{t("mandali.coin.isAsking", { name: requesterName })}</p>
+          <p className="m-0 truncate text-[15px] font-semibold leading-snug text-album-ink">{headline}</p>
+          {outcome ? (
+            <p className={`m-0 flex items-center gap-1 truncate text-[13px] font-medium ${outcome.tone}`}>
+              <outcome.Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+              {outcome.label}
+            </p>
+          ) : (
+            isOpen && <p className="m-0 truncate text-[13px] text-album-ink3">{openHint}</p>
+          )}
         </div>
-        {outcome && (
-          <span className={`flex flex-shrink-0 items-center gap-1 text-[13px] font-medium ${outcome.tone}`}>
-            <outcome.Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {outcome.label}
-          </span>
+        {isOpen && canPay && (
+          <AlbumButton
+            variant="primary"
+            className="flex-shrink-0"
+            onClick={handlePay}
+            loading={isPaying}
+            aria-label={t("mandali.coin.payTo", { amount: request.amount, name: requesterName })}
+          >
+            {isPaying ? t("mandali.coin.paying") : t("mandali.coin.payShort")}
+          </AlbumButton>
         )}
       </div>
 
-      <p className="m-0 mt-3 flex items-baseline gap-1.5">
-        <span className="text-3xl font-semibold tabular-nums leading-none text-album-ink">{request.amount}</span>
-        <span className="text-sm text-album-ink3">{t("mandali.coin.unit")}</span>
-      </p>
-
       {localError && (
-        <p role="alert" className="m-0 mt-3 text-sm font-medium text-album-danger">
+        <p role="alert" className="m-0 mt-1 text-sm font-medium text-album-danger">
           {localError}
         </p>
       )}
-
-      {isOpen &&
-        (isDesignatedPayer ? (
-          <AlbumButton
-            variant="primary"
-            size="lg"
-            className="mt-3 w-full"
-            onClick={handlePay}
-            loading={isPaying}
-            icon={<Coins className="h-4 w-4" aria-hidden="true" />}
-          >
-            {isPaying ? t("mandali.coin.paying") : t("mandali.coin.pay", { amount: request.amount })}
-          </AlbumButton>
-        ) : (
-          <p className="m-0 mt-3 text-sm text-album-ink2">{t("mandali.coin.waitingFor", { name: nameOf(request.payerIdentityId) })}</p>
-        ))}
     </div>
   );
 }

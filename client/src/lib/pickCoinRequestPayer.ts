@@ -3,8 +3,10 @@ import type { MandaliMember } from "@shared/mandali/types.js";
 /**
  * Who an instant "Request Coins" tap is addressed to.
  *
- * A coin request always names one person who pays. When the requester does
- * not choose, ask whoever runs the group: the owner, then an admin, then the
+ * Any active member can pay a coin request, but each one is still addressed
+ * to someone, who gets the "asked you" banner so the request is not ignored by
+ * everyone at once. When the requester does not choose, address it to whoever
+ * runs the group: the owner, then an admin, then the
  * longest-standing member — a fixed order, so the same tap always asks the
  * same person instead of whoever happens to be first in a list. Never the
  * requester themselves, and never someone who is no longer an active member.
