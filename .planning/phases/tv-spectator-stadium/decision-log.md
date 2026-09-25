@@ -65,3 +65,22 @@ This log documents key design, technical, and UX decisions made for the Bhalyam 
   - Overlay components automatically self-terminate using clean `setTimeout` triggers (2500–3500ms) with unmount cleanup handlers.
   - Canvas particles are scoped to momentary bursts rather than indefinite animation loops.
 - **Consequences**: TV screens run smoothly at 60 FPS without memory bloat even after dozens of consecutive games.
+
+---
+
+## ADR-07: Real-Time Phone-to-TV Crowd Interaction (Emotes, Throwables, and Soundboard)
+
+- **Context**: Couch spectators wanted to interact with the TV directly from their phones rather than passively watching.
+- **Decision**: Wire `room:reaction` and `room:sound` into the TV screen. When players send throwables (`🍅` tomato, `🩴` chappal, `🧨` cracker) or sound clips (Airhorn, Dhol, Ta-da), the TV screen renders physical parabolic trajectories with splatter FX, plays high-fidelity audio through the TV speakers, and triggers dynamic screen shakes.
+- **Consequences**: Transforms passive TV watching into an interactive living-room party game show.
+
+---
+
+## ADR-08: Momentum Tug-of-War Engine & Post-Match Superlatives
+
+- **Context**: Spectators needed instant visual clarity on who has the match advantage, and wanted post-game celebration beyond just announcing the 1st place winner.
+- **Decision**:
+  - Implement `TvMomentumBar`: renders dynamic Required Run Rate (RRR) needles, territory dominance bars (Dots & Boxes), and Home race trackers (Ludo).
+  - Implement Superlative Accolade Cards on the Victory Podium (The Sniper, Speed Demon, Iron Shield, Heartbreak).
+- **Consequences**: Sparks friendly couch rivalry and enriches the emotional payoff of every match.
+

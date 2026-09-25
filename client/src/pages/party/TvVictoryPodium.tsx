@@ -213,6 +213,47 @@ export function TvVictoryPodium({
         )}
       </div>
 
+      {/* Superlative Accolade Cards (Fun party banter & badges) */}
+      {entries.length >= 2 && (
+        <div className="w-full max-w-4xl grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-black/50 border border-amber-500/25 shadow-md">
+            <span className="text-xl select-none">🎯</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">The Sniper</p>
+              <p className="text-xs font-bold text-white truncate">{first?.name ?? "Player"}</p>
+              <p className="text-[9px] text-stone-400 truncate">Deadliest moves</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-black/50 border border-amber-500/25 shadow-md">
+            <span className="text-xl select-none">⚡</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Speed Demon</p>
+              <p className="text-xs font-bold text-white truncate">{(second ?? first)?.name ?? "Player"}</p>
+              <p className="text-[9px] text-stone-400 truncate">Fastest decisions</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-black/50 border border-amber-500/25 shadow-md">
+            <span className="text-xl select-none">🛡️</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Iron Shield</p>
+              <p className="text-xs font-bold text-white truncate">{(third ?? first)?.name ?? "Player"}</p>
+              <p className="text-[9px] text-stone-400 truncate">Battle resilience</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-black/50 border border-amber-500/25 shadow-md">
+            <span className="text-xl select-none">💔</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Heartbreak</p>
+              <p className="text-xs font-bold text-white truncate">{(entries[entries.length - 1] ?? second ?? first)?.name ?? "Player"}</p>
+              <p className="text-[9px] text-stone-400 truncate">Valiant effort</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rematch Status Footer Card */}
       <div className="w-full max-w-2xl py-3 px-6 rounded-2xl bg-black/60 border border-amber-900/50 flex items-center justify-between gap-4 text-xs sm:text-sm">
         <div className="flex items-center gap-2.5 text-amber-200">

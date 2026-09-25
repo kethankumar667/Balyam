@@ -15,6 +15,11 @@ This document details the development epics, user stories, acceptance criteria, 
 | **EPIC-TV-05** | Big-Screen Performance & TV Ergonomics | Pillar 4 | `PartyScreen.tsx`, `TvGameArena.tsx`, `PartyScreen.test.tsx` | Complete |
 | **EPIC-TV-06** | Interactive Crowd Reactions & Seismic Impact FX | Pillar 1, Pillar 4 | `TvCrowdReactions.tsx`, `useTvScreenShake.ts`, `index.css` | Complete |
 | **EPIC-TV-07** | Climax Sudden Death & Play-by-Play Commentary Ticker | Pillar 1, Pillar 2 | `TvClimaxBanner.tsx`, `TvCommentaryTicker.tsx`, `PartyScreen.tsx` | Complete |
+| **EPIC-TV-08** | Room TV Mode Launcher & Instant Discovery | Pillar 4 | `RoomShareCard.tsx` | Complete |
+| **EPIC-TV-09** | Living-Room TV Soundboard Audio Engine | Pillar 1, Pillar 4 | `TvCrowdReactions.tsx`, `soundboard.ts` | Complete |
+| **EPIC-TV-10** | Live Momentum & Territory Tug-of-War Gauge | Pillar 1, Pillar 3 | `TvMomentumBar.tsx`, `TvGameArena.tsx` | Complete |
+| **EPIC-TV-11** | Olympic Gold Confetti & Superlative Accolades | Pillar 1, Pillar 2 | `TvVictoryPodium.tsx` | Complete |
+| **EPIC-TV-12** | Bot Auto-Play Disconnect Broadcast Telemetry | Pillar 3, Pillar 4 | `TvGameArena.tsx` | Complete |
 
 ---
 
@@ -204,4 +209,71 @@ This document details the development epics, user stories, acceptance criteria, 
   - Displays `"LIVE"` badge with real-time commentary updates on rolls, captures, boundaries, wickets, and action cards.
   - Includes room telemetry and seated player counts.
 - **Status**: Verified in `TvCommentaryTicker.tsx` and `TvStadiumFX.test.tsx`.
+
+---
+
+### EPIC-TV-08: Room TV Mode Launcher & Instant Discovery
+
+#### Story TV-08.1: Quick-Launch TV Spectator Button
+- **As a** room host or member holding my phone,
+- **I want** a dedicated "📺 TV Mode" button on the room share card,
+- **So that** I can instantly open or cast the TV spectator screen without manually typing URLs.
+- **Acceptance Criteria**:
+  - Rendered in `RoomShareCard.tsx` alongside Share and Mandali buttons.
+  - Opens `/tv/:code` in a new window with one tap.
+- **Status**: Verified in `RoomShareCard.tsx` and `RoomShareCard.test.tsx`.
+
+---
+
+### EPIC-TV-09: Living-Room TV Soundboard Audio Engine
+
+#### Story TV-09.1: Synchronized Living-Room Audio Playback
+- **As a** player tapping soundboard buttons on my phone,
+- **I want** clips like Airhorns 📣 and Dhol 🥁 to blast through the TV sound system,
+- **So that** the whole room reacts together.
+- **Acceptance Criteria**:
+  - TV listens to `room:sound` socket events.
+  - Triggers theme-mapped `AudioKey` via `AudioManager.getInstance().play()`.
+  - Airhorn and Dhol trigger an intense seismic screen shake.
+- **Status**: Verified in `TvCrowdReactions.tsx`.
+
+---
+
+### EPIC-TV-10: Live Momentum & Territory Tug-of-War Gauge
+
+#### Story TV-10.1: Dynamic Advantage Tug-of-War
+- **As a** spectator watching a close Hand Cricket chase or Dots & Boxes battle,
+- **I want** a live momentum bar showing Required Run Rate (RRR) or territory ownership %,
+- **So that** the couch audience can debate and follow who has the advantage.
+- **Acceptance Criteria**:
+  - Displays RRR badge and % target reached progress bar for Hand Cricket chase.
+  - Displays multi-color territory ownership split for Dots & Boxes.
+  - Displays Home stretch race progress for Ludo.
+- **Status**: Verified in `TvMomentumBar.tsx` and `TvGameArena.tsx`.
+
+---
+
+### EPIC-TV-11: Olympic Gold Confetti & Superlative Accolades
+
+#### Story TV-11.1: Victory Podium Confetti Cannon & Superlatives
+- **As a** spectator watching the match conclude,
+- **I want** an explosive golden confetti shower and funny superlative badges (Sniper, Speed Demon, Heartbreak),
+- **So that** everyone at the party celebrates and gets roasted.
+- **Acceptance Criteria**:
+  - Dual-wave golden confetti bursts on victory podium mount via `@tsparticles/confetti`.
+  - Accolade cards (The Sniper, Speed Demon, Iron Shield, Heartbreak) display below the podium.
+- **Status**: Verified in `TvVictoryPodium.tsx`.
+
+---
+
+### EPIC-TV-12: Bot Auto-Play Disconnect Broadcast Telemetry
+
+#### Story TV-12.1: Disconnected Player Broadcast Alert
+- **As a** spectator,
+- **I want** to know if a player's phone dropped connection and a bot took over,
+- **So that** I understand why the player is moving automatically.
+- **Acceptance Criteria**:
+  - Floating broadcast alert toast: `"⚠️ [Player] disconnected — Bot Auto-Play active"`.
+- **Status**: Verified in `TvGameArena.tsx`.
+
 

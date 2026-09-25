@@ -189,6 +189,11 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
     return `⚡ Live match underway: ${activeTurn.name} is taking their turn!`;
   }, [game, gameState, activeTurn, players]);
 
+  // Check for disconnected players with bot auto-play
+  const disconnectedPlayer = useMemo(() => {
+    return players.find((p) => p.isConnected === false && !p.isBot);
+  }, [players]);
+
   return (
     <div className="relative flex-1 w-full max-w-7xl mx-auto flex flex-col justify-between gap-2.5 p-2 sm:p-3 select-none min-h-0 overflow-hidden">
       {/* Dynamic Ambient Stadium Ambilight Halo */}
@@ -210,6 +215,16 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
           actionText={activeTurn.actionText}
         />
         <TvMomentumBar game={game} gameState={gameState} players={players} />
+
+        {/* Broadcast Alert: Player Disconnection / Bot Auto-Play Active */}
+        {disconnectedPlayer && (
+          <div className="shrink-0 w-full flex items-center justify-center pt-0.5">
+            <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-mono font-bold animate-pulse shadow-md">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span>⚠️ {disconnectedPlayer.name} disconnected — Bot Auto-Play active</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Center Stage: Dedicated High-Energy TV Game Spectator Stadium */}
