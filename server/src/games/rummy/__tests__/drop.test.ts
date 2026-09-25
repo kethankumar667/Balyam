@@ -64,7 +64,7 @@ describe("RummyEngine DROP", () => {
     expect(afterDrop.turnAction).toBe("draw");
   });
 
-  it("middle-drop (after drawing) is allowed and scores card points not 20", () => {
+  it("middle-drop (after drawing) is allowed and costs a flat 40, not the 20 of a first drop", () => {
     engine.init(makePlayers(2));
     const id = state(engine).turnPlayerId;
     const draw = engine.applyMove({ playerId: id, type: "draw", data: { from: "closed" } });
@@ -73,11 +73,7 @@ describe("RummyEngine DROP", () => {
     const drop = engine.applyMove({ playerId: id, type: "drop" });
     expect(drop.ok).toBe(true);
     expect(drop.isOver).toBe(true); // 2-player: last player wins
-    const after = state(engine);
-    // Score = raw card points (1–80), NOT the flat 20-pt first-drop penalty.
-    const score = after.scores?.[id] ?? -1;
-    expect(score).toBeGreaterThan(0);
-    expect(score).toBeLessThanOrEqual(80);
+    expect(state(engine).scores?.[id]).toBe(40);
   });
 
   it("dropping by a non-turn player is rejected", () => {
@@ -154,7 +150,7 @@ describe("RummyEngine DROP", () => {
     expect(after.finalHands?.[winnerId]).toBeUndefined();
   });
 
-  it("round 1 middle-drop still scores raw card points (unchanged baseline)", () => {
+  it("round 1 middle-drop is the flat 40 too — it no longer charges the hand's raw card points", () => {
     engine.setOptions({ ...DEFAULT_RUMMY_OPTIONS, mode: "pool101" });
     engine.init(makePlayers(2));
     expect(state(engine).roundNumber).toBe(1);
@@ -162,10 +158,7 @@ describe("RummyEngine DROP", () => {
     engine.applyMove({ playerId: id, type: "draw", data: { from: "closed" } });
     const drop = engine.applyMove({ playerId: id, type: "drop" });
     expect(drop.ok).toBe(true);
-    const score = state(engine).scores?.[id] ?? -1;
-    expect(score).toBeGreaterThan(0);
-    expect(score).not.toBe(40); // could coincidentally land near it, but the
-    // real guarantee is round 2's test below asserting the exact fixed 40.
+    expect(state(engine).scores?.[id]).toBe(40);
   });
 
   it("round 2+ middle-drop uses the fixed 40-point penalty, not raw card weightage", () => {

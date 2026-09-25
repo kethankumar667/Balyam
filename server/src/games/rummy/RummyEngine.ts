@@ -13,7 +13,6 @@ import { GAME_REACTIONS, pickReactionEmoji } from "@shared/reactions.js";
 import { deal } from "./deck.js";
 import { validateDeclare } from "./declare.js";
 import {
-  pointsOfHand,
   bestArrangementForScoring,
   scoreFromArrangement,
   INVALID_DECLARE_PENALTY,
@@ -113,12 +112,11 @@ function poolTargetFor(mode: RummyMatchMode): number | null {
 
 /** Drop penalty per the common Indian Rummy convention: first-drop = 20 points. */
 const DROP_PENALTY = 20;
-/** Middle-drop (after drawing) in round 2+ of a pool match uses this fixed
- *  penalty instead of raw card weightage — the standard "middle drop = 40"
- *  tier (RummyCircle/Junglee Rummy convention). Round 1's middle-drop is
- *  unchanged (raw card points, up to HAND_CAP) — this floor only kicks in
- *  once a player has already completed at least one round in the match. */
-const MIDDLE_DROP_PENALTY_AFTER_ROUND1 = 40;
+/** Middle-drop (after drawing at least once): a flat 40 in every mode and every round —
+ *  the standard "middle drop = 40" tier (RummyCircle/Junglee Rummy convention). It used to
+ *  charge the hand's raw card points in round 1; with the stake now a flat entry per seat
+ *  the penalty is only a score, so it is the same predictable number everywhere. */
+const MIDDLE_DROP_PENALTY = 40;
 
 /**
  * After a valid show, the round doesn't end instantly. Every OTHER player gets
@@ -474,23 +472,13 @@ export class RummyEngine implements GameEngine {
     // Both first-drop (before drawing this turn) and middle-drop (after drawing)
     // are valid. Not-your-turn is already caught in applyMove.
     this.s.droppedPlayers.add(move.playerId);
-    const hand = this.s.hands.get(move.playerId);
     // Deliberately NOT recorded into this.s.finalHands — a dropped player's
     // cards are never shown to the table (real-world Rummy convention: you
     // don't reveal your hand when you drop, only your score is announced).
-    // scoreFromArrangement/pointsOfHand read straight from this.s.hands
-    // below, so omitting finalHands doesn't affect scoring, only display.
-    // First-drop (turnAction === "draw"): fixed 20-point penalty.
-    // Middle-drop (turnAction === "discardOrDeclare"): raw card points
-    // (capped at 80 by pointsOfHand's own HAND_CAP guard) in round 1 of a
-    // match; a fixed 40-point penalty from round 2 onward — the standard
-    // 3-tier convention (20 / 40 / up-to-80), see MIDDLE_DROP_PENALTY_AFTER_ROUND1.
-    const dropScore =
-      this.s.turnAction === "draw"
-        ? DROP_PENALTY
-        : this.s.roundNumber > 1
-          ? MIDDLE_DROP_PENALTY_AFTER_ROUND1
-          : pointsOfHand(hand ?? [], this.s.wildJoker.rank);
+    // The penalty is a fixed number, so nothing here reads the hand at all.
+    // First-drop (turnAction === "draw", nothing taken from the deck yet): 20 points.
+    // Middle-drop (turnAction === "discardOrDeclare", a card already taken): 40 points.
+    const dropScore = this.s.turnAction === "draw" ? DROP_PENALTY : MIDDLE_DROP_PENALTY;
     this.s.scores[move.playerId] = dropScore;
 
     // If only one active (non-dropped) player remains, they win. No melds

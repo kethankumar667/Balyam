@@ -2578,7 +2578,8 @@ describe("P0 seat-capacity contract (2026-08-28 production incident regression)"
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(liveRoom.phase).toBe("playing");
     expect(liveRoom.currentMatchId).not.toBeNull();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100
+    // Rummy's default table is the 1-point one: 80 per seat (shared/rummy-economy.ts), not the flat 100.
+    expect((await service.getWallet(MEMBER_A)).balance).toBe("4920"); // 5000 - 80
   });
 });
 

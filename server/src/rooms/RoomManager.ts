@@ -75,9 +75,13 @@ import {
   ENTRY_STAKE_MIN_COINS,
   ENTRY_STAKE_MAX_COINS,
   ENTRY_STAKE_STEP_COINS,
-  GUEST_HOST_ENTRY_STAKE_COINS,
-  isValidEntryStakeCoins,
 } from "@shared/types.js";
+import {
+  defaultEntryStakeFor,
+  guestHostStakeFor,
+  isValidEntryStakeFor,
+  rummyRateForStakeCoins,
+} from "@shared/rummy-economy.js";
 import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
@@ -721,6 +725,7 @@ function checkHostEconomyEligibility(
   host: Player,
   playersList: Player[],
   entryStakeCoins: number,
+  game: GameKind,
   isRematch = false,
 ): HostEconomyEligibility {
   if (!host.identityId || host.identityId.trim().length === 0) {
@@ -732,12 +737,13 @@ function checkHostEconomyEligibility(
     };
   }
 
-  if (host.isGuest && entryStakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
+  const guestStake = guestHostStakeFor(game);
+  if (host.isGuest && entryStakeCoins !== guestStake) {
     return {
       eligible: false,
       error: isRematch
         ? "This room's entry stake requires a signed-in host. Sign in to start, or ask a member to host instead."
-        : "Guests can only host matches at the 100-coin table. Sign in to host at a higher stake, or ask a member to host instead.",
+        : `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher stake, or ask a member to host instead.`,
     };
   }
 
@@ -1516,17 +1522,22 @@ export class RoomManager {
 
     // Resolve the room's entry stake — see this parameter's own doc comment
     // for the reject-vs-clamp reasoning.
+    // Rummy has its own stake tiers (1 point = 1/2/4/8/16 coins → 80…1280 per seat) — see
+    // shared/rummy-economy.ts — so "valid", "default" and "the guest table" all depend on the game.
     let resolvedEntryStake: number;
     if (hostIsGuest) {
-      if (entryStakeCoins !== undefined && entryStakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
+      const guestStake = guestHostStakeFor(game);
+      if (entryStakeCoins !== undefined && entryStakeCoins !== guestStake) {
         throw new Error(
-          "Guests can only host matches at the 100-coin table. Sign in to host at a higher stake, or ask a member to host instead.",
+          `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher stake, or ask a member to host instead.`,
         );
       }
-      resolvedEntryStake = GUEST_HOST_ENTRY_STAKE_COINS;
+      resolvedEntryStake = guestStake;
     } else {
       resolvedEntryStake =
-        entryStakeCoins !== undefined && isValidEntryStakeCoins(entryStakeCoins) ? entryStakeCoins : ENTRY_STAKE_MIN_COINS;
+        entryStakeCoins !== undefined && isValidEntryStakeFor(game, entryStakeCoins)
+          ? entryStakeCoins
+          : defaultEntryStakeFor(game);
     }
 
     const playerId = newPlayerId();
@@ -2230,13 +2241,17 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }
-    if (player.isGuest && stakeCoins !== GUEST_HOST_ENTRY_STAKE_COINS) {
-      const msg = `Guest hosts can only host matches at the ${GUEST_HOST_ENTRY_STAKE_COINS}-coin table. Sign in to host higher stakes.`;
+    const guestStake = guestHostStakeFor(room.game);
+    if (player.isGuest && stakeCoins !== guestStake) {
+      const msg = `Guest hosts can only host matches at the ${guestStake}-coin table. Sign in to host higher stakes.`;
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }
-    if (!isValidEntryStakeCoins(stakeCoins)) {
-      const msg = `Invalid entry stake: must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins (steps of 50 below 1000, 100 above 1000).`;
+    if (!isValidEntryStakeFor(room.game, stakeCoins)) {
+      const msg =
+        room.game === "rummy"
+          ? "Invalid entry stake: pick one of the Rummy point rates (1, 2, 4, 8 or 16 coins per point)."
+          : `Invalid entry stake: must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins (steps of 50 below 1000, 100 above 1000).`;
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }
@@ -2245,8 +2260,14 @@ export class RoomManager {
     // Host is unreadied so they explicitly confirm readiness at the updated stake
     player.isReady = false;
 
+    const rate = rummyRateForStakeCoins(stakeCoins);
     this.broadcastRoomState(room);
-    this.systemMessage(room, `Host updated the table bet to 🪙 ${stakeCoins} coins per seat.`);
+    this.systemMessage(
+      room,
+      room.game === "rummy" && rate !== null
+        ? `Host updated the table to 1 point = ${rate} coin${rate === 1 ? "" : "s"} (🪙 ${stakeCoins} per seat).`
+        : `Host updated the table bet to 🪙 ${stakeCoins} coins per seat.`,
+    );
 
     return { ok: true, entryStakeCoins: stakeCoins };
   }
@@ -2589,7 +2610,7 @@ export class RoomManager {
     }
 
     if (this.economyService) {
-      const eligibility = checkHostEconomyEligibility(player, playersList, room.entryStakeCoins, false);
+      const eligibility = checkHostEconomyEligibility(player, playersList, room.entryStakeCoins, room.game, false);
       if (!eligibility.eligible) {
         this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
         return;
@@ -6777,7 +6798,7 @@ export class RoomManager {
       return;
     }
 
-    const eligibility = checkHostEconomyEligibility(host, playersList, room.entryStakeCoins, true);
+    const eligibility = checkHostEconomyEligibility(host, playersList, room.entryStakeCoins, room.game, true);
     if (!eligibility.eligible) {
       this.io.to(room.code).emit("room:error", eligibility.error!);
       this.cancelRematch(room, null);

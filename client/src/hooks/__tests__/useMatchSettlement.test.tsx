@@ -12,7 +12,12 @@ vi.mock("../../lib/economyApi", async (importOriginal) => {
 vi.mock("../useEconomy", () => ({ refreshCurrentWallet: () => refreshCurrentWallet() }));
 
 import { EconomyClientError } from "../../lib/economyApi";
-import { useMatchSettlement, SETTLEMENT_POLL_INTERVAL_MS, SETTLEMENT_POLL_MAX_ATTEMPTS } from "../useMatchSettlement";
+import {
+  useMatchSettlement,
+  winnerPrizesFor,
+  SETTLEMENT_POLL_INTERVAL_MS,
+  SETTLEMENT_POLL_MAX_ATTEMPTS,
+} from "../useMatchSettlement";
 
 function record(status: MatchSettlementStatus): { settlement: MatchEconomySettlementRecord } {
   return {
@@ -180,5 +185,32 @@ describe("useMatchSettlement", () => {
     await flush();
     expect(result.current.settlement?.status).toBe("SETTLED"); // not overwritten by the stale response
     expect(refreshCurrentWallet).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The result screens show the winner's prize from `winnerPrizesFor`. Rummy is winner-takes-all
+ * with no platform cut, so re-deriving its prize with the standard 20% split would show the
+ * winner a smaller number than the wallet was actually credited with.
+ */
+describe("winnerPrizesFor", () => {
+  const settled = (over: Partial<MatchEconomySettlementRecord>): MatchEconomySettlementRecord => ({
+    ...record("SETTLED").settlement,
+    ...over,
+  });
+
+  it("standard match: 80% of the pot to the winner, the rest to the platform", () => {
+    expect(winnerPrizesFor(settled({ totalCollected: "200", totalWorldBankCut: "40", seatCount: 2 }))).toEqual(["160"]);
+  });
+
+  it("Rummy (no platform cut): the whole pot to first place, at any seat count", () => {
+    expect(winnerPrizesFor(settled({ totalCollected: "480", totalWorldBankCut: "0", seatCount: 6 }))).toEqual(["480"]);
+    expect(winnerPrizesFor(settled({ totalCollected: "320", totalWorldBankCut: "0", seatCount: 2 }))).toEqual(["320"]);
+  });
+
+  it("nothing is shown until the match is actually settled", () => {
+    expect(winnerPrizesFor(null)).toBeNull();
+    expect(winnerPrizesFor(record("COMMITTED").settlement)).toBeNull();
+    expect(winnerPrizesFor(record("REFUNDED").settlement)).toBeNull();
   });
 });

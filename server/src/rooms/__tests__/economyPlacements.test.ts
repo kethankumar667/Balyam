@@ -47,11 +47,18 @@ describe("extractRankedParticipants", () => {
     });
   });
 
-  describe("Rummy, 3+ seats, matchMode: single — new ranking support", () => {
-    it("ranks all seats by score ascending, lower is better", () => {
+  /**
+   * Rummy is winner-takes-all with no platform cut (shared/rummy-economy.ts): the ONLY
+   * placement that moves coins is 1st. So the ranking must name the winner and nothing
+   * else may make it invalid — a tie among the losers used to force a refund, which
+   * would now hand a losing player a free way out.
+   */
+  describe("Rummy — winner-first ranking, every mode and seat count", () => {
+    it("puts the seat that made the show first; the rest follow lowest score first", () => {
       const players = playerMap(player("a"), player("b"), player("c"));
       const engine = fakeEngine({
         matchMode: "single",
+        winnerId: "b",
         scores: { a: 10, b: 0, c: 25 },
       });
       const result = extractRankedParticipants({ game: "rummy", players, engine });
@@ -63,74 +70,105 @@ describe("extractRankedParticipants", () => {
       ]);
     });
 
-    it("rejects as invalid when the round result is a tie at a paid position (invalid-declare scenario: opponents all score 0)", () => {
+    it("stays valid when losers tie — only 1st is paid, so who is 2nd cannot matter", () => {
       const players = playerMap(player("a"), player("b"), player("c"), player("d"));
       const engine = fakeEngine({
         matchMode: "single",
-        // Declarer "a" eats the penalty; every opponent books a clean zero —
-        // exactly RummyEngine.ts's finalizeWithInvalidDeclare behavior.
-        scores: { a: 80, b: 0, c: 0, d: 0 },
+        winnerId: "a",
+        scores: { a: 0, b: 40, c: 40, d: 40 },
+      });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.isValidRanking).toBe(true);
+      expect(result.participants[0]).toEqual({ identityId: "identity-a", identityKind: "member", placement: 1 });
+      expect(result.participants).toHaveLength(4);
+    });
+
+    it("breaks a tie among the losers the same way every time (seat order)", () => {
+      const players = playerMap(player("a"), player("b"), player("c"), player("d"));
+      const engine = fakeEngine({ matchMode: "single", winnerId: "c", scores: { a: 40, b: 40, c: 0, d: 40 } });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.participants.map((p) => p.identityId)).toEqual([
+        "identity-c",
+        "identity-a",
+        "identity-b",
+        "identity-d",
+      ]);
+    });
+
+    it("pays a 2-seat single hand to the seat that made the show", () => {
+      const players = playerMap(player("a"), player("b"));
+      const engine = fakeEngine({ matchMode: "single", winnerId: "b", scores: { a: 42, b: 0 } });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.isValidRanking).toBe(true);
+      expect(result.participants[0]!.identityId).toBe("identity-b");
+    });
+
+    it("pool 101/201: the match winner is first — not the last round's winner, and at any seat count", () => {
+      for (const matchMode of ["pool101", "pool201"] as const) {
+        const players = playerMap(player("a"), player("b"), player("c"));
+        const engine = fakeEngine({
+          matchMode,
+          matchOver: true,
+          matchWinnerId: "c",
+          winnerId: "a", // the LAST ROUND's winner is a different seat — it must not be paid
+          cumulativeScores: { a: 60, b: 130, c: 90 },
+        });
+        const result = extractRankedParticipants({ game: "rummy", players, engine });
+        expect(result.isValidRanking).toBe(true);
+        expect(result.participants.map((p) => p.identityId)).toEqual(["identity-c", "identity-a", "identity-b"]);
+      }
+    });
+
+    it("pool: no payout until the match is actually over", () => {
+      const players = playerMap(player("a"), player("b"), player("c"));
+      const engine = fakeEngine({ matchMode: "pool101", matchOver: false, matchWinnerId: null, winnerId: "a" });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.isValidRanking).toBe(false);
+    });
+
+    it("single: no payout while the hand is still being scored (scores not published yet)", () => {
+      const players = playerMap(player("a"), player("b"), player("c"));
+      const engine = fakeEngine({ matchMode: "single", winnerId: "a" });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.isValidRanking).toBe(false);
+    });
+
+    it("wrong show at a 2-seat table: the declarer loses, the other seat is paid", () => {
+      const players = playerMap(player("a"), player("b"));
+      const engine = fakeEngine({
+        matchMode: "single",
+        winnerId: null, // finalizeWithInvalidDeclare sets no round winner
+        invalidDeclareBy: "a",
+        scores: { a: 80, b: 0 },
+      });
+      const result = extractRankedParticipants({ game: "rummy", players, engine });
+      expect(result.isValidRanking).toBe(true);
+      expect(result.participants.map((p) => p.identityId)).toEqual(["identity-b", "identity-a"]);
+    });
+
+    it("wrong show at 3+ seats has no single winner, so it refunds rather than guessing", () => {
+      const players = playerMap(player("a"), player("b"), player("c"));
+      const engine = fakeEngine({
+        matchMode: "single",
+        winnerId: null,
+        invalidDeclareBy: "a",
+        scores: { a: 80, b: 0, c: 0 },
       });
       const result = extractRankedParticipants({ game: "rummy", players, engine });
       expect(result.isValidRanking).toBe(false);
       expect(result.reason).toContain("no deterministic ranking");
     });
 
-    it("rejects as invalid on a tie between 3rd and 4th place (ambiguous which seat actually gets the paid 3rd position)", () => {
-      const players = playerMap(player("a"), player("b"), player("c"), player("d"));
-      const engine = fakeEngine({
-        matchMode: "single",
-        scores: { a: 0, b: 20, c: 40, d: 40 },
-      });
-      const result = extractRankedParticipants({ game: "rummy", players, engine });
-      expect(result.isValidRanking).toBe(false);
-    });
-
-    it("accepts a tie among UNPAID positions (5th/6th) — it cannot affect any prize", () => {
-      const players = playerMap(player("a"), player("b"), player("c"), player("d"), player("e"), player("f"));
-      const engine = fakeEngine({
-        matchMode: "single",
-        scores: { a: 0, b: 20, c: 40, d: 60, e: 80, f: 80 },
-      });
-      const result = extractRankedParticipants({ game: "rummy", players, engine });
-      expect(result.isValidRanking).toBe(true);
-      expect(result.participants[0]!.identityId).toBe("identity-a");
-      expect(result.participants).toHaveLength(6);
-    });
-
-    it("rejects pool101 — a pool match's real ranking is elimination order, not this round's own scores", () => {
+    it("rejects a winner that is not one of the committed seats", () => {
       const players = playerMap(player("a"), player("b"), player("c"));
-      const engine = fakeEngine({
-        matchMode: "pool101",
-        scores: { a: 0, b: 20, c: 40 },
-      });
+      const engine = fakeEngine({ matchMode: "single", winnerId: "ghost", scores: { a: 0, b: 20, c: 40 } });
       const result = extractRankedParticipants({ game: "rummy", players, engine });
       expect(result.isValidRanking).toBe(false);
     });
 
-    it("rejects when a seat is missing from scores entirely", () => {
-      const players = playerMap(player("a"), player("b"), player("c"));
-      const engine = fakeEngine({
-        matchMode: "single",
-        scores: { a: 0, b: 20 },
-      });
-      const result = extractRankedParticipants({ game: "rummy", players, engine });
-      expect(result.isValidRanking).toBe(false);
-    });
-
-    it("rejects when the round has not finished (scores undefined, mirroring RummyEngine's own getPublicState)", () => {
-      const players = playerMap(player("a"), player("b"), player("c"));
-      const engine = fakeEngine({ matchMode: "single" });
-      const result = extractRankedParticipants({ game: "rummy", players, engine });
-      expect(result.isValidRanking).toBe(false);
-    });
-
-    it("still rejects when a seat has no economy-resolvable identity, even with a clean unambiguous ranking", () => {
+    it("still rejects when a seat has no economy-resolvable identity", () => {
       const players = playerMap(player("a"), player("b", { identityId: null }), player("c"));
-      const engine = fakeEngine({
-        matchMode: "single",
-        scores: { a: 0, b: 20, c: 40 },
-      });
+      const engine = fakeEngine({ matchMode: "single", winnerId: "a", scores: { a: 0, b: 20, c: 40 } });
       const result = extractRankedParticipants({ game: "rummy", players, engine });
       expect(result.isValidRanking).toBe(false);
       expect(result.reason).toContain("economy-resolvable identity");
@@ -142,10 +180,7 @@ describe("extractRankedParticipants", () => {
         player("b", { isGuest: true }),
         player("c"),
       );
-      const engine = fakeEngine({
-        matchMode: "single",
-        scores: { a: 40, b: 0, c: 20 },
-      });
+      const engine = fakeEngine({ matchMode: "single", winnerId: "b", scores: { a: 40, b: 0, c: 20 } });
       const result = extractRankedParticipants({ game: "rummy", players, engine });
       expect(result.isValidRanking).toBe(true);
       expect(result.participants).toEqual([

@@ -19,6 +19,8 @@
  * being safe to trust, which not throwing already achieves.)
  */
 
+import { computeWinnerTakesAllPool } from "./rummy-economy.js";
+
 /**
  * How many placements are paid for a given seat count: winners =
  * min(seatCount - 1, 3), capped at 3 regardless of table size. A solo match
@@ -55,4 +57,18 @@ export function computePrizePool(totalCollected: bigint, seatCount: number): { w
   const weights = RANK_WEIGHTS_BY_WINNER_COUNT[winnerCount] ?? [];
   const winnerPrizes = weights.map(([num, den]) => (winnerPool * num) / den);
   return { worldBankCut, winnerPrizes };
+}
+
+/**
+ * The prize math for one particular game. Rummy is winner-takes-all with no platform
+ * cut (see `rummy-economy.ts`); every other game keeps the 20% cut and the ranked split.
+ * `game` is the settlement's own `gameKind`, which may be absent on a legacy record — that
+ * is the standard pool, never a guess.
+ */
+export function computePrizePoolFor(
+  game: string | null | undefined,
+  totalCollected: bigint,
+  seatCount: number,
+): { worldBankCut: bigint; winnerPrizes: bigint[] } {
+  return game === "rummy" ? computeWinnerTakesAllPool(totalCollected, seatCount) : computePrizePool(totalCollected, seatCount);
 }

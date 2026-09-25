@@ -14,6 +14,7 @@ import {
 import { deriveLobbyEconomyPreview, type LobbyLockPhase } from "../../lib/lobbyEconomy";
 import type { MatchCheckoutQuote } from "../../lib/economyApi";
 import { AshthaKonaCoinIcon, CoinAmount } from "./CoinAmount";
+import { defaultEntryStakeFor, rummyRateForStakeCoins } from "@shared/rummy-economy";
 
 export interface LobbyPrizePoolProps {
   seatCount: number;
@@ -24,6 +25,8 @@ export interface LobbyPrizePoolProps {
   lockPhase?: LobbyLockPhase;
   isHost?: boolean;
   entryStakeCoins?: number;
+  /** Machine game key — Rummy words its stake as a point rate and pays the whole pot to the winner. */
+  game?: string;
   canChangeStake?: boolean;
   onChangeStake?: () => void;
   stakeLockedReason?: string | null;
@@ -39,6 +42,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
   lockPhase = "idle",
   isHost = false,
   entryStakeCoins,
+  game,
   canChangeStake = false,
   onChangeStake,
   stakeLockedReason = null,
@@ -59,7 +63,10 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
   const hasSecond = preview.secondPlace !== null && preview.secondPlace !== "0";
   const hasThird = preview.thirdPlace !== null && preview.thirdPlace !== "0";
 
-  const currentStake = entryStakeCoins ?? (quote?.costPerSeat ? Number(quote.costPerSeat) : 100);
+  const currentStake = entryStakeCoins ?? (quote?.costPerSeat ? Number(quote.costPerSeat) : defaultEntryStakeFor(game));
+  // Rummy words its stake as a point rate ("1 point = 2 coins") and pays the whole pot to the winner.
+  const rummyRate = game === "rummy" ? rummyRateForStakeCoins(currentStake) : null;
+  const hasPlatformCut = preview.worldBankCut !== null && preview.worldBankCut !== "0";
 
   // Accessible live announcement text for screen readers
   const liveAnnouncement = useMemo(() => {
@@ -119,6 +126,8 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             <p className="text-xs text-stone-500 dark:text-slate-400 font-medium truncate">
               {isFreePractice
                 ? "Free practice against AI bots • No coins charged"
+                : rummyRate !== null
+                ? `1 point = ${rummyRate} coin${rummyRate === 1 ? "" : "s"} • ${currentStake} coins per player • Winner takes the whole pot`
                 : `Each player contributes ${currentStake} coins • Stakes collected on game start`}
             </p>
           </div>
@@ -141,8 +150,19 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
         <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-700/50 text-xs text-amber-900 dark:text-amber-200 space-y-1 animate-in fade-in">
           <p className="font-bold">How table entry stakes work:</p>
           <p className="text-stone-600 dark:text-stone-300">
-            When the host starts the match, each player contributes {currentStake} coins to the pool.
-            The total pool is awarded to the top players according to the prize schedule. Bot practice matches are 100% free.
+            {rummyRate !== null ? (
+              <>
+                Rummy tables are priced by point rate: at 1 point = {rummyRate} coin{rummyRate === 1 ? "" : "s"}, each player
+                puts in {currentStake} coins when the host starts the match. The player who makes the show — or, in Pool
+                101 / 201, outlasts the table — wins the whole pool. There is no platform fee. Bot practice matches are 100%
+                free.
+              </>
+            ) : (
+              <>
+                When the host starts the match, each player contributes {currentStake} coins to the pool.
+                The total pool is awarded to the top players according to the prize schedule. Bot practice matches are 100% free.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -160,7 +180,9 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
                 {isFreePractice ? "Free" : `${currentStake} coins`}
               </div>
               <div className="text-[11px] text-stone-500 dark:text-slate-400 font-medium">
-                per player (entry)
+                {rummyRate !== null && !isFreePractice
+                  ? `per player • 1 pt = ${rummyRate} coin${rummyRate === 1 ? "" : "s"}`
+                  : "per player (entry)"}
               </div>
             </div>
           </div>
@@ -296,14 +318,16 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             </div>
           )}
 
-          {/* World Bank Reserve Cut */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-            <div className="flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-              <span className="font-medium text-ink-hi dark:text-text-hi">Platform Reserve</span>
+          {/* World Bank Reserve Cut — absent on a winner-takes-all table, which keeps no cut */}
+          {hasPlatformCut && (
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+                <span className="font-medium text-ink-hi dark:text-text-hi">Platform Reserve</span>
+              </div>
+              <CoinAmount amount={preview.worldBankCut ?? "0"} size="sm" ariaLabel={`Platform reserve cut: ${preview.worldBankCut} coins`} />
             </div>
-            <CoinAmount amount={preview.worldBankCut ?? "0"} size="sm" ariaLabel={`Platform reserve cut: ${preview.worldBankCut} coins`} />
-          </div>
+          )}
         </div>
       )}
 

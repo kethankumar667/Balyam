@@ -37,7 +37,7 @@ import {
 } from "../persistence/EconomyRepository.js";
 import { generateRawVoucherCode, hashVoucherCode } from "./voucherCrypto.js";
 import { isStructurallyValidSeatConfiguration } from "./economyCapacityContract.js";
-import { computePrizePool as computePrizePoolShared, winnersForSeatCount } from "@shared/economy-prizes.js";
+import { computePrizePoolFor, winnersForSeatCount } from "@shared/economy-prizes.js";
 
 export { winnersForSeatCount };
 
@@ -198,8 +198,12 @@ function fromBig(value: bigint): string {
  * which a client display helper has no useful way to react to beyond "don't
  * trust this," which simply not throwing already achieves.
  */
-export function computePrizePool(totalCollected: bigint, seatCount: number): { worldBankCut: bigint; winnerPrizes: bigint[] } {
-  const { worldBankCut, winnerPrizes } = computePrizePoolShared(totalCollected, seatCount);
+export function computePrizePool(
+  totalCollected: bigint,
+  seatCount: number,
+  game?: string | null,
+): { worldBankCut: bigint; winnerPrizes: bigint[] } {
+  const { worldBankCut, winnerPrizes } = computePrizePoolFor(game, totalCollected, seatCount);
   const sum = winnerPrizes.reduce((a, b) => a + b, 0n) + worldBankCut;
   if (sum !== totalCollected) {
     throw new PrizeMathConservationError(
@@ -219,6 +223,8 @@ export interface MatchCheckoutQuoteInput {
   botSeatCount: number;
   /** Omit to use the global `economy_configurations.seat_cost_coins` rate (today's fixed behavior, unchanged). */
   entryStakeCoins?: number;
+  /** Machine game key. Only changes how the prize is SHOWN in the quote (Rummy pays the whole pot to first place); `commitMatchEntry` and settlement never read it from a client. */
+  gameKind?: string;
 }
 
 export interface MatchCheckoutQuote {
@@ -594,7 +600,7 @@ export class EconomyService {
     const hostBalance = wallet ? toBig(wallet.balance) : 0n;
     const projectedBalance = hostBalance - totalCommitment;
     const hasSufficientFunds = hostBalance >= totalCommitment;
-    const { worldBankCut, winnerPrizes } = computePrizePool(totalCommitment, input.seatCount);
+    const { worldBankCut, winnerPrizes } = computePrizePool(totalCommitment, input.seatCount, input.gameKind);
 
     const quote: MatchCheckoutQuote = {
       seatCount: input.seatCount,
@@ -752,7 +758,12 @@ export class EconomyService {
     // The schedule row's existence was already proven at commit time
     // (commitMatchEntry could not have succeeded for this seatCount
     // without one); it is no longer re-consulted here at all.
-    const { worldBankCut, winnerPrizes } = computePrizePool(toBig(settlement.totalCollected), settlement.seatCount);
+    // Keyed by the game the SERVER recorded at commit time — never by anything a client sent.
+    const { worldBankCut, winnerPrizes } = computePrizePool(
+      toBig(settlement.totalCollected),
+      settlement.seatCount,
+      settlement.gameKind,
+    );
     const prizeFor = (placement: number): bigint => winnerPrizes[placement - 1] ?? 0n;
 
     const build = (): { repoParticipants: RepoSettlementParticipantInput[]; issuedVouchers: IssuedVoucherAck[] } => {

@@ -34,17 +34,10 @@ import type { SettlementParticipantOutcome } from "../economy/EconomyService.js"
  *     already-broadcast field (`LudoState.finishOrder`) recording exact
  *     finish order; the one seat never added to it (the game ends at
  *     `playerOrder.length - 1` finishers) is last place.
- *   - Rummy, 3+ seats, `matchMode: "single"` only: `scores` (a real,
- *     already-broadcast `Record<string, number>`, populated exactly when
- *     `RummyEngine.isOver()` is true for single mode) gives one point
- *     value per seat, lower is better, winner always 0. Sorted ascending,
- *     with any tie at a paid position (1st/2nd/3rd) rejected rather than
- *     arbitrarily broken — see `rummySingleRoundRanking`'s own comment for
- *     the real tie scenarios (invalid declare, cascading disconnects) this
- *     guards against. Pool101/pool201 remain `isValidRanking: false`: a
- *     pool match's real ranking is elimination order across many rounds,
- *     not one round's own scores, and reconstructing that correctly is
- *     separate, not-yet-done work.
+ *   - Rummy, any seat count, all three modes: winner-takes-all, so the ranking
+ *     is the winner first and everyone else after — see `rummyWinnerFirstRanking`.
+ *     Checked before the generic 2-seat rule because a pool match's `winnerId`
+ *     is only the last round's winner.
  *   - Dots & Boxes and Word Building, 3+ seats: ranked by their authoritative
  *     `scores`, highest first, refunding on any ambiguity at a paid place —
  *     see `scoreRanking`.
@@ -142,42 +135,53 @@ function ludoFinishOrder(engine: GameEngine): string[] | null {
 }
 
 /**
- * Rummy, single-round mode (`matchMode: "single"`) only — pool101/pool201
- * are a real multi-round elimination match where the settlement-relevant
- * ranking is elimination order across many rounds, not this round's own
- * `scores`; that is genuinely separate, harder work (see this file's
- * header) and is deliberately left `isValidRanking: false` for now.
+ * Rummy, every mode and seat count. The pot is winner-takes-all with no platform cut
+ * (shared/rummy-economy.ts), so the only placement that moves coins is 1st — the seat
+ * that made the show (`single`) or outlasted the table (`pool101` / `pool201`, read from
+ * `matchWinnerId`, since `winnerId` there is just the last round's winner). Everyone else
+ * is ordered by points, lowest first, only to complete the permutation the settlement
+ * requires; a tie among them is broken by seat order and can never change a payout, which
+ * is why — unlike the ranked games — a losers' tie is NOT a reason to refund.
  *
- * For single mode, `RummyEngine.isOver()` returns true exactly when
- * `phase === "finished"`, which is exactly when `getPublicState().scores`
- * is populated (RummyEngine.ts's own `getPublicState`) — one score per
- * seat, lower is better, winner is always 0 (standard Indian Rummy points
- * scoring). Sorting by score ascending gives the full placement order.
- *
- * A tie is possible and real — e.g. an invalid declare scores every
- * opponent 0, and a cascade of mid-round disconnects can score every
- * remaining non-winner the same fixed penalty (both seen directly in
- * RummyEngine.ts). Per the documented V1 rule ("any placement ambiguity at
- * a paid position is not a valid ranked result"), a tie between the score
- * at position i and i+1, for any i whose position or the one after it is
- * still paid (1st/2nd/3rd — DEFAULT_SCHEDULES never pays 4th+), makes the
- * whole ranking invalid rather than arbitrarily broken.
+ * Refunds (`null`) remain for the cases with no single winner to name: a pool match not yet
+ * over, a hand not yet scored, or a wrong show among 3+ seats, where every opponent books a
+ * clean zero and choosing one of them would be a guess. A wrong show at a 2-seat table has
+ * exactly one opponent, so that opponent wins.
  */
-function rummySingleRoundRanking(engine: GameEngine, seatIds: string[]): string[] | null {
-  const state = engine.getPublicState() as { matchMode?: unknown; scores?: unknown };
-  if (state.matchMode !== "single") return null;
-  const scores = state.scores as Record<string, number> | undefined;
-  if (!scores || !seatIds.every((id) => typeof scores[id] === "number")) return null;
+function rummyWinnerFirstRanking(engine: GameEngine, seatIds: string[]): string[] | null {
+  const state = engine.getPublicState() as {
+    matchMode?: unknown;
+    winnerId?: unknown;
+    matchOver?: unknown;
+    matchWinnerId?: unknown;
+    invalidDeclareBy?: unknown;
+    scores?: Record<string, unknown>;
+    cumulativeScores?: Record<string, unknown>;
+  };
+  const isPool = state.matchMode === "pool101" || state.matchMode === "pool201";
+  if (!isPool && state.matchMode !== "single") return null;
 
-  const ranked = [...seatIds].sort((a, b) => scores[a]! - scores[b]!);
-
-  // Boundaries 0-1, 1-2, 2-3 cover every pair needed to confirm 1st, 2nd,
-  // and 3rd are each unambiguously distinct from their neighbor.
-  for (let i = 0; i < Math.min(3, ranked.length - 1); i++) {
-    if (scores[ranked[i]!] === scores[ranked[i + 1]!]) return null;
+  let winnerId: unknown;
+  if (isPool) {
+    // The match winner outlasts the table; the LAST ROUND's winner can be someone else.
+    winnerId = state.matchOver === true ? state.matchWinnerId : null;
+  } else {
+    // `scores` only exists once the hand is scored — a winnerId alone is announced early.
+    if (!state.scores) return null;
+    winnerId = state.winnerId;
+    if (typeof winnerId !== "string" && typeof state.invalidDeclareBy === "string" && seatIds.length === 2) {
+      // A wrong show has no round winner, but with one opponent the opponent is the winner.
+      winnerId = seatIds.find((id) => id !== state.invalidDeclareBy);
+    }
   }
+  if (typeof winnerId !== "string" || !seatIds.includes(winnerId)) return null;
 
-  return ranked;
+  const points = (isPool ? state.cumulativeScores : state.scores) ?? {};
+  const pointsOf = (id: string): number => (Number.isFinite(points[id]) ? (points[id] as number) : Number.MAX_SAFE_INTEGER);
+  // Array.prototype.sort is stable, so equal scores keep seat order — a tie among the
+  // losers is broken deterministically and, since only 1st is paid, never changes a payout.
+  const rest = seatIds.filter((id) => id !== winnerId).sort((a, b) => pointsOf(a) - pointsOf(b));
+  return [winnerId, ...rest];
 }
 
 /** DEFAULT_SCHEDULES pays at most three places, and never the last seat (`min(seats - 1, 3)`). */
@@ -236,6 +240,10 @@ export function extractRankedParticipants(input: PlacementExtractionInput): Plac
 
   if (seatIds.length === 1) {
     order = seatIds;
+  } else if (game === "rummy") {
+    // Before the generic 2-seat branch: in a pool match `winnerId` is the last ROUND's winner,
+    // which is not necessarily the match winner who takes the pot.
+    order = rummyWinnerFirstRanking(engine, seatIds);
   } else if (seatIds.length === 2) {
     const winnerId = getWinnerId(engine);
     if (typeof winnerId === "string" && players.has(winnerId)) {
@@ -246,8 +254,6 @@ export function extractRankedParticipants(input: PlacementExtractionInput): Plac
     if (finish && finish.length === seatIds.length) {
       order = finish;
     }
-  } else if (game === "rummy") {
-    order = rummySingleRoundRanking(engine, seatIds);
   } else if (SCORE_RANKED_GAMES.has(game)) {
     order = scoreRanking(engine, seatIds, input.departedIds ?? new Set());
   }

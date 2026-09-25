@@ -110,6 +110,10 @@ export function useMatchSettlement(matchId: string | null | undefined): MatchSet
  */
 export function winnerPrizesFor(settlement: MatchEconomySettlementRecord | null): string[] | null {
   if (!settlement || settlement.status !== "SETTLED") return null;
-  const { winnerPrizes } = computePrizePool(BigInt(settlement.totalCollected), settlement.seatCount);
+  const totalCollected = BigInt(settlement.totalCollected);
+  // A winner-takes-all table (Rummy) keeps no platform cut and pays the whole pot to 1st. The record
+  // says so itself — a standard match always books a cut — so this needs no game key from the server.
+  if (totalCollected > 0n && BigInt(settlement.totalWorldBankCut) === 0n) return [totalCollected.toString()];
+  const { winnerPrizes } = computePrizePool(totalCollected, settlement.seatCount);
   return winnerPrizes.map((p) => p.toString());
 }

@@ -60,6 +60,8 @@ export interface MatchCheckoutQuoteInput {
   botSeatCount: number;
   /** Omit to use the platform default rate (100 coins/seat, today's fixed behavior, unchanged). */
   entryStakeCoins?: number;
+  /** Machine game key. Only changes how the prize is shown in the quote — Rummy pays the whole pot to first place. */
+  gameKind?: string;
 }
 
 export interface MatchCheckoutQuote {

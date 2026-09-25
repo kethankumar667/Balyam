@@ -22,6 +22,7 @@ import PassPhoneGate from "../components/PassPhoneGate";
 import { normalizeWinnerId, rankMatchPlayers } from "../lib/matchRanking";
 import { useMatchSettlement } from "../hooks/useMatchSettlement";
 import { useMatchPayout } from "../hooks/useMatchPayout";
+import { defaultEntryStakeFor } from "@shared/rummy-economy";
 import MatchPayoutBanner from "../components/economy/MatchPayoutBanner";
 import { destroyVoiceSession, useVoiceRoster } from "../lib/voice-session";
 import RoomHeader from "../components/room/RoomHeader";
@@ -1116,6 +1117,7 @@ export default function Room() {
           humanSeatCount: lobbyHumanSeatCount,
           botSeatCount: lobbyBotSeatCount,
           entryStakeCoins: roomState?.entryStakeCoins,
+          gameKind: roomState?.game,
         }
       : null,
   );
@@ -1840,6 +1842,7 @@ export default function Room() {
                   lockPhase={lobbyLockPhase}
                   isHost={selfIsHost}
                   entryStakeCoins={roomState.entryStakeCoins}
+                  game={roomState.game}
                   canChangeStake={canChangeStake}
                   onChangeStake={() => setShowChangeStakeModal(true)}
                   stakeLockedReason={stakeLockedReason}
@@ -2240,7 +2243,8 @@ export default function Room() {
           <ChangeStakeModal
             open={showChangeStakeModal}
             onClose={() => setShowChangeStakeModal(false)}
-            currentStake={roomState.entryStakeCoins ?? 100}
+            game={roomState.game}
+            currentStake={roomState.entryStakeCoins ?? defaultEntryStakeFor(roomState.game)}
             isGuestHost={Boolean(selfPlayer?.isGuest || currentAccountKind() === "guest")}
             playerCount={viewModel.totalPlayersCount}
           />

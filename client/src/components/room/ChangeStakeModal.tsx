@@ -11,6 +11,13 @@ import {
   getPrevEntryStake,
   snapEntryStake,
 } from "@shared/types";
+import {
+  RUMMY_DEFAULT_STAKE_COINS,
+  guestHostStakeFor,
+  isValidEntryStakeFor,
+  isValidRummyStakeCoins,
+} from "@shared/rummy-economy";
+import RummyRatePicker from "../economy/RummyRatePicker";
 import { getSocket } from "../../lib/socket";
 import { AudioManager } from "../../services/AudioManager";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -20,6 +27,8 @@ export interface ChangeStakeModalProps {
   open: boolean;
   onClose: () => void;
   currentStake: number;
+  /** Machine game key — Rummy is staked by point rate, not by a free coin amount. */
+  game?: string;
   isGuestHost?: boolean;
   playerCount?: number;
 }
@@ -28,9 +37,15 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
   open,
   onClose,
   currentStake,
+  game,
   isGuestHost = false,
   playerCount = 2,
 }) => {
+  const isRummy = game === "rummy";
+  const guestStake = guestHostStakeFor(game);
+  const [rummyStake, setRummyStake] = useState<number>(() =>
+    isValidRummyStakeCoins(currentStake) ? currentStake : RUMMY_DEFAULT_STAKE_COINS,
+  );
   const [selectedTier, setSelectedTier] = useState<string>(() => {
     return ENTRY_STAKE_PRESET_TIERS.includes(currentStake as any)
       ? String(currentStake)
@@ -46,6 +61,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
     if (open) {
       setError(null);
       setBusy(false);
+      if (isValidRummyStakeCoins(currentStake)) setRummyStake(currentStake);
       if (ENTRY_STAKE_PRESET_TIERS.includes(currentStake as any)) {
         setSelectedTier(String(currentStake));
       } else {
@@ -55,7 +71,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
     }
   }, [open, currentStake]);
 
-  const targetStake = selectedTier === "custom" ? customStake : Number(selectedTier);
+  const targetStake = isRummy ? rummyStake : selectedTier === "custom" ? customStake : Number(selectedTier);
   const projectedPot = targetStake * Math.max(1, playerCount);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,13 +81,17 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
       return;
     }
 
-    if (!isValidEntryStakeCoins(targetStake)) {
-      setError(`Stake must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} (steps of 50 below 1000, 100 above 1000).`);
+    if (!isValidEntryStakeFor(game, targetStake)) {
+      setError(
+        isRummy
+          ? "Pick one of the Rummy point rates (1, 2, 4, 8 or 16 coins per point)."
+          : `Stake must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} (steps of 50 below 1000, 100 above 1000).`,
+      );
       return;
     }
 
-    if (isGuestHost && targetStake > 100) {
-      setError("Guest hosts can only host at the 100-coin table. Sign in to host higher stakes.");
+    if (isGuestHost && targetStake > guestStake) {
+      setError(`Guest hosts can only host at the ${guestStake}-coin table. Sign in to host higher stakes.`);
       return;
     }
 
@@ -149,6 +169,22 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
             </div>
           )}
 
+          {isRummy ? (
+            <div>
+              <label className="block text-xs font-bold text-[#8A6D4B] dark:text-slate-400 mb-2">
+                Select point rate
+              </label>
+              <RummyRatePicker
+                value={rummyStake}
+                onChange={(stake) => {
+                  setRummyStake(stake);
+                  setError(null);
+                }}
+                isGuest={isGuestHost}
+              />
+            </div>
+          ) : (
+          <>
           {/* Preset Buttons */}
           <div>
             <label className="block text-xs font-bold text-[#8A6D4B] dark:text-slate-400 mb-2">
@@ -275,8 +311,10 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
               )}
             </div>
           )}
+          </>
+          )}
 
-          {isGuestHost && (
+          {isGuestHost && !isRummy && (
             <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
               ℹ️ Guest hosts can only host at the 100-coin starter table. Sign in to host higher stakes or custom bets.
             </p>
@@ -315,7 +353,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={busy || (targetStake === currentStake && selectedTier !== "custom")}
+              disabled={busy || (targetStake === currentStake && (isRummy || selectedTier !== "custom"))}
               className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? (

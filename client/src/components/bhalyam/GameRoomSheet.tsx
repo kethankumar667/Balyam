@@ -26,6 +26,8 @@ import {
   getPrevEntryStake,
   snapEntryStake,
 } from "@shared/types";
+import { defaultEntryStakeFor } from "@shared/rummy-economy";
+import RummyRatePicker from "../economy/RummyRatePicker";
 import { getSocket } from "../../lib/socket";
 import { NO_ECONOMY_GAMES } from "@shared/catalog";
 import { useRoomStore } from "../../store/roomStore";
@@ -456,7 +458,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   // below (disabledIds) and, authoritatively, RoomManager.createRoom /
   // checkHostEconomyEligibility server-side, which never trust this UI
   // gate alone.
-  const [entryStakeTier, setEntryStakeTier] = useState<string>("100");
+  // Rummy has no free-amount stake: it starts on the 1-point table (80 coins) and is picked by point rate.
+  const [entryStakeTier, setEntryStakeTier] = useState<string>(() => String(defaultEntryStakeFor(game)));
   const [customStake, setCustomStake] = useState<number>(500);
   const isGuestHost = currentAccountKind() === "guest";
   const entryStakeCoins = entryStakeTier === "custom" ? customStake : Number(entryStakeTier);
@@ -1362,7 +1365,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] uppercase tracking-widest font-extrabold text-sand-600 dark:text-slate-400">
-                  Entry stake per seat
+                  {game === "rummy" ? "Point rate" : "Entry stake per seat"}
                 </label>
                 <span className="text-xs font-black text-economy-coin flex items-center gap-1">
                   <CoinIcon className="w-3.5 h-3.5" />
@@ -1371,6 +1374,14 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                 </span>
               </div>
 
+              {game === "rummy" ? (
+                <RummyRatePicker
+                  value={entryStakeCoins}
+                  onChange={(stake) => setEntryStakeTier(String(stake))}
+                  isGuest={isGuestHost}
+                />
+              ) : (
+              <>
               {/* 4 Balanced Preset Tiers */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {ENTRY_STAKE_PRESET_TIERS.map((tier) => {
@@ -1516,6 +1527,8 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
                   <InfoIcon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   <span>Guest hosts can host at 100 coins/seat. Sign in to unlock higher stakes.</span>
                 </p>
+              )}
+              </>
               )}
             </div>
             )}
