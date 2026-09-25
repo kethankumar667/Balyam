@@ -78,15 +78,15 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
       onClose={onClose}
       mobileSheet
       ariaLabelledBy="share-mandali-title"
-      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
     >
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
-          <h2 id="share-mandali-title" className="text-base font-black text-slate-900 dark:text-white">
+          <h2 id="share-mandali-title" className="text-base font-semibold text-album-ink">
             Play with your Mandali
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Post {gameName} room <span className="font-mono font-bold tracking-widest">{roomCode}</span> in a group's
+          <p className="text-[13px] text-album-ink3 mt-0.5">
+            Post {gameName} room <span className="font-mono font-bold">{roomCode}</span> in a group's
             chat with a Join button.
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="min-h-[44px] min-w-[44px] -mr-2 -mt-2 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+          className="min-h-[44px] min-w-[44px] -mr-2 -mt-2 rounded-xl flex items-center justify-center text-album-ink3 hover:text-album-ink focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
         >
           <X className="w-5 h-5" />
         </button>
@@ -102,20 +102,20 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
 
       <div className="mt-4">
         {!loaded ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center gap-2 py-8 text-[15px] text-album-ink3">
             <Loader2 className="w-4 h-4 animate-spin" />
             Finding your Mandalis…
           </div>
         ) : myMandalis.length === 0 ? (
           <div className="text-center py-6">
-            <Users className="w-9 h-9 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-            <p className="text-sm font-bold text-slate-900 dark:text-white">You are not in a Mandali yet</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">
+            <Users className="w-9 h-9 mx-auto mb-2 text-album-ink3" />
+            <p className="text-[15px] font-bold text-album-ink">You are not in a Mandali yet</p>
+            <p className="text-[13px] text-album-ink3 mt-1 mb-4">
               Join or start one to invite its members to your room.
             </p>
             <Link
               to="/mandali"
-              className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-sm"
+              className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-album-foilfill text-album-onfoil font-semibold text-[15px]"
             >
               Find a Mandali
             </Link>
@@ -131,10 +131,10 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
                   return (
                     <label
                       key={m.id}
-                      className={`flex items-center gap-3 min-h-[56px] px-3.5 py-2.5 rounded-2xl border cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-amber-500 ${
+                      className={`flex items-center gap-3 min-h-[56px] px-3.5 py-2.5 rounded-2xl border cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-album-focus ${
                         isSelected
-                          ? "bg-amber-500/10 border-amber-500"
-                          : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                          ? "bg-album-foilfill/10 border-album-foil/40"
+                          : "bg-album-page border-album-line hover:border-album-foil/40"
                       }`}
                     >
                       <input
@@ -148,22 +148,22 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
                         }}
                         className="sr-only"
                       />
-                      <span className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <span className="w-10 h-10 rounded-xl bg-album-foilfill/15 border border-album-foil/40 text-album-foil flex items-center justify-center shrink-0">
                         <Crown className="w-5 h-5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{m.name}</span>
-                        <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        <span className="block text-[15px] font-bold text-album-ink truncate">{m.name}</span>
+                        <span className="block text-[13px] text-album-ink3 truncate">
                           @{m.handle} · {m.memberCount} members
                         </span>
                       </span>
                       {done ? (
-                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1">
+                        <span className="text-[13px] font-bold text-album-success inline-flex items-center gap-1">
                           <CheckCircle2 className="w-4 h-4" />
                           Shared
                         </span>
                       ) : (
-                        isSelected && <Check className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        isSelected && <Check className="w-5 h-5 text-album-foil" />
                       )}
                     </label>
                   );
@@ -172,14 +172,14 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
             </fieldset>
 
             {error && (
-              <p role="alert" className="mt-3 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-start gap-1.5">
+              <p role="alert" className="mt-3 text-[13px] font-semibold text-album-danger flex items-start gap-1.5">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 {error}
               </p>
             )}
 
             {sharedTo.length > 0 && selected && alreadyShared && (
-              <p className="mt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              <p className="mt-3 text-[13px] font-semibold text-album-success">
                 Posted in {selected.name}.{" "}
                 <a
                   href={`/mandali/${selected.handle}`}
@@ -196,7 +196,7 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[48px] rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-sm transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+                className="min-h-[48px] rounded-2xl bg-album-field hover:bg-album-line text-album-ink font-semibold text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
               >
                 {sharedTo.length > 0 ? "Done" : "Cancel"}
               </button>
@@ -204,7 +204,7 @@ export default function ShareToMandaliSheet({ open, onClose, roomCode, gameName 
                 type="button"
                 onClick={handleShare}
                 disabled={!selected || sharing || alreadyShared}
-                className="min-h-[48px] rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 font-extrabold text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+                className="min-h-[48px] rounded-2xl bg-album-foilfill text-album-onfoil font-semibold text-[15px] shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
               >
                 {sharing ? (
                   <>

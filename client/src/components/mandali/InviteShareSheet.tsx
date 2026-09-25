@@ -83,33 +83,40 @@ export default function InviteShareSheet({ open, onClose, mandaliName, mandaliHa
 
   return (
     <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="invite-share-title" closeOnBackdropClick>
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6">
+      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-1">
-          <Link2 className="w-4 h-4 text-amber-500" />
-          <h2 id="invite-share-title" className="text-base font-black text-slate-900 dark:text-white">
+          <Link2 className="w-4 h-4 text-album-foil" />
+          <h2 id="invite-share-title" className="text-base font-semibold text-album-ink">
             Invite to {mandaliName}
           </h2>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="text-[13px] text-album-ink3 mb-4">
           Anyone with this link can request to join. You can reset it anytime to stop old links from working.
         </p>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center gap-2 py-6 text-[15px] text-album-ink3">
             <Loader2 className="w-4 h-4 animate-spin" />
             Creating link…
           </div>
         ) : error ? (
-          <p className="text-sm text-rose-600 dark:text-rose-400 py-4" role="alert">
-            {error}
-          </p>
+          <div role="alert" className="py-4">
+            <p className="m-0 text-[15px] text-album-danger">{error}</p>
+            <button
+              type="button"
+              onClick={() => void mint()}
+              className="album-focus mt-3 min-h-[44px] cursor-pointer rounded-xl bg-album-field px-5 text-[15px] font-semibold text-album-ink hover:bg-album-line"
+            >
+              Try again
+            </button>
+          </div>
         ) : (
           <>
             <button
               type="button"
               onClick={copyLink}
               title="Tap to copy invite link"
-              className="w-full text-left rounded-xl border border-dashed border-amber-400/60 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/5 px-3.5 py-2.5 mb-3 font-mono text-xs text-slate-700 dark:text-slate-300 truncate cursor-pointer hover:border-amber-500 transition-colors"
+              className="w-full text-left rounded-xl border border-dashed border-album-foil/40 bg-album-foilfill/20 px-3.5 py-2.5 mb-3 font-mono text-[13px] text-album-ink truncate cursor-pointer hover:border-album-foil transition-colors"
             >
               {inviteUrl}
             </button>
@@ -118,7 +125,7 @@ export default function InviteShareSheet({ open, onClose, mandaliName, mandaliHa
               <button
                 type="button"
                 onClick={copyLink}
-                className="min-h-[44px] rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="min-h-[44px] rounded-xl font-bold text-[15px] bg-album-foilfill hover:brightness-105 text-album-onfoil shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? "Copied!" : "Copy Link"}
@@ -126,7 +133,7 @@ export default function InviteShareSheet({ open, onClose, mandaliName, mandaliHa
               <button
                 type="button"
                 onClick={share}
-                className="min-h-[44px] rounded-xl font-semibold text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="min-h-[44px] rounded-xl font-semibold text-[15px] bg-album-raised border border-album-line text-album-ink hover:bg-album-field active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 Share via…
               </button>
@@ -135,7 +142,7 @@ export default function InviteShareSheet({ open, onClose, mandaliName, mandaliHa
             <button
               type="button"
               onClick={mint}
-              className="mt-4 w-full min-h-[36px] flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+              className="mt-4 w-full min-h-[36px] flex items-center justify-center gap-1.5 text-[13px] font-semibold text-album-ink3 hover:text-album-danger transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset link (old link stops working)

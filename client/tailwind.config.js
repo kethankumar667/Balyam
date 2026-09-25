@@ -185,6 +185,30 @@ export default {
         bad:  { 100: "#FCE0DE", 300: "#FCA5A0", 500: "#DC2626", 700: "#B02318", 800: "#8E1D14" },
         note: { 100: "#DBEBF7", 300: "#7DC5EE", 500: "#0284C7", 700: "#04628F", 800: "#044E72" },
 
+        // ── Mandali "album" palette ─────────────────────────────────────
+        // Every value is a CSS variable holding space-separated RGB channels
+        // (defined for both themes in components/mandali/album/album.css), so
+        // one class flips with the theme AND still takes an opacity suffix:
+        // `bg-album-foil/20`. Panels and ink flip together by construction.
+        album: {
+          page:    "rgb(var(--album-page) / <alpha-value>)",
+          raised:  "rgb(var(--album-raised) / <alpha-value>)",
+          field:   "rgb(var(--album-field) / <alpha-value>)",
+          line:    "rgb(var(--album-line) / <alpha-value>)",
+          ink:     "rgb(var(--album-ink) / <alpha-value>)",
+          ink2:    "rgb(var(--album-ink-2) / <alpha-value>)",
+          ink3:    "rgb(var(--album-ink-3) / <alpha-value>)",
+          foil:    "rgb(var(--album-foil) / <alpha-value>)",
+          foilfill: "rgb(var(--album-foil-fill) / <alpha-value>)",
+          onfoil:  "rgb(var(--album-on-foil) / <alpha-value>)",
+          ribbon:  "rgb(var(--album-ribbon) / <alpha-value>)",
+          mine:    "rgb(var(--album-mine) / <alpha-value>)",
+          indigo:  "rgb(var(--album-indigo) / <alpha-value>)",
+          danger:  "rgb(var(--album-danger) / <alpha-value>)",
+          success: "rgb(var(--album-success) / <alpha-value>)",
+          focus:   "rgb(var(--album-focus) / <alpha-value>)",
+        },
+
         // ── BHALYAM treasure-chest palette ──────────────────────────────
         // Scoped under `bhalyam.*` so the in-game UI (brand/gold tokens
         // above) is never touched. The hero metaphor is a wooden treasure

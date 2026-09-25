@@ -36,9 +36,9 @@ export interface LeaveMandaliDialogProps {
 }
 
 const SECONDARY_BUTTON =
-  "flex-1 min-h-[44px] rounded-xl font-semibold text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500";
+  "flex-1 min-h-[44px] rounded-xl font-semibold text-[15px] bg-album-field text-album-ink hover:bg-album-line transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-focus";
 const DANGER_BUTTON =
-  "flex-1 min-h-[44px] rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-400";
+  "flex-1 min-h-[44px] rounded-xl font-bold text-[15px] bg-album-danger hover:brightness-110 text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-danger";
 
 export default function LeaveMandaliDialog({
   open, onClose, mandaliName, isOwner, candidates, onLeave, onDeleteInstead,
@@ -86,16 +86,16 @@ export default function LeaveMandaliDialog({
 
   return (
     <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="leave-mandali-title">
-      <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6">
+      <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-3">
-          <LogOut className="w-4 h-4 text-rose-500" aria-hidden="true" />
-          <h2 id="leave-mandali-title" className="text-base font-black text-slate-900 dark:text-white">
+          <LogOut className="w-4 h-4 text-album-danger" aria-hidden="true" />
+          <h2 id="leave-mandali-title" className="text-base font-semibold text-album-ink">
             {title}
           </h2>
         </div>
 
         {!isOwner && (
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-[15px] text-album-ink2">
             You&apos;ll stop receiving this Mandali&apos;s messages and won&apos;t see what is said after you go. You
             can join again later if the group allows it.
           </p>
@@ -103,7 +103,7 @@ export default function LeaveMandaliDialog({
 
         {hostMustChoose && (
           <div>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+            <p className="text-[15px] text-album-ink2 mb-3">
               You are the host, so you can&apos;t leave until someone else takes over. Pick who becomes the host of{" "}
               {mandaliName}; you will then leave.
             </p>
@@ -113,8 +113,8 @@ export default function LeaveMandaliDialog({
                   key={candidate.playerId}
                   className={`flex items-center gap-3 min-h-[44px] px-3 rounded-xl border cursor-pointer transition-colors ${
                     selectedId === candidate.playerId
-                      ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10"
-                      : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      ? "border-album-foil/40 bg-album-foilfill/15"
+                      : "border-album-line hover:bg-album-field"
                   }`}
                 >
                   <input
@@ -124,14 +124,14 @@ export default function LeaveMandaliDialog({
                     checked={selectedId === candidate.playerId}
                     onChange={() => setSelectedId(candidate.playerId)}
                     disabled={isLeaving}
-                    className="w-4 h-4 accent-amber-500"
+                    className="w-4 h-4 accent-album-foilfill"
                   />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    <span className="block text-[15px] font-semibold text-album-ink truncate">
                       {candidate.displayName}
                     </span>
-                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 capitalize">
-                      {candidate.role.toLowerCase()}
+                    <span className="block text-[13px] text-album-ink3 capitalize">
+                      {["ADMIN", "LEADER", "OFFICER", "MODERATOR", "EVENT_HOST"].includes(candidate.role) ? "admin" : "member"}
                     </span>
                   </span>
                 </label>
@@ -141,14 +141,14 @@ export default function LeaveMandaliDialog({
         )}
 
         {hostIsAlone && (
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-[15px] text-album-ink2">
             You are the only member, so there is nobody to hand {mandaliName} over to. You can delete it instead, or
             invite someone first.
           </p>
         )}
 
         {error && (
-          <p className="mt-3 text-xs text-rose-600 dark:text-rose-400" role="alert">
+          <p className="mt-3 text-[13px] text-album-danger" role="alert">
             {error}
           </p>
         )}

@@ -1,9 +1,8 @@
 /**
- * BHALYAM Mandali — Room Invite Card
+ * BHALYAM Mandali — a game room someone shared into the chat.
  *
- * A room someone shared into chat, as something you can act on: who is
- * hosting, which game, how many seats are taken right now, and a Join button
- * that takes you straight into the room.
+ * Pinned to the page like an invitation: who is hosting, which game, how many
+ * seats are taken right now, and a Join button that takes you straight in.
  *
  * The card never lets you walk into a wall. Its status is live (see
  * roomInviteStatusStore), and a full, started or closed room is shown as a
@@ -12,33 +11,35 @@
  * server's answer, that is explained too, in words, not as a red failure.
  *
  * Requirements:
- * - Dual light/dark theme support.
+ * - Light and dark themes both flip fully (panels and ink together).
  * - 44x44px touch targets.
  * - Zero usage of Sparkles from lucide-react.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gamepad2, Users, Lock, Loader2, ArrowRight, DoorClosed, Clock } from "lucide-react";
+import { ArrowRight, Clock, DoorClosed, Gamepad2, Lock } from "lucide-react";
 import type { MandaliMessage } from "@shared/mandali/types.js";
 import type { RoomInviteState } from "@shared/mandali/notifications.js";
 import { joinRoomByCode, joinFailureMessage, type RoomJoinFailure } from "../../lib/roomJoin";
 import { useRoomInviteStatusStore } from "../../store/roomInviteStatusStore";
+import { useTranslation } from "../../hooks/useTranslation";
+import { AlbumButton } from "./album/AlbumButton";
 
 export interface RoomInviteCardProps {
   message: MandaliMessage;
   selfId: string | null;
 }
 
-/** How the card presents each standing. `tone` picks the palette; nothing here is an "error". */
-const STATE_COPY: Record<RoomInviteState, { label: string; hint: string }> = {
-  OPEN: { label: "Open", hint: "" },
-  FULL: { label: "Room full", hint: "Every seat is taken. Ask the host to open one, or check back." },
-  IN_PROGRESS: { label: "In progress", hint: "The match has started — no new players can join." },
-  CLOSED: { label: "Closed", hint: "This room has ended." },
+const STATE_KEYS: Record<RoomInviteState, { label: string; hint: string | null }> = {
+  OPEN: { label: "mandali.invite.state.open", hint: null },
+  FULL: { label: "mandali.invite.state.full", hint: "mandali.invite.hint.full" },
+  IN_PROGRESS: { label: "mandali.invite.state.inProgress", hint: "mandali.invite.hint.inProgress" },
+  CLOSED: { label: "mandali.invite.state.closed", hint: "mandali.invite.hint.closed" },
 };
 
 export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const code = message.roomCode ?? "";
   const meta = message.roomInvite;
@@ -58,9 +59,7 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
   if (!code || message.content === "") {
     // A deleted card: nothing left to join.
     return (
-      <div className="rounded-2xl px-4 py-3 bg-slate-100 dark:bg-slate-800/60 text-xs italic text-slate-500 dark:text-slate-400">
-        This invitation was removed.
-      </div>
+      <div className="rounded-2xl bg-album-field px-4 py-3 text-sm italic text-album-ink3">{t("mandali.invite.removed")}</div>
     );
   }
 
@@ -72,7 +71,7 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
   const canJoin = !youAreIn ? state === null || state === "OPEN" : true;
 
   const gameName = meta?.gameName ?? "Game";
-  const title = meta?.roomName ? `${meta.roomName}` : `${gameName} room`;
+  const title = meta?.roomName ? `${meta.roomName}` : t("mandali.invite.roomOf", { game: gameName });
   const host = meta?.hostName ?? message.senderName;
 
   const handleJoin = async () => {
@@ -101,131 +100,93 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
 
   const muted = !canJoin;
   const failureText = failure ? joinFailureMessage(failure) : "";
-  const seatSummary = players !== null && maxPlayers > 0 ? `${players} of ${maxPlayers} seats` : null;
+  const seatSummary = players !== null && maxPlayers > 0 ? t("mandali.invite.seats", { players, max: maxPlayers }) : null;
+  const seatsTaken = players !== null && maxPlayers > 0 ? t("mandali.invite.seatsTaken", { players, max: maxPlayers }) : "";
+  const stateLabel = state ? t(STATE_KEYS[state].label) : "";
+  const stateHint = state && STATE_KEYS[state].hint ? t(STATE_KEYS[state].hint as string) : "";
+  const StateIcon = state === "FULL" ? Lock : state === "IN_PROGRESS" ? Clock : state === "CLOSED" ? DoorClosed : null;
+
+  const buttonLabel = joining
+    ? t("mandali.invite.joining")
+    : youAreIn
+      ? t("mandali.invite.return")
+      : canJoin
+        ? t("mandali.invite.join")
+        : state === "FULL"
+          ? t("mandali.invite.btn.full")
+          : state === "IN_PROGRESS"
+            ? t("mandali.invite.btn.started")
+            : t("mandali.invite.btn.closed");
 
   return (
     <div
       role="group"
-      aria-label={`Room invitation: ${title}${seatSummary ? `, ${seatSummary} taken` : ""}${state ? `, ${STATE_COPY[state].label}` : ""}`}
-      className={`w-full max-w-sm rounded-2xl overflow-hidden border shadow-sm transition-colors ${
-        muted
-          ? "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800"
-          : "bg-white dark:bg-slate-900/90 border-amber-500/30"
-      }`}
+      aria-label={`${t("mandali.invite.label", { title })}${seatsTaken ? `, ${seatsTaken}` : ""}${stateLabel ? `, ${stateLabel}` : ""}`}
+      className={`album-corners w-full max-w-sm rounded-2xl border bg-album-raised p-4 ${muted ? "border-album-line" : "border-album-foil/40"}`}
     >
-      <div
-        className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${
-          muted ? "bg-slate-100/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800" : "bg-amber-500/10 border-amber-500/20"
-        }`}
-      >
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-            muted ? "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+      <div className="flex items-start gap-3">
+        <span
+          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+            muted ? "bg-album-field text-album-ink3" : "bg-album-foilfill/20 text-album-foil"
           }`}
         >
-          <Gamepad2 className="w-4 h-4" />
-        </div>
+          <Gamepad2 className="h-5 w-5" aria-hidden="true" />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-            {isMine ? "You invited the Mandali" : `${message.senderName} invited you to play`}
+          <p className="m-0 truncate text-sm font-semibold leading-snug text-album-ink">
+            {isMine ? t("mandali.invite.youInvited") : t("mandali.invite.invitedYou", { name: message.senderName })}
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            {gameName} · hosted by {host}
-          </p>
+          <p className="m-0 truncate text-[13px] text-album-ink3">{t("mandali.invite.hostedBy", { game: gameName, host })}</p>
         </div>
         {state && (
-          <span
-            className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider rounded-full px-2 py-0.5 border ${
-              state === "OPEN"
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
-                : "bg-slate-500/10 border-slate-500/25 text-slate-600 dark:text-slate-300"
-            }`}
-          >
-            {state === "FULL" && <Lock className="w-3 h-3" />}
-            {state === "IN_PROGRESS" && <Clock className="w-3 h-3" />}
-            {state === "CLOSED" && <DoorClosed className="w-3 h-3" />}
-            {STATE_COPY[state].label}
+          <span className={`flex flex-shrink-0 items-center gap-1 text-[13px] font-medium ${state === "OPEN" ? "text-album-success" : "text-album-ink3"}`}>
+            {StateIcon && <StateIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+            {stateLabel}
           </span>
         )}
       </div>
 
-      <div className="px-4 py-3 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className={`text-sm font-black truncate ${muted ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}>
-              {title}
-            </p>
-            <p className="font-mono text-xs font-bold tracking-[0.2em] text-slate-500 dark:text-slate-400">{code}</p>
-          </div>
-
-          <div className="shrink-0 text-right">
-            {maxPlayers > 0 && (
-              <div className="flex items-center justify-end gap-1" aria-hidden>
-                {Array.from({ length: maxPlayers }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      players !== null && i < players
-                        ? muted
-                          ? "bg-slate-400 dark:bg-slate-500"
-                          : "bg-amber-500"
-                        : "bg-slate-200 dark:bg-slate-700"
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-            <p className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-end gap-1">
-              <Users className="w-3 h-3" />
-              {seatSummary ?? "Checking seats…"}
-            </p>
-          </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`m-0 truncate text-lg font-semibold leading-tight ${muted ? "text-album-ink3" : "text-album-ink"}`}>{title}</p>
+          <p className="m-0 font-mono text-[13px] font-semibold tracking-[0.2em] text-album-ink3">{code}</p>
         </div>
-
-        {state && STATE_COPY[state].hint && !youAreIn && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{STATE_COPY[state].hint}</p>
-        )}
-
-        {failureText && (
-          <p role="status" className="text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
-            {failureText}
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={handleJoin}
-          disabled={joining || (!canJoin && !youAreIn)}
-          className={`w-full min-h-[44px] rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
-            canJoin
-              ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md active:scale-[0.98] cursor-pointer"
-              : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed"
-          } disabled:opacity-70`}
-        >
-          {joining ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Joining…
-            </>
-          ) : youAreIn ? (
-            <>
-              Return to room
-              <ArrowRight className="w-4 h-4" />
-            </>
-          ) : canJoin ? (
-            <>
-              Join room
-              <ArrowRight className="w-4 h-4" />
-            </>
-          ) : state === "FULL" ? (
-            "Room full"
-          ) : state === "IN_PROGRESS" ? (
-            "Already started"
-          ) : (
-            "Room closed"
+        <div className="flex-shrink-0 text-right">
+          {maxPlayers > 0 && (
+            <div className="flex items-center justify-end gap-1" aria-hidden="true">
+              {Array.from({ length: maxPlayers }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    players !== null && i < players ? (muted ? "bg-album-ink3" : "bg-album-foilfill") : "bg-album-line"
+                  }`}
+                />
+              ))}
+            </div>
           )}
-        </button>
+          <p className="m-0 mt-1 text-[13px] text-album-ink3">{seatSummary ?? t("mandali.invite.checking")}</p>
+        </div>
       </div>
+
+      {stateHint && !youAreIn && <p className="m-0 mt-3 text-sm leading-relaxed text-album-ink2">{stateHint}</p>}
+
+      {failureText && (
+        <p role="status" className="m-0 mt-3 text-sm font-medium leading-relaxed text-album-foil">
+          {failureText}
+        </p>
+      )}
+
+      <AlbumButton
+        variant={canJoin ? "primary" : "quiet"}
+        size="lg"
+        onClick={handleJoin}
+        loading={joining}
+        disabled={!canJoin && !youAreIn}
+        className="mt-3 w-full"
+        icon={!joining && (youAreIn || canJoin) ? <ArrowRight className="h-4 w-4 order-last" aria-hidden="true" /> : undefined}
+      >
+        {buttonLabel}
+      </AlbumButton>
     </div>
   );
 }

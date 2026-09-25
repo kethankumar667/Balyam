@@ -1,553 +1,321 @@
 /**
- * BHALYAM Mandali — Futuristic Discovery & Clan Hub
+ * BHALYAM Mandali — the shelf.
  *
- * FAANG/MAANG-grade community directory and member portal.
- * - When user belongs to >= 1 Mandali: Prioritizes "Your Communities",
- *   hides the heavy explore grid behind an on-demand "Browse & Explore Other Mandalis" toggle.
- * - When user belongs to 0 Mandalis: Full discovery portal displayed by default.
- * - Guest gating: Only signed-in members can create Mandalis.
- * - Dual Light (`data-theme="light"`) and Dark (`data-theme="dark"`) mode support.
- * - Strictly NO usage of Sparkles from lucide-react. Uses Crown, Flame, Shield, Trophy, Users, Zap, Sun, Moon, Compass, ChevronDown.
- * - WCAG 2.1 AA focus rings and minimum 44x44px touch targets.
+ * Where you land before you open a group. Your own Mandalis stand on the shelf
+ * as albums (each with its own cloth, so you know yours by colour before you
+ * read the name); finding someone else's Mandali is one quiet step below, never
+ * the headline. A person with no Mandali yet gets a single warm invitation to
+ * start one — not a directory.
+ *
+ * Requirements:
+ * - Light and dark themes both flip fully (panels and ink together).
+ * - Touch targets at least 44 x 44 px, visible focus everywhere.
+ * - Zero usage of Sparkles from lucide-react.
+ * - Every visible string goes through t().
  */
 
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  Users,
-  Search,
-  Plus,
-  Crown,
-  Shield,
-  Trophy,
-  Flame,
-  ArrowRight,
-  Zap,
-  Gamepad2,
-  Compass,
-  ChevronDown,
-  Lock,
-} from "lucide-react";
-import { useMandaliStore, DEFAULT_PREVIEW_MANDALIS } from "../../store/mandaliStore";
+import { useNavigate } from "react-router-dom";
+import { ChevronDown, Plus, Search, Users } from "lucide-react";
+import { useMandaliStore } from "../../store/mandaliStore";
 import { useAuthStore } from "../../store/authStore";
+import { useMandaliInboxStore } from "../../store/mandaliInboxStore";
+import { useTranslation } from "../../hooks/useTranslation";
 import { CreateMandaliModal } from "./CreateMandaliModal";
 import AppLayout from "../../components/layout/AppLayout";
+import { AlbumButton, AlbumCover, AlbumSheet } from "../../components/mandali/album";
+import { coverClothClass } from "../../components/mandali/album/coverCloth";
 
-const LANGUAGES = ["All", "English", "Telugu", "Hindi", "Tamil", "Kannada"];
-const POPULAR_TAGS = ["All", "Casual", "Tournaments", "Ludo", "Hand Cricket", "Rummy", "Weekend Play"];
+const LANGUAGES = ["English", "Telugu", "Hindi", "Tamil", "Kannada"];
+const TOPICS = ["Casual", "Ludo", "Hand Cricket", "Rummy", "Weekend Play"];
+/** The sentinel both filter rows use for "no filter". */
+const ANY = "All";
+
+interface FilterRowProps {
+  label: string;
+  options: readonly string[];
+  value: string;
+  allLabel: string;
+  onChange: (value: string) => void;
+}
+
+/** One row of choices. A real radio group, so it reads as "one of these" to a screen reader. */
+function FilterRow({ label, options, value, allLabel, onChange }: FilterRowProps) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+      <span className="flex-shrink-0 pr-1 text-sm font-semibold text-album-ink3">{label}</span>
+      {[ANY, ...options].map((option) => {
+        const selected = value === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option)}
+            className={`album-focus min-h-[44px] flex-shrink-0 cursor-pointer whitespace-nowrap rounded-full px-4 text-[15px] font-medium transition-colors ${
+              selected
+                ? "bg-album-foilfill text-album-onfoil"
+                : "border border-album-line bg-album-raised text-album-ink2 hover:bg-album-field"
+            }`}
+          >
+            {option === ANY ? allLabel : option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MandaliDiscoveryPage(): JSX.Element {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const isMember = useAuthStore((s) => s.isMember);
-  const { mandalis, myMandalis, isLoading, fetchMandalis, fetchMyMandalis, createMandali } =
-    useMandaliStore();
+  const digests = useMandaliInboxStore((s) => s.digests);
+  const { mandalis, myMandalis, isLoading, fetchMandalis, fetchMyMandalis, createMandali } = useMandaliStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("All");
-  const [selectedTag, setSelectedTag] = useState("All");
+  const [language, setLanguage] = useState(ANY);
+  const [topic, setTopic] = useState(ANY);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [showExplore, setShowExplore] = useState(false);
+  const [showFind, setShowFind] = useState(false);
 
   useEffect(() => {
     fetchMyMandalis();
     fetchMandalis();
   }, [fetchMyMandalis, fetchMandalis]);
 
-  const handleFilterChange = (lang: string, tag: string, search: string) => {
+  const applyFilters = (nextLanguage: string, nextTopic: string, nextSearch: string) => {
     fetchMandalis({
-      language: lang !== "All" ? lang : undefined,
-      tag: tag !== "All" ? tag : undefined,
-      search: search.trim() ? search.trim() : undefined,
+      language: nextLanguage !== ANY ? nextLanguage : undefined,
+      tag: nextTopic !== ANY ? nextTopic : undefined,
+      search: nextSearch.trim() ? nextSearch.trim() : undefined,
     });
   };
 
-  const onSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleFilterChange(selectedLanguage, selectedTag, searchQuery);
+  const onSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    applyFilters(language, topic, searchQuery);
   };
 
-  const getEmblemIcon = (emblemId?: string) => {
-    switch (emblemId) {
-      case "crown_gold":
-        return <Crown className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />;
-      case "flame_ruby":
-        return <Flame className="w-5 h-5 text-rose-500 dark:text-rose-400" />;
-      case "shield_sapphire":
-        return <Shield className="w-5 h-5 text-blue-500 dark:text-blue-400" />;
-      default:
-        return <Trophy className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
-    }
+  const resetFilters = () => {
+    setLanguage(ANY);
+    setTopic(ANY);
+    setSearchQuery("");
+    applyFilters(ANY, ANY, "");
   };
 
   const handleCreateClick = () => {
-    if (!isMember) {
-      setShowAuthPrompt(true);
-    } else {
-      setShowCreateModal(true);
-    }
+    if (!isMember) setShowAuthPrompt(true);
+    else setShowCreateModal(true);
   };
 
-  const hasJoinedMandalis = myMandalis.length > 0;
-  // If user has 0 mandalis, explore section is open by default; otherwise controlled by showExplore
-  const isExploreVisible = !hasJoinedMandalis || showExplore;
+  const hasMandalis = myMandalis.length > 0;
+  // With nothing on the shelf yet, finding one is the next useful thing; otherwise it stays tucked away.
+  const findVisible = !hasMandalis || showFind;
+  const open = (handle: string) => navigate(`/mandali/${handle}`);
 
   return (
     <AppLayout>
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-14 space-y-6 sm:space-y-8 select-none">
-        {/* Mandali Header Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
-              <Crown className="w-6 h-6" />
-            </div>
+      <div className="album-surface flex-1">
+        <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Mandali Communities
-                </h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-400 font-bold">
-                  మండలి
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-                Form gaming squads, launch multiplayer arena rooms, chat in real-time, and transfer clan coins.
-              </p>
+              <h1 className="m-0 flex flex-wrap items-baseline gap-x-3 text-3xl font-semibold leading-tight text-album-ink sm:text-4xl">
+                {t("mandali.shelf.title")}
+                <span className="album-hand text-4xl font-normal text-album-foil">{t("mandali.shelf.script")}</span>
+              </h1>
+              <p className="mb-0 mt-2 max-w-xl text-base leading-relaxed text-album-ink2">{t("mandali.shelf.subtitle")}</p>
             </div>
-          </div>
+            {hasMandalis && (
+              <AlbumButton variant="primary" onClick={handleCreateClick} icon={<Plus className="h-4 w-4" aria-hidden="true" />} className="self-start sm:self-auto">
+                {t("mandali.shelf.startAnother")}
+              </AlbumButton>
+            )}
+          </header>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={handleCreateClick}
-              className="min-h-[44px] px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-amber-500/20 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create Mandali</span>
-            </button>
-          </div>
-        </div>
-        {/* If user is in at least 1 Mandali: Dedicated "Your Communities" Headquarters */}
-        {hasJoinedMandalis ? (
-          <section className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2.5">
-                  <Crown className="w-7 h-7 text-amber-500" />
-                  Your Communities
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-                  You are an active member of {myMandalis.length} {myMandalis.length === 1 ? "clan" : "clans"}. Enter your lounge to chat, transfer coins, or squad up.
-                </p>
-              </div>
+          {hasMandalis ? (
+            <section aria-label={t("mandali.shelf.title")}>
+              <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
+                {myMandalis.map((m) => {
+                  const digest = digests.find((d) => d.mandaliId === m.id);
+                  // A muted Mandali keeps quiet on the shelf too.
+                  const unread = digest && digest.level !== "MUTED" ? digest.unreadCount : 0;
+                  const latest = digest?.latest?.preview ? `${digest.latest.senderName}: ${digest.latest.preview}` : "";
+                  return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => open(m.handle)}
+                      aria-label={t("mandali.shelf.open", { name: m.name })}
+                      className="album-focus group block w-full cursor-pointer rounded-2xl text-left transition-transform duration-200 hover:-translate-y-1"
+                    >
+                      <AlbumCover
+                        variant="tile"
+                        mandaliId={m.id}
+                        name={m.name}
+                        unread={unread}
+                        unreadLabel={t("mandali.shelf.unread", { count: unread })}
+                        subtitle={
+                          <>
+                            <span className="block">{t("mandali.shelf.people", { count: m.memberCount })}</span>
+                            {latest && <span className="mt-1 block truncate">{latest}</span>}
+                          </>
+                        }
+                      />
+                    </button>
+                  </li>
+                  );
+                })}
+              </ul>
 
-              <div className="flex items-center gap-2">
+              <div className="mt-8">
                 <button
                   type="button"
-                  onClick={handleCreateClick}
-                  className="min-h-[40px] px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-amber-500 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                  onClick={() => setShowFind((value) => !value)}
+                  aria-expanded={showFind}
+                  className="album-focus flex min-h-[56px] w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-album-line bg-album-raised px-5 text-left transition-colors hover:bg-album-field"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Start Another Clan</span>
-                </button>
-              </div>
-            </div>
-
-            {/* User's Clan Headquarters Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {myMandalis.map((m) => (
-                <div
-                  key={m.id}
-                  onClick={() => navigate(`/mandali/${m.handle}`)}
-                  className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border-2 border-amber-500/40 hover:border-amber-500 rounded-3xl p-5 flex flex-col justify-between transition-all hover:shadow-xl hover:shadow-amber-500/10 group cursor-pointer relative overflow-hidden"
-                >
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-500 dark:text-amber-400 group-hover:scale-105 transition-transform shadow-inner">
-                          {getEmblemIcon(m.emblem)}
-                        </div>
-                        <div>
-                          <h2 className="font-black text-slate-900 dark:text-white text-lg leading-snug group-hover:text-amber-500 transition-colors">
-                            {m.name}
-                          </h2>
-                          <p className="text-xs text-amber-600 dark:text-amber-400 font-mono font-bold">@{m.handle}</p>
-                        </div>
-                      </div>
-
-                      <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
-                        Lv {m.level}
-                      </span>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed font-medium">
-                      {m.description || "Active community lounge."}
-                    </p>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
-                        {m.language}
-                      </span>
-                      {m.tags.slice(0, 3).map((t) => (
-                        <span
-                          key={t}
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Footer & CTA */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-amber-500" />
-                        {m.memberCount} members active
-                      </span>
-                      <span className="text-emerald-500 font-bold">● Active Lounge</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/mandali/${m.handle}`);
-                      }}
-                      className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-amber-500/20 active:scale-98 transition-all"
-                    >
-                      <span>Enter Clan Lounge</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* On-Demand Expandable Toggle for Discovery Grid */}
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => setShowExplore((prev) => !prev)}
-                className="w-full min-h-[56px] px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/50 dark:hover:border-amber-500/50 shadow-sm flex items-center justify-between group transition-all focus-visible:ring-2 focus-visible:ring-amber-500"
-                aria-expanded={showExplore}
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 group-hover:scale-105 transition-transform">
-                    <Compass className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
-                      {showExplore ? "Hide Explore Directory" : "Browse & Explore Other Mandalis"}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                      Discover {Math.max(mandalis.length, DEFAULT_PREVIEW_MANDALIS.length)} gaming communities across India
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-600 dark:text-amber-400">
-                  <span>{showExplore ? "Collapse" : "Explore All"}</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      showExplore ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-              </button>
-            </div>
-          </section>
-        ) : (
-          /* Futuristic Hero Section for New Users without any Mandalis */
-          <section className="text-center sm:text-left py-6 sm:py-8 px-6 sm:px-10 rounded-3xl bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/30 border border-slate-200/90 dark:border-slate-800 relative overflow-hidden shadow-lg transition-colors">
-            <div className="max-w-2xl relative z-10">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-400 text-xs font-bold mb-3 shadow-xs">
-                <Zap className="w-3.5 h-3.5" />
-                Persistent Gaming Lounges
-              </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                Find Your Gaming <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">Tribe</span>
-              </h1>
-              <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                Mandali (మండలి) connects players into persistent gaming communities. Form squads,
-                launch multiplayer matches, chat in realtime, transfer clan coins, and archive legendary Gnapakalu memories.
-              </p>
-
-              {/* Live Telemetry Bar */}
-              <div className="mt-6 flex flex-wrap items-center gap-6 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 font-semibold">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-amber-500" />
                   <span>
-                    <strong className="text-slate-900 dark:text-white font-bold">
-                      {Math.max(mandalis.length, DEFAULT_PREVIEW_MANDALIS.length)}
-                    </strong>{" "}
-                    Communities
+                    <span className="block text-base font-semibold text-album-ink">
+                      {showFind ? t("mandali.shelf.find.hide") : t("mandali.shelf.find.show")}
+                    </span>
+                    <span className="block text-sm text-album-ink3">{t("mandali.shelf.find.hint")}</span>
                   </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Gamepad2 className="w-4 h-4 text-emerald-500" />
-                  <span><strong className="text-slate-900 dark:text-white font-bold">12+</strong> Multiplayer Games</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-orange-500" />
-                  <span><strong className="text-slate-900 dark:text-white font-bold">Gnapakalu</strong> Memories</span>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Explore Matrix & Grid — Rendered if user has 0 mandalis OR if showExplore is toggled on */}
-        {isExploreVisible && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Search & Filter Matrix */}
-            <section className="bg-white/90 dark:bg-slate-900/70 border border-slate-200/90 dark:border-slate-800/80 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm backdrop-blur-xl">
-              <form onSubmit={onSearchSubmit} className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Mandalis by name, handle, or focus..."
-                    className="w-full min-h-[44px] pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-medium"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="min-h-[44px] px-6 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-sm transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none shadow-xs"
-                >
-                  Search
+                  <ChevronDown className={`h-5 w-5 flex-shrink-0 text-album-ink3 transition-transform ${showFind ? "rotate-180" : ""}`} aria-hidden="true" />
                 </button>
-              </form>
-
-              {/* Filter Pills */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-200/80 dark:border-slate-800/60">
-                {/* Language Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase mr-1">Lang:</span>
-                  {LANGUAGES.map((lang) => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => {
-                        setSelectedLanguage(lang);
-                        handleFilterChange(lang, selectedTag, searchQuery);
-                      }}
-                      className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                        selectedLanguage === lang
-                          ? "bg-amber-500 text-slate-950 shadow-xs"
-                          : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tag Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase mr-1">Tag:</span>
-                  {POPULAR_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTag(tag);
-                        handleFilterChange(selectedLanguage, tag, searchQuery);
-                      }}
-                      className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                        selectedTag === tag
-                          ? "bg-amber-500 text-slate-950 shadow-xs"
-                          : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
               </div>
             </section>
+          ) : (
+            <section className="mx-auto max-w-lg px-2 py-6 text-center sm:py-12">
+              <h2 className="m-0 text-2xl font-semibold leading-snug text-album-ink">{t("mandali.shelf.empty.title")}</h2>
+              <p className="mx-auto mb-7 mt-3 max-w-md text-base leading-relaxed text-album-ink2">{t("mandali.shelf.empty.body")}</p>
+              <AlbumButton variant="primary" size="lg" onClick={handleCreateClick} icon={<Plus className="h-5 w-5" aria-hidden="true" />}>
+                {t("mandali.shelf.empty.action")}
+              </AlbumButton>
+              <p className="mb-0 mt-6 text-sm text-album-ink3">{t("mandali.shelf.empty.or")}</p>
+            </section>
+          )}
 
-            {/* Discovery Grid */}
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Users className="w-4 h-4 text-amber-500" />
-                  Explore All Mandalis ({mandalis.length})
-                </h2>
+          {findVisible && (
+            <section aria-labelledby="mandali-find" className="space-y-5 border-t border-album-line pt-8">
+              <h2 id="mandali-find" className="m-0 text-xl font-semibold text-album-ink">
+                {t("mandali.shelf.find.title")}
+              </h2>
+
+              <form onSubmit={onSearchSubmit} className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-album-ink3" aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={t("mandali.shelf.search")}
+                    aria-label={t("mandali.shelf.search")}
+                    className="album-focus min-h-[48px] w-full rounded-2xl border border-album-line bg-album-field pl-11 pr-4 text-[15px] text-album-ink placeholder:text-album-ink3 focus-visible:border-album-foil"
+                  />
+                </div>
+                <AlbumButton type="submit" variant="quiet" size="lg">
+                  {t("mandali.shelf.search.action")}
+                </AlbumButton>
+              </form>
+
+              <div className="space-y-1">
+                <FilterRow
+                  label={t("mandali.shelf.language")}
+                  options={LANGUAGES}
+                  value={language}
+                  allLabel={t("mandali.shelf.filter.all")}
+                  onChange={(next) => {
+                    setLanguage(next);
+                    applyFilters(next, topic, searchQuery);
+                  }}
+                />
+                <FilterRow
+                  label={t("mandali.shelf.topic")}
+                  options={TOPICS}
+                  value={topic}
+                  allLabel={t("mandali.shelf.filter.all")}
+                  onChange={(next) => {
+                    setTopic(next);
+                    applyFilters(language, next, searchQuery);
+                  }}
+                />
               </div>
 
               {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div
-                      key={i}
-                      className="h-52 rounded-2xl bg-slate-200/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 animate-pulse"
-                    />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-40 animate-pulse rounded-2xl bg-album-field motion-reduce:animate-none" />
                   ))}
                 </div>
               ) : mandalis.length === 0 ? (
-                <div className="text-center py-16 px-4 bg-white/60 dark:bg-slate-900/60 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 backdrop-blur-md">
-                  <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">No Mandalis Found</h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-5 font-medium">
-                    No communities match your current filters. Try resetting the filters or create your own Mandali!
-                  </p>
+                <div className="rounded-2xl border border-dashed border-album-line px-6 py-12 text-center">
+                  <Users className="mx-auto mb-3 h-8 w-8 text-album-ink3" aria-hidden="true" />
+                  <h3 className="m-0 text-lg font-semibold text-album-ink">{t("mandali.shelf.none.title")}</h3>
+                  <p className="mx-auto mb-5 mt-2 max-w-sm text-[15px] leading-relaxed text-album-ink2">{t("mandali.shelf.none.body")}</p>
                   <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedLanguage("All");
-                        setSelectedTag("All");
-                        setSearchQuery("");
-                        handleFilterChange("All", "All", "");
-                      }}
-                      className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs focus-visible:ring-2 focus-visible:ring-amber-500"
-                    >
-                      Reset All Filters
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCreateClick}
-                      className="min-h-[44px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-md focus-visible:ring-2 focus-visible:ring-amber-500"
-                    >
-                      Create New Mandali
-                    </button>
+                    <AlbumButton variant="quiet" onClick={resetFilters}>
+                      {t("mandali.shelf.none.reset")}
+                    </AlbumButton>
+                    <AlbumButton variant="primary" onClick={handleCreateClick}>
+                      {t("mandali.shelf.create")}
+                    </AlbumButton>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {mandalis.map((m) => (
-                    <div
-                      key={m.id}
-                      className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500/70 dark:hover:border-amber-500/70 rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-xl group relative overflow-hidden cursor-pointer min-h-[220px]"
-                      onClick={() => navigate(`/mandali/${m.handle}`)}
-                    >
-                      <div>
-                        {/* Header */}
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-amber-500 dark:text-amber-400 group-hover:scale-105 transition-transform shadow-inner">
-                              {getEmblemIcon(m.emblem)}
-                            </div>
-                            <div>
-                              <h3 className="font-black text-slate-900 dark:text-white text-base leading-snug group-hover:text-amber-500 transition-colors">
-                                {m.name}
-                              </h3>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">@{m.handle}</p>
-                            </div>
+                <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-2 lg:grid-cols-3">
+                  {mandalis.map((m) => {
+                    const spaceLeft = Math.max(0, m.maxMembers - m.memberCount);
+                    return (
+                      <li key={m.id} className="flex flex-col rounded-2xl border border-album-line bg-album-raised p-4">
+                        <div className="flex items-start gap-3">
+                          <span aria-hidden="true" className={`${coverClothClass(m.id)} h-12 w-12 flex-shrink-0 rounded-xl`} />
+                          <div className="min-w-0">
+                            <h3 className="m-0 truncate text-base font-semibold leading-snug text-album-ink">{m.name}</h3>
+                            <p className="m-0 truncate text-[13px] text-album-ink3">@{m.handle}</p>
                           </div>
-
-                          <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30">
-                            Lv {m.level}
-                          </span>
                         </div>
-
-                        {/* Description */}
-                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed font-medium">
-                          {m.description || "No description provided."}
+                        <p className="mb-0 mt-3 line-clamp-2 flex-1 text-[15px] leading-relaxed text-album-ink2">
+                          {m.description || t("mandali.shelf.about.none")}
                         </p>
-
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {m.language}
-                          </span>
-                          {m.tags.slice(0, 3).map((t) => (
-                            <span
-                              key={t}
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Footer & CTA */}
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
-                        {/* Member fill bar */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <Users className="w-3 h-3 text-amber-500" />
-                              {m.memberCount.toLocaleString()} members
-                            </span>
-                            <span className="text-slate-400 dark:text-slate-600">{m.maxMembers} capacity</span>
-                          </div>
-                          <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
-                              style={{ width: `${Math.min(100, Math.round((m.memberCount / m.maxMembers) * 100))}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/mandali/${m.handle}`);
-                            }}
-                            className="min-h-[36px] px-4 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-800 dark:text-amber-400 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-                          >
-                            Enter Lounge
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        <p className="mb-0 mt-3 text-[13px] text-album-ink3">
+                          {t("mandali.shelf.people", { count: m.memberCount })} · {m.language}
+                          {" · "}
+                          {spaceLeft > 0 ? t("mandali.shelf.capacity", { count: spaceLeft }) : t("mandali.shelf.full")}
+                        </p>
+                        <AlbumButton variant="quiet" className="mt-3 w-full" onClick={() => open(m.handle)}>
+                          {t("mandali.shelf.visit")}
+                        </AlbumButton>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </section>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Guest Auth Required Modal */}
-      {showAuthPrompt && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in select-none"
-        >
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 mx-auto shadow-inner">
-              <Lock className="w-7 h-7" />
-            </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              BHALYAM Account Required
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              Mandali clans are persistent, server-authoritative communities. Guest users cannot create or join Mandalis. Please sign in or create an account to start your clan.
-            </p>
-            <div className="flex gap-3 pt-3">
-              <button
-                type="button"
-                onClick={() => setShowAuthPrompt(false)}
-                className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/login")}
-                className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95"
-              >
-                Sign In to BHALYAM
-              </button>
-            </div>
+      <AlbumSheet
+        open={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        title={t("mandali.auth.title")}
+        footer={
+          <div className="flex gap-3">
+            <AlbumButton variant="quiet" className="flex-1" onClick={() => setShowAuthPrompt(false)}>
+              {t("mandali.auth.cancel")}
+            </AlbumButton>
+            <AlbumButton variant="primary" className="flex-1" onClick={() => navigate("/login")}>
+              {t("mandali.auth.signIn")}
+            </AlbumButton>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className="m-0 text-[15px] leading-relaxed text-album-ink2">{t("mandali.auth.body")}</p>
+      </AlbumSheet>
 
-      {/* Create Modal */}
       {showCreateModal && (
         <CreateMandaliModal
           open={showCreateModal}
