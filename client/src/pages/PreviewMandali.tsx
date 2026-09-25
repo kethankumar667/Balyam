@@ -75,8 +75,6 @@ const members: MandaliMember[] = [
 
 const channels = [
   { channelId: "c_lounge", mandaliId: mandali.id, name: "lounge-chat", description: "Everyday conversation", type: "TEXT" },
-  { channelId: "c_play", mandaliId: mandali.id, name: "play-together", description: "Start a game and rally the group", type: "PARTY_FINDING" },
-  { channelId: "c_news", mandaliId: mandali.id, name: "announcements", description: "Things everyone should see", type: "ANNOUNCEMENT" },
 ] as unknown as MandaliChannel[];
 
 let counter = 0;

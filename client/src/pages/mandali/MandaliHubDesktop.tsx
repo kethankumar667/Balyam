@@ -15,7 +15,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Gamepad2, Hash, Megaphone, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
+import { ChevronLeft, Hash, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
@@ -124,8 +124,12 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   // Either side panel can be folded away to give the conversation the whole width; it is remembered.
   const { collapsed, toggle } = usePanelCollapse();
 
+  // The conversation and the group's games are two views of one Mandali, not two "rooms".
+  const [view, setView] = useState<"chat" | "play">("chat");
   const activeChannel = channels.find((c) => c.channelId === activeChannelId) ?? channels[0];
-  const isPlayRoom = activeChannel?.type === "PARTY_FINDING" || Boolean(activeChannel?.name.includes("squad"));
+  const isPlayRoom = view === "play";
+  // With a single conversation there is nothing to choose between, so no list of rooms.
+  const showRooms = channels.length > 1;
   const onlineCount = members.filter((m) => m.presence === "online" || m.presence === "in-game").length;
   const isHere = (presence: MandaliMember["presence"]) => presence === "online" || presence === "in-game";
 
@@ -151,11 +155,11 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             >
               <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
             </AlbumButton>
+            {showRooms && (
             <nav aria-label={t("mandali.rooms.title")}>
               <ul className="m-0 flex list-none flex-col items-center gap-1 p-0">
                 {channels.map((channel) => {
                   const current = channel.channelId === activeChannelId;
-                  const Icon = channel.type === "PARTY_FINDING" ? Gamepad2 : channel.type === "ANNOUNCEMENT" ? Megaphone : Hash;
                   return (
                     <li key={channel.channelId}>
                       <button
@@ -168,12 +172,28 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                           current ? "bg-album-foilfill/20 text-album-foil" : "text-album-ink2 hover:bg-album-field"
                         }`}
                       >
-                        <Icon className="h-5 w-5" aria-hidden="true" />
+                        <Hash className="h-5 w-5" aria-hidden="true" />
                       </button>
                     </li>
                   );
                 })}
               </ul>
+            </nav>
+            )}
+            <nav aria-label={mandali.name} className={showRooms ? "border-t border-album-line pt-3" : undefined}>
+              <GroupMenu
+                variant="icons"
+                notificationLevel={notificationLevel}
+                canManageMembers={canManageMembers}
+                pendingRequestCount={pendingRequestCount}
+                onInvite={onOpenInvite}
+                onCoins={onOpenCoinTransfer ? () => onOpenCoinTransfer() : undefined}
+                onInfo={onOpenGroupInfo}
+                onNotifications={onOpenNotificationSettings}
+                onManage={onOpenMembers}
+                onRequests={onOpenPendingRequests}
+                onLeave={onLeaveMandali}
+              />
             </nav>
           </div>
         ) : (
@@ -215,6 +235,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           />
         </div>
 
+        {showRooms && (
         <section aria-labelledby="mandali-rooms" className="px-2 pb-2 pt-1">
           <h2 id="mandali-rooms" className="m-0 px-3 pb-1.5 text-sm font-semibold text-album-ink3">
             {t("mandali.rooms.title")}
@@ -222,7 +243,6 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           <ul className="m-0 list-none space-y-0.5 p-0">
             {channels.map((channel) => {
               const current = channel.channelId === activeChannelId;
-              const Icon = channel.type === "PARTY_FINDING" ? Gamepad2 : channel.type === "ANNOUNCEMENT" ? Megaphone : Hash;
               return (
                 <li key={channel.channelId}>
                   <button
@@ -233,7 +253,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                       current ? "bg-album-foilfill/20 text-album-ink" : "text-album-ink2 hover:bg-album-field"
                     }`}
                   >
-                    <Icon className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />
+                    <Hash className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />
                     <span className="truncate">{channel.name}</span>
                   </button>
                 </li>
@@ -241,7 +261,8 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             })}
           </ul>
         </section>
-        <nav aria-label={mandali.name} className="mt-2 border-t border-album-line px-2 pb-4 pt-3">
+        )}
+        <nav aria-label={mandali.name} className={`px-2 pb-4 ${showRooms ? "mt-2 border-t border-album-line pt-3" : "pt-1"}`}>
           <GroupMenu
             notificationLevel={notificationLevel}
             canManageMembers={canManageMembers}
@@ -263,14 +284,38 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex min-h-[64px] flex-shrink-0 items-center justify-between gap-4 border-b border-album-line px-6 py-3">
           <div className="min-w-0">
-            <h2 className="m-0 truncate text-lg font-semibold leading-tight text-album-ink">{activeChannel?.name ?? ""}</h2>
-            <p className="m-0 mt-0.5 truncate text-sm text-album-ink3">{activeChannel?.description || t("mandali.rooms.default")}</p>
+            <h2 className="m-0 truncate text-lg font-semibold leading-tight text-album-ink">
+              {isPlayRoom ? t("mandali.play.title") : activeChannel?.name ?? ""}
+            </h2>
+            <p className="m-0 mt-0.5 truncate text-sm text-album-ink3">
+              {isPlayRoom ? t("mandali.play.subtitle") : activeChannel?.description || t("mandali.rooms.default")}
+            </p>
           </div>
-          {isPlayRoom && (
-            <AlbumButton variant="primary" onClick={() => setStartOpen(true)} icon={<Plus className="h-4 w-4" aria-hidden="true" />}>
-              {t("mandali.play.start")}
-            </AlbumButton>
-          )}
+          <div className="flex flex-shrink-0 items-center gap-3">
+            <div role="group" aria-label={t("mandali.view.label")} className="inline-flex rounded-xl bg-album-field p-1">
+              {(["chat", "play"] as const).map((option) => {
+                const selected = view === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setView(option)}
+                    className={`album-focus min-h-[44px] cursor-pointer rounded-lg px-4 text-[15px] font-semibold transition-colors ${
+                      selected ? "bg-album-raised text-album-ink shadow-sm" : "text-album-ink2 hover:text-album-ink"
+                    }`}
+                  >
+                    {option === "chat" ? t("mandali.tab.chat") : t("mandali.tab.play")}
+                  </button>
+                );
+              })}
+            </div>
+            {isPlayRoom && (
+              <AlbumButton variant="primary" onClick={() => setStartOpen(true)} icon={<Plus className="h-4 w-4" aria-hidden="true" />}>
+                {t("mandali.play.start")}
+              </AlbumButton>
+            )}
+          </div>
         </header>
 
         {isPlayRoom ? (

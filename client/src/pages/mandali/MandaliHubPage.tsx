@@ -11,7 +11,7 @@
  * - WCAG 2.1 AA compliant focus rings.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useViewport } from "../../lib/useViewport";
 import { useMandaliStore } from "../../store/mandaliStore";
@@ -111,12 +111,23 @@ export default function MandaliHubPage(): JSX.Element {
     deleteMandali,
   } = useMandaliStore();
 
+  // A Mandali is one conversation plus its games. The older "announcements" and
+  // "squad-formation" rooms are no longer shown: only text rooms are offered, and the
+  // active room is always one of them (the games have their own view).
+  const chatChannels = useMemo(() => {
+    const text = channels.filter((c) => c.type === "TEXT");
+    return text.length > 0 ? text : channels;
+  }, [channels]);
+  const chatChannelId = chatChannels.some((c) => c.channelId === activeChannelId)
+    ? activeChannelId
+    : chatChannels[0]?.channelId ?? null;
+
   const coinRequest = useCoinRequestAction({
     mandaliId: activeMandali?.id ?? null,
     playerId,
     members,
-    channels,
-    activeChannelId,
+    channels: chatChannels,
+    activeChannelId: chatChannelId,
   });
 
   useEffect(() => {
@@ -170,7 +181,7 @@ export default function MandaliHubPage(): JSX.Element {
   const unreadSince = useMandaliReadTracking(
     activeMandali?.id ?? null,
     isMember && Boolean(selfMember),
-    activeChannelId ? messages[activeChannelId]?.length ?? 0 : 0
+    chatChannelId ? messages[chatChannelId]?.length ?? 0 : 0
   );
   const notificationLevel = useMandaliInboxStore(
     (s) => s.digests.find((d) => d.mandaliId === activeMandali?.id)?.level ?? "ALL"
@@ -185,6 +196,11 @@ export default function MandaliHubPage(): JSX.Element {
       fetchPendingJoinRequests(activeMandali.id);
     }
   }, [activeMandali?.id, canManageMembers, fetchPendingJoinRequests]);
+
+  // Keep the store's active room on a conversation room (it may still point at a hidden one).
+  useEffect(() => {
+    if (chatChannelId && chatChannelId !== activeChannelId) setActiveChannel(chatChannelId);
+  }, [chatChannelId, activeChannelId, setActiveChannel]);
 
   if (!isLoading && errorMessage && !activeMandali) {
     return (
@@ -214,7 +230,7 @@ export default function MandaliHubPage(): JSX.Element {
   }
 
   const isCurrentMember = members.some((m) => m.playerId === playerId);
-  const activeChannelMessages = activeChannelId ? messages[activeChannelId] || [] : [];
+  const activeChannelMessages = chatChannelId ? messages[chatChannelId] || [] : [];
 
   // Requests where I am the person being asked, still open and unexpired.
   const now = Date.now();
@@ -261,8 +277,8 @@ export default function MandaliHubPage(): JSX.Element {
   const sharedProps = {
     mandali: activeMandali,
     members,
-    channels,
-    activeChannelId,
+    channels: chatChannels,
+    activeChannelId: chatChannelId,
     messages: insertUnreadDivider(activeChannelMessages, unreadSince, playerId) as typeof activeChannelMessages,
     notificationLevel,
     onOpenNotificationSettings: () => setShowNotificationSettings(true),
@@ -377,7 +393,7 @@ export default function MandaliHubPage(): JSX.Element {
       {showCoinTransfer && activeMandali && (
         <CoinTransferModal
           mandaliId={activeMandali.id}
-          channelId={activeChannelId ?? undefined}
+          channelId={chatChannelId ?? undefined}
           members={members}
           currentUserId={playerId}
           preselectedMemberId={preselectedMemberId}

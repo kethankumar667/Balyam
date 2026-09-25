@@ -92,6 +92,8 @@ export const mandaliEn = {
 
   /* ── Play together ── */
   "mandali.play.title": "Play together",
+  "mandali.play.subtitle": "Games your group is gathering for",
+  "mandali.view.label": "Show the conversation or the games",
   "mandali.play.start": "Start a game",
   "mandali.play.empty.title": "No game going yet",
   "mandali.play.empty.body": "Pick a game and everyone in {{name}} can join with one tap.",

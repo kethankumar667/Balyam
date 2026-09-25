@@ -17,6 +17,12 @@ export interface GroupMenuProps {
   onLeave: () => void;
   /** Called first on every choice, so a sheet showing this menu can close itself. */
   onChoose?: () => void;
+  /**
+   * "list" is the full menu (labels and a line saying what each does). "icons" is the
+   * folded desktop rail: the same actions as 44px buttons, each named by its tooltip
+   * and screen-reader label.
+   */
+  variant?: "list" | "icons";
 }
 
 interface Row {
@@ -50,6 +56,7 @@ export function GroupMenu({
   onRequests,
   onLeave,
   onChoose,
+  variant = "list",
 }: GroupMenuProps) {
   const { t } = useTranslation();
   const choose = (action: () => void) => () => {
@@ -92,6 +99,40 @@ export function GroupMenu({
       : []),
     { key: "leave", icon: LogOut, label: t("mandali.menu.leave"), hint: t("mandali.menu.leave.hint"), tone: "danger", onSelect: choose(onLeave) },
   ];
+
+  if (variant === "icons") {
+    return (
+      <ul className="m-0 flex list-none flex-col items-center gap-1 p-0">
+        {rows.map((row) => {
+          const Icon = row.icon;
+          const danger = row.tone === "danger";
+          return (
+            <li key={row.key} className={danger ? "mt-2 border-t border-album-line pt-2" : undefined}>
+              <button
+                type="button"
+                onClick={row.onSelect}
+                title={row.label}
+                aria-label={row.badge ? `${row.label} (${row.badge})` : row.label}
+                className={`album-focus relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors ${
+                  danger ? "text-album-danger hover:bg-album-danger/10" : "text-album-foil hover:bg-album-field"
+                }`}
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                {row.badge ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-album-foilfill px-1 text-sm font-bold leading-none text-album-onfoil"
+                  >
+                    {row.badge}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
 
   return (
     <ul className="m-0 list-none space-y-1 p-0">
