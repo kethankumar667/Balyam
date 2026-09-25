@@ -82,7 +82,11 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
     ? t("mandali.coin.youAsked", { amount: request.amount })
     : t("mandali.coin.asked", { name: requesterName, amount: request.amount });
 
-  const openHint = isRequester ? t("mandali.coin.waitingForAnyone") : t("mandali.coin.anyoneCanPay");
+  const openHint = isRequester
+    ? t("mandali.coin.waitingForAnyone")
+    : canPay
+      ? t("mandali.coin.anyoneCanPay")
+      : t("mandali.coin.activeMembersOnly");
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-album-line bg-album-raised px-3 py-2">

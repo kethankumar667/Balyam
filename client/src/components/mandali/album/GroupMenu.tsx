@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bell, BellOff, ChevronRight, Info, Link2, LogOut, ShieldCheck, UserCheck, type LucideIcon } from "lucide-react";
+import { Bell, BellOff, ChevronRight, Coins, Info, Link2, LogOut, ShieldCheck, UserCheck, type LucideIcon } from "lucide-react";
 import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 
@@ -8,6 +8,7 @@ export interface GroupMenuProps {
   canManageMembers: boolean;
   pendingRequestCount: number;
   onInvite: () => void;
+  onCoins?: () => void;
   onInfo: () => void;
   /** Omit and the notifications row is not shown. */
   onNotifications?: () => void;
@@ -42,6 +43,7 @@ export function GroupMenu({
   canManageMembers,
   pendingRequestCount,
   onInvite,
+  onCoins,
   onInfo,
   onNotifications,
   onManage,
@@ -64,6 +66,7 @@ export function GroupMenu({
 
   const rows: Row[] = [
     { key: "invite", icon: Link2, label: t("mandali.menu.invite"), hint: t("mandali.menu.invite.hint"), onSelect: choose(onInvite) },
+    ...(onCoins ? [{ key: "coins", icon: Coins, label: t("mandali.menu.coins"), hint: t("mandali.menu.coins.hint"), onSelect: choose(onCoins) }] : []),
     { key: "info", icon: Info, label: t("mandali.menu.info"), hint: t("mandali.menu.info.hint"), onSelect: choose(onInfo) },
     ...(onNotifications
       ? [{

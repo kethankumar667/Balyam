@@ -30,6 +30,8 @@ export const mandaliEn = {
   /* ── The group menu ── */
   "mandali.menu.invite": "Invite people",
   "mandali.menu.invite.hint": "Share a link so someone can join",
+  "mandali.menu.coins": "Coins",
+  "mandali.menu.coins.hint": "Send coins or review group requests",
   "mandali.menu.info": "Group info",
   "mandali.menu.info.hint": "Name, rules and settings",
   "mandali.menu.notifications": "Notifications",
@@ -141,6 +143,7 @@ export const mandaliEn = {
   "mandali.coin.youAsked": "You asked for {{amount}} coins",
   "mandali.coin.anyoneCanPay": "Anyone in the group can pay",
   "mandali.coin.waitingForAnyone": "Waiting for someone in the group to pay",
+  "mandali.coin.activeMembersOnly": "Only active members can pay",
   "mandali.coin.paidBy": "Paid by {{name}}",
   "mandali.coin.paidByYou": "You paid",
   "mandali.coin.cancelled": "Cancelled",

@@ -15,7 +15,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, ChevronDown, ChevronLeft, Coins, Gamepad2, Hash, Link2, MessageSquare, MoreVertical, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronLeft, Gamepad2, Hash, Link2, MessageSquare, MoreVertical, Plus, Users } from "lucide-react";
 import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
@@ -269,11 +269,6 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                   {onlineCount > 0 ? ` · ${t("mandali.people.online", { count: onlineCount })}` : ""}
                 </p>
               </div>
-              {onOpenCoinTransfer && (
-                <AlbumButton variant="quiet" onClick={() => onOpenCoinTransfer()} icon={<Coins className="h-4 w-4" aria-hidden="true" />}>
-                  {t("mandali.people.coins")}
-                </AlbumButton>
-              )}
             </div>
             <PeopleList members={members} currentUserId={currentUserId} onCoinsWith={onOpenCoinTransfer ? (id) => onOpenCoinTransfer(id) : undefined} />
             <div className="px-1 pt-4">
@@ -312,6 +307,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           canManageMembers={canManageMembers}
           pendingRequestCount={pendingRequestCount}
           onInvite={onOpenInvite}
+          onCoins={onOpenCoinTransfer ? () => onOpenCoinTransfer() : undefined}
           onInfo={onOpenGroupInfo}
           onNotifications={onOpenNotificationSettings}
           onManage={onOpenMembers}

@@ -15,7 +15,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Coins, Gamepad2, Hash, Megaphone, Plus } from "lucide-react";
+import { ChevronLeft, Gamepad2, Hash, Megaphone, Plus } from "lucide-react";
 import type { NotificationLevel } from "@shared/mandali/notifications.js";
 import type {
   Mandali,
@@ -181,6 +181,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             canManageMembers={canManageMembers}
             pendingRequestCount={pendingRequestCount}
             onInvite={onOpenInvite}
+            onCoins={onOpenCoinTransfer ? () => onOpenCoinTransfer() : undefined}
             onInfo={onOpenGroupInfo}
             onNotifications={onOpenNotificationSettings}
             onManage={onOpenMembers}
@@ -271,11 +272,6 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
                 {onlineCount > 0 ? ` · ${t("mandali.people.online", { count: onlineCount })}` : ""}
               </p>
             </div>
-            {onOpenCoinTransfer && (
-              <AlbumButton variant="quiet" onClick={() => onOpenCoinTransfer()} icon={<Coins className="h-4 w-4" aria-hidden="true" />}>
-                {t("mandali.people.coins")}
-              </AlbumButton>
-            )}
           </div>
           <PeopleList members={members} currentUserId={currentUserId} onCoinsWith={onOpenCoinTransfer ? (id) => onOpenCoinTransfer(id) : undefined} />
         </section>

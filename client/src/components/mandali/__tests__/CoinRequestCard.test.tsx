@@ -68,6 +68,7 @@ describe("CoinRequestCard", () => {
   it("does not offer payment to someone who has left the group", () => {
     renderCard(BYSTANDER, {}, [member(REQUESTER, "Senthil"), member(BYSTANDER, "Geetha", "LEFT")]);
     expect(payButton()).toBeNull();
+    expect(screen.getByText("Only active members can pay")).toBeDefined();
   });
 
   it("names whoever actually paid once it is settled", () => {

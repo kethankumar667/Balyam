@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { Mandali, MandaliChannel, MandaliMember } from "@shared/mandali/types.js";
 import { MandaliHubDesktop } from "../MandaliHubDesktop";
@@ -91,5 +91,20 @@ describe("composer Request Coins button", () => {
     );
 
     expect(screen.getByRole("button", { name: /on cooldown/i })).toBeTruthy();
+  });
+
+  it("desktop: keeps coin actions in the group menu", () => {
+    const onOpenCoinTransfer = vi.fn();
+    render(
+      <MemoryRouter>
+        <MandaliHubDesktop {...commonProps()} onRequestCoins={vi.fn()} onOpenCoinTransfer={onOpenCoinTransfer} />
+      </MemoryRouter>,
+    );
+
+    const groupMenu = screen.getByRole("navigation", { name: "Test Mandali" });
+    fireEvent.click(within(groupMenu).getByRole("button", { name: /Coins/ }));
+
+    expect(onOpenCoinTransfer).toHaveBeenCalledTimes(1);
+    expect(onOpenCoinTransfer).toHaveBeenCalledWith();
   });
 });
