@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Tv, Sparkles as _SparklesForbidden, LogIn, UserPlus } from "lucide-react";
+import { Tv, LogIn, UserPlus } from "lucide-react";
 import type { Player, RoomPublicState } from "@shared/types";
 import { getSocket } from "../lib/socket";
 import { useCapabilities } from "../store/authStore";

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Flame, Zap, Trophy, ShieldAlert } from "lucide-react";
 import type { GameKind, Player, LudoColor, LudoToken } from "@shared/types";
 import { COLOR_HEX } from "../../games/ludo/board-layout";
+import { getHandCricketChase } from "./tvState";
 
 interface TvMomentumBarProps {
   game: GameKind;
@@ -14,16 +15,12 @@ export function TvMomentumBar({ game, gameState, players }: TvMomentumBarProps) 
 
   // Hand Cricket Momentum
   if (game === "handcricket") {
-    const innings = Number(gameState.currentInning ?? gameState.innings ?? 1);
-    const runs = Number(gameState.runs ?? gameState.teamRuns ?? 0);
-    const wickets = Number(gameState.wickets ?? gameState.teamWickets ?? 0);
-    const target = Number(gameState.target ?? 0);
-    const ballsRemaining = Number(gameState.ballsRemaining ?? 0);
+    const chase = getHandCricketChase(gameState);
 
-    if (innings === 2 && target > 0) {
-      const runsNeeded = Math.max(0, target - runs);
-      const rrr = ballsRemaining > 0 ? ((runsNeeded / ballsRemaining) * 6).toFixed(1) : "0.0";
-      const leadPercentage = Math.min(100, Math.max(0, (runs / target) * 100));
+    if (chase && chase.target > 0) {
+      const runsNeeded = Math.max(0, chase.target - chase.runs);
+      const rrr = chase.ballsRemaining > 0 ? ((runsNeeded / chase.ballsRemaining) * 6).toFixed(1) : "0.0";
+      const leadPercentage = Math.min(100, Math.max(0, (chase.runs / chase.target) * 100));
 
       const isPressure = Number(rrr) > 9.0;
       const isComfortable = Number(rrr) <= 6.0;
@@ -35,7 +32,7 @@ export function TvMomentumBar({ game, gameState, players }: TvMomentumBarProps) 
               <span className="text-amber-400 uppercase tracking-wider">CHASE MOMENTUM</span>
               <span className="text-stone-300">
                 Need <strong className="text-amber-200 text-sm font-black">{runsNeeded}</strong> off{" "}
-                <strong className="text-amber-200 text-sm font-black">{ballsRemaining}</strong> balls
+                <strong className="text-amber-200 text-sm font-black">{chase.ballsRemaining}</strong> balls
               </span>
             </div>
             <div className="flex items-center gap-2">

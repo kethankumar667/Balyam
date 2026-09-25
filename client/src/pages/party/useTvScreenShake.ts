@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { GameKind } from "@shared/types";
+import { getLatestHandCricketBall, getLatestSnlEventKey, getLatestSnlEventKind } from "./tvState";
 
 export type TvShakeLevel = "none" | "subtle" | "intense";
 
@@ -38,26 +39,32 @@ export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}
     prevRollRef.current = roll;
 
     // SNL Snake / Ladder
-    const snlEvent = (gameState.lastEvent as string | undefined) ?? (gameState.event as string | undefined);
-    if (snlEvent === "snake" && prevActionRef.current !== "snake") {
+    const legacySnlEvent = typeof gameState.event === "string" ? gameState.event : null;
+    const snlEvent = getLatestSnlEventKind(gameState) ?? legacySnlEvent;
+    const snlEventKey = getLatestSnlEventKey(gameState);
+    const stableSnlEventKey = snlEventKey ?? (legacySnlEvent ? `legacy:${legacySnlEvent}` : null);
+    if (snlEvent === "snake" && prevActionRef.current !== stableSnlEventKey) {
       triggerShake("intense");
-    } else if (snlEvent === "ladder" && prevActionRef.current !== "ladder") {
+    } else if (snlEvent === "ladder" && prevActionRef.current !== stableSnlEventKey) {
       triggerShake("subtle");
     }
+    if (stableSnlEventKey) prevActionRef.current = stableSnlEventKey;
 
     // Hand Cricket Boundaries / Wicket
     if (game === "handcricket") {
-      const isWicket = Boolean(gameState.wicket ?? gameState.isWicket ?? gameState.lastBallWicket);
-      const runs = Number(gameState.lastBallRuns ?? gameState.lastRuns ?? 0);
-      if (isWicket && prevActionRef.current !== "wicket") {
+      const latestBall = getLatestHandCricketBall(gameState);
+      const isWicket = latestBall?.isWicket ?? Boolean(gameState.wicket ?? gameState.isWicket ?? gameState.lastBallWicket);
+      const runs = latestBall?.runs ?? Number(gameState.lastBallRuns ?? gameState.lastRuns ?? 0);
+      const ballKey = latestBall?.key ?? `${runs}:${isWicket}`;
+      if (isWicket && prevActionRef.current !== ballKey) {
         triggerShake("intense");
-        prevActionRef.current = "wicket";
-      } else if (runs === 6 && prevScoreRef.current !== 6) {
+        prevActionRef.current = ballKey;
+      } else if (runs === 6 && prevScoreRef.current !== ballKey) {
         triggerShake("intense");
-        prevScoreRef.current = 6;
-      } else if (runs === 4 && prevScoreRef.current !== 4) {
+        prevScoreRef.current = ballKey;
+      } else if (runs === 4 && prevScoreRef.current !== ballKey) {
         triggerShake("subtle");
-        prevScoreRef.current = 4;
+        prevScoreRef.current = ballKey;
       }
     }
 

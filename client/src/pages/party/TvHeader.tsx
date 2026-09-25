@@ -60,15 +60,15 @@ export function TvHeader({
       : "bg-purple-500/20 text-purple-300 border-purple-500/40";
 
   return (
-    <header className="w-full flex items-center justify-between gap-4 px-6 py-4 bg-black/40 backdrop-blur-md border-b border-amber-900/30 rounded-2xl shrink-0 select-none">
+    <header className="w-full flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-black/40 backdrop-blur-md border-b border-amber-900/30 rounded-2xl shrink-0 select-none">
       {/* Left: TV Lounge Title & Game */}
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/40 flex items-center justify-center shadow-lg">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/40 flex items-center justify-center shadow-lg shrink-0">
           <Tv className="w-6 h-6 text-amber-400" />
         </div>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-black text-amber-100 tracking-tight leading-tight">
+            <h1 className="max-w-[38vw] truncate text-xl sm:text-2xl font-black text-amber-100 tracking-tight leading-tight">
               {roomName || "BHALYAM LOUNGE"}
             </h1>
             <span
@@ -98,7 +98,7 @@ export function TvHeader({
           onClick={onToggleAudio}
           title={isMuted || !isAudioUnlocked ? "Unmute TV Audio (Space)" : "Mute TV Audio (Space)"}
           aria-label={isMuted || !isAudioUnlocked ? "Unmute TV Audio" : "Mute TV Audio"}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition active:scale-95 cursor-pointer ${
+          className={`flex min-h-11 min-w-11 items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition active:scale-95 cursor-pointer ${
             !isAudioUnlocked || isMuted
               ? "bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30"
               : "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
@@ -123,13 +123,13 @@ export function TvHeader({
           onClick={toggleFullscreen}
           title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen (F)"}
           aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          className="p-2.5 rounded-xl bg-stone-900/60 hover:bg-stone-800 border border-amber-900/40 text-amber-200 transition active:scale-95 cursor-pointer"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-stone-900/60 hover:bg-stone-800 border border-amber-900/40 text-amber-200 transition active:scale-95 cursor-pointer"
         >
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
 
         {/* Spectator Count Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900/60 border border-amber-900/30 text-amber-200/80 text-xs font-mono font-bold">
+        <div className="hidden sm:flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900/60 border border-amber-900/30 text-amber-200/80 text-xs font-mono font-bold">
           <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
           <span>
             {spectatorCount} {spectatorCount === 1 ? "Screen" : "Screens"}

@@ -12,6 +12,10 @@ export interface TvLobbyViewProps {
   onUnlockAudio: () => void;
 }
 
+export function getTvJoinUrl(origin: string, roomCode: string): string {
+  return `${origin}/room/${encodeURIComponent(roomCode)}`;
+}
+
 export function TvLobbyView({
   roomCode,
   players,
@@ -21,7 +25,7 @@ export function TvLobbyView({
   onUnlockAudio,
 }: TvLobbyViewProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://bhalyam.com";
-  const joinUrl = `${origin}/r/${roomCode}`;
+  const joinUrl = getTvJoinUrl(origin, roomCode);
 
   const readyCount = players.filter((p) => p.isReady).length;
 

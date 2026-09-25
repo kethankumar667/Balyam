@@ -19,6 +19,7 @@ export function TvTurnTimer({
   playerColor,
   actionText,
 }: TvTurnTimerProps) {
+  const [announcement, setAnnouncement] = useState("");
   const [remainingSec, setRemainingSec] = useState<number>(() => {
     if (!deadlineMs) return totalSeconds;
     return Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
@@ -41,6 +42,12 @@ export function TvTurnTimer({
       window.clearInterval(interval);
     };
   }, [deadlineMs, totalSeconds]);
+
+  useEffect(() => {
+    if (remainingSec === 5 || remainingSec === 3 || remainingSec === 1) {
+      setAnnouncement(`${remainingSec} seconds remaining for ${playerName}.`);
+    }
+  }, [playerName, remainingSec]);
 
   const isUrgent = remainingSec <= 5;
   const progressPercent = Math.min(100, Math.max(0, (remainingSec / totalSeconds) * 100));
@@ -101,6 +108,7 @@ export function TvTurnTimer({
 
         {/* Big Digital Seconds Counter */}
         <div
+          aria-hidden="true"
           className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-mono font-black text-2xl sm:text-3xl tabular-nums shadow-inner ${
             isUrgent
               ? "bg-rose-500/20 text-rose-300 border-rose-500/60"
@@ -110,6 +118,9 @@ export function TvTurnTimer({
           <Clock className={`w-6 h-6 ${isUrgent ? "text-rose-400 animate-spin" : "text-amber-400"}`} />
           <span>{remainingSec}s</span>
         </div>
+        <span className="sr-only" role="status" aria-live="assertive" aria-atomic="true">
+          {announcement}
+        </span>
       </div>
     </div>
   );

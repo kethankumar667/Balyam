@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Flame, ShieldAlert } from "lucide-react";
 import type { GameKind, LudoToken } from "@shared/types";
+import { getHandCricketChase } from "./tvState";
 
 export function isGameInClimax(game: GameKind, gameState: Record<string, unknown> | null): boolean {
   if (!gameState) return false;
@@ -26,8 +27,8 @@ export function isGameInClimax(game: GameKind, gameState: Record<string, unknown
 
   // UNO: any player with 1 card left
   if (game === "uno") {
-    const cardCounts = (gameState.cardCounts as Record<string, number> | undefined) ?? {};
-    for (const count of Object.values(cardCounts)) {
+    const handSizes = (gameState.handSizes as Record<string, number> | undefined) ?? {};
+    for (const count of Object.values(handSizes)) {
       if (count === 1) return true;
     }
     if (gameState.lastAction === "uno" || gameState.isUno) return true;
@@ -35,14 +36,8 @@ export function isGameInClimax(game: GameKind, gameState: Record<string, unknown
 
   // Hand Cricket: Inning 2 with <= 12 runs to win, or <= 6 balls remaining
   if (game === "handcricket") {
-    const innings = Number(gameState.currentInning ?? gameState.innings ?? 1);
-    if (innings === 2) {
-      const target = Number(gameState.target ?? 0);
-      const runs = Number(gameState.runs ?? gameState.teamRuns ?? 0);
-      const ballsLeft = Number(gameState.ballsRemaining ?? 6);
-      if (target > 0 && target - runs <= 12) return true;
-      if (ballsLeft <= 6) return true;
-    }
+    const chase = getHandCricketChase(gameState);
+    if (chase && (chase.target - chase.runs <= 12 || chase.ballsRemaining <= 6)) return true;
   }
 
   // Dots & Boxes: <= 5 boxes unclaimed

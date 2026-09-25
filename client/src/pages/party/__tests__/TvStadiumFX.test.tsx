@@ -3,6 +3,8 @@ import { render, screen, act } from "@testing-library/react";
 import { isGameInClimax, TvClimaxBanner } from "../TvClimaxBanner";
 import { TvCommentaryTicker } from "../TvCommentaryTicker";
 import { TvCrowdReactions } from "../TvCrowdReactions";
+import { getTvJoinUrl } from "../TvLobbyView";
+import { getLatestHandCricketBall } from "../tvState";
 import type { Player, ReactionRecvPayload } from "@shared/types";
 
 // Mock socket
@@ -54,28 +56,40 @@ describe("TV Stadium Intense FX & Climax Suite", () => {
     });
 
     it("detects Climax in UNO when any player has 1 card", () => {
-      expect(isGameInClimax("uno", { cardCounts: { p1: 5, p2: 1 } })).toBe(true);
-      expect(isGameInClimax("uno", { cardCounts: { p1: 5, p2: 3 } })).toBe(false);
+      expect(isGameInClimax("uno", { handSizes: { p1: 5, p2: 1 } })).toBe(true);
+      expect(isGameInClimax("uno", { handSizes: { p1: 5, p2: 3 } })).toBe(false);
     });
 
     it("detects Climax in Hand Cricket when innings 2 target is within 12 runs", () => {
       expect(
         isGameInClimax("handcricket", {
-          currentInning: 2,
-          target: 50,
-          runs: 42,
-          ballsRemaining: 10,
+          phase: "innings2",
+          innings1: { runs: 49 },
+          innings2: { runs: 42, balls: 10, overs: 10 },
         })
       ).toBe(true);
 
       expect(
         isGameInClimax("handcricket", {
-          currentInning: 1,
-          target: 0,
-          runs: 42,
+          phase: "innings1",
+          innings1: { runs: 42 },
+          innings2: null,
         })
       ).toBe(false);
     });
+  });
+
+  it("builds the QR join URL from the routed room path", () => {
+    expect(getTvJoinUrl("https://bhalyam.com", "TV1234")).toBe("https://bhalyam.com/room/TV1234");
+  });
+
+  it("reads the latest Hand Cricket ball from the server history shape", () => {
+    expect(
+      getLatestHandCricketBall({
+        phase: "innings1",
+        innings1: { history: [{ ballNumber: 4, runs: 6, wicket: false }] },
+      })
+    ).toEqual({ key: "innings1:4", runs: 6, isWicket: false });
   });
 
   describe("TvClimaxBanner component", () => {
@@ -132,6 +146,40 @@ describe("TV Stadium Intense FX & Climax Suite", () => {
       );
 
       expect(screen.getByText(/LUCKY SIX! Rahul rolls a 6!/i)).toBeDefined();
+    });
+
+    it("generates Snakes & Ladders commentary from the latest event kind", () => {
+      render(
+        <TvCommentaryTicker
+          game="snl"
+          gameState={{
+            recentEvents: [{ kind: "snake", playerId: "p1", ts: 1 }],
+          }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/DISASTER! Slipped right down/i)).toBeDefined();
+    });
+
+    it("updates commentary when the latest Snakes & Ladders event changes", () => {
+      const { rerender } = render(
+        <TvCommentaryTicker
+          game="snl"
+          gameState={{ recentEvents: [{ kind: "snake", playerId: "p1", ts: 1 }] }}
+          players={mockPlayers}
+        />
+      );
+
+      rerender(
+        <TvCommentaryTicker
+          game="snl"
+          gameState={{ recentEvents: [{ kind: "ladder", playerId: "p2", ts: 2 }] }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/SKY HIGH! Climbing the ladder/i)).toBeDefined();
     });
   });
 

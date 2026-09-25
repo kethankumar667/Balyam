@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Radio, Flame, Zap } from "lucide-react";
 import type { GameKind, Player } from "@shared/types";
+import { getHandCricketChase, getLatestHandCricketBall, getLatestSnlEventKey, getLatestSnlEventKind } from "./tvState";
 
 interface TvCommentaryTickerProps {
   game: GameKind;
@@ -20,6 +21,7 @@ export function TvCommentaryTicker({
 
   const prevRollRef = useRef<unknown>(null);
   const prevActionRef = useRef<unknown>(null);
+  const prevChaseRef = useRef<string | null>(null);
 
   // Dynamic commentary generation based on live game events
   useEffect(() => {
@@ -27,33 +29,40 @@ export function TvCommentaryTicker({
 
     // Hand Cricket Commentary
     if (game === "handcricket") {
-      const isWicket = Boolean(gameState.wicket ?? gameState.isWicket ?? gameState.lastBallWicket);
-      const runs = Number(gameState.lastBallRuns ?? gameState.lastRuns ?? 0);
-      const target = Number(gameState.target ?? 0);
-      const teamRuns = Number(gameState.runs ?? gameState.teamRuns ?? 0);
-      const ballsLeft = Number(gameState.ballsRemaining ?? 0);
+      const latestBall = getLatestHandCricketBall(gameState);
+      const isWicket = latestBall?.isWicket ?? Boolean(gameState.wicket ?? gameState.isWicket ?? gameState.lastBallWicket);
+      const runs = latestBall?.runs ?? Number(gameState.lastBallRuns ?? gameState.lastRuns ?? 0);
+      const ballKey = latestBall?.key ?? `${runs}:${isWicket}`;
+      const chase = getHandCricketChase(gameState);
+      const target = chase?.target ?? 0;
+      const teamRuns = chase?.runs ?? 0;
+      const ballsLeft = chase?.ballsRemaining ?? 0;
 
-      if (isWicket && prevActionRef.current !== "wicket") {
+      if (isWicket && prevActionRef.current !== ballKey) {
         setHeadline(`💥 WICKET! Clean bowled! The stadium roars as the batter is sent back to the pavilion!`);
         setHeadlineKey((k) => k + 1);
-        prevActionRef.current = "wicket";
+        prevActionRef.current = ballKey;
         return;
       }
-      if (runs === 6 && prevRollRef.current !== 6) {
+      if (runs === 6 && prevRollRef.current !== ballKey) {
         setHeadline(`🔥 MAXIMUM! Huge SIX smashed out of the park! The living room is on fire!`);
         setHeadlineKey((k) => k + 1);
-        prevRollRef.current = 6;
+        prevRollRef.current = ballKey;
         return;
       }
-      if (runs === 4 && prevRollRef.current !== 4) {
+      if (runs === 4 && prevRollRef.current !== ballKey) {
         setHeadline(`🏏 CRACKING FOUR! Sliced through the covers for a boundary!`);
         setHeadlineKey((k) => k + 1);
-        prevRollRef.current = 4;
+        prevRollRef.current = ballKey;
         return;
       }
       if (target > 0 && target - teamRuns <= 12 && ballsLeft > 0) {
-        setHeadline(`⚡ THRILLER IN PROGRESS: ${target - teamRuns} runs needed from ${ballsLeft} balls! Everyone is on the edge of their seats!`);
-        setHeadlineKey((k) => k + 1);
+        const chaseKey = `${target}:${teamRuns}:${ballsLeft}`;
+        if (prevChaseRef.current !== chaseKey) {
+          setHeadline(`⚡ THRILLER IN PROGRESS: ${target - teamRuns} runs needed from ${ballsLeft} balls! Everyone is on the edge of their seats!`);
+          setHeadlineKey((k) => k + 1);
+          prevChaseRef.current = chaseKey;
+        }
         return;
       }
     }
@@ -76,17 +85,20 @@ export function TvCommentaryTicker({
 
     // Snakes & Ladders Commentary
     if (game === "snl") {
-      const ev = (gameState.lastEvent as string | undefined) ?? (gameState.event as string | undefined);
-      if (ev === "snake" && prevActionRef.current !== "snake") {
+      const legacyEvent = typeof gameState.event === "string" ? gameState.event : null;
+      const ev = getLatestSnlEventKind(gameState) ?? legacyEvent;
+      const eventKey = getLatestSnlEventKey(gameState);
+      const stableEventKey = eventKey ?? (legacyEvent ? `legacy:${legacyEvent}` : null);
+      if (ev === "snake" && prevActionRef.current !== stableEventKey) {
         setHeadline(`🐍 DISASTER! Slipped right down the serpent's belly! The couch is groaning!`);
         setHeadlineKey((k) => k + 1);
-        prevActionRef.current = "snake";
+        prevActionRef.current = stableEventKey;
         return;
       }
-      if (ev === "ladder" && prevActionRef.current !== "ladder") {
+      if (ev === "ladder" && prevActionRef.current !== stableEventKey) {
         setHeadline(`🪜 SKY HIGH! Climbing the ladder straight into prime position!`);
         setHeadlineKey((k) => k + 1);
-        prevActionRef.current = "ladder";
+        prevActionRef.current = stableEventKey;
         return;
       }
     }
@@ -125,7 +137,7 @@ export function TvCommentaryTicker({
       </div>
 
       {/* Marquee Commentary Text */}
-      <div className="flex-1 overflow-hidden whitespace-nowrap">
+      <div className="flex-1 overflow-hidden whitespace-nowrap" aria-live="polite" aria-atomic="true">
         <div
           key={headlineKey}
           className="text-xs sm:text-sm font-bold text-amber-100 flex items-center gap-2 animate-[fadeIn_0.5s_ease-out]"
