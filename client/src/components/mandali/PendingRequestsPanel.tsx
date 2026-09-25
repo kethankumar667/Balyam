@@ -43,23 +43,23 @@ export default function PendingRequestsPanel({ open, onClose, requests, onDecide
 
   return (
     <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="pending-requests-title">
-      <div className="w-full max-w-md max-h-[85dvh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <UserCheck className="w-4 h-4 text-amber-500" />
-          <h2 id="pending-requests-title" className="text-base font-black text-slate-900 dark:text-white">
+      <div className="w-full max-w-md max-h-[85dvh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-album-raised border border-album-line shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-album-line shrink-0">
+          <UserCheck className="w-4 h-4 text-album-foil" />
+          <h2 id="pending-requests-title" className="text-base font-semibold text-album-ink">
             Join Requests {requests.length > 0 && `(${requests.length})`}
           </h2>
         </div>
 
         {error && (
-          <p className="px-5 pt-3 text-xs text-rose-600 dark:text-rose-400" role="alert">
+          <p className="px-5 pt-3 text-[13px] text-album-danger" role="alert">
             {error}
           </p>
         )}
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {requests.length === 0 ? (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-8">
+            <p className="text-center text-[15px] text-album-ink3 py-8">
               No pending join requests.
             </p>
           ) : (
@@ -68,13 +68,13 @@ export default function PendingRequestsPanel({ open, onClose, requests, onDecide
               return (
                 <div
                   key={request.id}
-                  className="flex items-center justify-between gap-3 px-2.5 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  className="flex items-center justify-between gap-3 px-2.5 py-3 rounded-xl hover:bg-album-field transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    <p className="text-[15px] font-semibold text-album-ink truncate">
                       {request.requesterIdentityId}
                     </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[13px] text-album-ink3">
                       Requested {new Date(request.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -84,7 +84,7 @@ export default function PendingRequestsPanel({ open, onClose, requests, onDecide
                       onClick={() => decide(request.id, true)}
                       disabled={isBusy}
                       aria-label="Approve"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 cursor-pointer transition-colors"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-album-success/15 text-album-success hover:bg-album-success/25 disabled:opacity-50 cursor-pointer transition-colors"
                     >
                       <Check className="w-4 h-4" />
                     </button>
@@ -93,7 +93,7 @@ export default function PendingRequestsPanel({ open, onClose, requests, onDecide
                       onClick={() => decide(request.id, false)}
                       disabled={isBusy}
                       aria-label="Decline"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-rose-500/15 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 disabled:opacity-50 cursor-pointer transition-colors"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-album-danger/15 text-album-danger hover:bg-album-danger/25 disabled:opacity-50 cursor-pointer transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>

@@ -145,18 +145,18 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
       aria-labelledby="coin-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in select-none"
     >
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-5 transition-colors">
+      <div className="bg-album-raised border border-album-line rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-5 transition-colors">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between pb-3 border-b border-album-line">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+            <div className="w-10 h-10 rounded-2xl bg-album-foilfill/10 border border-album-foil/40 flex items-center justify-center text-album-foil">
               <Coins className="w-5 h-5" />
             </div>
             <div>
-              <h2 id="coin-modal-title" className="text-base font-extrabold text-slate-900 dark:text-white">
+              <h2 id="coin-modal-title" className="text-base font-semibold text-album-ink">
                 Mandali Coin Transfer
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-[13px] text-album-ink3 font-medium">
                 Transfer or request coins with fellow clan members
               </p>
             </div>
@@ -165,7 +165,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center text-album-ink3 hover:text-album-ink transition-colors focus-visible:ring-2 focus-visible:ring-album-focus"
             aria-label="Close transfer modal"
           >
             <X className="w-5 h-5" />
@@ -174,7 +174,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
 
         {/* Success Banner */}
         {successMessage && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 flex items-center gap-3 text-xs sm:text-sm font-bold">
+          <div className="p-4 rounded-2xl bg-album-success/10 border border-album-success/40 text-album-success flex items-center gap-3 text-[13px] sm:text-[15px] font-bold">
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
             <span>{successMessage}</span>
           </div>
@@ -182,24 +182,24 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
 
         {/* Error Banner */}
         {errorMessage && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 flex items-center gap-2.5 text-xs font-bold">
+          <div className="p-3.5 rounded-2xl bg-album-danger/10 border border-album-danger/40 text-album-danger flex items-center gap-2.5 text-[13px] font-bold">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Mode Selector (Send vs Request) */}
-        <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+        <div className="grid grid-cols-2 p-1 rounded-2xl bg-album-field border border-album-line">
           <button
             type="button"
             onClick={() => {
               setType("SEND");
               setErrorMessage(null);
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
+            className={`min-h-[44px] rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none ${
               type === "SEND"
-                ? "bg-amber-500 text-slate-950 shadow-md scale-[1.02]"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-album-foilfill text-album-onfoil shadow-md scale-[1.02]"
+                : "text-album-ink2 hover:text-album-ink"
             }`}
           >
             <ArrowUpRight className="w-4 h-4" />
@@ -211,33 +211,33 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               setType("REQUEST");
               setErrorMessage(null);
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
+            className={`min-h-[44px] rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none ${
               type === "REQUEST"
-                ? "bg-amber-500 text-slate-950 shadow-md scale-[1.02]"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-album-foilfill text-album-onfoil shadow-md scale-[1.02]"
+                : "text-album-ink2 hover:text-album-ink"
             }`}
           >
             <ArrowDownLeft className="w-4 h-4" />
             <span>Request Coins</span>
             {isCoolingDown && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" title="Cooldown active" />
+              <span className="w-2 h-2 rounded-full bg-album-danger flex-shrink-0" title="Cooldown active" />
             )}
           </button>
         </div>
 
         {/* Wallet Balance Display */}
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 text-xs">
-          <span className="font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-            <Coins className="w-4 h-4 text-amber-500" />
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-album-foilfill/10 border border-album-foil/40 text-[13px]">
+          <span className="font-semibold text-album-ink2 flex items-center gap-1.5">
+            <Coins className="w-4 h-4 text-album-foil" />
             Your Wallet Balance:
           </span>
-          <span className="font-mono font-extrabold text-slate-900 dark:text-amber-400 text-sm">
+          <span className="font-semibold text-album-ink text-[15px]">
             {numericBalance.toLocaleString()} coins
           </span>
         </div>
 
         {otherMembers.length === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+          <div className="py-6 text-center text-[13px] text-album-ink3 font-medium">
             <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
             No other active members in this Mandali yet to transfer coins with.
           </div>
@@ -245,14 +245,14 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Recipient Selector */}
             <div>
-              <label htmlFor="member-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              <label htmlFor="member-select" className="block text-[13px] font-bold text-album-ink mb-1.5">
                 {type === "SEND" ? "Send to Member" : "Request from Member"}
               </label>
               <select
                 id="member-select"
                 value={selectedRecipientId}
                 onChange={(e) => setSelectedRecipientId(e.target.value)}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-album-page border border-album-line text-album-ink text-[13px] font-semibold focus:border-album-foil focus:outline-none focus:ring-2 focus:ring-album-focus transition-colors"
               >
                 {otherMembers.map((m) => (
                   <option key={m.playerId} value={m.playerId}>
@@ -262,11 +262,11 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
               </select>
 
               {type === "REQUEST" && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 font-medium">
-                  <Send className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                <p className="text-[13px] text-album-ink3 mt-1.5 flex items-center gap-1.5 font-medium">
+                  <Send className="w-3.5 h-3.5 text-album-foil flex-shrink-0" />
                   <span>
                     Posts a payable request card in chat — coins transfer when{" "}
-                    <strong className="text-slate-700 dark:text-slate-300">@{targetName}</strong> taps Pay.
+                    <strong className="text-album-ink">@{targetName}</strong> taps Pay.
                   </span>
                 </p>
               )}
@@ -274,31 +274,31 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
 
             {/* Amount Section — Redesigned according to the condition */}
             <div>
-              <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              <span className="block text-[13px] font-bold text-album-ink mb-1.5">
                 {type === "SEND" ? "Transfer Amount" : "Request Amount"}
               </span>
 
               {type === "REQUEST" ? (
                 <div className="space-y-2.5">
-                  <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-album-foilfill/10 border border-album-foil/40 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-amber-300">
-                        <Coins className="w-5 h-5 text-amber-500" />
+                      <span className="flex items-center gap-2 text-base font-semibold text-album-ink">
+                        <Coins className="w-5 h-5 text-album-foil" />
                         {MANDALI_COIN_AMOUNT} coins
                       </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                      <span className="px-2.5 py-1 rounded-full text-[13px] font-semibold bg-album-foilfill/20 text-album-foil border border-album-foil/40">
                         Fixed Clan Request
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1.5 pt-2 border-t border-amber-500/20 leading-relaxed font-medium">
-                      <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-[13px] text-album-ink2 flex items-start gap-1.5 pt-2 border-t border-album-foil/40 leading-relaxed font-medium">
+                      <Info className="w-4 h-4 text-album-foil flex-shrink-0 mt-0.5" />
                       <span>Coin requests are always 100 coins to keep clan support balanced.</span>
                     </div>
                   </div>
 
                   {!effectiveChannelId && (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-album-danger/10 border border-album-danger/40 text-album-danger text-[13px] font-semibold flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       <span>No active chat channel found to post your request card.</span>
                     </div>
@@ -307,17 +307,17 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                   {/* A timer, not a live region: the countdown changes every second and must not be read out each time. */}
                   <div
                     role={isCoolingDown ? "timer" : undefined}
-                    className={`flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                    className={`flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border text-[13px] font-semibold ${
                       isCoolingDown
-                        ? "bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300"
-                        : "bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                        ? "bg-album-danger/10 border-album-danger/40 text-album-danger"
+                        : "bg-album-field border-album-line text-album-ink2"
                     }`}
                   >
                     <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     {isCoolingDown ? (
                       <span>
                         You can request coins again in{" "}
-                        <span className="font-mono font-extrabold tabular-nums">{formatCountdown(cooldownRemainingMs)}</span>
+                        <span className="font-semibold tabular-nums">{formatCountdown(cooldownRemainingMs)}</span>
                       </span>
                     ) : (
                       <span>You can request coins once every {COOLDOWN_HOURS} hours.</span>
@@ -326,26 +326,26 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 </div>
               ) : (
                 <div>
-                  <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-album-foilfill/10 border border-album-foil/40 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-amber-300">
-                        <Coins className="w-5 h-5 text-amber-500" />
+                      <span className="flex items-center gap-2 text-base font-semibold text-album-ink">
+                        <Coins className="w-5 h-5 text-album-foil" />
                         {MANDALI_COIN_AMOUNT} coins
                       </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      <span className="px-2.5 py-1 rounded-full text-[13px] font-semibold bg-album-field text-album-ink">
                         Fixed for every transfer
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1.5 pt-2 border-t border-amber-500/20 leading-relaxed font-medium">
-                      <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-[13px] text-album-ink2 flex items-start gap-1.5 pt-2 border-t border-album-foil/40 leading-relaxed font-medium">
+                      <Info className="w-4 h-4 text-album-foil flex-shrink-0 mt-0.5" />
                       <span>Transfers are fixed at 100 coins to keep clan economy balanced and safe.</span>
                     </div>
 
                     {isBalanceSufficient && (
-                      <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-1.5 border-t border-amber-500/15 flex items-center justify-between font-medium">
+                      <div className="text-[13px] text-album-ink2 pt-1.5 border-t border-album-foil/40 flex items-center justify-between font-medium">
                         <span>Balance after send:</span>
-                        <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">
+                        <span className="font-semibold text-album-ink">
                           {(numericBalance - effectiveAmount).toLocaleString()} coins
                         </span>
                       </div>
@@ -353,7 +353,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                   </div>
 
                   {!isBalanceSufficient && (
-                    <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1.5">
+                    <p className="text-[13px] text-album-danger font-semibold mt-1.5 flex items-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                       <span>Not enough coins — you have {numericBalance.toLocaleString()}.</span>
                     </p>
@@ -365,10 +365,10 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
             {/* Note (Optional) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="transfer-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label htmlFor="transfer-note" className="block text-[13px] font-bold text-album-ink">
                   {type === "SEND" ? "Note (Optional)" : "Reason for Request (Optional)"}
                 </label>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
+                <span className="text-[13px] text-album-ink3 tabular-nums">
                   {note.length}/80
                 </span>
               </div>
@@ -380,10 +380,10 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={
                   type === "SEND"
-                    ? "e.g. GG in Ludo death match!"
-                    : "e.g. Need entry fee for squad match!"
+                    ? "e.g. Thanks for last night's game!"
+                    : "e.g. For Sunday's Ludo night"
                 }
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-medium placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-album-page border border-album-line text-album-ink text-[13px] font-medium placeholder:text-album-ink3 focus:border-album-foil focus:outline-none focus:ring-2 focus:ring-album-focus transition-colors"
               />
             </div>
 
@@ -397,7 +397,7 @@ export const CoinTransferModal: React.FC<CoinTransferModalProps> = ({
                 isCoolingDown ||
                 (type === "REQUEST" && !effectiveChannelId)
               }
-              className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+              className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-album-foilfill hover:brightness-105 text-album-onfoil font-semibold text-[15px] flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
             >
               <Send className="w-4 h-4" />
               <span>

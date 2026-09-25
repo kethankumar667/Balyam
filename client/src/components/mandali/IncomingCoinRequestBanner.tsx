@@ -1,21 +1,25 @@
 /**
- * BHALYAM Mandali — Incoming Coin Request Banner
+ * BHALYAM Mandali — "someone asked you for coins".
  *
- * The notification for the person who was ASKED for coins. It sits above the
- * hub (both layouts), appears live the moment a request is posted, survives a
- * page refresh (it is derived from the open requests addressed to you, not
- * from a one-off event), and lets you pay right there without hunting for the
- * card in the chat feed.
+ * Sits above the hub (both layouts), appears live the moment a request is
+ * posted, survives a refresh (derived from the open requests addressed to you,
+ * not a one-off event), and lets you pay right there without hunting for the
+ * card in the chat.
+ *
+ * A calm strip, not an alarm: a hairline-bordered band in the page's own
+ * colours with one primary action.
  *
  * Requirements:
- * - Dual light/dark theme support.
+ * - Light and dark themes both flip fully (panels and ink together).
  * - 44x44px touch targets.
  * - Zero usage of Sparkles from lucide-react.
  */
 
 import { useState } from "react";
-import { Coins, Loader2 } from "lucide-react";
+import { Coins } from "lucide-react";
 import type { MandaliCoinRequest, MandaliMember } from "@shared/mandali/types.js";
+import { useTranslation } from "../../hooks/useTranslation";
+import { AlbumButton } from "./album/AlbumButton";
 
 export interface IncomingCoinRequestBannerProps {
   /** Open, unexpired requests where the current user is the designated payer, oldest first. */
@@ -25,14 +29,14 @@ export interface IncomingCoinRequestBannerProps {
 }
 
 export default function IncomingCoinRequestBanner({ requests, members, onPay }: IncomingCoinRequestBannerProps) {
+  const { t } = useTranslation();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const current = requests[0];
   if (!current) return null;
 
-  const requesterName =
-    members.find((m) => m.playerId === current.requesterIdentityId)?.displayName ?? "A member";
+  const requesterName = members.find((m) => m.playerId === current.requesterIdentityId)?.displayName ?? t("mandali.coin.someone");
   const isPaying = payingId === current.id;
   const others = requests.length - 1;
 
@@ -41,35 +45,25 @@ export default function IncomingCoinRequestBanner({ requests, members, onPay }: 
     setError(null);
     const result = await onPay(current.id);
     setPayingId(null);
-    if (!result.success) setError(result.error ?? "Could not send the coins. Please try again.");
+    if (!result.success) setError(result.error ?? t("mandali.coin.sendError"));
   };
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex-shrink-0 bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-950 px-4 py-2.5 shadow-md"
-    >
+    <div role="status" aria-live="polite" className="album-surface flex-shrink-0 border-b border-album-foil/40 bg-album-raised px-4 py-2.5">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Coins className="w-4 h-4 flex-shrink-0" />
-          <p className="text-xs sm:text-sm font-bold truncate">
-            {requesterName} asked you for {current.amount} coins
-            {others > 0 ? ` (+${others} more)` : ""}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Coins className="h-5 w-5 flex-shrink-0 text-album-foil" aria-hidden="true" />
+          <p className="m-0 text-[15px] leading-snug text-album-ink">
+            {t("mandali.coin.banner", { name: requesterName, amount: current.amount })}
+            {others > 0 && <span className="block text-[13px] text-album-ink3">{t("mandali.coin.bannerMore", { count: others })}</span>}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handlePay}
-          disabled={isPaying}
-          className="min-h-[44px] px-4 rounded-lg bg-slate-950 text-amber-400 font-extrabold text-xs sm:text-sm hover:bg-slate-900 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow flex items-center gap-1.5 flex-shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-400"
-        >
-          {isPaying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
-          {isPaying ? "Sending…" : `Send ${current.amount} Coins`}
-        </button>
+        <AlbumButton variant="primary" onClick={handlePay} loading={isPaying} className="flex-shrink-0">
+          {isPaying ? t("mandali.coin.sending") : t("mandali.coin.send", { amount: current.amount })}
+        </AlbumButton>
       </div>
       {error && (
-        <p className="mt-1 text-xs font-semibold text-rose-900" role="alert">
+        <p role="alert" className="m-0 mt-1 text-sm font-medium text-album-danger">
           {error}
         </p>
       )}

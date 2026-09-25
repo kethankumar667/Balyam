@@ -14,8 +14,8 @@
  */
 
 import { useState } from "react";
-import { Users, Crown, ShieldCheck, ChevronDown, UserMinus, Ban, ArrowLeftRight } from "lucide-react";
-import Modal from "../Modal.js";
+import { Crown, ShieldCheck, ChevronDown, UserMinus, Ban, ArrowLeftRight } from "lucide-react";
+import { AlbumSheet } from "./album";
 import type { MandaliMember } from "@shared/mandali/types.js";
 
 export interface MemberManagementSheetProps {
@@ -66,22 +66,15 @@ export default function MemberManagementSheet({
     });
 
   return (
-    <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="member-management-title">
-      <div className="w-full max-w-md max-h-[85dvh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <Users className="w-4 h-4 text-amber-500" />
-          <h2 id="member-management-title" className="text-base font-black text-slate-900 dark:text-white">
-            Members ({sortedMembers.length})
-          </h2>
-        </div>
-
+    <AlbumSheet open={open} onClose={onClose} title={`Members (${sortedMembers.length})`}>
+      <div className="-mx-2">
         {error && (
-          <p className="px-5 pt-3 text-xs text-rose-600 dark:text-rose-400" role="alert">
+          <p className="px-5 pt-3 text-[13px] text-album-danger" role="alert">
             {error}
           </p>
         )}
 
-        <div className="flex-1 overflow-y-auto px-3 py-2">
+        <div className="px-1 py-1">
           {sortedMembers.map((member) => {
             // Durable mode's role is always OWNER/ADMIN/MEMBER at runtime,
             // but MandaliMember.role is typed as the wider 7-value
@@ -99,22 +92,22 @@ export default function MemberManagementSheet({
             return (
               <div
                 key={member.playerId}
-                className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors relative"
+                className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-album-field transition-colors relative"
               >
                 <img
                   src={avatarUrl(member.avatar)}
                   alt=""
-                  className="w-10 h-10 rounded-full object-cover bg-slate-200 dark:bg-slate-700 shrink-0"
+                  className="w-10 h-10 rounded-full object-cover bg-album-field shrink-0"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                  <p className="text-[15px] font-semibold text-album-ink truncate flex items-center gap-1.5">
                     {member.displayName}
-                    {isSelf && <span className="text-[10px] text-slate-400 font-normal">(you)</span>}
+                    {isSelf && <span className="text-[13px] text-album-ink3 font-normal">(you)</span>}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    {role === "OWNER" && <Crown className="w-3 h-3 text-amber-500" />}
-                    {role === "ADMIN" && <ShieldCheck className="w-3 h-3 text-sky-500" />}
+                  <p className="text-[13px] text-album-ink3 flex items-center gap-1">
+                    {role === "OWNER" && <Crown className="w-3 h-3 text-album-foil" />}
+                    {role === "ADMIN" && <ShieldCheck className="w-3 h-3 text-album-foil" />}
                     {role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Member"}
                   </p>
                 </div>
@@ -127,20 +120,20 @@ export default function MemberManagementSheet({
                       disabled={isBusy}
                       aria-label={`Manage ${member.displayName}`}
                       aria-expanded={openMenuFor === member.playerId}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 disabled:opacity-50 cursor-pointer transition-colors"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-album-field text-album-ink3 disabled:opacity-50 cursor-pointer transition-colors"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
                     {openMenuFor === member.playerId && (
-                      <div className="absolute right-0 top-full mt-1 z-10 w-48 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl overflow-hidden py-1">
+                      <div className="absolute right-0 top-full mt-1 z-10 w-48 rounded-xl border border-album-line bg-album-raised shadow-xl overflow-hidden py-1">
                         {role === "MEMBER" && isSelfOwner && (
                           <button
                             type="button"
                             onClick={() => runAction(member.playerId, onPromote)}
-                            className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-3.5 py-2.5 text-[15px] text-album-ink hover:bg-album-field flex items-center gap-2 cursor-pointer"
                           >
-                            <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-album-foil" />
                             Make admin
                           </button>
                         )}
@@ -148,9 +141,9 @@ export default function MemberManagementSheet({
                           <button
                             type="button"
                             onClick={() => runAction(member.playerId, onDemote)}
-                            className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-3.5 py-2.5 text-[15px] text-album-ink hover:bg-album-field flex items-center gap-2 cursor-pointer"
                           >
-                            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                            <ShieldCheck className="w-3.5 h-3.5 text-album-ink3" />
                             Dismiss as admin
                           </button>
                         )}
@@ -158,24 +151,24 @@ export default function MemberManagementSheet({
                           <button
                             type="button"
                             onClick={() => runAction(member.playerId, onTransferOwnership)}
-                            className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                            className="w-full text-left px-3.5 py-2.5 text-[15px] text-album-ink hover:bg-album-field flex items-center gap-2 cursor-pointer"
                           >
-                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-album-foil" />
                             Make group owner
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => runAction(member.playerId, onKick)}
-                          className="w-full text-left px-3.5 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 text-[15px] text-album-ink hover:bg-album-field flex items-center gap-2 cursor-pointer"
                         >
-                          <UserMinus className="w-3.5 h-3.5 text-rose-500" />
+                          <UserMinus className="w-3.5 h-3.5 text-album-danger" />
                           Remove from group
                         </button>
                         <button
                           type="button"
                           onClick={() => runAction(member.playerId, onBan)}
-                          className="w-full text-left px-3.5 py-2.5 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-3.5 py-2.5 text-[15px] text-album-danger hover:bg-album-danger/10 flex items-center gap-2 cursor-pointer"
                         >
                           <Ban className="w-3.5 h-3.5" />
                           Remove and ban
@@ -189,6 +182,6 @@ export default function MemberManagementSheet({
           })}
         </div>
       </div>
-    </Modal>
+    </AlbumSheet>
   );
 }

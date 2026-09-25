@@ -13,8 +13,8 @@
  */
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Info, Save, Loader2, Trash2, AlertTriangle } from "lucide-react";
-import Modal from "../Modal.js";
+import { Save, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { AlbumButton, AlbumSheet } from "./album";
 import type { Mandali } from "@shared/mandali/types.js";
 
 export interface GroupInfoModalProps {
@@ -47,8 +47,8 @@ function SettingToggle({
   return (
     <label className={`flex items-center justify-between gap-3 py-2.5 ${disabled ? "opacity-60" : "cursor-pointer"}`}>
       <span>
-        <span className="block text-sm font-semibold text-slate-900 dark:text-white">{label}</span>
-        <span className="block text-xs text-slate-500 dark:text-slate-400">{description}</span>
+        <span className="block text-[15px] font-semibold text-album-ink">{label}</span>
+        <span className="block text-[13px] text-album-ink3">{description}</span>
       </span>
       <button
         type="button"
@@ -58,7 +58,7 @@ function SettingToggle({
         disabled={disabled}
         onClick={() => !disabled && onChange(!value)}
         className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
-          value ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-700"
+          value ? "bg-album-foilfill" : "bg-album-line"
         } ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
       >
         <span
@@ -159,19 +159,25 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
     }
   };
 
-  return (
-    <Modal open={open} onClose={onClose} mobileSheet ariaLabelledBy="group-info-title">
-      <div className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Info className="w-4 h-4 text-amber-500" />
-          <h2 id="group-info-title" className="text-base font-black text-slate-900 dark:text-white">
-            Group Info
-          </h2>
-        </div>
+  const footer = (
+    <div className="flex gap-3">
+      <AlbumButton variant="quiet" className="flex-1" onClick={onClose}>
+        Cancel
+      </AlbumButton>
+      {(canEditInfo || isOwner) && (
+        <AlbumButton variant="primary" className="flex-1" onClick={handleSave} loading={isSaving} icon={<Save className="h-4 w-4" aria-hidden="true" />}>
+          Save
+        </AlbumButton>
+      )}
+    </div>
+  );
 
+  return (
+    <AlbumSheet open={open} onClose={onClose} title="Group Info" footer={footer}>
+      <div className="space-y-5 pt-1">
         <div className="space-y-3">
           <div>
-            <label htmlFor="mandali-name" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+            <label htmlFor="mandali-name" className="block text-[13px] font-semibold text-album-ink2 mb-1">
               Name
             </label>
             <input
@@ -180,12 +186,12 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
               onChange={(e) => setName(e.target.value)}
               disabled={!canEditInfo}
               maxLength={60}
-              className="w-full min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 text-sm text-slate-900 dark:text-white disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="w-full min-h-[44px] rounded-xl border border-album-line bg-album-raised px-3.5 text-[15px] text-album-ink disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-focus"
             />
           </div>
 
           <div>
-            <label htmlFor="mandali-description" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+            <label htmlFor="mandali-description" className="block text-[13px] font-semibold text-album-ink2 mb-1">
               Description
             </label>
             <textarea
@@ -195,12 +201,12 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
               disabled={!canEditInfo}
               maxLength={500}
               rows={2}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white disabled:opacity-60 resize-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="w-full rounded-xl border border-album-line bg-album-raised px-3.5 py-2.5 text-[15px] text-album-ink disabled:opacity-60 resize-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-focus"
             />
           </div>
 
           <div>
-            <label htmlFor="mandali-rules" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+            <label htmlFor="mandali-rules" className="block text-[13px] font-semibold text-album-ink2 mb-1">
               Group Rules
             </label>
             <textarea
@@ -210,14 +216,14 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
               disabled={!canEditInfo}
               maxLength={1000}
               rows={3}
-              placeholder="e.g. Be respectful, no spam, English/Telugu chat"
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 disabled:opacity-60 resize-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+              placeholder="e.g. Kind words only. Telugu, English, anything goes."
+              className="w-full rounded-xl border border-album-line bg-album-raised px-3.5 py-2.5 text-[15px] text-album-ink placeholder:text-album-ink3 disabled:opacity-60 resize-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-focus"
             />
           </div>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+        <div className="mt-5 pt-4 border-t border-album-line">
+          <h3 className="text-[13px] font-bold text-album-ink3 mb-1">
             Permissions {!isOwner && <span className="normal-case font-normal">(owner only)</span>}
           </h3>
           <SettingToggle
@@ -244,15 +250,15 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
         </div>
 
         {isOwner && onDelete && (
-          <div className="mt-5 pt-4 border-t border-rose-200 dark:border-rose-900/60">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
+          <div className="mt-5 pt-4 border-t border-album-danger/40">
+            <h3 className="text-[13px] font-bold text-album-danger mb-2">
               Danger zone
             </h3>
             {!confirmingDelete ? (
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
-                className="w-full min-h-[44px] rounded-xl font-semibold text-sm border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+                className="w-full min-h-[44px] rounded-xl font-semibold text-[15px] border border-album-danger/40 text-album-danger hover:bg-album-danger/10 transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-danger"
               >
                 <Trash2 className="w-4 h-4" aria-hidden="true" />
                 Delete Mandali…
@@ -260,9 +266,9 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
             ) : (
               <form
                 onSubmit={handleDelete}
-                className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3.5 space-y-3"
+                className="rounded-xl border border-album-danger/40 bg-album-danger/10 p-3.5 space-y-3"
               >
-                <div role="alert" className="flex gap-2 text-xs text-rose-800 dark:text-rose-200">
+                <div role="alert" className="flex gap-2 text-[13px] text-album-danger">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <p>
                     This is permanent and cannot be undone. Every message in “{mandali.name}” is erased and every
@@ -271,8 +277,8 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
                   </p>
                 </div>
                 <div>
-                  <label htmlFor="mandali-delete-confirm" className="block text-xs font-semibold text-rose-900 dark:text-rose-100 mb-1">
-                    Type <strong className="font-black">{mandali.handle}</strong> to confirm
+                  <label htmlFor="mandali-delete-confirm" className="block text-[13px] font-semibold text-album-danger mb-1">
+                    Type <strong className="font-semibold">{mandali.handle}</strong> to confirm
                   </label>
                   <input
                     id="mandali-delete-confirm"
@@ -283,11 +289,11 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
                     autoComplete="off"
                     autoCapitalize="none"
                     spellCheck={false}
-                    className="w-full min-h-[44px] rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 px-3.5 text-sm text-slate-900 dark:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+                    className="w-full min-h-[44px] rounded-xl border border-album-danger/40 bg-album-raised px-3.5 text-[15px] text-album-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-danger"
                   />
                 </div>
                 {deleteError && (
-                  <p className="text-xs text-rose-700 dark:text-rose-300" role="alert">
+                  <p className="text-[13px] text-album-danger" role="alert">
                     {deleteError}
                   </p>
                 )}
@@ -296,7 +302,7 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
                     type="button"
                     onClick={cancelDelete}
                     disabled={isDeleting}
-                    className="flex-1 min-h-[44px] rounded-xl font-semibold text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="flex-1 min-h-[44px] rounded-xl font-semibold text-[15px] bg-album-raised text-album-ink border border-album-line hover:bg-album-field transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     Keep Mandali
                   </button>
@@ -304,7 +310,7 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
                     type="submit"
                     disabled={!canConfirmDelete || isDeleting}
                     aria-busy={isDeleting}
-                    className="flex-1 min-h-[44px] rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-400"
+                    className="flex-1 min-h-[44px] rounded-xl font-bold text-[15px] bg-album-danger hover:brightness-110 text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-album-danger"
                   >
                     {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                     Delete forever
@@ -316,32 +322,11 @@ export default function GroupInfoModal({ open, onClose, mandali, canEditInfo, is
         )}
 
         {error && (
-          <p className="mt-3 text-xs text-rose-600 dark:text-rose-400" role="alert">
+          <p className="mt-3 text-[13px] text-album-danger" role="alert">
             {error}
           </p>
         )}
-
-        <div className="mt-5 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 min-h-[44px] rounded-xl font-semibold text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          {(canEditInfo || isOwner) && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 min-h-[44px] rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
-            </button>
-          )}
-        </div>
       </div>
-    </Modal>
+    </AlbumSheet>
   );
 }

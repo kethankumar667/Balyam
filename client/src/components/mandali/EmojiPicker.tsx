@@ -77,13 +77,13 @@ export default function EmojiPicker({ open, onSelect, onClose, fullWidth = false
       ref={panelRef}
       role="dialog"
       aria-label="Emoji picker"
-      className={`absolute bottom-full mb-2 z-30 max-h-64 overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-2 ${
+      className={`absolute bottom-full mb-2 z-30 max-h-64 overflow-y-auto rounded-2xl bg-white  border border-album-line  shadow-2xl p-2 ${
         fullWidth ? "left-2.5 right-2.5" : "right-0 w-[min(20rem,calc(100vw-1.5rem))]"
       }`}
     >
       {EMOJI_GROUPS.map((group) => (
         <section key={group.label} aria-label={group.label} className="mb-1.5 last:mb-0">
-          <h3 className="px-1.5 pt-1 pb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h3 className="px-1.5 pt-1 pb-0.5 text-[13px] font-semibold text-album-ink3">
             {group.label}
           </h3>
           <div className="grid grid-cols-6 sm:grid-cols-7">
@@ -93,7 +93,7 @@ export default function EmojiPicker({ open, onSelect, onClose, fullWidth = false
                 type="button"
                 onClick={() => onSelect(emoji)}
                 aria-label={`Insert ${emoji}`}
-                className="min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-0 flex items-center justify-center text-xl rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-110 transition-transform cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-0 flex items-center justify-center text-xl rounded-lg hover:bg-album-field active:scale-110 transition-transform cursor-pointer focus-visible:ring-2 focus-visible:ring-album-focus"
               >
                 {emoji}
               </button>

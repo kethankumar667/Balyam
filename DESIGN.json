@@ -1,0 +1,56 @@
+{
+  "name": "BHALYAM Mandali family album",
+  "version": 1,
+  "register": "operate",
+  "themeSwitch": "data-theme on <html>",
+  "tokenFormat": "space-separated RGB channels in --album-* variables; Tailwind album.* with alpha-value",
+  "colors": {
+    "page": { "light": "243 242 240", "dark": "23 20 18" },
+    "raised": { "light": "255 255 255", "dark": "39 34 30" },
+    "field": { "light": "233 231 227", "dark": "41 35 31" },
+    "line": { "light": "217 213 206", "dark": "76 68 60" },
+    "ink": { "light": "31 26 23", "dark": "243 236 223" },
+    "ink2": { "light": "75 67 60", "dark": "201 189 171" },
+    "ink3": { "light": "111 102 92", "dark": "156 145 127" },
+    "foil": { "light": "138 98 18", "dark": "221 178 90", "role": "text and icons" },
+    "foilfill": { "light": "201 151 43", "dark": "221 178 90", "role": "fills" },
+    "onfoil": { "light": "28 20 9", "dark": "28 20 9" },
+    "ribbon": { "light": "168 50 60", "dark": "180 50 63" },
+    "mine": { "light": "226 231 245", "dark": "51 41 29" },
+    "indigo": { "light": "52 70 140", "dark": "143 164 224" },
+    "danger": { "light": "178 44 44", "dark": "224 115 111" },
+    "success": { "light": "38 110 66", "dark": "125 190 143" },
+    "focus": { "light": "138 98 18", "dark": "233 198 111" },
+    "coverFoil": { "light": "232 196 118", "dark": "232 196 118" },
+    "corner": { "light": "120 110 98", "dark": "156 145 127" }
+  },
+  "cloths": {
+    "selection": "FNV-1a(mandaliId) mod 5; missing id => maroon",
+    "maroon": ["123 30 43", "84 18 29"],
+    "indigo": ["37 58 107", "24 38 74"],
+    "green": ["31 77 58", "19 52 38"],
+    "umber": ["90 58 34", "60 37 20"],
+    "plum": ["75 35 64", "50 22 42"]
+  },
+  "typography": {
+    "ui": "Poppins",
+    "hand": "Caveat (day captions, memory dates; see DESIGN.md divergences)",
+    "mono": "room codes",
+    "scalePx": [12, 13, 14, 15, 16, 17, 18, 20, 22, 24],
+    "bodyPx": 15
+  },
+  "radius": { "control": 12, "bubble": 16, "card": 16, "cover": 16, "sheet": 24, "pill": 9999 },
+  "touch": { "min": 44, "lg": 48 },
+  "ornament": ["cover", "ribbon", "photo-corners", "day-captions"],
+  "components": {
+    "AlbumButton": { "variants": ["primary", "quiet", "ghost", "danger"], "sizes": { "md": 44, "lg": 48, "icon": 44 } },
+    "AlbumSheet": { "phone": "bottom sheet", "fromSm": "centred card", "maxWidth": "md", "footer": "pinned" },
+    "AlbumCover": { "variants": ["band", "card", "tile"] },
+    "Composer": { "field": 48, "send": { "phone": "icon", "desktop": "labelled" } }
+  },
+  "knownGaps": [
+    "legacy modals re-skinned by token remap; English-only strings; some 13px text",
+    "reaction affordance is tap-on-bubble; options button visible only on newest line, hover, focus, open",
+    "ribbon only on shelf tiles when digest has unread; card cover never receives unread"
+  ]
+}

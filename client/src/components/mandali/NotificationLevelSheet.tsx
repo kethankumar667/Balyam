@@ -76,20 +76,20 @@ export default function NotificationLevelSheet({ open, onClose, mandaliName, lev
       onClose={onClose}
       mobileSheet
       ariaLabelledBy="notification-level-title"
-      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
+      panelClassName="w-full max-w-md rounded-t-3xl md:rounded-3xl bg-album-raised border border-album-line shadow-2xl p-5 sm:p-6 max-h-[85vh] overflow-y-auto"
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 id="notification-level-title" className="text-base font-black text-slate-900 dark:text-white">
+          <h2 id="notification-level-title" className="text-base font-semibold text-album-ink">
             Notifications
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">How loud {mandaliName} may be for you.</p>
+          <p className="text-[13px] text-album-ink3 mt-0.5">How loud {mandaliName} may be for you.</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="min-h-[44px] min-w-[44px] -mr-2 -mt-2 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+          className="min-h-[44px] min-w-[44px] -mr-2 -mt-2 rounded-xl flex items-center justify-center text-album-ink3 hover:text-album-ink focus-visible:ring-2 focus-visible:ring-album-focus focus-visible:outline-none"
         >
           <X className="w-5 h-5" />
         </button>
@@ -103,10 +103,10 @@ export default function NotificationLevelSheet({ open, onClose, mandaliName, lev
             return (
               <label
                 key={option}
-                className={`flex items-start gap-3 min-h-[64px] px-3.5 py-3 rounded-2xl border cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-amber-500 ${
+                className={`flex items-start gap-3 min-h-[64px] px-3.5 py-3 rounded-2xl border cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-album-focus ${
                   selected
-                    ? "bg-amber-500/10 border-amber-500"
-                    : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                    ? "bg-album-foilfill/10 border-album-foil/40"
+                    : "bg-album-page border-album-line hover:border-album-foil/40"
                 }`}
               >
                 <input
@@ -117,17 +117,17 @@ export default function NotificationLevelSheet({ open, onClose, mandaliName, lev
                   onChange={() => void choose(option)}
                   className="sr-only"
                 />
-                <span className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <span className="w-9 h-9 rounded-xl bg-album-foilfill/15 border border-album-foil/40 text-album-foil flex items-center justify-center shrink-0">
                   <Icon className="w-4.5 h-4.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-slate-900 dark:text-white">{title}</span>
-                  <span className="block text-xs text-slate-600 dark:text-slate-400 leading-snug mt-0.5">{description}</span>
+                  <span className="block text-[15px] font-bold text-album-ink">{title}</span>
+                  <span className="block text-[13px] text-album-ink2 leading-snug mt-0.5">{description}</span>
                 </span>
                 {saving === option ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-amber-600 dark:text-amber-400 mt-1" />
+                  <Loader2 className="w-4 h-4 animate-spin text-album-foil mt-1" />
                 ) : (
-                  selected && <Check className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-1" />
+                  selected && <Check className="w-5 h-5 text-album-foil mt-1" />
                 )}
               </label>
             );
@@ -136,7 +136,7 @@ export default function NotificationLevelSheet({ open, onClose, mandaliName, lev
       </fieldset>
 
       {error && (
-        <p role="alert" className="mt-3 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-start gap-1.5">
+        <p role="alert" className="mt-3 text-[13px] font-semibold text-album-danger flex items-start gap-1.5">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           {error}
         </p>

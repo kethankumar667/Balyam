@@ -68,17 +68,17 @@ export default function MandaliInviteActions({ roomCode, isDark, onEnterRoom, on
     }
   };
 
-  const secondary = isDark ? "text-zinc-400" : "text-[#6E5A4B]";
+  const secondary = isDark ? "text-album-ink3" : "text-[#6E5A4B]";
 
   return (
-    <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/10">
+    <div className="mt-3 pt-2.5 border-t border-black/5">
       {(seats || unavailable) && (
-        <p className={`text-[11px] font-semibold mb-2 ${secondary}`}>
+        <p className={`text-[13px] font-semibold mb-2 ${secondary}`}>
           {[seats, unavailable?.hint].filter(Boolean).join(" · ")}
         </p>
       )}
       {failure && (
-        <p role="status" className="text-[11px] font-semibold mb-2 text-amber-700 dark:text-amber-400">
+        <p role="status" className="text-[13px] font-semibold mb-2 text-album-foil">
           {joinFailureMessage(failure)}
         </p>
       )}
@@ -87,11 +87,11 @@ export default function MandaliInviteActions({ roomCode, isDark, onEnterRoom, on
           type="button"
           onClick={handleJoin}
           disabled={joining || unavailable !== null}
-          className={`flex-1 min-h-[44px] px-3 rounded-xl font-black text-[12px] text-center transition ${
+          className={`flex-1 min-h-[44px] px-3 rounded-xl font-semibold text-[13px] text-center transition ${
             unavailable
-              ? "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-zinc-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs active:scale-95 cursor-pointer"
-          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400`}
+              ? "bg-album-field text-album-ink3 cursor-not-allowed"
+              : "bg-album-foilfill text-white shadow-xs active:scale-95 cursor-pointer"
+          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-focus`}
         >
           {joining ? (
             <span className="inline-flex items-center gap-1.5">
@@ -109,9 +109,9 @@ export default function MandaliInviteActions({ roomCode, isDark, onEnterRoom, on
         <button
           type="button"
           onClick={onDismiss}
-          className={`min-h-[44px] px-3.5 rounded-xl text-[12px] font-bold transition cursor-pointer ${
-            isDark ? "bg-white/10 text-zinc-300 hover:text-white" : "bg-black/5 text-[#5C3B1E] hover:bg-black/10"
-          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400`}
+          className={`min-h-[44px] px-3.5 rounded-xl text-[13px] font-bold transition cursor-pointer ${
+            isDark ? "bg-album-raised/10 text-album-ink3 hover:text-album-ink" : "bg-black/5 text-[#5C3B1E] hover:bg-black/10"
+          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-focus`}
         >
           Dismiss
         </button>

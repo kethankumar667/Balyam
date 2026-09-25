@@ -58,7 +58,7 @@ describe("CoinTransferModal", () => {
     expect(screen.getByText(/Coin requests are always 100 coins/i)).toBeTruthy();
     expect(screen.getByText("Fixed Clan Request")).toBeTruthy();
     expect(screen.getByText(/Posts a payable request card in chat/i)).toBeTruthy();
-    expect(screen.getByPlaceholderText("e.g. Need entry fee for squad match!")).toBeTruthy();
+    expect(screen.getByPlaceholderText("e.g. For Sunday's Ludo night")).toBeTruthy();
     expect(screen.getByText(/once every 4 hours/i)).toBeTruthy();
     const submit = screen.getByRole("button", { name: "Request 100 Coins" }) as HTMLButtonElement;
     expect(submit.disabled).toBe(false);
@@ -70,7 +70,7 @@ describe("CoinTransferModal", () => {
     expect(screen.getByText("Fixed for every transfer")).toBeTruthy();
     expect(screen.getByText(/Balance after send:/i)).toBeTruthy();
     expect(screen.getByText("4,900 coins")).toBeTruthy();
-    expect(screen.getByPlaceholderText("e.g. GG in Ludo death match!")).toBeTruthy();
+    expect(screen.getByPlaceholderText("e.g. Thanks for last night's game!")).toBeTruthy();
   });
 
   it("shows the countdown and blocks the request while cooling down", () => {
