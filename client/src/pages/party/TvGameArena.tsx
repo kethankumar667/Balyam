@@ -18,6 +18,7 @@ import type {
   WordBuildingScoredWord,
 } from "@shared/types";
 import { TvTurnTimer } from "./TvTurnTimer";
+import { TvMomentumBar } from "./TvMomentumBar";
 import type { TvActiveTurnInfo } from "./types";
 import { findAvatar } from "../../lib/avatars";
 import { UnoCardFace, UnoCardBack } from "../../games/uno/uno-shared";
@@ -199,7 +200,7 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
       </div>
 
       {/* Top Active Turn Spotlight & Turn Timer */}
-      <div className="shrink-0 w-full">
+      <div className="shrink-0 w-full flex flex-col gap-1.5">
         <TvTurnTimer
           deadlineMs={activeTurn.deadlineMs}
           totalSeconds={activeTurn.turnTimerSeconds || 30}
@@ -208,6 +209,7 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
           playerColor={activeTurn.color}
           actionText={activeTurn.actionText}
         />
+        <TvMomentumBar game={game} gameState={gameState} players={players} />
       </div>
 
       {/* Center Stage: Dedicated High-Energy TV Game Spectator Stadium */}

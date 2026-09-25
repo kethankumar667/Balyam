@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Flame, Zap } from "lucide-react";
+import { Flame, Zap, Volume2 } from "lucide-react";
 import { getSocket } from "../../lib/socket";
-import type { ReactionRecvPayload, Player } from "@shared/types";
+import type { ReactionRecvPayload, SoundboardRecvPayload, Player } from "@shared/types";
+import { audioKeyForClip } from "../../lib/soundboard";
+import { AudioManager } from "../../services/AudioManager";
+import { SOUNDBOARD_CLIPS } from "@shared/soundboard";
 
 interface ActiveReaction {
   id: string;
@@ -74,14 +77,53 @@ export function TvCrowdReactions({ players, onTriggerShake }: TvCrowdReactionsPr
     [players, onTriggerShake]
   );
 
+  const handleSoundboard = useCallback(
+    (payload: SoundboardRecvPayload) => {
+      const audioKey = audioKeyForClip(payload.clipId);
+      if (audioKey) {
+        try {
+          AudioManager.getInstance().play(audioKey);
+        } catch {
+          // Ignored if sound not supported
+        }
+      }
+
+      const clipObj = SOUNDBOARD_CLIPS.find((c) => c.id === payload.clipId);
+      const sender = players.find((p) => p.id === payload.fromPlayerId);
+      const senderName = sender?.name ?? "Audience";
+
+      const now = Date.now();
+      const item: ActiveReaction = {
+        id: `sb-${payload.id}-${now}-${Math.random()}`,
+        emoji: clipObj?.glyph ?? "📣",
+        fromName: `${senderName}: ${clipObj?.label ?? "Sound"}`,
+        isThrowable: false,
+        xStartPercent: 30 + Math.random() * 40,
+        yEndPercent: 35,
+        createdAt: now,
+      };
+
+      setReactions((prev) => [...prev.slice(-15), item]);
+
+      if (payload.clipId === "airhorn" || payload.clipId === "dhol") {
+        onTriggerShake?.("intense");
+      } else {
+        onTriggerShake?.("subtle");
+      }
+    },
+    [players, onTriggerShake]
+  );
+
   useEffect(() => {
     const socket = getSocket();
     socket.on("room:reaction", handleReaction);
+    socket.on("room:sound", handleSoundboard);
 
     return () => {
       socket.off("room:reaction", handleReaction);
+      socket.off("room:sound", handleSoundboard);
     };
-  }, [handleReaction]);
+  }, [handleReaction, handleSoundboard]);
 
   // Garbage collection of completed reaction animations
   useEffect(() => {

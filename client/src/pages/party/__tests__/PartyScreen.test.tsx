@@ -34,6 +34,10 @@ vi.mock("../../../games/uno/uno-confetti", () => ({
   fireUnoWinConfetti: vi.fn(),
 }));
 
+vi.mock("@tsparticles/confetti", () => ({
+  confetti: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockPlayers: Player[] = [
   {
     id: "p1",

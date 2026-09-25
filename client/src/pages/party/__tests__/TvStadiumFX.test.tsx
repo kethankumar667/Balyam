@@ -102,8 +102,8 @@ describe("TV Stadium Intense FX & Climax Suite", () => {
 
   describe("TvCommentaryTicker component", () => {
     const mockPlayers: Player[] = [
-      { id: "p1", name: "Kethan", avatar: "hero" },
-      { id: "p2", name: "Rahul", avatar: "wizard" },
+      { id: "p1", name: "Kethan", avatar: "hero", isHost: true, isReady: true, isConnected: true },
+      { id: "p2", name: "Rahul", avatar: "wizard", isHost: false, isReady: true, isConnected: true },
     ];
 
     it("renders LIVE badge and player count ticker stat", () => {
@@ -155,7 +155,7 @@ describe("TV Stadium Intense FX & Climax Suite", () => {
       const onTriggerShake = vi.fn();
       render(
         <TvCrowdReactions
-          players={[{ id: "p1", name: "Audience Member" }]}
+          players={[{ id: "p1", name: "Audience Member", isHost: false, isReady: true, isConnected: true }]}
           onTriggerShake={onTriggerShake}
         />
       );

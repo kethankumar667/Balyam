@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { Crown, Trophy, Medal, Award, Flame, RotateCcw } from "lucide-react";
 import type { Player } from "@shared/types";
 import { findAvatar } from "../../lib/avatars";
 import type { TvPodiumEntry } from "./types";
+import { confetti } from "@tsparticles/confetti";
+import { getPrefersReducedMotion } from "../../hooks/useReducedMotion";
 
 export interface TvVictoryPodiumProps {
   entries: TvPodiumEntry[];
@@ -20,6 +23,35 @@ export function TvVictoryPodium({
   const first = sorted[0];
   const second = sorted[1];
   const third = sorted[2];
+
+  // Celebrate champion on mount with Olympic gold confetti
+  useEffect(() => {
+    if (getPrefersReducedMotion() || !first) return;
+
+    try {
+      confetti({
+        count: 140,
+        spread: 120,
+        startVelocity: 50,
+        position: { x: 50, y: 35 },
+        colors: ["#F59E0B", "#FBBF24", "#EF4444", "#3B82F6", "#10B981", "#FFFFFF"],
+      }).catch(() => {});
+
+      const timer = setTimeout(() => {
+        confetti({
+          count: 80,
+          spread: 90,
+          startVelocity: 42,
+          position: { x: 50, y: 40 },
+          colors: ["#F59E0B", "#FBBF24", "#F97316", "#E5E7EB"],
+        }).catch(() => {});
+      }, 550);
+
+      return () => clearTimeout(timer);
+    } catch {
+      // Ignored if canvas unavailable in headless test environment
+    }
+  }, [first]);
 
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col justify-between items-center gap-6 p-4 sm:p-6 select-none">
