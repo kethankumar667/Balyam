@@ -159,6 +159,48 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     expect(s.teamSelections["p0"]).toBeNull();
     expect(s.teamSelections["p1"]).toBeNull();
   });
+  it("arms a 20-second deadline for playing XI confirmation", () => {
+    const now = 1_000_000;
+    engine.setClock(() => now);
+    engine.init(makePlayers());
+
+    expect(engine.armPhaseDeadline()).toBe(20_000);
+    expect((state(engine).turnDeadline as number) - now).toBe(20_000);
+  });
+
+  it("arms a 10-second deadline for each toss phase", () => {
+    const now = 1_000_000;
+    engine.setClock(() => now);
+    engine.init(makePlayers());
+    bothSelectTeams(engine);
+
+    expect(state(engine).phase).toBe("tossCall");
+    expect(engine.armPhaseDeadline()).toBe(10_000);
+    engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
+    expect(engine.armPhaseDeadline()).toBe(10_000);
+  });
+
+  it("auto-resolves every pending pre-match action when its deadline expires", () => {
+    let now = 1_000_000;
+    engine.setClock(() => now);
+    engine.init(makePlayers());
+
+    now += 20_000;
+    for (const playerId of engine.pendingActors()) engine.applyAutoMove(playerId);
+    expect(state(engine).phase).toBe("tossCall");
+
+    now += 10_000;
+    for (const playerId of engine.pendingActors()) engine.applyAutoMove(playerId);
+    expect(state(engine).phase).toBe("toss");
+
+    now += 10_000;
+    for (const playerId of engine.pendingActors()) engine.applyAutoMove(playerId);
+    expect(state(engine).phase).toBe("tossChoice");
+
+    now += 10_000;
+    for (const playerId of engine.pendingActors()) engine.applyAutoMove(playerId);
+    expect(state(engine).phase).toBe("innings1");
+  });
 
   it("advances to toss phase only after both players confirm a squad", () => {
     engine.init(makePlayers());

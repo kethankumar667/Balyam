@@ -5460,6 +5460,12 @@ export class RoomManager {
         this.broadcastGameState(room);
         return;
       }
+      const phaseMs = engine.armPhaseDeadline();
+      if (phaseMs > 0) {
+        this.broadcastGameState(room);
+        this.armTurnTimer(room, phaseMs);
+        return;
+      }
       const ms = engine.armDeliveryDeadline(15_000);
       this.broadcastGameState(room);
       if (ms > 0) {
@@ -5704,6 +5710,15 @@ export class RoomManager {
     if (room.engine instanceof HandCricketEngine) {
       const engine = room.engine;
       if (engine.isOver()) return;
+      const phase = (engine.getPublicState() as { phase?: string }).phase;
+      if (phase === "teamSelect" || phase === "tossCall" || phase === "toss" || phase === "tossChoice") {
+        for (const pid of engine.pendingActors()) {
+          if (engine.isOver()) break;
+          if (this.canApplyTimeoutMove(room, pid)) engine.applyAutoMove(pid);
+        }
+        await this.afterAutoMove(room, engine.isOver());
+        return;
+      }
       for (const pid of engine.pickersRemaining()) {
         if (engine.isOver()) break;
         if (!this.canApplyTimeoutMove(room, pid)) continue;

@@ -32,6 +32,8 @@ import { milestoneCrossed } from "./milestones.js";
 import { GAME_REACTIONS, pickReactionEmoji } from "@shared/reactions.js";
 
 const VALID_PICKS = [1, 2, 3, 4, 5, 6];
+const HC_XI_CONFIRM_MS = 20_000;
+const HC_TOSS_PHASE_MS = 10_000;
 
 function freshBatterStats(): HcBatterStats {
   return {
@@ -288,6 +290,7 @@ export class HandCricketEngine implements GameEngine {
     const s1 = this.state.teamSelections[p1];
     if (s0?.squadPlayerIds && s1?.squadPlayerIds) {
       this.state.phase = "tossCall";
+      this.state.turnDeadline = this.now() + HC_TOSS_PHASE_MS;
     }
     return { ok: true };
   }
@@ -305,6 +308,7 @@ export class HandCricketEngine implements GameEngine {
     }
     this.state.tossCall = call;
     this.state.phase = "toss";
+    this.state.turnDeadline = this.now() + HC_TOSS_PHASE_MS;
     return { ok: true };
   }
 
@@ -333,6 +337,7 @@ export class HandCricketEngine implements GameEngine {
       const callerCall = this.state.tossCall ?? "even";
       this.state.tossWinnerId = callerCall === outcome ? callerId : otherId;
       this.state.phase = "tossChoice";
+      this.state.turnDeadline = this.now() + HC_TOSS_PHASE_MS;
     }
     return { ok: true };
   }
@@ -362,6 +367,7 @@ export class HandCricketEngine implements GameEngine {
       this.squadFor(bowler),
     );
     this.state.phase = "innings1";
+    this.state.turnDeadline = null;
     this.clearPendingPicks();
     return { ok: true };
   }
@@ -754,6 +760,20 @@ export class HandCricketEngine implements GameEngine {
    * server restart or a paused tab cannot leave a match stuck at the break.
    */
   private now: () => number = Date.now;
+
+  /** Arm the shared pre-match deadline used by XI and toss phases. */
+  armPhaseDeadline(): number {
+    const totalMs = this.state.phase === "teamSelect"
+      ? HC_XI_CONFIRM_MS
+      : this.state.phase === "tossCall" || this.state.phase === "toss" || this.state.phase === "tossChoice"
+        ? HC_TOSS_PHASE_MS
+        : 0;
+    if (totalMs === 0) return 0;
+    if (this.state.turnDeadline == null || this.state.turnDeadline <= this.now()) {
+      this.state.turnDeadline = this.now() + totalMs;
+    }
+    return Math.max(0, this.state.turnDeadline - this.now());
+  }
 
   private inningsBreakActive(): boolean {
     const until = this.state.inningsBreakUntil;
@@ -1148,7 +1168,9 @@ export class HandCricketEngine implements GameEngine {
    */
   private pickDefaultSquad(teamId: HcTeamId): string[] {
     const pool = getAllPlayersFor(teamId, this.state.options.format);
-    if (pool.length === 0) return [];
+    if (pool.length === 0) {
+      return Array.from({ length: 11 }, (_, index) => `${teamId}-player-${index}`);
+    }
     if (this.isGalli()) return pool.slice(0, Math.min(11, pool.length)).map((p) => p.id);
 
     const keepers = pool.filter((p) => p.role === "keeper");

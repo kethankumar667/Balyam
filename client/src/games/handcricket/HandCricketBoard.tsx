@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import InningsBreakOverlay from "./InningsBreakOverlay";
+import { HcPhaseCountdown } from "./HcPhaseCountdown";
 import { useHcSkin, type HcSkin } from "./hc-skin";
 import type { HandCricketBoardProps } from "./hc-shared";
 
@@ -111,6 +112,7 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
       ) : (
         <HandCricketBoardMobile {...props} />
       )}
+      <HcPhaseCountdown state={props.state} />
       <InningsBreakOverlay state={props.state} players={props.players} selfId={props.selfId} />
     </Suspense>
   );

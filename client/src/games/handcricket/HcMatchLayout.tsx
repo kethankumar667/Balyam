@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { HcState } from "@shared/types";
+import { HcPhaseCountdown } from "./HcPhaseCountdown";
 
 export interface HcMatchLayoutProps {
   state: HcState;
@@ -21,10 +22,11 @@ export function HcMatchLayout({ state, compact, children }: HcMatchLayoutProps) 
 
   return (
     <div
-      className={`min-h-0 flex-1 overflow-x-hidden px-3 pt-4 sm:px-5 ${
+      className={`relative min-h-0 flex-1 overflow-x-hidden px-3 pt-4 sm:px-5 ${
         isDesktopLive ? "overflow-hidden pb-4" : "overflow-y-auto pb-24"
       }`}
     >
+      <HcPhaseCountdown state={state} />
       <div className={`mx-auto w-full ${isDesktopLive ? "h-full" : ""}`} style={{ maxWidth }}>
         {children}
       </div>
