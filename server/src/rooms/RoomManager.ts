@@ -855,12 +855,8 @@ export class RoomManager {
 
   private toRoomSnapshot(room: Room): RoomSnapshot {
     let engineState: unknown | null = null;
-    if (room.engine) {
-      if (typeof room.engine.serializeState === "function") {
-        engineState = room.engine.serializeState();
-      } else {
-        engineState = room.engine.getPublicState();
-      }
+    if (room.engine && typeof room.engine.serializeState === "function") {
+      engineState = room.engine.serializeState();
     }
 
     const gameOptions: Record<string, unknown> = {
@@ -974,24 +970,24 @@ export class RoomManager {
       simTimer: null,
       spectators: new Set<string>(),
       sealed: snapshot.sealed,
-      ludoOptions: (opts.ludoOptions as LudoGameOptions) || { ...DEFAULT_LUDO_OPTIONS },
-      snlOptions: (opts.snlOptions as SnlGameOptions) || { ...DEFAULT_SNL_OPTIONS },
-      rummyOptions: (opts.rummyOptions as RummyGameOptions) || { ...DEFAULT_RUMMY_OPTIONS },
-      hcOptions: (opts.hcOptions as HcGameOptions) || { ...DEFAULT_HC_OPTIONS },
-      wordBuildingOptions: (opts.wordBuildingOptions as WordBuildingOptions) || { ...DEFAULT_WORDBUILDING_OPTIONS },
-      dotsBoxesOptions: (opts.dotsBoxesOptions as DotsBoxesOptions) || { ...DEFAULT_DOTSBOXES_OPTIONS },
-      starGameOptions: (opts.starGameOptions as StarGameOptions) || { ...DEFAULT_STARGAME_OPTIONS },
-      unoOptions: (opts.unoOptions as UnoGameOptions) || { ...DEFAULT_UNO_OPTIONS },
-      bingoOptions: (opts.bingoOptions as BingoGameOptions) || { ...DEFAULT_BINGO_OPTIONS },
-      namesplaceanimalOptions: (opts.namesplaceanimalOptions as NamePlaceAnimalOptions) || { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS },
-      tambolaOptions: (opts.tambolaOptions as TambolaOptions) || { ...DEFAULT_TAMBOLA_OPTIONS },
-      carromOptions: (opts.carromOptions as CarromOptions) || { ...DEFAULT_CARROM_OPTIONS },
-      chessOptions: (opts.chessOptions as ChessOptions) || { ...DEFAULT_CHESS_OPTIONS },
-      snakeOptions: (opts.snakeOptions as SnakeOptions) || { ...DEFAULT_SNAKE_OPTIONS },
-      blockBlastOptions: (opts.blockBlastOptions as BlockBlastOptions) || { ...DEFAULT_BLOCKBLAST_OPTIONS },
-      spaceWarOptions: (opts.spaceWarOptions as SpaceWarOptions) || { ...DEFAULT_SPACEWAR_OPTIONS },
-      ticTacToeOptions: sanitizeTicTacToeOptions(opts.ticTacToeOptions as Partial<TicTacToeOptions>),
-      connect4Options: sanitizeConnect4Options(opts.connect4Options as Partial<Connect4Options>),
+      ludoOptions: typeof opts.ludoOptions === "object" && opts.ludoOptions !== null ? { ...DEFAULT_LUDO_OPTIONS, ...opts.ludoOptions } : { ...DEFAULT_LUDO_OPTIONS },
+      snlOptions: typeof opts.snlOptions === "object" && opts.snlOptions !== null ? { ...DEFAULT_SNL_OPTIONS, ...opts.snlOptions } : { ...DEFAULT_SNL_OPTIONS },
+      rummyOptions: typeof opts.rummyOptions === "object" && opts.rummyOptions !== null ? { ...DEFAULT_RUMMY_OPTIONS, ...opts.rummyOptions } : { ...DEFAULT_RUMMY_OPTIONS },
+      hcOptions: typeof opts.hcOptions === "object" && opts.hcOptions !== null ? { ...DEFAULT_HC_OPTIONS, ...opts.hcOptions } : { ...DEFAULT_HC_OPTIONS },
+      wordBuildingOptions: typeof opts.wordBuildingOptions === "object" && opts.wordBuildingOptions !== null ? { ...DEFAULT_WORDBUILDING_OPTIONS, ...opts.wordBuildingOptions } : { ...DEFAULT_WORDBUILDING_OPTIONS },
+      dotsBoxesOptions: typeof opts.dotsBoxesOptions === "object" && opts.dotsBoxesOptions !== null ? { ...DEFAULT_DOTSBOXES_OPTIONS, ...opts.dotsBoxesOptions } : { ...DEFAULT_DOTSBOXES_OPTIONS },
+      starGameOptions: typeof opts.starGameOptions === "object" && opts.starGameOptions !== null ? { ...DEFAULT_STARGAME_OPTIONS, ...opts.starGameOptions } : { ...DEFAULT_STARGAME_OPTIONS },
+      unoOptions: typeof opts.unoOptions === "object" && opts.unoOptions !== null ? { ...DEFAULT_UNO_OPTIONS, ...opts.unoOptions } : { ...DEFAULT_UNO_OPTIONS },
+      bingoOptions: typeof opts.bingoOptions === "object" && opts.bingoOptions !== null ? { ...DEFAULT_BINGO_OPTIONS, ...opts.bingoOptions } : { ...DEFAULT_BINGO_OPTIONS },
+      namesplaceanimalOptions: typeof opts.namesplaceanimalOptions === "object" && opts.namesplaceanimalOptions !== null ? { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...opts.namesplaceanimalOptions } : { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS },
+      tambolaOptions: typeof opts.tambolaOptions === "object" && opts.tambolaOptions !== null ? { ...DEFAULT_TAMBOLA_OPTIONS, ...opts.tambolaOptions } : { ...DEFAULT_TAMBOLA_OPTIONS },
+      carromOptions: typeof opts.carromOptions === "object" && opts.carromOptions !== null ? { ...DEFAULT_CARROM_OPTIONS, ...opts.carromOptions } : { ...DEFAULT_CARROM_OPTIONS },
+      chessOptions: typeof opts.chessOptions === "object" && opts.chessOptions !== null ? { ...DEFAULT_CHESS_OPTIONS, ...opts.chessOptions } : { ...DEFAULT_CHESS_OPTIONS },
+      snakeOptions: typeof opts.snakeOptions === "object" && opts.snakeOptions !== null ? { ...DEFAULT_SNAKE_OPTIONS, ...opts.snakeOptions } : { ...DEFAULT_SNAKE_OPTIONS },
+      blockBlastOptions: typeof opts.blockBlastOptions === "object" && opts.blockBlastOptions !== null ? { ...DEFAULT_BLOCKBLAST_OPTIONS, ...opts.blockBlastOptions } : { ...DEFAULT_BLOCKBLAST_OPTIONS },
+      spaceWarOptions: typeof opts.spaceWarOptions === "object" && opts.spaceWarOptions !== null ? { ...DEFAULT_SPACEWAR_OPTIONS, ...opts.spaceWarOptions } : { ...DEFAULT_SPACEWAR_OPTIONS },
+      ticTacToeOptions: sanitizeTicTacToeOptions(typeof opts.ticTacToeOptions === "object" && opts.ticTacToeOptions !== null ? opts.ticTacToeOptions as Partial<TicTacToeOptions> : {}),
+      connect4Options: sanitizeConnect4Options(typeof opts.connect4Options === "object" && opts.connect4Options !== null ? opts.connect4Options as Partial<Connect4Options> : {}),
       rematch: snapshot.rematch || emptyRematchState(),
       rematchTimer: null,
       rematchStartTimer: null,
@@ -1031,23 +1027,6 @@ export class RoomManager {
           module: "DURABILITY",
           roomCode: room.code,
         });
-      }
-    }
-
-    for (const [pid, player] of room.players.entries()) {
-      if (!player.isConnected && !player.isBot) {
-        const remainingMs = Math.max(10_000, (player.awayUntil ?? Date.now()) - Date.now());
-        const timer = setTimeout(() => {
-          this.handleGraceExpiration(room.code, pid).catch((err) => {
-            logger.error({
-              message: `Disconnect removal timer error in room ${room.code} for player ${pid}: ${err instanceof Error ? err.message : String(err)}`,
-              module: "RECONNECT",
-              roomCode: room.code,
-              playerId: pid,
-            });
-          });
-        }, remainingMs);
-        room.cleanupTimers.set(pid, timer);
       }
     }
 
@@ -1093,6 +1072,35 @@ export class RoomManager {
           module: "DURABILITY",
           roomCode: room.code,
         });
+
+        // Re-arm grace expiration timers for offline seats, or expire immediately if grace elapsed during downtime
+        for (const [pid, player] of room.players.entries()) {
+          if (!player.isConnected && !player.isBot) {
+            const timeRemaining = (player.awayUntil ?? Date.now()) - Date.now();
+            if (timeRemaining <= 0) {
+              void this.handleGraceExpiration(room.code, pid).catch((err) => {
+                logger.error({
+                  message: `Grace expiration error during hydration for player ${pid} in room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+                  module: "RECONNECT",
+                  roomCode: room.code,
+                  playerId: pid,
+                });
+              });
+            } else {
+              const timer = setTimeout(() => {
+                this.handleGraceExpiration(room.code, pid).catch((err) => {
+                  logger.error({
+                    message: `Disconnect removal timer error in room ${room.code} for player ${pid}: ${err instanceof Error ? err.message : String(err)}`,
+                    module: "RECONNECT",
+                    roomCode: room.code,
+                    playerId: pid,
+                  });
+                });
+              }, timeRemaining);
+              room.cleanupTimers.set(pid, timer);
+            }
+          }
+        }
       } catch (err) {
         logger.error({
           message: `Failed to hydrate room ${snap.code}: ${err instanceof Error ? err.message : String(err)}`,

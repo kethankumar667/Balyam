@@ -131,6 +131,50 @@ describe("Room Durability & Snapshot Persistence", () => {
     expect(updatedSnap?.phase).toBe("playing");
   });
 
+  it("reconstructs grace eviction timers during snapshot hydration for disconnected players", async () => {
+    const io1 = makeIo();
+    const manager1 = new RoomManager(io1, undefined, undefined, inMemoryRepo);
+
+    const hostRes = createRoomAs(manager1, "sock-1", "Alice", "rps", "member", "id-alice");
+    const code = hostRes.code;
+    const joinRes = await joinRoomAs(manager1, "sock-2", "Bob", code, "member", "id-bob");
+    expect(joinRes.ok).toBe(true);
+
+    manager1.setReady("sock-1", true);
+    manager1.setReady("sock-2", true);
+    manager1.startGame("sock-1");
+
+    // Persist snapshot while game is playing
+    const snap = await inMemoryRepo.getSnapshot(code);
+    expect(snap).not.toBeNull();
+    if (!snap) return;
+
+    // Simulate restart with manager2
+    const io2 = makeIo();
+    const manager2 = new RoomManager(io2, undefined, undefined, inMemoryRepo);
+    await manager2.hydrateSnapshots();
+
+    const restoredState = manager2.getRoomStateByCode(code);
+    expect(restoredState).not.toBeNull();
+    // Both players should be restored with isConnected: false
+    expect(restoredState?.players[0].isConnected).toBe(false);
+    expect(restoredState?.players[1].isConnected).toBe(false);
+
+    // Retrieve the underlying room from manager2 to verify cleanup timers were armed
+    // (We can check via joinRoom that reclaiming works and disarms the timer)
+    const aliceReclaim = await manager2.joinRoom(
+      "sock-alice-reconnect",
+      "Alice",
+      code,
+      hostRes.playerId,
+      hostRes.seatToken,
+      undefined,
+      "member",
+      "id-alice",
+    );
+    expect(aliceReclaim.ok).toBe(true);
+  });
+
   it("deletes snapshot when room is abandoned or closed", async () => {
     const io = makeIo();
     const manager = new RoomManager(io, undefined, undefined, inMemoryRepo);

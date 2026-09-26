@@ -230,13 +230,22 @@ export class RpsEngine implements GameEngine {
 
   restoreState(saved: unknown): void {
     if (!saved || typeof saved !== "object") return;
-    const s = saved as {
+    const s = saved as Partial<{
       state: RpsState;
       currentChoices: Record<string, RpsChoice>;
       playerIds: string[];
-    };
-    if (s.state) this.state = s.state;
-    if (s.currentChoices) this.currentChoices = { ...s.currentChoices };
-    if (Array.isArray(s.playerIds)) this.playerIds = [...s.playerIds];
+    }>;
+    if (s.state && typeof s.state === "object") {
+      this.state = {
+        ...s.state,
+        scores: s.state.scores && typeof s.state.scores === "object" ? { ...s.state.scores } : {},
+      };
+    }
+    if (s.currentChoices && typeof s.currentChoices === "object") {
+      this.currentChoices = { ...s.currentChoices };
+    }
+    if (Array.isArray(s.playerIds)) {
+      this.playerIds = [...s.playerIds];
+    }
   }
 }

@@ -303,6 +303,31 @@ await cosmeticsService.assertRarityPricing();
 const snapshotStore = await initialiseRoomSnapshotStore();
 const roomManager = new RoomManager(io, economyService, cosmeticsService, snapshotStore);
 await roomManager.hydrateSnapshots();
+
+try {
+  const purgedCount = await snapshotStore.purgeExpiredSnapshots();
+  if (purgedCount > 0) {
+    logger.info({
+      message: `Cleaned up ${purgedCount} expired room snapshots on startup`,
+      module: "DURABILITY",
+    });
+  }
+} catch (err) {
+  logger.warn({
+    message: `Snapshot store startup purge encountered error: ${err instanceof Error ? err.message : String(err)}`,
+    module: "DURABILITY",
+  });
+}
+
+const snapshotPurgeInterval = setInterval(() => {
+  void snapshotStore.purgeExpiredSnapshots().catch((err) => {
+    logger.warn({
+      message: `Periodic snapshot purge error: ${err instanceof Error ? err.message : String(err)}`,
+      module: "DURABILITY",
+    });
+  });
+}, 60 * 60 * 1000);
+snapshotPurgeInterval.unref();
 // Blocker 06: startup recovery. Discovers and processes any PENDING,
 // due-RETRYABLE, or expired-claim PROCESSING terminal intent left behind by
 // a prior process (crash, deploy, OOM kill) BEFORE starting periodic
