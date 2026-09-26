@@ -24,3 +24,12 @@ export type { XPFloaterItem } from "./InGameXPFloater";
 
 export { PrestigeNameplate } from "./PrestigeNameplate";
 export type { PrestigeNameplateProps } from "./PrestigeNameplate";
+
+export { FlameStreakAura } from "./FlameStreakAura";
+export type { FlameStreakAuraProps } from "./FlameStreakAura";
+
+export { ProgressionShowcaseModal } from "./ProgressionShowcaseModal";
+export type { ProgressionShowcaseModalProps } from "./ProgressionShowcaseModal";
+
+export { MatchVersusClash } from "./MatchVersusClash";
+export type { MatchVersusClashProps, ClashParticipant } from "./MatchVersusClash";

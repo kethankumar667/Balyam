@@ -8,6 +8,9 @@ import { TierAscensionCeremony } from "../TierAscensionCeremony";
 import { RoadmapLootChest } from "../RoadmapLootChest";
 import { InGameXPFloater } from "../InGameXPFloater";
 import { PrestigeNameplate } from "../PrestigeNameplate";
+import { FlameStreakAura } from "../FlameStreakAura";
+import { ProgressionShowcaseModal } from "../ProgressionShowcaseModal";
+import { MatchVersusClash } from "../MatchVersusClash";
 import type { MatchXPBreakdown } from "@shared/progression/MiniclipProgression";
 
 vi.mock("canvas-confetti", () => ({
@@ -222,6 +225,83 @@ describe("Miniclip Progression Components", () => {
       expect(screen.getByText("Kethan")).toBeDefined();
       expect(screen.getByText("HOST")).toBeDefined();
       expect(screen.getByText("Gold • Professional")).toBeDefined();
+    });
+  });
+
+  describe("FlameStreakAura", () => {
+    it("renders burning streak pip when on fire", () => {
+      render(
+        <FlameStreakAura streak={4}>
+          <div data-testid="child-emblem">Emblem</div>
+        </FlameStreakAura>
+      );
+
+      expect(screen.getByTestId("child-emblem")).toBeDefined();
+      expect(screen.getByText("4x")).toBeDefined();
+    });
+
+    it("renders plain children when streak is below 2", () => {
+      render(
+        <FlameStreakAura streak={1}>
+          <div data-testid="child-emblem">Emblem</div>
+        </FlameStreakAura>
+      );
+
+      expect(screen.getByTestId("child-emblem")).toBeDefined();
+      expect(screen.queryByText("1x")).toBeNull();
+    });
+  });
+
+  describe("ProgressionShowcaseModal", () => {
+    it("renders player showcase card with stats and tier", () => {
+      const handleClose = vi.fn();
+      render(
+        <ProgressionShowcaseModal
+          isOpen={true}
+          onClose={handleClose}
+          playerName="Master Player"
+          level={25}
+          experiencePoints={2450}
+          winStreak={3}
+          totalMatches={42}
+        />
+      );
+
+      expect(screen.getByText("PLAYER PRESTIGE CARD")).toBeDefined();
+      expect(screen.getByText("Master Player")).toBeDefined();
+      expect(screen.getByText("Cobalt Tier • Table Virtuoso")).toBeDefined();
+      expect(screen.getByText("OPEN LEVEL REWARDS ROAD")).toBeDefined();
+
+      const closeBtn = screen.getByLabelText("Close Showcase");
+      fireEvent.click(closeBtn);
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("MatchVersusClash", () => {
+    it("renders 1v1 showdown arena and calls onComplete on tap", () => {
+      const handleComplete = vi.fn();
+      const p1 = { id: "p1", name: "Alice", level: 15, winStreak: 3 };
+      const p2 = { id: "p2", name: "Bob", level: 12, winStreak: 0 };
+
+      render(
+        <MatchVersusClash
+          isOpen={true}
+          player1={p1}
+          player2={p2}
+          gameTitle="RUMMY CHAMPIONSHIP"
+          onComplete={handleComplete}
+        />
+      );
+
+      expect(screen.getByText("RUMMY CHAMPIONSHIP")).toBeDefined();
+      expect(screen.getByText("Alice")).toBeDefined();
+      expect(screen.getByText("Bob")).toBeDefined();
+      expect(screen.getByText("VS")).toBeDefined();
+
+      const clashDialog = screen.getByRole("dialog");
+      fireEvent.click(clashDialog);
+      expect(handleComplete).toHaveBeenCalledTimes(1);
     });
   });
 });
