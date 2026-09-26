@@ -202,21 +202,133 @@ function parseQuery(search: string): ParsedQuery {
   return { filters, limit, offset, select };
 }
 
+const RAW_TABLES = new Set([
+  "coin_wallets",
+  "coin_ledger_entries",
+  "match_economy_settlements",
+  "world_bank_accounts",
+  "reward_vouchers",
+  "economy_configurations",
+  "economy_prize_schedules",
+  "world_bank_ledger",
+  "match_economy_participants",
+]);
+
+const SAFE_VIEWS = new Set([
+  "coin_wallets_safe",
+  "coin_ledger_entries_safe",
+  "match_economy_settlements_safe",
+  "world_bank_accounts_safe",
+  "reward_vouchers_safe",
+  "economy_configurations_safe",
+  "economy_prize_schedules_safe",
+]);
+
+const PRIVATE_FUNCTIONS = new Set([
+  "economy_apply_refund",
+  "prevent_ledger_mutation",
+  "wallet_to_safe_jsonb",
+  "settlement_to_safe_jsonb",
+  "voucher_to_safe_jsonb",
+]);
+
+function extractRole(init?: RequestInit): "service_role" | "authenticated" | "anon" {
+  if (!init?.headers) return "service_role";
+  let auth = "";
+  let apikey = "";
+  if (init.headers instanceof Headers) {
+    auth = init.headers.get("authorization") ?? "";
+    apikey = init.headers.get("apikey") ?? "";
+  } else if (Array.isArray(init.headers)) {
+    for (const [k, v] of init.headers) {
+      if (k.toLowerCase() === "authorization") auth = v;
+      if (k.toLowerCase() === "apikey") apikey = v;
+    }
+  } else if ("get" in init.headers && typeof (init.headers as { get: (name: string) => string | null }).get === "function") {
+    const h = init.headers as { get: (name: string) => string | null };
+    auth = h.get("authorization") ?? "";
+    apikey = h.get("apikey") ?? "";
+  } else {
+    for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+      if (k.toLowerCase() === "authorization") auth = String(v);
+      if (k.toLowerCase() === "apikey") apikey = String(v);
+    }
+  }
+
+  const combined = `${auth} ${apikey}`.toLowerCase();
+  if (combined.includes("anon")) return "anon";
+  if (combined.includes("authenticated")) return "authenticated";
+  return "service_role";
+}
+
 /* ═══════════════════════════ The simulator ═══════════════════════════════ */
 
 export function createSimulatedPostgrestFetch(backend: InMemoryEconomyRepository): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input));
     const path = url.pathname.replace(/^\/rest\/v1\//, "");
+    const method = (init?.method ?? "GET").toUpperCase();
+    const role = extractRole(init);
 
     try {
       if (path.startsWith("rpc/")) {
         const fn = path.slice("rpc/".length);
+        if (PRIVATE_FUNCTIONS.has(fn)) {
+          return jsonResponse(404, {
+            code: "42883",
+            message: `function ${fn} does not exist or cannot be called via RPC`,
+            details: null,
+            hint: null,
+          });
+        }
+        if (role !== "service_role") {
+          return jsonResponse(403, {
+            code: "42501",
+            message: `permission denied for function ${fn}`,
+            details: null,
+            hint: null,
+          });
+        }
         const args = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
         return jsonResponse(200, await dispatchRpc(backend, fn, args));
       }
 
       const table = path;
+      if (RAW_TABLES.has(table)) {
+        return jsonResponse(403, {
+          code: "42501",
+          message: `permission denied for table ${table}`,
+          details: null,
+          hint: null,
+        });
+      }
+
+      if (SAFE_VIEWS.has(table)) {
+        if (method !== "GET") {
+          return jsonResponse(405, {
+            code: "42501",
+            message: `cannot insert into view "${table}"`,
+            details: null,
+            hint: null,
+          });
+        }
+        if (role !== "service_role") {
+          return jsonResponse(403, {
+            code: "42501",
+            message: `permission denied for relation "${table}"`,
+            details: null,
+            hint: null,
+          });
+        }
+      } else if (method !== "GET") {
+        return jsonResponse(403, {
+          code: "42501",
+          message: `direct table mutation is denied for table "${table}"`,
+          details: null,
+          hint: null,
+        });
+      }
+
       const { filters, limit, offset, select } = parseQuery(url.search);
       return jsonResponse(200, await dispatchSelect(backend, table, filters, limit, offset, select));
     } catch (err) {
