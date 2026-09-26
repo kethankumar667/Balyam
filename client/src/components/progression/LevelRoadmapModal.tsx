@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
+import { RoadmapLootChest } from "./RoadmapLootChest";
 import {
   LEVEL_MILESTONES,
   MINICLIP_LEVEL_TIERS,
@@ -240,7 +241,16 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-3.5">
-                          <MiniclipLevelBadge level={milestone.level} size="sm" showTooltip={false} />
+                          {milestone.isMajor ? (
+                            <RoadmapLootChest
+                              milestone={milestone}
+                              isUnlocked={isReached}
+                              isClaimed={isClaimed}
+                              onClaim={() => handleClaim(milestone.level, milestone.reward.coins)}
+                            />
+                          ) : (
+                            <MiniclipLevelBadge level={milestone.level} size="sm" showTooltip={false} />
+                          )}
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-black text-white">

@@ -4,6 +4,10 @@ import { MiniclipLevelBadge } from "../MiniclipLevelBadge";
 import { MatchXPBreakdownCard } from "../MatchXPBreakdownCard";
 import { MiniclipLevelUpModal } from "../MiniclipLevelUpModal";
 import { LevelRoadmapModal } from "../LevelRoadmapModal";
+import { TierAscensionCeremony } from "../TierAscensionCeremony";
+import { RoadmapLootChest } from "../RoadmapLootChest";
+import { InGameXPFloater } from "../InGameXPFloater";
+import { PrestigeNameplate } from "../PrestigeNameplate";
 import type { MatchXPBreakdown } from "@shared/progression/MiniclipProgression";
 
 vi.mock("canvas-confetti", () => ({
@@ -125,6 +129,99 @@ describe("Miniclip Progression Components", () => {
         screen.getByText("Progress through levels to unlock coins, titles & prestige crests")
       ).toBeDefined();
       expect(screen.getByText("Bronze Tier • 450 Lifetime XP")).toBeDefined();
+    });
+  });
+
+  describe("TierAscensionCeremony", () => {
+    it("renders cinematic tier promotion with shockwave and perks", () => {
+      const handleClose = vi.fn();
+      const goldTier = {
+        id: 4 as const,
+        name: "Gold" as const,
+        minLevel: 31,
+        maxLevel: 50,
+        title: "Professional",
+        themeColor: "#eab308",
+        secondaryColor: "#854d0e",
+        rimGradient: "from-yellow-200 via-amber-400 to-yellow-700",
+        glowColor: "rgba(234, 179, 8, 0.55)",
+        stars: 3,
+        hasWings: true,
+        hasLaurel: true,
+        hasCrown: false,
+        badgeShape: "sunburst" as const,
+      };
+
+      render(
+        <TierAscensionCeremony
+          isOpen={true}
+          tier={goldTier}
+          level={31}
+          onClose={handleClose}
+        />
+      );
+
+      expect(screen.getByText("TIER PROMOTION ASCENSION")).toBeDefined();
+      expect(screen.getByText("Gold TIER!")).toBeDefined();
+      expect(screen.getByText("NEW PRESTIGE UNLOCKED")).toBeDefined();
+      expect(screen.getByText("ACCEPT PROMOTION")).toBeDefined();
+
+      const acceptBtn = screen.getByText("ACCEPT PROMOTION");
+      fireEvent.click(acceptBtn);
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("RoadmapLootChest", () => {
+    it("renders interactive chest and triggers claim on unlock", () => {
+      const handleClaim = vi.fn();
+      const milestone = {
+        level: 5,
+        tierId: 1 as const,
+        isMajor: true,
+        reward: { coins: 500, title: "Rising Star" },
+      };
+
+      render(
+        <RoadmapLootChest
+          milestone={milestone}
+          isUnlocked={true}
+          isClaimed={false}
+          onClaim={handleClaim}
+        />
+      );
+
+      expect(screen.getByLabelText("Milestone Level 5 Chest: Ready to open")).toBeDefined();
+      expect(screen.getByText("LVL 5")).toBeDefined();
+    });
+  });
+
+  describe("InGameXPFloater", () => {
+    it("renders floating XP callout items", () => {
+      const handleDismiss = vi.fn();
+      const floaters = [
+        { id: "f1", amount: 25, label: "KNOCKOUT!", color: "#f59e0b" },
+      ];
+
+      render(<InGameXPFloater floaters={floaters} onDismiss={handleDismiss} />);
+      expect(screen.getByText("+25 XP")).toBeDefined();
+      expect(screen.getByText("KNOCKOUT!")).toBeDefined();
+    });
+  });
+
+  describe("PrestigeNameplate", () => {
+    it("renders player name, level badge, and tier title", () => {
+      render(
+        <PrestigeNameplate
+          name="Kethan"
+          level={35}
+          isHost={true}
+        />
+      );
+
+      expect(screen.getByText("Kethan")).toBeDefined();
+      expect(screen.getByText("HOST")).toBeDefined();
+      expect(screen.getByText("Gold • Professional")).toBeDefined();
     });
   });
 });

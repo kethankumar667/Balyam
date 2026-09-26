@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Trophy, Star, Award, Coins, ChevronRight, Check } from "lucide-react";
 import confetti from "canvas-confetti";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
+import { TierAscensionCeremony } from "./TierAscensionCeremony";
 import {
   getLevelTier,
   getLevelTitle,
@@ -38,8 +39,10 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
   const rewards = customRewards && customRewards.length > 0 ? customRewards : [defaultReward];
   const totalCoins = rewards.reduce((sum, r) => sum + r.coins, 0);
 
+  const isTierAscension = tier.id > 1 && safeLevel === tier.minLevel;
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isTierAscension) return;
 
     // 1. Audio celebration
     try {
@@ -79,7 +82,18 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, tier.themeColor]);
+  }, [isOpen, onClose, tier.themeColor, isTierAscension]);
+
+  if (isTierAscension) {
+    return (
+      <TierAscensionCeremony
+        isOpen={isOpen}
+        tier={tier}
+        level={safeLevel}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <AnimatePresence>

@@ -1,6 +1,7 @@
 import React from "react";
 import { getLevelTier, getLevelTitle } from "@shared/progression/MiniclipProgression";
 import type { LevelTier } from "@shared/progression/MiniclipProgression";
+import { MiniclipHoloTilt } from "./MiniclipHoloTilt";
 
 export type BadgeSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -12,6 +13,7 @@ export interface MiniclipLevelBadgeProps {
   showTitle?: boolean;
   onClick?: () => void;
   animated?: boolean;
+  enableHoloTilt?: boolean;
 }
 
 const SIZE_CONFIG: Record<
@@ -44,11 +46,13 @@ export const MiniclipLevelBadge: React.FC<MiniclipLevelBadgeProps> = ({
   showTitle = false,
   onClick,
   animated = false,
+  enableHoloTilt,
 }) => {
   const safeLevel = Math.max(1, Math.floor(level || 1));
   const tier: LevelTier = getLevelTier(safeLevel);
   const title = getLevelTitle(safeLevel);
   const config = SIZE_CONFIG[size];
+  const shouldTilt = enableHoloTilt === true || ((size === "lg" || size === "xl") && enableHoloTilt !== false);
 
   const tooltipText = `Level ${safeLevel} • ${tier.name} Tier (${title})`;
 
@@ -303,20 +307,24 @@ export const MiniclipLevelBadge: React.FC<MiniclipLevelBadgeProps> = ({
     </div>
   );
 
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
-        aria-label={`Open level roadmap for ${tooltipText}`}
-      >
-        {badgeContent}
-      </button>
-    );
+  const element = onClick ? (
+    <button
+      type="button"
+      onClick={onClick}
+      className="focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-full"
+      aria-label={`Open level roadmap for ${tooltipText}`}
+    >
+      {badgeContent}
+    </button>
+  ) : (
+    badgeContent
+  );
+
+  if (shouldTilt) {
+    return <MiniclipHoloTilt tier={tier}>{element}</MiniclipHoloTilt>;
   }
 
-  return badgeContent;
+  return element;
 };
 
 export default MiniclipLevelBadge;

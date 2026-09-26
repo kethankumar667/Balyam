@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
+import { getLevelTier } from "@shared/progression/MiniclipProgression";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -103,9 +104,21 @@ export default function SeatAvatar({
   // avatar behind the previous occupant's failure.
   useEffect(() => setFailed(false), [option?.src, avatar]);
 
+  const tier = level !== undefined && level >= 1 ? getLevelTier(level) : null;
+  const hasPrestigeAura = !auraConfig && tier !== null && tier.id >= 4;
+
   const wrapWithAura = (node: React.ReactNode) => {
     return (
       <span className="relative inline-flex items-center justify-center">
+        {hasPrestigeAura && tier && (
+          <span
+            className="absolute -inset-1 rounded-full pointer-events-none z-10 animate-pulse border"
+            style={{
+              borderColor: tier.themeColor,
+              boxShadow: `0 0 8px ${tier.glowColor}`,
+            }}
+          />
+        )}
         {auraConfig && auraConfig.className && (
           <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
