@@ -222,50 +222,91 @@ describe("Miniclip XP & Levels Progression System", () => {
       expect(Array.isArray(prog.unclaimedRewards)).toBe(true);
     });
 
-    it("allows claiming milestone rewards when level requirement is satisfied", () => {
+    it("allows claiming milestone rewards when level requirement is satisfied", async () => {
       profileService.getOrCreateProfile("hero_player", "Hero Player");
       // Set player's experience to level 6 (550 XP)
       profileService.awardXP("hero_player", 550);
 
-      const claimResult = profileService.claimMilestoneReward("hero_player", 5);
+      const claimResult = await profileService.claimMilestoneReward("hero_player", 5);
       expect(claimResult.success).toBe(true);
       expect(claimResult.reward).toBeDefined();
       expect(claimResult.reward?.coins).toBe(500);
     });
 
-    it("prevents claiming milestone rewards if level requirement is not reached", () => {
+    it("prevents claiming milestone rewards if level requirement is not reached", async () => {
       profileService.getOrCreateProfile("low_level_player", "Low Level");
       profileService.awardXP("low_level_player", 50);
 
-      const claimResult = profileService.claimMilestoneReward("low_level_player", 10);
+      const claimResult = await profileService.claimMilestoneReward("low_level_player", 10);
       expect(claimResult.success).toBe(false);
       expect(claimResult.error).toContain("Level milestone not yet reached");
     });
 
-    it("prevents double-claiming the same milestone reward", () => {
+    it("prevents double-claiming the same milestone reward", async () => {
       profileService.getOrCreateProfile("double_claim_player", "Claimer");
       profileService.awardXP("double_claim_player", 200);
 
-      const firstClaim = profileService.claimMilestoneReward("double_claim_player", 2);
+      const firstClaim = await profileService.claimMilestoneReward("double_claim_player", 2);
       expect(firstClaim.success).toBe(true);
 
-      const secondClaim = profileService.claimMilestoneReward("double_claim_player", 2);
+      const secondClaim = await profileService.claimMilestoneReward("double_claim_player", 2);
       expect(secondClaim.success).toBe(false);
       expect(secondClaim.error).toContain("already claimed");
     });
 
-    it("clears claimed milestones on profileService.reset()", () => {
+    it("clears claimed milestones on profileService.reset()", async () => {
       profileService.getOrCreateProfile("reset_player", "Reset Player");
       profileService.awardXP("reset_player", 200);
 
-      profileService.claimMilestoneReward("reset_player", 2);
+      await profileService.claimMilestoneReward("reset_player", 2);
       profileService.reset();
 
       profileService.getOrCreateProfile("reset_player", "Reset Player");
       profileService.awardXP("reset_player", 200);
 
-      const reClaim = profileService.claimMilestoneReward("reset_player", 2);
+      const reClaim = await profileService.claimMilestoneReward("reset_player", 2);
       expect(reClaim.success).toBe(true);
+    });
+
+    it("credits player wallet when EconomyService is configured", async () => {
+      const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+      const { EconomyService } = await import("../../economy/EconomyService.js");
+      const repo = new InMemoryEconomyRepository();
+      const economyService = new EconomyService(repo);
+
+      profileService.setEconomyService(economyService);
+
+      profileService.getOrCreateProfile("economy_player", "Economy Player");
+      profileService.awardXP("economy_player", 550); // Reaches level 6
+
+      // Pre-provision identity to read baseline wallet balance (includes starter coins)
+      await repo.ensureIdentityRegistered("economy_player", "guest");
+      const initialWallet = await economyService.getWallet("economy_player");
+      const initialBalance = BigInt(initialWallet?.balance ?? "0");
+
+      // Claim milestone for level 5 (500 coins)
+      const claimResult = await profileService.claimMilestoneReward("economy_player", 5);
+      expect(claimResult.success).toBe(true);
+      expect(claimResult.reward?.coins).toBe(500);
+
+      // After claim: wallet has exactly 500 more coins
+      const updatedWallet = await economyService.getWallet("economy_player");
+      expect(BigInt(updatedWallet!.balance) - initialBalance).toBe(500n);
+
+      // Verify ledger entry
+      const ledger = await repo.listLedgerEntriesByType("ADMIN_ADJUSTMENT");
+      const milestoneEntry = ledger.find((e) => e.walletId === "economy_player");
+      expect(milestoneEntry?.amount).toBe("500");
+      expect(milestoneEntry?.description).toContain("Level 5 milestone reward");
+
+      // Replay attempt fails and wallet is not double-credited
+      const duplicateClaim = await profileService.claimMilestoneReward("economy_player", 5);
+      expect(duplicateClaim.success).toBe(false);
+      const unchangedWallet = await economyService.getWallet("economy_player");
+      expect(unchangedWallet?.balance).toBe(updatedWallet?.balance);
+
+      // Cleanup
+      profileService.setEconomyService(undefined);
     });
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Zap, Trophy, Crown, Star } from "lucide-react";
 import { AudioManager } from "../../services/AudioManager";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -23,20 +23,26 @@ export const InGameXPFloater: React.FC<{
   floaters: XPFloaterItem[];
   onDismiss: (id: string) => void;
 }> = ({ floaters, onDismiss }) => {
+  const reduceMotion = useReducedMotion();
+
   return (
     <div className="fixed inset-0 pointer-events-none z-[80] overflow-hidden flex items-center justify-center">
       <AnimatePresence>
         {floaters.map((f) => (
           <motion.div
             key={f.id}
-            initial={{ opacity: 0, scale: 0.6, y: 20 }}
-            animate={{
-              opacity: [0, 1, 1, 0],
-              scale: [0.6, 1.2, 1, 0.9],
-              y: [-10, -50, -80],
-            }}
-            exit={{ opacity: 0, scale: 0.7 }}
-            transition={{ duration: 1.4, ease: "easeOut" }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.6, y: 20 }}
+            animate={
+              reduceMotion
+                ? { opacity: [0, 1, 1, 0] }
+                : {
+                    opacity: [0, 1, 1, 0],
+                    scale: [0.6, 1.2, 1, 0.9],
+                    y: [-10, -50, -80],
+                  }
+            }
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.9 : 1.4, ease: "easeOut" }}
             onAnimationComplete={() => onDismiss(f.id)}
             className="absolute flex items-center gap-2 px-4 py-2 rounded-2xl bg-stone-950/90 border-2 shadow-[0_0_20px_rgba(245,158,11,0.6)] backdrop-blur-md"
             style={{

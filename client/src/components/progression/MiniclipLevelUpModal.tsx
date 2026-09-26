@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Crown, Trophy, Star, Award, Coins, ChevronRight, Check } from "lucide-react";
 import confetti from "canvas-confetti";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
@@ -32,6 +32,7 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
   onClose,
   customRewards,
 }) => {
+  const reduceMotion = useReducedMotion();
   const safeLevel = Math.max(1, Math.floor(level || 1));
   const tier = getLevelTier(safeLevel);
   const title = getLevelTitle(safeLevel);
@@ -58,22 +59,24 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
       // Haptics optional
     }
 
-    // 3. Dual celebratory confetti cannons
-    try {
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6, x: 0.3 },
-        colors: [tier.themeColor, "#fbbf24", "#ffffff", "#f59e0b"],
-      });
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6, x: 0.7 },
-        colors: [tier.themeColor, "#fbbf24", "#ffffff", "#f59e0b"],
-      });
-    } catch {
-      // Confetti fallback
+    // 3. Dual celebratory confetti cannons (suppressed if reduceMotion preferred)
+    if (!reduceMotion) {
+      try {
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6, x: 0.3 },
+          colors: [tier.themeColor, "#fbbf24", "#ffffff", "#f59e0b"],
+        });
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.6, x: 0.7 },
+          colors: [tier.themeColor, "#fbbf24", "#ffffff", "#f59e0b"],
+        });
+      } catch {
+        // Confetti fallback
+      }
     }
 
     // 4. Keyboard Escape dismiss
@@ -82,7 +85,7 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, tier.themeColor, isTierAscension]);
+  }, [isOpen, onClose, tier.themeColor, isTierAscension, reduceMotion]);
 
   if (isTierAscension) {
     return (
@@ -118,15 +121,21 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
 
           {/* Modal Container */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.85, opacity: 0, y: 20 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            initial={reduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0, y: 30 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1, y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { scale: 0.85, opacity: 0, y: 20 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : { type: "spring", stiffness: 350, damping: 25 }
+            }
             className="relative w-full max-w-md mx-auto rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-stone-900 via-stone-950 to-black border border-amber-500/30 text-white shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden text-center z-10"
           >
-            {/* Ambient Rotating Light Rays */}
+            {/* Ambient Light Rays */}
             <div
-              className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-40"
+              className={`absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+                reduceMotion ? "opacity-20" : "opacity-40 animate-pulse"
+              }`}
               style={{ backgroundColor: tier.themeColor }}
             />
 
@@ -230,8 +239,8 @@ export const MiniclipLevelUpModal: React.FC<MiniclipLevelUpModalProps> = ({
 
             {/* Primary Action Button */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
               type="button"
               onClick={onClose}
               className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-base shadow-[0_4px_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 cursor-pointer transition-all duration-200"

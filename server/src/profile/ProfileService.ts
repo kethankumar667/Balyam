@@ -19,12 +19,20 @@ import type {
   MiniclipXPProgression,
   LevelReward,
 } from "@shared/progression/MiniclipProgression.js";
+import type { EconomyService } from "../economy/EconomyService.js";
+import type { PlayerIdentityKind } from "../persistence/EconomyRepository.js";
+import { logger } from "../lib/logger.js";
 
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
   private stats: Map<string, PlayerStats> = new Map();
   private unlockedAchievements: Map<string, Record<string, number>> = new Map();
   private claimedMilestones: Map<string, Set<number>> = new Map();
+  private economyService?: EconomyService | null;
+
+  public setEconomyService(service: EconomyService | null | undefined): void {
+    this.economyService = service;
+  }
 
   /**
    * Retrieves or creates a player profile.
@@ -342,11 +350,13 @@ export class ProfileService {
 
   /**
    * Claims a milestone level reward if reached and not already claimed.
+   * If EconomyService is present and coins > 0, credits the reward coins directly to the player's wallet.
    */
-  public claimMilestoneReward(
+  public async claimMilestoneReward(
     playerId: string,
-    level: number
-  ): { success: boolean; reward?: LevelReward; error?: string } {
+    level: number,
+    identityKind: PlayerIdentityKind = "guest"
+  ): Promise<{ success: boolean; reward?: LevelReward; error?: string }> {
     const profile = this.getOrCreateProfile(playerId);
     if (level > profile.level) {
       return { success: false, error: "Level milestone not yet reached" };
@@ -364,6 +374,28 @@ export class ProfileService {
 
     if (claimed.has(level)) {
       return { success: false, error: "Reward already claimed" };
+    }
+
+    // Award coins through EconomyService if configured
+    if (this.economyService && milestone.reward.coins > 0) {
+      const idempotencyKey = `milestone:${playerId}:lvl:${level}`;
+      try {
+        await this.economyService.ensureIdentityRegistered(playerId, identityKind);
+        await this.economyService.adminAdjustWallet({
+          identityId: playerId,
+          amountCoins: String(milestone.reward.coins),
+          adminPrincipalId: "system:level_milestone",
+          reason: `Level ${level} milestone reward: ${milestone.reward.title}`,
+          idempotencyKey,
+          entryType: "ADMIN_ADJUSTMENT",
+        });
+      } catch (err) {
+        logger.error({
+          message: `Failed to credit wallet coins for level ${level} milestone claim by ${playerId}: ${String(err)}`,
+          module: "PROGRESSION",
+        });
+        return { success: false, error: "Failed to credit milestone coins to wallet" };
+      }
     }
 
     claimed.add(level);

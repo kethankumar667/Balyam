@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   X,
   Trophy,
@@ -50,6 +50,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
   playerId,
   onClaimReward,
 }) => {
+  const reduceMotion = useReducedMotion();
   const [selectedTier, setSelectedTier] = useState<LevelTierName>("Bronze");
   const [claimedLevels, setClaimedLevels] = useState<Set<number>>(new Set());
   const [claimingLevel, setClaimingLevel] = useState<number | null>(null);
@@ -80,8 +81,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
         }
       }
     } catch {
-      // Offline fallback
-      setClaimedLevels((prev) => new Set([...prev, level]));
+      // Offline / network failure: do not mark claimed so player can retry
     } finally {
       setClaimingLevel(null);
     }
@@ -107,10 +107,14 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
 
           {/* Modal Container */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 15 }}
-            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            initial={reduceMotion ? { opacity: 0 } : { scale: 0.9, opacity: 0, y: 20 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1, y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { scale: 0.95, opacity: 0, y: 15 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : { type: "spring", stiffness: 350, damping: 28 }
+            }
             className="relative w-full max-w-2xl bg-gradient-to-b from-stone-900 via-stone-950 to-black border border-amber-500/30 rounded-3xl shadow-2xl text-white overflow-hidden flex flex-col max-h-[90vh] z-10"
           >
             {/* Header */}

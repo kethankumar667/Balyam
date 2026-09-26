@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Crown, Star, Award, Zap, ChevronRight, ShieldCheck, Trophy } from "lucide-react";
 import confetti from "canvas-confetti";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
@@ -37,6 +37,7 @@ export const TierAscensionCeremony: React.FC<TierAscensionCeremonyProps> = ({
   onClose,
   previousTier,
 }) => {
+  const reduceMotion = useReducedMotion();
   const safeLevel = Math.max(1, Math.floor(level));
   const title = getLevelTitle(safeLevel);
 
@@ -57,18 +58,20 @@ export const TierAscensionCeremony: React.FC<TierAscensionCeremonyProps> = ({
       // Haptics optional
     }
 
-    // 3. Dense Golden/Tier Confetti Cannons
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 100,
-        origin: { y: 0.55 },
-        colors: [tier.themeColor, "#fbbf24", "#ffffff", tier.secondaryColor],
-      });
-    } catch {
-      // Confetti optional
+    // 3. Dense Golden/Tier Confetti Cannons (suppressed if reduced motion preferred)
+    if (!reduceMotion) {
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 100,
+          origin: { y: 0.55 },
+          colors: [tier.themeColor, "#fbbf24", "#ffffff", tier.secondaryColor],
+        });
+      } catch {
+        // Confetti optional
+      }
     }
-  }, [isOpen, tier]);
+  }, [isOpen, tier, reduceMotion]);
 
   const perks = [
     {
@@ -126,29 +129,39 @@ export const TierAscensionCeremony: React.FC<TierAscensionCeremonyProps> = ({
           />
 
           {/* Cinematic Shockwave Ripple */}
-          <motion.div
-            initial={{ scale: 0.2, opacity: 0.9 }}
-            animate={{ scale: 2.4, opacity: 0 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-            className="absolute w-96 h-96 rounded-full border-4 pointer-events-none"
-            style={{ borderColor: tier.themeColor }}
-          />
+          {!reduceMotion && (
+            <motion.div
+              initial={{ scale: 0.2, opacity: 0.9 }}
+              animate={{ scale: 2.4, opacity: 0 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+              className="absolute w-96 h-96 rounded-full border-4 pointer-events-none"
+              style={{ borderColor: tier.themeColor }}
+            />
+          )}
 
           {/* Modal Container with Screen Shake Impact */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0, y: 40 }}
-            animate={{
-              scale: 1,
-              opacity: 1,
-              y: 0,
-              x: [0, -4, 4, -2, 2, 0],
-            }}
-            exit={{ scale: 0.85, opacity: 0, y: 20 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 22,
-            }}
+            initial={reduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0, y: 40 }}
+            animate={
+              reduceMotion
+                ? { opacity: 1, scale: 1, y: 0, x: 0 }
+                : {
+                    scale: 1,
+                    opacity: 1,
+                    y: 0,
+                    x: [0, -4, 4, -2, 2, 0],
+                  }
+            }
+            exit={reduceMotion ? { opacity: 0 } : { scale: 0.85, opacity: 0, y: 20 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : {
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 22,
+                  }
+            }
             className="relative w-full max-w-lg mx-auto rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-stone-900 via-stone-950 to-black border-2 border-amber-500/40 text-white shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden text-center z-10"
           >
             {/* Top Ornamental Header */}
@@ -215,8 +228,8 @@ export const TierAscensionCeremony: React.FC<TierAscensionCeremonyProps> = ({
 
             {/* Claim & Continue Action Button */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
               type="button"
               onClick={onClose}
               className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-base shadow-[0_4px_25px_rgba(245,158,11,0.5)] flex items-center justify-center gap-2 cursor-pointer transition-all duration-200"

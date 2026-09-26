@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   X,
   Crown,
@@ -57,6 +57,7 @@ export const ProgressionShowcaseModal: React.FC<ProgressionShowcaseModalProps> =
   winRatePct = 0,
   avatar,
 }) => {
+  const reduceMotion = useReducedMotion();
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
   const safeLevel = Math.max(1, Math.floor(level));
   const tier: LevelTier = getLevelTier(safeLevel);
@@ -87,10 +88,14 @@ export const ProgressionShowcaseModal: React.FC<ProgressionShowcaseModalProps> =
 
             {/* Modal Card */}
             <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              initial={reduceMotion ? { opacity: 0 } : { scale: 0.85, opacity: 0, y: 30 }}
+              animate={reduceMotion ? { opacity: 1, scale: 1, y: 0 } : { scale: 1, opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { scale: 0.9, opacity: 0, y: 20 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0.2 }
+                  : { type: "spring", stiffness: 350, damping: 25 }
+              }
               className="relative w-full max-w-md mx-auto rounded-3xl p-6 bg-gradient-to-b from-stone-900 via-stone-950 to-black border-2 border-amber-500/30 text-white shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden text-center z-10"
             >
               {/* Top Bar with Close Button */}

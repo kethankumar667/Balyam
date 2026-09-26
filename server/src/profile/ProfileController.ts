@@ -117,7 +117,7 @@ profileRouter.get("/:playerId/progression", (req, res) => {
 });
 
 /** PRIVATE — claim milestone level reward. */
-profileRouter.post("/:playerId/claim-level-reward", requireSelfParam(), (req, res) => {
+profileRouter.post("/:playerId/claim-level-reward", requireSelfParam(), async (req, res) => {
   const targetPlayerId = callerId(req);
   const level = Number(req.body?.level);
   if (!level || isNaN(level) || level < 1) {
@@ -125,7 +125,8 @@ profileRouter.post("/:playerId/claim-level-reward", requireSelfParam(), (req, re
     return;
   }
 
-  const result = profileService.claimMilestoneReward(targetPlayerId, level);
+  const identityKind = req.player?.kind ?? "guest";
+  const result = await profileService.claimMilestoneReward(targetPlayerId, level, identityKind);
   if (!result.success) {
     res.status(400).json({ error: result.error });
     return;

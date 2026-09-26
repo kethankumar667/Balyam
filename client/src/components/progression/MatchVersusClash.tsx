@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Swords, Flame, Zap, Shield, Crown } from "lucide-react";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { MiniclipHoloTilt } from "./MiniclipHoloTilt";
@@ -41,6 +41,7 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
   onComplete,
   autoDismissMs = 2600,
 }) => {
+  const reduceMotion = useReducedMotion();
   const p1Tier = getLevelTier(player1.level);
   const p2Tier = getLevelTier(player2.level);
 
@@ -86,11 +87,15 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
 
         {/* Main Versus Arena Cards */}
         <div className="w-full max-w-3xl flex flex-col md:flex-row items-center justify-center gap-6 relative z-10">
-          {/* Player 1 Card (Slams in from Left) */}
+          {/* Player 1 Card (Slams in from Left or Fades In) */}
           <motion.div
-            initial={{ x: -250, opacity: 0, scale: 0.9 }}
-            animate={{ x: 0, opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+            initial={reduceMotion ? { opacity: 0 } : { x: -250, opacity: 0, scale: 0.9 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1 } : { x: 0, opacity: 1, scale: 1 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : { type: "spring", stiffness: 300, damping: 24 }
+            }
             className="w-full max-w-xs p-5 rounded-3xl bg-gradient-to-b from-stone-900 via-stone-950 to-black border-2 border-amber-500/40 text-center shadow-[0_0_30px_rgba(0,0,0,0.8)] relative overflow-hidden"
           >
             <div
@@ -113,9 +118,13 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
 
           {/* Central Electrifying VS Clash Medallion */}
           <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: [0, 1.3, 1], rotate: 0 }}
-            transition={{ type: "spring", stiffness: 450, damping: 20, delay: 0.2 }}
+            initial={reduceMotion ? { opacity: 0, scale: 1 } : { scale: 0, rotate: -180 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1 } : { scale: [0, 1.3, 1], rotate: 0 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : { type: "spring", stiffness: 450, damping: 20, delay: 0.2 }
+            }
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 p-1 shadow-[0_0_35px_rgba(245,158,11,0.8)] flex items-center justify-center shrink-0 z-20"
           >
             <div className="w-full h-full bg-stone-950 rounded-full flex flex-col items-center justify-center border border-amber-300">
@@ -125,11 +134,15 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
             </div>
           </motion.div>
 
-          {/* Player 2 Card (Slams in from Right) */}
+          {/* Player 2 Card (Slams in from Right or Fades In) */}
           <motion.div
-            initial={{ x: 250, opacity: 0, scale: 0.9 }}
-            animate={{ x: 0, opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+            initial={reduceMotion ? { opacity: 0 } : { x: 250, opacity: 0, scale: 0.9 }}
+            animate={reduceMotion ? { opacity: 1, scale: 1 } : { x: 0, opacity: 1, scale: 1 }}
+            transition={
+              reduceMotion
+                ? { duration: 0.2 }
+                : { type: "spring", stiffness: 300, damping: 24 }
+            }
             className="w-full max-w-xs p-5 rounded-3xl bg-gradient-to-b from-stone-900 via-stone-950 to-black border-2 border-cyan-500/40 text-center shadow-[0_0_30px_rgba(0,0,0,0.8)] relative overflow-hidden"
           >
             <div

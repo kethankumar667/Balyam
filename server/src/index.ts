@@ -37,6 +37,7 @@ import { createAdminFeedbackRouter } from "./admin/AdminFeedbackController.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
 import { progressionSync } from "./persistence/ProgressionSync.js";
 import { profileRouter } from "./profile/ProfileController.js";
+import { profileService } from "./profile/ProfileService.js";
 import { scorecardRouter } from "./profile/ScorecardController.js";
 import { supportRouter } from "./support/SupportController.js";
 import { rankingRouter } from "./ranking/RankingController.js";
@@ -240,6 +241,9 @@ let economyService: EconomyService | undefined;
 try {
   const economyBoot = await initialiseEconomyStore();
   economyService = economyBoot.service ?? undefined;
+  if (economyService) {
+    profileService.setEconomyService(economyService);
+  }
 } catch (err) {
   logger.error({
     message: `Startup aborted: ${err instanceof Error ? err.message : String(err)}`,
