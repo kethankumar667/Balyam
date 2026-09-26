@@ -39,6 +39,14 @@ export interface GameEngine {
   removePlayer(playerId: string): void;
 
   /**
+   * Durability support (optional).
+   * Allows RoomManager to take serializable snapshots of active games and restore
+   * them across server restarts, reboots, and dyno migrations.
+   */
+  serializeState?(): unknown;
+  restoreState?(state: unknown): void;
+
+  /**
    * Bot support (optional). An engine that wires up both methods can host bots.
    *
    *   pendingActors() — who needs to make a move right now? Turn-based games

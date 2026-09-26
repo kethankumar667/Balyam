@@ -32,6 +32,7 @@ import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
 import { createEconomyRouter } from "./economy/EconomyController.js";
 import type { EconomyService } from "./economy/EconomyService.js";
 import { initialiseReviewsStore, reviewsStoreStatus } from "./reviews/index.js";
+import { initialiseRoomSnapshotStore, roomSnapshotStoreStatus } from "./rooms/durability/index.js";
 import { createReviewsRouter, createAdminReviewsRouter } from "./reviews/ReviewsController.js";
 import { createAdminFeedbackRouter } from "./admin/AdminFeedbackController.js";
 import { hydrateProgression } from "./persistence/hydrate.js";
@@ -192,6 +193,7 @@ app.get("/health", (_req, res) => {
       voucher: voucherHmacDurability(),
     },
     reviews: reviewsStoreStatus(),
+    durability: roomSnapshotStoreStatus(),
     memory: {
       heapUsedMb: Math.round((memoryUsage.heapUsed / 1024 / 1024) * 100) / 100,
       heapTotalMb: Math.round((memoryUsage.heapTotal / 1024 / 1024) * 100) / 100,
@@ -298,7 +300,9 @@ const cosmeticsService = new CosmeticsService(
 await cosmeticsService.assertCatalogIntegrity();
 await cosmeticsService.assertRarityPricing();
 
-const roomManager = new RoomManager(io, economyService, cosmeticsService);
+const snapshotStore = await initialiseRoomSnapshotStore();
+const roomManager = new RoomManager(io, economyService, cosmeticsService, snapshotStore);
+await roomManager.hydrateSnapshots();
 // Blocker 06: startup recovery. Discovers and processes any PENDING,
 // due-RETRYABLE, or expired-claim PROCESSING terminal intent left behind by
 // a prior process (crash, deploy, OOM kill) BEFORE starting periodic

@@ -956,4 +956,92 @@ export class LudoEngine implements GameEngine {
     }
     return threats;
   }
+
+  serializeState(): unknown {
+    return {
+      phase: this.s.phase,
+      turnIndex: this.s.turnIndex,
+      turnPhase: this.s.turnPhase,
+      diceValue: this.s.diceValue,
+      consecutiveSixes: this.s.consecutiveSixes,
+      movableTokenIds: [...this.s.movableTokenIds],
+      tokens: Array.from(this.s.tokens.entries()).map(([k, v]) => [k, v.map((t) => ({ ...t }))]),
+      colorOf: Array.from(this.s.colorOf.entries()),
+      paintOf: Array.from(this.s.paintOf.entries()),
+      playerOrder: [...this.s.playerOrder],
+      finishedCount: Array.from(this.s.finishedCount.entries()),
+      finishOrder: [...this.s.finishOrder],
+      quitPlayers: Array.from(this.s.quitPlayers),
+      winnerId: this.s.winnerId,
+      hasCaptured: Array.from(this.s.hasCaptured.entries()),
+      lastEvent: this.s.lastEvent ? { ...this.s.lastEvent } : null,
+      rollCount: Array.from(this.s.rollCount.entries()),
+      captureCount: Array.from(this.s.captureCount.entries()),
+      sixCount: Array.from(this.s.sixCount.entries()),
+      biggestStreak: Array.from(this.s.biggestStreak.entries()),
+      startedAt: this.s.startedAt,
+      endedAt: this.s.endedAt,
+      turnDeadline: this.s.turnDeadline,
+      options: { ...this.s.options },
+      pendingAnimMs: this.s.pendingAnimMs,
+    };
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const snap = saved as {
+      phase: "playing" | "finished";
+      turnIndex: number;
+      turnPhase: "rolling" | "moving" | "done";
+      diceValue: number | null;
+      consecutiveSixes: number;
+      movableTokenIds: string[];
+      tokens: [string, LudoToken[]][];
+      colorOf: [string, LudoColor][];
+      paintOf: [string, LudoColor][];
+      playerOrder: string[];
+      finishedCount: [string, number][];
+      finishOrder: string[];
+      quitPlayers: string[];
+      winnerId: string | null;
+      hasCaptured: [string, boolean][];
+      lastEvent: LudoEvent | null;
+      rollCount: [string, number][];
+      captureCount: [string, number][];
+      sixCount: [string, number][];
+      biggestStreak: [string, number][];
+      startedAt: number;
+      endedAt: number | null;
+      turnDeadline: number | null;
+      options: LudoGameOptions;
+      pendingAnimMs: number;
+    };
+    this.s = {
+      phase: snap.phase,
+      turnIndex: snap.turnIndex,
+      turnPhase: snap.turnPhase,
+      diceValue: snap.diceValue,
+      consecutiveSixes: snap.consecutiveSixes,
+      movableTokenIds: [...snap.movableTokenIds],
+      tokens: new Map(snap.tokens.map(([k, v]) => [k, v.map((t) => ({ ...t }))])),
+      colorOf: new Map(snap.colorOf),
+      paintOf: new Map(snap.paintOf),
+      playerOrder: [...snap.playerOrder],
+      finishedCount: new Map(snap.finishedCount),
+      finishOrder: [...snap.finishOrder],
+      quitPlayers: new Set(snap.quitPlayers),
+      winnerId: snap.winnerId,
+      hasCaptured: new Map(snap.hasCaptured),
+      lastEvent: snap.lastEvent ? { ...snap.lastEvent } : null,
+      rollCount: new Map(snap.rollCount),
+      captureCount: new Map(snap.captureCount),
+      sixCount: new Map(snap.sixCount),
+      biggestStreak: new Map(snap.biggestStreak),
+      startedAt: snap.startedAt,
+      endedAt: snap.endedAt,
+      turnDeadline: snap.turnDeadline,
+      options: { ...snap.options },
+      pendingAnimMs: snap.pendingAnimMs ?? 0,
+    };
+  }
 }

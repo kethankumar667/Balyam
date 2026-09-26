@@ -359,4 +359,59 @@ export class TicTacToeEngine implements GameEngine {
 
     return null;
   }
+
+  serializeState(): unknown {
+    return {
+      options: { ...this.options },
+      phase: this.phase,
+      playerOrder: [...this.playerOrder],
+      playerMarks: { ...this.playerMarks },
+      turnPlayerId: this.turnPlayerId,
+      grid: this.grid.map((c) => (c ? { ...c } : null)),
+      pieceQueues: {
+        X: [...this.pieceQueues.X],
+        O: [...this.pieceQueues.O],
+      },
+      winningLine: this.winningLine ? [...this.winningLine] : null,
+      winnerId: this.winnerId,
+      moveCount: this.moveCount,
+      turnDeadline: this.turnDeadline,
+      lastEvaporatedCell: this.lastEvaporatedCell,
+    };
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const s = saved as {
+      options?: TicTacToeOptions;
+      phase?: "playing" | "finished";
+      playerOrder?: string[];
+      playerMarks?: Record<string, TicTacToeMark>;
+      turnPlayerId?: string;
+      grid?: (TicTacToeCell | null)[];
+      pieceQueues?: Record<TicTacToeMark, number[]>;
+      winningLine?: number[] | null;
+      winnerId?: string | "draw" | null;
+      moveCount?: number;
+      turnDeadline?: number | null;
+      lastEvaporatedCell?: number | null;
+    };
+    if (s.options) this.options = { ...s.options };
+    if (s.phase) this.phase = s.phase;
+    if (Array.isArray(s.playerOrder)) this.playerOrder = [...s.playerOrder];
+    if (s.playerMarks) this.playerMarks = { ...s.playerMarks };
+    if (s.turnPlayerId !== undefined) this.turnPlayerId = s.turnPlayerId;
+    if (Array.isArray(s.grid)) this.grid = s.grid.map((c) => (c ? { ...c } : null));
+    if (s.pieceQueues) {
+      this.pieceQueues = {
+        X: Array.isArray(s.pieceQueues.X) ? [...s.pieceQueues.X] : [],
+        O: Array.isArray(s.pieceQueues.O) ? [...s.pieceQueues.O] : [],
+      };
+    }
+    if (s.winningLine !== undefined) this.winningLine = s.winningLine ? [...s.winningLine] : null;
+    if (s.winnerId !== undefined) this.winnerId = s.winnerId;
+    if (s.moveCount !== undefined) this.moveCount = s.moveCount;
+    if (s.turnDeadline !== undefined) this.turnDeadline = s.turnDeadline;
+    if (s.lastEvaporatedCell !== undefined) this.lastEvaporatedCell = s.lastEvaporatedCell;
+  }
 }

@@ -155,6 +155,8 @@ import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
 import { DurableSettlementWorker } from "../economy/DurableSettlementWorker.js";
 import type { CosmeticsService } from "../cosmetics/CosmeticsService.js";
 import { operationalAuthConfig, getUserRole } from "../security/operationalAuth.js";
+import type { RoomSnapshot, RoomSnapshotRepository } from "./durability/types.js";
+import { roomSnapshotStore } from "./durability/index.js";
 
 const GRACE_PERIOD_MS = 90_000;
 
@@ -831,17 +833,275 @@ export class RoomManager {
   private readonly durableWorker: DurableSettlementWorker | null;
   /** Background timer for periodic in-process retries of rooms in FAILED terminal persistence status */
   private failedTerminalRetryTimer: NodeJS.Timeout | null = null;
+  private readonly snapshotRepo: RoomSnapshotRepository;
 
   constructor(
     private io: IO,
     private readonly economyService?: EconomyService,
     private readonly cosmeticsService?: CosmeticsService,
+    snapshotRepo?: RoomSnapshotRepository,
   ) {
+    this.snapshotRepo = snapshotRepo ?? roomSnapshotStore();
     this.durableWorker = economyService
       ? new DurableSettlementWorker(economyService, {
           onVouchersIssued: (matchId, vouchers) => this.handleVouchersIssued(matchId, vouchers),
         })
       : null;
+  }
+
+  getSnapshotRepository(): RoomSnapshotRepository {
+    return this.snapshotRepo;
+  }
+
+  private toRoomSnapshot(room: Room): RoomSnapshot {
+    let engineState: unknown | null = null;
+    if (room.engine) {
+      if (typeof room.engine.serializeState === "function") {
+        engineState = room.engine.serializeState();
+      } else {
+        engineState = room.engine.getPublicState();
+      }
+    }
+
+    const gameOptions: Record<string, unknown> = {
+      ludoOptions: room.ludoOptions,
+      snlOptions: room.snlOptions,
+      rummyOptions: room.rummyOptions,
+      hcOptions: room.hcOptions,
+      wordBuildingOptions: room.wordBuildingOptions,
+      dotsBoxesOptions: room.dotsBoxesOptions,
+      starGameOptions: room.starGameOptions,
+      unoOptions: room.unoOptions,
+      bingoOptions: room.bingoOptions,
+      namesplaceanimalOptions: room.namesplaceanimalOptions,
+      tambolaOptions: room.tambolaOptions,
+      carromOptions: room.carromOptions,
+      chessOptions: room.chessOptions,
+      snakeOptions: room.snakeOptions,
+      blockBlastOptions: room.blockBlastOptions,
+      spaceWarOptions: room.spaceWarOptions,
+      ticTacToeOptions: room.ticTacToeOptions,
+      connect4Options: room.connect4Options,
+    };
+
+    const now = Date.now();
+    const expiresAt = now + 2 * 60 * 60 * 1000;
+
+    return {
+      code: room.code,
+      game: room.game,
+      phase: room.phase,
+      lifecycleState: room.lifecycleState,
+      roomRevision: room.roomRevision,
+      createdAt: room.createdAt,
+      matchStartedAt: room.matchStartedAt,
+      hostId: room.hostId,
+      name: room.name,
+      entryStakeCoins: room.entryStakeCoins,
+      currentMatchId: room.currentMatchId,
+      lastMatchId: room.lastMatchId,
+      committedCostPerSeat: room.committedCostPerSeat,
+      committedTotalPot: room.committedTotalPot,
+      sealed: room.sealed,
+      gameOptions,
+      players: Array.from(room.players.values()).map((p) => ({ ...p })),
+      departedThisMatch: Array.from(room.departedThisMatch.values()).map((p) => ({ ...p })),
+      rematch: JSON.parse(JSON.stringify(room.rematch)),
+      history: [...room.history],
+      unoHistory: [...room.unoHistory],
+      bingoHistory: [...room.bingoHistory],
+      ludoHistory: [...room.ludoHistory],
+      engineState,
+      terminalStatus: room.terminalStatus,
+      terminalOutcome: room.terminalOutcome,
+      terminalPayload: room.terminalPayload,
+      savedAt: now,
+      expiresAt,
+    };
+  }
+
+  private fromRoomSnapshot(snapshot: RoomSnapshot): Room {
+    const playersMap = new Map<string, Player>();
+    for (const p of snapshot.players) {
+      const restoredPlayer: Player = {
+        ...p,
+        isConnected: false,
+        awaySince: snapshot.savedAt,
+        awayUntil: snapshot.savedAt + GRACE_PERIOD_MS,
+      };
+      playersMap.set(p.id, restoredPlayer);
+    }
+
+    const departedMap = new Map<string, Player>();
+    if (Array.isArray(snapshot.departedThisMatch)) {
+      for (const d of snapshot.departedThisMatch) {
+        departedMap.set(d.id, { ...d });
+      }
+    }
+
+    const opts = snapshot.gameOptions || {};
+
+    const room: Room = {
+      code: snapshot.code,
+      game: snapshot.game,
+      phase: snapshot.phase,
+      lifecycleState: snapshot.lifecycleState,
+      roomRevision: snapshot.roomRevision,
+      activeStartAttempt: null,
+      startAttemptTimer: null,
+      createdAt: snapshot.createdAt,
+      matchStartedAt: snapshot.matchStartedAt,
+      hostId: snapshot.hostId,
+      name: snapshot.name,
+      history: [...(snapshot.history || [])],
+      unoHistory: [...(snapshot.unoHistory || [])],
+      bingoHistory: [...(snapshot.bingoHistory || [])],
+      ludoHistory: [...(snapshot.ludoHistory || [])],
+      players: playersMap,
+      lastMatchPlayers: null,
+      socketToPlayer: new Map<string, string>(),
+      engine: null,
+      cleanupTimers: new Map<string, NodeJS.Timeout>(),
+      takeoverTimers: new Map<string, NodeJS.Timeout>(),
+      idleStrikes: new Map<string, number>(),
+      autoPlayedFor: new Map<string, number>(),
+      autoTurnsPlayed: new Map<string, number>(),
+      disconnectSubMovesPlayed: new Map<string, number>(),
+      lastAutoTurnActor: null,
+      turnTimer: null,
+      dealGateWaitTimer: null,
+      dealGateAnimTimer: null,
+      simTimer: null,
+      spectators: new Set<string>(),
+      sealed: snapshot.sealed,
+      ludoOptions: (opts.ludoOptions as LudoGameOptions) || { ...DEFAULT_LUDO_OPTIONS },
+      snlOptions: (opts.snlOptions as SnlGameOptions) || { ...DEFAULT_SNL_OPTIONS },
+      rummyOptions: (opts.rummyOptions as RummyGameOptions) || { ...DEFAULT_RUMMY_OPTIONS },
+      hcOptions: (opts.hcOptions as HcGameOptions) || { ...DEFAULT_HC_OPTIONS },
+      wordBuildingOptions: (opts.wordBuildingOptions as WordBuildingOptions) || { ...DEFAULT_WORDBUILDING_OPTIONS },
+      dotsBoxesOptions: (opts.dotsBoxesOptions as DotsBoxesOptions) || { ...DEFAULT_DOTSBOXES_OPTIONS },
+      starGameOptions: (opts.starGameOptions as StarGameOptions) || { ...DEFAULT_STARGAME_OPTIONS },
+      unoOptions: (opts.unoOptions as UnoGameOptions) || { ...DEFAULT_UNO_OPTIONS },
+      bingoOptions: (opts.bingoOptions as BingoGameOptions) || { ...DEFAULT_BINGO_OPTIONS },
+      namesplaceanimalOptions: (opts.namesplaceanimalOptions as NamePlaceAnimalOptions) || { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS },
+      tambolaOptions: (opts.tambolaOptions as TambolaOptions) || { ...DEFAULT_TAMBOLA_OPTIONS },
+      carromOptions: (opts.carromOptions as CarromOptions) || { ...DEFAULT_CARROM_OPTIONS },
+      chessOptions: (opts.chessOptions as ChessOptions) || { ...DEFAULT_CHESS_OPTIONS },
+      snakeOptions: (opts.snakeOptions as SnakeOptions) || { ...DEFAULT_SNAKE_OPTIONS },
+      blockBlastOptions: (opts.blockBlastOptions as BlockBlastOptions) || { ...DEFAULT_BLOCKBLAST_OPTIONS },
+      spaceWarOptions: (opts.spaceWarOptions as SpaceWarOptions) || { ...DEFAULT_SPACEWAR_OPTIONS },
+      ticTacToeOptions: sanitizeTicTacToeOptions(opts.ticTacToeOptions as Partial<TicTacToeOptions>),
+      connect4Options: sanitizeConnect4Options(opts.connect4Options as Partial<Connect4Options>),
+      rematch: snapshot.rematch || emptyRematchState(),
+      rematchTimer: null,
+      rematchStartTimer: null,
+      processedActionIds: new Map<string, number>(),
+      currentMatchId: snapshot.currentMatchId,
+      departedThisMatch: departedMap,
+      lastMatchId: snapshot.lastMatchId,
+      committedCostPerSeat: snapshot.committedCostPerSeat,
+      committedTotalPot: snapshot.committedTotalPot,
+      entryStakeCoins: snapshot.entryStakeCoins,
+      economyCommitPending: false,
+      pendingCommitOperationId: null,
+      terminalStatus: snapshot.terminalStatus || "IDLE",
+      terminalOutcome: snapshot.terminalOutcome || null,
+      terminalPromise: null,
+      terminalError: null,
+      terminalPayload: snapshot.terminalPayload || null,
+    };
+
+    if (snapshot.phase === "playing" || snapshot.engineState) {
+      try {
+        const engine = createEngine(snapshot.game);
+        if (typeof (engine as unknown as { setOptions?(o: unknown): void }).setOptions === "function") {
+          const gameOptKey = `${snapshot.game}Options`;
+          if (opts[gameOptKey]) {
+            (engine as unknown as { setOptions(o: unknown): void }).setOptions(opts[gameOptKey]);
+          }
+        }
+        engine.init(Array.from(playersMap.values()));
+        if (snapshot.engineState && typeof engine.restoreState === "function") {
+          engine.restoreState(snapshot.engineState);
+        }
+        room.engine = engine;
+      } catch (err) {
+        logger.error({
+          message: `Failed to restore engine for room ${room.code} (${room.game}): ${err instanceof Error ? err.message : String(err)}`,
+          module: "DURABILITY",
+          roomCode: room.code,
+        });
+      }
+    }
+
+    for (const [pid, player] of room.players.entries()) {
+      if (!player.isConnected && !player.isBot) {
+        const remainingMs = Math.max(10_000, (player.awayUntil ?? Date.now()) - Date.now());
+        const timer = setTimeout(() => {
+          this.handleGraceExpiration(room.code, pid).catch((err) => {
+            logger.error({
+              message: `Disconnect removal timer error in room ${room.code} for player ${pid}: ${err instanceof Error ? err.message : String(err)}`,
+              module: "RECONNECT",
+              roomCode: room.code,
+              playerId: pid,
+            });
+          });
+        }, remainingMs);
+        room.cleanupTimers.set(pid, timer);
+      }
+    }
+
+    return room;
+  }
+
+  async persistRoomSnapshot(room: Room): Promise<void> {
+    try {
+      const snapshot = this.toRoomSnapshot(room);
+      await this.snapshotRepo.saveSnapshot(snapshot);
+    } catch (err) {
+      logger.error({
+        message: `Failed to persist snapshot for room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "DURABILITY",
+        roomCode: room.code,
+      });
+    }
+  }
+
+  async deleteRoomSnapshot(code: string): Promise<void> {
+    try {
+      await this.snapshotRepo.deleteSnapshot(code);
+    } catch (err) {
+      logger.error({
+        message: `Failed to delete snapshot for room ${code}: ${err instanceof Error ? err.message : String(err)}`,
+        module: "DURABILITY",
+        roomCode: code,
+      });
+    }
+  }
+
+  async hydrateSnapshots(): Promise<number> {
+    const snapshots = await this.snapshotRepo.listActiveSnapshots();
+    let restored = 0;
+    for (const snap of snapshots) {
+      if (this.rooms.has(snap.code.toUpperCase())) continue;
+      try {
+        const room = this.fromRoomSnapshot(snap);
+        this.rooms.set(room.code, room);
+        restored++;
+        logger.info({
+          message: `Restored room ${room.code} (${room.game}, ${room.phase}) with ${room.players.size} seats from snapshot`,
+          module: "DURABILITY",
+          roomCode: room.code,
+        });
+      } catch (err) {
+        logger.error({
+          message: `Failed to hydrate room ${snap.code}: ${err instanceof Error ? err.message : String(err)}`,
+          module: "DURABILITY",
+          roomCode: snap.code,
+        });
+      }
+    }
+    return restored;
   }
 
   /**
@@ -4582,6 +4842,7 @@ export class RoomManager {
     serverLifecycleRegistry.cleanupRoom(room.code);
     metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
+    void this.deleteRoomSnapshot(room.code);
     room.terminalStatus = "COMPLETED";
   }
 
@@ -4656,6 +4917,7 @@ export class RoomManager {
       serverLifecycleRegistry.cleanupRoom(room.code);
       metricsCollector.onRoomClosed(room.game);
       this.rooms.delete(room.code);
+      void this.deleteRoomSnapshot(room.code);
       room.terminalStatus = "COMPLETED";
       room.terminalPayload = null;
     } catch (err) {
@@ -4879,6 +5141,7 @@ export class RoomManager {
     serverLifecycleRegistry.cleanupRoom(room.code);
     metricsCollector.onRoomClosed(room.game);
     this.rooms.delete(room.code);
+    void this.deleteRoomSnapshot(room.code);
   }
 
   /**
@@ -6207,84 +6470,7 @@ export class RoomManager {
     });
 
     const timer = setTimeout(() => {
-      void (async () => {
-        const stillRoom = this.rooms.get(code);
-        if (!stillRoom) return;
-        const stillPlayer = stillRoom.players.get(playerId);
-        if (stillPlayer && !stillPlayer.isConnected) {
-          // One completed-recovery-session outcome, the "expired" sibling of
-          // the success accounting in `joinRoom`'s reclaim branch — this path
-          // and that one are mutually exclusive by construction: whichever
-          // happens first (reclaim before this timer fires, or this timer
-          // firing first) is what settles the session, and `forgetSeatTimers`
-          // below is exactly what stops the other one from ever running for
-          // this seat again.
-          if (!stillPlayer.isBot) {
-            metricsRegistry.increment("recovery.sessions_expired_total");
-          }
-          // Captured before deletion — same reasoning as leaveRoom's own
-          // departingPlayer snapshot, for the same economy settlement reason.
-          const droppedPlayer = stillRoom.players.get(playerId);
-          const wasHostDropping = stillRoom.hostId === playerId;
-          this.noteDepartureForSettlement(stillRoom, droppedPlayer);
-          // The seat is going away entirely, so everything tracking it goes too.
-          this.forgetSeatTimers(stillRoom, playerId);
-          stillRoom.players.delete(playerId);
-
-          // Same post-match closure rule as `leaveRoom` — a grace-window
-          // expiry is just a departure that took the slow path (connection
-          // never came back instead of an explicit Leave click), so it
-          // needs the identical fix: a POST-match table (nothing left to
-          // settle) must not auto-promote a new host or shrink to nobody
-          // left to rematch against.
-          if (stillRoom.phase === "finished") {
-            const { min } = getGameLimits(stillRoom.game);
-            if (wasHostDropping) {
-              if (this.closeRoomForEveryone(stillRoom, "The host left after the match ended.")) return;
-            } else if (stillRoom.players.size < min) {
-              if (this.closeRoomForEveryone(stillRoom, "Not enough players remained to continue.")) return;
-            }
-          }
-
-          // If the departing human was the last human in the room, abandon it —
-          // never let the grace-timeout resolve into a bot being crowned winner.
-          // Only a REMAINING human counts as a forfeit win, so removePlayer runs
-          // solely in that case.
-          if (!this.hasHumanPlayer(stillRoom)) {
-            logger.info({
-              message: "Room abandoned - grace window expired with no humans left",
-              module: "RECONNECT",
-              roomCode: stillRoom.code,
-              playerId,
-            });
-            await this.abandonRoom(stillRoom);
-            return;
-          }
-          logger.info({
-            message: "Seat dropped - grace window expired",
-            module: "RECONNECT",
-            roomCode: stillRoom.code,
-            playerId,
-          });
-          if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
-          if (stillRoom.hostId === playerId) {
-            const p = this.reassignHost(stillRoom, playerId);
-            if (p) await p;
-          }
-          if (!this.rooms.has(code)) return;
-          if (stillRoom.engine?.isOver()) {
-            // Same reasoning as the explicit-leave path above (see G14): a
-            // grace-expiry reap can also be what tips a 1v1 forfeit or a
-            // multiplayer walkover, and room.phase must not stay "playing"
-            // forever once the engine already knows the match is over.
-            await this.finalizeMatch(stillRoom, droppedPlayer);
-          } else {
-            this.broadcastRoomState(stillRoom);
-            this.resumeTable(stillRoom);
-          }
-        }
-        stillRoom.cleanupTimers.delete(playerId);
-      })().catch((err) => {
+      this.handleGraceExpiration(code, playerId).catch((err) => {
         logger.error({
           message: `Disconnect removal timer error in room ${code} for player ${playerId}: ${err instanceof Error ? err.message : String(err)}`,
           module: "RECONNECT",
@@ -6296,6 +6482,61 @@ export class RoomManager {
 
     room.cleanupTimers.set(playerId, timer);
     this.broadcastRoomState(room);
+  }
+
+  private async handleGraceExpiration(code: string, playerId: string): Promise<void> {
+    const stillRoom = this.rooms.get(code);
+    if (!stillRoom) return;
+    const stillPlayer = stillRoom.players.get(playerId);
+    if (stillPlayer && !stillPlayer.isConnected) {
+      if (!stillPlayer.isBot) {
+        metricsRegistry.increment("recovery.sessions_expired_total");
+      }
+      const droppedPlayer = stillRoom.players.get(playerId);
+      const wasHostDropping = stillRoom.hostId === playerId;
+      this.noteDepartureForSettlement(stillRoom, droppedPlayer);
+      this.forgetSeatTimers(stillRoom, playerId);
+      stillRoom.players.delete(playerId);
+
+      if (stillRoom.phase === "finished") {
+        const { min } = getGameLimits(stillRoom.game);
+        if (wasHostDropping) {
+          if (this.closeRoomForEveryone(stillRoom, "The host left after the match ended.")) return;
+        } else if (stillRoom.players.size < min) {
+          if (this.closeRoomForEveryone(stillRoom, "Not enough players remained to continue.")) return;
+        }
+      }
+
+      if (!this.hasHumanPlayer(stillRoom)) {
+        logger.info({
+          message: "Room abandoned - grace window expired with no humans left",
+          module: "RECONNECT",
+          roomCode: stillRoom.code,
+          playerId,
+        });
+        await this.abandonRoom(stillRoom);
+        return;
+      }
+      logger.info({
+        message: "Seat dropped - grace window expired",
+        module: "RECONNECT",
+        roomCode: stillRoom.code,
+        playerId,
+      });
+      if (stillRoom.engine) stillRoom.engine.removePlayer(playerId);
+      if (stillRoom.hostId === playerId) {
+        const p = this.reassignHost(stillRoom, playerId);
+        if (p) await p;
+      }
+      if (!this.rooms.has(code)) return;
+      if (stillRoom.engine?.isOver()) {
+        await this.finalizeMatch(stillRoom, droppedPlayer);
+      } else {
+        this.broadcastRoomState(stillRoom);
+        this.resumeTable(stillRoom);
+      }
+    }
+    stillRoom.cleanupTimers.delete(playerId);
   }
 
   getRoomState(socketId: string): RoomPublicState | null {
@@ -6386,6 +6627,7 @@ export class RoomManager {
 
   private broadcastRoomState(room: Room): void {
     this.io.to(room.code).emit("room:state", this.toPublicState(room));
+    void this.persistRoomSnapshot(room);
   }
 
   /**
@@ -6431,6 +6673,7 @@ export class RoomManager {
     this.recordUnoRoundIfFinished(room);
     this.recordBingoRoundIfFinished(room);
     this.recordLudoMatchIfFinished(room);
+    void this.persistRoomSnapshot(room);
   }
 
   /**

@@ -1,89 +1,58 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useRef } from "react";
 import type { GameState } from "../types";
-import { BREAKOUT_CONSTANTS } from "../constants/gameConstants";
-import { getPaddleOccupiedX } from "../engine/movementEngine";
+import { RenderPipeline } from "../canvas/RenderPipeline";
 import styles from "../styles/BrickBreakout.module.css";
 
 interface BreakoutGridProps {
   state: GameState;
 }
 
-type CellType =
-  | "EMPTY"
-  | "NORMAL_BRICK"
-  | "STRONG_BRICK"
-  | "DAMAGED_BRICK"
-  | "INDESTRUCTIBLE_BRICK"
-  | "PADDLE"
-  | "BALL";
-
+/**
+ * Hardware-Accelerated 60fps Canvas Grid for Brick Breakout.
+ * Renders beveled bricks, dynamic paddle, and ball on GPU canvas at 60fps.
+ */
 export const BreakoutGrid: React.FC<BreakoutGridProps> = ({ state }) => {
   const { paddle, ball, bricks } = state;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pipelineRef = useRef<RenderPipeline | null>(null);
 
-  // Build matrix snapshot
-  const matrix: CellType[][] = useMemo(() => {
-    const grid: CellType[][] = Array.from({ length: BREAKOUT_CONSTANTS.GRID_HEIGHT }, () =>
-      Array.from({ length: BREAKOUT_CONSTANTS.GRID_WIDTH }, () => "EMPTY"),
-    );
-
-    // 1. Render active Bricks
-    for (const b of bricks) {
-      if (b.hitPoints > 0 && b.position.y >= 0 && b.position.y < BREAKOUT_CONSTANTS.GRID_HEIGHT && b.position.x >= 0 && b.position.x < BREAKOUT_CONSTANTS.GRID_WIDTH) {
-        if (b.type === "INDESTRUCTIBLE") {
-          grid[b.position.y][b.position.x] = "INDESTRUCTIBLE_BRICK";
-        } else if (b.type === "STRONG") {
-          grid[b.position.y][b.position.x] = b.hitPoints === 1 ? "DAMAGED_BRICK" : "STRONG_BRICK";
-        } else {
-          grid[b.position.y][b.position.x] = "NORMAL_BRICK";
-        }
-      }
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    try {
+      pipelineRef.current = new RenderPipeline(canvasRef.current);
+    } catch {
+      pipelineRef.current = null;
     }
 
-    // 2. Render Paddle
-    const paddleXs = getPaddleOccupiedX(paddle);
-    for (const x of paddleXs) {
-      if (x >= 0 && x < BREAKOUT_CONSTANTS.GRID_WIDTH) {
-        grid[paddle.row][x] = "PADDLE";
-      }
-    }
+    const handleResize = () => {
+      pipelineRef.current?.syncDimensions();
+    };
 
-    // 3. Render Ball
-    if (
-      ball.position.y >= 0 &&
-      ball.position.y < BREAKOUT_CONSTANTS.GRID_HEIGHT &&
-      ball.position.x >= 0 &&
-      ball.position.x < BREAKOUT_CONSTANTS.GRID_WIDTH
-    ) {
-      grid[ball.position.y][ball.position.x] = "BALL";
-    }
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
-    return grid;
+  useEffect(() => {
+    if (!pipelineRef.current) return;
+    pipelineRef.current.syncDimensions();
+    pipelineRef.current.render({
+      paddle,
+      ball,
+      bricks,
+    });
   }, [paddle, ball, bricks]);
 
   return (
     <div className={styles.lcdContainer} style={{ width: "100%", maxWidth: 190, aspectRatio: "10/19" }}>
-      <div className={styles.matrixGrid}>
-        {matrix.map((row, rIdx) =>
-          row.map((cellType, cIdx) => {
-            let cellClass = styles.cellEmpty;
-            if (cellType === "NORMAL_BRICK") cellClass = styles.cellNormalBrick;
-            else if (cellType === "STRONG_BRICK") cellClass = styles.cellStrongBrick;
-            else if (cellType === "DAMAGED_BRICK") cellClass = styles.cellDamagedBrick;
-            else if (cellType === "INDESTRUCTIBLE_BRICK") cellClass = styles.cellIndestructibleBrick;
-            else if (cellType === "PADDLE") cellClass = styles.cellPaddle;
-            else if (cellType === "BALL") cellClass = styles.cellBall;
-
-            return (
-              <div
-                key={`${rIdx}-${cIdx}`}
-                className={`${styles.cell} ${cellClass}`}
-                data-row={rIdx}
-                data-col={cIdx}
-              />
-            );
-          }),
-        )}
-      </div>
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label="Breakout LCD game board"
+        className="w-full h-full block"
+        style={{ aspectRatio: "10/19" }}
+      />
     </div>
   );
 };

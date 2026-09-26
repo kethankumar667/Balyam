@@ -341,4 +341,28 @@ export class SnlEngine implements GameEngine {
       this.s.diceValue = null;
     }
   }
+
+  serializeState(): unknown {
+    return this.snapshot();
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const snap = saved as SnlState;
+    const turnIndex = snap.turnPlayerId ? snap.playerOrder.indexOf(snap.turnPlayerId) : 0;
+    this.s = {
+      phase: snap.phase,
+      config: snap.config,
+      playerOrder: [...snap.playerOrder],
+      turnIndex: turnIndex >= 0 ? turnIndex : 0,
+      turnPhase: snap.turnPhase,
+      positions: new Map(Object.entries(snap.positions)),
+      diceValue: snap.diceValue,
+      winnerId: snap.winnerId,
+      finishedOrder: [...snap.finishedOrder],
+      stats: new Map(Object.entries(snap.stats)),
+      recentEvents: [...snap.recentEvents],
+      startedAt: snap.startedAt,
+    };
+  }
 }

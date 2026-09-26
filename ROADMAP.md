@@ -90,19 +90,19 @@ type (`User`, `GameHistory`, `Room`, `FriendLink`) gets its own repo with
 ### Phase B — Stability **(Q1-Q2 2027)**
 **Goal: the app survives my absence. Reliable enough to recommend to non-friends.**
 
-- Persistent rooms (rooms survive server restart — store in Redis or DB)
+- [x] Persistent rooms (rooms survive server restart — multi-driver `RoomSnapshotRepository` with File JSON cache & Redis RESP client)
+- [x] Reconnect / resume mid-game across server restarts (HMAC `seatToken` verification & boot-time `hydrateSnapshots`)
+- [x] Retro Solo Arcade Canvas Expansion (`brick-tetris` & `brick-breakout` 60fps hardware-accelerated LCD render pipelines)
+- [x] State store ADR written: `docs/adr/003-state-store.md`
 - Optional accounts: email or Google sign-in, JWT
 - Guest mode preserved as default
 - Game history per user (last 50 games)
-- Reconnect / resume mid-game across server restarts
 - Structured logging (pino or similar) + log aggregation
 - CI: GitHub Actions running typecheck + tests on every PR
 - E2E tests (Playwright) for full join → play → win flow on every game
 - Runbook: how to restart, restore from backup, escalate alerts
 - Automated nightly database backups
 - Rate limiting on all socket events (per IP + per account)
-- First ADRs written: `001-storage-choice.md`, `002-auth-choice.md`,
-  `003-state-store.md`
 
 **Exit criteria:** I can take a 2-week vacation and the app keeps running.
 
