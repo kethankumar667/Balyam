@@ -110,3 +110,30 @@ profileRouter.get("/:playerId/matches/:matchId", requireSelfParam(), (req, res) 
 profileRouter.get("/:playerId/achievements", requireSelfParam(), (req, res) => {
   res.json({ achievements: profileService.getAchievements(callerId(req)) });
 });
+
+/** PUBLIC — full Miniclip XP progression, tier details, and milestone roadmap. */
+profileRouter.get("/:playerId/progression", (req, res) => {
+  res.json({ progression: profileService.getProgression(req.params.playerId) });
+});
+
+/** PRIVATE — claim milestone level reward. */
+profileRouter.post("/:playerId/claim-level-reward", requireSelfParam(), (req, res) => {
+  const targetPlayerId = callerId(req);
+  const level = Number(req.body?.level);
+  if (!level || isNaN(level) || level < 1) {
+    res.status(400).json({ error: "Invalid level specified" });
+    return;
+  }
+
+  const result = profileService.claimMilestoneReward(targetPlayerId, level);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    reward: result.reward,
+    progression: profileService.getProgression(targetPlayerId),
+  });
+});

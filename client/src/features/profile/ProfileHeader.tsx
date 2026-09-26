@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import CountUp from "../../components/CountUp";
-import { BarChart2, Star, Trophy } from "lucide-react";
+import { BarChart2, Star, Trophy, Award } from "lucide-react";
 import { useIdentityPresentation } from "../../store/authStore";
+import { MiniclipLevelBadge, LevelRoadmapModal } from "../../components/progression";
+import { getLevelTier, getLevelTitle } from "@shared/progression/MiniclipProgression";
 
 interface ProfileHeaderProps {
   profile: PlayerProfile;
@@ -26,6 +28,9 @@ export default function ProfileHeader({
   favoriteGame,
   badgeLabel,
 }: ProfileHeaderProps) {
+  const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
+  const tier = getLevelTier(profile.level);
+  const levelTitle = getLevelTitle(profile.level);
   const identity = useIdentityPresentation();
   const memberDate = new Date(profile.joinedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -165,6 +170,21 @@ export default function ProfileHeader({
             <span className="text-xs text-stone-300 font-mono bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
               {membershipSubtitle}
             </span>
+            <span className="text-stone-500 text-sm">·</span>
+            <button
+              type="button"
+              onClick={() => setIsRoadmapOpen(true)}
+              className="text-xs font-black font-mono px-2.5 py-0.5 rounded-full border shadow-xs cursor-pointer hover:opacity-90 transition flex items-center gap-1.5"
+              style={{
+                color: tier.themeColor,
+                borderColor: `${tier.themeColor}55`,
+                backgroundColor: `${tier.themeColor}15`,
+              }}
+              title="Click to view Level Roadmap"
+            >
+              <MiniclipLevelBadge level={profile.level} size="xs" showTooltip={false} />
+              <span>{levelTitle}</span>
+            </button>
           </div>
 
           {/* XP Progress Bar */}
@@ -216,15 +236,31 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          <a
-            href="/profile/statistics"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-          >
-            <BarChart2 className="w-4 h-4 text-amber-400" />
-            <span>View Statistics</span>
-          </a>
-        </div>
-      )}
-    </div>
-  );
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRoadmapOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <span>Level Road</span>
+              </button>
+              <a
+                href="/profile/statistics"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                <BarChart2 className="w-4 h-4 text-amber-400" />
+                <span>View Statistics</span>
+              </a>
+            </div>
+          </div>
+        )}
+        <LevelRoadmapModal
+          isOpen={isRoadmapOpen}
+          onClose={() => setIsRoadmapOpen(false)}
+          experiencePoints={profile.experiencePoints}
+          playerId={profile.playerId}
+        />
+      </div>
+    );
 }

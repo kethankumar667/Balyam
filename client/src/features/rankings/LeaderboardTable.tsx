@@ -5,6 +5,7 @@ import type { GameKind } from "@shared/types";
 import { RankTierIcon, GameCategoryIcon, SearchNavIcon, AddFriendUserIcon, GoldRankIcon, SilverRankIcon, BronzeRankIcon } from "../../design-system/icons";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import CountUp from "../../components/CountUp";
+import { MiniclipLevelBadge } from "../../components/progression/MiniclipLevelBadge";
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -153,7 +154,10 @@ export default function LeaderboardTable({
                           />
                           <div>
                             <span className="font-bold text-stone-100 block">{item.displayName}</span>
-                            <span className="text-[10px] font-mono text-stone-500">LVL {item.level}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <MiniclipLevelBadge level={item.level} size="xs" showTooltip={false} />
+                              <span className="text-[10px] font-mono text-stone-400">LVL {item.level}</span>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -220,7 +224,10 @@ export default function LeaderboardTable({
                       />
                       <div>
                         <span className="font-bold text-stone-100 block">{item.displayName}</span>
-                        <span className="text-[10px] text-stone-500 font-mono">Level {item.level}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <MiniclipLevelBadge level={item.level} size="xs" showTooltip={false} />
+                          <span className="text-[10px] text-stone-400 font-mono">Level {item.level}</span>
+                        </div>
                       </div>
                     </div>
                     <span

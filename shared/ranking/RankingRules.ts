@@ -49,6 +49,28 @@ export function calculateMatchXP(params: {
   return xp;
 }
 
+import {
+  getLevelTier,
+  getLevelTitle,
+  getLevelReward,
+  calculateMiniclipMatchXP,
+  calculateMiniclipXPProgression,
+  calculateLevelCoinReward,
+  LEVEL_MILESTONES,
+  MINICLIP_LEVEL_TIERS,
+} from "../progression/MiniclipProgression";
+
+export {
+  getLevelTier,
+  getLevelTitle,
+  getLevelReward,
+  calculateMiniclipMatchXP,
+  calculateMiniclipXPProgression,
+  calculateLevelCoinReward,
+  LEVEL_MILESTONES,
+  MINICLIP_LEVEL_TIERS,
+};
+
 /**
  * Calculates level and progress details from total accumulated XP.
  */
@@ -65,6 +87,9 @@ export function calculateXPProgression(totalXP: number): XPProgression {
     nextLevelXP,
     levelProgressPercent,
     totalXPForNextLevel: currentLevel * XP_CONFIG.XP_PER_LEVEL,
+    tier: getLevelTier(currentLevel),
+    levelTitle: getLevelTitle(currentLevel),
+    nextReward: getLevelReward(currentLevel + 1),
   };
 }
 

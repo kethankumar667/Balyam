@@ -11,11 +11,20 @@ import { matchHistoryService } from "./MatchHistoryService.js";
 import { scorecardService } from "./ScorecardService.js";
 import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
+import {
+  calculateMiniclipXPProgression,
+  LEVEL_MILESTONES,
+} from "@shared/progression/MiniclipProgression.js";
+import type {
+  MiniclipXPProgression,
+  LevelReward,
+} from "@shared/progression/MiniclipProgression.js";
 
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
   private stats: Map<string, PlayerStats> = new Map();
   private unlockedAchievements: Map<string, Record<string, number>> = new Map();
+  private claimedMilestones: Map<string, Set<number>> = new Map();
 
   /**
    * Retrieves or creates a player profile.
@@ -312,10 +321,63 @@ export class ProfileService {
     }
   }
 
+  /**
+   * Retrieves full Miniclip XP progression and milestone roadmap status for a player.
+   */
+  public getProgression(playerId: string): MiniclipXPProgression {
+    const profile = this.getOrCreateProfile(playerId);
+    const prog = calculateMiniclipXPProgression(profile.experiencePoints);
+    const claimed = this.claimedMilestones.get(playerId) || new Set<number>();
+
+    // Unclaimed milestone rewards available to claim
+    const unclaimed = LEVEL_MILESTONES.filter(
+      (m) => m.level <= prog.currentLevel && !claimed.has(m.level)
+    );
+
+    return {
+      ...prog,
+      unclaimedRewards: unclaimed,
+    };
+  }
+
+  /**
+   * Claims a milestone level reward if reached and not already claimed.
+   */
+  public claimMilestoneReward(
+    playerId: string,
+    level: number
+  ): { success: boolean; reward?: LevelReward; error?: string } {
+    const profile = this.getOrCreateProfile(playerId);
+    if (level > profile.level) {
+      return { success: false, error: "Level milestone not yet reached" };
+    }
+    const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+    if (!milestone) {
+      return { success: false, error: "Milestone reward not found for level" };
+    }
+
+    let claimed = this.claimedMilestones.get(playerId);
+    if (!claimed) {
+      claimed = new Set<number>();
+      this.claimedMilestones.set(playerId, claimed);
+    }
+
+    if (claimed.has(level)) {
+      return { success: false, error: "Reward already claimed" };
+    }
+
+    claimed.add(level);
+    return {
+      success: true,
+      reward: milestone.reward,
+    };
+  }
+
   public reset(): void {
     this.profiles.clear();
     this.stats.clear();
     this.unlockedAchievements.clear();
+    this.claimedMilestones.clear();
     matchHistoryService.reset();
   }
 }
