@@ -15,7 +15,7 @@ export function TvCommentaryTicker({
   gameState,
   players,
   activePlayerName,
-}: TvCommentaryTickerProps) {
+}: TvCommentaryTickerProps): JSX.Element | null {
   const [headline, setHeadline] = useState<string>("Welcome to Bhalyam TV Stadium! The arena is live.");
   const [headlineKey, setHeadlineKey] = useState(0);
 
@@ -76,10 +76,15 @@ export function TvCommentaryTicker({
         prevRollRef.current = 6;
         return;
       }
-      const lastEvent = gameState.lastEvent as { kind?: string; ts?: number } | undefined;
-      const isCapture = gameState.lastAction === "kill" || Boolean(gameState.capturedPawn) || lastEvent?.kind === "capture";
+      const lastEvent = (typeof gameState.lastEvent === "object" && gameState.lastEvent !== null)
+        ? (gameState.lastEvent as Record<string, unknown>)
+        : undefined;
+      const lastEventKind = typeof lastEvent?.kind === "string" ? lastEvent.kind : undefined;
+      const lastEventTs = typeof lastEvent?.ts === "number" ? lastEvent.ts : undefined;
+      const lastActionTs = typeof gameState.lastActionTs === "number" ? gameState.lastActionTs : undefined;
+      const isCapture = gameState.lastAction === "kill" || Boolean(gameState.capturedPawn) || lastEventKind === "capture";
       if (isCapture) {
-        const captureKey = `ludo-capture:${lastEvent?.ts ?? gameState.lastActionTs ?? activePlayerName}`;
+        const captureKey = `ludo-capture:${lastEventTs ?? lastActionTs ?? activePlayerName}`;
         if (prevActionRef.current !== captureKey) {
           setHeadline(`⚔️ GOTCHA! Token hunted down and sent packing back to the base!`);
           setHeadlineKey((k) => k + 1);
@@ -111,10 +116,19 @@ export function TvCommentaryTicker({
 
     // UNO Commentary
     if (game === "uno") {
-      const topCard = gameState.topCard as { id?: string; rank?: string; color?: string; playedAt?: number } | undefined;
-      const rank = topCard?.rank;
+      const topCardRaw = (typeof gameState.topCard === "object" && gameState.topCard !== null)
+        ? (gameState.topCard as Record<string, unknown>)
+        : undefined;
+      const rank = typeof topCardRaw?.rank === "string" ? topCardRaw.rank : undefined;
+      const id = typeof topCardRaw?.id === "string" ? topCardRaw.id : undefined;
+      const playedAt = typeof topCardRaw?.playedAt === "number" ? topCardRaw.playedAt : undefined;
+      const color = typeof topCardRaw?.color === "string" ? topCardRaw.color : undefined;
+      const turnDeadline = typeof gameState.turnDeadline === "number" ? gameState.turnDeadline : undefined;
+
       const normalizedRank = rank?.toLowerCase();
-      const cardKey = topCard ? `uno:${rank}:${topCard.id ?? topCard.playedAt ?? topCard.color}` : null;
+      const cardKey = rank
+        ? `uno:${rank}:${id ?? playedAt ?? turnDeadline ?? color ?? "card"}`
+        : null;
       if ((normalizedRank === "wild+4" || normalizedRank === "wild4") && prevActionRef.current !== cardKey) {
         setHeadline(`🚨 WILD DRAW FOUR! Complete chaos unleashed! 4 cards incoming!`);
         setHeadlineKey((k) => k + 1);
@@ -131,9 +145,10 @@ export function TvCommentaryTicker({
 
     // Rummy Showdown
     if (game === "rummy") {
-      const declarer = (gameState.declaredBy as string | undefined) ?? (gameState.phase === "declare" ? "declared" : null);
+      const declaredByStr = typeof gameState.declaredBy === "string" ? gameState.declaredBy : undefined;
+      const declarer = declaredByStr ?? (gameState.phase === "declare" ? "declared" : null);
       if (declarer) {
-        const round = gameState.roundNumber ?? gameState.matchStartedAt ?? "1";
+        const round = String(gameState.roundNumber ?? gameState.matchStartedAt ?? "1");
         const declareKey = `rummy-declare:${declarer}:${round}`;
         if (prevActionRef.current !== declareKey) {
           setHeadline(`👑 SHOWDOWN DECLARED! Hands on the table—scrutinizing pure sequences now!`);

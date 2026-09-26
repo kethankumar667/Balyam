@@ -27,7 +27,7 @@ import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
  * - Private player cards and hidden hands NEVER reach this screen.
  * - Sized for 10-foot viewing (3+ meters away) with high-contrast arcade styling.
  */
-export default function PartyScreen() {
+export default function PartyScreen(): JSX.Element {
   const { code } = useParams<{ code: string }>();
   const [room, setRoom] = useState<RoomPublicState | null>(null);
   const [gameState, setGameState] = useState<Record<string, unknown> | null>(null);

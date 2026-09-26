@@ -9,7 +9,12 @@ interface UseTvScreenShakeProps {
   gameState?: Record<string, unknown> | null;
 }
 
-export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}) {
+export interface UseTvScreenShakeReturn {
+  shakeLevel: TvShakeLevel;
+  triggerShake: (level: TvShakeLevel) => void;
+}
+
+export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}): UseTvScreenShakeReturn {
   const [shakeLevel, setShakeLevel] = useState<TvShakeLevel>("none");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,10 +75,19 @@ export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}
 
     // UNO Wild Draw 4 / Action
     if (game === "uno") {
-      const topCard = gameState.topCard as { id?: string; rank?: string; color?: string; playedAt?: number } | undefined;
-      const rank = topCard?.rank;
+      const topCardRaw = typeof gameState.topCard === "object" && gameState.topCard !== null
+        ? (gameState.topCard as Record<string, unknown>)
+        : undefined;
+      const rank = typeof topCardRaw?.rank === "string" ? topCardRaw.rank : undefined;
+      const id = typeof topCardRaw?.id === "string" ? topCardRaw.id : undefined;
+      const playedAt = typeof topCardRaw?.playedAt === "number" ? topCardRaw.playedAt : undefined;
+      const color = typeof topCardRaw?.color === "string" ? topCardRaw.color : undefined;
+      const turnDeadline = typeof gameState.turnDeadline === "number" ? gameState.turnDeadline : undefined;
+
       const normalizedRank = rank?.toLowerCase();
-      const cardKey = topCard ? `uno:${rank}:${topCard.id ?? topCard.playedAt ?? topCard.color}` : null;
+      const cardKey = rank
+        ? `uno:${rank}:${id ?? playedAt ?? turnDeadline ?? color ?? "card"}`
+        : null;
       if ((normalizedRank === "wild+4" || normalizedRank === "wild4") && prevActionRef.current !== cardKey) {
         triggerShake("intense");
         prevActionRef.current = cardKey;
@@ -95,9 +109,10 @@ export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}
 
     // Rummy Showdown Declare
     if (game === "rummy") {
-      const declarer = (gameState.declaredBy as string | undefined) ?? (gameState.phase === "declare" ? "declared" : null);
+      const declaredByStr = typeof gameState.declaredBy === "string" ? gameState.declaredBy : undefined;
+      const declarer = declaredByStr ?? (gameState.phase === "declare" ? "declared" : null);
       if (declarer) {
-        const round = gameState.roundNumber ?? gameState.matchStartedAt ?? "1";
+        const round = String(gameState.roundNumber ?? gameState.matchStartedAt ?? "1");
         const declareKey = `rummy:declare:${declarer}:${round}`;
         if (prevActionRef.current !== declareKey) {
           triggerShake("intense");

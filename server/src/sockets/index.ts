@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
+import type { ClientToServerEvents, ServerToClientEvents, AccountKind } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
 import { globalRateLimiter, machineRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
@@ -328,9 +328,17 @@ export function registerSocketHandlers(
 
   socket.on("room:spectate", async (payload, ack) => {
     try {
-      const code = typeof payload === "string" ? payload : payload?.code ?? "";
-      const accessToken = typeof payload === "object" && payload !== null ? payload.accessToken : undefined;
-      const claimedKind = typeof payload === "object" && payload !== null ? payload.accountKind : undefined;
+      let code = "";
+      let accessToken: string | undefined = undefined;
+      let claimedKind: AccountKind | undefined = undefined;
+
+      if (typeof payload === "string") {
+        code = payload;
+      } else if (typeof payload === "object" && payload !== null) {
+        code = typeof payload.code === "string" ? payload.code : "";
+        accessToken = typeof payload.accessToken === "string" ? payload.accessToken : undefined;
+        claimedKind = payload.accountKind;
+      }
 
       const accountKind = await resolveAccountKind(claimedKind, accessToken);
       const capabilities = capabilitiesFor(accountKind);
@@ -341,7 +349,7 @@ export function registerSocketHandlers(
         return;
       }
 
-      const res = rooms.spectateRoom(socket.id, typeof code === "string" ? code : "", accountKind);
+      const res = rooms.spectateRoom(socket.id, code, accountKind);
       if (typeof ack === "function") ack(res);
     } catch (err) {
       const error = err instanceof Error ? err.message : "Failed to spectate room";
