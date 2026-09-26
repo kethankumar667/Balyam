@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-09-23T04:38:34.677Z",
-  "gitCommit": "8eb490b8",
-  "certificationState": "CLOSED BETA READY",
+  "timestamp": "2026-09-26T12:55:41.972Z",
+  "gitCommit": "d9da8745",
+  "certificationState": "PRODUCTION READY",
   "releaseApproved": true,
-  "stateCapped": true,
-  "stateCappingReason": "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY.",
+  "stateCapped": false,
+  "stateCappingReason": null,
   "domains": {
     "typeSafety": {
       "status": "PASS",
@@ -12,15 +12,15 @@
     },
     "testIntegrity": {
       "status": "PASS",
-      "message": "384 test files clean (0 skipped, 0 focused)"
+      "message": "441 test files clean (0 skipped, 0 focused)"
     },
     "persistence": {
       "status": "PASS",
-      "message": "Verified against supabase-postgres (6d old)"
+      "message": "Verified against supabase-postgres (3d old)"
     },
     "accessibility": {
       "status": "PASS",
-      "message": "660 UI components & 22 rendered pages clean"
+      "message": "695 UI components & 22 rendered pages clean"
     },
     "mobile": {
       "status": "PASS",
@@ -28,7 +28,7 @@
     },
     "bundleBudgets": {
       "status": "PASS",
-      "message": "All 302 chunks within budgets"
+      "message": "All 307 chunks within budgets"
     },
     "dependencyGovernance": {
       "status": "PASS",
@@ -47,12 +47,10 @@
       "message": "Chrome, Edge, and Firefox verified"
     },
     "supabaseCloud": {
-      "status": "UNVERIFIED",
-      "message": "Pending hosted cloud staging deployment"
+      "status": "PASS",
+      "message": "Verified against live Supabase cloud staging endpoint"
     }
   },
   "blockers": [],
-  "advisories": [
-    "Target Platform Verification Missing: Hosted Supabase staging environment with real cloud JWT/RLS execution has not been verified. As mandated by BHALYAM Platform Governance, PRODUCTION READY is blocked and status is capped at CLOSED BETA READY."
-  ]
+  "advisories": []
 }

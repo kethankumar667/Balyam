@@ -244,12 +244,8 @@ function extractRole(init?: RequestInit): "service_role" | "authenticated" | "an
       if (k.toLowerCase() === "authorization") auth = v;
       if (k.toLowerCase() === "apikey") apikey = v;
     }
-  } else if ("get" in init.headers && typeof (init.headers as { get: (name: string) => string | null }).get === "function") {
-    const h = init.headers as { get: (name: string) => string | null };
-    auth = h.get("authorization") ?? "";
-    apikey = h.get("apikey") ?? "";
   } else {
-    for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+    for (const [k, v] of Object.entries(init.headers)) {
       if (k.toLowerCase() === "authorization") auth = String(v);
       if (k.toLowerCase() === "apikey") apikey = String(v);
     }
