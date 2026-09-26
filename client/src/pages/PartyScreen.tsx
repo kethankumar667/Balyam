@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Tv, LogIn, UserPlus } from "lucide-react";
 import type { Player, RoomPublicState } from "@shared/types";
 import { getSocket } from "../lib/socket";
-import { useCapabilities } from "../store/authStore";
+import { useCapabilities, currentAccessToken, useAuthStore } from "../store/authStore";
 import { TvHeader } from "./party/TvHeader";
 import { TvLobbyView } from "./party/TvLobbyView";
 import { TvGameArena } from "./party/TvGameArena";
@@ -117,14 +117,22 @@ export default function PartyScreen() {
     const upperCode = code.toUpperCase();
 
     const attach = () => {
-      socket.emit("room:spectate", upperCode, (res) => {
-        if (res.ok) {
-          setConnected(true);
-          setError(null);
-        } else {
-          setError(res.error ?? "Could not attach to that room");
+      socket.emit(
+        "room:spectate",
+        {
+          code: upperCode,
+          accessToken: currentAccessToken(),
+          accountKind: useAuthStore.getState().kind,
+        },
+        (res) => {
+          if (res.ok) {
+            setConnected(true);
+            setError(null);
+          } else {
+            setError(res.error ?? "Could not attach to that room");
+          }
         }
-      });
+      );
     };
 
     const onRoomState = (state: RoomPublicState) => {

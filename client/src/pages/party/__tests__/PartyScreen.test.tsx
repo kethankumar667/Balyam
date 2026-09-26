@@ -20,6 +20,12 @@ vi.mock("../../../store/authStore", () => ({
   useCapabilities: () => ({
     spectate: true,
   }),
+  currentAccessToken: () => "test_token_123",
+  useAuthStore: {
+    getState: () => ({
+      kind: "member",
+    }),
+  },
 }));
 
 // Mock canvas particles for HappyDOM test environment
@@ -104,9 +110,27 @@ describe("PartyScreen (TV Mode Spectator Experience)", () => {
 
     renderPartyScreen("tv1234");
 
-    expect(mockSocket.emit).toHaveBeenCalledWith("room:spectate", "TV1234", expect.any(Function));
+    expect(mockSocket.emit).toHaveBeenCalledWith(
+      "room:spectate",
+      expect.objectContaining({ code: "TV1234" }),
+      expect.any(Function)
+    );
     expect(mockSocket.on).toHaveBeenCalledWith("room:state", expect.any(Function));
     expect(mockSocket.on).toHaveBeenCalledWith("game:state", expect.any(Function));
+  });
+
+  it("shows error banner when server rejects room:spectate", async () => {
+    mockSocket.emit.mockImplementation((event, payload, cb) => {
+      if (event === "room:spectate" && typeof cb === "function") {
+        cb({ ok: false, error: "Putting a table on the big screen requires a member account." });
+      }
+    });
+
+    renderPartyScreen("tv1234");
+
+    await waitFor(() => {
+      expect(screen.getByText("Putting a table on the big screen requires a member account.")).toBeDefined();
+    });
   });
 
   it("renders TV lobby with Room Code, QR code, and connected controllers", async () => {

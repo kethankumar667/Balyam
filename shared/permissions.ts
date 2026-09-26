@@ -103,7 +103,7 @@ const GUEST: Capabilities = {
   passAndPlay: true,
   editProfile: true,
   voiceChat: true,
-  spectate: true,
+  spectate: false,
   viewTournaments: false,
   viewLeaderboards: true,
   viewProfile: false,

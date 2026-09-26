@@ -70,27 +70,40 @@ export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}
 
     // UNO Wild Draw 4 / Action
     if (game === "uno") {
-      const topCard = gameState.topCard as { rank?: string } | undefined;
+      const topCard = gameState.topCard as { id?: string; rank?: string; color?: string; playedAt?: number } | undefined;
       const rank = topCard?.rank;
-      if (rank === "wild4" && prevActionRef.current !== "wild4") {
+      const normalizedRank = rank?.toLowerCase();
+      const cardKey = topCard ? `uno:${rank}:${topCard.id ?? topCard.playedAt ?? topCard.color}` : null;
+      if ((normalizedRank === "wild+4" || normalizedRank === "wild4") && prevActionRef.current !== cardKey) {
         triggerShake("intense");
-        prevActionRef.current = "wild4";
-      } else if ((rank === "draw2" || rank === "skip") && prevActionRef.current !== rank) {
+        prevActionRef.current = cardKey;
+      } else if ((normalizedRank === "+2" || normalizedRank === "draw2" || normalizedRank === "skip") && prevActionRef.current !== cardKey) {
         triggerShake("subtle");
-        prevActionRef.current = rank;
+        prevActionRef.current = cardKey;
       }
     }
 
     // RPS Clash
-    if (game === "rps" && gameState.phase === "reveal" && prevActionRef.current !== "reveal") {
-      triggerShake("intense");
-      prevActionRef.current = "reveal";
+    if (game === "rps" && (gameState.phase === "reveal" || gameState.lastRevealTs)) {
+      const round = gameState.round ?? gameState.roundIndex ?? gameState.currentRound ?? 1;
+      const revealKey = `rps:reveal:${gameState.lastRevealTs ?? round}`;
+      if (prevActionRef.current !== revealKey) {
+        triggerShake("intense");
+        prevActionRef.current = revealKey;
+      }
     }
 
     // Rummy Showdown Declare
-    if (game === "rummy" && (gameState.phase === "declare" || gameState.declaredBy) && prevActionRef.current !== "declare") {
-      triggerShake("intense");
-      prevActionRef.current = "declare";
+    if (game === "rummy") {
+      const declarer = (gameState.declaredBy as string | undefined) ?? (gameState.phase === "declare" ? "declared" : null);
+      if (declarer) {
+        const round = gameState.roundNumber ?? gameState.matchStartedAt ?? "1";
+        const declareKey = `rummy:declare:${declarer}:${round}`;
+        if (prevActionRef.current !== declareKey) {
+          triggerShake("intense");
+          prevActionRef.current = declareKey;
+        }
+      }
     }
   }, [game, gameState, triggerShake]);
 

@@ -76,9 +76,15 @@ export function TvCommentaryTicker({
         prevRollRef.current = 6;
         return;
       }
-      if (gameState.lastAction === "kill" || gameState.capturedPawn) {
-        setHeadline(`⚔️ GOTCHA! Token hunted down and sent packing back to the base!`);
-        setHeadlineKey((k) => k + 1);
+      const lastEvent = gameState.lastEvent as { kind?: string; ts?: number } | undefined;
+      const isCapture = gameState.lastAction === "kill" || Boolean(gameState.capturedPawn) || lastEvent?.kind === "capture";
+      if (isCapture) {
+        const captureKey = `ludo-capture:${lastEvent?.ts ?? gameState.lastActionTs ?? activePlayerName}`;
+        if (prevActionRef.current !== captureKey) {
+          setHeadline(`⚔️ GOTCHA! Token hunted down and sent packing back to the base!`);
+          setHeadlineKey((k) => k + 1);
+          prevActionRef.current = captureKey;
+        }
         return;
       }
     }
@@ -105,26 +111,37 @@ export function TvCommentaryTicker({
 
     // UNO Commentary
     if (game === "uno") {
-      const topCard = gameState.topCard as { rank?: string; color?: string } | undefined;
-      if (topCard?.rank === "wild4" && prevActionRef.current !== "wild4") {
+      const topCard = gameState.topCard as { id?: string; rank?: string; color?: string; playedAt?: number } | undefined;
+      const rank = topCard?.rank;
+      const normalizedRank = rank?.toLowerCase();
+      const cardKey = topCard ? `uno:${rank}:${topCard.id ?? topCard.playedAt ?? topCard.color}` : null;
+      if ((normalizedRank === "wild+4" || normalizedRank === "wild4") && prevActionRef.current !== cardKey) {
         setHeadline(`🚨 WILD DRAW FOUR! Complete chaos unleashed! 4 cards incoming!`);
         setHeadlineKey((k) => k + 1);
-        prevActionRef.current = "wild4";
+        prevActionRef.current = cardKey;
         return;
       }
-      if (topCard?.rank === "skip" && prevActionRef.current !== "skip") {
+      if (normalizedRank === "skip" && prevActionRef.current !== cardKey) {
         setHeadline(`⛔ TURN SKIPPED! Denied! Momentum swings to the next player!`);
         setHeadlineKey((k) => k + 1);
-        prevActionRef.current = "skip";
+        prevActionRef.current = cardKey;
         return;
       }
     }
 
     // Rummy Showdown
-    if (game === "rummy" && (gameState.phase === "declare" || gameState.declaredBy)) {
-      setHeadline(`👑 SHOWDOWN DECLARED! Hands on the table—scrutinizing pure sequences now!`);
-      setHeadlineKey((k) => k + 1);
-      return;
+    if (game === "rummy") {
+      const declarer = (gameState.declaredBy as string | undefined) ?? (gameState.phase === "declare" ? "declared" : null);
+      if (declarer) {
+        const round = gameState.roundNumber ?? gameState.matchStartedAt ?? "1";
+        const declareKey = `rummy-declare:${declarer}:${round}`;
+        if (prevActionRef.current !== declareKey) {
+          setHeadline(`👑 SHOWDOWN DECLARED! Hands on the table—scrutinizing pure sequences now!`);
+          setHeadlineKey((k) => k + 1);
+          prevActionRef.current = declareKey;
+        }
+        return;
+      }
     }
   }, [game, gameState, activePlayerName]);
 

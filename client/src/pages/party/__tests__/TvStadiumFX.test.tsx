@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, renderHook } from "@testing-library/react";
 import { isGameInClimax, TvClimaxBanner } from "../TvClimaxBanner";
 import { TvCommentaryTicker } from "../TvCommentaryTicker";
 import { TvCrowdReactions } from "../TvCrowdReactions";
 import { getTvJoinUrl } from "../TvLobbyView";
 import { getLatestHandCricketBall } from "../tvState";
+import { useTvScreenShake } from "../useTvScreenShake";
 import type { Player, ReactionRecvPayload } from "@shared/types";
 
 // Mock socket
@@ -180,6 +181,128 @@ describe("TV Stadium Intense FX & Climax Suite", () => {
       );
 
       expect(screen.getByText(/SKY HIGH! Climbing the ladder/i)).toBeDefined();
+    });
+
+    it("generates Ludo capture commentary without marquee thrashing", () => {
+      const { rerender } = render(
+        <TvCommentaryTicker
+          game="ludo"
+          gameState={{ lastAction: "kill", lastActionTs: 100 }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/GOTCHA! Token hunted down/i)).toBeDefined();
+
+      // Rerender with same capture event ts
+      rerender(
+        <TvCommentaryTicker
+          game="ludo"
+          gameState={{ lastAction: "kill", lastActionTs: 100 }}
+          players={mockPlayers}
+        />
+      );
+      expect(screen.getByText(/GOTCHA! Token hunted down/i)).toBeDefined();
+
+      // Rerender with new capture event
+      rerender(
+        <TvCommentaryTicker
+          game="ludo"
+          gameState={{ lastAction: "kill", lastActionTs: 200 }}
+          players={mockPlayers}
+        />
+      );
+      expect(screen.getByText(/GOTCHA! Token hunted down/i)).toBeDefined();
+    });
+
+    it("generates UNO Wild Draw 4 and Skip commentary with card ID keys", () => {
+      const { rerender } = render(
+        <TvCommentaryTicker
+          game="uno"
+          gameState={{ topCard: { id: "c1", rank: "Wild+4", color: null } }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/WILD DRAW FOUR! Complete chaos unleashed/i)).toBeDefined();
+
+      rerender(
+        <TvCommentaryTicker
+          game="uno"
+          gameState={{ topCard: { id: "c2", rank: "Skip", color: "R" } }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/TURN SKIPPED! Denied!/i)).toBeDefined();
+    });
+
+    it("generates Rummy showdown declare commentary with round guards", () => {
+      render(
+        <TvCommentaryTicker
+          game="rummy"
+          gameState={{ phase: "declare", declaredBy: "p1", roundNumber: 1 }}
+          players={mockPlayers}
+        />
+      );
+
+      expect(screen.getByText(/SHOWDOWN DECLARED! Hands on the table/i)).toBeDefined();
+    });
+  });
+
+  describe("useTvScreenShake hook", () => {
+    it("triggers intense shake on UNO Wild+4 and subtle on Skip or +2", () => {
+      const { result, rerender } = renderHook(
+        ({ game, gameState }) => useTvScreenShake({ game, gameState }),
+        {
+          initialProps: {
+            game: "uno" as const,
+            gameState: { topCard: { id: "u1", rank: "Wild+4" } },
+          },
+        }
+      );
+
+      expect(result.current.shakeLevel).toBe("intense");
+
+      // Rerender with same card: should not re-trigger
+      act(() => {
+        rerender({
+          game: "uno" as const,
+          gameState: { topCard: { id: "u1", rank: "Wild+4" } },
+        });
+      });
+
+      // Advance to next card: Skip
+      act(() => {
+        rerender({
+          game: "uno" as const,
+          gameState: { topCard: { id: "u2", rank: "Skip" } },
+        });
+      });
+
+      expect(result.current.shakeLevel).toBe("subtle");
+    });
+
+    it("triggers intense shake on RPS reveal", () => {
+      const { result } = renderHook(() =>
+        useTvScreenShake({
+          game: "rps" as const,
+          gameState: { phase: "reveal", lastRevealTs: 12345 },
+        })
+      );
+
+      expect(result.current.shakeLevel).toBe("intense");
+    });
+
+    it("triggers intense shake on Rummy showdown declare", () => {
+      const { result } = renderHook(() =>
+        useTvScreenShake({
+          game: "rummy" as const,
+          gameState: { phase: "declare", declaredBy: "p1", roundNumber: 1 },
+        })
+      );
+
+      expect(result.current.shakeLevel).toBe("intense");
     });
   });
 

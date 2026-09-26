@@ -87,7 +87,7 @@ import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
 import { NO_ECONOMY_GAMES } from "@shared/catalog.js";
 import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
-import { SEALED_ROOM_ERROR } from "@shared/permissions.js";
+import { SEALED_ROOM_ERROR, capabilitiesFor } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
 import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
@@ -6071,7 +6071,10 @@ export class RoomManager {
    * so input is rejected by construction rather than by a permission check
    * somebody could later forget to write.
    */
-  spectateRoom(socketId: string, code: string): { ok: boolean; error?: string } {
+  spectateRoom(socketId: string, code: string, accountKind?: AccountKind): { ok: boolean; error?: string } {
+    if (accountKind && !capabilitiesFor(accountKind).spectate) {
+      return { ok: false, error: "Putting a table on the big screen requires a member account." };
+    }
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
     // A socket cannot be both a player and a screen.

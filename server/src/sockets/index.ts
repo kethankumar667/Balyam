@@ -6,6 +6,7 @@ import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
+import { capabilitiesFor } from "@shared/permissions.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { sanitizeClientTelemetry } from "./telemetry.js";
 
@@ -325,9 +326,27 @@ export function registerSocketHandlers(
     rooms.sendSound(socket.id, clipId, targetPlayerId);
   });
 
-  socket.on("room:spectate", (code, ack) => {
-    const res = rooms.spectateRoom(socket.id, typeof code === "string" ? code : "");
-    if (typeof ack === "function") ack(res);
+  socket.on("room:spectate", async (payload, ack) => {
+    try {
+      const code = typeof payload === "string" ? payload : payload?.code ?? "";
+      const accessToken = typeof payload === "object" && payload !== null ? payload.accessToken : undefined;
+      const claimedKind = typeof payload === "object" && payload !== null ? payload.accountKind : undefined;
+
+      const accountKind = await resolveAccountKind(claimedKind, accessToken);
+      const capabilities = capabilitiesFor(accountKind);
+      if (!capabilities.spectate) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "Putting a table on the big screen requires a member account." });
+        }
+        return;
+      }
+
+      const res = rooms.spectateRoom(socket.id, typeof code === "string" ? code : "", accountKind);
+      if (typeof ack === "function") ack(res);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Failed to spectate room";
+      if (typeof ack === "function") ack({ ok: false, error });
+    }
   });
 
   socket.on("room:stopSpectate", () => {
