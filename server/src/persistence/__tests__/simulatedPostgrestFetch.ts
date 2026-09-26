@@ -233,7 +233,7 @@ const PRIVATE_FUNCTIONS = new Set([
 ]);
 
 function extractRole(init?: RequestInit): "service_role" | "authenticated" | "anon" {
-  if (!init?.headers) return "service_role";
+  if (!init?.headers) return "anon";
   let auth = "";
   let apikey = "";
   if (init.headers instanceof Headers) {
@@ -252,9 +252,9 @@ function extractRole(init?: RequestInit): "service_role" | "authenticated" | "an
   }
 
   const combined = `${auth} ${apikey}`.toLowerCase();
-  if (combined.includes("anon")) return "anon";
+  if (combined.includes("service_role") || combined.includes("service-role")) return "service_role";
   if (combined.includes("authenticated")) return "authenticated";
-  return "service_role";
+  return "anon";
 }
 
 /* ═══════════════════════════ The simulator ═══════════════════════════════ */
