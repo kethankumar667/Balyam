@@ -767,9 +767,15 @@ export function CricbuzzInnings({
   /* ── Desktop View (Side-by-side) ───────────────────────────────────────── */
   if (!compact) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      // `h-full min-h-0` + per-column `overflow-y-auto` is the same P0 fix
+      // used by the Broadcast theme (hc-broadcast.tsx): the shell clips this
+      // region with `overflow-hidden` while live, so a column that simply
+      // grows with its content (the old `space-y-4` with no scroller) had its
+      // bottom — the action pad, "Pick your number" — silently clipped off
+      // with no scrollbar on any viewport shorter than the content.
+      <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left 7 Columns: Live Scorecard & Action Pad */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="min-h-0 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5 lg:col-span-7">
           {/* Cricbuzz Match Centre Top Score Strip */}
           <CricbuzzCard className="p-4 border-t-4 border-t-[#009270]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3E6E8] pb-3 dark:border-[#2C3533]">
@@ -917,8 +923,8 @@ export function CricbuzzInnings({
         </div>
 
         {/* Right 5 Columns: Commentary Feed & Scorecard */}
-        <div className="lg:col-span-5 space-y-4">
-          <CricbuzzCard className="p-4 max-h-[600px] overflow-y-auto">
+        <div className="min-h-0 space-y-4 overflow-y-auto lg:col-span-5">
+          <CricbuzzCard className="p-4">
             <div className="flex items-center justify-between border-b border-[#E3E6E8] pb-2 mb-3 dark:border-[#2C3533]">
               <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#222222] dark:text-white">
                 Ball-by-Ball Commentary

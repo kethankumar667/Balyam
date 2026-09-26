@@ -60,12 +60,17 @@ export function DoordarshanInnings({
   const myRole = isBatting ? "batter" : isBowling ? "bowler" : null;
 
   return (
-    <div className={compact ? "space-y-3" : "grid gap-4 lg:grid-cols-[1fr_320px]"}>
+    // `h-full min-h-0` + per-column `overflow-y-auto` mirrors the P0 fix
+    // already applied to the Broadcast theme (hc-broadcast.tsx): the shell
+    // clips this region with `overflow-hidden` while live, so an unbounded
+    // column simply had its overflow — e.g. the hand-pick row — clipped off
+    // with no scrollbar the moment content ran taller than the viewport.
+    <div className={compact ? "space-y-3" : "grid h-full min-h-0 gap-4 lg:grid-cols-[1fr_320px]"}>
       <TurnTimeWarning
         deadline={state.turnDeadline}
         active={innings.currentBowlerId != null && !innings.needsNextBatterPick && myPick == null && myRole != null}
       />
-      <div className="space-y-3 min-w-0">
+      <div className={compact ? "space-y-3 min-w-0" : "min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5"}>
         {/* The analog scorebug. */}
         <DoordarshanScreen glow>
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -174,7 +179,9 @@ export function DoordarshanInnings({
       </div>
 
       {!compact && (
-        <RightRail innings={innings} target={target} battingProfiles={battingProfiles} bowlingProfiles={bowlingProfiles} />
+        <div className="min-h-0 overflow-y-auto">
+          <RightRail innings={innings} target={target} battingProfiles={battingProfiles} bowlingProfiles={bowlingProfiles} />
+        </div>
       )}
     </div>
   );
