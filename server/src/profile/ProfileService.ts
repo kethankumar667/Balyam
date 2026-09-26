@@ -98,6 +98,7 @@ export class ProfileService {
     const hadProfile = this.profiles.delete(playerId);
     this.stats.delete(playerId);
     this.unlockedAchievements.delete(playerId);
+    this.claimedMilestones.delete(playerId);
     return hadProfile;
   }
 
@@ -292,6 +293,7 @@ export class ProfileService {
     }>,
     achievements: Array<{ playerId: string; achievementId: string; unlockedAt: number }>,
     matches: Array<{ playerId: string; match: MatchHistoryItem }> = [],
+    claimedMilestones: Array<{ playerId: string; level: number }> = [],
   ): void {
     for (const p of profiles) {
       this.profiles.set(p.playerId, {
@@ -326,6 +328,56 @@ export class ProfileService {
       const existing = this.unlockedAchievements.get(a.playerId) ?? {};
       existing[a.achievementId] = a.unlockedAt;
       this.unlockedAchievements.set(a.playerId, existing);
+    }
+
+    if (claimedMilestones) {
+      for (const cm of claimedMilestones) {
+        let set = this.claimedMilestones.get(cm.playerId);
+        if (!set) {
+          set = new Set<number>();
+          this.claimedMilestones.set(cm.playerId, set);
+        }
+        set.add(cm.level);
+      }
+    }
+  }
+
+  /**
+   * Pre-loads claimed milestones from the durable coin ledger.
+   * Scans ADMIN_ADJUSTMENT ledger entries for milestone claim idempotency keys
+   * ('milestone:<playerId>:lvl:<level>') and repopulates the in-memory Set.
+   */
+  public async hydrateMilestonesFromEconomy(service?: EconomyService | null): Promise<number> {
+    const eco = service ?? this.economyService;
+    if (!eco) return 0;
+
+    try {
+      const entries = await eco.listLedgerEntriesByType("ADMIN_ADJUSTMENT");
+      let count = 0;
+      for (const entry of entries) {
+        if (!entry.idempotencyKey || !entry.idempotencyKey.startsWith("milestone:")) continue;
+        const match = entry.idempotencyKey.match(/^milestone:(.+):lvl:(\d+)$/);
+        if (match) {
+          const playerId = match[1];
+          const level = parseInt(match[2]!, 10);
+          if (playerId && !isNaN(level)) {
+            let set = this.claimedMilestones.get(playerId);
+            if (!set) {
+              set = new Set<number>();
+              this.claimedMilestones.set(playerId, set);
+            }
+            set.add(level);
+            count++;
+          }
+        }
+      }
+      return count;
+    } catch (err) {
+      logger.error({
+        message: `Failed to hydrate milestone claims from economy ledger: ${String(err)}`,
+        module: "PROGRESSION",
+      });
+      return 0;
     }
   }
 
@@ -376,12 +428,16 @@ export class ProfileService {
       return { success: false, error: "Reward already claimed" };
     }
 
+    // Optimistically mark as claimed BEFORE async economy adjustment
+    // to prevent concurrent race conditions from submitting multiple wallet adjustments.
+    claimed.add(level);
+
     // Award coins through EconomyService if configured
     if (this.economyService && milestone.reward.coins > 0) {
       const idempotencyKey = `milestone:${playerId}:lvl:${level}`;
       try {
         await this.economyService.ensureIdentityRegistered(playerId, identityKind);
-        await this.economyService.adminAdjustWallet({
+        const adjustment = await this.economyService.adminAdjustWallet({
           identityId: playerId,
           amountCoins: String(milestone.reward.coins),
           adminPrincipalId: "system:level_milestone",
@@ -389,7 +445,16 @@ export class ProfileService {
           idempotencyKey,
           entryType: "ADMIN_ADJUSTMENT",
         });
+
+        if (!adjustment.applied) {
+          // If the economy layer already had this idempotencyKey (e.g. across server restarts or replay),
+          // it was already claimed. Keep it in claimed Set so in-memory state is up to date,
+          // but return refusal.
+          return { success: false, error: "Reward already claimed" };
+        }
       } catch (err) {
+        // Rollback optimistic claim on network/database failure so the player can retry later
+        claimed.delete(level);
         logger.error({
           message: `Failed to credit wallet coins for level ${level} milestone claim by ${playerId}: ${String(err)}`,
           module: "PROGRESSION",
@@ -398,7 +463,6 @@ export class ProfileService {
       }
     }
 
-    claimed.add(level);
     return {
       success: true,
       reward: milestone.reward,

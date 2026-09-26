@@ -308,5 +308,158 @@ describe("Miniclip XP & Levels Progression System", () => {
       // Cleanup
       profileService.setEconomyService(undefined);
     });
+
+    it("cleans up claimedMilestones when deleteProfile is called to prevent memory leaks", async () => {
+      profileService.getOrCreateProfile("leak_test_player", "Leak Tester");
+      profileService.awardXP("leak_test_player", 550);
+
+      const claim = await profileService.claimMilestoneReward("leak_test_player", 5);
+      expect(claim.success).toBe(true);
+
+      // Delete profile should clear memory for leak_test_player
+      const deleted = profileService.deleteProfile("leak_test_player");
+      expect(deleted).toBe(true);
+
+      // When recreated, player has no previous claimedMilestones Set leak in memory
+      profileService.getOrCreateProfile("leak_test_player", "Leak Tester Reborn");
+      profileService.awardXP("leak_test_player", 550);
+
+      // Player should be able to claim again on a genuinely fresh profile
+      const reClaim = await profileService.claimMilestoneReward("leak_test_player", 5);
+      expect(reClaim.success).toBe(true);
+    });
+
+    it("prevents race condition when concurrent claims for the same milestone occur simultaneously", async () => {
+      const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+      const { EconomyService } = await import("../../economy/EconomyService.js");
+      const repo = new InMemoryEconomyRepository();
+      const economyService = new EconomyService(repo);
+
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("race_player", "Race Player");
+      profileService.awardXP("race_player", 550); // Level 6
+
+      await repo.ensureIdentityRegistered("race_player", "guest");
+      const initialWallet = await economyService.getWallet("race_player");
+      const initialBalance = BigInt(initialWallet?.balance ?? "0");
+
+      // Execute 3 concurrent claims in parallel
+      const results = await Promise.all([
+        profileService.claimMilestoneReward("race_player", 5),
+        profileService.claimMilestoneReward("race_player", 5),
+        profileService.claimMilestoneReward("race_player", 5),
+      ]);
+
+      const successes = results.filter((r) => r.success);
+      const failures = results.filter((r) => !r.success);
+
+      expect(successes.length).toBe(1);
+      expect(failures.length).toBe(2);
+      expect(failures[0]?.error).toContain("already claimed");
+
+      // Wallet was credited exactly once (+500 coins)
+      const finalWallet = await economyService.getWallet("race_player");
+      expect(BigInt(finalWallet!.balance) - initialBalance).toBe(500n);
+
+      profileService.setEconomyService(undefined);
+    });
+
+    it("detects and blocks claims when economy repository reports applied: false across simulated server reboots", async () => {
+      const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+      const { EconomyService } = await import("../../economy/EconomyService.js");
+      const repo = new InMemoryEconomyRepository();
+      const economyService = new EconomyService(repo);
+
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("reboot_player", "Reboot Player");
+      profileService.awardXP("reboot_player", 550);
+
+      // Claim first time
+      const firstClaim = await profileService.claimMilestoneReward("reboot_player", 5);
+      expect(firstClaim.success).toBe(true);
+
+      // Simulate server reboot without hydrating: in-memory state is wiped, but repo has the row
+      profileService.reset();
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("reboot_player", "Reboot Player");
+      profileService.awardXP("reboot_player", 550);
+
+      // Attempt claim after simulated reboot: economy repository returns applied: false
+      const postRebootClaim = await profileService.claimMilestoneReward("reboot_player", 5);
+      expect(postRebootClaim.success).toBe(false);
+      expect(postRebootClaim.error).toContain("already claimed");
+
+      // In-memory set is also updated, so immediate subsequent check also rejects without touching DB
+      const immediateRetry = await profileService.claimMilestoneReward("reboot_player", 5);
+      expect(immediateRetry.success).toBe(false);
+
+      profileService.setEconomyService(undefined);
+    });
+
+    it("restores claimed milestones across restarts via hydrateMilestonesFromEconomy", async () => {
+      const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+      const { EconomyService } = await import("../../economy/EconomyService.js");
+      const repo = new InMemoryEconomyRepository();
+      const economyService = new EconomyService(repo);
+
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("hydrate_player", "Hydrate Player");
+      profileService.awardXP("hydrate_player", 1200); // Level 13
+
+      // Claim level 5 and level 10
+      await profileService.claimMilestoneReward("hydrate_player", 5);
+      await profileService.claimMilestoneReward("hydrate_player", 10);
+
+      // Simulate reboot: clear memory and re-create profiles
+      profileService.reset();
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("hydrate_player", "Hydrate Player");
+      profileService.awardXP("hydrate_player", 1200);
+
+      // Hydrate from economy ledger
+      const restoredCount = await profileService.hydrateMilestonesFromEconomy();
+      expect(restoredCount).toBe(2);
+
+      // Level 5 and 10 should now be recognized as claimed in progression roadmap
+      const prog = profileService.getProgression("hydrate_player");
+      const unclaimedLevels = prog.unclaimedRewards?.map((r) => r.level) ?? [];
+      expect(unclaimedLevels).not.toContain(5);
+      expect(unclaimedLevels).not.toContain(10);
+
+      profileService.setEconomyService(undefined);
+    });
+
+    it("rolls back optimistic claim in memory if EconomyService throws an error", async () => {
+      const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+      const { EconomyService } = await import("../../economy/EconomyService.js");
+      const repo = new InMemoryEconomyRepository();
+      const economyService = new EconomyService(repo);
+
+      // Make adminAdjustWallet fail
+      const originalAdjust = economyService.adminAdjustWallet.bind(economyService);
+      let shouldFail = true;
+      economyService.adminAdjustWallet = async (input) => {
+        if (shouldFail) {
+          throw new Error("Simulated database timeout");
+        }
+        return originalAdjust(input);
+      };
+
+      profileService.setEconomyService(economyService);
+      profileService.getOrCreateProfile("fail_retry_player", "Retry Player");
+      profileService.awardXP("fail_retry_player", 550);
+
+      const failedClaim = await profileService.claimMilestoneReward("fail_retry_player", 5);
+      expect(failedClaim.success).toBe(false);
+      expect(failedClaim.error).toContain("Failed to credit milestone coins to wallet");
+
+      // Fix failure and retry: player should be able to retry because optimistic claim was rolled back
+      shouldFail = false;
+      const retryClaim = await profileService.claimMilestoneReward("fail_retry_player", 5);
+      expect(retryClaim.success).toBe(true);
+      expect(retryClaim.reward?.coins).toBe(500);
+
+      profileService.setEconomyService(undefined);
+    });
   });
 });

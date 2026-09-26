@@ -243,6 +243,7 @@ try {
   economyService = economyBoot.service ?? undefined;
   if (economyService) {
     profileService.setEconomyService(economyService);
+    await profileService.hydrateMilestonesFromEconomy();
   }
 } catch (err) {
   logger.error({
