@@ -219,4 +219,33 @@ export class RpsEngine implements GameEngine {
     const pick = VALID_CHOICES[Math.floor(Math.random() * VALID_CHOICES.length)];
     return this.applyMove({ playerId, type: "choose", data: { choice: pick } });
   }
+
+  serializeState(): unknown {
+    return {
+      state: this.state,
+      currentChoices: this.currentChoices,
+      playerIds: this.playerIds,
+    };
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const s = saved as Partial<{
+      state: RpsState;
+      currentChoices: Record<string, RpsChoice>;
+      playerIds: string[];
+    }>;
+    if (s.state && typeof s.state === "object") {
+      this.state = {
+        ...s.state,
+        scores: s.state.scores && typeof s.state.scores === "object" ? { ...s.state.scores } : {},
+      };
+    }
+    if (s.currentChoices && typeof s.currentChoices === "object") {
+      this.currentChoices = { ...s.currentChoices };
+    }
+    if (Array.isArray(s.playerIds)) {
+      this.playerIds = [...s.playerIds];
+    }
+  }
 }

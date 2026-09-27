@@ -956,4 +956,102 @@ export class LudoEngine implements GameEngine {
     }
     return threats;
   }
+
+  serializeState(): unknown {
+    return {
+      phase: this.s.phase,
+      turnIndex: this.s.turnIndex,
+      turnPhase: this.s.turnPhase,
+      diceValue: this.s.diceValue,
+      consecutiveSixes: this.s.consecutiveSixes,
+      movableTokenIds: [...this.s.movableTokenIds],
+      tokens: Array.from(this.s.tokens.entries()).map(([k, v]) => [k, v.map((t) => ({ ...t }))]),
+      colorOf: Array.from(this.s.colorOf.entries()),
+      paintOf: Array.from(this.s.paintOf.entries()),
+      playerOrder: [...this.s.playerOrder],
+      finishedCount: Array.from(this.s.finishedCount.entries()),
+      finishOrder: [...this.s.finishOrder],
+      quitPlayers: Array.from(this.s.quitPlayers),
+      winnerId: this.s.winnerId,
+      hasCaptured: Array.from(this.s.hasCaptured.entries()),
+      lastEvent: this.s.lastEvent ? { ...this.s.lastEvent } : null,
+      rollCount: Array.from(this.s.rollCount.entries()),
+      captureCount: Array.from(this.s.captureCount.entries()),
+      sixCount: Array.from(this.s.sixCount.entries()),
+      biggestStreak: Array.from(this.s.biggestStreak.entries()),
+      startedAt: this.s.startedAt,
+      endedAt: this.s.endedAt,
+      turnDeadline: this.s.turnDeadline,
+      options: { ...this.s.options },
+      pendingAnimMs: this.s.pendingAnimMs,
+    };
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const snap = saved as Partial<{
+      phase: "playing" | "finished";
+      turnIndex: number;
+      turnPhase: "rolling" | "moving" | "done";
+      diceValue: number | null;
+      consecutiveSixes: number;
+      movableTokenIds: string[];
+      tokens: [string, LudoToken[]][];
+      colorOf: [string, LudoColor][];
+      paintOf: [string, LudoColor][];
+      playerOrder: string[];
+      finishedCount: [string, number][];
+      finishOrder: string[];
+      quitPlayers: string[];
+      winnerId: string | null;
+      hasCaptured: [string, boolean][];
+      lastEvent: LudoEvent | null;
+      rollCount: [string, number][];
+      captureCount: [string, number][];
+      sixCount: [string, number][];
+      biggestStreak: [string, number][];
+      startedAt: number;
+      endedAt: number | null;
+      turnDeadline: number | null;
+      options: LudoGameOptions;
+      pendingAnimMs: number;
+    }>;
+
+    const playerOrder = Array.isArray(snap.playerOrder) ? [...snap.playerOrder] : [];
+    if (playerOrder.length === 0) return;
+
+    const safeTokensEntries: [string, LudoToken[]][] = Array.isArray(snap.tokens)
+      ? snap.tokens
+          .filter((entry): entry is [string, LudoToken[]] => Array.isArray(entry) && typeof entry[0] === "string" && Array.isArray(entry[1]))
+          .map(([k, v]) => [k, v.map((t) => ({ ...t }))])
+      : [];
+
+    this.s = {
+      phase: snap.phase === "finished" ? "finished" : "playing",
+      turnIndex: typeof snap.turnIndex === "number" && snap.turnIndex >= 0 && snap.turnIndex < playerOrder.length ? snap.turnIndex : 0,
+      turnPhase: snap.turnPhase ?? "rolling",
+      diceValue: typeof snap.diceValue === "number" ? snap.diceValue : null,
+      consecutiveSixes: typeof snap.consecutiveSixes === "number" ? snap.consecutiveSixes : 0,
+      movableTokenIds: Array.isArray(snap.movableTokenIds) ? [...snap.movableTokenIds] : [],
+      tokens: new Map(safeTokensEntries),
+      colorOf: new Map(Array.isArray(snap.colorOf) ? snap.colorOf : []),
+      paintOf: new Map(Array.isArray(snap.paintOf) ? snap.paintOf : []),
+      playerOrder,
+      finishedCount: new Map(Array.isArray(snap.finishedCount) ? snap.finishedCount : []),
+      finishOrder: Array.isArray(snap.finishOrder) ? [...snap.finishOrder] : [],
+      quitPlayers: new Set(Array.isArray(snap.quitPlayers) ? snap.quitPlayers : []),
+      winnerId: snap.winnerId ?? null,
+      hasCaptured: new Map(Array.isArray(snap.hasCaptured) ? snap.hasCaptured : []),
+      lastEvent: snap.lastEvent ? { ...snap.lastEvent } : null,
+      rollCount: new Map(Array.isArray(snap.rollCount) ? snap.rollCount : []),
+      captureCount: new Map(Array.isArray(snap.captureCount) ? snap.captureCount : []),
+      sixCount: new Map(Array.isArray(snap.sixCount) ? snap.sixCount : []),
+      biggestStreak: new Map(Array.isArray(snap.biggestStreak) ? snap.biggestStreak : []),
+      startedAt: typeof snap.startedAt === "number" ? snap.startedAt : Date.now(),
+      endedAt: typeof snap.endedAt === "number" ? snap.endedAt : null,
+      turnDeadline: typeof snap.turnDeadline === "number" ? snap.turnDeadline : null,
+      options: snap.options && typeof snap.options === "object" ? { ...this.s.options, ...snap.options } : { ...this.s.options },
+      pendingAnimMs: typeof snap.pendingAnimMs === "number" ? snap.pendingAnimMs : 0,
+    };
+  }
 }

@@ -341,4 +341,37 @@ export class SnlEngine implements GameEngine {
       this.s.diceValue = null;
     }
   }
+
+  serializeState(): unknown {
+    return this.snapshot();
+  }
+
+  restoreState(saved: unknown): void {
+    if (!saved || typeof saved !== "object") return;
+    const snap = saved as Partial<SnlState>;
+    const playerOrder = Array.isArray(snap.playerOrder) ? [...snap.playerOrder] : [];
+    if (playerOrder.length === 0) return;
+
+    const turnIndex = snap.turnPlayerId && playerOrder.includes(snap.turnPlayerId)
+      ? playerOrder.indexOf(snap.turnPlayerId)
+      : 0;
+
+    const rawPositions = snap.positions && typeof snap.positions === "object" ? snap.positions : {};
+    const rawStats = snap.stats && typeof snap.stats === "object" ? snap.stats : {};
+
+    this.s = {
+      phase: snap.phase === "finished" ? "finished" : "playing",
+      config: snap.config && typeof snap.config === "object" ? snap.config : this.s.config,
+      playerOrder,
+      turnIndex,
+      turnPhase: snap.turnPhase ?? "rolling",
+      positions: new Map(Object.entries(rawPositions)),
+      diceValue: typeof snap.diceValue === "number" ? snap.diceValue : null,
+      winnerId: snap.winnerId ?? null,
+      finishedOrder: Array.isArray(snap.finishedOrder) ? [...snap.finishedOrder] : [],
+      stats: new Map(Object.entries(rawStats)),
+      recentEvents: Array.isArray(snap.recentEvents) ? [...snap.recentEvents] : [],
+      startedAt: typeof snap.startedAt === "number" ? snap.startedAt : Date.now(),
+    };
+  }
 }
