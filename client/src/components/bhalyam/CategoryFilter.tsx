@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import {
   BHALYAM_GAMES,
   GAME_CATEGORIES,
@@ -11,6 +11,7 @@ import {
 import { useTheme } from "../../lib/useTheme";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
+import { useFavourites } from "../../hooks/useFavourites";
 
 /**
  * Game filter — a segmented control.
@@ -144,8 +145,15 @@ export default function CategoryFilter({
     };
   }, [measure]);
 
+  const { favourites } = useFavourites();
+  const favCount = favourites.length;
+
   const segments: Segment[] = [
     { id: "all", label: "Trending" },
+    {
+      id: "favourites",
+      label: favCount > 0 ? `Favourites (${favCount})` : "Favourites",
+    },
     ...GAME_CATEGORIES.map((c) => ({ id: c.id as CategorySelection, label: c.label })),
   ];
   const activeIndex = Math.max(
@@ -319,7 +327,18 @@ export default function CategoryFilter({
                     }
                   />
                 )}
-                <span className="relative z-10">{seg.label}</span>
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {seg.id === "favourites" && (
+                    <Heart
+                      className={`w-3.5 h-3.5 transition-colors ${
+                        active
+                          ? "fill-stone-950 text-stone-950"
+                          : "fill-rose-500 text-rose-500"
+                      }`}
+                    />
+                  )}
+                  <span>{seg.label}</span>
+                </span>
               </button>
             );
           })}

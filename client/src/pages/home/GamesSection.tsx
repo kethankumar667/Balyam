@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Users as UsersLucideIcon, Clock } from "lucide-react";
+import { ArrowRight, Users as UsersLucideIcon, Clock, Heart } from "lucide-react";
 import { RevealOnScroll, RevealItem } from "../../components/RevealOnScroll";
 import { bhalyamSpring, tileHover } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
+import { useFavourites } from "../../hooks/useFavourites";
+import { useToast } from "../../hooks/useToast";
+import { HapticsManager } from "../../services/HapticsManager";
 import CategoryFilter, {
   filterGames,
   type GameFilter,
@@ -70,8 +73,9 @@ const HOME_TILE_CAP = 6;
 
 export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
   const [filter, setFilter] = useState<GameFilter>({ category: "all" });
+  const { favourites } = useFavourites();
   const matches = filterGames(filter, false);
-  const shown = matches.slice(0, HOME_TILE_CAP);
+  const shown = filter.category === "favourites" ? matches : matches.slice(0, HOME_TILE_CAP);
   const filtered = filter.category !== "all";
 
   return (
@@ -114,7 +118,9 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
         aria-live="polite"
       >
         {matches.length === 0
-          ? "No games found in this category."
+          ? filter.category === "favourites"
+            ? "No favourite games selected yet."
+            : "No games found in this category."
           : shown.length < matches.length
           ? `Showing ${shown.length} of ${matches.length} games.`
           : `${matches.length} game${matches.length === 1 ? "" : "s"}.`}
@@ -122,12 +128,26 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
 
       {matches.length === 0 ? (
         <div className="p-8 sm:p-12 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-center space-y-3">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 text-2xl">
-            🎲
+          <div
+            className={`w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-2xl ${
+              filter.category === "favourites"
+                ? "bg-rose-500/15 border border-rose-500/30 text-rose-500"
+                : "bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400"
+            }`}
+          >
+            {filter.category === "favourites" ? (
+              <Heart className="w-6 h-6 fill-current text-rose-500" />
+            ) : (
+              "🎲"
+            )}
           </div>
-          <h3 className="text-base font-extrabold text-ink-hi dark:text-text-hi">No Games in this Filter</h3>
+          <h3 className="text-base font-extrabold text-ink-hi dark:text-text-hi">
+            {filter.category === "favourites" ? "No Favourite Games Yet" : "No Games in this Filter"}
+          </h3>
           <p className="text-xs text-ink-lo dark:text-text-lo max-w-sm mx-auto">
-            Try switching to another category or explore all childhood classics.
+            {filter.category === "favourites"
+              ? "Tap the heart icon on any game card below to add your favorite childhood classics to your shortlist for quick access."
+              : "Try switching to another category or explore all childhood classics."}
           </p>
           <button
             type="button"
@@ -171,7 +191,11 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
                      transition-all duration-200"
         >
-          {filtered ? "View all in this filter" : "View all games"}
+          {filtered
+            ? filter.category === "favourites"
+              ? "View all favourites"
+              : "View all in this filter"
+            : "View all games"}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -194,6 +218,9 @@ export function GameTile({
   const Glyph = GAME_GLYPHS[game.slug];
   const tileArtByGame = TILE_ART_BY_GAME;
   const { play } = useAudio();
+  const { isFavourite, toggleFavourite } = useFavourites();
+  const { showToast } = useToast();
+  const isFav = isFavourite(game.slug);
 
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -231,6 +258,41 @@ export function GameTile({
         boxShadow: shadowStyle,
       }}
     >
+      {/* Top Action Bar: Heart Favorite Button */}
+      <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20">
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.88, rotate: -8 }}
+          transition={bhalyamSpring}
+          onClick={(e) => {
+            e.stopPropagation();
+            HapticsManager.getInstance().subtle();
+            play(AUDIO.UI_CLICK);
+            const isNowFav = toggleFavourite(game.slug);
+            showToast(
+              isNowFav
+                ? `${game.title} added to favourites ❤️`
+                : `${game.title} removed from favourites`
+            );
+          }}
+          aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
+          className={`min-w-[44px] min-h-[44px] w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer shadow-sm backdrop-blur-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
+            isFav
+              ? "bg-rose-500/20 text-rose-500 border border-rose-500/40 shadow-rose-500/20 hover:bg-rose-500/30"
+              : isDark
+              ? "bg-white/10 text-white/70 hover:text-rose-400 hover:bg-rose-500/20 border border-white/15"
+              : "bg-black/5 text-[#5D4B3F] hover:text-rose-600 hover:bg-rose-500/15 border border-black/10"
+          }`}
+        >
+          <Heart
+            className={`w-5 h-5 transition-transform duration-200 ${
+              isFav ? "fill-rose-500 text-rose-500 scale-110" : ""
+            }`}
+          />
+        </motion.button>
+      </div>
+
       {/* Hero Illustration / Art Area with ambient flare */}
       <div className="relative my-2 sm:my-3 h-28 sm:h-36 flex items-center justify-center">
         <div

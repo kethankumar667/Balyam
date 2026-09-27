@@ -5,6 +5,8 @@ import { useTheme } from "../../lib/useTheme";
 import { useAuthStore } from "../../store/authStore";
 import { useFavourites } from "../../hooks/useFavourites";
 import { useToast } from "../../hooks/useToast";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 import { Tooltip } from "../../design-system/dls";
 import { tileHover, ctaPress, bhalyamSpring } from "../../lib/motion";
@@ -101,6 +103,7 @@ export default function GameCard({
 }: GameCardProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
+  const { play } = useAudio();
   const { isFavourite, toggleFavourite } = useFavourites();
   const { showToast } = useToast();
   const isFav = isFavourite(game.slug);
@@ -179,17 +182,22 @@ export default function GameCard({
               onClick={(e) => {
                 e.stopPropagation();
                 HapticsManager.getInstance().subtle();
+                play(AUDIO.UI_CLICK);
                 const nowFav = toggleFavourite(game.slug);
-                showToast(nowFav ? `${game.title} added to favourites` : `${game.title} removed from favourites`);
+                showToast(
+                  nowFav
+                    ? `${game.title} added to favourites ❤️`
+                    : `${game.title} removed from favourites`
+                );
               }}
               aria-label={isFav ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center ${
+              className={`p-2 rounded-full transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 isFav
                   ? "bg-rose-500/20 text-rose-500 hover:bg-rose-500/30"
                   : "bg-black/5 dark:bg-white/10 text-ink-mute hover:text-rose-500 hover:bg-rose-500/10"
               }`}
             >
-              <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
+              <Heart className={`w-4 h-4 ${isFav ? "fill-current" : ""}`} />
             </motion.button>
           </Tooltip>
         </div>
