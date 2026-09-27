@@ -11,11 +11,28 @@ import { matchHistoryService } from "./MatchHistoryService.js";
 import { scorecardService } from "./ScorecardService.js";
 import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
+import {
+  calculateMiniclipXPProgression,
+  LEVEL_MILESTONES,
+} from "@shared/progression/MiniclipProgression.js";
+import type {
+  MiniclipXPProgression,
+  LevelReward,
+} from "@shared/progression/MiniclipProgression.js";
+import type { EconomyService } from "../economy/EconomyService.js";
+import type { PlayerIdentityKind } from "../persistence/EconomyRepository.js";
+import { logger } from "../lib/logger.js";
 
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
   private stats: Map<string, PlayerStats> = new Map();
   private unlockedAchievements: Map<string, Record<string, number>> = new Map();
+  private claimedMilestones: Map<string, Set<number>> = new Map();
+  private economyService?: EconomyService | null;
+
+  public setEconomyService(service: EconomyService | null | undefined): void {
+    this.economyService = service;
+  }
 
   /**
    * Retrieves or creates a player profile.
@@ -81,6 +98,7 @@ export class ProfileService {
     const hadProfile = this.profiles.delete(playerId);
     this.stats.delete(playerId);
     this.unlockedAchievements.delete(playerId);
+    this.claimedMilestones.delete(playerId);
     return hadProfile;
   }
 
@@ -275,6 +293,7 @@ export class ProfileService {
     }>,
     achievements: Array<{ playerId: string; achievementId: string; unlockedAt: number }>,
     matches: Array<{ playerId: string; match: MatchHistoryItem }> = [],
+    claimedMilestones: Array<{ playerId: string; level: number }> = [],
   ): void {
     for (const p of profiles) {
       this.profiles.set(p.playerId, {
@@ -310,12 +329,151 @@ export class ProfileService {
       existing[a.achievementId] = a.unlockedAt;
       this.unlockedAchievements.set(a.playerId, existing);
     }
+
+    if (claimedMilestones) {
+      for (const cm of claimedMilestones) {
+        let set = this.claimedMilestones.get(cm.playerId);
+        if (!set) {
+          set = new Set<number>();
+          this.claimedMilestones.set(cm.playerId, set);
+        }
+        set.add(cm.level);
+      }
+    }
+  }
+
+  /**
+   * Pre-loads claimed milestones from the durable coin ledger.
+   * Scans ADMIN_ADJUSTMENT ledger entries for milestone claim idempotency keys
+   * ('milestone:<playerId>:lvl:<level>') and repopulates the in-memory Set.
+   */
+  public async hydrateMilestonesFromEconomy(service?: EconomyService | null): Promise<number> {
+    const eco = service ?? this.economyService;
+    if (!eco) return 0;
+
+    try {
+      const entries = await eco.listLedgerEntriesByType("ADMIN_ADJUSTMENT");
+      let count = 0;
+      for (const entry of entries) {
+        if (!entry.idempotencyKey || !entry.idempotencyKey.startsWith("milestone:")) continue;
+        const match = entry.idempotencyKey.match(/^milestone:(.+):lvl:(\d+)$/);
+        if (match) {
+          const playerId = match[1];
+          const level = parseInt(match[2]!, 10);
+          if (playerId && !isNaN(level)) {
+            let set = this.claimedMilestones.get(playerId);
+            if (!set) {
+              set = new Set<number>();
+              this.claimedMilestones.set(playerId, set);
+            }
+            set.add(level);
+            count++;
+          }
+        }
+      }
+      return count;
+    } catch (err) {
+      logger.error({
+        message: `Failed to hydrate milestone claims from economy ledger: ${String(err)}`,
+        module: "PROGRESSION",
+      });
+      return 0;
+    }
+  }
+
+  /**
+   * Retrieves full Miniclip XP progression and milestone roadmap status for a player.
+   */
+  public getProgression(playerId: string): MiniclipXPProgression {
+    const profile = this.getOrCreateProfile(playerId);
+    const prog = calculateMiniclipXPProgression(profile.experiencePoints);
+    const claimed = this.claimedMilestones.get(playerId) || new Set<number>();
+
+    // Unclaimed milestone rewards available to claim
+    const unclaimed = LEVEL_MILESTONES.filter(
+      (m) => m.level <= prog.currentLevel && !claimed.has(m.level)
+    );
+
+    return {
+      ...prog,
+      unclaimedRewards: unclaimed,
+    };
+  }
+
+  /**
+   * Claims a milestone level reward if reached and not already claimed.
+   * If EconomyService is present and coins > 0, credits the reward coins directly to the player's wallet.
+   */
+  public async claimMilestoneReward(
+    playerId: string,
+    level: number,
+    identityKind: PlayerIdentityKind = "guest"
+  ): Promise<{ success: boolean; reward?: LevelReward; error?: string }> {
+    const profile = this.getOrCreateProfile(playerId);
+    if (level > profile.level) {
+      return { success: false, error: "Level milestone not yet reached" };
+    }
+    const milestone = LEVEL_MILESTONES.find((m) => m.level === level);
+    if (!milestone) {
+      return { success: false, error: "Milestone reward not found for level" };
+    }
+
+    let claimed = this.claimedMilestones.get(playerId);
+    if (!claimed) {
+      claimed = new Set<number>();
+      this.claimedMilestones.set(playerId, claimed);
+    }
+
+    if (claimed.has(level)) {
+      return { success: false, error: "Reward already claimed" };
+    }
+
+    // Optimistically mark as claimed BEFORE async economy adjustment
+    // to prevent concurrent race conditions from submitting multiple wallet adjustments.
+    claimed.add(level);
+
+    // Award coins through EconomyService if configured
+    if (this.economyService && milestone.reward.coins > 0) {
+      const idempotencyKey = `milestone:${playerId}:lvl:${level}`;
+      try {
+        await this.economyService.ensureIdentityRegistered(playerId, identityKind);
+        const adjustment = await this.economyService.adminAdjustWallet({
+          identityId: playerId,
+          amountCoins: String(milestone.reward.coins),
+          adminPrincipalId: "system:level_milestone",
+          reason: `Level ${level} milestone reward: ${milestone.reward.title}`,
+          idempotencyKey,
+          entryType: "ADMIN_ADJUSTMENT",
+        });
+
+        if (!adjustment.applied) {
+          // If the economy layer already had this idempotencyKey (e.g. across server restarts or replay),
+          // it was already claimed. Keep it in claimed Set so in-memory state is up to date,
+          // but return refusal.
+          return { success: false, error: "Reward already claimed" };
+        }
+      } catch (err) {
+        // Rollback optimistic claim on network/database failure so the player can retry later
+        claimed.delete(level);
+        logger.error({
+          message: `Failed to credit wallet coins for level ${level} milestone claim by ${playerId}: ${String(err)}`,
+          module: "PROGRESSION",
+        });
+        return { success: false, error: "Failed to credit milestone coins to wallet" };
+      }
+    }
+
+    return {
+      success: true,
+      reward: milestone.reward,
+    };
   }
 
   public reset(): void {
     this.profiles.clear();
     this.stats.clear();
     this.unlockedAchievements.clear();
+    this.claimedMilestones.clear();
     matchHistoryService.reset();
   }
 }

@@ -2,6 +2,7 @@ import type { Player } from "@shared/types";
 import { Users, Crown, Check, Target } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
 import { getPodiumTitleConfig } from "../lib/cosmeticsResolver";
+import { MiniclipLevelBadge } from "./progression/MiniclipLevelBadge";
 
 export default function PlayerList({
   players,
@@ -38,7 +39,7 @@ export default function PlayerList({
           >
             {/* Avatar with presence ring */}
             <span className="relative flex-shrink-0">
-              <SeatAvatar avatar={p.avatar} aura={p.cosmetics?.avatarAura} name={p.name} className="w-7 h-7" />
+              <SeatAvatar avatar={p.avatar} aura={p.cosmetics?.avatarAura} level={p.level} name={p.name} className="w-7 h-7" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[#FFF9EE] dark:ring-[#182234] ${
                   p.isConnected ? "bg-emerald-500" : "bg-amber-500"
@@ -52,6 +53,9 @@ export default function PlayerList({
               <span className="truncate font-semibold text-xs sm:text-sm text-[#2B3550] dark:text-slate-100">
                 {p.name}
               </span>
+              {p.level !== undefined && (
+                <MiniclipLevelBadge level={p.level} size="xs" showTooltip={false} className="shrink-0" />
+              )}
               {p.id === selfId && (
                 <span className="text-[11px] text-[#8A6D4B] dark:text-slate-400">
                   (you)

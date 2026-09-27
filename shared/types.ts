@@ -63,6 +63,10 @@ export interface Player {
    */
   avatar?: string;
   /**
+   * The player's current progression level, displayed in their Miniclip level badge.
+   */
+  level?: number;
+  /**
    * Sanitized public presentation loadout (aura, title, token/dice skin).
    * Validated on ingress against closed-set catalog before broadcast.
    */

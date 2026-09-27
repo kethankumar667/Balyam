@@ -26,6 +26,8 @@ import { WalletBalanceChip } from "../economy/WalletBalanceChip";
 import { useWallet } from "../../hooks/useEconomy";
 import { DailyStreakEntryChip } from "../streak/DailyStreakEntryChip";
 import { CosmeticsStoreEntryChip } from "../cosmetics/CosmeticsStoreEntryChip";
+import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
+import { usePlayerSnapshot } from "../../hooks/usePlayerSnapshot";
 
 /**
  * The global header.
@@ -71,6 +73,8 @@ export default function AppHeader({
         ? "syncing"
         : "synced";
   const displayName = playerName.trim() || identity.label;
+  const { profile } = usePlayerSnapshot(true);
+  const playerLevel = profile?.level ?? 1;
 
   const isGamesActive = pathname.startsWith("/games");
   const isRecentActive = pathname.startsWith("/recently-played");
@@ -257,6 +261,7 @@ export default function AppHeader({
                   <span className="text-[13px] font-bold tracking-tight max-w-[130px] truncate">
                     {displayName}
                   </span>
+                  <MiniclipLevelBadge level={playerLevel} size="xs" showTooltip={false} className="shrink-0" />
                   {isSuperAdmin && (
                     <span
                       title="Super Admin"

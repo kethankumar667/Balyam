@@ -1541,6 +1541,7 @@ export class RoomManager {
     }
 
     const playerId = newPlayerId();
+    const userProfile = identityId ? profileService.getProfile(identityId) : undefined;
     const player: Player = {
       id: playerId,
       name: name.trim().slice(0, 20) || "Player",
@@ -1550,6 +1551,7 @@ export class RoomManager {
       connectionGeneration: 1,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
+      level: userProfile?.level ?? 1,
       ...(hostIsGuest ? { isGuest: true } : {}),
       identityId: identityId ?? null,
     };
@@ -1804,6 +1806,7 @@ export class RoomManager {
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
 
     const playerId = newPlayerId();
+    const userProfile = identityId ? profileService.getProfile(identityId) : undefined;
     const player: Player = {
       id: playerId,
       name: name.trim().slice(0, 20) || "Player",
@@ -1813,6 +1816,7 @@ export class RoomManager {
       connectionGeneration: 1,
       // Dropped unless it names a file we actually ship — see shared/avatars.ts.
       avatar: sanitizeAvatar(avatar),
+      level: userProfile?.level ?? 1,
       // Explicit "guest" only, matching `hostKind` in createRoom above.
       ...(accountKind === "guest" ? { isGuest: true } : {}),
       identityId: identityId ?? null,
@@ -2013,6 +2017,7 @@ export class RoomManager {
       isReady: true,
       isConnected: true,
       isBot: true,
+      level: Math.floor(Math.random() * 8) + 2,
       bingoDifficulty: difficulty ?? "medium",
       // Deterministic, not random: the same bot name always gets the same
       // face (see pickAvatarForName's doc comment for why "matching the
@@ -2107,6 +2112,7 @@ export class RoomManager {
       isReady: true,
       isConnected: true,
       isLocal: true,
+      level: 1,
     };
     // Auto-assign a free color so the host doesn't have to pick separately
     // for each pass-and-play seat. The host's own color is still picked

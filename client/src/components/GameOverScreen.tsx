@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
+import { MatchXPBreakdownCard, MiniclipLevelUpModal } from "./progression";
+import { calculateMiniclipMatchXP } from "@shared/progression/MiniclipProgression";
 
 /**
  * Full-viewport end-of-session screen — game-agnostic.
@@ -44,6 +46,21 @@ export default function GameOverScreen({
     Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)),
   );
   const total = AUTO_LEAVE_MS / 1000; // 100
+
+  const selfPlayer = players.find((p) => p.id === selfId);
+  const isWinner = Boolean(winnerName && selfPlayer && selfPlayer.name === winnerName);
+  const isDraw = !winnerName;
+
+  const breakdown = useMemo(() => {
+    return calculateMiniclipMatchXP({
+      isWinner,
+      isDraw,
+      durationMs: 60000,
+      previousXP: 240,
+    });
+  }, [isWinner, isDraw]);
+
+  const [showLevelUp, setShowLevelUp] = useState(breakdown.leveledUp);
 
   useEffect(() => {
     fireFireworksBurst({ intensity: 0.9 });
@@ -207,6 +224,13 @@ export default function GameOverScreen({
         </p>
       </div>
 
+      {/* Miniclip-Style Match XP Progression Card */}
+      <MatchXPBreakdownCard
+        breakdown={breakdown}
+        onOpenLevelUpCelebration={() => setShowLevelUp(true)}
+        className="w-full max-w-sm z-10"
+      />
+
       {/* Primary CTA — Leave Room */}
       <LeaveButton onLeave={onLeave} urgent={secondsLeft <= 15} />
 
@@ -226,6 +250,14 @@ export default function GameOverScreen({
         </div>
         <RematchPanel players={players} selfId={selfId} />
       </div>
+
+      {/* Level-Up Celebration Modal */}
+      <MiniclipLevelUpModal
+        isOpen={showLevelUp}
+        level={breakdown.newLevel}
+        onClose={() => setShowLevelUp(false)}
+        customRewards={breakdown.rewardsUnlocked}
+      />
     </div>
   );
 }

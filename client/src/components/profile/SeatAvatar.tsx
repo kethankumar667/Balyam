@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
+import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
+import { getLevelTier } from "@shared/progression/MiniclipProgression";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -55,6 +57,8 @@ export interface SeatAvatarProps {
   avatar?: string;
   /** Cosmetic avatar aura identifier (e.g. aura_radiant_vanguard, aura_ludo_king) */
   aura?: string;
+  /** Player's progression level for Miniclip-style corner badge */
+  level?: number;
   /** Used for the initial and for picking the fallback colour. */
   name: string;
   /** Tailwind size classes for the circle, e.g. "w-8 h-8". */
@@ -73,6 +77,7 @@ export interface SeatAvatarProps {
 export default function SeatAvatar({
   avatar,
   aura,
+  level,
   name,
   className = "w-8 h-8",
   textClassName = "text-[11px]",
@@ -99,12 +104,30 @@ export default function SeatAvatar({
   // avatar behind the previous occupant's failure.
   useEffect(() => setFailed(false), [option?.src, avatar]);
 
+  const tier = level !== undefined && level >= 1 ? getLevelTier(level) : null;
+  const hasPrestigeAura = !auraConfig && tier !== null && tier.id >= 4;
+
   const wrapWithAura = (node: React.ReactNode) => {
-    if (!auraConfig || !auraConfig.className) return node;
     return (
       <span className="relative inline-flex items-center justify-center">
-        <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
+        {hasPrestigeAura && tier && (
+          <span
+            className="absolute -inset-1 rounded-full pointer-events-none z-10 animate-pulse border"
+            style={{
+              borderColor: tier.themeColor,
+              boxShadow: `0 0 8px ${tier.glowColor}`,
+            }}
+          />
+        )}
+        {auraConfig && auraConfig.className && (
+          <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
+        )}
         {node}
+        {level !== undefined && level >= 1 && (
+          <span className="absolute -bottom-1 -right-1 z-20 pointer-events-none drop-shadow-md">
+            <MiniclipLevelBadge level={level} size="xs" showTooltip={false} />
+          </span>
+        )}
       </span>
     );
   };

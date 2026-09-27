@@ -20,12 +20,17 @@ export interface PlayerRank {
   percentile: number;
 }
 
+import type { LevelTier, LevelReward } from "../progression/MiniclipProgression";
+
 export interface XPProgression {
   currentXP: number;
   currentLevel: number;
   nextLevelXP: number;
   levelProgressPercent: number;
   totalXPForNextLevel: number;
+  tier?: LevelTier;
+  levelTitle?: string;
+  nextReward?: LevelReward;
 }
 
 export interface LeaderboardEntry {
