@@ -1,11 +1,12 @@
 import type { Server, Socket } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
+import type { ClientToServerEvents, ServerToClientEvents, AccountKind } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
 import { globalRateLimiter, machineRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
+import { capabilitiesFor } from "@shared/permissions.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { sanitizeClientTelemetry } from "./telemetry.js";
 
@@ -325,9 +326,35 @@ export function registerSocketHandlers(
     rooms.sendSound(socket.id, clipId, targetPlayerId);
   });
 
-  socket.on("room:spectate", (code, ack) => {
-    const res = rooms.spectateRoom(socket.id, typeof code === "string" ? code : "");
-    if (typeof ack === "function") ack(res);
+  socket.on("room:spectate", async (payload, ack) => {
+    try {
+      let code = "";
+      let accessToken: string | undefined = undefined;
+      let claimedKind: AccountKind | undefined = undefined;
+
+      if (typeof payload === "string") {
+        code = payload;
+      } else if (typeof payload === "object" && payload !== null) {
+        code = typeof payload.code === "string" ? payload.code : "";
+        accessToken = typeof payload.accessToken === "string" ? payload.accessToken : undefined;
+        claimedKind = payload.accountKind;
+      }
+
+      const accountKind = await resolveAccountKind(claimedKind, accessToken);
+      const capabilities = capabilitiesFor(accountKind);
+      if (!capabilities.spectate) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "Putting a table on the big screen requires a member account." });
+        }
+        return;
+      }
+
+      const res = rooms.spectateRoom(socket.id, code, accountKind);
+      if (typeof ack === "function") ack(res);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Failed to spectate room";
+      if (typeof ack === "function") ack({ ok: false, error });
+    }
   });
 
   socket.on("room:stopSpectate", () => {

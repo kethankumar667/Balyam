@@ -2954,6 +2954,14 @@ export interface JoinRoomPayload {
   guestToken?: string;
 }
 
+export interface SpectateRoomPayload {
+  code: string;
+  /** The session token proving member identity. */
+  accessToken?: string | null;
+  /** Claimed account kind from client. Verified on server. */
+  accountKind?: AccountKind;
+}
+
 export interface ChatSendPayload {
   text: string;
 }
@@ -3334,7 +3342,10 @@ export interface ClientToServerEvents {
    * Smart TV / Party Mode: watch a room without taking a seat. A spectator
    * receives public state only and cannot send moves.
    */
-  "room:spectate": (code: string, ack: (res: { ok: boolean; error?: string }) => void) => void;
+  "room:spectate": (
+    payload: string | SpectateRoomPayload,
+    ack: (res: { ok: boolean; error?: string }) => void
+  ) => void;
   "room:stopSpectate": () => void;
   /** Host retry of a failed terminal persistence intent. */
   "room:retryTerminalPersistence": () => void;

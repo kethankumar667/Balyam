@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { GameKind } from "@shared/types";
-import { Users, QrCode, Copy, Share2, Check, MessagesSquare } from "lucide-react";
+import { Users, QrCode, Copy, Share2, Check, MessagesSquare, Tv } from "lucide-react";
 import QrCodeModal from "../QrCodeModal";
 import ShareToMandaliSheet from "../mandali/ShareToMandaliSheet";
 import { useAuthStore } from "../../store/authStore";
@@ -175,6 +175,22 @@ export default function RoomShareCard({
               >
                 <MessagesSquare size={15} className="stroke-[2.5]" aria-hidden />
                 <span>Mandali</span>
+              </button>
+            )}
+
+            {isMember && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.subtle();
+                  window.open(`/tv/${code}`, "_blank", "noopener,noreferrer");
+                }}
+                title="Launch Living-Room TV Mode (/tv/:code)"
+                aria-label="Open Party Mode on TV"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-500/15 to-orange-500/15 hover:from-amber-500/25 hover:to-orange-500/25 text-amber-900 dark:text-amber-200 border border-amber-400/40 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <Tv size={15} className="stroke-[2.5]" aria-hidden />
+                <span>TV Mode</span>
               </button>
             )}
 

@@ -78,6 +78,20 @@ describe("spectator role", () => {
     expect(res.error).toBeTruthy();
   });
 
+  it("rejects a guest account because TV mode is a member feature", () => {
+    const h = makeHarness();
+    const res = h.rooms.spectateRoom("tv1", h.code, "guest");
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe("Putting a table on the big screen requires a member account.");
+  });
+
+  it("allows a member account to spectate", () => {
+    const h = makeHarness();
+    const res = h.rooms.spectateRoom("tv1", h.code, "member");
+    expect(res.ok).toBe(true);
+    expect(h.to("tv1", "room:state").length).toBeGreaterThan(0);
+  });
+
   it("refuses to let a seated player also be a screen", () => {
     const h = makeHarness();
     // Otherwise a player could open the TV view and receive a second,
