@@ -1,5 +1,5 @@
-import type { RankTier, RankTierName, XPProgression } from "./PlayerRank";
-import type { PlayerStats } from "../profile/PlayerStats";
+import type { RankTier, RankTierName, XPProgression } from "./PlayerRank.js";
+import type { PlayerStats } from "../profile/PlayerStats.js";
 
 export const RANK_TIERS: Record<RankTierName, RankTier> = {
   Bronze: { name: "Bronze", minRating: 0, maxRating: 499, badge: "🥉", color: "#cd7f32" },
@@ -58,7 +58,7 @@ import {
   calculateLevelCoinReward,
   LEVEL_MILESTONES,
   MINICLIP_LEVEL_TIERS,
-} from "../progression/MiniclipProgression";
+} from "../progression/MiniclipProgression.js";
 
 export {
   getLevelTier,

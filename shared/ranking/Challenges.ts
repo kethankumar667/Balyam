@@ -1,4 +1,4 @@
-import type { GameKind } from "../types";
+import type { GameKind } from "../types.js";
 
 export type ChallengeType = "daily" | "weekly";
 

@@ -1,4 +1,4 @@
-import type { TournamentParticipant } from "./Tournament";
+import type { TournamentParticipant } from "./Tournament.js";
 
 export type MatchStatus = "PENDING" | "READY" | "IN_PROGRESS" | "COMPLETED" | "BYE";
 

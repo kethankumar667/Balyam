@@ -1,4 +1,4 @@
-import type { GameKind } from "../types";
+import type { GameKind } from "../types.js";
 
 export type TournamentType = "SINGLE_ELIMINATION" | "DOUBLE_ELIMINATION" | "ROUND_ROBIN" | "SWISS";
 

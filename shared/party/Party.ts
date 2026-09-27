@@ -1,5 +1,5 @@
-import type { PartyMember } from "./PartyMember";
-import type { GameKind } from "../types";
+import type { PartyMember } from "./PartyMember.js";
+import type { GameKind } from "../types.js";
 
 export type PartyStatus =
   | "CREATED"

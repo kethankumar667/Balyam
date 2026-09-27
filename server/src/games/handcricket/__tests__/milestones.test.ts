@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { milestoneCrossed } from "../milestones";
+import { milestoneCrossed } from "../milestones.js";
 
 describe("milestoneCrossed", () => {
   it("fires exactly on the ball that crosses 50", () => {

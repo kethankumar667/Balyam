@@ -1,4 +1,4 @@
-import type { GameKind } from "../types";
+import type { GameKind } from "../types.js";
 
 export type RankTierName = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond" | "Master" | "Grandmaster";
 
@@ -20,7 +20,7 @@ export interface PlayerRank {
   percentile: number;
 }
 
-import type { LevelTier, LevelReward } from "../progression/MiniclipProgression";
+import type { LevelTier, LevelReward } from "../progression/MiniclipProgression.js";
 
 export interface XPProgression {
   currentXP: number;
