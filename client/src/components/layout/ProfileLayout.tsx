@@ -9,9 +9,14 @@ import {
   Award,
   Trophy,
   Settings,
+  Flame,
+  Shield,
 } from "lucide-react";
 import ProfileHeader from "../../features/profile/ProfileHeader";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
+import { useAudio } from "../../hooks/useAudio";
+import { AUDIO } from "../../constants/audio";
+import { HapticsManager } from "../../services/HapticsManager";
 
 interface ProfileLayoutProps {
   children: ReactNode;
@@ -26,12 +31,12 @@ interface ProfileLayoutProps {
 }
 
 const PROFILE_TABS = [
-  { path: "/profile", label: "Overview", icon: LayoutDashboard },
-  { path: "/profile/scorecards", label: "Scorecards", icon: Trophy },
-  { path: "/profile/personal", label: "Identity & Bio", icon: UserCheck },
-  { path: "/profile/statistics", label: "Statistics", icon: BarChart3 },
-  { path: "/profile/matches", label: "Match History", icon: History },
-  { path: "/profile/achievements", label: "Badges & Trophies", icon: Award },
+  { path: "/profile", label: "Overview", shortLabel: "Overview", icon: LayoutDashboard },
+  { path: "/profile/matches", label: "Battle Log", shortLabel: "Battles", icon: History },
+  { path: "/profile/achievements", label: "Trophy Road", shortLabel: "Trophies", icon: Award },
+  { path: "/profile/statistics", label: "Game Mastery", shortLabel: "Mastery", icon: BarChart3 },
+  { path: "/profile/scorecards", label: "Scorecards", shortLabel: "Cards", icon: Trophy },
+  { path: "/profile/personal", label: "Holo ID & Bio", shortLabel: "ID & Bio", icon: UserCheck },
 ];
 
 export default function ProfileLayout({
@@ -46,40 +51,62 @@ export default function ProfileLayout({
   compactHeader,
 }: ProfileLayoutProps) {
   const { pathname } = useLocation();
+  const { play } = useAudio();
   const isCompact = compactHeader ?? (pathname !== "/profile" && pathname !== "/profile/personal");
 
+  const handleTabClick = (isActive: boolean) => {
+    if (!isActive) {
+      play(AUDIO.UI_TOGGLE);
+      HapticsManager.getInstance().subtle();
+    }
+  };
+
   return (
-    <div className="min-h-[85vh] bhalyam-paper auth-shell py-4 sm:py-6 lg:py-8 px-3.5 sm:px-6 lg:px-8 xl:px-10 pb-24 lg:pb-8">
-      <div className="max-w-7xl w-full mx-auto space-y-6">
-        {/* Top Lounge Bar: Back Link, Server Indicator & Settings Link */}
+    <div className="min-h-screen bg-[#070B14] text-white py-4 sm:py-6 lg:py-8 px-3.5 sm:px-6 lg:px-8 xl:px-10 pb-28 lg:pb-12 relative overflow-hidden select-none">
+      {/* Background Arcade Atmosphere & Ambient Lights */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-48 right-1/4 w-[500px] h-[350px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none" />
+
+      <div className="max-w-7xl w-full mx-auto space-y-6 relative z-10">
+        {/* Top Lounge Bar: Back Button, Server & League Indicator, Settings */}
         <div className="flex items-center justify-between gap-4">
           <Link
             to="/games"
-            className="inline-flex items-center gap-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors min-h-[44px] py-2 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded-xl"
+            onClick={() => play(AUDIO.UI_CLICK)}
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-300 hover:text-amber-200 transition-all min-h-[44px] py-2 px-3.5 rounded-2xl bg-gradient-to-b from-[#1E293B] to-[#0F172A] border-2 border-amber-500/30 hover:border-amber-400/60 shadow-[0_4px_12px_rgba(0,0,0,0.5)] active:translate-y-0.5 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
           >
-            <div className="w-7 h-7 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
-              <ArrowLeft className="w-4 h-4" />
+            <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+              <ArrowLeft className="w-3.5 h-3.5" />
             </div>
             <span>Game Lounge</span>
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-200/60 dark:bg-[#151c2e] border border-stone-300/60 dark:border-[#222c42] text-[11px] font-mono font-medium text-stone-600 dark:text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-              <span>Lounge: IN-South</span>
+            {/* Live Lounge Server Chip */}
+            <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0F172A]/90 border border-slate-700/80 text-[11px] font-mono font-bold text-slate-300 shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span>Lounge: IN-South · 22ms</span>
+            </div>
+
+            {/* League Rank / Tier Tag */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-[11px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span>Pro League</span>
             </div>
 
             <Link
               to="/settings/preferences"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors min-h-[44px] py-2 px-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/10 dark:hover:border-white/10"
+              onClick={() => play(AUDIO.UI_CLICK)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-all min-h-[44px] py-2 px-3 rounded-2xl bg-[#0F172A]/80 hover:bg-[#1E293B] border border-slate-700/60 hover:border-slate-500 shadow-sm cursor-pointer"
             >
-              <Settings className="w-4 h-4 text-amber-500" />
-              <span>Settings</span>
+              <Settings className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Settings</span>
             </Link>
           </div>
         </div>
 
-        {/* Profile Hero Header */}
+        {/* Profile Hero Header Banner (Supercell / Miniclip Style) */}
         {profile && (
           <ProfileHeader
             profile={profile}
@@ -93,35 +120,36 @@ export default function ProfileLayout({
           />
         )}
 
-        {/* ── Segmented Dossier Tab Navigation (Visible on mobile/tablet header) ── */}
+        {/* ── Supercell Segmented 3D Battle Tab Bar (Visible on ALL devices) ── */}
         <nav
-          aria-label="Profile dossier sections"
-          className="lg:hidden bg-stone-200/50 dark:bg-[#111728]/80 backdrop-blur-md border border-stone-300/60 dark:border-[#222c42] p-1.5 rounded-2xl shadow-xs"
+          aria-label="Profile navigation sections"
+          className="w-full bg-[#0D1424]/95 backdrop-blur-xl border-2 border-slate-700/60 rounded-2xl sm:rounded-3xl p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.6)]"
         >
-          <ul className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-0.5">
+          <ul className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-0.5">
             {PROFILE_TABS.map((tab) => {
               const active = pathname === tab.path;
               const Icon = tab.icon;
 
               return (
-                <li key={tab.path} className="shrink-0">
+                <li key={tab.path} className="flex-1 shrink-0">
                   <Link
                     to={tab.path}
+                    onClick={() => handleTabClick(active)}
                     aria-current={active ? "page" : undefined}
-                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 min-h-[44px] select-none cursor-pointer border ${
+                    className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all duration-200 min-h-[44px] w-full select-none cursor-pointer border ${
                       active
-                        ? "bg-white dark:bg-[#1a233a] text-amber-700 dark:text-amber-400 border-stone-300/80 dark:border-[#2e3b56] shadow-sm font-black"
-                        : "text-stone-600 dark:text-slate-400 border-transparent hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/5"
+                        ? "bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-stone-950 border-amber-300 shadow-[0_4px_16px_rgba(245,158,11,0.45)] border-b-4 border-b-amber-800 scale-[1.02]"
+                        : "bg-[#131D31]/80 text-slate-300 border-slate-700/50 hover:bg-[#1A2640] hover:text-white hover:border-slate-600"
                     }`}
                   >
                     <Icon
-                      className={`w-4 h-4 transition-colors ${
+                      className={`w-4 h-4 shrink-0 transition-transform ${
                         active
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-stone-400 dark:text-slate-500 group-hover:text-stone-700"
+                          ? "text-stone-950 scale-110 drop-shadow-xs"
+                          : "text-amber-400/80 group-hover:text-amber-300"
                       }`}
                     />
-                    <span>{tab.label}</span>
+                    <span className="whitespace-nowrap">{tab.label}</span>
                   </Link>
                 </li>
               );
@@ -129,39 +157,40 @@ export default function ProfileLayout({
           </ul>
         </nav>
 
-        {/* Dedicated Sub-Page Content */}
-        <main>{children}</main>
+        {/* Dedicated Sub-Page Content Container */}
+        <main className="min-h-[500px]">{children}</main>
       </div>
 
-      {/* ── Floating Mobile Gaming Dock (Thumb-reach navigation for mobile gamers) ── */}
+      {/* ── Floating Mobile Console Dock (Thumb reach navigation on mobile phones) ── */}
       <nav
         aria-label="Mobile gaming quick dock"
-        className="lg:hidden fixed bottom-3 inset-x-3 max-w-md mx-auto z-40 bg-stone-950/92 dark:bg-[#0c1222]/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-1 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+        className="lg:hidden fixed bottom-3 inset-x-3 max-w-md mx-auto z-40 bg-[#090E1A]/95 backdrop-blur-2xl border-2 border-amber-500/40 rounded-2xl p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.85)]"
       >
-        <ul className="flex items-center justify-around gap-0.5">
+        <ul className="flex items-center justify-around gap-1">
           {PROFILE_TABS.map((tab) => {
             const active = pathname === tab.path;
             const Icon = tab.icon;
-            // Short label for mobile dock
-            const shortLabel = tab.label === "Badges & Trophies" ? "Badges" : tab.label.split(" ")[0];
 
             return (
               <li key={tab.path} className="flex-1">
                 <Link
                   to={tab.path}
+                  onClick={() => handleTabClick(active)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-[10px] font-bold min-h-[44px] w-full transition-all duration-200 select-none ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-[10px] font-black min-h-[44px] w-full transition-all duration-200 select-none ${
                     active
-                      ? "bg-gradient-to-b from-amber-500/25 to-amber-600/10 text-amber-400 font-black border border-amber-500/40 shadow-xs"
-                      : "text-stone-400 hover:text-stone-200 border border-transparent"
+                      ? "bg-gradient-to-b from-amber-400 to-amber-500 text-stone-950 shadow-[0_2px_10px_rgba(245,158,11,0.5)] border-b-2 border-b-amber-700 scale-105"
+                      : "text-slate-400 hover:text-white"
                   }`}
                 >
                   <Icon
                     className={`w-4 h-4 mb-0.5 transition-transform ${
-                      active ? "text-amber-400 scale-110 drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]" : "text-stone-400"
+                      active ? "text-stone-950 scale-110" : "text-amber-400/80"
                     }`}
                   />
-                  <span className="truncate max-w-[50px] text-center">{shortLabel}</span>
+                  <span className="truncate max-w-[50px] text-center font-mono">
+                    {tab.shortLabel}
+                  </span>
                 </Link>
               </li>
             );

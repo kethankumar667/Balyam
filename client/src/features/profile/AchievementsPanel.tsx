@@ -10,6 +10,8 @@ import {
   Shield,
   Users,
   Medal,
+  CheckCircle2,
+  Lock,
 } from "lucide-react";
 import type { Achievement } from "@shared/profile/Achievements";
 import { EmptyStateIllustration } from "../../design-system/premium";
@@ -27,70 +29,70 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
     switch (ach.id) {
       case "first_match":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Gamepad2 className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-500 to-purple-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(88,28,135,1)]">
+            <Gamepad2 className="w-6 h-6 text-purple-100" />
           </div>
         );
       case "first_win":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Trophy className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(6,95,70,1)]">
+            <Trophy className="w-6 h-6 text-emerald-100" />
           </div>
         );
       case "three_streak":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-600 border border-orange-100 dark:border-orange-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Flame className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-orange-500 to-orange-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(194,65,12,1)]">
+            <Flame className="w-6 h-6 text-orange-100" />
           </div>
         );
       case "five_streak":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-sky-600 border border-sky-100 dark:border-sky-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Zap className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-sky-500 to-sky-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(3,105,161,1)]">
+            <Zap className="w-6 h-6 text-sky-100" />
           </div>
         );
       case "ten_wins":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Crown className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(180,83,9,1)]">
+            <Crown className="w-6 h-6 text-stone-950" />
           </div>
         );
       case "fifty_wins":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Medal className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-rose-500 to-rose-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(190,18,60,1)]">
+            <Medal className="w-6 h-6 text-rose-100" />
           </div>
         );
       case "hundred_wins":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 border border-purple-100 dark:border-purple-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Award className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-400 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(67,56,202,1)]">
+            <Award className="w-6 h-6 text-purple-100" />
           </div>
         );
       case "fifty_matches":
         return (
-          <div className="w-11 h-11 rounded-2xl bg-teal-50 dark:bg-teal-950/30 text-teal-600 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Star className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-teal-500 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(15,118,110,1)]">
+            <Star className="w-6 h-6 text-teal-100" />
           </div>
         );
       default:
         if (ach.category === "resilience") {
           return (
-            <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-              <Shield className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(67,56,202,1)]">
+              <Shield className="w-6 h-6 text-indigo-100" />
             </div>
           );
         }
         if (ach.category === "social") {
           return (
-            <div className="w-11 h-11 rounded-2xl bg-pink-50 dark:bg-pink-950/30 text-pink-600 border border-pink-100 dark:border-pink-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-              <Users className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-pink-500 to-pink-700 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(190,24,93,1)]">
+              <Users className="w-6 h-6 text-pink-100" />
             </div>
           );
         }
         return (
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-            <Award className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(180,83,9,1)]">
+            <Award className="w-6 h-6 text-stone-950" />
           </div>
         );
     }
@@ -98,7 +100,7 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
 
   if (!achievements || achievements.length === 0) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl">
+      <div className="p-8 text-center bg-gradient-to-br from-[#0c1424] via-[#121c33] to-[#090e1c] border-2 border-white/10 rounded-3xl shadow-xl">
         <EmptyStateIllustration
           type="achievements"
           title="No Achievements In This Category"
@@ -115,19 +117,21 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
   return (
     <div className="space-y-4">
       {/* Grid Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Award className="w-4 h-4 text-amber-500" />
-          <h2 className="text-sm font-bold text-stone-900 dark:text-white">
+      <div className="flex items-center justify-between bg-gradient-to-r from-[#0c1424] to-[#121c33] p-4 rounded-2xl border-2 border-white/10 shadow-lg">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
+            <Award className="w-4 h-4 text-stone-950" />
+          </div>
+          <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
             Player Achievements ({unlockedCount} / {achievements.length} Unlocked)
           </h2>
         </div>
-        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 px-3 py-1 rounded-full">
+        <span className="text-xs font-black font-mono text-amber-300 bg-amber-950/80 border border-amber-500/50 px-3.5 py-1 rounded-full shadow-inner">
           {completionPct}% Completed
         </span>
       </div>
 
-      {/* 4-column Grid */}
+      {/* 4-column Supercell Trophy Road Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {achievements.map((ach) => {
           const isUnlocked = ach.unlocked;
@@ -144,53 +148,68 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
                   onSelectAchievement(ach);
                 }
               }}
-              className={`group relative rounded-3xl p-0.5 transition-all duration-300 text-left ${
-                onSelectAchievement ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" : ""
+              className={`group relative rounded-3xl p-1 transition-all duration-300 text-left ${
+                onSelectAchievement ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
               } ${
                 isUnlocked
-                  ? "bg-gradient-to-b from-amber-500/40 via-amber-500/10 to-amber-500/30 shadow-md shadow-amber-500/5 hover:-translate-y-0.5"
-                  : "bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-stone-700/30 dark:via-transparent dark:to-stone-800/20 shadow-xs hover:-translate-y-0.5"
+                  ? "bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 shadow-[0_5px_0_rgba(180,83,9,0.8),0_10px_20px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:shadow-[0_7px_0_rgba(180,83,9,1),0_14px_24px_rgba(245,158,11,0.3)]"
+                  : "bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-[0_4px_0_rgba(0,0,0,0.6)] hover:-translate-y-0.5 opacity-90 hover:opacity-100"
               }`}
             >
-              <div className="h-full bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 space-y-3.5 border border-stone-200/60 dark:border-white/5 flex flex-col justify-between">
-                <div className="space-y-3">
+              <div
+                className={`h-full rounded-[22px] p-5 space-y-3.5 border-t flex flex-col justify-between relative overflow-hidden ${
+                  isUnlocked
+                    ? "bg-gradient-to-b from-[#241a0d] via-[#161008] to-[#0a0703] border-amber-300/40 text-white"
+                    : "bg-gradient-to-b from-[#121c33] via-[#0b1324] to-[#060c18] border-white/10 text-white"
+                }`}
+              >
+                {/* Subtle Ambient Light */}
+                {isUnlocked && (
+                  <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-amber-500/15 blur-xl pointer-events-none" />
+                )}
+
+                <div className="space-y-3 relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="group-hover:scale-105 transition-transform">
                       {renderBadgeIcon(ach)}
                     </div>
                     {isUnlocked ? (
-                      <span className="text-[10px] font-mono font-black bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                        UNLOCKED
+                      <span className="text-[10px] font-mono font-black bg-emerald-950/90 text-emerald-400 border border-emerald-500/60 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>UNLOCKED</span>
                       </span>
                     ) : (
-                      <span className="text-xs font-mono font-bold text-stone-600 dark:text-slate-300 bg-stone-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                        {ach.currentProgress} / {ach.targetValue}
+                      <span className="text-xs font-mono font-black text-stone-300 bg-black/60 border border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-inner">
+                        <Lock className="w-3 h-3 text-stone-400" />
+                        <span>{ach.currentProgress} / {ach.targetValue}</span>
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-stone-900 dark:text-white leading-tight">
+                    <h3 className="font-black text-sm text-white leading-tight tracking-tight">
                       {ach.title}
                     </h3>
-                    <p className="text-xs text-stone-500 dark:text-slate-400 font-medium leading-snug mt-1 min-h-[32px]">
+                    <p className="text-xs text-stone-300 font-medium leading-snug mt-1.5 min-h-[32px]">
                       {ach.description}
                     </p>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="pt-2 border-t border-stone-200/60 dark:border-white/5 space-y-1.5">
-                  <div className="flex justify-between text-[10px] font-bold text-stone-400 dark:text-slate-400">
-                    <span className="uppercase tracking-wider">Progress</span>
-                    <span>{ach.progressPercent}%</span>
+                <div className="pt-2 border-t border-white/10 space-y-1.5 relative z-10">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-stone-300 font-mono">
+                    <span>Progress</span>
+                    <span className={isUnlocked ? "text-amber-400 font-bold" : "text-stone-300"}>
+                      {ach.progressPercent}%
+                    </span>
                   </div>
-                  <div className="h-1.5 bg-stone-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-black/70 rounded-full overflow-hidden border border-white/15 shadow-inner">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         isUnlocked
-                          ? "bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400"
-                          : "bg-gradient-to-r from-stone-400 to-stone-500 dark:from-slate-600 dark:to-slate-400"
+                          ? "bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
+                          : "bg-gradient-to-r from-slate-600 to-slate-400"
                       }`}
                       style={{ width: `${ach.progressPercent}%` }}
                     />

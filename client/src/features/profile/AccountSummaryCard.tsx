@@ -1,6 +1,7 @@
 import React from "react";
-import { Activity, Radio, Clock, Globe } from "lucide-react";
+import { Activity, Radio, Clock, Globe, ShieldCheck, Users } from "lucide-react";
 import { useIdentityPresentation } from "../../store/authStore";
+import { useRoomStore } from "../../store/roomStore";
 
 interface AccountSummaryCardProps {
   isMember?: boolean;
@@ -24,6 +25,7 @@ export default function AccountSummaryCard({
   friendCount,
 }: AccountSummaryCardProps) {
   const presentation = useIdentityPresentation();
+  const region = useRoomStore((s) => s.region);
   const effectiveStatus =
     statusLabel ??
     (presentation.isVerifiedMember
@@ -36,10 +38,10 @@ export default function AccountSummaryCard({
 
   const badgeStyle =
     effectiveStatus === "Active Member"
-      ? "bg-[#DCFCE7] text-[#16A34A] border-[#BBF7D0]"
+      ? "bg-emerald-950/80 text-emerald-400 border-emerald-500/50 shadow-[0_0_8px_rgba(52,211,153,0.3)]"
       : effectiveStatus === "Offline Demo Mode"
-        ? "bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]"
-        : "bg-[#F1F5F9] dark:bg-[#1E293B] text-slate-600 dark:text-slate-300 border-[#E2E8F0] dark:border-[#334155]";
+        ? "bg-amber-950/80 text-amber-400 border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
+        : "bg-slate-900 text-slate-300 border-slate-700";
 
   const iconLetter =
     effectiveStatus === "Active Member"
@@ -53,82 +55,82 @@ export default function AccountSummaryCard({
     : "Just now";
 
   return (
-    <div className="bg-white/95 dark:bg-[#121829]/95 backdrop-blur-md border border-stone-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xs relative overflow-hidden">
+    <div className="bg-gradient-to-br from-[#0c1424] via-[#121c33] to-[#090e1c] border-2 border-emerald-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl relative overflow-hidden">
+      {/* Background Accent Glow */}
+      <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+
       {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-stone-200/70 dark:border-white/10 pb-3.5">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3.5 relative z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 text-stone-950 font-black text-xs flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(4,120,87,1)]">
             {iconLetter}
           </div>
-          <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+          <h3 className="font-black text-sm text-white tracking-tight">
             Account Summary
           </h3>
         </div>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeStyle}`}>
+        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border font-mono ${badgeStyle}`}>
           {effectiveStatus}
         </span>
       </div>
 
       {/* Metrics List */}
-      <div className="space-y-3 text-xs">
+      <div className="space-y-3 text-xs relative z-10">
         {/* Status */}
-        <div className="flex items-center justify-between py-1">
-          <span className="text-stone-600 dark:text-slate-300 font-semibold flex items-center gap-2.5">
-            <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex items-center justify-between py-1 border-b border-white/5">
+          <span className="text-stone-300 font-bold flex items-center gap-2.5">
+            <Activity className="w-4 h-4 text-emerald-400" />
             Account Status
           </span>
-          <span className="font-bold text-stone-900 dark:text-white">
+          <span className="font-black text-white">
             {effectiveStatus}
           </span>
         </div>
 
         {/* Online State */}
-        <div className="flex items-center justify-between py-1">
-          <span className="text-stone-600 dark:text-slate-300 font-semibold flex items-center gap-2.5">
-            <Radio className="w-4 h-4 text-sky-500" />
+        <div className="flex items-center justify-between py-1 border-b border-white/5">
+          <span className="text-stone-300 font-bold flex items-center gap-2.5">
+            <Radio className="w-4 h-4 text-sky-400" />
             Presence
           </span>
-          <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
+          <span className="font-black text-emerald-400 flex items-center gap-1.5 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
             Active in Lounge
           </span>
         </div>
 
         {/* Last Active */}
-        <div className="flex items-center justify-between py-1">
-          <span className="text-stone-600 dark:text-slate-300 font-semibold flex items-center gap-2.5">
-            <Clock className="w-4 h-4 text-amber-500" />
+        <div className="flex items-center justify-between py-1 border-b border-white/5">
+          <span className="text-stone-300 font-bold flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-amber-400" />
             Last Active
           </span>
-          <span className="text-stone-700 dark:text-slate-200 font-bold font-mono">
+          <span className="text-amber-300 font-black font-mono">
             {lastActiveText}
           </span>
         </div>
 
         {/* Friends if provided */}
         {friendCount !== undefined && (
-          <div className="flex items-center justify-between py-1">
-            <span className="text-stone-600 dark:text-slate-300 font-semibold flex items-center gap-2.5">
-              <span className="text-amber-500 font-bold">👥</span>
+          <div className="flex items-center justify-between py-1 border-b border-white/5">
+            <span className="text-stone-300 font-bold flex items-center gap-2.5">
+              <Users className="w-4 h-4 text-amber-400" />
               Connected Friends
             </span>
-            <span className="font-bold text-amber-600 dark:text-amber-400">
+            <span className="font-black text-amber-400 font-mono">
               {friendCount} Friends
             </span>
           </div>
         )}
 
-        {/* Lounge Server */}
+        {/* Lounge Region */}
         <div className="flex items-center justify-between py-1">
-          <span className="text-stone-600 dark:text-slate-300 font-semibold flex items-center gap-2.5">
-            <Globe className="w-4 h-4 text-purple-500" />
+          <span className="text-stone-300 font-bold flex items-center gap-2.5">
+            <Globe className="w-4 h-4 text-purple-400" />
             Lounge Region
           </span>
-          <span className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5 font-mono">
-            <span>IN-South</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200/60 dark:border-emerald-800/40">
-              32ms
-            </span>
+          <span className="font-black text-white flex items-center gap-1.5 font-mono">
+            <span>{region || "India (IN)"}</span>
           </span>
         </div>
       </div>

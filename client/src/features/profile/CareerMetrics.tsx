@@ -1,7 +1,32 @@
 import React from "react";
+import { Link, useInRouterContext } from "react-router-dom";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
+
+function SafeLink({
+  to,
+  className,
+  children,
+}: {
+  to: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const hasRouter = useInRouterContext();
+  if (hasRouter) {
+    return (
+      <Link to={to} className={className}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  );
+}
 import CountUp from "../../components/CountUp";
-import { Star, Timer, Scale, Armchair, Gamepad2 } from "lucide-react";
+import { Star, Timer, Scale, Armchair, Gamepad2, ArrowRight, Shield, Zap } from "lucide-react";
 
 export interface RecentMatchItem {
   id?: string;
@@ -19,39 +44,47 @@ export default function CareerMetrics({ stats, recentMatches = [] }: CareerMetri
   const isColdStart = stats.totalMatches === 0;
 
   return (
-    <div className="bg-white/95 dark:bg-[#121829]/95 backdrop-blur-md border border-stone-200/80 dark:border-white/10 rounded-3xl p-6 sm:p-7 space-y-6 shadow-xs relative overflow-hidden">
+    <div className="bg-gradient-to-br from-[#0c1424] via-[#121c33] to-[#090e1c] border-2 border-amber-500/30 rounded-3xl p-5 sm:p-7 space-y-6 shadow-2xl relative overflow-hidden">
+      {/* Background Subtle Accent Glow */}
+      <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+
       {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div className="flex items-center gap-2.5">
-          <Star className="w-5 h-5 text-amber-500 fill-amber-500/20" />
-          <h2 className="font-bold text-base text-stone-900 dark:text-white">
-            Your Game Journey & Play Style
-          </h2>
-          <span className="sr-only">Endurance & Resilience Telemetry</span>
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
+            <Star className="w-4 h-4 fill-stone-950" />
+          </div>
+          <div>
+            <h2 className="font-black text-base text-white tracking-tight">
+              Your Game Journey & Play Style
+            </h2>
+            <span className="sr-only">Endurance & Resilience Telemetry</span>
+          </div>
         </div>
-        <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/40 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+        <span className="bg-amber-400/15 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider font-mono shadow-inner">
           PLAYING TELEMETRY
         </span>
       </div>
 
-      {/* 4 Metric Pills */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* 4 Metric Telemetry Plaques */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {/* Longest Match */}
-        <div className="bg-stone-50/90 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40 flex items-center justify-center shrink-0">
-            <Timer className="w-4 h-4" />
+        <div className="bg-gradient-to-b from-[#18233c] to-[#0e1628] border-2 border-purple-500/30 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-[0_4px_0_rgba(88,28,135,0.4)] hover:border-purple-400/60 transition">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-purple-500 to-purple-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(88,28,135,1)]">
+            <Timer className="w-5 h-5 text-purple-100" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 block truncate">
+            <span className="text-[11px] font-black uppercase tracking-wider text-purple-200/70 block truncate">
               Longest Match
             </span>
-            <span className="text-base font-black text-stone-900 dark:text-white">
+            <span className="text-base sm:text-lg font-black text-white drop-shadow-sm font-mono">
               {isColdStart ? (
-                <span className="text-stone-400 dark:text-slate-500">0 min</span>
+                <span className="text-stone-400">0 min</span>
               ) : (
                 <>
                   <CountUp end={stats.longestMatchMinutes} duration={1.2} />{" "}
-                  <span className="text-xs font-normal text-stone-400 dark:text-slate-400">min</span>
+                  <span className="text-xs font-bold text-purple-300/80">min</span>
                 </>
               )}
             </span>
@@ -59,21 +92,21 @@ export default function CareerMetrics({ stats, recentMatches = [] }: CareerMetri
         </div>
 
         {/* Average Duration */}
-        <div className="bg-stone-50/90 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-800/40 flex items-center justify-center shrink-0">
-            <Timer className="w-4 h-4" />
+        <div className="bg-gradient-to-b from-[#18233c] to-[#0e1628] border-2 border-cyan-500/30 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-[0_4px_0_rgba(14,116,144,0.4)] hover:border-cyan-400/60 transition">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-cyan-500 to-cyan-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(14,116,144,1)]">
+            <Timer className="w-5 h-5 text-cyan-100" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 block truncate">
+            <span className="text-[11px] font-black uppercase tracking-wider text-cyan-200/70 block truncate">
               Average Duration
             </span>
-            <span className="text-base font-black text-stone-900 dark:text-white">
+            <span className="text-base sm:text-lg font-black text-white drop-shadow-sm font-mono">
               {isColdStart ? (
-                <span className="text-stone-400 dark:text-slate-500">0 min</span>
+                <span className="text-stone-400">0 min</span>
               ) : (
                 <>
                   <CountUp end={stats.averageMatchMinutes} decimals={1} duration={1.2} />{" "}
-                  <span className="text-xs font-normal text-stone-400 dark:text-slate-400">min</span>
+                  <span className="text-xs font-bold text-cyan-300/80">min</span>
                 </>
               )}
             </span>
@@ -81,30 +114,30 @@ export default function CareerMetrics({ stats, recentMatches = [] }: CareerMetri
         </div>
 
         {/* Total Draws */}
-        <div className="bg-stone-50/90 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40 flex items-center justify-center shrink-0">
-            <Scale className="w-4 h-4" />
+        <div className="bg-gradient-to-b from-[#18233c] to-[#0e1628] border-2 border-orange-500/30 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-[0_4px_0_rgba(194,65,12,0.4)] hover:border-orange-400/60 transition">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-orange-500 to-orange-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(194,65,12,1)]">
+            <Scale className="w-5 h-5 text-orange-100" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 block truncate">
+            <span className="text-[11px] font-black uppercase tracking-wider text-orange-200/70 block truncate">
               Total Draws
             </span>
-            <span className="text-base font-black text-stone-900 dark:text-white">
+            <span className="text-base sm:text-lg font-black text-white drop-shadow-sm font-mono">
               <CountUp end={stats.draws} duration={1.2} />
             </span>
           </div>
         </div>
 
         {/* Seat Recoveries */}
-        <div className="bg-stone-50/90 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center shrink-0">
-            <Armchair className="w-4 h-4" />
+        <div className="bg-gradient-to-b from-[#18233c] to-[#0e1628] border-2 border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-[0_4px_0_rgba(4,120,87,0.4)] hover:border-emerald-400/60 transition">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(4,120,87,1)]">
+            <Armchair className="w-5 h-5 text-emerald-100" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 block truncate">
+            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200/70 block truncate">
               Seat Recoveries
             </span>
-            <span className="text-base font-black text-stone-900 dark:text-white">
+            <span className="text-base sm:text-lg font-black text-white drop-shadow-sm font-mono">
               <CountUp end={stats.recoveryCount} duration={1.2} />
             </span>
           </div>
@@ -112,39 +145,45 @@ export default function CareerMetrics({ stats, recentMatches = [] }: CareerMetri
       </div>
 
       {/* Subheader: Recent Activity or Quick Starter Hub */}
-      <div className="pt-2 border-t border-stone-200/70 dark:border-white/10">
+      <div className="pt-3 border-t border-white/10">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-sm text-stone-900 dark:text-white">
-            {recentMatches.length > 0 ? "Recent Activity" : "Quick Play Lounge Gateway"}
+          <h3 className="font-black text-sm text-white uppercase tracking-wider flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span>{recentMatches.length > 0 ? "Recent Activity" : "Quick Play Lounge Gateway"}</span>
           </h3>
-          <a
-            href="/games"
-            className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition px-2 py-1 min-h-[44px] inline-flex items-center cursor-pointer"
+          <SafeLink
+            to="/games"
+            className="text-xs font-black text-amber-400 hover:text-amber-300 transition px-3 py-1.5 min-h-[44px] inline-flex items-center cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl"
           >
             All Games →
-          </a>
+          </SafeLink>
         </div>
 
         {recentMatches.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {recentMatches.map((m, idx) => (
               <div
                 key={m.id || idx}
-                className="flex items-center justify-between p-3.5 rounded-2xl bg-stone-50/80 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 text-xs hover:border-amber-500/30 transition"
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-[#141e34] to-[#0c1424] border-2 border-white/10 text-xs hover:border-amber-500/40 transition shadow-sm"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
                     <Gamepad2 className="w-4 h-4" />
                   </div>
-                  <span className="font-bold text-stone-900 dark:text-white capitalize">
-                    {m.game}
-                  </span>
+                  <div>
+                    <span className="font-black text-white capitalize block text-sm">
+                      {m.game}
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-mono">
+                      Lounge Match
+                    </span>
+                  </div>
                 </div>
                 <span
-                  className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                  className={`font-black font-mono px-3 py-1 rounded-full text-xs uppercase tracking-wider shadow-sm border-2 ${
                     m.result === "won"
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
-                      : "bg-stone-200/60 text-stone-600 dark:bg-stone-800 dark:text-slate-300"
+                      ? "bg-emerald-950/80 text-emerald-400 border-emerald-500/60 shadow-[0_0_10px_rgba(52,211,153,0.3)]"
+                      : "bg-rose-950/80 text-rose-400 border-rose-500/60 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
                   }`}
                 >
                   {m.result === "won" ? "Victory" : "Defeat"}
@@ -154,81 +193,81 @@ export default function CareerMetrics({ stats, recentMatches = [] }: CareerMetri
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-stone-600 dark:text-slate-300">
+            <p className="text-xs text-stone-300 font-medium">
               Pick a quick classic to record your debut telemetry, earn your first victory badge, and rank up:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Game 1: Ludo */}
-              <a
-                href="/games"
-                className="group p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 hover:border-amber-500/50 hover:shadow-md transition flex flex-col justify-between"
+              <SafeLink
+                to="/games"
+                className="group p-4 rounded-2xl bg-gradient-to-b from-[#182642] to-[#0f172a] border-2 border-amber-500/30 hover:border-amber-400 shadow-[0_4px_0_rgba(180,83,9,0.5)] active:translate-y-0.5 active:shadow-none transition flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xl">🎲</span>
-                    <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
+                    <span className="text-2xl drop-shadow">🎲</span>
+                    <span className="text-[10px] font-black uppercase text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-md font-mono">
                       2-4 Players
                     </span>
                   </div>
-                  <h4 className="font-bold text-xs text-stone-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                  <h4 className="font-black text-sm text-white group-hover:text-amber-300 transition">
                     Ludo Classic
                   </h4>
-                  <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-snug mt-1">
+                  <p className="text-[11px] text-stone-300 leading-snug mt-1">
                     Roll a 6 & race all 4 tokens to home base.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-3 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                <span className="text-xs font-black text-amber-400 mt-3 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   Play Now →
                 </span>
-              </a>
+              </SafeLink>
 
               {/* Game 2: Hand Cricket */}
-              <a
-                href="/games"
-                className="group p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/25 hover:border-emerald-500/50 hover:shadow-md transition flex flex-col justify-between"
+              <SafeLink
+                to="/games"
+                className="group p-4 rounded-2xl bg-gradient-to-b from-[#122e25] to-[#0a1b15] border-2 border-emerald-500/30 hover:border-emerald-400 shadow-[0_4px_0_rgba(4,120,87,0.5)] active:translate-y-0.5 active:shadow-none transition flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xl">🏏</span>
-                    <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
+                    <span className="text-2xl drop-shadow">🏏</span>
+                    <span className="text-[10px] font-black uppercase text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-md font-mono">
                       Fast 1v1
                     </span>
                   </div>
-                  <h4 className="font-bold text-xs text-stone-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                  <h4 className="font-black text-sm text-white group-hover:text-emerald-300 transition">
                     Hand Cricket
                   </h4>
-                  <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-snug mt-1">
+                  <p className="text-[11px] text-stone-300 leading-snug mt-1">
                     Classic schoolyard fingers showdown.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-3 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                <span className="text-xs font-black text-emerald-400 mt-3 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   Play Now →
                 </span>
-              </a>
+              </SafeLink>
 
               {/* Game 3: Rummy */}
-              <a
-                href="/games"
-                className="group p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 hover:border-purple-500/50 hover:shadow-md transition flex flex-col justify-between"
+              <SafeLink
+                to="/games"
+                className="group p-4 rounded-2xl bg-gradient-to-b from-[#241738] to-[#140c21] border-2 border-purple-500/30 hover:border-purple-400 shadow-[0_4px_0_rgba(88,28,135,0.5)] active:translate-y-0.5 active:shadow-none transition flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xl">🃏</span>
-                    <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-400 bg-purple-100/70 dark:bg-purple-950/60 px-2 py-0.5 rounded-md">
+                    <span className="text-2xl drop-shadow">🃏</span>
+                    <span className="text-[10px] font-black uppercase text-purple-300 bg-purple-950/80 border border-purple-500/40 px-2 py-0.5 rounded-md font-mono">
                       Strategy
                     </span>
                   </div>
-                  <h4 className="font-bold text-xs text-stone-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
+                  <h4 className="font-black text-sm text-white group-hover:text-purple-300 transition">
                     Rummy Lounge
                   </h4>
-                  <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-snug mt-1">
+                  <p className="text-[11px] text-stone-300 leading-snug mt-1">
                     Form sets & pure sequences to declare.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-purple-600 dark:text-purple-400 mt-3 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                <span className="text-xs font-black text-purple-400 mt-3 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   Play Now →
                 </span>
-              </a>
+              </SafeLink>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Award, Filter, ArrowRight } from "lucide-react";
+import { Award, Filter, ArrowRight, Trophy, Flame } from "lucide-react";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import AchievementsPanel from "../features/profile/AchievementsPanel";
 import { AchievementRevealModal } from "../features/profile/AchievementRevealModal";
@@ -45,36 +45,41 @@ export default function AchievementsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Childhood Memory Album Tone */}
+      {/* Page Header with Supercell Trophy Room Atmosphere */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-500" />
+          <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2.5 tracking-tight">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
+              <Award className="w-4 h-4 text-stone-950" />
+            </div>
             <span>Childhood Memory & Trophy Room</span>
           </h1>
-          <p className="text-xs text-stone-500 dark:text-slate-400 font-medium mt-0.5">
+          <p className="text-xs text-stone-300 font-medium mt-1">
             Collect nostalgic tokens, school-yard milestones, and unlock XP across BHALYAM games.
           </p>
         </div>
 
-        <div className="relative rounded-2xl p-0.5 bg-gradient-to-b from-amber-500/30 to-amber-500/10 shadow-xs self-start sm:self-auto">
-          <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[14px] px-4 py-2 flex items-center gap-3 border border-amber-500/20">
+        {/* Supercell Trophy Road Album Progress Gauge */}
+        <div className="rounded-2xl p-1 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-700 shadow-[0_4px_0_rgba(180,83,9,0.9),0_8px_16px_rgba(0,0,0,0.4)] self-start sm:self-auto">
+          <div className="bg-gradient-to-b from-[#1c140a] to-[#0c0803] rounded-[14px] px-4 py-2.5 flex items-center gap-3.5 border-t border-amber-300/40">
             <div>
-              <span className="text-[10px] uppercase font-black tracking-wider text-stone-400 dark:text-slate-400 block">Album Progress</span>
-              <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+              <span className="text-[10px] uppercase font-black tracking-wider text-amber-300/80 font-mono block">
+                Album Progress
+              </span>
+              <span className="text-xs font-black text-white font-mono">
                 {unlockedCount} of {achievements.length || 25} Badges ({completionPct}%)
               </span>
             </div>
-            <div className="w-10 h-10 rounded-full border-2 border-amber-500/40 flex items-center justify-center text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 shrink-0 shadow-inner">
+            <div className="w-11 h-11 rounded-full border-2 border-amber-400 flex items-center justify-center text-xs font-black text-amber-300 bg-amber-950/80 font-mono shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
               {completionPct}%
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Category Filter Pills ── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        <div className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 shrink-0 mr-1">
+      {/* ── Category Filter 3D Pills ── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none]">
+        <div className="text-xs font-black uppercase text-amber-400 font-mono flex items-center gap-1.5 shrink-0 mr-1">
           <Filter className="w-3.5 h-3.5" />
           <span>Category:</span>
         </div>
@@ -85,10 +90,10 @@ export default function AchievementsPage() {
               key={tab.id}
               type="button"
               onClick={() => setSelectedCategory(tab.id)}
-              className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+              className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider transition whitespace-nowrap cursor-pointer flex items-center gap-2 ${
                 active
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow-md shadow-amber-500/20 scale-[1.02]"
-                  : "bg-white/90 dark:bg-[#151c2e] text-stone-600 dark:text-slate-300 border border-stone-200/80 dark:border-white/10 hover:bg-stone-50 dark:hover:bg-slate-800"
+                  ? "bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-stone-950 border-b-4 border-amber-800 shadow-[0_3px_0_rgba(180,83,9,1)] active:border-b-0 active:translate-y-1"
+                  : "bg-[#0c1424] text-stone-300 border-2 border-white/10 hover:bg-[#131d33]"
               }`}
             >
               <span>{tab.icon}</span>
@@ -105,17 +110,17 @@ export default function AchievementsPage() {
       />
 
       {/* ── Bottom Banner (More badges coming soon!) ── */}
-      <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-purple-500/20 dark:via-transparent dark:to-purple-500/10 shadow-xs">
-        <div className="bg-white/95 dark:bg-[#111827]/90 backdrop-blur-md rounded-[22px] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-stone-200/60 dark:border-white/5">
+      <div className="relative rounded-3xl p-1 bg-gradient-to-b from-purple-500/30 to-purple-800/30 shadow-xl">
+        <div className="bg-gradient-to-b from-[#141026] via-[#0d0b1a] to-[#07060f] rounded-[22px] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-purple-500/30">
           <div className="flex items-center gap-3.5 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-2xl flex items-center justify-center shrink-0 border border-purple-200/60 dark:border-purple-800/40 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-500 to-purple-700 text-white text-2xl flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(88,28,135,1)]">
               🎁
             </div>
             <div>
-              <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+              <h3 className="font-black text-sm text-white tracking-tight">
                 More nostalgic badges coming soon!
               </h3>
-              <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-stone-300 font-medium mt-0.5">
                 Play tournament matches, finish daily streaks, and fill your trophy room.
               </p>
             </div>
@@ -123,10 +128,10 @@ export default function AchievementsPage() {
 
           <Link
             to="/profile/matches"
-            className="text-xs font-bold text-stone-900 dark:text-white bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-stone-200 dark:border-slate-700 px-5 py-2.5 min-h-[44px] rounded-xl transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-xs"
+            className="text-xs font-black uppercase tracking-wider text-stone-950 bg-gradient-to-b from-amber-400 to-amber-600 border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 px-5 py-2.5 min-h-[44px] rounded-xl transition inline-flex items-center gap-2 whitespace-nowrap shadow-md cursor-pointer"
           >
             <span>View Match Logs</span>
-            <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
+            <ArrowRight className="w-4 h-4 text-stone-950" />
           </Link>
         </div>
       </div>
