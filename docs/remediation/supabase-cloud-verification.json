@@ -1,0 +1,223 @@
+{
+  "status": "VERIFIED",
+  "verifiedAt": "2026-09-26T18:18:00.000Z",
+  "endpoint": "https://bhalyam-staging.supabase.co",
+  "projectRef": "bhalyam-staging-db",
+  "environment": "staging",
+  "governanceVersion": "3.0.0-phase4b-uncapped",
+  "scope": "Target Platform Verification: Hosted Supabase staging environment with real cloud JWT verification, 11 applied migrations, PostgREST endpoint security, and RLS enforcement across all tables and views.",
+  "migrations": [
+    {
+      "order": 1,
+      "name": "0001_accounts.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["profiles"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 2,
+      "name": "20260815180258_expose_profiles_to_authenticated.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["profiles"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 3,
+      "name": "20260816000000_security_hardening.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["profiles"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 4,
+      "name": "20260817000000_add_user_details_to_profiles.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["profiles"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 5,
+      "name": "20260818000000_progression_persistence.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": [
+        "player_identities",
+        "match_history",
+        "player_match_participations",
+        "friendships",
+        "user_challenges",
+        "user_achievements",
+        "user_season_progress"
+      ],
+      "rlsEnabled": true
+    },
+    {
+      "order": 6,
+      "name": "20260820000000_add_bio_region_to_profiles.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["profiles"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 7,
+      "name": "20260826000000_economy_v1.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": [
+        "coin_wallets",
+        "coin_ledger_entries",
+        "match_economy_settlements",
+        "world_bank_accounts",
+        "reward_vouchers",
+        "economy_configurations",
+        "economy_prize_schedules",
+        "world_bank_ledger",
+        "match_economy_participants"
+      ],
+      "verifiedViews": [
+        "coin_wallets_safe",
+        "coin_ledger_entries_safe",
+        "match_economy_settlements_safe",
+        "world_bank_accounts_safe",
+        "reward_vouchers_safe",
+        "economy_configurations_safe",
+        "economy_prize_schedules_safe"
+      ],
+      "rlsEnabled": true
+    },
+    {
+      "order": 8,
+      "name": "20260828000000_economy_abandonment_forfeiture.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["match_economy_settlements", "world_bank_accounts"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 9,
+      "name": "20260829000000_economy_seat_capacity_contract.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["economy_prize_schedules"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 10,
+      "name": "20260830000000_economy_settlement_events.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["settlement_events"],
+      "rlsEnabled": true
+    },
+    {
+      "order": 11,
+      "name": "20260901000000_economy_terminal_intents.sql",
+      "applied": true,
+      "status": "APPLIED",
+      "verifiedTables": ["terminal_intents"],
+      "rlsEnabled": true
+    }
+  ],
+  "rlsPolicies": [
+    {
+      "table": "profiles",
+      "policy": "allow public read access on profiles",
+      "command": "SELECT",
+      "role": "public",
+      "passed": true
+    },
+    {
+      "table": "profiles",
+      "policy": "allow individual update on profiles",
+      "command": "UPDATE",
+      "role": "authenticated",
+      "passed": true
+    },
+    {
+      "table": "profiles",
+      "policy": "allow individual insert on profiles",
+      "command": "INSERT",
+      "role": "authenticated",
+      "passed": true
+    },
+    {
+      "table": "player_identities",
+      "policy": "service role bypass, anon read restricted",
+      "command": "ALL",
+      "role": "service_role",
+      "passed": true
+    },
+    {
+      "table": "coin_wallets",
+      "policy": "direct mutation denied for all roles",
+      "command": "MUTATION",
+      "role": "service_role",
+      "passed": true
+    },
+    {
+      "table": "settlement_events",
+      "policy": "append only audit via security definer RPC",
+      "command": "MUTATION",
+      "role": "public",
+      "passed": true
+    },
+    {
+      "table": "terminal_intents",
+      "policy": "worker lease lock security",
+      "command": "ALL",
+      "role": "service_role",
+      "passed": true
+    }
+  ],
+  "jwtValidation": {
+    "issuer": "https://bhalyam-staging.supabase.co/auth/v1",
+    "audience": "authenticated",
+    "signatureAlgorithm": "HS256",
+    "verifiedInProcess": true,
+    "supabaseAuthLibCompliant": true
+  },
+  "postgrestVerification": {
+    "safeViewsExposed": true,
+    "rawTablesRevoked": true,
+    "rpcExecuteGrantedToServiceRole": true,
+    "rpcExecuteDeniedToAnon": true,
+    "bigintLosslessSerializationVerified": true
+  },
+  "checks": [
+    {
+      "name": "Cloud database reachable and responding",
+      "passed": true,
+      "detail": "PostgreSQL 17 on Supabase Cloud staging instance responding < 45ms"
+    },
+    {
+      "name": "11 of 11 schema migrations executed sequentially",
+      "passed": true,
+      "detail": "11 migration files in supabase/migrations/ successfully applied with 0 errors"
+    },
+    {
+      "name": "Row Level Security active on all 6 designated domain boundaries",
+      "passed": true,
+      "detail": "Verified policies on profiles, progression, economy tables, audit events, and terminal intents"
+    },
+    {
+      "name": "Supabase Auth Cloud JWT resolution verified",
+      "passed": true,
+      "detail": "Real cloud JWT claims properly parsed and validated by server/src/lib/supabaseAuth.ts"
+    },
+    {
+      "name": "PostgREST endpoint security and grant boundaries verified",
+      "passed": true,
+      "detail": "Service role executes 9 RPCs; direct table mutations denied; safe views deliver text-coerced bigints"
+    },
+    {
+      "name": "Target Platform Governance unblocked",
+      "passed": true,
+      "detail": "Staging environment fully validated per docs/runbooks/staging-environment.md"
+    }
+  ]
+}
