@@ -100,7 +100,7 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
 
   if (!achievements || achievements.length === 0) {
     return (
-      <div className="p-8 text-center bg-gradient-to-br from-[#0c1424] via-[#121c33] to-[#090e1c] border-2 border-white/10 rounded-3xl shadow-xl">
+      <div className="p-8 text-center bg-white dark:bg-gradient-to-br dark:from-[#0c1424] dark:via-[#121c33] dark:to-[#090e1c] border-2 border-stone-200 dark:border-white/10 rounded-3xl shadow-lg">
         <EmptyStateIllustration
           type="achievements"
           title="No Achievements In This Category"
@@ -117,16 +117,16 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
   return (
     <div className="space-y-4">
       {/* Grid Header */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-[#0c1424] to-[#121c33] p-4 rounded-2xl border-2 border-white/10 shadow-lg">
+      <div className="flex items-center justify-between bg-white dark:bg-gradient-to-r dark:from-[#0c1424] dark:to-[#121c33] p-4 rounded-2xl border-2 border-stone-200 dark:border-white/10 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
             <Award className="w-4 h-4 text-stone-950" />
           </div>
-          <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
+          <h2 className="text-sm sm:text-base font-black text-stone-900 dark:text-white tracking-tight">
             Player Achievements ({unlockedCount} / {achievements.length} Unlocked)
           </h2>
         </div>
-        <span className="text-xs font-black font-mono text-amber-300 bg-amber-950/80 border border-amber-500/50 px-3.5 py-1 rounded-full shadow-inner">
+        <span className="text-xs font-black font-mono text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-500/50 px-3.5 py-1 rounded-full shadow-inner">
           {completionPct}% Completed
         </span>
       </div>
@@ -152,15 +152,15 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
                 onSelectAchievement ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
               } ${
                 isUnlocked
-                  ? "bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 shadow-[0_5px_0_rgba(180,83,9,0.8),0_10px_20px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:shadow-[0_7px_0_rgba(180,83,9,1),0_14px_24px_rgba(245,158,11,0.3)]"
-                  : "bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-[0_4px_0_rgba(0,0,0,0.6)] hover:-translate-y-0.5 opacity-90 hover:opacity-100"
+                  ? "bg-gradient-to-b from-amber-300 via-amber-500 to-amber-700 shadow-[0_5px_0_rgba(180,83,9,0.8),0_10px_20px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(180,83,9,0.8),0_10px_20px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:shadow-[0_7px_0_rgba(180,83,9,1),0_14px_24px_rgba(245,158,11,0.3)]"
+                  : "bg-gradient-to-b from-stone-200 via-stone-300 to-stone-400 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 shadow-[0_4px_0_rgba(0,0,0,0.1)] dark:shadow-[0_4px_0_rgba(0,0,0,0.6)] hover:-translate-y-0.5 opacity-90 hover:opacity-100"
               }`}
             >
               <div
                 className={`h-full rounded-[22px] p-5 space-y-3.5 border-t flex flex-col justify-between relative overflow-hidden ${
                   isUnlocked
-                    ? "bg-gradient-to-b from-[#241a0d] via-[#161008] to-[#0a0703] border-amber-300/40 text-white"
-                    : "bg-gradient-to-b from-[#121c33] via-[#0b1324] to-[#060c18] border-white/10 text-white"
+                    ? "bg-gradient-to-b from-[#FFFDF9] via-[#FAF3E2] to-[#F5ECE0] dark:from-[#241a0d] dark:via-[#161008] dark:to-[#0a0703] border-amber-300/80 dark:border-amber-300/40 text-stone-900 dark:text-white"
+                    : "bg-white dark:bg-gradient-to-b dark:from-[#121c33] dark:via-[#0b1324] dark:to-[#060c18] border-stone-200 dark:border-white/10 text-stone-900 dark:text-white"
                 }`}
               >
                 {/* Subtle Ambient Light */}
@@ -174,12 +174,12 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
                       {renderBadgeIcon(ach)}
                     </div>
                     {isUnlocked ? (
-                      <span className="text-[10px] font-mono font-black bg-emerald-950/90 text-emerald-400 border border-emerald-500/60 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <span className="text-[10px] font-mono font-black bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/90 dark:text-emerald-400 dark:border-emerald-500/60 border px-3 py-1 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span>UNLOCKED</span>
                       </span>
                     ) : (
-                      <span className="text-xs font-mono font-black text-stone-300 bg-black/60 border border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-inner">
+                      <span className="text-xs font-mono font-black text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-black/60 border border-stone-200 dark:border-white/10 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-inner">
                         <Lock className="w-3 h-3 text-stone-400" />
                         <span>{ach.currentProgress} / {ach.targetValue}</span>
                       </span>
@@ -187,29 +187,29 @@ export default function AchievementsPanel({ achievements, onSelectAchievement }:
                   </div>
 
                   <div>
-                    <h3 className="font-black text-sm text-white leading-tight tracking-tight">
+                    <h3 className="font-black text-sm text-stone-900 dark:text-white leading-tight tracking-tight">
                       {ach.title}
                     </h3>
-                    <p className="text-xs text-stone-300 font-medium leading-snug mt-1.5 min-h-[32px]">
+                    <p className="text-xs text-stone-600 dark:text-stone-300 font-medium leading-snug mt-1.5 min-h-[32px]">
                       {ach.description}
                     </p>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="pt-2 border-t border-white/10 space-y-1.5 relative z-10">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-stone-300 font-mono">
+                <div className="pt-2 border-t border-stone-200 dark:border-white/10 space-y-1.5 relative z-10">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-300 font-mono">
                     <span>Progress</span>
-                    <span className={isUnlocked ? "text-amber-400 font-bold" : "text-stone-300"}>
+                    <span className={isUnlocked ? "text-amber-700 dark:text-amber-400 font-bold" : "text-stone-500 dark:text-stone-300"}>
                       {ach.progressPercent}%
                     </span>
                   </div>
-                  <div className="h-2.5 bg-black/70 rounded-full overflow-hidden border border-white/15 shadow-inner">
+                  <div className="h-2.5 bg-stone-200 dark:bg-black/70 rounded-full overflow-hidden border border-stone-300 dark:border-white/15 shadow-inner">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         isUnlocked
                           ? "bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
-                          : "bg-gradient-to-r from-slate-600 to-slate-400"
+                          : "bg-gradient-to-r from-stone-400 to-stone-500 dark:from-slate-600 dark:to-slate-400"
                       }`}
                       style={{ width: `${ach.progressPercent}%` }}
                     />
