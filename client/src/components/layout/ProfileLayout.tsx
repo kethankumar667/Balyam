@@ -62,7 +62,11 @@ export default function ProfileLayout({
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-[#070B14] text-stone-900 dark:text-white py-4 sm:py-6 lg:py-8 px-3.5 sm:px-6 lg:px-8 xl:px-10 pb-40 sm:pb-44 lg:pb-28 pb-safe relative">
+    // shrink-0: AppLayout hands children to a column flex scroll port, so a
+    // default-shrink item collapses to its min-height and the background stops
+    // mid-page while the content keeps going. min-h-full (not screen) fills the
+    // port exactly — the port is already shorter than the viewport by the header.
+    <div className="min-h-full shrink-0 bg-stone-50 dark:bg-[#070B14] text-stone-900 dark:text-white py-4 sm:py-6 lg:py-8 px-3.5 sm:px-6 lg:px-8 xl:px-10 pb-40 sm:pb-44 lg:pb-28 pb-safe relative">
       {/* Background Arcade Atmosphere & Ambient Lights (Contained in pointer-events-none overflow-hidden wrapper so scroll is never trapped) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-[140px]" />
