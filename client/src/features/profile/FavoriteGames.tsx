@@ -12,24 +12,59 @@ export default function FavoriteGames({ stats }: FavoriteGamesProps) {
 
   if (gamesList.length === 0) {
     return (
-      <div className="py-8 text-center space-y-3">
-        {/* Bookmark Heart Artwork */}
-        <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-[#EA580C] flex items-center justify-center mx-auto mb-2 opacity-80 border border-orange-100 dark:border-orange-900/30 shadow-2xs">
-          <Bookmark className="w-7 h-7 stroke-[1.5]" />
+      <div className="py-4 space-y-4">
+        <div className="text-center space-y-1.5">
+          <p className="text-xs text-stone-600 dark:text-slate-300">
+            You haven't favorited any games yet. Jump into these trending lounge hits or browse the full catalog:
+          </p>
         </div>
-        <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-          No favorite games recorded yet.
-        </h4>
-        <p className="text-[11px] sm:text-xs text-slate-400 max-w-xs mx-auto">
-          Explore & add your favorite games!
-        </p>
-        <div className="pt-2">
-          <a
-            href="/games"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D94F04] hover:to-[#EA580C] text-white text-xs font-bold transition shadow-sm cursor-pointer"
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link
+            to="/games"
+            className="group p-3.5 rounded-2xl bg-stone-50/80 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 hover:border-amber-500/40 transition flex items-center gap-3"
           >
-            Explore Games
-          </a>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center text-lg shrink-0">
+              🎲
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="font-bold text-xs text-stone-900 dark:text-white block group-hover:text-amber-600 dark:group-hover:text-amber-400 transition truncate">
+                Ludo Lounge
+              </span>
+              <span className="text-[11px] text-stone-400 dark:text-slate-400 block truncate">
+                Classic multiplayer board
+              </span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+
+          <Link
+            to="/games"
+            className="group p-3.5 rounded-2xl bg-stone-50/80 dark:bg-[#182138] border border-stone-200/70 dark:border-white/5 hover:border-amber-500/40 transition flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40 flex items-center justify-center text-lg shrink-0">
+              🐍
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="font-bold text-xs text-stone-900 dark:text-white block group-hover:text-amber-600 dark:group-hover:text-amber-400 transition truncate">
+                Snakes & Ladders
+              </span>
+              <span className="text-[11px] text-stone-400 dark:text-slate-400 block truncate">
+                Nostalgic roll-and-climb
+              </span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </div>
+
+        <div className="pt-1 text-center">
+          <Link
+            to="/favorites"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl bg-stone-100 hover:bg-stone-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-stone-200 dark:border-slate-700 text-stone-700 dark:text-slate-200 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+            <span>Manage Favorites Catalog</span>
+          </Link>
         </div>
       </div>
     );

@@ -101,7 +101,7 @@ export default function DeleteAccountModal({
             type="button"
             onClick={handleClose}
             disabled={isDeleting}
-            className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
             aria-label="Close delete account modal"
           >
             <X className="w-4 h-4" />

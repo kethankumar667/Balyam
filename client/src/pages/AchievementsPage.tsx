@@ -85,7 +85,7 @@ export default function AchievementsPage() {
               key={tab.id}
               type="button"
               onClick={() => setSelectedCategory(tab.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+              className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-2 ${
                 active
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow-md shadow-amber-500/20 scale-[1.02]"
                   : "bg-white/90 dark:bg-[#151c2e] text-stone-600 dark:text-slate-300 border border-stone-200/80 dark:border-white/10 hover:bg-stone-50 dark:hover:bg-slate-800"
@@ -99,7 +99,10 @@ export default function AchievementsPage() {
       </div>
 
       {/* ── Achievements Showcase Panel ── */}
-      <AchievementsPanel achievements={filteredAchievements} />
+      <AchievementsPanel
+        achievements={filteredAchievements}
+        onSelectAchievement={(ach) => setActiveUnlockModal(ach)}
+      />
 
       {/* ── Bottom Banner (More badges coming soon!) ── */}
       <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-purple-500/20 dark:via-transparent dark:to-purple-500/10 shadow-xs">
@@ -120,7 +123,7 @@ export default function AchievementsPage() {
 
           <Link
             to="/profile/matches"
-            className="text-xs font-bold text-stone-900 dark:text-white bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-stone-200 dark:border-slate-700 px-5 py-2.5 rounded-xl transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-xs"
+            className="text-xs font-bold text-stone-900 dark:text-white bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-stone-200 dark:border-slate-700 px-5 py-2.5 min-h-[44px] rounded-xl transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-xs"
           >
             <span>View Match Logs</span>
             <ArrowRight className="w-3.5 h-3.5 text-amber-500" />

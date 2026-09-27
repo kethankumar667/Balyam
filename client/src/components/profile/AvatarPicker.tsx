@@ -26,7 +26,7 @@ interface CategoryDef {
 }
 
 const CATEGORIES: CategoryDef[] = [
-  { id: "all", label: "All Avatars", icon: "✨", match: () => true },
+  { id: "all", label: "All Avatars", icon: "👥", match: () => true },
   { id: "modern", label: "Cool & Modern", icon: "🕶️", match: (i) => [2, 10, 11, 14, 15, 16, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30].includes(i) },
   { id: "traditional", label: "Classic & Traditional", icon: "👑", match: (i) => [0, 3, 7, 8, 9, 12, 13, 17, 18, 19, 20, 48, 49].includes(i) },
   { id: "casual", label: "Casual Vibes", icon: "🎨", match: (i) => [1, 4, 5, 6, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40].includes(i) },
@@ -207,10 +207,10 @@ export default function AvatarPicker({
               <button
                 type="button"
                 onClick={() => onChange(null)}
-                className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold border border-[#D5C2A5] hover:border-rose-300 text-[#7C6249] hover:text-rose-700 hover:bg-rose-50/80 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition cursor-pointer active:scale-95 shadow-2xs"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold border border-[#D5C2A5] hover:border-rose-300 text-[#7C6249] hover:text-rose-700 hover:bg-rose-50/80 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition cursor-pointer active:scale-95 shadow-2xs"
                 title="Remove avatar and use plain silhouette"
               >
-                <X size={13} aria-hidden />
+                <X size={14} aria-hidden />
                 <span className="hidden sm:inline">Reset</span>
               </button>
             )}
@@ -228,7 +228,7 @@ export default function AvatarPicker({
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] rounded-full text-xs font-bold whitespace-nowrap transition-all duration-150 cursor-pointer ${
                   isSelected
                     ? "bg-[#2B1B0E] text-amber-300 shadow-sm ring-1 ring-amber-400/50 dark:bg-amber-400 dark:text-[#1A1208]"
                     : "bg-[#F3E7D3]/80 hover:bg-[#EBDDC5] text-[#5C4328] dark:bg-[#1C2638] dark:hover:bg-[#253248] dark:text-slate-300 border border-[#E2CEB0]/60 dark:border-slate-700"
@@ -290,7 +290,7 @@ export default function AvatarPicker({
                 tabIndex={i === activeIndex ? 0 : -1}
                 onClick={() => onChange(a.id)}
                 onKeyDown={(e) => onKeyDown(e, i)}
-                className={`group relative aspect-square rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] ${
+                className={`group relative aspect-square min-w-[44px] min-h-[44px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706] ${
                   isSelected
                     ? "ring-[3.5px] ring-[#D97706] dark:ring-amber-400 scale-[1.08] shadow-[0_0_18px_rgba(217,119,6,0.45)] z-10"
                     : "ring-1 ring-[#DECBB2] dark:ring-slate-700/80 hover:ring-[#B8966E] dark:hover:ring-amber-400/60 hover:scale-[1.06] hover:-translate-y-0.5 shadow-2xs hover:shadow-md"
@@ -334,7 +334,7 @@ export default function AvatarPicker({
           <button
             type="button"
             onClick={onDone}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-display font-black text-sm text-white bg-gradient-to-r from-[#D97706] via-[#EA580C] to-[#C2410C] hover:brightness-105 active:scale-[0.98] shadow-md shadow-amber-600/25 transition cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 min-h-[44px] inline-flex items-center justify-center rounded-xl font-display font-black text-sm text-white bg-gradient-to-r from-[#D97706] via-[#EA580C] to-[#C2410C] hover:brightness-105 active:scale-[0.98] shadow-md shadow-amber-600/25 transition cursor-pointer"
           >
             Confirm Selection
           </button>

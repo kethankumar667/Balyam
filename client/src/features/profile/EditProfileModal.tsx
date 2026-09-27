@@ -87,9 +87,19 @@ export default function EditProfileModal({
     >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[var(--auth-field-edge)] pb-4">
-          <h2 id="editProfileTitle" className="text-lg font-black text-[var(--auth-ink)] tracking-tight">
-            Edit Personal Profile
-          </h2>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-xs">
+              <Check className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <h2 id="editProfileTitle" className="text-base sm:text-lg font-black text-[var(--auth-ink)] tracking-tight">
+                Edit Personal Profile
+              </h2>
+              <p className="text-xs text-[var(--auth-ink-soft)] font-medium">
+                Update your multiplayer presence and public dossier
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -110,12 +120,17 @@ export default function EditProfileModal({
           )}
           {/* Display Name */}
           <div className="space-y-1.5">
-            <label
-              htmlFor="editDisplayNameInput"
-              className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase block"
-            >
-              Display Name
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="editDisplayNameInput"
+                className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase tracking-wider block"
+              >
+                Display Name
+              </label>
+              <span className="text-[10px] font-mono text-[var(--auth-ink-soft)]">
+                {displayName.length}/24
+              </span>
+            </div>
             <input
               id="editDisplayNameInput"
               ref={nameInputRef}
@@ -129,7 +144,7 @@ export default function EditProfileModal({
               required
               aria-invalid={nameError ? true : undefined}
               aria-describedby={nameError ? "editNameError" : undefined}
-              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 font-mono transition"
+              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-3 text-sm font-bold text-[var(--auth-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono transition"
             />
             {nameError && (
               <p id="editNameError" role="alert" className="text-xs text-rose-500 font-mono flex items-center gap-1 mt-1">
@@ -143,7 +158,7 @@ export default function EditProfileModal({
           <div className="space-y-1.5">
             <label
               htmlFor="editRegionSelect"
-              className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase block"
+              className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase tracking-wider block"
             >
               Country / Region
             </label>
@@ -151,7 +166,7 @@ export default function EditProfileModal({
               id="editRegionSelect"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 font-mono transition"
+              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-3 text-sm font-bold text-[var(--auth-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono transition cursor-pointer"
             >
               {REGION_OPTIONS.map((opt) => (
                 <option key={opt} value={opt} className="bg-stone-900 text-white">
@@ -166,9 +181,9 @@ export default function EditProfileModal({
             <div className="flex items-center justify-between">
               <label
                 htmlFor="editBioTextarea"
-                className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase block"
+                className="text-xs font-bold font-mono text-[var(--auth-ink-soft)] uppercase tracking-wider block"
               >
-                Bio / About Me
+                Bio / Lounge Tale
               </label>
               <span className="text-[10px] font-mono text-[var(--auth-ink-soft)]">
                 {bio.length} / 160
@@ -181,11 +196,8 @@ export default function EditProfileModal({
               maxLength={160}
               rows={3}
               placeholder="Tell other players about your favorite childhood games..."
-              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--auth-ink)] focus:outline-none focus:border-amber-500 transition resize-none"
+              className="w-full bg-[var(--auth-field)] border border-[var(--auth-field-edge)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--auth-ink)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition resize-none leading-relaxed"
             />
-            {/* Bio/Region have no server-side column yet (see ProfileFamilyLayout's
-                handleSaveProfile) — honest disclosure beats a silent revert the
-                next time this profile loads on another device or a cleared browser. */}
             <p className="text-[10px] font-mono text-[var(--auth-ink-soft)]">
               Saved on this device only — not yet synced to your account.
             </p>

@@ -68,7 +68,7 @@ export default function HoloPassShareModal({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+          className="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />

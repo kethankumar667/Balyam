@@ -49,9 +49,9 @@ export default function ProfileLayout({
   const isCompact = compactHeader ?? (pathname !== "/profile" && pathname !== "/profile/personal");
 
   return (
-    <div className="min-h-[85vh] bhalyam-paper auth-shell py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Top Lounge Bar: Back Link & Settings Link */}
+    <div className="min-h-[85vh] bhalyam-paper auth-shell py-4 sm:py-6 lg:py-8 px-3.5 sm:px-6 lg:px-8 xl:px-10 pb-24 lg:pb-8">
+      <div className="max-w-7xl w-full mx-auto space-y-6">
+        {/* Top Lounge Bar: Back Link, Server Indicator & Settings Link */}
         <div className="flex items-center justify-between gap-4">
           <Link
             to="/games"
@@ -64,6 +64,11 @@ export default function ProfileLayout({
           </Link>
 
           <div className="flex items-center gap-3">
+            <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-200/60 dark:bg-[#151c2e] border border-stone-300/60 dark:border-[#222c42] text-[11px] font-mono font-medium text-stone-600 dark:text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+              <span>Lounge: IN-South</span>
+            </div>
+
             <Link
               to="/settings/preferences"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors min-h-[44px] py-2 px-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/10 dark:hover:border-white/10"
@@ -88,10 +93,10 @@ export default function ProfileLayout({
           />
         )}
 
-        {/* ── Segmented Dossier Tab Navigation ── */}
+        {/* ── Segmented Dossier Tab Navigation (Visible on mobile/tablet header) ── */}
         <nav
           aria-label="Profile dossier sections"
-          className="bg-stone-200/50 dark:bg-[#111728]/80 backdrop-blur-md border border-stone-300/60 dark:border-[#222c42] p-1.5 rounded-2xl shadow-xs"
+          className="lg:hidden bg-stone-200/50 dark:bg-[#111728]/80 backdrop-blur-md border border-stone-300/60 dark:border-[#222c42] p-1.5 rounded-2xl shadow-xs"
         >
           <ul className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-0.5">
             {PROFILE_TABS.map((tab) => {
@@ -127,6 +132,42 @@ export default function ProfileLayout({
         {/* Dedicated Sub-Page Content */}
         <main>{children}</main>
       </div>
+
+      {/* ── Floating Mobile Gaming Dock (Thumb-reach navigation for mobile gamers) ── */}
+      <nav
+        aria-label="Mobile gaming quick dock"
+        className="lg:hidden fixed bottom-3 inset-x-3 max-w-md mx-auto z-40 bg-stone-950/92 dark:bg-[#0c1222]/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-1 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+      >
+        <ul className="flex items-center justify-around gap-0.5">
+          {PROFILE_TABS.map((tab) => {
+            const active = pathname === tab.path;
+            const Icon = tab.icon;
+            // Short label for mobile dock
+            const shortLabel = tab.label === "Badges & Trophies" ? "Badges" : tab.label.split(" ")[0];
+
+            return (
+              <li key={tab.path} className="flex-1">
+                <Link
+                  to={tab.path}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-[10px] font-bold min-h-[44px] w-full transition-all duration-200 select-none ${
+                    active
+                      ? "bg-gradient-to-b from-amber-500/25 to-amber-600/10 text-amber-400 font-black border border-amber-500/40 shadow-xs"
+                      : "text-stone-400 hover:text-stone-200 border border-transparent"
+                  }`}
+                >
+                  <Icon
+                    className={`w-4 h-4 mb-0.5 transition-transform ${
+                      active ? "text-amber-400 scale-110 drop-shadow-[0_0_6px_rgba(245,158,11,0.6)]" : "text-stone-400"
+                    }`}
+                  />
+                  <span className="truncate max-w-[50px] text-center">{shortLabel}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </div>
   );
 }

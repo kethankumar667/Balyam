@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Dice5, Sparkles, Star } from "lucide-react";
+import { ArrowRight, CheckCircle2, Dice5, Zap, Star } from "lucide-react";
 import { HapticsManager } from "../../../../services/HapticsManager";
 import { useReducedMotion } from "../../../../animations/helpers/useReducedMotion";
 import { useCompleteOnce, type SandboxProps } from "./sandboxShared";
@@ -193,7 +193,7 @@ export const DiceRollSandbox: React.FC<SandboxProps> = ({ onComplete }) => {
         <div className="text-left text-xs font-mono text-stone-300 max-w-[180px]">
           <span className="flex items-center gap-1 text-amber-400 font-bold mb-0.5">
             {diceValue === LAUNCH_VALUE && (
-              <Sparkles className="w-3 h-3" aria-hidden="true" />
+              <Zap className="w-3 h-3 text-amber-400 fill-amber-400" aria-hidden="true" />
             )}
             {diceValue === LAUNCH_VALUE ? "Launch Eligible!" : "Tap to Test Roll"}
           </span>

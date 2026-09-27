@@ -16,9 +16,10 @@ import { EmptyStateIllustration } from "../../design-system/premium";
 
 interface AchievementsPanelProps {
   achievements: Achievement[];
+  onSelectAchievement?: (ach: Achievement) => void;
 }
 
-export default function AchievementsPanel({ achievements }: AchievementsPanelProps) {
+export default function AchievementsPanel({ achievements, onSelectAchievement }: AchievementsPanelProps) {
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
   const completionPct = achievements.length > 0 ? Math.round((unlockedCount / achievements.length) * 100) : 0;
 
@@ -134,7 +135,18 @@ export default function AchievementsPanel({ achievements }: AchievementsPanelPro
           return (
             <div
               key={ach.id}
-              className={`group relative rounded-3xl p-0.5 transition-all duration-300 ${
+              role={onSelectAchievement ? "button" : undefined}
+              tabIndex={onSelectAchievement ? 0 : undefined}
+              onClick={() => onSelectAchievement?.(ach)}
+              onKeyDown={(e) => {
+                if (onSelectAchievement && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onSelectAchievement(ach);
+                }
+              }}
+              className={`group relative rounded-3xl p-0.5 transition-all duration-300 text-left ${
+                onSelectAchievement ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" : ""
+              } ${
                 isUnlocked
                   ? "bg-gradient-to-b from-amber-500/40 via-amber-500/10 to-amber-500/30 shadow-md shadow-amber-500/5 hover:-translate-y-0.5"
                   : "bg-gradient-to-b from-stone-200/90 via-stone-200/40 to-stone-200/90 dark:from-stone-700/30 dark:via-transparent dark:to-stone-800/20 shadow-xs hover:-translate-y-0.5"

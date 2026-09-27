@@ -58,7 +58,7 @@ export default function GameStatisticsPage() {
   const currentName = useRoomStore((s) => s.playerName);
   const currentAvatar = useRoomStore((s) => s.avatarId);
 
-  const { profile, stats, achievements, isMember, openEditModal, openAvatarModal, effectivePlayerId } =
+  const { profile, stats, achievements, recentMatches, isMember, openEditModal, openAvatarModal, effectivePlayerId } =
     useOutletContext<ProfileFamilyOutletContext>();
 
   const archive = useScorecardStore((s) => s.archive);
@@ -130,7 +130,7 @@ export default function GameStatisticsPage() {
           <div className="flex items-center gap-2">
             <Link
               to="/profile/matches"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs"
             >
               <span>View Match Logs</span>
               <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
@@ -456,65 +456,79 @@ export default function GameStatisticsPage() {
       </div>
 
       {/* ── Section 4: Your Game Journey & Play Style ── */}
-      {stats && <CareerMetrics stats={stats} />}
+      {stats && <CareerMetrics stats={stats} recentMatches={recentMatches} />}
 
       {/* ── Section 5: Middle Row (Recent Activity + Achievements) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Recent Activity */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
-          <div className="flex items-center gap-2">
-            <span className="text-purple-600">⭐</span>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-              Recent Activity
-            </h3>
+        <div className="h-full flex flex-col justify-between bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-amber-500">⚡</span>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                Recent Lounge Battles
+              </h3>
+            </div>
+            <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+              Live records of your most recent multiplayer bouts and score triumphs.
+            </p>
           </div>
-          <div className="py-8 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-purple-400 flex items-center justify-center mx-auto mb-2 opacity-80">
+
+          <div className="py-6 text-center space-y-3 my-auto">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-500 flex items-center justify-center mx-auto mb-2 border border-amber-200/60 dark:border-amber-500/20 shadow-xs">
               <Gamepad2 className="w-8 h-8 stroke-[1.5]" />
             </div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-              No recent matches yet
+              {totalMatches > 0 ? "Battle log ready for review" : "Your lounge journey starts now"}
             </h4>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Start playing games to see your activity here!
+            <p className="text-xs text-stone-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+              {totalMatches > 0
+                ? "Dive into deep telemetry, turn-by-turn scorecards, and opponent history."
+                : "Challenge bots or invite friends to your favorite nostalgic tabletop games!"}
             </p>
-            <div className="pt-2">
-              <Link
-                to="/games"
-                className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl bg-[#6D28D9] hover:bg-[#5B21B6] text-white text-xs font-bold transition shadow-sm"
-              >
-                Play a Game
-              </Link>
-            </div>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              to={totalMatches > 0 ? "/profile/matches" : "/games"}
+              className="w-full inline-flex items-center justify-center px-6 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold font-mono uppercase tracking-wider transition shadow-sm"
+            >
+              {totalMatches > 0 ? "Open Complete Battle Logs" : "Launch Quick Play"}
+            </Link>
           </div>
         </div>
 
         {/* Achievements Card */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-500" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Achievements ({unlockedCount}/25)
-              </h3>
+        <div className="h-full flex flex-col justify-between bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Achievements ({unlockedCount}/25)
+                </h3>
+              </div>
+              <Link
+                to="/profile/achievements"
+                className="text-xs font-bold text-[#EA580C] hover:underline p-1 cursor-pointer"
+              >
+                All 25 badges →
+              </Link>
             </div>
-            <Link
-              to="/profile/achievements"
-              className="text-xs font-bold text-[#EA580C] hover:underline"
-            >
-              All 25 badges →
-            </Link>
+            <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+              Milestones and trophies earned across your gaming journey.
+            </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 my-2">
             {recentAchievements.map((ach) => (
               <div
                 key={ach.id}
-                className="bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] rounded-2xl p-3.5 space-y-2"
+                className="bg-stone-50/70 dark:bg-[#1A2035] border border-stone-200/60 dark:border-[#252D4A] rounded-2xl p-3.5 space-y-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-slate-800 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-slate-700">
                       {ach.id.includes("streak") ? (
                         <Flame className="w-4 h-4 text-amber-500" />
                       ) : ach.id.includes("win") ? (
@@ -527,24 +541,24 @@ export default function GameStatisticsPage() {
                       <h4 className="font-bold text-xs text-slate-900 dark:text-white">
                         {ach.title}
                       </h4>
-                      <p className="text-[11px] text-slate-400 leading-snug">
+                      <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-snug">
                         {ach.description}
                       </p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
+                  <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300 bg-stone-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0">
                     {ach.currentProgress} / {ach.targetValue}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
-                  <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-stone-200/70 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300"
                       style={{ width: `${ach.progressPercent}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">
+                  <span className="text-[10px] font-mono font-semibold text-stone-500 dark:text-slate-400 shrink-0">
                     {ach.progressPercent}%
                   </span>
                 </div>
@@ -552,67 +566,72 @@ export default function GameStatisticsPage() {
             ))}
           </div>
 
-          <div className="pt-1">
+          <div className="pt-2">
             <Link
               to="/profile/achievements"
-              className="w-full py-2.5 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition"
+              className="w-full py-2.5 min-h-[44px] inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition"
             >
               <span>View All Achievements</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
             </Link>
           </div>
         </div>
       </div>
 
       {/* ── Section 6: Bottom Row (Favorite Games + Personalize Your Lounge) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Favorite Games */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                Favorite Games
-              </h3>
+        <div className="h-full flex flex-col justify-between bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Favorite Games
+                </h3>
+              </div>
+              <Link
+                to="/favorites"
+                className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline p-1 cursor-pointer"
+              >
+                View all →
+              </Link>
             </div>
-            <Link
-              to="/favorites"
-              className="text-xs font-bold text-[#6D28D9] hover:underline"
-            >
-              View all →
-            </Link>
+            <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+              Your most frequented gaming lounges and table records.
+            </p>
           </div>
           {stats && <FavoriteGames stats={stats} />}
         </div>
 
         {/* Personalize Your Lounge Card */}
-        <div className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs self-start">
+        <div className="h-full flex flex-col justify-between bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xs">
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-500" />
               <span>Personalize Your Lounge</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Make your profile truly yours.
+            <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+              Customize your identity and manage your game data.
             </p>
           </div>
 
-          <div className="space-y-2 pt-1">
+          <div className="space-y-2.5 pt-1">
             {/* Change Avatar */}
             <button
               onClick={openAvatarModal}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] hover:bg-slate-50 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
+              className="w-full min-h-[44px] flex items-center justify-between p-3.5 rounded-2xl bg-stone-50/70 dark:bg-[#1A2035] border border-stone-200/60 dark:border-[#252D4A] hover:bg-stone-100 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 flex items-center justify-center shrink-0">
                   <Smile className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-900 dark:text-white">
                     Change Avatar
                   </h4>
-                  <p className="text-[11px] text-slate-400">
-                    Upload your favorite picture
+                  <p className="text-[11px] text-stone-500 dark:text-slate-400">
+                    Switch your persona in the avatar gallery
                   </p>
                 </div>
               </div>
@@ -622,17 +641,17 @@ export default function GameStatisticsPage() {
             {/* Update Bio */}
             <button
               onClick={openEditModal}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] hover:bg-slate-50 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
+              className="w-full min-h-[44px] flex items-center justify-between p-3.5 rounded-2xl bg-stone-50/70 dark:bg-[#1A2035] border border-stone-200/60 dark:border-[#252D4A] hover:bg-stone-100 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#FAF5FF] text-[#9333EA] border border-[#F3E8FF] flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40 flex items-center justify-center shrink-0">
                   <FileEdit className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-900 dark:text-white">
                     Update Bio
                   </h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-stone-500 dark:text-slate-400">
                     Tell others about your 90s game memories
                   </p>
                 </div>
@@ -643,23 +662,23 @@ export default function GameStatisticsPage() {
             {/* Privacy & Transparency */}
             <Link
               to="/privacy"
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] hover:bg-slate-50 dark:hover:bg-slate-800/80 transition text-left group"
+              className="w-full min-h-[44px] flex items-center justify-between p-3.5 rounded-2xl bg-stone-50/70 dark:bg-[#1A2035] border border-stone-200/60 dark:border-[#252D4A] hover:bg-stone-100 dark:hover:bg-slate-800/80 transition text-left group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7] flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center shrink-0">
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                    Privacy & Transparency
+                    Privacy &amp; Transparency
                   </h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-stone-500 dark:text-slate-400">
                     Control your data and visibility
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-slate-500 bg-stone-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                   DPDP Act
                 </span>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -669,23 +688,23 @@ export default function GameStatisticsPage() {
             {/* Download My Data */}
             <button
               onClick={handleExportData}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-[#1A2035] border border-[#F3EFE9] dark:border-[#252D4A] hover:bg-slate-50 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
+              className="w-full min-h-[44px] flex items-center justify-between p-3.5 rounded-2xl bg-stone-50/70 dark:bg-[#1A2035] border border-stone-200/60 dark:border-[#252D4A] hover:bg-stone-100 dark:hover:bg-slate-800/80 transition text-left group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7] flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/40 flex items-center justify-center shrink-0">
                   <Download className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-900 dark:text-white">
                     Download My Data
                   </h4>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-stone-500 dark:text-slate-400">
                     Export your data in JSON format
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/40 px-2 py-0.5 rounded-md">
                   JSON
                 </span>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -714,7 +733,7 @@ export default function GameStatisticsPage() {
 
           <Link
             to="/tournaments"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap cursor-pointer"
           >
             <span>Explore Tournaments</span>
             <ArrowRight className="w-4 h-4" />

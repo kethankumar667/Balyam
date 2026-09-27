@@ -76,7 +76,7 @@ export default function MatchHistoryList({
       });
       return `${dateStr} ${timeStr}`;
     } catch {
-      return "Aug 22, 2026 10:30 PM";
+      return "Recent Match";
     }
   };
 
@@ -85,6 +85,28 @@ export default function MatchHistoryList({
     const min = Math.floor(totalSec / 60);
     const sec = totalSec % 60;
     return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const computeMatchScore = (m: MatchHistoryItem): string => {
+    const myParticipant = m.participants.find((p) => !p.isBot) || m.participants[0];
+    const opponent = m.participants.find((p) => p !== myParticipant);
+
+    if (myParticipant?.score !== undefined && opponent?.score !== undefined) {
+      return `${myParticipant.score} - ${opponent.score}`;
+    }
+    if (myParticipant?.score !== undefined) {
+      return `${myParticipant.score} pts`;
+    }
+    if (m.result === "WIN") {
+      return "1st Place";
+    }
+    if (m.result === "DRAW") {
+      return "Draw";
+    }
+    if (m.participants.length > 2) {
+      return m.result === "LOSS" ? `${m.participants.length}th Place` : "Finalist";
+    }
+    return "2nd Place";
   };
 
   const getResultBadge = (result: MatchResult) => {
@@ -112,22 +134,29 @@ export default function MatchHistoryList({
     );
   };
 
-  // Most played games list
+  // Real most played games list derived directly from telemetry stats
   const mostPlayedList = Object.entries(stats?.perGame || {})
     .filter(([_, s]) => (s?.matchesPlayed || 0) > 0)
     .sort((a, b) => (b[1]?.matchesPlayed || 0) - (a[1]?.matchesPlayed || 0))
-    .slice(0, 4);
+    .slice(0, 4)
+    .map(([g, s]) => ({ game: g, matchesPlayed: s?.matchesPlayed || 0 }));
 
-  const fallbackMostPlayed = [
-    { game: "handcricket", matchesPlayed: 6 },
-    { game: "ludo", matchesPlayed: 2 },
-    { game: "rummy", matchesPlayed: 1 },
-    { game: "snl", matchesPlayed: 1 },
-  ];
+  // Best win match calculation from actual match history
+  const bestWinMatch = matches.find((m) => m.result === "WIN");
+  const bestWinInfo = bestWinMatch ? (GAME_INFO[bestWinMatch.game] || { name: bestWinMatch.game, icon: "🎮" }) : null;
+  const bestWinMyParticipant = bestWinMatch ? (bestWinMatch.participants.find((p) => !p.isBot) || bestWinMatch.participants[0]) : null;
+  const bestWinOpponent = bestWinMatch ? bestWinMatch.participants.find((p) => p !== bestWinMyParticipant) : null;
+  let bestWinSubtext = "Victory";
+  if (bestWinMyParticipant?.score !== undefined && bestWinOpponent?.score !== undefined) {
+    bestWinSubtext = `Score: ${bestWinMyParticipant.score} - ${bestWinOpponent.score}`;
+  } else if (bestWinMyParticipant?.score !== undefined) {
+    bestWinSubtext = `${bestWinMyParticipant.score} points`;
+  } else if (bestWinOpponent?.name) {
+    bestWinSubtext = `Won vs ${bestWinOpponent.name}`;
+  }
 
-  const activeMostPlayed = mostPlayedList.length > 0
-    ? mostPlayedList.map(([g, s]) => ({ game: g, matchesPlayed: s?.matchesPlayed || 0 }))
-    : fallbackMostPlayed;
+  const bestStreak = stats?.bestWinStreak ?? 0;
+  const currentStreak = stats?.currentWinStreak ?? 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -138,40 +167,44 @@ export default function MatchHistoryList({
           {/* Outcome Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
             <button
+              type="button"
               onClick={() => setFilterResult("ALL")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              className={`px-4 py-2 min-h-[44px] rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer inline-flex items-center justify-center ${
                 filterResult === "ALL"
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm font-black"
                   : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
               }`}
             >
               All Matches
             </button>
             <button
+              type="button"
               onClick={() => setFilterResult("WIN")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              className={`px-4 py-2 min-h-[44px] rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer inline-flex items-center justify-center ${
                 filterResult === "WIN"
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm font-black"
                   : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
               }`}
             >
               Wins
             </button>
             <button
+              type="button"
               onClick={() => setFilterResult("LOSS")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              className={`px-4 py-2 min-h-[44px] rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer inline-flex items-center justify-center ${
                 filterResult === "LOSS"
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm font-black"
                   : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
               }`}
             >
               Losses
             </button>
             <button
+              type="button"
               onClick={() => setFilterResult("DRAW")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              className={`px-4 py-2 min-h-[44px] rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer inline-flex items-center justify-center ${
                 filterResult === "DRAW"
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm font-black"
                   : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
               }`}
             >
@@ -185,7 +218,7 @@ export default function MatchHistoryList({
               <select
                 value={timeFilter}
                 onChange={(e) => setTimeFilter(e.target.value)}
-                className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 cursor-pointer shadow-2xs appearance-none pr-7"
+                className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-xl px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 cursor-pointer shadow-2xs appearance-none pr-8"
               >
                 <option value="ALL">📅 All Time</option>
                 <option value="TODAY">Today</option>
@@ -201,7 +234,7 @@ export default function MatchHistoryList({
               <select
                 value={selectedGame || "ALL"}
                 onChange={(e) => onSelectGame(e.target.value === "ALL" ? undefined : (e.target.value as GameKind))}
-                className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 cursor-pointer shadow-2xs appearance-none pr-7"
+                className="bg-white dark:bg-[#151A2E] border border-[#EFEBE4] dark:border-[#222A44] rounded-xl px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-amber-500 cursor-pointer shadow-2xs appearance-none pr-8"
               >
                 <option value="ALL">🍸 All Games</option>
                 <option value="handcricket">Hand Cricket</option>
@@ -230,181 +263,267 @@ export default function MatchHistoryList({
               No matches found matching the selected filters.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#F3EFE9] dark:border-[#222A44] bg-slate-50/50 dark:bg-slate-900/30">
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      GAME
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      OPPONENTS
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      RESULT
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      SCORE
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      DATE & TIME
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      DURATION
-                    </th>
-                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right">
-                      DETAILS
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F3EFE9] dark:divide-[#202740]">
-                  {displayedMatches.map((m) => {
-                    const info = GAME_INFO[m.game] || {
-                      name: m.game,
-                      icon: "🎮",
-                      mode: "Multiplayer",
-                    };
-                    const opponent = m.participants.find((p) => p.name !== "kethan") || m.participants[0];
-                    const isMultiBot = m.participants.length > 2;
-                    const durationStr = formatDuration(m.durationMs || 480000);
-                    const formattedDate = formatMatchDateTime(m.finishedAt || Date.now());
+            <>
+              {/* Mobile View: High-Impact Battle Cards (sm:hidden) */}
+              <div className="sm:hidden space-y-3 p-3">
+                {displayedMatches.map((m) => {
+                  const info = GAME_INFO[m.game] || {
+                    name: m.game,
+                    icon: "🎮",
+                    mode: "Multiplayer",
+                  };
+                  const opponent = m.participants.find((p) => p.isBot) || m.participants[1] || m.participants[0];
+                  const isMultiBot = m.participants.length > 2;
+                  const durationStr = formatDuration(m.durationMs || 480000);
+                  const formattedDate = formatMatchDateTime(m.finishedAt || Date.now());
 
-                    // Score display logic
-                    let scoreDisplay = "1st Place";
-                    if (m.game === "handcricket") scoreDisplay = m.result === "WIN" ? "6 - 4" : "4 - 8";
-                    else if (m.game === "rummy") scoreDisplay = m.result === "WIN" ? "200 - 125" : "125 - 200";
-                    else if (m.game === "uno") scoreDisplay = m.result === "WIN" ? "108 - 56" : "56 - 108";
-                    else if (m.result === "DRAW") scoreDisplay = "2nd Place";
-                    else if (m.result === "LOSS") scoreDisplay = "3rd Place";
+                  const scoreDisplay = computeMatchScore(m);
 
-                    return (
-                      <tr
-                        key={m.matchId}
-                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition group"
-                      >
-                        {/* Game */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-lg shrink-0 border border-[#F3EFE9] dark:border-[#252D4A]">
-                              {info.icon}
-                            </div>
-                            <div>
-                              <span className="font-bold text-xs text-slate-900 dark:text-white block">
-                                {info.name}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-medium block">
-                                {info.mode}
-                              </span>
-                            </div>
+                  return (
+                    <div
+                      key={m.matchId}
+                      className="rounded-2xl p-4 bg-stone-50/80 dark:bg-[#182138] border border-stone-200/80 dark:border-white/10 space-y-3 shadow-xs hover:border-amber-500/40 transition"
+                    >
+                      {/* Top row: Game icon & name + Result badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-stone-200 dark:border-slate-700 shadow-2xs">
+                            {info.icon}
                           </div>
-                        </td>
-
-                        {/* Opponents */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2.5">
-                            {isMultiBot ? (
-                              <div className="flex -space-x-2 overflow-hidden">
-                                <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-amber-100 text-center text-xs">
-                                  👦
-                                </span>
-                                <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-rose-100 text-center text-xs">
-                                  👧
-                                </span>
-                                <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-sky-100 text-center text-xs">
-                                  👦
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-slate-800 flex items-center justify-center text-xs shrink-0">
-                                {opponent?.avatar ? "👦" : "🟣"}
-                              </div>
-                            )}
-                            <div>
-                              <span className="font-bold text-xs text-slate-900 dark:text-white block">
-                                {isMultiBot ? "vs Bots" : (opponent?.name || "Pintu")}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-medium block">
-                                {isMultiBot ? "" : "Bot"}
-                              </span>
-                            </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
+                              {info.name}
+                            </h4>
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              {info.mode}
+                            </span>
                           </div>
-                        </td>
+                        </div>
+                        {getResultBadge(m.result)}
+                      </div>
 
-                        {/* Result */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          {getResultBadge(m.result)}
-                        </td>
-
-                        {/* Score */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="font-bold text-xs text-slate-900 dark:text-white">
+                      {/* Middle row: Opponent matchup & Score */}
+                      <div className="flex items-center justify-between bg-white dark:bg-[#111728] p-2.5 rounded-xl border border-stone-200/60 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">VS</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-6 h-6 rounded-full bg-amber-100 dark:bg-slate-800 flex items-center justify-center text-xs">
+                              {isMultiBot ? "🤖" : (opponent?.avatar ? "👦" : "🟣")}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                              {isMultiBot ? "Bots Lobby" : (opponent?.name || "Opponent")}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block font-medium">Result</span>
+                          <span className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono">
                             {scoreDisplay}
                           </span>
-                        </td>
+                        </div>
+                      </div>
 
-                        {/* Date & Time */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                            {formattedDate}
-                          </span>
-                        </td>
-
-                        {/* Duration */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="text-xs text-slate-600 dark:text-slate-300 font-mono inline-flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      {/* Bottom row: Date & Duration + 44px Details button */}
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-3">
+                          <span>{formattedDate}</span>
+                          <span className="inline-flex items-center gap-1 font-mono">
+                            <Clock className="w-3 h-3 text-slate-400" />
                             {durationStr}
                           </span>
-                        </td>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onViewMatchDetail && onViewMatchDetail(m.matchId)}
+                          className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline px-3 py-2 min-h-[44px] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 transition cursor-pointer inline-flex items-center justify-center"
+                        >
+                          View Intel →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-                        {/* Details Action */}
-                        <td className="py-4 px-4 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => onViewMatchDetail && onViewMatchDetail(m.matchId)}
-                            className="text-xs font-bold text-[#EA580C] hover:underline px-2.5 py-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 transition cursor-pointer"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+              {/* Desktop / Tablet View: Full Table (hidden sm:block) */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#F3EFE9] dark:border-[#222A44] bg-slate-50/50 dark:bg-slate-900/30">
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        GAME
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        OPPONENTS
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        RESULT
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        SCORE
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        DATE & TIME
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        DURATION
+                      </th>
+                      <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right">
+                        DETAILS
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F3EFE9] dark:divide-[#202740]">
+                    {displayedMatches.map((m) => {
+                      const info = GAME_INFO[m.game] || {
+                        name: m.game,
+                        icon: "🎮",
+                        mode: "Multiplayer",
+                      };
+                      const opponent = m.participants.find((p) => p.isBot) || m.participants[1] || m.participants[0];
+                      const isMultiBot = m.participants.length > 2;
+                      const durationStr = formatDuration(m.durationMs || 480000);
+                      const formattedDate = formatMatchDateTime(m.finishedAt || Date.now());
+
+                      const scoreDisplay = computeMatchScore(m);
+
+                      return (
+                        <tr
+                          key={m.matchId}
+                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition group"
+                        >
+                          {/* Game */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-lg shrink-0 border border-[#F3EFE9] dark:border-[#252D4A]">
+                                {info.icon}
+                              </div>
+                              <div>
+                                <span className="font-bold text-xs text-slate-900 dark:text-white block">
+                                  {info.name}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium block">
+                                  {info.mode}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Opponents */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2.5">
+                              {isMultiBot ? (
+                                <div className="flex -space-x-2 overflow-hidden">
+                                  <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-amber-100 text-center text-xs">
+                                    👦
+                                  </span>
+                                  <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-rose-100 text-center text-xs">
+                                    👧
+                                  </span>
+                                  <span className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-sky-100 text-center text-xs">
+                                    👦
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-slate-800 flex items-center justify-center text-xs shrink-0">
+                                  {opponent?.avatar ? "👦" : "🟣"}
+                                </div>
+                              )}
+                              <div>
+                                <span className="font-bold text-xs text-slate-900 dark:text-white block">
+                                  {isMultiBot ? "vs Bots" : (opponent?.name || "Opponent")}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium block">
+                                  {isMultiBot ? "" : (opponent?.isBot ? "Bot" : "Player")}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Result */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            {getResultBadge(m.result)}
+                          </td>
+
+                          {/* Score */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white">
+                              {scoreDisplay}
+                            </span>
+                          </td>
+
+                          {/* Date & Time */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                              {formattedDate}
+                            </span>
+                          </td>
+
+                          {/* Duration */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono inline-flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              {durationStr}
+                            </span>
+                          </td>
+
+                          {/* Details Action */}
+                          <td className="py-4 px-4 whitespace-nowrap text-right">
+                            <button
+                              type="button"
+                              onClick={() => onViewMatchDetail && onViewMatchDetail(m.matchId)}
+                              className="text-xs font-bold text-[#EA580C] hover:underline px-3 py-2 min-h-[44px] rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 transition cursor-pointer inline-flex items-center justify-center"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
         {/* Pagination Bar */}
         <div className="flex items-center justify-center gap-2 pt-2">
           <button
+            type="button"
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="w-8 h-8 rounded-xl border border-[#EFEBE4] dark:border-[#222A44] bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center text-xs hover:bg-slate-50 transition cursor-pointer"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl border border-[#EFEBE4] dark:border-[#222A44] bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center text-xs hover:bg-slate-50 transition cursor-pointer"
+            aria-label="Previous page"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
+              type="button"
               onClick={() => setCurrentPage(page)}
-              className={`w-8 h-8 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center ${
+              className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center ${
                 currentPage === page
-                  ? "bg-[#EA580C] text-white shadow-xs"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs font-black"
                   : "bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 border border-[#EFEBE4] dark:border-[#222A44] hover:bg-slate-50"
               }`}
+              aria-label={`Page ${page}`}
+              aria-current={currentPage === page ? "page" : undefined}
             >
               {page}
             </button>
           ))}
 
           <button
+            type="button"
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="w-8 h-8 rounded-xl border border-[#EFEBE4] dark:border-[#222A44] bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center text-xs hover:bg-slate-50 transition cursor-pointer"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl border border-[#EFEBE4] dark:border-[#222A44] bg-white dark:bg-[#151A2E] text-slate-600 dark:text-slate-300 disabled:opacity-40 flex items-center justify-center text-xs hover:bg-slate-50 transition cursor-pointer"
+            aria-label="Next page"
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -417,28 +536,39 @@ export default function MatchHistoryList({
             Most Played Games
           </h3>
 
-          <div className="space-y-3">
-            {activeMostPlayed.map((item) => {
-              const info = GAME_INFO[item.game] || { name: item.game, icon: "🎮" };
-              return (
-                <div key={item.game} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-base shrink-0 border border-[#F3EFE9] dark:border-[#252D4A]">
-                      {info.icon}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                        {info.name}
-                      </h4>
-                      <span className="text-[11px] text-slate-400 font-medium">
-                        {item.matchesPlayed} {item.matchesPlayed === 1 ? "Match" : "Matches"}
-                      </span>
+          {mostPlayedList.length > 0 ? (
+            <div className="space-y-3">
+              {mostPlayedList.map((item) => {
+                const info = GAME_INFO[item.game] || { name: item.game, icon: "🎮" };
+                return (
+                  <div key={item.game} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-base shrink-0 border border-[#F3EFE9] dark:border-[#252D4A]">
+                        {info.icon}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                          {info.name}
+                        </h4>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {item.matchesPlayed} {item.matchesPlayed === 1 ? "Match" : "Matches"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-4 text-center space-y-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                No matches recorded yet.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Jump into any lounge game to track your most played titles!
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Card 2: Longest Win Streak */}
@@ -449,10 +579,12 @@ export default function MatchHistoryList({
               <span>Longest Win Streak</span>
             </div>
             <div className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-0.5">
-              {stats?.bestWinStreak || 3} Wins
+              {bestStreak} {bestStreak === 1 ? "Win" : "Wins"}
             </div>
             <div className="text-[10px] text-slate-400">
-              Aug 20 – Aug 22, 2026
+              {bestStreak > 0
+                ? `Current streak: ${currentStreak} ${currentStreak === 1 ? "win" : "wins"}`
+                : "Win consecutive rounds to forge a streak!"}
             </div>
           </div>
 
@@ -468,30 +600,41 @@ export default function MatchHistoryList({
             <span>Best Performance</span>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/30 text-base flex items-center justify-center shrink-0 border border-orange-100 dark:border-orange-900/40">
-                🏏
+          {bestWinMatch && bestWinInfo ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/30 text-base flex items-center justify-center shrink-0 border border-orange-100 dark:border-orange-900/40">
+                  {bestWinInfo.icon}
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                    {bestWinInfo.name}
+                  </h4>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {bestWinSubtext}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                  Hand Cricket
-                </h4>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  Won by 6 runs
+
+              <div className="text-right">
+                <span className="bg-[#F0FDF4] dark:bg-[#16A34A]/10 text-[#16A34A] border border-[#DCFCE7] dark:border-[#16A34A]/30 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">
+                  Victory
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  {formatMatchDateTime(bestWinMatch.finishedAt)}
                 </span>
               </div>
             </div>
-
-            <div className="text-right">
-              <span className="bg-[#F0FDF4] dark:bg-[#16A34A]/10 text-[#16A34A] border border-[#DCFCE7] dark:border-[#16A34A]/30 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">
-                Victory
-              </span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                Aug 22, 2026
-              </span>
+          ) : (
+            <div className="py-2 text-center space-y-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                No victories recorded yet.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Play a match to establish your personal best performance!
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -20,9 +20,9 @@ describe("Profile UI Sub-Components", () => {
       experiencePoints: 450,
     };
 
-    const element = ProfileHeader({ profile });
-    expect(element).toBeDefined();
-    expect(element.type).toBe("div");
+    const { container } = render(<ProfileHeader profile={profile} />);
+    expect(container).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it("ProfileHeader prefers the live `name`/`avatar` props over profile.displayName/avatar — this REST snapshot must not shadow a name/avatar saved elsewhere (Settings, the header's own profile sheet) while the page stays mounted", () => {

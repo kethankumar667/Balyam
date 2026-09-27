@@ -136,7 +136,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-white/5 hover:bg-white/15 border border-white/10 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer"
                 aria-label="Close Level Road"
               >
                 <X className="w-5 h-5" />
@@ -196,7 +196,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                         key={tierName}
                         type="button"
                         onClick={() => setSelectedTier(tierName)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black font-mono tracking-wider uppercase whitespace-nowrap transition-all duration-200 border cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-black font-mono tracking-wider uppercase whitespace-nowrap transition-all duration-200 border cursor-pointer flex items-center gap-1.5 ${
                           isSelected
                             ? "bg-amber-500 text-stone-950 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
                             : isReached
@@ -293,7 +293,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                               type="button"
                               disabled={isClaiming}
                               onClick={() => handleClaim(milestone.level, milestone.reward.coins)}
-                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs font-mono uppercase tracking-wider shadow-md hover:shadow-amber-500/30 cursor-pointer transition flex items-center gap-1.5"
+                              className="px-4 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs font-mono uppercase tracking-wider shadow-md hover:shadow-amber-500/30 cursor-pointer transition inline-flex items-center justify-center gap-1.5"
                             >
                               <span>{isClaiming ? "CLAIMING..." : "CLAIM"}</span>
                               <ChevronRight className="w-3.5 h-3.5" />

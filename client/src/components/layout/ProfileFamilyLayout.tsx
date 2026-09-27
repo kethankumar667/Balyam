@@ -15,11 +15,14 @@ import { ACHIEVEMENT_CATALOG } from "@shared/profile/Achievements";
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
 import type { Achievement } from "@shared/profile/Achievements";
+import type { MatchHistoryItem } from "@shared/profile/MatchHistory";
+import type { RecentMatchItem } from "../../features/profile/CareerMetrics";
 
 export interface ProfileFamilyOutletContext {
   profile: PlayerProfile | null;
   stats: PlayerStats | null;
   achievements: Achievement[];
+  recentMatches: RecentMatchItem[];
   loading: boolean;
   isMember: boolean;
   currentName: string;
@@ -75,6 +78,7 @@ export default function ProfileFamilyLayout() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [recentMatches, setRecentMatches] = useState<RecentMatchItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -95,10 +99,11 @@ export default function ProfileFamilyLayout() {
 
     async function fetchData() {
       try {
-        const [profRes, statsRes, achRes] = await Promise.all([
+        const [profRes, statsRes, achRes, matchesRes] = await Promise.all([
           apiFetch(`/api/profile/${effectivePlayerId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
           apiFetch(`/api/profile/${effectivePlayerId}/stats`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
           apiFetch(`/api/profile/${effectivePlayerId}/achievements`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          apiFetch(`/api/profile/${effectivePlayerId}/matches?limit=5`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         ]);
         if (cancelled) return;
 
@@ -129,6 +134,18 @@ export default function ProfileFamilyLayout() {
               progressPercent: 0,
             }))
           );
+        }
+
+        if (matchesRes?.matches && Array.isArray(matchesRes.matches)) {
+          const mappedMatches: RecentMatchItem[] = matchesRes.matches.map((m: MatchHistoryItem) => ({
+            id: m.matchId,
+            game: m.game,
+            result: m.result === "WIN" ? "won" : m.result === "LOSS" ? "lost" : "draw",
+            playedAt: m.finishedAt,
+          }));
+          setRecentMatches(mappedMatches);
+        } else {
+          setRecentMatches([]);
         }
       } catch (err) {
         console.warn("Could not load backend profile, using local defaults:", err);
@@ -196,6 +213,7 @@ export default function ProfileFamilyLayout() {
     profile,
     stats,
     achievements,
+    recentMatches,
     loading,
     isMember,
     currentName,

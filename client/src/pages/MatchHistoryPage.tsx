@@ -142,7 +142,7 @@ export default function MatchHistoryPage() {
         <div className="flex items-center gap-2">
           <Link
             to="/games"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white transition shadow-md whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white transition shadow-md whitespace-nowrap"
           >
             <Gamepad2 className="w-3.5 h-3.5" />
             <span>Play a Game</span>
@@ -453,8 +453,9 @@ export default function MatchHistoryPage() {
 
             <div className="pt-2">
               <button
+                type="button"
                 onClick={handleCloseDetailModal}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-md cursor-pointer hover:from-amber-600 hover:to-orange-600 transition"
+                className="w-full py-2.5 min-h-[44px] inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-md cursor-pointer hover:from-amber-600 hover:to-orange-600 transition"
               >
                 Close Scorecard
               </button>

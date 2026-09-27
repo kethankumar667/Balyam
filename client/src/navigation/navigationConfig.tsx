@@ -359,6 +359,13 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p === "/profile" || p === "/profile/overview",
       },
       {
+        id: "profile-scorecards",
+        label: "Scorecards",
+        icon: Trophy,
+        path: "/profile/scorecards",
+        isActive: (p) => p === "/profile/scorecards",
+      },
+      {
         id: "profile-personal",
         label: "Personal Information",
         icon: User,
