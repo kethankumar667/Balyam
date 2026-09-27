@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import PersonalInformationCard from "../PersonalInformationCard";
 import EditProfileModal from "../EditProfileModal";
@@ -123,7 +123,7 @@ describe("Personal Information Feature Components", () => {
         />
       );
 
-      expect(screen.getByText("Account Summary")).toBeDefined();
+      expect(screen.getByText("Account")).toBeDefined();
       expect(screen.getAllByText("Active Member").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("5 Friends")).toBeDefined();
     });
@@ -133,12 +133,15 @@ describe("Personal Information Feature Components", () => {
     it("triggers avatar picker and export data callbacks", () => {
       const onOpenAvatar = vi.fn();
       const onExport = vi.fn();
+      const onDelete = vi.fn();
 
       render(
         <MemoryRouter>
           <ProfileQuickActions
             onOpenAvatarPicker={onOpenAvatar}
             onExportData={onExport}
+            onDeleteAccount={onDelete}
+            playerId="player_kethan_1"
           />
         </MemoryRouter>
       );
@@ -150,6 +153,42 @@ describe("Personal Information Feature Components", () => {
       const exportBtn = screen.getByRole("button", { name: /Download your player data/i });
       fireEvent.click(exportBtn);
       expect(onExport).toHaveBeenCalledTimes(1);
+
+      expect(screen.getByRole("button", { name: /Share Profile/i })).toBeDefined();
+      expect(screen.getByRole("link", { name: /Privacy and data/i }).getAttribute("href")).toBe("/privacy");
+
+      fireEvent.click(screen.getByRole("button", { name: /Delete account/i }));
+      expect(onDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("announces share success and clipboard failure", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText },
+      });
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <ProfileQuickActions onOpenAvatarPicker={vi.fn()} onExportData={vi.fn()} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Share profile/i }));
+      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Profile link copied"));
+
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+      });
+      rerender(
+        <MemoryRouter>
+          <ProfileQuickActions onOpenAvatarPicker={vi.fn()} onExportData={vi.fn()} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Profile link copied/i }));
+      await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Profile link could not be copied"));
     });
   });
 });

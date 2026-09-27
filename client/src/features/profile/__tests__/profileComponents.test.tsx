@@ -42,7 +42,7 @@ describe("Profile UI Sub-Components", () => {
     expect(screen.queryByText("Stale Snapshot Name")).toBeNull();
   });
 
-  it("renders StatsOverview component element with correct stats", () => {
+  it("summarizes the player's career in one accessible snapshot", () => {
     const stats = {
       ...INITIAL_PLAYER_STATS("p_1"),
       totalMatches: 24,
@@ -50,11 +50,41 @@ describe("Profile UI Sub-Components", () => {
       losses: 6,
       winRate: 75,
       totalPlayTimeMinutes: 120,
+      favoriteGame: "ludo" as const,
     };
 
-    const element = StatsOverview({ stats });
-    expect(element).toBeDefined();
-    expect(element.type).toBe("div");
+    render(<StatsOverview stats={stats} />);
+
+    const snapshot = screen.getByRole("region", { name: "Career snapshot" });
+    expect(snapshot.textContent).toContain("24");
+    expect(snapshot.textContent).toContain("75%");
+    expect(snapshot.textContent).toContain("18 wins");
+    expect(snapshot.textContent).toContain("6 losses");
+    expect(snapshot.textContent).toContain("120 min");
+    expect(snapshot.textContent).toContain("Ludo");
+  });
+
+  it("shows recent matches or a useful first-match action", () => {
+    const stats = {
+      ...INITIAL_PLAYER_STATS("p_1"),
+      totalMatches: 1,
+      wins: 1,
+      winRate: 100,
+    };
+
+    const { rerender } = render(
+      <CareerMetrics
+        stats={stats}
+        recentMatches={[{ id: "m_1", game: "ludo", result: "won" }]}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Recent matches" }).textContent).toContain("Ludo");
+    expect(screen.getByText("Victory")).toBeTruthy();
+
+    rerender(<CareerMetrics stats={INITIAL_PLAYER_STATS("p_1")} recentMatches={[]} />);
+
+    expect(screen.getByRole("link", { name: "Explore games" }).getAttribute("href")).toBe("/games");
   });
 
   it("renders AchievementsPanel component element with correct achievements", () => {

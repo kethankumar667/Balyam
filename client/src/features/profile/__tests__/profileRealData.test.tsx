@@ -138,9 +138,9 @@ describe("Profile Real Data Integration Tests", () => {
 
       render(<CareerMetrics stats={mockPopulatedStats} recentMatches={recentMatches} />);
 
-      expect(screen.getByText("Recent Activity")).toBeDefined();
-      expect(screen.getByText("handcricket")).toBeDefined();
-      expect(screen.getByText("ludo")).toBeDefined();
+      expect(screen.getByRole("region", { name: "Recent matches" })).toBeDefined();
+      expect(screen.getByText("Hand Cricket")).toBeDefined();
+      expect(screen.getByText("Ludo")).toBeDefined();
       expect(screen.getByText("Victory")).toBeDefined();
       expect(screen.getByText("Defeat")).toBeDefined();
     });
@@ -148,8 +148,8 @@ describe("Profile Real Data Integration Tests", () => {
     it("renders gateway starter hub when player has 0 recent matches", () => {
       render(<CareerMetrics stats={mockEmptyStats} recentMatches={[]} />);
 
-      expect(screen.getByText("Quick Play Lounge Gateway")).toBeDefined();
-      expect(screen.getByText("All Games →")).toBeDefined();
+      expect(screen.getByText("Your first result belongs here")).toBeDefined();
+      expect(screen.getByRole("link", { name: "Explore games" })).toBeDefined();
     });
   });
 });

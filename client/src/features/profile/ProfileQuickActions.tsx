@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Zap, Smile, Shield, Download, Check, ChevronRight, Share2 } from "lucide-react";
+import { Check, ChevronRight, Download, Share2, Shield, Smile, Trash2, Wrench } from "lucide-react";
 
 interface ProfileQuickActionsProps {
   onOpenAvatarPicker: () => void;
@@ -8,6 +8,8 @@ interface ProfileQuickActionsProps {
   onDeleteAccount?: () => void;
   playerId?: string;
 }
+
+const ACTION_CLASS = "group flex min-h-[60px] w-full items-center justify-between gap-4 px-5 py-3 text-left transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500 dark:hover:bg-slate-800/70";
 
 export default function ProfileQuickActions({
   onOpenAvatarPicker,
@@ -17,163 +19,107 @@ export default function ProfileQuickActions({
 }: ProfileQuickActionsProps) {
   const [downloaded, setDownloaded] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const downloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (downloadTimerRef.current) clearTimeout(downloadTimerRef.current);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   const handleDownload = () => {
     onExportData();
     setDownloaded(true);
-    setTimeout(() => setDownloaded(false), 2500);
+    if (downloadTimerRef.current) clearTimeout(downloadTimerRef.current);
+    downloadTimerRef.current = setTimeout(() => setDownloaded(false), 2500);
   };
 
   const handleCopyShare = async () => {
     try {
-      const shareUrl = window.location.href;
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(shareUrl);
-      }
+      if (!navigator.clipboard) throw new Error("Clipboard API unavailable");
+      await navigator.clipboard.writeText(window.location.href);
       setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2500);
+      setCopyFailed(false);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedId(false), 2500);
     } catch {
-      // ignore
+      setCopiedId(false);
+      setCopyFailed(true);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopyFailed(false), 2500);
     }
   };
 
+  const actionContent = (Icon: typeof Smile, label: string, detail: string) => (
+    <>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-700 dark:bg-slate-800 dark:text-slate-200">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-stone-950 dark:text-white">{label}</span>
+          <span className="mt-0.5 block truncate text-sm text-stone-500 dark:text-slate-400">{detail}</span>
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-stone-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" aria-hidden="true" />
+    </>
+  );
+
   return (
-    <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FAF3E2] to-[#F5ECE0] dark:from-[#0c1424] dark:via-[#121c33] dark:to-[#090e1c] border-2 border-amber-500/20 dark:border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl dark:shadow-2xl relative overflow-hidden">
-      {/* Background Accent Glow */}
-      <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
-
-      {/* Header */}
-      <div className="flex items-center gap-2 border-b border-stone-200 dark:border-white/10 pb-3.5 relative z-10">
-        <div className="w-7 h-7 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
-          <Zap className="w-4 h-4 fill-stone-950 text-stone-950" />
+    <section
+      aria-labelledby="profile-tools-heading"
+      className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-[0_18px_45px_-34px_rgba(41,37,36,0.45)] dark:border-slate-700/70 dark:bg-[#0D1424] dark:shadow-[0_24px_56px_-36px_rgba(0,0,0,0.9)]"
+    >
+      <header className="flex items-center gap-3 border-b border-stone-200/80 px-5 py-5 dark:border-slate-700/70">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
+          <Wrench className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="profile-tools-heading" className="text-base font-bold text-stone-950 dark:text-white">Profile tools</h2>
+          <p className="text-sm text-stone-500 dark:text-slate-400">Manage and share your account</p>
         </div>
-        <h3 className="font-black text-sm text-stone-900 dark:text-white tracking-tight">
-          Quick Actions
-        </h3>
-      </div>
+      </header>
 
-      {/* Chunky 3D Action Buttons */}
-      <div className="space-y-2.5 relative z-10">
-        {/* Change Avatar */}
-        <button
-          type="button"
-          onClick={onOpenAvatarPicker}
-          className="w-full p-3 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#162238] dark:to-[#0e1626] dark:hover:from-[#1c2c47] dark:hover:to-[#121c31] border-2 border-amber-500/30 hover:border-amber-400/60 flex items-center justify-between transition group min-h-[48px] cursor-pointer shadow-[0_3px_0_rgba(217,119,6,0.2)] dark:shadow-[0_3px_0_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0 shadow-inner">
-              <Smile className="w-5 h-5" />
-            </div>
-            <div className="text-left">
-              <span className="text-xs font-black text-stone-900 dark:text-white block">
-                Change Avatar
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 font-normal">
-                Customize your profile icon
-              </span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-amber-500 dark:text-amber-400 group-hover:translate-x-1 transition-transform" />
+      <div className="divide-y divide-stone-200/80 dark:divide-slate-700/70">
+        <button type="button" onClick={onOpenAvatarPicker} className={ACTION_CLASS}>
+          {actionContent(Smile, "Change avatar", "Choose a new player portrait")}
         </button>
-
-        {/* Share Profile Link */}
-        <button
-          type="button"
-          onClick={handleCopyShare}
-          className="w-full p-3 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#162238] dark:to-[#0e1626] dark:hover:from-[#1c2c47] dark:hover:to-[#121c31] border-2 border-emerald-500/30 hover:border-emerald-400/60 flex items-center justify-between transition group min-h-[48px] cursor-pointer shadow-[0_3px_0_rgba(5,150,105,0.2)] dark:shadow-[0_3px_0_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0 shadow-inner">
-              {copiedId ? <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : <Share2 className="w-5 h-5" />}
-            </div>
-            <div className="text-left">
-              <span className="text-xs font-black text-stone-900 dark:text-white block">
-                {copiedId ? "Profile Link Copied!" : "Share Profile"}
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 font-normal">
-                {playerId ? `ID: ${playerId.slice(0, 10)}...` : "Invite lounge friends"}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-300 dark:border-emerald-500/50 font-mono">
-              {copiedId ? "Copied" : "Copy"}
-            </span>
-            <ChevronRight className="w-4 h-4 text-emerald-500 dark:text-emerald-400 group-hover:translate-x-1 transition-transform" />
-          </div>
+        <button type="button" onClick={handleCopyShare} className={ACTION_CLASS}>
+          {actionContent(
+            copiedId ? Check : Share2,
+            copiedId ? "Profile link copied" : copyFailed ? "Copy unavailable" : "Share profile",
+            copyFailed ? "Allow clipboard access and try again" : playerId ? `Player ID ${playerId.slice(0, 10)}…` : "Copy a link to this profile",
+          )}
         </button>
-
-        {/* Privacy & Transparency */}
-        <Link
-          to="/privacy"
-          className="w-full p-3 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#162238] dark:to-[#0e1626] dark:hover:from-[#1c2c47] dark:hover:to-[#121c31] border-2 border-blue-500/30 hover:border-blue-400/60 flex items-center justify-between transition group min-h-[48px] shadow-[0_3px_0_rgba(37,99,235,0.2)] dark:shadow-[0_3px_0_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/40 flex items-center justify-center shrink-0 shadow-inner">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div className="text-left">
-              <span className="text-xs font-black text-stone-900 dark:text-white block">
-                Privacy & Data
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 font-normal">
-                Consent & transparency
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-300 dark:border-blue-500/50 font-mono">
-              DPDP Act
-            </span>
-            <ChevronRight className="w-4 h-4 text-blue-500 dark:text-blue-400 group-hover:translate-x-1 transition-transform" />
-          </div>
+        <Link to="/privacy" className={ACTION_CLASS}>
+          {actionContent(Shield, "Privacy and data", "Review consent and transparency")}
         </Link>
-
-        {/* Download My Data */}
         <button
           type="button"
           onClick={handleDownload}
-          className="w-full p-3 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#162238] dark:to-[#0e1626] dark:hover:from-[#1c2c47] dark:hover:to-[#121c31] border-2 border-purple-500/30 hover:border-purple-400/60 flex items-center justify-between transition group min-h-[48px] cursor-pointer shadow-[0_3px_0_rgba(147,51,234,0.2)] dark:shadow-[0_3px_0_rgba(0,0,0,0.4)] active:translate-y-0.5 active:shadow-none"
-          aria-label="Download your player data JSON export"
+          className={ACTION_CLASS}
+          aria-label={downloaded ? "Player data downloaded" : "Download your player data JSON export"}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/40 flex items-center justify-center shrink-0 shadow-inner">
-              {downloaded ? (
-                <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <Download className="w-5 h-5" />
-              )}
-            </div>
-            <div className="text-left">
-              <span className="text-xs font-black text-stone-900 dark:text-white block">
-                {downloaded ? "Data Exported!" : "Download Dossier"}
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 font-normal">
-                Export gameplay history
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-md border border-purple-300 dark:border-purple-500/50 font-mono">
-              JSON
-            </span>
-            <ChevronRight className="w-4 h-4 text-purple-500 dark:text-purple-400 group-hover:translate-x-1 transition-transform" />
-          </div>
+          {actionContent(downloaded ? Check : Download, downloaded ? "Data exported" : "Download data", "JSON profile and game history")}
         </button>
       </div>
 
-      {/* Discreet Security Footer Link for Account Deletion */}
       {onDeleteAccount && (
-        <div className="pt-2 border-t border-stone-200 dark:border-white/10 text-center relative z-10">
+        <div className="border-t border-stone-200/80 px-5 py-3 dark:border-slate-700/70">
           <button
             type="button"
             onClick={onDeleteAccount}
-            className="text-[11px] text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 transition cursor-pointer font-bold min-h-[44px] px-3 py-2 inline-flex items-center justify-center"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-stone-500 transition-colors hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-slate-400 dark:hover:bg-rose-400/10 dark:hover:text-rose-300"
           >
-            Need to permanently erase profile? Delete Account
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete account
           </button>
         </div>
       )}
-    </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {copiedId ? "Profile link copied" : copyFailed ? "Profile link could not be copied" : downloaded ? "Player data downloaded" : ""}
+      </p>
+    </section>
   );
 }

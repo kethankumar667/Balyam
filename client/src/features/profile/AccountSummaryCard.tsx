@@ -1,5 +1,4 @@
-import React from "react";
-import { Activity, Radio, Clock, Globe, ShieldCheck, Users } from "lucide-react";
+import { Clock3, Globe2, Radio, ShieldCheck, Users } from "lucide-react";
 import { useIdentityPresentation } from "../../store/authStore";
 import { useRoomStore } from "../../store/roomStore";
 
@@ -25,115 +24,58 @@ export default function AccountSummaryCard({
   friendCount,
 }: AccountSummaryCardProps) {
   const presentation = useIdentityPresentation();
-  const region = useRoomStore((s) => s.region);
-  const effectiveStatus =
-    statusLabel ??
-    (presentation.isVerifiedMember
-      ? "Active Member"
-      : presentation.isLocalFallback
-        ? "Offline Demo Mode"
-        : isMember
-          ? "Active Member"
-          : "Guest Player");
+  const region = useRoomStore((state) => state.region);
+  const effectiveStatus = statusLabel ?? (presentation.isVerifiedMember
+    ? "Active Member"
+    : presentation.isLocalFallback
+      ? "Offline Demo Mode"
+      : isMember
+        ? "Active Member"
+        : "Guest Player");
+  const statusStyle = effectiveStatus === "Active Member"
+    ? "bg-emerald-50 text-emerald-800 ring-emerald-600/20 dark:bg-emerald-400/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+    : effectiveStatus === "Offline Demo Mode"
+      ? "bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
+      : "bg-stone-100 text-stone-700 ring-stone-500/20 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600";
 
-  const badgeStyle =
-    effectiveStatus === "Active Member"
-      ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-500/50 shadow-xs dark:shadow-[0_0_8px_rgba(52,211,153,0.3)]"
-      : effectiveStatus === "Offline Demo Mode"
-        ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-400 dark:border-amber-500/50 shadow-xs dark:shadow-[0_0_8px_rgba(245,158,11,0.3)]"
-        : "bg-stone-200 text-stone-700 border-stone-300 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700";
-
-  const iconLetter =
-    effectiveStatus === "Active Member"
-      ? "M"
-      : effectiveStatus === "Offline Demo Mode"
-        ? "D"
-        : "G";
-
-  const lastActiveText = lastSeenAt
-    ? formatLastSeen(lastSeenAt)
-    : "Just now";
+  const details = [
+    { label: "Presence", value: "Active in lounge", icon: Radio },
+    { label: "Last active", value: lastSeenAt ? formatLastSeen(lastSeenAt) : "Just now", icon: Clock3 },
+    ...(friendCount === undefined ? [] : [{ label: "Friends", value: `${friendCount} Friends`, icon: Users }]),
+    { label: "Region", value: region || "India (IN)", icon: Globe2 },
+  ];
 
   return (
-    <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FAF3E2] to-[#F5ECE0] dark:from-[#0c1424] dark:via-[#121c33] dark:to-[#090e1c] border-2 border-emerald-500/20 dark:border-emerald-500/30 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl dark:shadow-2xl relative overflow-hidden">
-      {/* Background Accent Glow */}
-      <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 blur-2xl pointer-events-none" />
-
-      {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-stone-200 dark:border-white/10 pb-3.5 relative z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 text-stone-950 font-black text-xs flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(4,120,87,1)]">
-            {iconLetter}
+    <section
+      aria-labelledby="account-status-heading"
+      className="rounded-2xl border border-stone-200/90 bg-white shadow-[0_18px_45px_-34px_rgba(41,37,36,0.45)] dark:border-slate-700/70 dark:bg-[#0D1424] dark:shadow-[0_24px_56px_-36px_rgba(0,0,0,0.9)]"
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-stone-200/80 px-5 py-5 dark:border-slate-700/70">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="account-status-heading" className="text-base font-bold text-stone-950 dark:text-white">Account</h2>
+            <p className="text-sm text-stone-500 dark:text-slate-400">Identity and connection</p>
           </div>
-          <h3 className="font-black text-sm text-stone-900 dark:text-white tracking-tight">
-            Account Summary
-          </h3>
         </div>
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border font-mono ${badgeStyle}`}>
+        <span className={`rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-inset ${statusStyle}`}>
           {effectiveStatus}
         </span>
-      </div>
+      </header>
 
-      {/* Metrics List */}
-      <div className="space-y-3 text-xs relative z-10">
-        {/* Status */}
-        <div className="flex items-center justify-between py-1 border-b border-stone-200/60 dark:border-white/5">
-          <span className="text-stone-600 dark:text-stone-300 font-bold flex items-center gap-2.5">
-            <Activity className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-            Account Status
-          </span>
-          <span className="font-black text-stone-900 dark:text-white">
-            {effectiveStatus}
-          </span>
-        </div>
-
-        {/* Online State */}
-        <div className="flex items-center justify-between py-1 border-b border-stone-200/60 dark:border-white/5">
-          <span className="text-stone-600 dark:text-stone-300 font-bold flex items-center gap-2.5">
-            <Radio className="w-4 h-4 text-sky-500 dark:text-sky-400" />
-            Presence
-          </span>
-          <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-            Active in Lounge
-          </span>
-        </div>
-
-        {/* Last Active */}
-        <div className="flex items-center justify-between py-1 border-b border-stone-200/60 dark:border-white/5">
-          <span className="text-stone-600 dark:text-stone-300 font-bold flex items-center gap-2.5">
-            <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-            Last Active
-          </span>
-          <span className="text-amber-700 dark:text-amber-300 font-black font-mono">
-            {lastActiveText}
-          </span>
-        </div>
-
-        {/* Friends if provided */}
-        {friendCount !== undefined && (
-          <div className="flex items-center justify-between py-1 border-b border-stone-200/60 dark:border-white/5">
-            <span className="text-stone-600 dark:text-stone-300 font-bold flex items-center gap-2.5">
-              <Users className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-              Connected Friends
-            </span>
-            <span className="font-black text-amber-700 dark:text-amber-400 font-mono">
-              {friendCount} Friends
-            </span>
+      <dl className="divide-y divide-stone-200/80 px-5 dark:divide-slate-700/70">
+        {details.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="flex min-h-14 items-center justify-between gap-4 py-3">
+            <dt className="flex items-center gap-2 text-sm text-stone-500 dark:text-slate-400">
+              <Icon className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              {label}
+            </dt>
+            <dd className="text-right text-sm font-semibold text-stone-950 dark:text-white">{value}</dd>
           </div>
-        )}
-
-        {/* Lounge Region */}
-        <div className="flex items-center justify-between py-1">
-          <span className="text-stone-600 dark:text-stone-300 font-bold flex items-center gap-2.5">
-            <Globe className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-            Lounge Region
-          </span>
-          <span className="font-black text-stone-900 dark:text-white flex items-center gap-1.5 font-mono">
-            <span>{region || "India (IN)"}</span>
-          </span>
-        </div>
-      </div>
-    </div>
+        ))}
+      </dl>
+    </section>
   );
 }

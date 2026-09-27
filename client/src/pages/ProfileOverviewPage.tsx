@@ -1,24 +1,16 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Heart, Award, ChevronDown, Trophy, Flame } from "lucide-react";
+import { ArrowUpRight, Flame, Heart, Medal, Trophy } from "lucide-react";
 import DeleteAccountModal from "../components/auth/DeleteAccountModal";
+import AccountSummaryCard from "../features/profile/AccountSummaryCard";
+import CareerMetrics from "../features/profile/CareerMetrics";
+import FavoriteGames from "../features/profile/FavoriteGames";
+import ProfileQuickActions from "../features/profile/ProfileQuickActions";
+import StatsOverview from "../features/profile/StatsOverview";
+import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 
 const MemberLockedGate = lazy(() => import("../components/auth/MemberLockedGate"));
 
-// Profile Features
-import StatsOverview from "../features/profile/StatsOverview";
-import FavoriteGames from "../features/profile/FavoriteGames";
-import CareerMetrics from "../features/profile/CareerMetrics";
-import AccountSummaryCard from "../features/profile/AccountSummaryCard";
-import ProfileQuickActions from "../features/profile/ProfileQuickActions";
-import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
-
-/**
- * Data, the Edit Profile / Avatar Picker modals, and the `<ProfileLayout>`
- * sidebar all live one level up now, in ProfileFamilyLayout — see that
- * file's header comment for why. This page only renders its own content and
- * reads what it needs via `useOutletContext`.
- */
 export default function ProfileOverviewPage() {
   const {
     profile,
@@ -27,10 +19,8 @@ export default function ProfileOverviewPage() {
     recentMatches,
     isMember,
     currentAvatar,
-    openEditModal,
     openAvatarModal,
   } = useOutletContext<ProfileFamilyOutletContext>();
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   if (!isMember) {
@@ -41,12 +31,12 @@ export default function ProfileOverviewPage() {
     );
   }
 
-  // The family layout shows its own skeleton while `profile` is loading, so
-  // this only guards the brief gap before that first render settles.
   if (!profile) return null;
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
-  const recentAchievements = achievements.slice(0, 3);
+  const unlockedCount = achievements.filter((achievement) => achievement.unlocked).length;
+  const achievementTotal = achievements.length;
+  const achievementProgress = achievementTotal === 0 ? 0 : Math.round((unlockedCount / achievementTotal) * 100);
+  const featuredAchievements = achievements.slice(0, 3);
 
   const handleExportData = () => {
     const exportPayload = {
@@ -58,191 +48,127 @@ export default function ProfileOverviewPage() {
       achievements,
       exportedAt: new Date().toISOString(),
     };
-
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bhalyam_profile_${profile.playerId || "player"}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `bhalyam_profile_${profile.playerId || "player"}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
-      {/* ── Section 1: 4 Stats Cards Row ── */}
       {stats && <StatsOverview stats={stats} />}
 
-      {/* ── Section 2: Middle 2-Column Section (Highlights/Activity + Account/Actions) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Column: Your Game Journey & Play Style */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8">
           {stats && <CareerMetrics stats={stats} recentMatches={recentMatches} />}
         </div>
 
-        {/* Right Rail: Account Summary & Quick Actions */}
-        <div className="space-y-6">
-          <AccountSummaryCard
-            isMember={isMember}
-            lastSeenAt={profile.lastSeenAt}
-          />
+        <section
+          aria-labelledby="trophy-road-heading"
+          className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-[0_18px_45px_-34px_rgba(41,37,36,0.45)] lg:col-span-4 dark:border-slate-700/70 dark:bg-[#0D1424] dark:shadow-[0_24px_56px_-36px_rgba(0,0,0,0.9)]"
+        >
+          <header className="border-b border-stone-200/80 px-5 py-5 dark:border-slate-700/70">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
+                  <Trophy className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 id="trophy-road-heading" className="text-base font-bold text-stone-950 dark:text-white">Trophy road</h2>
+                  <p className="text-sm text-stone-500 dark:text-slate-400">{unlockedCount} of {achievementTotal} unlocked</p>
+                </div>
+              </div>
+              <Link
+                to="/profile/achievements"
+                aria-label="View all achievements"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300 dark:hover:bg-amber-400/10"
+              >
+                All
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <div
+                role="progressbar"
+                aria-label="Achievement completion"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={achievementProgress}
+                className="h-2 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800"
+              >
+                <div className="h-full rounded-full bg-amber-500" style={{ width: `${achievementProgress}%` }} />
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-stone-700 dark:text-slate-200">{achievementProgress}%</span>
+            </div>
+          </header>
 
+          <div className="divide-y divide-stone-200/80 px-5 dark:divide-slate-700/70">
+            {featuredAchievements.length > 0 ? featuredAchievements.map((achievement) => {
+              const AchievementIcon = achievement.id.includes("streak") ? Flame : achievement.id.includes("win") ? Trophy : Medal;
+              return (
+                <div key={achievement.id} className="flex items-center gap-3 py-4">
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${achievement.unlocked ? "bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300" : "bg-stone-100 text-stone-400 dark:bg-slate-800 dark:text-slate-500"}`}>
+                    <AchievementIcon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="truncate text-sm font-semibold text-stone-950 dark:text-white">{achievement.title}</h3>
+                      <span className="shrink-0 text-sm text-stone-500 dark:text-slate-400">
+                        {achievement.unlocked ? "Unlocked" : "Locked"} · {achievement.currentProgress}/{achievement.targetValue}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 line-clamp-1 text-sm text-stone-500 dark:text-slate-400">{achievement.description}</p>
+                  </div>
+                </div>
+              );
+            }) : (
+              <p className="py-8 text-sm text-stone-500 dark:text-slate-400">No achievement progress yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="favorite-games-heading"
+          className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-[0_18px_45px_-34px_rgba(41,37,36,0.45)] lg:col-span-8 dark:border-slate-700/70 dark:bg-[#0D1424] dark:shadow-[0_24px_56px_-36px_rgba(0,0,0,0.9)]"
+        >
+          <header className="flex items-end justify-between gap-4 border-b border-stone-200/80 px-5 py-5 sm:px-6 dark:border-slate-700/70">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
+                <Heart className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 id="favorite-games-heading" className="text-base font-bold text-stone-950 dark:text-white">Favorite games</h2>
+                <p className="text-sm text-stone-500 dark:text-slate-400">Your most-played tables and mastery</p>
+              </div>
+            </div>
+            <Link
+              to="/favorites"
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300 dark:hover:bg-amber-400/10"
+            >
+              Manage
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </header>
+          {stats && <FavoriteGames stats={stats} />}
+        </section>
+
+        <aside aria-label="Account settings" className="space-y-6 lg:col-span-4">
+          <AccountSummaryCard isMember={isMember} lastSeenAt={profile.lastSeenAt} />
           <ProfileQuickActions
             onExportData={handleExportData}
             onOpenAvatarPicker={openAvatarModal}
             onDeleteAccount={() => setIsDeleteModalOpen(true)}
             playerId={profile.playerId}
           />
-        </div>
+        </aside>
       </div>
 
-      {/* ── Section 3: Bottom Row (Favorite Games + Trophy Road Achievements) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Favorite Games Panel (Miniclip Deck Showcase) */}
-        <div className="relative rounded-3xl p-0.5 bg-linear-to-b from-stone-300 via-stone-400/40 to-stone-500/70 dark:from-slate-700 dark:via-slate-800/40 dark:to-slate-950 shadow-[0_6px_0_rgba(15,23,42,0.8)] h-full flex flex-col">
-          <div className="bg-linear-to-b from-[#FFFDF9] to-[#F7EDE0] dark:from-[#172033] dark:to-[#0D1322] rounded-[22px] p-6 sm:p-7 space-y-4 border border-stone-200/80 dark:border-white/10 flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-stone-200/80 dark:border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/40 flex items-center justify-center shadow-xs">
-                    <Heart className="w-4 h-4 fill-rose-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm text-stone-900 dark:text-white uppercase tracking-tight">
-                      Favorite Games
-                    </h3>
-                    <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
-                      Your pinned battle stations
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  to="/favorites"
-                  className="text-xs font-black text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition px-3 py-1.5 min-h-[44px] inline-flex items-center uppercase tracking-wider"
-                >
-                  View all →
-                </Link>
-              </div>
-              <div className="pt-2">
-                {stats && <FavoriteGames stats={stats} />}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Achievements Panel (Supercell Trophy Road Showcase) */}
-        <div className="relative rounded-3xl p-0.5 bg-linear-to-b from-amber-400/70 via-amber-500/30 to-amber-700/70 dark:from-amber-400/50 dark:via-amber-600/20 dark:to-amber-900/50 shadow-[0_6px_0_rgba(180,83,9,0.7)] h-full flex flex-col">
-          <div className="bg-linear-to-b from-[#FFFDF9] to-[#F7EDE0] dark:from-[#172033] dark:to-[#0D1322] rounded-[22px] p-6 sm:p-7 space-y-4 border border-stone-200/80 dark:border-white/10 flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-stone-200/80 dark:border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-linear-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center font-black shadow-[0_2px_0_rgba(180,83,9,0.8)] border border-amber-300">
-                    <Award className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm text-stone-900 dark:text-white uppercase tracking-tight">
-                      Trophy Road
-                    </h3>
-                    <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold">
-                      {unlockedCount} of 25 unlocked
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  to="/profile/achievements"
-                  className="text-xs font-black text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition px-3 py-1.5 min-h-[44px] inline-flex items-center uppercase tracking-wider"
-                >
-                  All badges →
-                </Link>
-              </div>
-
-              {/* Overall Unlock Progress Bar (Thick XP Capsule) */}
-              <div className="pt-3 pb-1">
-                <div className="h-2.5 bg-stone-200 dark:bg-slate-900 rounded-full overflow-hidden p-0.5 border border-stone-300/80 dark:border-slate-800">
-                  <div
-                    className="h-full bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400 rounded-full transition-all duration-500 shadow-inner"
-                    style={{ width: `${Math.round((unlockedCount / 25) * 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* List of 3 Preview Achievements */}
-              <div className="space-y-2.5 pt-2">
-                {recentAchievements.length > 0 ? (
-                  recentAchievements.map((ach) => (
-                    <div
-                      key={ach.id}
-                      className="group bg-white/80 dark:bg-slate-900/80 border-2 border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-2 shadow-xs hover:border-amber-500/50 transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 border border-amber-300 shadow-[0_2px_0_rgba(180,83,9,0.8)] font-black group-hover:scale-105 transition-transform">
-                            {ach.id.includes("streak") ? (
-                              <Flame className="w-4 h-4 text-stone-950 fill-stone-950" />
-                            ) : ach.id.includes("win") ? (
-                              <Trophy className="w-4 h-4 text-stone-950" />
-                            ) : (
-                              <span className="text-sm">🎲</span>
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="font-black text-xs text-stone-900 dark:text-white">
-                              {ach.title}
-                            </h4>
-                            <p className="text-[11px] text-stone-600 dark:text-slate-400 font-medium leading-snug">
-                              {ach.description}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono font-black text-amber-800 dark:text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-md shrink-0">
-                          {ach.currentProgress} / {ach.targetValue}
-                        </span>
-                      </div>
-
-                      {/* Progress Bar */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <div className="flex-1 h-2 bg-stone-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
-                          <div
-                            className="h-full bg-linear-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-300 shadow-xs"
-                            style={{ width: `${ach.progressPercent}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-mono font-black text-stone-600 dark:text-slate-400 shrink-0">
-                          {ach.progressPercent}%
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-6 text-xs text-stone-400 dark:text-slate-500 font-bold">
-                    No achievements tracked yet.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* View All Achievements Button (3D Arcade Press) */}
-            <div className="pt-3">
-              <Link
-                to="/profile/achievements"
-                className="w-full py-3 min-h-[44px] inline-flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-stone-900 dark:text-white bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-750 rounded-xl border-b-4 border-stone-300 dark:border-slate-900 active:border-b-0 active:translate-y-1 transition shadow-xs cursor-pointer"
-              >
-                <span>View All 25 Badges &amp; Trophies</span>
-                <ChevronDown className="w-4 h-4 stroke-[2.5]" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <DeleteAccountModal
-        open={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-      />
+      <DeleteAccountModal open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
     </div>
   );
 }

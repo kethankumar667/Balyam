@@ -1,7 +1,7 @@
-import React from "react";
 import { Link } from "react-router-dom";
-import { Heart, ArrowRight, Trophy } from "lucide-react";
+import { ArrowRight, Gamepad2, Heart } from "lucide-react";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
+import { getProfileGameLabel } from "./gameLabel";
 
 interface FavoriteGamesProps {
   stats: PlayerStats;
@@ -12,106 +12,56 @@ export default function FavoriteGames({ stats }: FavoriteGamesProps) {
 
   if (gamesList.length === 0) {
     return (
-      <div className="py-2 space-y-4">
-        <div className="text-center space-y-1.5">
-          <p className="text-xs text-stone-600 dark:text-stone-300 font-medium">
-            You haven't favorited any games yet. Jump into these trending lounge hits or browse the full catalog:
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link
-            to="/games"
-            className="group p-3.5 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#16243d] dark:to-[#0e1728] border-2 border-emerald-500/30 hover:border-emerald-400/60 shadow-[0_3px_0_rgba(4,120,87,0.15)] dark:shadow-[0_3px_0_rgba(4,120,87,0.4)] active:translate-y-0.5 active:shadow-none transition flex items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 text-stone-950 font-black text-xl flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(4,120,87,1)]">
-              🎲
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="font-black text-xs text-stone-900 dark:text-white block group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition truncate">
-                Ludo Lounge
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 block truncate font-medium">
-                Classic multiplayer board
-              </span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
-          </Link>
-
-          <Link
-            to="/games"
-            className="group p-3.5 rounded-2xl bg-white hover:bg-stone-50 dark:bg-gradient-to-r dark:from-[#16243d] dark:to-[#0e1728] border-2 border-orange-500/30 hover:border-orange-400/60 shadow-[0_3px_0_rgba(194,65,12,0.15)] dark:shadow-[0_3px_0_rgba(194,65,12,0.4)] active:translate-y-0.5 active:shadow-none transition flex items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-orange-400 to-orange-600 text-stone-950 font-black text-xl flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(194,65,12,1)]">
-              🐍
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="font-black text-xs text-stone-900 dark:text-white block group-hover:text-orange-600 dark:group-hover:text-orange-300 transition truncate">
-                Snakes & Ladders
-              </span>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 block truncate font-medium">
-                Nostalgic roll-and-climb
-              </span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform shrink-0" />
-          </Link>
-        </div>
-
-        <div className="pt-1 text-center">
-          <Link
-            to="/favorites"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-b from-stone-800 via-stone-900 to-stone-950 text-white text-xs font-black uppercase tracking-wider border-b-4 border-black active:border-b-0 active:translate-y-0.5 transition shadow-md cursor-pointer"
-          >
-            <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
-            <span>Manage Favorites Catalog</span>
-          </Link>
-        </div>
+      <div className="flex min-h-52 flex-col items-start justify-center px-5 py-8 sm:px-6">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-400/10 dark:text-rose-300 dark:ring-rose-400/20">
+          <Heart className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <p className="mt-5 text-base font-bold text-stone-950 dark:text-white">Build your game shelf</p>
+        <p className="mt-1 max-w-md text-sm leading-relaxed text-stone-600 dark:text-slate-300">
+          Favorite the tables you return to most. Their records and mastery progress will appear here.
+        </p>
+        <Link
+          to="/games"
+          className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-stone-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-amber-400 dark:text-stone-950 dark:hover:bg-amber-300"
+        >
+          Browse games
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {gamesList.map((g) => (
-          <div
-            key={g.game}
-            className="bg-white dark:bg-gradient-to-b dark:from-[#162238] dark:to-[#0e1628] border-2 border-stone-200 dark:border-amber-500/30 hover:border-amber-400/60 rounded-2xl p-4 space-y-3 shadow-xs dark:shadow-[0_3px_0_rgba(180,83,9,0.3)] transition group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-black text-sm text-stone-900 dark:text-white capitalize tracking-tight">
-                {g.game}
+    <div className="divide-y divide-stone-200/80 px-5 sm:px-6 dark:divide-slate-700/70">
+      {gamesList.map((game) => (
+        <div key={game.game} className="py-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-700 dark:bg-slate-800 dark:text-slate-200">
+                <Gamepad2 className="h-5 w-5" aria-hidden="true" />
               </span>
-              <span className="text-xs font-mono font-black text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-500/40 px-2 py-0.5 rounded-full shadow-inner">
-                {g.winRate}% Win
-              </span>
-            </div>
-
-            {/* Glowing Win Rate Bar */}
-            <div className="h-2 bg-stone-200 dark:bg-black/60 rounded-full overflow-hidden border border-stone-300 dark:border-white/10 shadow-inner">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
-                style={{ width: `${g.winRate}%` }}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 text-center text-xs font-mono pt-2 border-t border-stone-200 dark:border-white/10">
-              <div>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 block uppercase font-bold">Played</span>
-                <span className="font-black text-stone-900 dark:text-white">{g.matchesPlayed}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 block uppercase font-bold">Wins</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">{g.wins}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 block uppercase font-bold">Time</span>
-                <span className="font-black text-amber-600 dark:text-amber-400">{g.totalPlayTimeMinutes}m</span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-stone-950 dark:text-white">{getProfileGameLabel(game.game)}</p>
+                <p className="mt-0.5 text-sm text-stone-500 dark:text-slate-400">{game.matchesPlayed} matches · {game.wins} wins</p>
               </div>
             </div>
+            <strong className="shrink-0 text-lg tabular-nums text-emerald-700 dark:text-emerald-300">{game.winRate}%</strong>
           </div>
-        ))}
-      </div>
+          <div className="mt-4 flex items-center gap-3">
+            <div
+              role="progressbar"
+              aria-label={`${getProfileGameLabel(game.game)} win rate`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={game.winRate}
+              className="h-2 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-slate-800"
+            >
+              <div className="h-full rounded-full bg-emerald-600 dark:bg-emerald-400" style={{ width: `${game.winRate}%` }} />
+            </div>
+            <span className="shrink-0 text-sm text-stone-500 dark:text-slate-400">{game.totalPlayTimeMinutes} min</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

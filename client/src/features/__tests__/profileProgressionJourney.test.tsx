@@ -56,7 +56,8 @@ describe("Priority 5: Profile, XP Progression & Achievements User Journey", () =
       expect(screen.getByText("50")).toBeDefined();
       expect(screen.getByText("70%")).toBeDefined();
       expect(screen.getByText(/180/i)).toBeDefined();
-      expect(screen.getByText(/35W • 15L • 0D/i)).toBeDefined();
+      expect(screen.getByText("35 wins")).toBeDefined();
+      expect(screen.getByText("15 losses")).toBeDefined();
     });
   });
 
@@ -71,9 +72,9 @@ describe("Priority 5: Profile, XP Progression & Achievements User Journey", () =
 
       render(<CareerMetrics stats={stats} />);
 
-      expect(screen.getByText("Endurance & Resilience Telemetry")).toBeDefined();
-      expect(screen.getByText("Longest Match")).toBeDefined();
-      expect(screen.getByText("Seat Recoveries")).toBeDefined();
+      expect(screen.getByRole("region", { name: "Recent matches" })).toBeDefined();
+      expect(screen.getByText("Longest match")).toBeDefined();
+      expect(screen.getByText("Seat recoveries")).toBeDefined();
     });
   });
 
