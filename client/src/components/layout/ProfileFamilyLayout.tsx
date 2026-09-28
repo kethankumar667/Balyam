@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppLayout from "./AppLayout";
 import ProfileLayout from "./ProfileLayout";
 import MemberLockedGate from "../auth/MemberLockedGate";
 import EditProfileModal from "../../features/profile/EditProfileModal";
+import { ProfileErrorState } from "../../features/profile/ProfilePrimitives";
 import AvatarPicker from "../profile/AvatarPicker";
 import Modal from "../Modal";
 import { ProfileSkeleton } from "../../design-system/dls";
 import { useRoomStore } from "../../store/roomStore";
-import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
+import { useAuthStore } from "../../store/authStore";
 import { apiFetch, usePlayerId } from "../../lib/playerIdentity";
-import { ACHIEVEMENT_CATALOG } from "@shared/profile/Achievements";
 
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
@@ -18,210 +18,222 @@ import type { Achievement } from "@shared/profile/Achievements";
 import type { MatchHistoryItem } from "@shared/profile/MatchHistory";
 import type { RecentMatchItem } from "../../features/profile/CareerMetrics";
 
+export type ProfileResource<T> =
+  | { status: "loading"; data: null }
+  | { status: "ready"; data: T }
+  | { status: "error"; data: T | null; message: string };
+
+interface ProfileResources {
+  profile: ProfileResource<PlayerProfile>;
+  stats: ProfileResource<PlayerStats>;
+  achievements: ProfileResource<Achievement[]>;
+  recentMatches: ProfileResource<RecentMatchItem[]>;
+}
+
 export interface ProfileFamilyOutletContext {
   profile: PlayerProfile | null;
   stats: PlayerStats | null;
   achievements: Achievement[];
   recentMatches: RecentMatchItem[];
+  resources: ProfileResources;
   loading: boolean;
   isMember: boolean;
   currentName: string;
   currentAvatar: string | null;
   effectivePlayerId: string | null;
+  retryProfileData: () => void;
   openEditModal: () => void;
   openAvatarModal: () => void;
 }
 
-/**
- * Shared chrome for /profile, /profile/personal, /profile/statistics,
- * /profile/matches, /profile/achievements.
- *
- * Each of those five pages used to render its own `<ProfileLayout>` (sidebar,
- * member card, tournament CTA) AND independently fetch the same
- * `/api/profile/:id`, `/api/profile/:id/stats` and `/api/profile/:id/achievements`
- * data. React Router treats a route change as a brand-new element tree, so
- * every hop between them — the sidebar links go straight between these five —
- * fully unmounted one page's `ProfileLayout` and mounted a fresh one for the
- * next: a visible re-render of the whole sidebar/header on every click, lost
- * scroll position, and five separate copies of the same fetch. Same root
- * cause GamesFamilyLayout.tsx fixed for /games, /favorites, /recently-played
- * — hoisting the layout AND the shared data fetch to one persistent layout
- * route means only the `<Outlet/>` content swaps; the sidebar and the
- * profile/stats/achievements data stay put across all five.
- *
- * The Edit Profile / Avatar Picker modals lived in each page too (identical
- * JSX, identical handlers) — also hoisted here, reached by children through
- * `useOutletContext`. Pulling `handleSaveProfile` into one copy also fixes a
- * real bug the duplication had introduced: `ProfileOverviewPage`'s copy
- * never called `setBio`/`setRegion`, so bio/region edits made from that page
- * silently didn't save even though `PersonalInformationPage`'s copy did.
- */
+interface ProfilePayload { profile?: PlayerProfile }
+interface StatsPayload { stats?: PlayerStats }
+interface AchievementsPayload { achievements?: Achievement[] }
+interface MatchesPayload { matches?: MatchHistoryItem[] }
+
+const LOADING_RESOURCES: ProfileResources = {
+  profile: { status: "loading", data: null },
+  stats: { status: "loading", data: null },
+  achievements: { status: "loading", data: null },
+  recentMatches: { status: "loading", data: null },
+};
+
+async function readPayload<T>(path: string): Promise<T> {
+  const response = await apiFetch(path);
+  if (!response.ok) throw new Error("request_failed");
+  return response.json() as Promise<T>;
+}
+
+function mapRecentMatches(matches: readonly MatchHistoryItem[]): RecentMatchItem[] {
+  return matches.map((match) => ({
+    id: match.matchId,
+    game: match.game,
+    result: match.result === "WIN" ? "won" : match.result === "LOSS" ? "lost" : "draw",
+    playedAt: match.finishedAt,
+  }));
+}
+
 export default function ProfileFamilyLayout() {
-  const isMember = useAuthStore((s) => s.isMember);
-  const identity = useIdentityPresentation();
-  const { pathname } = useLocation();
-
-  if (!isMember) {
-    const feature = pathname.startsWith("/profile/personal") ? "personal" : "profile";
-    return <MemberLockedGate feature={feature} />;
-  }
-
-  const currentName = useRoomStore((s) => s.playerName);
-  const currentAvatar = useRoomStore((s) => s.avatarId);
-  const setPlayerName = useRoomStore((s) => s.setPlayerName);
-  const setAvatarId = useRoomStore((s) => s.setAvatarId);
-  const bio = useRoomStore((s) => s.bio);
-  const setBio = useRoomStore((s) => s.setBio);
-  const region = useRoomStore((s) => s.region);
-  const setRegion = useRoomStore((s) => s.setRegion);
-
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
-  const [stats, setStats] = useState<PlayerStats | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [recentMatches, setRecentMatches] = useState<RecentMatchItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
+  const isMember = useAuthStore((state) => state.isMember);
+  const currentName = useRoomStore((state) => state.playerName);
+  const currentAvatar = useRoomStore((state) => state.avatarId);
+  const setPlayerName = useRoomStore((state) => state.setPlayerName);
+  const setAvatarId = useRoomStore((state) => state.setAvatarId);
+  const bio = useRoomStore((state) => state.bio);
+  const setBio = useRoomStore((state) => state.setBio);
+  const region = useRoomStore((state) => state.region);
+  const setRegion = useRoomStore((state) => state.setRegion);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { playerId: effectivePlayerId, ready: identityReady } = usePlayerId();
 
-  // Per-route customization of the hero banner's badge label. Only
-  // /profile/achievements wants a non-default one ("Badge Album") — a
-  // static per-route value, not real page state, so it's simplest derived
-  // straight from the pathname rather than threaded up through context.
-  const badgeLabel = pathname === "/profile/achievements" ? "Badge Album" : undefined;
+  const [resources, setResources] = useState<ProfileResources>(LOADING_RESOURCES);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const handledEditQueryRef = useRef(false);
+
+  const retryProfileData = useCallback(() => {
+    setResources(LOADING_RESOURCES);
+    setRetryCount((count) => count + 1);
+  }, []);
 
   useEffect(() => {
-    if (!identityReady || !effectivePlayerId) return;
-
+    if (!isMember || !identityReady || !effectivePlayerId) return;
     let cancelled = false;
 
-    async function fetchData() {
-      try {
-        const [profRes, statsRes, achRes, matchesRes] = await Promise.all([
-          apiFetch(`/api/profile/${effectivePlayerId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          apiFetch(`/api/profile/${effectivePlayerId}/stats`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          apiFetch(`/api/profile/${effectivePlayerId}/achievements`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          apiFetch(`/api/profile/${effectivePlayerId}/matches?limit=5`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        ]);
-        if (cancelled) return;
+    const loadResources = async () => {
+      const results = await Promise.allSettled([
+        readPayload<ProfilePayload>(`/api/profile/${effectivePlayerId}`),
+        readPayload<StatsPayload>(`/api/profile/${effectivePlayerId}/stats`),
+        readPayload<AchievementsPayload>(`/api/profile/${effectivePlayerId}/achievements`),
+        readPayload<MatchesPayload>(`/api/profile/${effectivePlayerId}/matches?limit=5`),
+      ]);
+      if (cancelled) return;
 
-        if (profRes?.profile) {
-          setProfile(profRes.profile);
-        } else {
-          setProfile({
-            playerId: effectivePlayerId ?? "",
-            displayName: currentName || identity.label,
-            avatar: currentAvatar || undefined,
-            joinedAt: Date.now() - 86400000 * 7,
-            lastSeenAt: Date.now(),
-            level: 1,
-            experiencePoints: 0,
-          });
-        }
+      const [profileResult, statsResult, achievementsResult, matchesResult] = results;
+      const nextResources: ProfileResources = {
+        profile: profileResult.status === "fulfilled" && profileResult.value.profile
+          ? { status: "ready", data: profileResult.value.profile }
+          : { status: "error", data: null, message: "We couldn't load your player identity." },
+        stats: statsResult.status === "fulfilled" && statsResult.value.stats
+          ? { status: "ready", data: statsResult.value.stats }
+          : { status: "error", data: null, message: "Career statistics are unavailable right now." },
+        achievements: achievementsResult.status === "fulfilled" && Array.isArray(achievementsResult.value.achievements)
+          ? { status: "ready", data: achievementsResult.value.achievements }
+          : { status: "error", data: null, message: "Achievement progress is unavailable right now." },
+        recentMatches: matchesResult.status === "fulfilled" && Array.isArray(matchesResult.value.matches)
+          ? { status: "ready", data: mapRecentMatches(matchesResult.value.matches) }
+          : { status: "error", data: null, message: "Recent matches are unavailable right now." },
+      };
+      setResources(nextResources);
+    };
 
-        if (statsRes?.stats) setStats(statsRes.stats);
-
-        if (achRes?.achievements) {
-          setAchievements(achRes.achievements);
-        } else {
-          setAchievements(
-            ACHIEVEMENT_CATALOG.map((def) => ({
-              ...def,
-              unlocked: false,
-              currentProgress: 0,
-              progressPercent: 0,
-            }))
-          );
-        }
-
-        if (matchesRes?.matches && Array.isArray(matchesRes.matches)) {
-          const mappedMatches: RecentMatchItem[] = matchesRes.matches.map((m: MatchHistoryItem) => ({
-            id: m.matchId,
-            game: m.game,
-            result: m.result === "WIN" ? "won" : m.result === "LOSS" ? "lost" : "draw",
-            playedAt: m.finishedAt,
-          }));
-          setRecentMatches(mappedMatches);
-        } else {
-          setRecentMatches([]);
-        }
-      } catch (err) {
-        console.warn("Could not load backend profile, using local defaults:", err);
-        if (!cancelled) {
-          setProfile({
-            playerId: effectivePlayerId ?? "",
-            displayName: currentName || identity.label,
-            avatar: currentAvatar || undefined,
-            joinedAt: Date.now() - 86400000 * 7,
-            lastSeenAt: Date.now(),
-            level: 1,
-            experiencePoints: 0,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchData();
+    void loadResources();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identityReady, effectivePlayerId]);
+  }, [effectivePlayerId, identityReady, isMember, retryCount]);
 
-  const handleSaveProfile = async (data: { displayName: string; bio: string; region: string }) => {
-    // bio/region have no backing column in ProfileController's PUT handler
-    // (server/src/profile/ProfileController.ts only reads displayName/avatar)
-    // — they stay device-local via roomStore's own localStorage persistence
-    // (see EditProfileModal's "saved on this device" note). Only displayName
-    // is a real server round-trip, so it's the only field whose failure must
-    // surface: a swallowed non-ok response used to look identical to success,
-    // silently reverting on the next reload/device.
-    const res = await apiFetch(`/api/profile/${effectivePlayerId}`, {
+  useEffect(() => {
+    const shouldOpenEditor = new URLSearchParams(location.search).get("edit") === "profile";
+    if (!shouldOpenEditor) {
+      handledEditQueryRef.current = false;
+      return;
+    }
+    if (resources.profile.status === "ready" && !handledEditQueryRef.current) {
+      handledEditQueryRef.current = true;
+      setIsEditModalOpen(true);
+    }
+  }, [location.search, resources.profile.status]);
+
+  const openEditModal = useCallback(() => setIsEditModalOpen(true), []);
+  const openAvatarModal = useCallback(() => setIsAvatarModalOpen(true), []);
+  const closeAvatarModal = useCallback(() => setIsAvatarModalOpen(false), []);
+  const closeEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    if (new URLSearchParams(location.search).has("edit")) {
+      navigate("/profile", { replace: true });
+    }
+  }, [location.search, navigate]);
+
+  const handleSaveProfile = useCallback(async (data: { displayName: string; bio: string; region: string }) => {
+    if (!effectivePlayerId) throw new Error("Your player identity is not ready yet.");
+    const response = await apiFetch(`/api/profile/${effectivePlayerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ displayName: data.displayName }),
     });
-    if (!res.ok) {
-      throw new Error("Could not save your display name. Please try again.");
-    }
+    if (!response.ok) throw new Error("Could not save your display name. Please try again.");
+
     setPlayerName(data.displayName);
     setBio(data.bio);
     setRegion(data.region);
-    setProfile((prev) => (prev ? { ...prev, displayName: data.displayName } : prev));
-    setIsEditModalOpen(false);
-  };
+    setResources((current) => ({
+      ...current,
+      profile: current.profile.status === "ready"
+        ? { status: "ready", data: { ...current.profile.data, displayName: data.displayName } }
+        : current.profile,
+    }));
+    closeEditModal();
+  }, [closeEditModal, effectivePlayerId, setBio, setPlayerName, setRegion]);
 
-  const handleSelectAvatar = async (av: string | null) => {
-    const res = await apiFetch(`/api/profile/${effectivePlayerId}`, {
+  const handleSelectAvatar = useCallback(async (nextAvatar: string | null) => {
+    if (!effectivePlayerId) return;
+    const response = await apiFetch(`/api/profile/${effectivePlayerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatar: av || undefined }),
+      body: JSON.stringify({ avatar: nextAvatar || undefined }),
     });
-    if (!res.ok) return;
-    setAvatarId(av);
-    setProfile((prev) => (prev ? { ...prev, avatar: av || undefined } : prev));
-    setIsAvatarModalOpen(false);
-  };
+    if (!response.ok) return;
 
-  const favoriteGame = stats?.favoriteGame && stats.favoriteGame !== "none" ? stats.favoriteGame : undefined;
+    setAvatarId(nextAvatar);
+    setResources((current) => ({
+      ...current,
+      profile: current.profile.status === "ready"
+        ? { status: "ready", data: { ...current.profile.data, avatar: nextAvatar || undefined } }
+        : current.profile,
+    }));
+    closeAvatarModal();
+  }, [closeAvatarModal, effectivePlayerId, setAvatarId]);
 
-  const context: ProfileFamilyOutletContext = {
+  const profile = resources.profile.status === "ready" ? resources.profile.data : null;
+  const stats = resources.stats.status === "ready" ? resources.stats.data : null;
+  const achievements = resources.achievements.status === "ready" ? resources.achievements.data : [];
+  const recentMatches = resources.recentMatches.status === "ready" ? resources.recentMatches.data : [];
+  const loading = resources.profile.status === "loading";
+
+  const context = useMemo<ProfileFamilyOutletContext>(() => ({
     profile,
     stats,
     achievements,
     recentMatches,
+    resources,
     loading,
     isMember,
     currentName,
     currentAvatar,
     effectivePlayerId,
-    openEditModal: () => setIsEditModalOpen(true),
-    openAvatarModal: () => setIsAvatarModalOpen(true),
-  };
+    retryProfileData,
+    openEditModal,
+    openAvatarModal,
+  }), [
+    achievements,
+    currentAvatar,
+    currentName,
+    effectivePlayerId,
+    isMember,
+    loading,
+    openAvatarModal,
+    openEditModal,
+    profile,
+    recentMatches,
+    resources,
+    retryProfileData,
+    stats,
+  ]);
+
+  if (!isMember) return <MemberLockedGate feature="profile" />;
 
   return (
     <AppLayout showFallingPetals>
@@ -230,34 +242,40 @@ export default function ProfileFamilyLayout() {
         isMember={isMember}
         name={currentName}
         avatar={currentAvatar}
-        onEditName={() => setIsEditModalOpen(true)}
-        favoriteGame={favoriteGame}
-        badgeLabel={badgeLabel}
+        onEditName={openEditModal}
       >
-        {loading || !profile ? <ProfileSkeleton /> : <Outlet context={context} />}
+        {loading ? <ProfileSkeleton /> : null}
+        {resources.profile.status === "error" ? (
+          <ProfileErrorState
+            title="Profile unavailable"
+            description={resources.profile.message}
+            onRetry={retryProfileData}
+          />
+        ) : null}
+        {profile ? <Outlet context={context} /> : null}
       </ProfileLayout>
 
-      {isEditModalOpen && (
+      {isEditModalOpen ? (
         <EditProfileModal
           isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={closeEditModal}
           initialDisplayName={currentName}
           initialBio={bio || ""}
-          initialRegion={region || "India 🇮🇳"}
+          initialRegion={region || "India (IN)"}
           onSave={handleSaveProfile}
         />
-      )}
+      ) : null}
 
-      {isAvatarModalOpen && (
+      {isAvatarModalOpen ? (
         <Modal
           open={isAvatarModalOpen}
-          onClose={() => setIsAvatarModalOpen(false)}
-          ariaLabel="Choose Your Avatar"
-          panelClassName="bg-[#FAF3E2] dark:bg-[#0E1526] border-2 border-[#E8D8BE] rounded-3xl p-6 shadow-2xl max-w-2xl w-full"
+          onClose={closeAvatarModal}
+          ariaLabel="Choose your avatar"
+          panelClassName="w-full max-w-2xl rounded-3xl border border-stone-300 bg-surface-1 p-5 text-ink-hi shadow-2xl dark:border-slate-700 sm:p-6"
         >
-          <AvatarPicker value={currentAvatar} onChange={handleSelectAvatar} onDone={() => setIsAvatarModalOpen(false)} />
+          <AvatarPicker value={currentAvatar} onChange={handleSelectAvatar} onDone={closeAvatarModal} />
         </Modal>
-      )}
+      ) : null}
     </AppLayout>
   );
 }

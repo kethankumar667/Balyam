@@ -1,146 +1,163 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { Award, Filter, ArrowRight, Trophy, Flame } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Award,
+  CheckCircle2,
+  Crosshair,
+  LayoutGrid,
+  LockKeyhole,
+  Medal,
+  ShieldCheck,
+  TrendingUp,
+  Trophy,
+  Users,
+} from "lucide-react";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
 import AchievementsPanel from "../features/profile/AchievementsPanel";
 import { AchievementRevealModal } from "../features/profile/AchievementRevealModal";
+import {
+  ProfileEmptyState,
+  ProfileErrorState,
+  ProfileMetricTile,
+  ProfilePageHeading,
+  ProfilePanelSkeleton,
+  ProfileProgressBar,
+  ProfileSection,
+} from "../features/profile/ProfilePrimitives";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
-
 import type { Achievement } from "@shared/profile/Achievements";
 
-type FilterCategory = "all" | "progression" | "skill" | "resilience" | "social";
+type FilterCategory = "all" | Achievement["category"];
 
-const CATEGORY_TABS: { id: FilterCategory; label: string; icon: string }[] = [
-  { id: "all", label: "All Badges", icon: "⭐" },
-  { id: "progression", label: "Nostalgia & Journey", icon: "☀️" },
-  { id: "skill", label: "Game Mastery", icon: "🎖️" },
-  { id: "resilience", label: "Comebacks & Tenacity", icon: "🛡️" },
-  { id: "social", label: "Lounge Friends", icon: "🤝" },
+interface CategoryTab {
+  id: FilterCategory;
+  label: string;
+  icon: LucideIcon;
+}
+
+const CATEGORY_TABS: CategoryTab[] = [
+  { id: "all", label: "All", icon: LayoutGrid },
+  { id: "progression", label: "Journey", icon: TrendingUp },
+  { id: "skill", label: "Mastery", icon: Crosshair },
+  { id: "resilience", label: "Resilience", icon: ShieldCheck },
+  { id: "social", label: "Social", icon: Users },
 ];
 
-/**
- * Data, the Edit Profile / Avatar Picker modals, and the `<ProfileLayout>`
- * sidebar all live one level up now, in ProfileFamilyLayout — see that
- * file's header comment for why. This page only renders its own content and
- * reads what it needs via `useOutletContext`.
- */
 export default function AchievementsPage() {
-  const { profile, achievements, isMember } = useOutletContext<ProfileFamilyOutletContext>();
-
+  const { profile, achievements, resources, isMember, retryProfileData } = useOutletContext<ProfileFamilyOutletContext>();
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
-  const [activeUnlockModal, setActiveUnlockModal] = useState<Achievement | null>(null);
+  const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
 
-  if (!isMember) {
-    return <MemberLockedGate feature="profile" />;
-  }
+  const unlockedCount = achievements.filter((achievement) => achievement.unlocked).length;
+  const completionPercent = achievements.length > 0 ? Math.round((unlockedCount / achievements.length) * 100) : 0;
+  const filteredAchievements = useMemo(
+    () => selectedCategory === "all"
+      ? achievements
+      : achievements.filter((achievement) => achievement.category === selectedCategory),
+    [achievements, selectedCategory],
+  );
 
+  if (!isMember) return <MemberLockedGate feature="profile" />;
   if (!profile) return null;
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
-  const filteredAchievements = selectedCategory === "all"
-    ? achievements
-    : achievements.filter((a) => a.category === selectedCategory);
-
-  const completionPct = achievements.length > 0 ? Math.round((unlockedCount / achievements.length) * 100) : 0;
-
   return (
-    <div className="space-y-6">
-      {/* Page Header with Supercell Trophy Room Atmosphere */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
-        <div>
-          <h1 className="text-base sm:text-lg font-black text-stone-900 dark:text-white flex items-center gap-2.5 tracking-tight">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-[0_2px_0_rgba(180,83,9,1)]">
-              <Award className="w-4 h-4 text-stone-950" />
-            </div>
-            <span>Childhood Memory & Trophy Room</span>
-          </h1>
-          <p className="text-xs text-stone-600 dark:text-stone-300 font-medium mt-1">
-            Collect nostalgic tokens, school-yard milestones, and unlock XP across BHALYAM games.
-          </p>
-        </div>
-
-        {/* Supercell Trophy Road Album Progress Gauge */}
-        <div className="rounded-2xl p-1 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-700 shadow-[0_4px_0_rgba(180,83,9,0.9),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_0_rgba(180,83,9,0.9),0_8px_16px_rgba(0,0,0,0.4)] self-start sm:self-auto">
-          <div className="bg-gradient-to-b from-[#FFFDF9] to-[#F5ECE0] dark:from-[#1c140a] dark:to-[#0c0803] rounded-[14px] px-4 py-2.5 flex items-center gap-3.5 border-t border-amber-300/80 dark:border-amber-300/40">
-            <div>
-              <span className="text-[10px] uppercase font-black tracking-wider text-amber-800 dark:text-amber-300/80 font-mono block">
-                Album Progress
-              </span>
-              <span className="text-xs font-black text-stone-900 dark:text-white font-mono">
-                {unlockedCount} of {achievements.length || 25} Badges ({completionPct}%)
-              </span>
-            </div>
-            <div className="w-11 h-11 rounded-full border-2 border-amber-400 flex items-center justify-center text-xs font-black text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 font-mono shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.3)] dark:shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-              {completionPct}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Category Filter 3D Pills ── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none]">
-        <div className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 font-mono flex items-center gap-1.5 shrink-0 mr-1">
-          <Filter className="w-3.5 h-3.5" />
-          <span>Category:</span>
-        </div>
-        {CATEGORY_TABS.map((tab) => {
-          const active = selectedCategory === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSelectedCategory(tab.id)}
-              className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider transition whitespace-nowrap cursor-pointer flex items-center gap-2 ${
-                active
-                  ? "bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-stone-950 border-b-4 border-amber-800 shadow-[0_3px_0_rgba(180,83,9,1)] active:border-b-0 active:translate-y-1"
-                  : "bg-white dark:bg-[#0c1424] text-stone-700 dark:text-stone-300 border-2 border-stone-200 dark:border-white/10 hover:bg-stone-100 dark:hover:bg-[#131d33]"
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Achievements Showcase Panel ── */}
-      <AchievementsPanel
-        achievements={filteredAchievements}
-        onSelectAchievement={(ach) => setActiveUnlockModal(ach)}
-      />
-
-      {/* ── Bottom Banner (More badges coming soon!) ── */}
-      <div className="relative rounded-3xl p-1 bg-gradient-to-b from-purple-400/40 to-purple-700/40 dark:from-purple-500/30 dark:to-purple-800/30 shadow-lg">
-        <div className="bg-gradient-to-b from-[#FAF5FF] via-[#F3E8FF] to-[#E9D5FF] dark:from-[#141026] dark:via-[#0d0b1a] dark:to-[#07060f] rounded-[22px] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-purple-300 dark:border-purple-500/30">
-          <div className="flex items-center gap-3.5 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-purple-500 to-purple-700 text-white text-2xl flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(88,28,135,1)]">
-              🎁
-            </div>
-            <div>
-              <h3 className="font-black text-sm text-stone-900 dark:text-white tracking-tight">
-                More nostalgic badges coming soon!
-              </h3>
-              <p className="text-xs text-stone-600 dark:text-stone-300 font-medium mt-0.5">
-                Play tournament matches, finish daily streaks, and fill your trophy room.
-              </p>
-            </div>
-          </div>
-
+    <div className="space-y-5 sm:space-y-6">
+      <ProfilePageHeading
+        icon={Trophy}
+        eyebrow="Milestones & mastery"
+        title="Trophy vault"
+        description="Track every earned badge, inspect the next unlock, and see how your BHALYAM career is taking shape."
+        accent="gold"
+        action={(
           <Link
             to="/profile/matches"
-            className="text-xs font-black uppercase tracking-wider text-stone-950 bg-gradient-to-b from-amber-400 to-amber-600 border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 px-5 py-2.5 min-h-[44px] rounded-xl transition inline-flex items-center gap-2 whitespace-nowrap shadow-md cursor-pointer"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-stone-300 bg-surface-1 px-4 text-sm font-bold text-ink-hi transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 dark:border-slate-600"
           >
-            <span>View Match Logs</span>
-            <ArrowRight className="w-4 h-4 text-stone-950" />
+            Battle archive
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
+        )}
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <ProfileMetricTile label="Unlocked" value={String(unlockedCount)} detail="Badges secured" icon={CheckCircle2} accent="green" />
+        <ProfileMetricTile label="Still locked" value={String(Math.max(0, achievements.length - unlockedCount))} detail="Targets remaining" icon={LockKeyhole} accent="violet" />
+        <div className="col-span-2 rounded-xl border border-stone-300/80 bg-surface-1 p-4 shadow-[0_18px_40px_-34px_rgba(74,37,8,0.5)] dark:border-slate-700/80 lg:col-span-1">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-ink-mid">Vault progress</p>
+              <p className="mt-1 font-mono text-2xl font-black text-ink-hi tabular-nums">{completionPercent}%</p>
+            </div>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-lamp-100 text-lamp-800 dark:bg-lamp-500/15 dark:text-lamp-300">
+              <Medal className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <div className="mt-3">
+            <ProfileProgressBar label="Vault completion" value={completionPercent} accent="gold" showValue={false} />
+          </div>
         </div>
       </div>
 
-      {/* ── Modal for Achievement Reveal if clicked ── */}
+      <ProfileSection
+        title="Achievement collection"
+        description="Filter the vault by the type of challenge you want to pursue next."
+        icon={Award}
+        accent="gold"
+      >
+        <div className="-mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="tablist" aria-label="Achievement categories">
+          {CATEGORY_TABS.map(({ id, label, icon: Icon }) => {
+            const active = selectedCategory === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSelectedCategory(id)}
+                className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-3.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 ${
+                  active
+                    ? "border-lamp-500 bg-lamp-100 text-lamp-900 dark:bg-lamp-500/15 dark:text-lamp-200"
+                    : "border-stone-300 bg-surface-0 text-ink-mid hover:bg-surface-2 dark:border-slate-600"
+                }`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {resources.achievements.status === "loading" ? <ProfilePanelSkeleton rows={6} /> : null}
+        {resources.achievements.status === "error" ? (
+          <ProfileErrorState
+            title="Trophy vault unavailable"
+            description="Your achievement progress could not be loaded right now."
+            onRetry={retryProfileData}
+          />
+        ) : null}
+        {resources.achievements.status === "ready" && filteredAchievements.length === 0 ? (
+          <ProfileEmptyState
+            icon={Award}
+            title="No badges in this category"
+            description="Choose another category, or keep playing to unlock new milestones."
+            actionLabel={selectedCategory === "all" ? undefined : "Show all badges"}
+            onAction={selectedCategory === "all" ? undefined : () => setSelectedCategory("all")}
+          />
+        ) : null}
+        {resources.achievements.status === "ready" && filteredAchievements.length > 0 ? (
+          <AchievementsPanel
+            achievements={filteredAchievements}
+            onSelectAchievement={setActiveAchievement}
+          />
+        ) : null}
+      </ProfileSection>
+
       <AchievementRevealModal
-        achievement={activeUnlockModal}
-        isOpen={!!activeUnlockModal}
-        onClose={() => setActiveUnlockModal(null)}
+        achievement={activeAchievement}
+        isOpen={activeAchievement !== null}
+        onClose={() => setActiveAchievement(null)}
       />
     </div>
   );

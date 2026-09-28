@@ -210,7 +210,7 @@ const FAQS_CATALOG: FAQItem[] = [
     category: "profile",
     question: "Can I customize my display name and avatar?",
     answer:
-      "Yes! Head to your Profile page (`/profile/personal`) or tap your avatar in the sidebar to choose from nostalgic Indian schoolboy and schoolgirl avatars or update your display name.",
+      "Yes! Open your Profile (`/profile?edit=profile`) or tap your avatar in the sidebar to choose an avatar or update your display name.",
   },
   {
     id: "tc-1",

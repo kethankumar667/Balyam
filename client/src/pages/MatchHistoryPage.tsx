@@ -1,28 +1,86 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useOutletContext, useNavigate } from "react-router-dom";
-import { History, Gamepad2, Trophy, XCircle, Equal, Clock, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useOutletContext } from "react-router-dom";
+import {
+  ArrowRight,
+  Clock3,
+  Filter,
+  Gamepad2,
+  History,
+  Medal,
+  RefreshCw,
+  Swords,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
 import { apiFetch } from "../lib/playerIdentity";
 import MemberLockedGate from "../components/auth/MemberLockedGate";
-import MatchHistoryList from "../features/profile/MatchHistoryList";
 import Modal from "../components/Modal";
-import EmptyState from "../components/games/EmptyState";
+import SeatAvatar from "../components/profile/SeatAvatar";
+import {
+  ProfileEmptyState,
+  ProfileErrorState,
+  ProfileMetricTile,
+  ProfilePageHeading,
+  ProfilePanelSkeleton,
+  ProfileSection,
+} from "../features/profile/ProfilePrimitives";
+import { getProfileGameLabel } from "../features/profile/gameLabel";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
-
-import type { MatchHistoryItem, MatchDetailRecord } from "@shared/profile/MatchHistory";
+import type { GameStats } from "@shared/profile/PlayerStats";
+import type { MatchDetailRecord, MatchHistoryItem, MatchResult } from "@shared/profile/MatchHistory";
 import type { GameKind } from "@shared/types";
 
-/**
- * Data, the Edit Profile / Avatar Picker modals, and the `<ProfileLayout>`
- * sidebar all live one level up now, in ProfileFamilyLayout — see that
- * file's header comment for why. This page only renders its own content and
- * reads what it needs via `useOutletContext`; the match list itself stays a
- * page-local fetch since it depends on `selectedGame`, which nothing else
- * in the profile section needs.
- */
+interface MatchHistoryResponse {
+  matches: MatchHistoryItem[];
+  total?: number;
+}
+
+interface MatchDetailResponse {
+  match: MatchDetailRecord;
+}
+
+const RESULT_LABEL: Record<MatchResult, string> = {
+  WIN: "Victory",
+  LOSS: "Defeat",
+  DRAW: "Draw",
+};
+
+const RESULT_STYLE: Record<MatchResult, string> = {
+  WIN: "border-success/30 bg-success/10 text-success",
+  LOSS: "border-danger/30 bg-danger/10 text-danger",
+  DRAW: "border-info/30 bg-info/10 text-info",
+};
+
+function formatDuration(durationMs: number): string {
+  const totalMinutes = Math.max(0, Math.round(durationMs / 60_000));
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
+function formatPlayTime(totalMinutes: number): string {
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
+function formatMatchDate(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(timestamp);
+}
+
+function isGameStats(value: GameStats | undefined): value is GameStats {
+  return value !== undefined;
+}
+
 export default function MatchHistoryPage() {
   const { profile, stats, isMember, effectivePlayerId } = useOutletContext<ProfileFamilyOutletContext>();
-  const navigate = useNavigate();
-
   const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [selectedGame, setSelectedGame] = useState<GameKind | undefined>();
@@ -36,435 +94,264 @@ export default function MatchHistoryPage() {
 
   useEffect(() => {
     if (!effectivePlayerId) return;
-
     let cancelled = false;
 
     async function fetchMatches() {
       setLoading(true);
       setFetchError(false);
       try {
-        const res = await apiFetch(
-          `/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`
+        const response = await apiFetch(
+          `/api/profile/${effectivePlayerId}/matches${selectedGame ? `?game=${selectedGame}` : ""}`,
         );
+        if (!response.ok) throw new Error("Match fetch failed");
+        const payload = (await response.json()) as MatchHistoryResponse;
         if (cancelled) return;
-        if (!res.ok) throw new Error("Match fetch failed");
-        const matchRes = await res.json();
-        if (matchRes?.matches && matchRes.matches.length > 0) {
-          setMatches(matchRes.matches);
-          setTotalMatches(matchRes.total || matchRes.matches.length);
-        } else {
-          setMatches([]);
-          setTotalMatches(0);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.warn("Could not load match history:", err);
-          setFetchError(true);
-        }
+        const nextMatches = Array.isArray(payload.matches) ? payload.matches : [];
+        setMatches(nextMatches);
+        setTotalMatches(payload.total ?? nextMatches.length);
+      } catch {
+        if (!cancelled) setFetchError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    fetchMatches();
+    void fetchMatches();
     return () => {
       cancelled = true;
     };
-  }, [effectivePlayerId, selectedGame, retryCount]);
+  }, [effectivePlayerId, retryCount, selectedGame]);
 
   const fetchMatchDetail = useCallback(async (matchId: string) => {
-    if (detailLoading) return;
     setDetailLoading(true);
     setDetailFetchError(false);
     try {
-      const res = await apiFetch(`/api/profile/${effectivePlayerId}/matches/${matchId}`);
-      if (!res.ok) throw new Error("Match detail fetch failed");
-      const data = await res.json();
-      if (data?.match) {
-        setSelectedMatchDetail(data.match);
-      } else {
-        throw new Error("Invalid match payload");
-      }
+      const response = await apiFetch(`/api/profile/${effectivePlayerId}/matches/${matchId}`);
+      if (!response.ok) throw new Error("Match detail fetch failed");
+      const payload = (await response.json()) as MatchDetailResponse;
+      if (!payload.match) throw new Error("Invalid match detail payload");
+      setSelectedMatchDetail(payload.match);
     } catch {
       setDetailFetchError(true);
     } finally {
       setDetailLoading(false);
     }
-  }, [detailLoading, effectivePlayerId]);
+  }, [effectivePlayerId]);
 
-  const handleOpenMatchDetail = useCallback((matchId: string) => {
-    const summary = matches.find((m) => m.matchId === matchId) ?? null;
-    setActiveDetailItem(summary);
+  const openMatchDetail = useCallback((match: MatchHistoryItem) => {
+    setActiveDetailItem(match);
     setSelectedMatchDetail(null);
-    setDetailFetchError(false);
-    fetchMatchDetail(matchId);
-  }, [fetchMatchDetail, matches]);
+    void fetchMatchDetail(match.matchId);
+  }, [fetchMatchDetail]);
 
-  const handleCloseDetailModal = useCallback(() => {
+  const closeMatchDetail = useCallback(() => {
     setActiveDetailItem(null);
     setSelectedMatchDetail(null);
     setDetailFetchError(false);
-    setDetailLoading(false);
   }, []);
 
-  if (!isMember) {
-    return <MemberLockedGate feature="profile" />;
-  }
+  const gameOptions = useMemo(
+    () => Object.values(stats?.perGame ?? {}).filter(isGameStats).sort((a, b) => b.matchesPlayed - a.matchesPlayed),
+    [stats?.perGame],
+  );
 
+  if (!isMember) return <MemberLockedGate feature="profile" />;
   if (!profile) return null;
 
-  const effectiveTotalMatches = stats?.totalMatches ?? totalMatches ?? matches.length;
-  const effectiveWins = stats?.wins !== undefined ? stats.wins : 0;
-  const effectiveLosses = stats?.losses !== undefined ? stats.losses : 0;
-  const effectiveDraws = stats?.draws !== undefined ? stats.draws : 0;
-  const effectiveWinRate = effectiveTotalMatches > 0 ? (stats?.winRate ?? Math.round((effectiveWins / effectiveTotalMatches) * 100)) : 0;
-  const effectiveLossRate = effectiveTotalMatches > 0 ? Math.round((effectiveLosses / effectiveTotalMatches) * 100) : 0;
-  const effectiveDrawRate = effectiveTotalMatches > 0 ? Math.round((effectiveDraws / effectiveTotalMatches) * 100) : 0;
-  const totalMins = stats?.totalPlayTimeMinutes ?? 0;
-  const hours = Math.floor(totalMins / 60);
-  const mins = totalMins % 60;
-  const playTimeStr = `${hours}h ${mins}m`;
+  const careerTotal = stats?.totalMatches ?? totalMatches;
+  const wins = stats?.wins ?? 0;
+  const winRate = stats?.winRate ?? 0;
+  const playTime = formatPlayTime(stats?.totalPlayTimeMinutes ?? 0);
+  const detail = selectedMatchDetail ?? activeDetailItem;
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
-            <History className="w-5 h-5 text-[#EA580C]" />
-            <span>Match History</span>
-          </h1>
-          <p className="text-xs text-stone-600 dark:text-stone-300 font-medium mt-0.5">
-            Review match records, scorecards, opponent details, and match durations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <div className="space-y-5 sm:space-y-6">
+      <ProfilePageHeading
+        icon={History}
+        eyebrow="Match intelligence"
+        title="Battle archive"
+        description="Scan outcomes, opponents, and authoritative scorecards from every recorded match."
+        accent="coral"
+        action={(
           <Link
             to="/games"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white transition shadow-md whitespace-nowrap"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-chest-600 px-4 text-sm font-bold text-white transition hover:bg-chest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500"
           >
-            <Gamepad2 className="w-3.5 h-3.5" />
-            <span>Play a Game</span>
+            Play a game
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
-        </div>
+        )}
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ProfileMetricTile label="Matches logged" value={String(careerTotal)} detail="All recorded games" icon={Gamepad2} accent="violet" />
+        <ProfileMetricTile label="Victories" value={String(wins)} detail={`${winRate}% win rate`} icon={Trophy} accent="green" />
+        <ProfileMetricTile label="Current form" value={`${stats?.currentWinStreak ?? 0}W`} detail="Active win streak" icon={Medal} accent="gold" />
+        <ProfileMetricTile label="Play time" value={playTime} detail="Across every arena" icon={Clock3} accent="cyan" />
       </div>
 
-      {/* ── 5 Horizontal Summary Stat Power Tiles ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        {/* Total Matches */}
-        <div className="group relative rounded-3xl p-1 bg-gradient-to-b from-purple-400 via-purple-600 to-purple-900 shadow-[0_5px_0_rgba(88,28,135,0.8),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(88,28,135,0.8),0_8px_16px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1">
-          <div className="h-full bg-gradient-to-b from-purple-50/90 via-white to-purple-50/40 dark:from-[#18152e] dark:via-[#100e21] dark:to-[#0a0815] rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border-t border-purple-300/60 dark:border-purple-300/30">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-purple-500 to-purple-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(88,28,135,1)]">
-                <Gamepad2 className="w-5 h-5 text-purple-100" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-2.5 py-0.5 rounded-full border border-purple-300 dark:border-purple-500/40">
-                Matches
-              </span>
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-200/80 block truncate">
-                Total Matches
-              </span>
-              <span className="text-2xl font-black text-stone-900 dark:text-white block leading-tight tracking-tight my-0.5">
-                {effectiveTotalMatches}
-              </span>
-              <span className="text-[11px] text-purple-700 dark:text-purple-300/70 font-mono font-medium block">
-                All-time record
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Wins */}
-        <div className="group relative rounded-3xl p-1 bg-gradient-to-b from-emerald-400 via-emerald-600 to-emerald-900 shadow-[0_5px_0_rgba(6,95,70,0.8),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(6,95,70,0.8),0_8px_16px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1">
-          <div className="h-full bg-gradient-to-b from-emerald-50/90 via-white to-emerald-50/40 dark:from-[#0e241e] dark:via-[#091713] dark:to-[#050e0c] rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border-t border-emerald-300/60 dark:border-emerald-300/30">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(6,95,70,1)]">
-                <Trophy className="w-5 h-5 text-emerald-100" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/40">
-                Wins
-              </span>
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-900 dark:text-emerald-200/80 block truncate">
-                Victories
-              </span>
-              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block leading-tight tracking-tight my-0.5">
-                {effectiveWins}
-              </span>
-              <span className="text-[11px] text-emerald-700 dark:text-emerald-300/70 font-mono font-medium block">
-                {effectiveWinRate}% Win rate
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Losses */}
-        <div className="group relative rounded-3xl p-1 bg-gradient-to-b from-rose-400 via-rose-600 to-rose-900 shadow-[0_5px_0_rgba(159,18,57,0.8),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(159,18,57,0.8),0_8px_16px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1">
-          <div className="h-full bg-gradient-to-b from-rose-50/90 via-white to-rose-50/40 dark:from-[#240e15] dark:via-[#17090e] dark:to-[#0d0508] rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border-t border-rose-300/60 dark:border-rose-300/30">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-rose-500 to-rose-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(159,18,57,1)]">
-                <XCircle className="w-5 h-5 text-rose-100" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-2.5 py-0.5 rounded-full border border-rose-300 dark:border-rose-500/40">
-                Defeats
-              </span>
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-rose-900 dark:text-rose-200/80 block truncate">
-                Defeats
-              </span>
-              <span className="text-2xl font-black text-rose-600 dark:text-rose-400 block leading-tight tracking-tight my-0.5">
-                {effectiveLosses}
-              </span>
-              <span className="text-[11px] text-rose-700 dark:text-rose-300/70 font-mono font-medium block">
-                {effectiveLossRate}% Loss rate
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Draws */}
-        <div className="group relative rounded-3xl p-1 bg-gradient-to-b from-blue-400 via-blue-600 to-blue-900 shadow-[0_5px_0_rgba(30,58,138,0.8),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(30,58,138,0.8),0_8px_16px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1">
-          <div className="h-full bg-gradient-to-b from-blue-50/90 via-white to-blue-50/40 dark:from-[#111e38] dark:via-[#0b1426] dark:to-[#060b17] rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border-t border-blue-300/60 dark:border-blue-300/30">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 text-white flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(30,58,138,1)]">
-                <Equal className="w-5 h-5 text-blue-100" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 px-2.5 py-0.5 rounded-full border border-blue-300 dark:border-blue-500/40">
-                Draws
-              </span>
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-blue-900 dark:text-blue-200/80 block truncate">
-                Tied Rounds
-              </span>
-              <span className="text-2xl font-black text-blue-600 dark:text-blue-400 block leading-tight tracking-tight my-0.5">
-                {effectiveDraws}
-              </span>
-              <span className="text-[11px] text-blue-700 dark:text-blue-300/70 font-mono font-medium block">
-                {effectiveDrawRate}% Tied
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Total Play Time */}
-        <div className="group relative rounded-3xl p-1 bg-gradient-to-b from-amber-400 via-amber-600 to-amber-900 shadow-[0_5px_0_rgba(180,83,9,0.8),0_8px_16px_rgba(0,0,0,0.15)] dark:shadow-[0_5px_0_rgba(180,83,9,0.8),0_8px_16px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-1">
-          <div className="h-full bg-gradient-to-b from-amber-50/90 via-white to-amber-50/40 dark:from-[#261c10] dark:via-[#1a1309] dark:to-[#0f0b05] rounded-[22px] p-4 sm:p-5 flex flex-col justify-between border-t border-amber-300/60 dark:border-amber-300/30">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-[0_2px_0_rgba(180,83,9,1)]">
-                <Clock className="w-5 h-5 text-stone-950" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-500/40">
-                Time
-              </span>
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200/80 block truncate">
-                Total Play Time
-              </span>
-              <span className="text-2xl font-black text-amber-600 dark:text-amber-400 block leading-tight tracking-tight my-0.5">
-                {playTimeStr}
-              </span>
-              <span className="text-[11px] text-amber-700 dark:text-amber-300/70 font-mono font-medium block">
-                Across all games
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Match History List / Loading / Error / Empty State ── */}
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="bg-white dark:bg-[#0c1424] border-2 border-stone-200 dark:border-white/10 rounded-3xl p-5 animate-pulse flex items-center justify-between gap-4"
+      <ProfileSection
+        title="Match log"
+        description={`${totalMatches} ${selectedGame ? getProfileGameLabel(selectedGame) : "total"} records in this view`}
+        icon={Swords}
+        accent="coral"
+        action={gameOptions.length > 0 ? (
+          <label className="relative flex min-h-[44px] items-center gap-2 rounded-xl border border-stone-300 bg-surface-0 px-3 text-xs font-bold text-ink-mid dark:border-slate-600">
+            <Filter className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Filter matches by game</span>
+            <select
+              value={selectedGame ?? ""}
+              onChange={(event) => setSelectedGame(event.target.value ? event.target.value as GameKind : undefined)}
+              className="min-h-[42px] max-w-36 bg-transparent pr-1 text-ink-hi outline-none"
+              aria-label="Filter matches by game"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-stone-200 dark:bg-slate-800" />
-                <div className="space-y-2">
-                  <div className="w-32 h-4 bg-stone-200 dark:bg-slate-800 rounded" />
-                  <div className="w-20 h-3 bg-stone-200 dark:bg-slate-800 rounded" />
-                </div>
-              </div>
-              <div className="w-16 h-7 bg-stone-200 dark:bg-slate-800 rounded-full" />
-            </div>
-          ))}
-        </div>
-      ) : fetchError ? (
-        <div className="p-8 text-center bg-white dark:bg-[#0c1424] border-2 border-rose-500/30 rounded-3xl space-y-4 shadow-xl">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl mx-auto border border-rose-500/40">
-            ⚠️
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-black text-stone-900 dark:text-white">Couldn't load match history</h3>
-            <p className="text-xs text-stone-600 dark:text-stone-300 max-w-sm mx-auto font-medium">
-              We had trouble communicating with the server. Please check your connection and try again.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setRetryCount((c) => c + 1)}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-b from-orange-400 to-orange-600 text-stone-950 font-black uppercase tracking-wider text-xs border-b-4 border-orange-800 active:border-b-0 shadow-md transition cursor-pointer min-h-[44px]"
-          >
-            Retry
-          </button>
-        </div>
-      ) : matches.length === 0 && !selectedGame ? (
-        <EmptyState
-          title="No matches played yet"
-          description="Play games with friends or bots to build your match history."
-          resetLabel="Explore Games"
-          onReset={() => navigate("/games")}
-        />
-      ) : (
-        <MatchHistoryList
-          matches={matches}
-          total={totalMatches}
-          selectedGame={selectedGame}
-          onSelectGame={(g) => setSelectedGame(g)}
-          onViewMatchDetail={handleOpenMatchDetail}
-          stats={stats}
-        />
-      )}
-
-      {/* Match Detail Modal (Holographic Battle Scorecard) */}
-      {(activeDetailItem || selectedMatchDetail) && (
-        <Modal
-          open={Boolean(activeDetailItem || selectedMatchDetail)}
-          onClose={handleCloseDetailModal}
-          ariaLabel="Match Scorecard Details"
-          panelClassName="bg-white dark:bg-gradient-to-b dark:from-[#0e1628] dark:to-[#070b14] border-2 border-amber-500/40 rounded-3xl p-6 shadow-2xl max-w-lg w-full text-left text-stone-900 dark:text-white"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
-                  🎮
-                </div>
-                <div>
-                  <h3 className="font-black text-sm text-stone-900 dark:text-white capitalize tracking-tight">
-                    {selectedMatchDetail?.game ?? activeDetailItem?.game} Match Details
-                  </h3>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 font-mono font-bold">
-                    Room #{selectedMatchDetail?.roomCode ?? activeDetailItem?.roomCode}
-                  </span>
-                </div>
-              </div>
-              <span
-                className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full border font-mono ${
-                  (selectedMatchDetail?.result ?? activeDetailItem?.result) === "WIN"
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/90 dark:text-emerald-400 dark:border-emerald-500/60"
-                    : (selectedMatchDetail?.result ?? activeDetailItem?.result) === "LOSS"
-                    ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/90 dark:text-rose-400 dark:border-rose-500/60"
-                    : "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/90 dark:text-blue-400 dark:border-blue-500/60"
-                }`}
-              >
-                {(selectedMatchDetail?.result ?? activeDetailItem?.result) === "WIN"
-                  ? "Victory"
-                  : (selectedMatchDetail?.result ?? activeDetailItem?.result) === "LOSS"
-                  ? "Defeat"
-                  : "Draw"}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-xs font-black uppercase tracking-wider text-stone-600 dark:text-stone-300 font-mono">
-                Participants & Scorecard
-              </h4>
-              <div className="space-y-2 max-h-56 overflow-y-auto">
-                {(selectedMatchDetail?.participants ?? activeDetailItem?.participants ?? []).map((p, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-black/40 border border-stone-200 dark:border-white/10"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-slate-800 border border-stone-300 dark:border-white/15 flex items-center justify-center text-sm">
-                        {p.avatar ? "👦" : "👤"}
-                      </div>
-                      <div>
-                        <span className="font-black text-xs text-stone-900 dark:text-white block">
-                          {p.name} {p.isBot && "(Bot)"}
-                        </span>
-                        {p.isWinner && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-black font-mono block">
-                            Winner 🏆
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {p.score !== undefined && (
-                      <span className="font-black text-sm text-stone-900 dark:text-white font-mono bg-stone-100 dark:bg-white/5 px-2.5 py-1 rounded-lg border border-stone-200 dark:border-white/10">
-                        {p.score} pts
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Authoritative Timeline / Match Stats */}
-            {selectedMatchDetail && (
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-stone-700 dark:text-stone-200 space-y-1.5 font-mono">
-                <div className="font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">Match Timeline Summary</div>
-                <div className="flex justify-between">
-                  <span className="text-stone-600 dark:text-stone-300">Total Moves:</span>
-                  <span className="font-bold text-stone-900 dark:text-white">{selectedMatchDetail.movesCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-stone-600 dark:text-stone-300">Timeline Events:</span>
-                  <span className="font-bold text-stone-900 dark:text-white">{selectedMatchDetail.timelineEventsCount}</span>
-                </div>
-              </div>
-            )}
-
-            {detailLoading && (
-              <div className="flex items-center justify-center gap-2 py-3 text-xs text-amber-400 font-bold">
-                <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                <span>Loading detailed scorecard timeline...</span>
-              </div>
-            )}
-
-            {detailFetchError && (
-              <div
-                role="alert"
-                className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-xs text-rose-300 flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
-                  <span className="truncate">Could not load detailed scorecard timeline.</span>
-                </div>
+              <option value="">All games</option>
+              {gameOptions.map((entry) => (
+                <option key={entry.game} value={entry.game}>{getProfileGameLabel(entry.game)}</option>
+              ))}
+            </select>
+          </label>
+        ) : undefined}
+      >
+        {loading ? <ProfilePanelSkeleton rows={4} /> : null}
+        {!loading && fetchError ? (
+          <ProfileErrorState
+            title="Battle archive unavailable"
+            description="The match service did not respond. Your existing profile data is safe."
+            onRetry={() => setRetryCount((value) => value + 1)}
+          />
+        ) : null}
+        {!loading && !fetchError && matches.length === 0 ? (
+          <ProfileEmptyState
+            icon={Swords}
+            title="No battles in this view"
+            description={selectedGame ? "This game has no recorded matches yet. Choose another filter or start a new battle." : "Finish a multiplayer game and its result will appear here."}
+            actionLabel={selectedGame ? "Show all games" : undefined}
+            onAction={selectedGame ? () => setSelectedGame(undefined) : undefined}
+          />
+        ) : null}
+        {!loading && !fetchError && matches.length > 0 ? (
+          <ol className="space-y-2.5">
+            {matches.map((match) => (
+              <li key={match.matchId}>
                 <button
                   type="button"
-                  onClick={() => activeDetailItem && fetchMatchDetail(activeDetailItem.matchId)}
-                  disabled={detailLoading}
-                  className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-black text-[11px] transition flex items-center gap-1.5 cursor-pointer flex-shrink-0 disabled:opacity-50 min-h-[44px]"
-                  aria-label="Retry loading match details"
+                  onClick={() => openMatchDetail(match)}
+                  className="group grid min-h-[76px] w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-stone-300/80 bg-surface-0 p-3 text-left transition hover:border-lamp-500/60 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 dark:border-slate-700/80 sm:p-4"
+                  aria-label={`Open ${getProfileGameLabel(match.game)} match from ${formatMatchDate(match.finishedAt)}`}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${detailLoading ? "animate-spin" : ""}`} />
-                  <span>Retry</span>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-chest-100 text-chest-700 dark:bg-chest-500/15 dark:text-chest-300">
+                    <Swords className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-ink-hi">{getProfileGameLabel(match.game)}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-mid">
+                      <span>{formatMatchDate(match.finishedAt)}</span>
+                      <span>{formatDuration(match.durationMs)}</span>
+                      <span>{match.participants.length} players</span>
+                    </span>
+                  </span>
+                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${RESULT_STYLE[match.result]}`}>
+                    {RESULT_LABEL[match.result]}
+                  </span>
                 </button>
-              </div>
-            )}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </ProfileSection>
 
-            <div className="pt-2">
+      <Modal
+        open={detail !== null}
+        onClose={closeMatchDetail}
+        mobileSheet
+        ariaLabelledBy="match-scorecard-title"
+        panelClassName="max-h-[88vh] w-full overflow-y-auto rounded-t-3xl border border-stone-300 bg-surface-1 p-5 text-ink-hi shadow-2xl dark:border-slate-700 md:max-w-xl md:rounded-3xl"
+      >
+        {detail ? (
+          <div className="space-y-5">
+            <header className="flex items-start justify-between gap-3">
+              <div>
+                <p className={`inline-flex rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${RESULT_STYLE[detail.result]}`}>
+                  {RESULT_LABEL[detail.result]}
+                </p>
+                <h3 id="match-scorecard-title" className="mt-3 text-xl font-black tracking-tight text-ink-hi">
+                  {getProfileGameLabel(detail.game)} scorecard
+                </h3>
+                <p className="mt-1 font-mono text-xs text-ink-mid">Room {detail.roomCode} · {formatMatchDate(detail.finishedAt)}</p>
+              </div>
               <button
                 type="button"
-                onClick={handleCloseDetailModal}
-                className="w-full py-3 min-h-[44px] inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-stone-950 font-black uppercase tracking-wider text-xs border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 shadow-md cursor-pointer transition"
+                onClick={closeMatchDetail}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-surface-0 text-ink-mid transition hover:text-ink-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 dark:border-slate-600"
+                aria-label="Close match scorecard"
               >
-                Close Scorecard
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
+            </header>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-surface-0 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-lo">Duration</p>
+                <p className="mt-1 font-mono text-lg font-black text-ink-hi">{formatDuration(detail.durationMs)}</p>
+              </div>
+              <div className="rounded-xl bg-surface-0 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-lo">Players</p>
+                <p className="mt-1 font-mono text-lg font-black text-ink-hi">{detail.participants.length}</p>
+              </div>
             </div>
+
+            <section aria-labelledby="participants-title">
+              <div className="mb-2.5 flex items-center gap-2">
+                <Users className="h-4 w-4 text-violet-500" aria-hidden="true" />
+                <h4 id="participants-title" className="text-sm font-bold text-ink-hi">Participants</h4>
+              </div>
+              <ul className="space-y-2">
+                {detail.participants.map((participant) => (
+                  <li key={participant.playerId} className="flex min-h-[58px] items-center justify-between gap-3 rounded-xl border border-stone-300/70 bg-surface-0 px-3 py-2 dark:border-slate-700/70">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <SeatAvatar avatar={participant.avatar} name={participant.name} className="h-9 w-9" textClassName="text-xs" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-ink-hi">{participant.name}{participant.isBot ? " · Bot" : ""}</p>
+                        <p className="text-[11px] text-ink-mid">{participant.isWinner ? "Winner" : "Contender"}</p>
+                      </div>
+                    </div>
+                    {participant.score !== undefined ? <span className="font-mono text-sm font-black text-ink-hi">{participant.score} pts</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {selectedMatchDetail ? (
+              <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-lamp-500/30 bg-lamp-500/5 p-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-lo">Moves</p>
+                  <p className="mt-1 font-mono text-base font-black text-ink-hi">{selectedMatchDetail.movesCount}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-lo">Timeline events</p>
+                  <p className="mt-1 font-mono text-base font-black text-ink-hi">{selectedMatchDetail.timelineEventsCount}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {detailLoading ? <ProfilePanelSkeleton rows={1} /> : null}
+            {detailFetchError ? (
+              <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger/5 p-3">
+                <p className="text-xs text-danger">Detailed timeline could not be loaded.</p>
+                <button
+                  type="button"
+                  onClick={() => void fetchMatchDetail(detail.matchId)}
+                  className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  Retry
+                </button>
+              </div>
+            ) : null}
           </div>
-        </Modal>
-      )}
+        ) : null}
+      </Modal>
     </div>
   );
 }

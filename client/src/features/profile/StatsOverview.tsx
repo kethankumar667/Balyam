@@ -32,7 +32,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           </p>
         </div>
         <SafeLink
-          to="/profile/statistics"
+          to="/profile#mastery"
           className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-xl px-3 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 sm:self-auto dark:text-amber-300 dark:hover:bg-amber-400/10"
         >
           Full statistics

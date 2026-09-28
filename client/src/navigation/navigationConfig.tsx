@@ -343,48 +343,23 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
     id: "profile",
     showPromoNote: false,
     header: {
-      title: "Player Profile",
-      subtitle: "Account identity & gameplay stats",
+      title: "Player HQ",
+      subtitle: "Identity, performance & records",
       icon: User,
       parentPath: "/",
       parentLabel: "Back to Home",
     },
     items: [
-      // ── Group 1: Profile ──
       {
         id: "profile-overview",
-        label: "Profile Overview",
+        label: "Overview",
         icon: User,
         path: "/profile",
         isActive: (p) => p === "/profile" || p === "/profile/overview",
       },
       {
-        id: "profile-scorecards",
-        label: "Scorecards",
-        icon: Trophy,
-        path: "/profile/scorecards",
-        isActive: (p) => p === "/profile/scorecards",
-      },
-      {
-        id: "profile-personal",
-        label: "Personal Information",
-        icon: User,
-        path: "/profile/personal",
-        isActive: (p) => p === "/profile/personal",
-      },
-
-      // ── Group 2: Gaming ──
-      {
-        id: "profile-stats",
-        label: "Game Statistics",
-        icon: BarChart2,
-        path: "/profile/statistics",
-        dividerBefore: true,
-        isActive: (p) => p === "/profile/statistics" || p === "/profile/stats",
-      },
-      {
         id: "profile-matches",
-        label: "Match History",
+        label: "Matches",
         icon: History,
         path: "/profile/matches",
         isActive: (p) => p === "/profile/matches" || p === "/profile/history",
@@ -395,6 +370,13 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         icon: Award,
         path: "/profile/achievements",
         isActive: (p) => p === "/profile/achievements",
+      },
+      {
+        id: "profile-scorecards",
+        label: "Scorecards",
+        icon: Trophy,
+        path: "/profile/scorecards",
+        isActive: (p) => p === "/profile/scorecards",
       },
       // Preferences / Security & Data used to be duplicated here, pointing
       // at the exact same /settings/* routes the Settings section already

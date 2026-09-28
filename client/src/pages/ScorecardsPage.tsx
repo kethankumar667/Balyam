@@ -1,75 +1,97 @@
-import React, { useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
-import { Trophy, RefreshCw, AlertCircle } from "lucide-react";
+import { useEffect } from "react";
+import { Link, useOutletContext } from "react-router-dom";
+import { ArrowRight, Gauge, Gamepad2, Medal, Target, Trophy } from "lucide-react";
+import MemberLockedGate from "../components/auth/MemberLockedGate";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import { useScorecardStore } from "../store/scorecardStore";
 import ChronoScorecardDeck from "../components/scorecard/ChronoScorecardDeck";
 import PersonalBestOverdriveModal from "../components/scorecard/PersonalBestOverdriveModal";
+import {
+  ProfileEmptyState,
+  ProfileErrorState,
+  ProfileMetricTile,
+  ProfilePageHeading,
+  ProfilePanelSkeleton,
+  ProfileSection,
+} from "../features/profile/ProfilePrimitives";
 
 export default function ScorecardsPage() {
-  const { profile, currentName, currentAvatar, effectivePlayerId } =
-    useOutletContext<ProfileFamilyOutletContext>();
-
-  const { archive, loading, error, fetchScorecards, lastNewPB, dismissPBModal } =
-    useScorecardStore();
+  const { profile, currentName, currentAvatar, effectivePlayerId, isMember } = useOutletContext<ProfileFamilyOutletContext>();
+  const { archive, loading, error, fetchScorecards, lastNewPB, dismissPBModal } = useScorecardStore();
 
   useEffect(() => {
-    if (effectivePlayerId) {
-      fetchScorecards(effectivePlayerId);
-    }
+    if (effectivePlayerId) void fetchScorecards(effectivePlayerId);
   }, [effectivePlayerId, fetchScorecards]);
 
-  if (loading && !archive) {
-    return (
-      <div className="flex flex-col items-center justify-center p-16 text-center bg-linear-to-b from-[#FFFDF9] to-[#F7EDE0] dark:from-[#172033] dark:to-[#0D1322] border-2 border-stone-300 dark:border-slate-700/80 border-b-4 border-b-stone-400 dark:border-b-slate-900 rounded-3xl shadow-[0_6px_0_rgba(15,23,42,0.8)]">
-        <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-500 border border-cyan-500/40 flex items-center justify-center mb-3 shadow-xs">
-          <RefreshCw className="w-7 h-7 animate-spin" />
-        </div>
-        <span className="text-sm font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-300">Synchronizing Chrono-Scorecards...</span>
-      </div>
-    );
-  }
+  if (!isMember) return <MemberLockedGate feature="profile" />;
+  if (!profile) return null;
 
-  if (error && !archive) {
-    return (
-      <div className="p-8 rounded-3xl bg-linear-to-b from-rose-950/60 to-rose-950/90 border-2 border-rose-700 border-b-4 border-b-rose-900 text-center text-rose-200 shadow-[0_6px_0_rgba(159,18,57,0.6)]">
-        <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center mx-auto mb-3">
-          <AlertCircle className="w-6 h-6 stroke-[2.5]" />
-        </div>
-        <h3 className="text-base font-black uppercase tracking-wider text-white mb-1">Scorecards Unavailable</h3>
-        <p className="text-xs text-rose-300/80 mb-5 max-w-sm mx-auto">{error}</p>
-        <button
-          onClick={() => effectivePlayerId && fetchScorecards(effectivePlayerId)}
-          className="px-6 py-2.5 rounded-xl bg-linear-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white text-xs font-black uppercase tracking-wider border-b-4 border-rose-800 active:border-b-0 active:translate-y-1 shadow-[0_4px_0_rgba(159,18,57,0.8)] transition-all min-h-[44px] cursor-pointer"
-        >
-          Retry Connection
-        </button>
-      </div>
-    );
-  }
+  const trackedGames = archive ? Object.keys(archive.games).length : 0;
+  const trackedModes = archive
+    ? Object.values(archive.games).reduce((total, game) => total + (game?.totalModesPlayed ?? 0), 0)
+    : 0;
+  const recordsBroken = archive?.totalPersonalBestsBeaten ?? 0;
 
   return (
-    <div className="w-full">
-      <ChronoScorecardDeck
-        archive={
-          archive ?? {
-            playerId: effectivePlayerId ?? "guest",
-            games: {},
-            totalPersonalBestsBeaten: 0,
-            updatedAt: Date.now(),
-          }
-        }
-        playerName={currentName || profile?.displayName || "Player"}
-        avatar={currentAvatar || profile?.avatar}
+    <div className="space-y-5 sm:space-y-6">
+      <ProfilePageHeading
+        icon={Trophy}
+        eyebrow="Performance archive"
+        title="Personal best lab"
+        description="Compare personal records, study pace signatures, and track the modes where you are raising your ceiling."
+        accent="cyan"
+        action={(
+          <Link
+            to="/games"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-chest-600 px-4 text-sm font-bold text-white transition hover:bg-chest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500"
+          >
+            Chase a record
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        )}
       />
 
-      {/* Overdrive Celebratory Modal */}
-      {lastNewPB && (
-        <PersonalBestOverdriveModal
-          result={lastNewPB}
-          onClose={dismissPBModal}
-        />
-      )}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <ProfileMetricTile label="Tracked games" value={String(trackedGames)} detail="Games with scorecards" icon={Gamepad2} accent="violet" />
+        <ProfileMetricTile label="Records broken" value={String(recordsBroken)} detail="New personal bests" icon={Medal} accent="gold" />
+        <div className="col-span-2 lg:col-span-1">
+          <ProfileMetricTile label="Active modes" value={String(trackedModes)} detail="Scoring disciplines" icon={Gauge} accent="cyan" />
+        </div>
+      </div>
+
+      <ProfileSection
+        title="Chrono scorecards"
+        description="The deck adapts its density and controls for mobile, tablet, and desktop."
+        icon={Target}
+        accent="cyan"
+      >
+        {loading && !archive ? <ProfilePanelSkeleton rows={5} /> : null}
+        {error && !archive ? (
+          <ProfileErrorState
+            title="Scorecards unavailable"
+            description={error}
+            onRetry={() => {
+              if (effectivePlayerId) void fetchScorecards(effectivePlayerId);
+            }}
+          />
+        ) : null}
+        {!loading && !error && !archive ? (
+          <ProfileEmptyState
+            icon={Trophy}
+            title="No scorecards yet"
+            description="Set a score in a supported solo or multiplayer mode to start your personal-best archive."
+          />
+        ) : null}
+        {archive ? (
+          <ChronoScorecardDeck
+            archive={archive}
+            playerName={currentName || profile.displayName}
+            avatar={currentAvatar ?? profile.avatar}
+          />
+        ) : null}
+      </ProfileSection>
+
+      {lastNewPB ? <PersonalBestOverdriveModal result={lastNewPB} onClose={dismissPBModal} /> : null}
     </div>
   );
 }

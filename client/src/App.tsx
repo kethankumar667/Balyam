@@ -9,6 +9,7 @@ import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
+import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
 // ── Lazy-loaded pages & routes (code-split) ──
 const LazyBhalyamHome = lazy(() => import("./pages/BhalyamHome"));
@@ -17,8 +18,6 @@ const LazyGamesPage = lazy(() => import("./pages/GamesPage"));
 const LazyFavoritesPage = lazy(() => import("./pages/FavoritesPage"));
 const LazyRecentlyPlayedPage = lazy(() => import("./pages/RecentlyPlayedPage"));
 const LazyProfileOverviewPage = lazy(() => import("./pages/ProfileOverviewPage"));
-const LazyPersonalInformationPage = lazy(() => import("./pages/PersonalInformationPage"));
-const LazyGameStatisticsPage = lazy(() => import("./pages/GameStatisticsPage"));
 const LazyMatchHistoryPage = lazy(() => import("./pages/MatchHistoryPage"));
 const LazyAchievementsPage = lazy(() => import("./pages/AchievementsPage"));
 const LazyScorecardsPage = lazy(() => import("./pages/ScorecardsPage"));
@@ -83,8 +82,6 @@ export interface RouteComponents {
   FavoritesPage?: React.ComponentType;
   RecentlyPlayedPage?: React.ComponentType;
   ProfileOverviewPage?: React.ComponentType;
-  PersonalInformationPage?: React.ComponentType;
-  GameStatisticsPage?: React.ComponentType;
   MatchHistoryPage?: React.ComponentType;
   AchievementsPage?: React.ComponentType;
   ScorecardsPage?: React.ComponentType;
@@ -270,8 +267,6 @@ export default function App({ components = {} }: AppProps) {
   const FavoritesPage = components.FavoritesPage ?? LazyFavoritesPage;
   const RecentlyPlayedPage = components.RecentlyPlayedPage ?? LazyRecentlyPlayedPage;
   const ProfileOverviewPage = components.ProfileOverviewPage ?? LazyProfileOverviewPage;
-  const PersonalInformationPage = components.PersonalInformationPage ?? LazyPersonalInformationPage;
-  const GameStatisticsPage = components.GameStatisticsPage ?? LazyGameStatisticsPage;
   const MatchHistoryPage = components.MatchHistoryPage ?? LazyMatchHistoryPage;
   const AchievementsPage = components.AchievementsPage ?? LazyAchievementsPage;
   const ScorecardsPage = components.ScorecardsPage ?? LazyScorecardsPage;
@@ -359,7 +354,7 @@ export default function App({ components = {} }: AppProps) {
             </Route>
 
             {/* Protected profile & account management.
-                One persistent layout route for the five pages the sidebar
+                One persistent layout route for the four canonical profile pages
                 bounces straight between — see ProfileFamilyLayout.tsx. */}
             <Route
               element={
@@ -369,24 +364,13 @@ export default function App({ components = {} }: AppProps) {
               }
             >
               <Route path="/profile" element={<ProfileOverviewPage />} />
-              <Route path="/profile/scorecards" element={<ScorecardsPage />} />
-              <Route path="/profile/personal" element={<PersonalInformationPage />} />
-              <Route path="/profile/statistics" element={<GameStatisticsPage />} />
               <Route path="/profile/matches" element={<MatchHistoryPage />} />
               <Route path="/profile/achievements" element={<AchievementsPage />} />
+              <Route path="/profile/scorecards" element={<ScorecardsPage />} />
             </Route>
-            <Route
-              path="/profile/overview"
-              element={<Navigate to="/profile" replace />}
-            />
-            <Route
-              path="/profile/stats"
-              element={<Navigate to="/profile/statistics" replace />}
-            />
-            <Route
-              path="/profile/history"
-              element={<Navigate to="/profile/matches" replace />}
-            />
+            {Object.entries(PROFILE_ROUTE_REDIRECTS).map(([from, to]) => (
+              <Route key={from} path={from} element={<Navigate to={to} replace />} />
+            ))}
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
