@@ -56,7 +56,13 @@ export interface ProfileRecord {
   lastSeenAt: number;
 }
 
-export type XpSourceKind = "match" | "challenge" | "season_tier" | "achievement" | "manual";
+/**
+ * `match` is XP from a table with other real people; `practice_match` is XP from
+ * a bot / solo / pass-and-play table (or a repeat of one played too often),
+ * which is capped per day. Keeping them apart in the ledger is what lets the cap
+ * and the "has really played with people" gate be rebuilt after a restart.
+ */
+export type XpSourceKind = "match" | "practice_match" | "challenge" | "season_tier" | "achievement" | "manual";
 
 export interface XpLedgerEntry {
   playerId: string;

@@ -11,6 +11,7 @@ import { matchHistoryService } from "./MatchHistoryService.js";
 import { scorecardService } from "./ScorecardService.js";
 import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
+import { progressionRepository } from "../persistence/index.js";
 import {
   calculateMiniclipXPProgression,
   LEVEL_MILESTONES,
@@ -23,8 +24,75 @@ import type { EconomyService } from "../economy/EconomyService.js";
 import type { PlayerIdentityKind } from "../persistence/EconomyRepository.js";
 import { logger } from "../lib/logger.js";
 
+/**
+ * Most XP one player can earn per UTC day from matches with no second real
+ * person in them (solo vs bots, pass-and-play). Level milestones pay wallet
+ * coins, and a bot table costs nothing to repeat, so uncapped practice XP was a
+ * coin faucet. About four wins a day: solo play still levels you up, a script
+ * cannot turn it into a payout. Matches against other humans are uncapped.
+ */
+export const PRACTICE_XP_DAILY_CAP = 200;
+
+/**
+ * Full XP for at most this many matches per UTC day against the SAME set of
+ * real people; further ones count as practice. Two accounts trading wins would
+ * otherwise be an uncapped faucet (the human-table path has no cap of its own).
+ * The usual diminishing-returns rule for repeated content, applied to opponents.
+ */
+export const MAX_FULL_XP_MATCHES_PER_TABLE_PER_DAY = 5;
+
+/**
+ * Coin payouts additionally need this many finished matches against real people.
+ * An account made to farm a bot table never satisfies it, and the count is read
+ * from the durable XP ledger so a restart cannot reset it.
+ */
+export const MIN_HUMAN_MATCHES_FOR_COINS = 3;
+
+const MS_PER_DAY = 86_400_000;
+/** How much of a player's ledger a payout claim reads back to count real-people matches. */
+const CLAIM_LEDGER_READBACK_LIMIT = 1000;
+
+interface TableParticipant {
+  playerId: string;
+  isBot?: boolean;
+  isLocal?: boolean;
+  /** A signed-in account. Fails closed: absent means "not verified as a member". */
+  isMember?: boolean;
+}
+
+/**
+ * A person who counts toward "a table of real people": not a bot, not a seat
+ * played from one device, and a signed-in member. A guest costs nothing to
+ * create, so counting one would let a member farm full XP against throwaways.
+ */
+const countsAsRealPerson = (p: TableParticipant): boolean => !p.isBot && !p.isLocal && p.isMember === true;
+
+function countRealPlayers(participants: ReadonlyArray<TableParticipant>): number {
+  return participants.filter(countsAsRealPerson).length;
+}
+
+/** The same group of real people is the same table, whatever order they were seated in. */
+function tableKeyOf(participants: ReadonlyArray<TableParticipant>): string {
+  return participants
+    .filter(countsAsRealPerson)
+    .map((p) => p.playerId)
+    .sort()
+    .join("|");
+}
+
+/** How many past matches' classifications are remembered (so a replay classifies the same way). */
+const CLASSIFIED_MATCH_MEMORY = 2000;
+
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
+  /** Practice XP earned so far on `day` (UTC day number). Rebuilt from the ledger at boot (`restoreFromLedger`). */
+  private practiceXp: Map<string, { day: number; xp: number }> = new Map();
+  /** Matches played with other real people, this process (the durable count is read at claim time). */
+  private humanMatches: Map<string, number> = new Map();
+  /** Matches per real-people table per day. In memory only: a restart forgives a repeat-table count, nothing more. */
+  private tableRepeats: Map<string, { day: number; count: number }> = new Map();
+  /** matchKey -> was it practice. Makes classification idempotent across a replayed completion. */
+  private classifiedMatches: Map<string, boolean> = new Map();
   private stats: Map<string, PlayerStats> = new Map();
   private unlockedAchievements: Map<string, Record<string, number>> = new Map();
   private claimedMilestones: Map<string, Set<number>> = new Map();
@@ -99,7 +167,94 @@ export class ProfileService {
     this.stats.delete(playerId);
     this.unlockedAchievements.delete(playerId);
     this.claimedMilestones.delete(playerId);
+    this.practiceXp.delete(playerId);
+    this.humanMatches.delete(playerId);
     return hadProfile;
+  }
+
+  /**
+   * Whether this match earns full XP (a table of real people not played too
+   * often today) or counts as practice. Called once per genuinely new match:
+   * it advances the repeat-table counter, so a replay must not reach it.
+   */
+  private isPracticeMatch(participants: ReadonlyArray<TableParticipant>, at: number, matchKey: string): boolean {
+    // A completion replayed after a partial failure must classify exactly as it
+    // did the first time, and must not advance the repeat counter again.
+    const known = this.classifiedMatches.get(matchKey);
+    if (known !== undefined) return known;
+
+    let practice = true;
+    if (countRealPlayers(participants) >= 2) {
+      const key = tableKeyOf(participants);
+      const day = Math.floor(at / MS_PER_DAY);
+      const seen = this.tableRepeats.get(key);
+      const count = seen && seen.day === day ? seen.count : 0;
+      this.tableRepeats.set(key, { day, count: count + 1 });
+      practice = count >= MAX_FULL_XP_MATCHES_PER_TABLE_PER_DAY;
+    }
+
+    this.classifiedMatches.set(matchKey, practice);
+    if (this.classifiedMatches.size > CLASSIFIED_MATCH_MEMORY) {
+      // Maps iterate in insertion order: drop the oldest.
+      const oldest = this.classifiedMatches.keys().next().value;
+      if (oldest !== undefined) this.classifiedMatches.delete(oldest);
+    }
+    return practice;
+  }
+
+  /**
+   * Rebuilds what a restart would otherwise forget, from the durable XP ledger:
+   * today's practice XP (so the daily cap survives a deploy) and how many matches
+   * the player has finished with other real people. Called at boot, per player.
+   */
+  public restoreFromLedger(
+    playerId: string,
+    entries: ReadonlyArray<{ sourceKind: string; amount: number; createdAt: number }>,
+    now: number = Date.now(),
+  ): void {
+    const today = Math.floor(now / MS_PER_DAY);
+    let practiceToday = 0;
+    let human = 0;
+    for (const e of entries) {
+      if (e.sourceKind === "match") human += 1;
+      if (e.sourceKind === "practice_match" && Math.floor(e.createdAt / MS_PER_DAY) === today) practiceToday += e.amount;
+    }
+    if (practiceToday > 0) this.practiceXp.set(playerId, { day: today, xp: practiceToday });
+    if (human > (this.humanMatches.get(playerId) ?? 0)) this.humanMatches.set(playerId, human);
+  }
+
+  /**
+   * Has this player finished enough matches against real people to be paid coins?
+   * The in-process count answers the common case; otherwise the durable ledger
+   * decides. If the ledger cannot be read the answer is no — a payout waits, it
+   * is never guessed.
+   */
+  private async hasPlayedRealPeople(playerId: string): Promise<boolean> {
+    if ((this.humanMatches.get(playerId) ?? 0) >= MIN_HUMAN_MATCHES_FOR_COINS) return true;
+    try {
+      // Read deep: long stretches of practice (up to ~13 rows a day) must not push
+      // a legitimate player's older real-people matches out of the window.
+      const entries = await progressionRepository().listXp(playerId, CLAIM_LEDGER_READBACK_LIMIT);
+      const found = entries.filter((e) => e.sourceKind === "match").length;
+      if (found >= MIN_HUMAN_MATCHES_FOR_COINS) this.humanMatches.set(playerId, found);
+      return found >= MIN_HUMAN_MATCHES_FOR_COINS;
+    } catch (err) {
+      logger.error({
+        message: `Could not read the XP ledger to check human play for ${playerId}: ${String(err)}`,
+        module: "PROGRESSION",
+      });
+      return false;
+    }
+  }
+
+  /** Grants up to `wanted` XP from what is left of today's practice allowance; returns what was granted. */
+  private takePracticeXp(playerId: string, wanted: number, at: number): number {
+    const day = Math.floor(at / MS_PER_DAY);
+    const entry = this.practiceXp.get(playerId);
+    const used = entry && entry.day === day ? entry.xp : 0;
+    const granted = Math.max(0, Math.min(wanted, PRACTICE_XP_DAILY_CAP - used));
+    this.practiceXp.set(playerId, { day, xp: used + granted });
+    return granted;
   }
 
   /**
@@ -119,11 +274,17 @@ export class ProfileService {
       avatar?: string;
       isWinner: boolean;
       isBot?: boolean;
+      /** A seat played from the host's own device (pass-and-play), not a separate person. */
+      isLocal?: boolean;
+      /** A signed-in account. Only members count as real people for XP and coin eligibility; absent = not a member. */
+      isMember?: boolean;
       score?: number;
       secondaryMetrics?: Record<string, number | string>;
     }>;
   }): void {
     const replayAvailable = true;
+    // Decided once, at the first participant that is genuinely new (not a replay).
+    let isPracticeTable: boolean | null = null;
 
     for (const p of params.participants) {
       if (p.isBot) continue; // Skip bot persistence
@@ -156,6 +317,14 @@ export class ProfileService {
       // so a replay used to double the XP and inflate the level that gates
       // milestone coin claims.
       if (!matchHistoryService.recordMatch(p.playerId, matchItem)) continue;
+      if (isPracticeTable === null) {
+        isPracticeTable = this.isPracticeMatch(
+          params.participants,
+          params.finishedAt,
+          `${params.roomCode}_${params.startedAt}`,
+        );
+      }
+      const practice = isPracticeTable;
 
       // 2. Award XP & Level Up — MUST run before stats projection below.
       // getOrCreateProfile's "brand new player" branch seeds this.stats to
@@ -167,15 +336,20 @@ export class ProfileService {
       // never touches this.stats — only the very first one was silently
       // dropped).
       const profile = this.getOrCreateProfile(p.playerId, p.name, p.avatar);
-      const xpEarned = result === "WIN" ? 50 : result === "DRAW" ? 25 : 15;
-      profile.experiencePoints += xpEarned;
-      profile.level = calculateLevel(profile.experiencePoints);
-      progressionSync.profileSaved(profile);
-      // The ledger row carries the match id as its source, so replaying the
-      // completion cannot award the XP twice.
-      progressionSync.xpAwarded(
-        p.playerId, xpEarned, "match", matchItem.matchId, `${result} at ${params.game}`,
-      );
+      const baseXp = result === "WIN" ? 50 : result === "DRAW" ? 25 : 15;
+      const xpEarned = practice ? this.takePracticeXp(p.playerId, baseXp, params.finishedAt) : baseXp;
+      if (xpEarned > 0) {
+        profile.experiencePoints += xpEarned;
+        profile.level = calculateLevel(profile.experiencePoints);
+        progressionSync.profileSaved(profile);
+        // The ledger row carries the match id as its source, so replaying the
+        // completion cannot award the XP twice. Practice XP is its own kind so the
+        // daily cap can be rebuilt from the ledger after a restart.
+        progressionSync.xpAwarded(
+          p.playerId, xpEarned, practice ? "practice_match" : "match", matchItem.matchId, `${result} at ${params.game}`,
+        );
+      }
+      if (!practice) this.humanMatches.set(p.playerId, (this.humanMatches.get(p.playerId) ?? 0) + 1);
 
       // 3. Project stats — after getOrCreateProfile, so this write is the
       // last thing to touch this.stats for this player this call.
@@ -422,6 +596,24 @@ export class ProfileService {
     if (!milestone) {
       return { success: false, error: "Milestone reward not found for level" };
     }
+    // Coins need an account: a guest costs nothing to create, so paying them
+    // wallet coins would let one person farm the same payout with many identities.
+    if (milestone.reward.coins > 0 && identityKind !== "member") {
+      return { success: false, error: "Sign in to claim coin rewards" };
+    }
+    // With no economy there is no wallet to pay into. Saying "claimed" would be a
+    // lie the player only discovers when the coins never arrive, so refuse.
+    if (milestone.reward.coins > 0 && !this.economyService) {
+      return { success: false, error: "Coin rewards are temporarily unavailable. Try again later." };
+    }
+    // Coins are for people who play with people: a member account that has only
+    // ever played bot tables (the farmable path) has not earned a payout yet.
+    if (milestone.reward.coins > 0 && !(await this.hasPlayedRealPeople(playerId))) {
+      return {
+        success: false,
+        error: `Finish ${MIN_HUMAN_MATCHES_FOR_COINS} matches against real people to unlock coin rewards.`,
+      };
+    }
 
     let claimed = this.claimedMilestones.get(playerId);
     if (!claimed) {
@@ -479,6 +671,10 @@ export class ProfileService {
     this.stats.clear();
     this.unlockedAchievements.clear();
     this.claimedMilestones.clear();
+    this.practiceXp.clear();
+    this.humanMatches.clear();
+    this.tableRepeats.clear();
+    this.classifiedMatches.clear();
     matchHistoryService.reset();
   }
 }

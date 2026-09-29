@@ -4,6 +4,7 @@ import { MiniclipLevelBadge } from "../MiniclipLevelBadge";
 import { MatchXPBreakdownCard } from "../MatchXPBreakdownCard";
 import { MiniclipLevelUpModal } from "../MiniclipLevelUpModal";
 import { LevelRoadmapModal } from "../LevelRoadmapModal";
+import { useAuthStore } from "../../../store/authStore";
 import { TierAscensionCeremony } from "../TierAscensionCeremony";
 import { RoadmapLootChest } from "../RoadmapLootChest";
 import { InGameXPFloater } from "../InGameXPFloater";
@@ -12,6 +13,12 @@ import { FlameStreakAura } from "../FlameStreakAura";
 import { ProgressionShowcaseModal } from "../ProgressionShowcaseModal";
 import { MatchVersusClash } from "../MatchVersusClash";
 import type { MatchXPBreakdown } from "@shared/progression/MiniclipProgression";
+
+const { mockApiFetch } = vi.hoisted(() => ({ mockApiFetch: vi.fn() }));
+vi.mock("../../../lib/playerIdentity", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/playerIdentity")>()),
+  apiFetch: mockApiFetch,
+}));
 
 vi.mock("canvas-confetti", () => ({
   default: vi.fn(),
@@ -132,6 +139,36 @@ describe("Miniclip Progression Components", () => {
         screen.getByText("Progress through levels to unlock coins, titles & prestige crests")
       ).toBeDefined();
       expect(screen.getByText("Bronze Tier • 450 Lifetime XP")).toBeDefined();
+    });
+
+    it("tells a guest to sign in instead of offering a claim that would be refused", () => {
+      useAuthStore.setState({ isMember: false } as never);
+      render(<LevelRoadmapModal isOpen={true} onClose={vi.fn()} experiencePoints={450} playerId="test_player" />);
+
+      expect(screen.getAllByText("SIGN IN TO CLAIM").length).toBeGreaterThan(0);
+      expect(screen.queryByRole("button", { name: /^CLAIM/ })).toBeNull();
+    });
+
+    it("shows the server's reason when a claim is refused, instead of doing nothing", async () => {
+      useAuthStore.setState({ isMember: true } as never);
+      mockApiFetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: "Finish 3 matches against real people to unlock coin rewards." }),
+      });
+      render(<LevelRoadmapModal isOpen={true} onClose={vi.fn()} experiencePoints={450} playerId="test_player" />);
+
+      fireEvent.click(screen.getAllByRole("button", { name: /^CLAIM/ })[0]!);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain("Finish 3 matches against real people");
+    });
+
+    it("offers a member the claim button", () => {
+      useAuthStore.setState({ isMember: true } as never);
+      render(<LevelRoadmapModal isOpen={true} onClose={vi.fn()} experiencePoints={450} playerId="test_player" />);
+
+      expect(screen.queryByText("SIGN IN TO CLAIM")).toBeNull();
+      expect(screen.getAllByRole("button", { name: /^CLAIM/ }).length).toBeGreaterThan(0);
     });
   });
 

@@ -4038,6 +4038,10 @@ export class RoomManager {
           avatar: p.avatar,
           isWinner: Boolean(winnerId && p.id === winnerId),
           isBot: p.isBot,
+          isLocal: p.isLocal,
+          // A guest is free to create, so a member plus a throwaway guest must not
+          // count as "two real people" for XP / coin eligibility.
+          isMember: !p.isGuest && Boolean(p.identityId?.trim()),
           score,
           secondaryMetrics,
         };

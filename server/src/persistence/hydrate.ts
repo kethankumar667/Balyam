@@ -36,6 +36,8 @@ import type { MatchHistoryItem, MatchResult } from "@shared/profile/MatchHistory
 
 const HYDRATE_PROFILE_LIMIT = 500;
 const HYDRATE_MATCHES_PER_PLAYER = 25;
+/** Newest ledger rows read per player: enough for today's practice XP and a human-match count. */
+const HYDRATE_XP_LEDGER_LIMIT = 200;
 
 export interface HydrationReport {
   profiles: number;
@@ -110,14 +112,19 @@ export async function hydrateProgression(): Promise<HydrationReport> {
   const seasonClaims: Array<{ seasonId: string; playerId: string; tierId: string }> = [];
 
   for (const profile of profiles) {
-    const [unlocks, claims, page, friends, reqs, sClaims] = await Promise.all([
+    const [unlocks, claims, page, friends, reqs, sClaims, xpLedger] = await Promise.all([
       repo.listAchievements(profile.playerId),
       repo.listChallengeClaims(profile.playerId),
       repo.listMatchesForPlayer(profile.playerId, { limit: HYDRATE_MATCHES_PER_PLAYER }),
       repo.listFriends(profile.playerId),
       repo.listFriendRequests(profile.playerId),
       repo.listSeasonClaims(season.id, profile.playerId),
+      repo.listXp(profile.playerId, HYDRATE_XP_LEDGER_LIMIT),
     ]);
+
+    // Rebuild what a restart would forget: today's practice-XP allowance and the
+    // count of matches played with real people (both live only in the ledger).
+    profileService.restoreFromLedger(profile.playerId, xpLedger);
 
     achievements.push(...unlocks);
     challengeClaims.push(...claims.map((c) => ({ playerId: c.playerId, challengeId: c.challengeId })));

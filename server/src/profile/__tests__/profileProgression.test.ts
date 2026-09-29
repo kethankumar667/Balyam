@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { profileService } from "../ProfileService.js";
+import { profileService, MIN_HUMAN_MATCHES_FOR_COINS } from "../ProfileService.js";
 import {
   calculateMiniclipXPProgression,
   calculateMiniclipMatchXP,
@@ -11,6 +11,22 @@ import {
   totalXPForLevel,
   XP_CONFIG,
 } from "@shared/progression/MiniclipProgression.js";
+
+/** A fresh in-memory economy, so an earlier claim’s idempotency key does not follow a reset player. */
+async function installFreshEconomy(): Promise<void> {
+  const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
+  const { EconomyService } = await import("../../economy/EconomyService.js");
+  profileService.setEconomyService(new EconomyService(new InMemoryEconomyRepository()));
+}
+
+/** A member who has played enough real-people matches to be paid coins (no XP side effects). */
+function claimAsProven(id: string, level: number, kind: "member" | "guest" = "member") {
+  profileService.restoreFromLedger(
+    id,
+    Array.from({ length: MIN_HUMAN_MATCHES_FOR_COINS }, () => ({ sourceKind: "match", amount: 50, createdAt: Date.now() })),
+  );
+  return profileService.claimMilestoneReward(id, level, kind);
+}
 
 describe("Miniclip XP & Levels Progression System", () => {
   beforeEach(() => {
@@ -201,6 +217,11 @@ describe("Miniclip XP & Levels Progression System", () => {
   });
 
   describe("Server ProfileService Progression & Milestone Claiming", () => {
+    beforeEach(async () => {
+      // Coins need an economy to pay into; individual tests may install their own.
+      await installFreshEconomy();
+    });
+
     it("returns player progression with unclaimed milestones", () => {
       profileService.getOrCreateProfile("prog_player_1", "Progression Player");
       // Give enough XP to reach level 5 (400 XP)
@@ -227,7 +248,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       // Set player's experience to level 6 (550 XP)
       profileService.awardXP("hero_player", 550);
 
-      const claimResult = await profileService.claimMilestoneReward("hero_player", 5);
+      const claimResult = await claimAsProven("hero_player", 5);
       expect(claimResult.success).toBe(true);
       expect(claimResult.reward).toBeDefined();
       expect(claimResult.reward?.coins).toBe(500);
@@ -237,7 +258,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.getOrCreateProfile("low_level_player", "Low Level");
       profileService.awardXP("low_level_player", 50);
 
-      const claimResult = await profileService.claimMilestoneReward("low_level_player", 10);
+      const claimResult = await claimAsProven("low_level_player", 10);
       expect(claimResult.success).toBe(false);
       expect(claimResult.error).toContain("Level milestone not yet reached");
     });
@@ -246,10 +267,10 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.getOrCreateProfile("double_claim_player", "Claimer");
       profileService.awardXP("double_claim_player", 200);
 
-      const firstClaim = await profileService.claimMilestoneReward("double_claim_player", 2);
+      const firstClaim = await claimAsProven("double_claim_player", 2);
       expect(firstClaim.success).toBe(true);
 
-      const secondClaim = await profileService.claimMilestoneReward("double_claim_player", 2);
+      const secondClaim = await claimAsProven("double_claim_player", 2);
       expect(secondClaim.success).toBe(false);
       expect(secondClaim.error).toContain("already claimed");
     });
@@ -258,13 +279,15 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.getOrCreateProfile("reset_player", "Reset Player");
       profileService.awardXP("reset_player", 200);
 
-      await profileService.claimMilestoneReward("reset_player", 2);
+      await claimAsProven("reset_player", 2);
       profileService.reset();
 
       profileService.getOrCreateProfile("reset_player", "Reset Player");
       profileService.awardXP("reset_player", 200);
 
-      const reClaim = await profileService.claimMilestoneReward("reset_player", 2);
+      await installFreshEconomy();
+
+      const reClaim = await claimAsProven("reset_player", 2);
       expect(reClaim.success).toBe(true);
     });
 
@@ -285,7 +308,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       const initialBalance = BigInt(initialWallet?.balance ?? "0");
 
       // Claim milestone for level 5 (500 coins)
-      const claimResult = await profileService.claimMilestoneReward("economy_player", 5);
+      const claimResult = await claimAsProven("economy_player", 5);
       expect(claimResult.success).toBe(true);
       expect(claimResult.reward?.coins).toBe(500);
 
@@ -300,7 +323,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       expect(milestoneEntry?.description).toContain("Level 5 milestone reward");
 
       // Replay attempt fails and wallet is not double-credited
-      const duplicateClaim = await profileService.claimMilestoneReward("economy_player", 5);
+      const duplicateClaim = await claimAsProven("economy_player", 5);
       expect(duplicateClaim.success).toBe(false);
       const unchangedWallet = await economyService.getWallet("economy_player");
       expect(unchangedWallet?.balance).toBe(updatedWallet?.balance);
@@ -313,7 +336,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.getOrCreateProfile("leak_test_player", "Leak Tester");
       profileService.awardXP("leak_test_player", 550);
 
-      const claim = await profileService.claimMilestoneReward("leak_test_player", 5);
+      const claim = await claimAsProven("leak_test_player", 5);
       expect(claim.success).toBe(true);
 
       // Delete profile should clear memory for leak_test_player
@@ -325,7 +348,8 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.awardXP("leak_test_player", 550);
 
       // Player should be able to claim again on a genuinely fresh profile
-      const reClaim = await profileService.claimMilestoneReward("leak_test_player", 5);
+      await installFreshEconomy();
+      const reClaim = await claimAsProven("leak_test_player", 5);
       expect(reClaim.success).toBe(true);
     });
 
@@ -345,9 +369,9 @@ describe("Miniclip XP & Levels Progression System", () => {
 
       // Execute 3 concurrent claims in parallel
       const results = await Promise.all([
-        profileService.claimMilestoneReward("race_player", 5),
-        profileService.claimMilestoneReward("race_player", 5),
-        profileService.claimMilestoneReward("race_player", 5),
+        claimAsProven("race_player", 5),
+        claimAsProven("race_player", 5),
+        claimAsProven("race_player", 5),
       ]);
 
       const successes = results.filter((r) => r.success);
@@ -375,7 +399,7 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.awardXP("reboot_player", 550);
 
       // Claim first time
-      const firstClaim = await profileService.claimMilestoneReward("reboot_player", 5);
+      const firstClaim = await claimAsProven("reboot_player", 5);
       expect(firstClaim.success).toBe(true);
 
       // Simulate server reboot without hydrating: in-memory state is wiped, but repo has the row
@@ -385,12 +409,12 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.awardXP("reboot_player", 550);
 
       // Attempt claim after simulated reboot: economy repository returns applied: false
-      const postRebootClaim = await profileService.claimMilestoneReward("reboot_player", 5);
+      const postRebootClaim = await claimAsProven("reboot_player", 5);
       expect(postRebootClaim.success).toBe(false);
       expect(postRebootClaim.error).toContain("already claimed");
 
       // In-memory set is also updated, so immediate subsequent check also rejects without touching DB
-      const immediateRetry = await profileService.claimMilestoneReward("reboot_player", 5);
+      const immediateRetry = await claimAsProven("reboot_player", 5);
       expect(immediateRetry.success).toBe(false);
 
       profileService.setEconomyService(undefined);
@@ -407,8 +431,8 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.awardXP("hydrate_player", 1200); // Level 13
 
       // Claim level 5 and level 10
-      await profileService.claimMilestoneReward("hydrate_player", 5);
-      await profileService.claimMilestoneReward("hydrate_player", 10);
+      await claimAsProven("hydrate_player", 5);
+      await claimAsProven("hydrate_player", 10);
 
       // Simulate reboot: clear memory and re-create profiles
       profileService.reset();
@@ -449,13 +473,13 @@ describe("Miniclip XP & Levels Progression System", () => {
       profileService.getOrCreateProfile("fail_retry_player", "Retry Player");
       profileService.awardXP("fail_retry_player", 550);
 
-      const failedClaim = await profileService.claimMilestoneReward("fail_retry_player", 5);
+      const failedClaim = await claimAsProven("fail_retry_player", 5);
       expect(failedClaim.success).toBe(false);
       expect(failedClaim.error).toContain("Failed to credit milestone coins to wallet");
 
       // Fix failure and retry: player should be able to retry because optimistic claim was rolled back
       shouldFail = false;
-      const retryClaim = await profileService.claimMilestoneReward("fail_retry_player", 5);
+      const retryClaim = await claimAsProven("fail_retry_player", 5);
       expect(retryClaim.success).toBe(true);
       expect(retryClaim.reward?.coins).toBe(500);
 

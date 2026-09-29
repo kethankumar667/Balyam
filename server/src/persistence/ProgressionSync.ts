@@ -149,7 +149,7 @@ class ProgressionSync {
   xpAwarded(
     playerId: string,
     amount: number,
-    sourceKind: "match" | "challenge" | "season_tier" | "achievement" | "manual",
+    sourceKind: "match" | "practice_match" | "challenge" | "season_tier" | "achievement" | "manual",
     sourceId: string,
     reason: string,
   ): void {

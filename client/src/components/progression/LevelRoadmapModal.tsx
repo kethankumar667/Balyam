@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useAuthStore } from "../../store/authStore";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { RoadmapLootChest } from "./RoadmapLootChest";
 import {
@@ -53,9 +54,11 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
 }) => {
   const reduceMotion = useReducedMotion();
   const { containerRef } = useFocusTrap<HTMLDivElement>({ open: isOpen, onClose });
+  const isMember = useAuthStore((s) => s.isMember);
   const [selectedTier, setSelectedTier] = useState<LevelTierName>("Bronze");
   const [claimedLevels, setClaimedLevels] = useState<Set<number>>(new Set());
   const [claimingLevel, setClaimingLevel] = useState<number | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const progression = calculateMiniclipXPProgression(experiencePoints);
   const currentLevel = progression.currentLevel;
@@ -68,8 +71,10 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
   );
 
   const handleClaim = async (level: number, coins: number) => {
-    if (!playerId) return;
+    // The server refuses coins to guests; don't send a request that can only fail.
+    if (!playerId || !isMember) return;
     setClaimingLevel(level);
+    setClaimError(null);
     try {
       const res = await apiFetch(`/api/profile/${playerId}/claim-level-reward`, {
         method: "POST",
@@ -81,9 +86,15 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
         if (onClaimReward) {
           onClaimReward(level, coins);
         }
+      } else {
+        // The server says why (play more real-people matches, payouts paused…);
+        // a button that silently does nothing is the worst answer.
+        const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        setClaimError(typeof body?.error === "string" ? body.error : "Could not claim this reward. Try again.");
       }
     } catch {
       // Offline / network failure: do not mark claimed so player can retry
+      setClaimError("Network problem — your reward is safe, try again.");
     } finally {
       setClaimingLevel(null);
     }
@@ -228,6 +239,15 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                   <span>{activeTierConfig.title} Class</span>
                 </div>
 
+                {claimError && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3.5 py-2.5 text-xs font-mono text-rose-200"
+                  >
+                    {claimError}
+                  </div>
+                )}
+
                 <div className="space-y-2.5">
                   {tierMilestones.map((milestone) => {
                     const isReached = currentLevel >= milestone.level;
@@ -291,7 +311,15 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
 
                         {/* Status / Claim Action */}
                         <div className="self-end sm:self-center">
-                          {isClaimable ? (
+                          {isClaimable && !isMember ? (
+                            <a
+                              href="/login"
+                              className="px-4 py-2.5 min-h-[44px] rounded-xl border border-amber-500/50 text-amber-300 hover:bg-amber-500/10 font-black text-xs font-mono uppercase tracking-wider transition inline-flex items-center justify-center gap-1.5"
+                            >
+                              <span>SIGN IN TO CLAIM</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </a>
+                          ) : isClaimable ? (
                             <button
                               type="button"
                               disabled={isClaiming}
