@@ -682,6 +682,9 @@ function shutdown(signal: string): void {
     // fresh process on the next deploy has less backlog to recover, not
     // because skipping it would lose anything.
     roomManager.drainEconomySettlementQueue().catch(() => undefined),
+    // One last write of every live room, so a deploy loses nothing changed
+    // since its last broadcast (and no half-written temp file is left behind).
+    roomManager.flushSnapshots().catch(() => undefined),
   ]).then(() => {
       const sync = progressionSync.status();
       const economyWorker = roomManager.economySettlementQueueStatus();

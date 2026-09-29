@@ -876,18 +876,23 @@ export class HandCricketEngine implements GameEngine {
     }
   }
 
-  getStateFor(playerId: string): unknown {
-    // Mask opponent's pending pick and toss pick (use -1 sentinel = "locked in but hidden").
+  /**
+   * Hide the hidden picks from everyone but their owner. -1 means "locked in but
+   * hidden". A null viewer is a spectator / TV screen: it owns no pick, so every
+   * pick is masked — the raw state would let anyone with a room code relay a
+   * player’s toss call or delivery to their opponent.
+   */
+  private stateMaskedFor(viewerId: string | null): unknown {
     const maskedToss: Record<string, number | null> = { ...this.state.tossPicks };
     const maskedPending: Record<string, number | null> = { ...this.state.pendingPicks };
     if (this.state.phase === "toss") {
       for (const id of Object.keys(maskedToss)) {
-        if (id !== playerId) maskedToss[id] = maskedToss[id] != null ? -1 : null;
+        if (id !== viewerId) maskedToss[id] = maskedToss[id] != null ? -1 : null;
       }
     }
     if (this.state.phase === "innings1" || this.state.phase === "innings2") {
       for (const id of Object.keys(maskedPending)) {
-        if (id !== playerId) maskedPending[id] = maskedPending[id] != null ? -1 : null;
+        if (id !== viewerId) maskedPending[id] = maskedPending[id] != null ? -1 : null;
       }
     }
     return {
@@ -897,8 +902,12 @@ export class HandCricketEngine implements GameEngine {
     };
   }
 
+  getStateFor(playerId: string): unknown {
+    return this.stateMaskedFor(playerId);
+  }
+
   getPublicState(): unknown {
-    return this.state;
+    return this.stateMaskedFor(null);
   }
 
   isOver(): boolean {

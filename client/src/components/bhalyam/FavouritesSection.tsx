@@ -140,7 +140,7 @@ export default function FavouritesSection({
                 </h3>
                 <button
                   type="button"
-                  className="mt-2.5 w-full min-h-[36px] py-1.5 px-3 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="mt-2.5 w-full min-h-[44px] py-1.5 px-3 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectGame(game.slug);

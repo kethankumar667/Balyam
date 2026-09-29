@@ -5,16 +5,18 @@ import { serverEventStore } from "../events/ServerEventStore.js";
 export class MatchHistoryService {
   private playerMatches: Map<string, MatchHistoryItem[]> = new Map();
 
-  public recordMatch(playerId: string, match: MatchHistoryItem): void {
+  /** Returns false when this match was already recorded for the player (a replay). */
+  public recordMatch(playerId: string, match: MatchHistoryItem): boolean {
     const list = this.playerMatches.get(playerId) ?? [];
     // A match id is now derived from (roomCode, startedAt, player), so a
     // replayed completion — a host failover, a retried ack — produces the SAME
     // id and is recognised rather than appended a second time. It used to
     // embed `Date.now()`, which made every replay a new match and every
     // duplicate an extra line in somebody's history.
-    if (list.some((m) => m.matchId === match.matchId)) return;
+    if (list.some((m) => m.matchId === match.matchId)) return false;
     list.unshift(match);
     this.playerMatches.set(playerId, list);
+    return true;
   }
 
 

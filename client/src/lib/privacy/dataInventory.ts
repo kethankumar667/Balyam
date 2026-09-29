@@ -431,6 +431,22 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.tour.offered",
+    label: "Welcome tour offered",
+    description:
+      "Whether the welcome tour has already been offered to you in this browser tab, so it is not offered again on every reload. Cleared when the tab closes.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.tour.promptDismissed",
+    label: "Welcome tour prompt dismissed",
+    description:
+      "Whether you dismissed the welcome tour prompt in this browser tab, so it stays dismissed until you close the tab.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
     key: "bhalyam.mandali.layout",
     label: "Mandali layout",
     description: "Whether you folded away the side panels of a Mandali on a large screen, so it stays the way you left it.",

@@ -50,6 +50,9 @@ function main() {
   const rows = [];
   for (const file of files.sort()) {
     const id = file.replace(/\.ts$/, "");
+    // `<namespace>.en.ts` (mandali.en.ts) is a separate English catalogue for one
+    // feature, not a locale: scoring it against en.ts reported a false 0%.
+    if (id.endsWith(".en")) continue;
     if (id === "en") continue;
     const bases = new Set([...keysOf(join(LOCALES_DIR, file))].map(baseKey));
     const missing = [...enBases].filter((k) => !bases.has(k)).sort();

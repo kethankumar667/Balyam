@@ -64,6 +64,11 @@ const BUNDLE_BUDGETS = {
   // little headroom, not a licence to grow — trimming it (splitting the moderation
   // and coin panels out) is the way to bring it back down.
   "MandaliHubPage-*.js": 130,
+  // Party Mode is the whole TV stadium on one lazily loaded route (/tv/:code): the
+  // per-game spectator boards, crowd reactions, momentum bar, ticker and podium.
+  // It was over the 100 KB default at 102 KB; this is an explicit budget with a
+  // little headroom, not a licence to grow. Only TV screens ever download it.
+  "PartyScreen-*.js": 110,
   "SettingsPage-*.js": 50,
   "ProfilePage-*.js": 45,
   "SignUpPage-*.js": 45,

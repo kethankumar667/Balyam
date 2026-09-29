@@ -136,6 +136,18 @@ export class FileRoomSnapshotRepository implements RoomSnapshotRepository {
     return active;
   }
 
+  /** Removes an orphaned `.tmp` save older than a minute (an in-flight save is far younger). */
+  private async isStaleTempFile(filePath: string, now: number): Promise<boolean> {
+    try {
+      const { mtimeMs } = await fs.stat(filePath);
+      if (now - mtimeMs < 60_000) return false;
+      await fs.unlink(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async purgeExpiredSnapshots(maxAgeMs?: number): Promise<number> {
     await this.ensureDir();
     let purged = 0;
@@ -144,6 +156,12 @@ export class FileRoomSnapshotRepository implements RoomSnapshotRepository {
     try {
       const files = await fs.readdir(this.storageDir);
       for (const file of files) {
+        if (file.startsWith("room_") && file.endsWith(".tmp")) {
+          // A save that died between writeFile and rename leaves its temp file
+          // behind; nothing else ever reads or removes it.
+          if (await this.isStaleTempFile(path.join(this.storageDir, file), now)) purged++;
+          continue;
+        }
         if (!file.startsWith("room_") || !file.endsWith(".json")) continue;
         const filePath = path.join(this.storageDir, file);
         try {

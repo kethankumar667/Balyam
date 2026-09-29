@@ -216,12 +216,12 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
         />
         <TvMomentumBar game={game} gameState={gameState} players={players} />
 
-        {/* Broadcast Alert: Player Disconnection / Bot Auto-Play Active */}
+        {/* Broadcast Alert: a seat has dropped. Worded as a wait, not a takeover: a seat in its reconnect grace period is not necessarily being played for. */}
         {disconnectedPlayer && (
-          <div className="shrink-0 w-full flex items-center justify-center pt-0.5">
+          <div role="status" className="shrink-0 w-full flex items-center justify-center pt-0.5">
             <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-mono font-bold animate-pulse shadow-md">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>⚠️ {disconnectedPlayer.name} disconnected — Bot Auto-Play active</span>
+              <span>⚠️ {disconnectedPlayer.name} disconnected — waiting for them to rejoin</span>
             </div>
           </div>
         )}

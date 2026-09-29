@@ -520,10 +520,10 @@ describe("Production UX Resilience Audit Suite", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Couldn't load match history/i)).toBeInTheDocument();
+        expect(screen.getByText("Battle archive unavailable")).toBeInTheDocument();
       });
 
-      const retryBtn = screen.getByRole("button", { name: /retry/i });
+      const retryBtn = screen.getByRole("button", { name: /try again/i });
       expect(retryBtn).toBeInTheDocument();
 
       // Mock successful response on retry
@@ -535,7 +535,7 @@ describe("Production UX Resilience Audit Suite", () => {
       fireEvent.click(retryBtn);
 
       await waitFor(() => {
-        expect(screen.getByText(/No matches played yet/i)).toBeInTheDocument();
+        expect(screen.getByText("No battles in this view")).toBeInTheDocument();
       });
     });
 
@@ -596,16 +596,16 @@ describe("Production UX Resilience Audit Suite", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "View" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /^Open Ludo match/i })).toBeInTheDocument();
       });
 
-      const viewDetailBtn = screen.getByRole("button", { name: "View" });
+      const viewDetailBtn = screen.getByRole("button", { name: /^Open Ludo match/i });
       fireEvent.click(viewDetailBtn);
 
       // Must display modal with real metadata and error alert
       await waitFor(() => {
-        expect(screen.getByText("ludo Match Details")).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent(/Could not load detailed scorecard timeline/i);
+        expect(screen.getByText("Ludo scorecard")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent(/Detailed timeline could not be loaded/i);
       });
 
       // Verify no fabricated numbers are injected. Exact, standalone values: a
@@ -614,11 +614,11 @@ describe("Production UX Resilience Audit Suite", () => {
       expect(screen.queryByText("24")).not.toBeInTheDocument();
       expect(screen.queryByText("42")).not.toBeInTheDocument();
 
-      const retryDetailBtn = screen.getByRole("button", { name: /retry loading match details/i });
+      const retryDetailBtn = screen.getByRole("button", { name: /^retry$/i });
       fireEvent.click(retryDetailBtn);
 
       await waitFor(() => {
-        expect(screen.getByText("Match Timeline Summary")).toBeInTheDocument();
+        expect(screen.getByText("Timeline events")).toBeInTheDocument();
         expect(screen.getByText("18")).toBeInTheDocument();
         expect(screen.getByText("30")).toBeInTheDocument();
       });

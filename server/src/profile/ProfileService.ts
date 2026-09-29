@@ -150,8 +150,12 @@ export class ProfileService {
         replayAvailable,
       };
 
-      // 1. Record in match history
-      matchHistoryService.recordMatch(p.playerId, matchItem);
+      // 1. Record in match history. A replayed completion (host failover, retried
+      // ack) is recognised here and must not be counted again: XP, stats and
+      // achievements are all in-memory accumulators with no dedupe of their own,
+      // so a replay used to double the XP and inflate the level that gates
+      // milestone coin claims.
+      if (!matchHistoryService.recordMatch(p.playerId, matchItem)) continue;
 
       // 2. Award XP & Level Up — MUST run before stats projection below.
       // getOrCreateProfile's "brand new player" branch seeds this.stats to
@@ -385,8 +389,9 @@ export class ProfileService {
    * Retrieves full Miniclip XP progression and milestone roadmap status for a player.
    */
   public getProgression(playerId: string): MiniclipXPProgression {
-    const profile = this.getOrCreateProfile(playerId);
-    const prog = calculateMiniclipXPProgression(profile.experiencePoints);
+    // Read-only, like `getProfile`: this backs a PUBLIC route, and an id nobody has
+    // played under is simply level 1 with no XP — not a row to create.
+    const prog = calculateMiniclipXPProgression(this.getProfile(playerId)?.experiencePoints ?? 0);
     const claimed = this.claimedMilestones.get(playerId) || new Set<number>();
 
     // Unclaimed milestone rewards available to claim

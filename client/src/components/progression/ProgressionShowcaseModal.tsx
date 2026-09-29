@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   BarChart2,
 } from "lucide-react";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { MiniclipHoloTilt } from "./MiniclipHoloTilt";
 import { FlameStreakAura } from "./FlameStreakAura";
@@ -59,6 +60,9 @@ export const ProgressionShowcaseModal: React.FC<ProgressionShowcaseModalProps> =
 }) => {
   const reduceMotion = useReducedMotion();
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
+  // Escape / Tab trap / focus restore. Off while the roadmap is stacked on top of
+  // this card, so one Escape closes the top dialog only, not both.
+  const { containerRef } = useFocusTrap<HTMLDivElement>({ open: isOpen && !isRoadmapOpen, onClose });
   const safeLevel = Math.max(1, Math.floor(level));
   const tier: LevelTier = getLevelTier(safeLevel);
   const title = getLevelTitle(safeLevel);
@@ -69,6 +73,7 @@ export const ProgressionShowcaseModal: React.FC<ProgressionShowcaseModalProps> =
       <AnimatePresence>
         {isOpen && (
           <div
+            ref={containerRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="showcase-title"
@@ -109,7 +114,7 @@ export const ProgressionShowcaseModal: React.FC<ProgressionShowcaseModalProps> =
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+                  className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer"
                   aria-label="Close Showcase"
                 >
                   <X className="w-4 h-4" />

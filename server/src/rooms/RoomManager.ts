@@ -773,6 +773,24 @@ function checkHostEconomyEligibility(
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
+/**
+ * A terminal write that was mid-flight when the process died cannot resume by
+ * itself: with no live promise, `finalizeMatch` sees PERSISTING and returns,
+ * and the retry loop only looks at FAILED, so the room would sit finished
+ * forever. FAILED replays the stored payload through the idempotent intent
+ * path. PERSISTED is only ever the instant before COMPLETED.
+ */
+function hydratedTerminalStatus(snapshot: RoomSnapshot): RoomTerminalStatus {
+  switch (snapshot.terminalStatus) {
+    case "PERSISTING":
+      return snapshot.terminalPayload ? "FAILED" : "IDLE";
+    case "PERSISTED":
+      return "COMPLETED";
+    default:
+      return snapshot.terminalStatus || "IDLE";
+  }
+}
+
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private socketToRoom = new Map<string, string>();
@@ -917,13 +935,20 @@ export class RoomManager {
   }
 
   private fromRoomSnapshot(snapshot: RoomSnapshot): Room {
+    // The grace window is measured from NOW, not from `savedAt`: the downtime of
+    // a restart is not the players' absence, and `savedAt` is only the last
+    // broadcast. Counting from it expired every seat before a client could
+    // reconnect. A match in progress gets the same longer window a live
+    // disconnect from one gets (see `handleDisconnect`).
+    const hydratedAt = Date.now();
+    const graceMs = snapshot.phase === "playing" ? MATCH_GRACE_PERIOD_MS : GRACE_PERIOD_MS;
     const playersMap = new Map<string, Player>();
     for (const p of snapshot.players) {
       const restoredPlayer: Player = {
         ...p,
         isConnected: false,
-        awaySince: snapshot.savedAt,
-        awayUntil: snapshot.savedAt + GRACE_PERIOD_MS,
+        awaySince: hydratedAt,
+        awayUntil: hydratedAt + graceMs,
       };
       playersMap.set(p.id, restoredPlayer);
     }
@@ -1000,11 +1025,11 @@ export class RoomManager {
       entryStakeCoins: snapshot.entryStakeCoins,
       economyCommitPending: false,
       pendingCommitOperationId: null,
-      terminalStatus: snapshot.terminalStatus || "IDLE",
+      terminalStatus: hydratedTerminalStatus(snapshot),
       terminalOutcome: snapshot.terminalOutcome || null,
       terminalPromise: null,
       terminalError: null,
-      terminalPayload: snapshot.terminalPayload || null,
+      terminalPayload: snapshot.terminalStatus === "PERSISTED" ? null : snapshot.terminalPayload || null,
     };
 
     if (snapshot.phase === "playing" || snapshot.engineState) {
@@ -1017,10 +1042,13 @@ export class RoomManager {
           }
         }
         engine.init(Array.from(playersMap.values()));
-        if (snapshot.engineState && typeof engine.restoreState === "function") {
-          engine.restoreState(snapshot.engineState);
-        }
-        room.engine = engine;
+        const canResume = snapshot.engineState != null && typeof engine.restoreState === "function";
+        if (canResume) engine.restoreState!(snapshot.engineState);
+        // A fresh `init()` is a NEW deal. Handing one to a room that is still
+        // `playing` under the old match id would silently restart the game with
+        // the old pot still committed, so a match in progress keeps no engine
+        // unless it was really restored; `hydrateSnapshots` refunds it instead.
+        if (canResume || snapshot.phase !== "playing") room.engine = engine;
       } catch (err) {
         logger.error({
           message: `Failed to restore engine for room ${room.code} (${room.game}): ${err instanceof Error ? err.message : String(err)}`,
@@ -1033,7 +1061,41 @@ export class RoomManager {
     return room;
   }
 
-  async persistRoomSnapshot(room: Room): Promise<void> {
+  /**
+   * One write in flight per room, with at most one more queued behind it.
+   * A broadcast per game tick used to fire an unordered `writeFile`+`rename`
+   * each, so an older save could land after a newer one, and a save could
+   * recreate the file just after `deleteRoomSnapshot` removed it (a ghost room
+   * on the next boot). The trailing write re-serialises at write time, so it
+   * always carries the latest state.
+   */
+  private readonly snapshotQueues = new Map<string, { room: Room; tail: Promise<void>; pending: boolean }>();
+
+  persistRoomSnapshot(room: Room): Promise<void> {
+    const queued = this.snapshotQueues.get(room.code);
+    if (queued) {
+      // Track the LATEST room object for this code: a room re-created under the
+      // same code while an old one’s write is in flight must not have its
+      // first snapshot skipped by the old room’s close guard.
+      queued.room = room;
+      queued.pending = true;
+      return queued.tail;
+    }
+    const queue = { room, tail: Promise.resolve(), pending: false };
+    this.snapshotQueues.set(room.code, queue);
+    queue.tail = (async () => {
+      do {
+        queue.pending = false;
+        await this.writeRoomSnapshot(queue.room);
+      } while (queue.pending);
+      this.snapshotQueues.delete(room.code);
+    })();
+    return queue.tail;
+  }
+
+  private async writeRoomSnapshot(room: Room): Promise<void> {
+    // A closed room must never be written back: its snapshot was deleted with it.
+    if (this.rooms.get(room.code) !== room) return;
     try {
       const snapshot = this.toRoomSnapshot(room);
       await this.snapshotRepo.saveSnapshot(snapshot);
@@ -1047,6 +1109,13 @@ export class RoomManager {
   }
 
   async deleteRoomSnapshot(code: string): Promise<void> {
+    // Let a write already in flight land first, then remove it — and drop any
+    // queued follow-up so nothing is written after the delete.
+    const queued = this.snapshotQueues.get(code);
+    if (queued) {
+      queued.pending = false;
+      await queued.tail;
+    }
     try {
       await this.snapshotRepo.deleteSnapshot(code);
     } catch (err) {
@@ -1058,6 +1127,28 @@ export class RoomManager {
     }
   }
 
+  /** Final write of every live room, so a deploy loses no state change made since its last broadcast. */
+  async flushSnapshots(): Promise<void> {
+    await Promise.allSettled(Array.from(this.rooms.values()).map((room) => this.persistRoomSnapshot(room)));
+  }
+
+  /**
+   * A match that was in progress but whose game state cannot be restored (the
+   * engine has no `restoreState`, or restoring it failed). Nobody forfeited:
+   * the server lost the game, so the pot is refunded, never forfeited. `abandonRoom`
+   * forfeits when `phase === "playing"`, so the phase is stepped back first,
+   * which routes it through its commit-but-never-played REFUND branch.
+   */
+  private async abandonUnresumableMatch(room: Room): Promise<void> {
+    logger.warn({
+      message: `Room ${room.code} (${room.game}) was mid-match but its game state cannot be restored; refunding and closing instead of restarting the game.`,
+      module: "DURABILITY",
+      roomCode: room.code,
+    });
+    room.phase = "lobby";
+    await this.abandonRoom(room);
+  }
+
   async hydrateSnapshots(): Promise<number> {
     const snapshots = await this.snapshotRepo.listActiveSnapshots();
     let restored = 0;
@@ -1065,7 +1156,12 @@ export class RoomManager {
       if (this.rooms.has(snap.code.toUpperCase())) continue;
       try {
         const room = this.fromRoomSnapshot(snap);
+        serverLifecycleRegistry.registerRoom(room.code);
         this.rooms.set(room.code, room);
+        if (room.phase === "playing" && !room.engine) {
+          await this.abandonUnresumableMatch(room);
+          continue;
+        }
         restored++;
         logger.info({
           message: `Restored room ${room.code} (${room.game}, ${room.phase}) with ${room.players.size} seats from snapshot`,

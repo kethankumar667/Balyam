@@ -11,6 +11,7 @@ import {
   Award,
   Zap,
 } from "lucide-react";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { RoadmapLootChest } from "./RoadmapLootChest";
 import {
@@ -51,6 +52,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
   onClaimReward,
 }) => {
   const reduceMotion = useReducedMotion();
+  const { containerRef } = useFocusTrap<HTMLDivElement>({ open: isOpen, onClose });
   const [selectedTier, setSelectedTier] = useState<LevelTierName>("Bronze");
   const [claimedLevels, setClaimedLevels] = useState<Set<number>>(new Set());
   const [claimingLevel, setClaimingLevel] = useState<number | null>(null);
@@ -91,6 +93,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
+          ref={containerRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="roadmap-title"

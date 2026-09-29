@@ -38,6 +38,7 @@ describe("Room Durability & Snapshot Persistence", () => {
     manager.setReady("sock-1", true);
     manager.setReady("sock-2", true);
     manager.startGame("sock-1");
+    await manager.flushSnapshots();
 
     const snapPlaying = await inMemoryRepo.getSnapshot(code);
     expect(snapPlaying?.phase).toBe("playing");
@@ -68,6 +69,7 @@ describe("Room Durability & Snapshot Persistence", () => {
     manager1.applyMove("sock-1", "choose", { choice: "rock" });
     manager1.applyMove("sock-2", "choose", { choice: "scissors" });
 
+    await manager1.flushSnapshots();
     const beforeRestartState = manager1.getRoomStateByCode(code);
     expect(beforeRestartState?.phase).toBe("playing");
 
@@ -145,6 +147,7 @@ describe("Room Durability & Snapshot Persistence", () => {
     manager1.startGame("sock-1");
 
     // Persist snapshot while game is playing
+    await manager1.flushSnapshots();
     const snap = await inMemoryRepo.getSnapshot(code);
     expect(snap).not.toBeNull();
     if (!snap) return;
