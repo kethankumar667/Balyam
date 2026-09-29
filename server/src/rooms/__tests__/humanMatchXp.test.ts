@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { RoomManager } from "../RoomManager.js";
 import { profileService } from "../../profile/ProfileService.js";
 import { progressionSync } from "../../persistence/ProgressionSync.js";
@@ -16,9 +16,12 @@ describe("which room matches earn real-people XP", () => {
   beforeEach(() => {
     setProgressionRepository(new InMemoryProgressionRepository());
     profileService.reset();
+    // Only the clock is faked, so a match can be given a believable length.
+    vi.useFakeTimers({ toFake: ["Date"] });
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     setProgressionRepository(null);
   });
 
@@ -37,6 +40,8 @@ describe("which room matches earn real-people XP", () => {
     rooms.setReady("sock-host", true);
     rooms.setReady("sock-join", true);
     rooms.startGame("sock-host");
+    // A real match takes longer than the instant one a test can play.
+    vi.setSystemTime(Date.now() + 2 * 60_000);
     playRpsToCompletion(rooms, "sock-host", "sock-join");
     await progressionSync.drain();
 

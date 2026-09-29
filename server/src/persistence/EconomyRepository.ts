@@ -376,6 +376,12 @@ export interface TransferWalletCoinsInput {
   reason: string;
   /** One key for the whole transfer — both ledger legs derive their own sub-keys from it, atomically. */
   idempotencyKey: string;
+  /**
+   * A cap on what the sender may have sent since `dayStartMs`, enforced inside the
+   * transfer's own transaction under the sender's wallet lock — so parallel sends,
+   * or two server instances, cannot each read the same total and all pass.
+   */
+  dailyCap?: { maxCoins: string; dayStartMs: number };
 }
 
 export interface DebitWalletInput {
@@ -581,6 +587,10 @@ export class WalletNotFoundError extends WalletError {
 /** `commitMatchEntry` or `redeemRewardVoucher` attempted against a frozen wallet. Never thrown by `settleMatchEconomy`'s credit path or `refundMatchEntry` — a frozen wallet may always receive. */
 export class WalletFrozenError extends WalletError {
   readonly code = "WALLET_FROZEN";
+}
+/** A capped transfer would take the sender past what they may send today. */
+export class TransferCapExceededError extends WalletError {
+  readonly code = "TRANSFER_CAP_EXCEEDED";
 }
 /** `commitMatchEntry`'s host balance is below the required commitment, checked AFTER the frozen check. */
 export class InsufficientFundsError extends WalletError {

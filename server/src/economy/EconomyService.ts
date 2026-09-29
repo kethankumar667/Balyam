@@ -1247,6 +1247,7 @@ export class EconomyService {
         amountCoins: amountBn.toString(),
         reason: input.reason?.trim() || "",
         idempotencyKey: input.idempotencyKey.trim(),
+        ...(input.dailyCap ? { dailyCap: input.dailyCap } : {}),
       }),
     );
     this.logOutcome("transferWalletCoins", null, startedAt, outcome.applied);

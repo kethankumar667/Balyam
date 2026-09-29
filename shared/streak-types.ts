@@ -139,5 +139,11 @@ export interface DailyStreakClaimResult {
   cycleCount: number;
   shieldUsed: boolean;
   walletBalance: string;
+  /**
+   * Set when the coins were earned but are still vesting: the time they reach the
+   * wallet. Absent when they were paid at once. `coinsAwarded` is what was earned;
+   * `walletBalance` is what the player has now.
+   */
+  pendingUntil?: number;
   updatedState: DailyStreakState;
 }

@@ -151,16 +151,34 @@ describe("Miniclip Progression Components", () => {
 
     it("shows the server's reason when a claim is refused, instead of doing nothing", async () => {
       useAuthStore.setState({ isMember: true } as never);
-      mockApiFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ error: "Finish 3 matches against real people to unlock coin rewards." }),
-      });
+      // The roadmap also asks for pending rewards when it opens, so answer by route.
+      mockApiFetch.mockImplementation(async (url: string) =>
+        String(url).includes("claim-level-reward")
+          ? { ok: false, json: async () => ({ error: "Finish 3 matches against real people to unlock coin rewards." }) }
+          : { ok: true, json: async () => ({ rewards: [], standing: null }) },
+      );
       render(<LevelRoadmapModal isOpen={true} onClose={vi.fn()} experiencePoints={450} playerId="test_player" />);
 
       fireEvent.click(screen.getAllByRole("button", { name: /^CLAIM/ })[0]!);
 
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toContain("Finish 3 matches against real people");
+    });
+
+    it("says when the coins arrive after a claim, instead of implying they are already in the wallet", async () => {
+      useAuthStore.setState({ isMember: true } as never);
+      const arrivesAt = Date.now() + 24 * 3_600_000;
+      mockApiFetch.mockImplementation(async (url: string) =>
+        String(url).includes("claim-level-reward")
+          ? { ok: true, json: async () => ({ ok: true, payout: { status: "PENDING", vestingUntil: arrivesAt } }) }
+          : { ok: true, json: async () => ({ rewards: [], standing: null }) },
+      );
+      render(<LevelRoadmapModal isOpen={true} onClose={vi.fn()} experiencePoints={450} playerId="test_player" />);
+
+      fireEvent.click(screen.getAllByRole("button", { name: /^CLAIM/ })[0]!);
+
+      expect(await screen.findByText(/ARRIVES IN 24 HR/)).toBeDefined();
+      expect(screen.queryByText("CLAIMED")).toBeNull();
     });
 
     it("offers a member the claim button", () => {

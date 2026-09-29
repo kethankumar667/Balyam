@@ -50,7 +50,11 @@ const DRAW: [string, number][] = [
 const ALICE_WINS_IN_3: [string, number][] = [["sA", 0], ["sB", 3], ["sA", 1], ["sB", 4], ["sA", 2]];
 
 async function play(rm: RoomManager, moves: [string, number][]) {
-  for (const [s, c] of moves) await rm.applyMove(s, "place", { cellIndex: c });
+  for (const [i, [s, c]] of moves.entries()) {
+    // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+    if (i === moves.length - 1) vi.setSystemTime(Date.now() + 5 * 60_000);
+    await rm.applyMove(s, "place", { cellIndex: c });
+  }
 }
 
 describe("Tic Tac Toe through RoomManager", () => {

@@ -46,6 +46,15 @@ import { tournamentRouter, seasonRouter } from "./tournaments/TournamentControll
 import socialRouter from "./social/SocialController.js";
 import partyRouter from "./party/PartyController.js";
 import { StreakService } from "./streak/StreakService.js";
+import { RewardGateway } from "./rewards/RewardGateway.js";
+import { TransferPolicy } from "./rewards/TransferPolicy.js";
+import { createRewardsRouter } from "./rewards/RewardsController.js";
+import { createRiskAdminRouter } from "./admin/RiskAdminController.js";
+import { riskService } from "./rewards/RiskService.js";
+import { trustService } from "./rewards/TrustService.js";
+import { rewardStore, initialiseRewardStore, orderedRiskPersistence } from "./rewards/store.js";
+import { ABNORMAL_WINDOW_MS } from "./rewards/SessionRules.js";
+import { matchHistoryService } from "./profile/MatchHistoryService.js";
 import { createStreakRouter } from "./streak/StreakController.js";
 import { Game2048StatsService } from "./games2048/Game2048StatsService.js";
 import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.js";
@@ -371,7 +380,28 @@ app.use("/api/cosmetics", createCosmeticsRouter(cosmeticsService));
  * 30-Day Daily Login Streak & Rewards API.
  * Server-authoritative daily progression, protection shields, and milestone rewards.
  */
-const streakService = new StreakService({ economyService, cosmeticsService });
+/**
+ * The reward gateway: the one door coins for playing come through. Level
+ * milestones and daily streaks both pay through it, so a reward is a ledger row
+ * with a reason and a risk state first, vests for a day, and only then reaches
+ * the wallet. It is built here, before either, and handed to both; the store it
+ * writes to is chosen later in `boot()` (`rewardStore` resolves at call time).
+ * With no economy configured it refuses coin rewards honestly rather than
+ * pretending to pay them.
+ */
+const rewardGateway = new RewardGateway({
+  economy: economyService ?? null,
+  repository: rewardStore,
+  risk: riskService,
+  trust: trustService,
+  // RISK_EVENT_RETENTION_DAYS=0 keeps audit events forever; unset keeps a year.
+  ...(process.env.RISK_EVENT_RETENTION_DAYS !== undefined && Number.isFinite(Number(process.env.RISK_EVENT_RETENTION_DAYS))
+    ? { riskEventRetentionMs: Math.max(0, Number(process.env.RISK_EVENT_RETENTION_DAYS)) * 86_400_000 }
+    : {}),
+});
+profileService.setRewardGateway(rewardGateway);
+
+const streakService = new StreakService({ economyService, cosmeticsService, rewardGateway });
 app.use("/api/streak", createStreakRouter(streakService));
 
 /**
@@ -405,6 +435,29 @@ if (mandaliRepository.isDurable()) {
 const mandaliService = new MandaliService(mandaliRepository, roomManager, io, economyService);
 app.use("/api/mandali", createMandaliRouter(mandaliService));
 
+/**
+ * Trust tiers and the daily transfer cap. The tiers are computed from data the
+ * server already holds (account age, matches against signed-in opponents,
+ * Mandali membership) — nothing about the device or network.
+ */
+trustService.setProviders({
+  accountAgeDays: (id) => {
+    const joinedAt = profileService.getProfile(id)?.joinedAt;
+    return joinedAt ? Math.max(0, (Date.now() - joinedAt) / 86_400_000) : 0;
+  },
+  opponentStats: (id) => matchHistoryService.getOpponentStats(id),
+  // A Mandali of one is not a group of friends, so it does not count toward trust.
+  activeMandalis: async (id) => (await mandaliService.getPlayerMandalis(id)).filter((m) => m.memberCount >= 2).length,
+});
+const transferPolicy = economyService
+  ? new TransferPolicy({ ledger: economyService, risk: riskService, trust: trustService })
+  : null;
+mandaliService.setTransferPolicy(transferPolicy);
+app.use(
+  "/api/rewards",
+  createRewardsRouter({ gateway: rewardGateway, trust: trustService, risk: riskService, transferPolicy }),
+);
+
 
 /**
  * Operational surface. The gate lives ON this router (see
@@ -432,6 +485,10 @@ app.get("/api/rooms/:code/alive", (req, res) => {
  */
 app.use("/api/admin/dashboard", createDashboardRouter());
 app.use("/api/admin/users", createAdminUsersRouter());
+app.use(
+  "/api/admin/risk",
+  createRiskAdminRouter({ gateway: rewardGateway, repository: rewardStore, risk: riskService, trust: trustService }),
+);
 
 /**
  * Audit Logs console — settlement events + admin wallet adjustments merged
@@ -534,6 +591,28 @@ async function boot(): Promise<void> {
       module: "PERSISTENCE",
     });
   }
+
+  /*
+   * Rewards and risk, restored the same way progression is: pick the store and
+   * prove it is reachable (a missing migration stops the boot here, not a player's
+   * claim), rebuild risk states and today's abnormal-session counts, rebuild which
+   * milestones are already claimed, and pay anything that came due while the
+   * process was down. Risk writes are queued behind progression's, because a risk
+   * row references the profile row those writes create.
+   */
+  const rewards = await initialiseRewardStore();
+  riskService.attachStore(orderedRiskPersistence(rewards, (work) => progressionSync.afterPending(work)));
+  riskService.hydrate(
+    await rewards.listRiskStates(),
+    await rewards.listRiskEventsSince(Date.now() - ABNORMAL_WINDOW_MS, "ABNORMAL_SESSION"),
+  );
+  const claimedMilestones = await profileService.hydrateMilestonesFromRewards(rewards);
+  logger.info({
+    message: `Reward gateway ready (${rewards.kind}); ${claimedMilestones} milestone claim(s) restored.`,
+    module: "REWARDS",
+  });
+  rewardGateway.startSweeper();
+  void rewardGateway.sweep();
 
   server.listen(PORT, "0.0.0.0", () => {
     logger.info({
@@ -672,8 +751,12 @@ function shutdown(signal: string): void {
   // Blocker 06: stop periodic recovery before draining, so a sweep firing
   // mid-shutdown does not race the drain loop below.
   roomManager.stopEconomyRecovery();
+  // Same reason: a reward sweep firing mid-shutdown must not race the drain.
+  rewardGateway.stopSweeper();
   void Promise.all([
     progressionSync.drain().catch(() => undefined),
+    // A sweep already paying rewards is allowed to finish; nothing new starts.
+    rewardGateway.drain().catch(() => undefined),
     // Speed, not the durability guarantee, now — see
     // DurableSettlementWorker's own header. A terminal intent is already
     // durably persisted (via `attemptSettlementPersistence`/

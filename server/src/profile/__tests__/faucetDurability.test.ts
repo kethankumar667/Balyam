@@ -7,8 +7,7 @@ import {
 import { progressionSync } from "../../persistence/ProgressionSync.js";
 import { setProgressionRepository, progressionRepository } from "../../persistence/index.js";
 import { InMemoryProgressionRepository } from "../../persistence/InMemoryProgressionRepository.js";
-import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
-import { EconomyService } from "../../economy/EconomyService.js";
+import { installRewards, uninstallRewards } from "../../rewards/__tests__/rewardRig.js";
 
 const ME = "durable_grinder";
 
@@ -44,11 +43,11 @@ describe("coin-faucet controls survive a restart and refuse dishonest payouts", 
   beforeEach(() => {
     setProgressionRepository(new InMemoryProgressionRepository());
     profileService.reset();
-    profileService.setEconomyService(undefined);
+    uninstallRewards();
   });
 
   afterEach(() => {
-    profileService.setEconomyService(undefined);
+    uninstallRewards();
     setProgressionRepository(null);
   });
 
@@ -74,7 +73,7 @@ describe("coin-faucet controls survive a restart and refuse dishonest payouts", 
   });
 
   it("refuses coins to a member who has only ever played bot tables", async () => {
-    profileService.setEconomyService(new EconomyService(new InMemoryEconomyRepository()));
+    installRewards();
     for (let i = 0; i < 10; i++) profileService.recordMatchFinished(botTable(i));
     profileService.awardXP(ME, 550);
 
@@ -85,7 +84,7 @@ describe("coin-faucet controls survive a restart and refuse dishonest payouts", 
   });
 
   it("pays a member after enough real-people matches, even when the count survives only in the ledger", async () => {
-    profileService.setEconomyService(new EconomyService(new InMemoryEconomyRepository()));
+    installRewards();
     for (let i = 0; i < MIN_HUMAN_MATCHES_FOR_COINS; i++) profileService.recordMatchFinished(humanTable(i));
     await progressionSync.drain();
 
@@ -112,7 +111,7 @@ describe("coin-faucet controls survive a restart and refuse dishonest payouts", 
     expect(refused.error).toMatch(/unavailable/i);
 
     // The refusal must not burn the claim: once an economy exists, it pays.
-    profileService.setEconomyService(new EconomyService(new InMemoryEconomyRepository()));
+    installRewards();
     const paid = await profileService.claimMilestoneReward(ME, 5, "member");
     expect(paid.success).toBe(true);
   });

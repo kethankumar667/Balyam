@@ -55,6 +55,7 @@ import {
   VoucherCodeCollisionError,
   VoucherNotActiveError,
   VoucherNotFoundError,
+  TransferCapExceededError,
   WalletFrozenError,
   WalletNotFoundError,
 } from "./EconomyRepository.js";
@@ -1760,6 +1761,18 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       throw new InsufficientFundsError(
         `Transfer of ${input.amountCoins} exceeds wallet balance of ${fromWallet.balance}`,
       );
+    }
+    if (input.dailyCap) {
+      const { maxCoins, dayStartMs } = input.dailyCap;
+      let sentToday = 0n;
+      for (const entry of this.walletLedger) {
+        if (entry.walletId === input.fromIdentityId && entry.entryType === "P2P_TRANSFER_SEND" && entry.createdAt >= dayStartMs) {
+          sentToday += -toBig(entry.amount);
+        }
+      }
+      if (sentToday + amountBn > toBig(maxCoins)) {
+        throw new TransferCapExceededError(`${sentToday} sent today, ${amountBn} requested, cap ${maxCoins}`);
+      }
     }
 
     const updatedFrom = this.applyWalletDebit(fromWallet, amountBn, {

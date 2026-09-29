@@ -12,6 +12,11 @@ import { scorecardService } from "./ScorecardService.js";
 import { resolveModeId } from "@shared/profile/GameModes.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
 import { progressionRepository } from "../persistence/index.js";
+import { PaceTracker, assessSession } from "../rewards/SessionRules.js";
+import { riskService } from "../rewards/RiskService.js";
+import { REASON, type ReasonCode, type RewardStatus } from "../rewards/types.js";
+import type { RewardGateway } from "../rewards/RewardGateway.js";
+import type { RewardRepository } from "../rewards/RewardRepository.js";
 import {
   calculateMiniclipXPProgression,
   LEVEL_MILESTONES,
@@ -83,6 +88,12 @@ function tableKeyOf(participants: ReadonlyArray<TableParticipant>): string {
 /** How many past matches' classifications are remembered (so a replay classifies the same way). */
 const CLASSIFIED_MATCH_MEMORY = 2000;
 
+/** Whether a match is a table of real people, and the reason code that says so. */
+interface TableClass {
+  practice: boolean;
+  code: ReasonCode;
+}
+
 export class ProfileService {
   private profiles: Map<string, PlayerProfile> = new Map();
   /** Practice XP earned so far on `day` (UTC day number). Rebuilt from the ledger at boot (`restoreFromLedger`). */
@@ -91,15 +102,24 @@ export class ProfileService {
   private humanMatches: Map<string, number> = new Map();
   /** Matches per real-people table per day. In memory only: a restart forgives a repeat-table count, nothing more. */
   private tableRepeats: Map<string, { day: number; count: number }> = new Map();
-  /** matchKey -> was it practice. Makes classification idempotent across a replayed completion. */
-  private classifiedMatches: Map<string, boolean> = new Map();
+  /** matchKey -> how it was classified. Makes classification idempotent across a replayed completion. */
+  private classifiedMatches: Map<string, TableClass> = new Map();
+  /** How fast each player has been finishing matches. In memory: the window is ten minutes. */
+  private pace = new PaceTracker();
   private stats: Map<string, PlayerStats> = new Map();
   private unlockedAchievements: Map<string, Record<string, number>> = new Map();
   private claimedMilestones: Map<string, Set<number>> = new Map();
   private economyService?: EconomyService | null;
 
+  /** The one door coins come through. Without it there is no way to pay a coin reward, and none is faked. */
+  private rewardGateway: RewardGateway | null = null;
+
   public setEconomyService(service: EconomyService | null | undefined): void {
     this.economyService = service;
+  }
+
+  public setRewardGateway(gateway: RewardGateway | null | undefined): void {
+    this.rewardGateway = gateway ?? null;
   }
 
   /**
@@ -169,6 +189,10 @@ export class ProfileService {
     this.claimedMilestones.delete(playerId);
     this.practiceXp.delete(playerId);
     this.humanMatches.delete(playerId);
+    // Risk state is deliberately NOT cleared here. This is reachable by the
+    // player themselves, and a restricted or watched account could otherwise
+    // wipe its own standing by deleting its profile. Standing is cleared only by
+    // an operator (or, for a system-set watch, by lapsing).
     return hadProfile;
   }
 
@@ -177,29 +201,32 @@ export class ProfileService {
    * often today) or counts as practice. Called once per genuinely new match:
    * it advances the repeat-table counter, so a replay must not reach it.
    */
-  private isPracticeMatch(participants: ReadonlyArray<TableParticipant>, at: number, matchKey: string): boolean {
+  private classifyTable(participants: ReadonlyArray<TableParticipant>, at: number, matchKey: string): TableClass {
     // A completion replayed after a partial failure must classify exactly as it
     // did the first time, and must not advance the repeat counter again.
     const known = this.classifiedMatches.get(matchKey);
     if (known !== undefined) return known;
 
-    let practice = true;
+    let classified: TableClass = { practice: true, code: REASON.PRACTICE_TABLE };
     if (countRealPlayers(participants) >= 2) {
       const key = tableKeyOf(participants);
       const day = Math.floor(at / MS_PER_DAY);
       const seen = this.tableRepeats.get(key);
       const count = seen && seen.day === day ? seen.count : 0;
       this.tableRepeats.set(key, { day, count: count + 1 });
-      practice = count >= MAX_FULL_XP_MATCHES_PER_TABLE_PER_DAY;
+      classified =
+        count >= MAX_FULL_XP_MATCHES_PER_TABLE_PER_DAY
+          ? { practice: true, code: REASON.REPEAT_TABLE }
+          : { practice: false, code: REASON.FULL_TABLE };
     }
 
-    this.classifiedMatches.set(matchKey, practice);
+    this.classifiedMatches.set(matchKey, classified);
     if (this.classifiedMatches.size > CLASSIFIED_MATCH_MEMORY) {
       // Maps iterate in insertion order: drop the oldest.
       const oldest = this.classifiedMatches.keys().next().value;
       if (oldest !== undefined) this.classifiedMatches.delete(oldest);
     }
-    return practice;
+    return classified;
   }
 
   /**
@@ -284,7 +311,7 @@ export class ProfileService {
   }): void {
     const replayAvailable = true;
     // Decided once, at the first participant that is genuinely new (not a replay).
-    let isPracticeTable: boolean | null = null;
+    let tableClass: TableClass | null = null;
 
     for (const p of params.participants) {
       if (p.isBot) continue; // Skip bot persistence
@@ -317,14 +344,14 @@ export class ProfileService {
       // so a replay used to double the XP and inflate the level that gates
       // milestone coin claims.
       if (!matchHistoryService.recordMatch(p.playerId, matchItem)) continue;
-      if (isPracticeTable === null) {
-        isPracticeTable = this.isPracticeMatch(
-          params.participants,
-          params.finishedAt,
-          `${params.roomCode}_${params.startedAt}`,
-        );
+      if (tableClass === null) {
+        // A match too short to have been played must not burn one of the table's
+        // five full-XP slots for the day; it pays nothing either way.
+        tableClass = assessSession(params.game, params.durationMs, 0).ok
+          ? this.classifyTable(params.participants, params.finishedAt, `${params.roomCode}_${params.startedAt}`)
+          : { practice: true, code: REASON.TOO_SHORT };
       }
-      const practice = isPracticeTable;
+      const table = tableClass;
 
       // 2. Award XP & Level Up — MUST run before stats projection below.
       // getOrCreateProfile's "brand new player" branch seeds this.stats to
@@ -337,7 +364,37 @@ export class ProfileService {
       // dropped).
       const profile = this.getOrCreateProfile(p.playerId, p.name, p.avatar);
       const baseXp = result === "WIN" ? 50 : result === "DRAW" ? 25 : 15;
-      const xpEarned = practice ? this.takePracticeXp(p.playerId, baseXp, params.finishedAt) : baseXp;
+
+      // What this match is worth, and why. Order matters: a match that could not
+      // have been played pays nothing and counts against the account; otherwise a
+      // watched account, a practice table or a repeated table pays practice XP
+      // (capped per day); only a fresh table of real people pays in full.
+      const finishedInWindow = this.pace.record(p.playerId, params.finishedAt);
+      const verdict = assessSession(params.game, params.durationMs, finishedInWindow);
+      const riskState = riskService.getState(p.playerId);
+      let code: ReasonCode;
+      let xpEarned: number;
+      if (!verdict.ok) {
+        code = verdict.code;
+        xpEarned = 0;
+        // A too-short match is usually the OTHER side quitting: the player who
+        // stayed and won it did nothing wrong, so only a non-win counts as a strike.
+        // Pace is the player's own doing and always counts.
+        if (verdict.code !== REASON.TOO_SHORT || result !== "WIN") {
+          riskService.recordAbnormalSession(p.playerId, verdict.code, params.finishedAt, {
+            game: params.game,
+            durationMs: params.durationMs,
+            finishedInWindow,
+          });
+        }
+      } else if (table.practice || riskState !== "NORMAL") {
+        code = table.practice ? table.code : REASON.RISK_PRACTICE_ONLY;
+        xpEarned = this.takePracticeXp(p.playerId, baseXp, params.finishedAt);
+      } else {
+        code = REASON.FULL_TABLE;
+        xpEarned = baseXp;
+      }
+      const practice = code !== REASON.FULL_TABLE;
       if (xpEarned > 0) {
         profile.experiencePoints += xpEarned;
         profile.level = calculateLevel(profile.experiencePoints);
@@ -346,9 +403,18 @@ export class ProfileService {
         // completion cannot award the XP twice. Practice XP is its own kind so the
         // daily cap can be rebuilt from the ledger after a restart.
         progressionSync.xpAwarded(
-          p.playerId, xpEarned, practice ? "practice_match" : "match", matchItem.matchId, `${result} at ${params.game}`,
+          p.playerId,
+          xpEarned,
+          practice ? "practice_match" : "match",
+          matchItem.matchId,
+          // The reason code stays out of the text when it would reveal a watch:
+          // this row is readable by its owner, and a watch is never announced.
+          code === REASON.RISK_PRACTICE_ONLY
+            ? `${result} at ${params.game} [${REASON.PRACTICE_TABLE}]`
+            : `${result} at ${params.game} [${code}]`,
         );
       }
+      // Only a full-XP table of real people counts toward "has played with people".
       if (!practice) this.humanMatches.set(p.playerId, (this.humanMatches.get(p.playerId) ?? 0) + 1);
 
       // 3. Project stats — after getOrCreateProfile, so this write is the
@@ -560,6 +626,33 @@ export class ProfileService {
   }
 
   /**
+   * Rebuilds "already claimed" from the reward ledger. A claimed milestone is one
+   * the ledger has a row for in ANY state — pending, paid, or voided (a withdrawn
+   * reward is not re-claimable). Called at boot, beside the legacy scan of wallet
+   * ledger keys that covers milestones paid before the gateway existed.
+   */
+  public async hydrateMilestonesFromRewards(repository: RewardRepository): Promise<number> {
+    const PAGE = 500;
+    let count = 0;
+    for (let offset = 0; ; offset += PAGE) {
+      const page = await repository.listRewardsByType("LEVEL_MILESTONE", { limit: PAGE, offset });
+      for (const reward of page) {
+        const level = Number(reward.sourceId.replace(/^level:/, ""));
+        if (!Number.isInteger(level)) continue;
+        let set = this.claimedMilestones.get(reward.playerId);
+        if (!set) {
+          set = new Set<number>();
+          this.claimedMilestones.set(reward.playerId, set);
+        }
+        set.add(level);
+        count += 1;
+      }
+      if (page.length < PAGE) break;
+    }
+    return count;
+  }
+
+  /**
    * Retrieves full Miniclip XP progression and milestone roadmap status for a player.
    */
   public getProgression(playerId: string): MiniclipXPProgression {
@@ -587,7 +680,13 @@ export class ProfileService {
     playerId: string,
     level: number,
     identityKind: PlayerIdentityKind = "guest"
-  ): Promise<{ success: boolean; reward?: LevelReward; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    reward?: LevelReward;
+    error?: string;
+    /** Where the coins are: PENDING with the time they arrive, or already paid. */
+    payout?: { status: RewardStatus; vestingUntil: number };
+  }> {
     const profile = this.getOrCreateProfile(playerId);
     if (level > profile.level) {
       return { success: false, error: "Level milestone not yet reached" };
@@ -601,9 +700,9 @@ export class ProfileService {
     if (milestone.reward.coins > 0 && identityKind !== "member") {
       return { success: false, error: "Sign in to claim coin rewards" };
     }
-    // With no economy there is no wallet to pay into. Saying "claimed" would be a
+    // With no gateway there is nothing to pay through. Saying "claimed" would be a
     // lie the player only discovers when the coins never arrive, so refuse.
-    if (milestone.reward.coins > 0 && !this.economyService) {
+    if (milestone.reward.coins > 0 && !this.rewardGateway) {
       return { success: false, error: "Coin rewards are temporarily unavailable. Try again later." };
     }
     // Coins are for people who play with people: a member account that has only
@@ -629,35 +728,36 @@ export class ProfileService {
     // to prevent concurrent race conditions from submitting multiple wallet adjustments.
     claimed.add(level);
 
-    // Award coins through EconomyService if configured
-    if (this.economyService && milestone.reward.coins > 0) {
-      const idempotencyKey = `milestone:${playerId}:lvl:${level}`;
-      try {
-        await this.economyService.ensureIdentityRegistered(playerId, identityKind);
-        const adjustment = await this.economyService.adminAdjustWallet({
-          identityId: playerId,
-          amountCoins: String(milestone.reward.coins),
-          adminPrincipalId: "system:level_milestone",
-          reason: `Level ${level} milestone reward: ${milestone.reward.title}`,
-          idempotencyKey,
-          entryType: "ADMIN_ADJUSTMENT",
-        });
-
-        if (!adjustment.applied) {
-          // If the economy layer already had this idempotencyKey (e.g. across server restarts or replay),
-          // it was already claimed. Keep it in claimed Set so in-memory state is up to date,
-          // but return refusal.
-          return { success: false, error: "Reward already claimed" };
-        }
-      } catch (err) {
-        // Rollback optimistic claim on network/database failure so the player can retry later
+    // Coins go through the reward gateway: a row first (with a reason and the
+    // player's risk state), vesting for a day, and only then the wallet.
+    if (milestone.reward.coins > 0) {
+      const grant = await this.rewardGateway!.grantCoins({
+        playerId,
+        identityKind,
+        rewardType: "LEVEL_MILESTONE",
+        reasonCode: REASON.MILESTONE_LEVEL,
+        amount: milestone.reward.coins,
+        sourceId: `level:${level}`,
+        description: `Level ${level} milestone reward: ${milestone.reward.title ?? "Milestone"}`,
+      });
+      if (!grant.ok) {
+        // Nothing was recorded, so the player can try again later.
         claimed.delete(level);
-        logger.error({
-          message: `Failed to credit wallet coins for level ${level} milestone claim by ${playerId}: ${String(err)}`,
-          module: "PROGRESSION",
-        });
-        return { success: false, error: "Failed to credit milestone coins to wallet" };
+        return { success: false, error: grant.message };
       }
+      if (grant.duplicate) {
+        // The ledger already has this reward (another instance, or before a restart):
+        // it stays claimed, and the message says what became of it.
+        return {
+          success: false,
+          error: grant.record.status === "VOIDED" ? "This reward was withdrawn." : "Reward already claimed",
+        };
+      }
+      return {
+        success: true,
+        reward: milestone.reward,
+        payout: { status: grant.record.status, vestingUntil: grant.record.vestingUntil },
+      };
     }
 
     return {
@@ -675,6 +775,7 @@ export class ProfileService {
     this.humanMatches.clear();
     this.tableRepeats.clear();
     this.classifiedMatches.clear();
+    this.pace.reset();
     matchHistoryService.reset();
   }
 }

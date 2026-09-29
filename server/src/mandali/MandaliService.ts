@@ -30,7 +30,8 @@ import type { RoomManager } from "../rooms/RoomManager.js";
 import type { GameKind } from "@shared/types.js";
 import { logger } from "../lib/logger.js";
 import type { EconomyService } from "../economy/EconomyService.js";
-import { InsufficientFundsError, WalletFrozenError } from "../persistence/EconomyRepository.js";
+import type { TransferPolicy } from "../rewards/TransferPolicy.js";
+import { InsufficientFundsError, TransferCapExceededError, WalletFrozenError } from "../persistence/EconomyRepository.js";
 
 const ROOM_INVITE_DEDUPE_MS = 10 * 60 * 1000;
 const ROOM_INVITE_MAX_PER_HOUR = 6;
@@ -100,6 +101,17 @@ export class MandaliService {
     private readonly economyService?: EconomyService | null
   ) {}
 
+  /**
+   * Daily-cap and risk rules for sending coins. Set at boot. Both paths that move
+   * coins between players — sending, and paying a request — consult it, because
+   * paying a request goes through a database function that never reaches the
+   * economy service, so a check placed only there would miss it.
+   */
+  private transferPolicy: TransferPolicy | null = null;
+
+  public setTransferPolicy(policy: TransferPolicy | null): void {
+    this.transferPolicy = policy;
+  }
 
   public getRepository(): MandaliRepository {
     return this.repository;
@@ -1146,6 +1158,16 @@ export class MandaliService {
   ): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
     const guard = this.requireDurable("Paying a coin request");
     if (guard) return guard;
+    // One payment at a time per payer, so the day's cap is read after the last one landed.
+    const run = () => this.fundCoinRequestChecked(requestId, payerId);
+    return this.transferPolicy ? this.transferPolicy.serialised(payerId, run) : run();
+  }
+
+  private async fundCoinRequestChecked(
+    requestId: string, payerId: string
+  ): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
+    const verdict = await this.transferPolicy?.check(payerId, MANDALI_COIN_AMOUNT);
+    if (verdict && !verdict.ok) return { success: false, error: verdict.message };
     try {
       const { alreadyFunded, request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
       // Now that anyone in the group can pay, two people can tap at once. The
@@ -1503,17 +1525,48 @@ export class MandaliService {
       return { success: false, error: "Coin transfers are temporarily unavailable." };
     }
 
+    // One send at a time per sender, so the day's cap is read after the last one landed.
+    const policy = this.transferPolicy;
+    const economy = this.economyService;
+    return policy
+      ? policy.serialised(fromPlayerId, () => this.sendCoinsChecked(economy, policy, mandaliId, fromPlayerId, fromMember, toMember, payload, amount, transferId))
+      : this.sendCoinsChecked(economy, null, mandaliId, fromPlayerId, fromMember, toMember, payload, amount, transferId);
+  }
+
+  private async sendCoinsChecked(
+    economy: NonNullable<MandaliService["economyService"]>,
+    policy: TransferPolicy | null,
+    mandaliId: string,
+    fromPlayerId: string,
+    fromMember: MandaliMember,
+    toMember: MandaliMember,
+    payload: { toPlayerId: string; note?: string },
+    amount: number,
+    transferId: string,
+  ): Promise<{ success: boolean; transfer?: MandaliCoinTransfer; error?: string }> {
+    const verdict = await policy?.check(fromPlayerId, amount);
+    if (verdict && !verdict.ok) return { success: false, error: verdict.message };
+    // The check above gives the friendly message; this is what actually holds when
+    // sends race, because the transfer enforces it under the sender's wallet lock.
+    let dailyCap: { maxCoins: string; dayStartMs: number } | undefined;
+    try {
+      dailyCap = await policy?.capFor(fromPlayerId);
+    } catch {
+      return { success: false, error: "Coin transfers are temporarily unavailable. Try again in a moment." };
+    }
+
     try {
       // Atomic — debits fromPlayerId and credits toPlayerId in ONE
       // transaction (see transfer_wallet_coins). Previously this made two
       // independent adminAdjustWallet calls (a credit-only primitive),
       // which credited BOTH wallets instead of moving coins between them.
-      await this.economyService.transferWalletCoins({
+      await economy.transferWalletCoins({
         fromIdentityId: fromPlayerId,
         toIdentityId: payload.toPlayerId,
         amountCoins: String(amount),
         reason: payload.note || `Mandali coin transfer in ${mandaliId}`,
         idempotencyKey: `mnd_transfer:${transferId}`,
+        ...(dailyCap ? { dailyCap } : {}),
       });
     } catch (err) {
       logger.warn({
@@ -1524,6 +1577,9 @@ export class MandaliService {
       // exception text, and the in-memory repository's typed error classes
       // with human-readable messages — check both.
       const message = err instanceof Error ? err.message : String(err);
+      if (err instanceof TransferCapExceededError || message.includes("TRANSFER_CAP_EXCEEDED")) {
+        return { success: false, error: "You have reached today's limit for sending coins. It resets at midnight UTC." };
+      }
       if (err instanceof InsufficientFundsError || message.includes("INSUFFICIENT_FUNDS")) {
         return { success: false, error: "Insufficient funds for this transfer." };
       }
@@ -1550,7 +1606,7 @@ export class MandaliService {
     this.repository.saveCoinTransfer(transfer);
 
     // Post system announcement message into lounge-chat
-    const channels = durable
+    const channels = this.repository.isDurable()
       ? await this.repository.getChannelsDurable(mandaliId)
       : this.repository.getChannels(mandaliId);
     const chatChannel = channels.find((c) => c.type === "TEXT") || channels[0];

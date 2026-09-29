@@ -227,6 +227,8 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       rm.startGame("s_alice");
 
       // Play 10 rounds of RPS where Alice throws rock and Bob throws scissors.
+      // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+      vi.setSystemTime(Date.now() + 5 * 60_000);
       // Target is 10. Alice wins 10-0.
       for (let round = 0; round < 10; round++) {
         rm.applyMove("s_alice", "choose", { choice: "rock" });
@@ -274,6 +276,9 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       rm.setReady("c_bob", true);
       rm.startGame("c_alice");
 
+      // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+      // Past the 60s floor but inside the chess clock, so the draw is agreed rather than flagged.
+      vi.setSystemTime(Date.now() + 90_000);
       // Alice offers draw, Bob accepts draw
       rm.applyMove("c_alice", "offerDraw", {});
       rm.applyMove("c_bob", "acceptDraw", {});
@@ -328,6 +333,8 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       rm.setReady("d_bob", true);
       rm.startGame("d_alice");
 
+      // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+      vi.setSystemTime(Date.now() + 5 * 60_000);
       // Alice leaves / forfeits, which exercises DotsBoxesEngine.removePlayer() -> getWinner()
       rm.leaveRoom("d_alice");
 
@@ -360,6 +367,8 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       rm.setReady("c_bob", true);
       rm.startGame("c_alice");
 
+      // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+      vi.setSystemTime(Date.now() + 5 * 60_000);
       // Alice resigns while remaining seated in the room -> Bob wins
       rm.applyMove("c_alice", "resign", {});
 

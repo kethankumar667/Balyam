@@ -24,6 +24,7 @@ import {
   VoucherCodeCollisionError,
   VoucherNotActiveError,
   VoucherNotFoundError,
+  TransferCapExceededError,
   WalletFrozenError,
   WalletNotFoundError,
   type AdminAdjustWalletInput,
@@ -509,6 +510,7 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bWALLET_NOT_FOUND:/, WalletNotFoundError],
   [/\bWALLET_FROZEN:/, WalletFrozenError],
   [/\bINSUFFICIENT_FUNDS:/, InsufficientFundsError],
+  [/\bTRANSFER_CAP_EXCEEDED:/, TransferCapExceededError],
   [/\bINVALID_VOUCHER_HASH:/, InvalidVoucherHashError],
   [/\bVOUCHER_INVALID:/, InvalidVoucherHashError],
   [/\bVOUCHER_NOT_FOUND:/, VoucherNotFoundError],
@@ -962,16 +964,28 @@ export class SupabaseEconomyRepository implements EconomyRepository {
     input: TransferWalletCoinsInput,
   ): Promise<EconomyOperationResult<CoinWalletRecord>> {
     try {
-      const envelope = await this.rpc<RawEnvelope<WalletRow>>("transfer_wallet_coins", {
+      const base = {
         p_from_identity_id: input.fromIdentityId,
         p_to_identity_id: input.toIdentityId,
         p_amount: input.amountCoins,
         p_reason: input.reason,
         p_idempotency_key: input.idempotencyKey,
-      });
+      };
+      const envelope = input.dailyCap
+        ? await this.rpc<RawEnvelope<WalletRow>>("transfer_wallet_coins_capped", {
+            ...base,
+            p_daily_cap: input.dailyCap.maxCoins,
+            p_day_start: new Date(input.dailyCap.dayStartMs).toISOString(),
+          })
+        : await this.rpc<RawEnvelope<WalletRow>>("transfer_wallet_coins", base);
       return { ...envelope, result: toWallet(envelope.result) };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (input.dailyCap && (msg.includes("Could not find the function") || msg.includes("PGRST202"))) {
+        throw new EconomyInfrastructureError(
+          "Database function transfer_wallet_coins_capped is missing. Please run migration 20261013000000_transfer_daily_cap.sql.",
+        );
+      }
       if (msg.includes("Could not find the function") || msg.includes("PGRST202")) {
         throw new EconomyInfrastructureError(
           "Database function transfer_wallet_coins is missing. Please run migration 20260930000000_mandali_p2p_wallet_transfer.sql in Supabase SQL Editor.",

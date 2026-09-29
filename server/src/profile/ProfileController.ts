@@ -135,6 +135,8 @@ profileRouter.post("/:playerId/claim-level-reward", requireSelfParam(), async (r
   res.json({
     ok: true,
     reward: result.reward,
+    // Where the coins are: PENDING with the time they arrive (they vest for a day), or already paid.
+    payout: result.payout ?? null,
     progression: profileService.getProgression(targetPlayerId),
   });
 });

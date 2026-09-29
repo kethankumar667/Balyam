@@ -62,6 +62,8 @@ const BOB_WINS = [5, 0, 6, 0, 5, 0, 6, 0]; // Bob: column 0, four high
 
 async function play(rm: RoomManager, columns: readonly number[]) {
   for (let i = 0; i < columns.length; i++) {
+    // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+    if (i === columns.length - 1) vi.setSystemTime(Date.now() + 5 * 60_000);
     await rm.applyMove(i % 2 === 0 ? "sA" : "sB", "drop", { column: columns[i] });
   }
 }

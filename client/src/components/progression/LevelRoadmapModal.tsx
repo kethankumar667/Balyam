@@ -7,6 +7,7 @@ import {
   Crown,
   Lock,
   Check,
+  Clock,
   ChevronRight,
   Award,
   Zap,
@@ -15,6 +16,8 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useAuthStore } from "../../store/authStore";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { RoadmapLootChest } from "./RoadmapLootChest";
+import { PendingRewards } from "./PendingRewards";
+import { formatArrival } from "./formatArrival";
 import {
   LEVEL_MILESTONES,
   MINICLIP_LEVEL_TIERS,
@@ -59,6 +62,19 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
   const [claimedLevels, setClaimedLevels] = useState<Set<number>>(new Set());
   const [claimingLevel, setClaimingLevel] = useState<number | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  /** level -> when its coins arrive, for rewards claimed this session that are still vesting. */
+  const [pendingUntil, setPendingUntil] = useState<Record<number, number>>({});
+  // What the server says is still vesting, so a reopened modal shows the same arrival
+  // times as the claim did, not a bare "CLAIMED".
+  const adoptPending = (rewards: ReadonlyArray<{ status: string; vestingUntil: number; sourceId?: string }>) => {
+    const fromServer: Record<number, number> = {};
+    for (const r of rewards) {
+      const match = r.status === "PENDING" ? /^level:(\d+)$/.exec(r.sourceId ?? "") : null;
+      if (match) fromServer[Number(match[1])] = r.vestingUntil;
+    }
+    setPendingUntil((prev) => ({ ...prev, ...fromServer }));
+  };
+  const [rewardsRefresh, setRewardsRefresh] = useState(0);
 
   const progression = calculateMiniclipXPProgression(experiencePoints);
   const currentLevel = progression.currentLevel;
@@ -83,6 +99,13 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
       });
       if (res.ok) {
         setClaimedLevels((prev) => new Set([...prev, level]));
+        // Coins vest for a day: say when they arrive instead of implying they are already there.
+        const body = (await res.json().catch(() => null)) as { payout?: { status?: string; vestingUntil?: number } | null } | null;
+        if (body?.payout?.status === "PENDING" && typeof body.payout.vestingUntil === "number") {
+          const arrivesAt = body.payout.vestingUntil;
+          setPendingUntil((prev) => ({ ...prev, [level]: arrivesAt }));
+        }
+        setRewardsRefresh((n) => n + 1);
         if (onClaimReward) {
           onClaimReward(level, coins);
         }
@@ -230,6 +253,9 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                 </div>
               </div>
 
+              {/* Coins that are earned but still vesting, and any hold on the account */}
+              {playerId && isMember ? <PendingRewards playerId={playerId} refreshKey={rewardsRefresh} onLoaded={adoptPending} /> : null}
+
               {/* Milestones Road Track for Selected Tier */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-stone-400 font-mono">
@@ -331,8 +357,17 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
                             </button>
                           ) : isClaimed ? (
                             <div className="flex items-center gap-1 text-emerald-400 font-mono font-bold text-xs">
-                              <Check className="w-4 h-4 stroke-[3]" />
-                              <span>CLAIMED</span>
+                              {pendingUntil[milestone.level] ? (
+                                <>
+                                  <Clock className="w-4 h-4" aria-hidden="true" />
+                                  <span>ARRIVES {formatArrival(pendingUntil[milestone.level]!).toUpperCase()}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-4 h-4 stroke-[3]" />
+                                  <span>CLAIMED</span>
+                                </>
+                              )}
                             </div>
                           ) : isReached ? (
                             <div className="flex items-center gap-1 text-stone-400 font-mono font-bold text-xs">

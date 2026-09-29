@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { installRewards, uninstallRewards } from "../../rewards/__tests__/rewardRig.js";
 import {
   profileService,
   PRACTICE_XP_DAILY_CAP,
@@ -63,8 +64,9 @@ describe("coin faucet controls", () => {
   const solo = (n: number, at = 10 * DAY_MS) => ({
     roomCode: `SOLO${n}`,
     game: "rps" as const,
-    startedAt: at + n * 1_000,
-    finishedAt: at + n * 1_000 + 60_000,
+    // Two minutes apart: matches arriving every second would (rightly) trip the pace rule.
+    startedAt: at + n * 120_000,
+    finishedAt: at + n * 120_000 + 60_000,
     durationMs: 60_000,
     winnerId: "grinder",
     participants: [
@@ -174,15 +176,13 @@ describe("coin faucet controls", () => {
     expect(asGuest.error).toMatch(/sign in/i);
 
     // The refusal must not burn the claim.
-    const { InMemoryEconomyRepository } = await import("../../persistence/InMemoryEconomyRepository.js");
-    const { EconomyService } = await import("../../economy/EconomyService.js");
-    profileService.setEconomyService(new EconomyService(new InMemoryEconomyRepository()));
+    installRewards();
     profileService.restoreFromLedger(
       "climber",
       Array.from({ length: MIN_HUMAN_MATCHES_FOR_COINS }, () => ({ sourceKind: "match", amount: 50, createdAt: Date.now() })),
     );
     const asMember = await profileService.claimMilestoneReward("climber", 5, "member");
     expect(asMember.success).toBe(true);
-    profileService.setEconomyService(undefined);
+    uninstallRewards();
   });
 });

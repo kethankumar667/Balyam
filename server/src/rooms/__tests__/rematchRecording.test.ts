@@ -41,6 +41,8 @@ describe("a rematch in the same room is its own match", () => {
     rooms.startGame("s_a");
     const room = peek(rooms, host.code);
 
+    // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+    vi.setSystemTime(Date.now() + 5 * 60_000);
     playRpsToCompletion(rooms, "s_a", "s_b");
     expect(room.phase).toBe("finished");
 
@@ -51,6 +53,8 @@ describe("a rematch in the same room is its own match", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(room.phase).toBe("playing");
 
+    // A match that ends in milliseconds is (rightly) worth no XP; let it have lasted.
+    vi.setSystemTime(Date.now() + 5 * 60_000);
     playRpsToCompletion(rooms, "s_a", "s_b");
     expect(room.phase).toBe("finished");
     return { rooms, room, aliceSeat: host.playerId };

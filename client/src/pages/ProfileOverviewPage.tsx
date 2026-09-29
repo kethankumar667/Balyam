@@ -28,6 +28,7 @@ import {
   ProfileSection,
 } from "../features/profile/ProfilePrimitives";
 import { getProfileGameLabel } from "../features/profile/gameLabel";
+import { TrustTierCard } from "../features/profile/TrustTierCard";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { Achievement } from "@shared/profile/Achievements";
 import type { GameStats } from "@shared/profile/PlayerStats";
@@ -55,6 +56,7 @@ export default function ProfileOverviewPage() {
     recentMatches,
     resources,
     isMember,
+    effectivePlayerId,
     retryProfileData,
     openEditModal,
     openAvatarModal,
@@ -284,6 +286,11 @@ export default function ProfileOverviewPage() {
             </button>
           </div>
         </ProfileSection>
+        {effectivePlayerId ? (
+          <div className="lg:col-span-12">
+            <TrustTierCard playerId={effectivePlayerId} />
+          </div>
+        ) : null}
       </div>
 
       <DeleteAccountModal open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />

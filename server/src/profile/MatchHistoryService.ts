@@ -1,9 +1,45 @@
 import type { GameKind } from "@shared/types.js";
 import type { MatchHistoryItem, MatchDetailRecord } from "@shared/profile/MatchHistory.js";
 import { serverEventStore } from "../events/ServerEventStore.js";
+import { isTooShort } from "../rewards/SessionRules.js";
+
+/** What the participant list carries at runtime beyond the wire type (present for matches recorded this process). */
+interface RuntimeParticipant {
+  playerId: string;
+  isBot?: boolean;
+  isLocal?: boolean;
+  isMember?: boolean;
+}
+
+/** A signed-in opponent: not a bot, not a seat on the same device, not a throwaway guest. */
+function isMemberOpponent(p: RuntimeParticipant, selfId: string): boolean {
+  if (p.playerId === selfId || p.isBot || p.isLocal) return false;
+  // `isMember` is only known for matches recorded this process; a match restored
+  // from the database has no such flag, so the guest id prefix decides.
+  return p.isMember === true || (p.isMember === undefined && !p.playerId.startsWith("guest_"));
+}
 
 export class MatchHistoryService {
   private playerMatches: Map<string, MatchHistoryItem[]> = new Map();
+
+  /**
+   * For trust tiers: how many finished matches had another signed-in person in
+   * them, and how many distinct such opponents. A match too short to have been
+   * played is not evidence of anything and is left out, so farming instant
+   * matches cannot build a trustworthy-looking history.
+   */
+  public getOpponentStats(playerId: string): { realPeopleMatches: number; distinctOpponents: number } {
+    let realPeopleMatches = 0;
+    const distinct = new Set<string>();
+    for (const match of this.playerMatches.get(playerId) ?? []) {
+      if (isTooShort(match.game, match.durationMs)) continue;
+      const opponents = (match.participants as RuntimeParticipant[]).filter((p) => isMemberOpponent(p, playerId));
+      if (opponents.length === 0) continue;
+      realPeopleMatches += 1;
+      for (const o of opponents) distinct.add(o.playerId);
+    }
+    return { realPeopleMatches, distinctOpponents: distinct.size };
+  }
 
   /** Returns false when this match was already recorded for the player (a replay). */
   public recordMatch(playerId: string, match: MatchHistoryItem): boolean {

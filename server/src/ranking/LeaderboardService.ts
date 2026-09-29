@@ -9,6 +9,7 @@ import {
   getRankTier,
 } from "@shared/ranking/RankingRules.js";
 import { profileService } from "../profile/ProfileService.js";
+import { riskService } from "../rewards/RiskService.js";
 
 export interface LeaderboardQueryOptions {
   metric?: LeaderboardMetric;
@@ -38,6 +39,11 @@ export class LeaderboardService {
     const allEntries: LeaderboardEntry[] = [];
 
     for (const prof of profiles) {
+      // A watched, restricted or under-review account stays off the board while it
+      // is looked at: a leaderboard is a reward, and rewards are what is paused.
+      // Gameplay is untouched and the player is not told.
+      if (riskService.getState(prof.playerId) !== "NORMAL") continue;
+
       const stats = profileService.getStats(prof.playerId);
 
       // If filtering by specific game, require matches played in that game

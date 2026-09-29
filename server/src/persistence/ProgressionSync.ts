@@ -146,6 +146,22 @@ class ProgressionSync {
 
   /* ────────────────────── xp & achievements ────────────────────── */
 
+  /**
+   * Runs `work` after every write queued so far. A row that REFERENCES a profile
+   * (a risk event, a reward) must not reach the database before the profile write
+   * that creates its identity, or the foreign key refuses it; queueing behind the
+   * profile writes makes that order a guarantee instead of a race.
+   */
+  afterPending<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.tail.then(work);
+    // The shared tail must never carry a rejection into the next write.
+    this.tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   xpAwarded(
     playerId: string,
     amount: number,

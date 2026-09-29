@@ -12,6 +12,10 @@ import { StreakService } from "../StreakService.js";
 import { STREAK_REWARDS_SCHEDULE } from "@shared/streak-types.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { EconomyService } from "../../economy/EconomyService.js";
+import { RewardGateway, VESTING_MS } from "../../rewards/RewardGateway.js";
+import { InMemoryRewardRepository } from "../../rewards/InMemoryRewardRepository.js";
+import { RiskService } from "../../rewards/RiskService.js";
+import { TrustService } from "../../rewards/TrustService.js";
 
 describe("StreakEngine — UTC Date & Calendar Math", () => {
   it("formats timestamps to UTC YYYY-MM-DD correctly", () => {
@@ -320,14 +324,36 @@ describe("StreakEngine — Schedule State Builder", () => {
   });
 });
 
+/** A streak service wired to a real in-memory wallet through the reward gateway, with separate clocks for the streak day and for payment. */
+function gatewayService(streakClock: { now: number }) {
+  const repo = new InMemoryEconomyRepository();
+  const economyService = new EconomyService(repo);
+  const payClock = { now: streakClock.now };
+  const gateway = new RewardGateway({
+    economy: economyService,
+    repository: new InMemoryRewardRepository(),
+    risk: new RiskService(),
+    trust: new TrustService(),
+    now: () => payClock.now,
+  });
+  const service = new StreakService({
+    economyService,
+    rewardGateway: gateway,
+    postgrestConfig: null,
+    now: () => streakClock.now,
+  });
+  /** Let a day pass for payment and run the sweep, without moving the streak's own day. */
+  const release = async () => {
+    payClock.now += VESTING_MS + 1_000;
+    await gateway.releaseDue();
+  };
+  return { service, economyService, release };
+}
+
 describe("StreakService — In-Memory Integration", () => {
   it("claims Day 1 and idempotently prevents duplicate claims", async () => {
-    let mockTime = Date.UTC(2026, 8, 1, 10, 0, 0);
-    const service = new StreakService({
-      economyService: null,
-      postgrestConfig: null,
-      now: () => mockTime,
-    });
+    const clock = { now: Date.UTC(2026, 8, 1, 10, 0, 0) };
+    const { service } = gatewayService(clock);
 
     // 1. Initial State: Claimable Day 1
     const state0 = await service.getStreak("user_123");
@@ -335,7 +361,7 @@ describe("StreakService — In-Memory Integration", () => {
     expect(state0.currentStreak).toBe(0);
 
     // 2. Execute First Claim
-    const claim1 = await service.claimStreak("user_123");
+    const claim1 = await service.claimStreak("user_123", "member");
     expect(claim1.success).toBe(true);
     expect(claim1.claimedDay).toBe(1);
     expect(claim1.newStreak).toBe(1);
@@ -347,23 +373,32 @@ describe("StreakService — In-Memory Integration", () => {
     expect(state1.currentStreak).toBe(1);
 
     // 4. Duplicate claim on same day: should fail gracefully
-    const claimDuplicate = await service.claimStreak("user_123");
+    const claimDuplicate = await service.claimStreak("user_123", "member");
     expect(claimDuplicate.success).toBe(false);
     expect(claimDuplicate.code).toBe("ALREADY_CLAIMED");
     expect(claimDuplicate.coinsAwarded).toBe(0);
 
     // 5. Advance to next UTC day
-    mockTime = Date.UTC(2026, 8, 2, 10, 0, 0);
+    clock.now = Date.UTC(2026, 8, 2, 10, 0, 0);
     const stateDay2 = await service.getStreak("user_123");
     expect(stateDay2.isClaimableToday).toBe(true);
     expect(stateDay2.activeDayInCycle).toBe(2);
 
     // 6. Claim Day 2
-    const claim2 = await service.claimStreak("user_123");
+    const claim2 = await service.claimStreak("user_123", "member");
     expect(claim2.success).toBe(true);
     expect(claim2.claimedDay).toBe(2);
     expect(claim2.newStreak).toBe(2);
     expect(claim2.coinsAwarded).toBe(120);
+  });
+
+  it("refuses a coin-bearing claim when there is nothing to pay through, and does not advance the streak", async () => {
+    const service = new StreakService({ economyService: null, postgrestConfig: null, now: () => Date.UTC(2026, 8, 1, 10, 0, 0) });
+
+    const claim = await service.claimStreak("user_123", "member");
+
+    expect(claim).toMatchObject({ success: false, coinsAwarded: 0 });
+    expect((await service.getStreak("user_123")).currentStreak).toBe(0);
   });
 });
 
@@ -374,14 +409,11 @@ describe("StreakService — real EconomyService wallet crediting (regression)", 
   // said success:true and a specific coin count, while the wallet was
   // NEVER actually credited: `adminAdjustWallet` threw IdentityNotFoundError,
   // StreakService caught it silently and fell back to a stale "0" balance.
-  // Every earlier test in this file used `economyService: null`, so this
-  // path had zero coverage.
-  it("credits a brand-new, never-before-registered guest identity on their first claim", async () => {
-    const repo = new InMemoryEconomyRepository();
-    const economyService = new EconomyService(repo);
-    let mockTime = Date.UTC(2026, 8, 1, 10, 0, 0);
-    const service = new StreakService({ economyService, postgrestConfig: null, now: () => mockTime });
-
+  // The coins now arrive through the reward gateway; these tests still prove
+  // the wallet really is credited, once the reward has vested.
+  it("credits a brand-new, never-before-registered guest identity once its first reward vests", async () => {
+    const clock = { now: Date.UTC(2026, 8, 1, 10, 0, 0) };
+    const { service, economyService, release } = gatewayService(clock);
     const playerId = "guest_never_seen_before";
 
     // Sanity: this identity has genuinely never touched the economy store.
@@ -390,44 +422,38 @@ describe("StreakService — real EconomyService wallet crediting (regression)", 
     const claim1 = await service.claimStreak(playerId, "guest");
     expect(claim1.success).toBe(true);
     expect(claim1.coinsAwarded).toBe(100);
+    expect(claim1.pendingUntil).toBeDefined();
 
-    // The response's own walletBalance must reflect a real credit, not the
-    // "0" fallback the bug used to silently return.
-    const balanceAfterClaim1 = BigInt(claim1.walletBalance);
-    expect(balanceAfterClaim1).toBeGreaterThan(100n);
+    // The claim registered the identity and reports the balance as it really is:
+    // the reward is pending, so nothing has been added yet.
+    const startingBalance = BigInt(claim1.walletBalance);
+    expect(startingBalance).toBeGreaterThan(0n);
+
+    await release();
 
     // The ledger row must be tagged DAILY_REWARD_CREDIT, not the generic
     // ADMIN_ADJUSTMENT — reusing that type made every streak claim render
     // as "Adjustment" in the wallet drawer and pollute the Operational
     // Audit Logs' "Wallet Adjustment" (manual-top-up) trail.
     const ledger = await economyService.getLedger(playerId, { limit: 10 });
-    const streakEntry = ledger.find((e) => e.amount === "100");
-    expect(streakEntry?.entryType).toBe("DAILY_REWARD_CREDIT");
+    expect(ledger.find((e) => e.amount === "100")?.entryType).toBe("DAILY_REWARD_CREDIT");
 
-    // And a subsequent independent wallet read (mirrors the client's
-    // post-claim `refreshCurrentWallet()`) must see the same balance —
-    // proving the credit was actually persisted, not just echoed back.
+    // An independent wallet read (mirrors the client's post-claim refresh) sees the credit.
     const wallet = await economyService.getWallet(playerId);
-    expect(BigInt(wallet.balance)).toBe(balanceAfterClaim1);
+    expect(BigInt(wallet.balance)).toBe(startingBalance + 100n);
     expect(wallet.identityKind).toBe("guest");
 
-    // Claiming Day 2 must credit an ADDITIONAL 120 coins on top of Day 1's
-    // balance, proving this isn't a one-off fluke of wallet creation.
-    mockTime = Date.UTC(2026, 8, 2, 10, 0, 0);
+    // Day 2 adds another 120 on top, proving this is not a one-off of wallet creation.
+    clock.now = Date.UTC(2026, 8, 2, 10, 0, 0);
     const claim2 = await service.claimStreak(playerId, "guest");
     expect(claim2.success).toBe(true);
     expect(claim2.coinsAwarded).toBe(120);
-    expect(BigInt(claim2.walletBalance)).toBe(balanceAfterClaim1 + 120n);
+    await release();
+    expect(BigInt((await economyService.getWallet(playerId)).balance)).toBe(startingBalance + 220n);
   });
 
   it("registers a member identity's kind correctly (not defaulted to guest)", async () => {
-    const repo = new InMemoryEconomyRepository();
-    const economyService = new EconomyService(repo);
-    const service = new StreakService({
-      economyService,
-      postgrestConfig: null,
-      now: () => Date.UTC(2026, 8, 1, 10, 0, 0),
-    });
+    const { service, economyService } = gatewayService({ now: Date.UTC(2026, 8, 1, 10, 0, 0) });
 
     const playerId = "member_never_seen_before";
     const claim = await service.claimStreak(playerId, "member");

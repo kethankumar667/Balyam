@@ -9,6 +9,8 @@ import { logger } from "../lib/logger.js";
 import { type EconomyService } from "../economy/EconomyService.js";
 import { type CosmeticsService } from "../cosmetics/CosmeticsService.js";
 import { type PlayerIdentityKind } from "../persistence/EconomyRepository.js";
+import { type RewardGateway } from "../rewards/RewardGateway.js";
+import { REASON } from "../rewards/types.js";
 import {
   type DailyStreakClaimResult,
   type DailyStreakState,
@@ -43,6 +45,8 @@ interface LoginStreakRow {
 export interface StreakServiceOptions {
   economyService?: EconomyService | null;
   cosmeticsService?: CosmeticsService | null;
+  /** The one door coins come through. Streak coins are never credited to a wallet any other way. */
+  rewardGateway?: RewardGateway | null;
   postgrestConfig?: PostgrestConfig | null;
   now?: () => number;
 }
@@ -52,11 +56,13 @@ export class StreakService {
   private readonly postgrest: PostgrestClient | null;
   private readonly economyService: EconomyService | null;
   private readonly cosmeticsService: CosmeticsService | null;
+  private readonly rewardGateway: RewardGateway | null;
   private readonly now: () => number;
 
   constructor(options: StreakServiceOptions = {}) {
     this.economyService = options.economyService ?? null;
     this.cosmeticsService = options.cosmeticsService ?? null;
+    this.rewardGateway = options.rewardGateway ?? null;
     this.now = options.now ?? Date.now;
 
     const config = options.postgrestConfig !== undefined
@@ -229,59 +235,62 @@ export class StreakService {
       };
     }
 
-    // Award coins through EconomyService if available
+    // Coins go through the reward gateway: a row with a reason and the player's
+    // risk state, paid at once for a trusted member and after a day otherwise.
+    // Nothing here credits a wallet directly.
     let updatedWalletBalance = "0";
-    if (this.economyService && evalResult.coinsAwarded > 0) {
-      const claimIdempotencyKey = `streak:${playerId}:${currentUtcDate}`;
-      try {
-        // Idempotent no-op for a repository that doesn't need it (Supabase
-        // already has the row via the shared player_identities table); for
-        // the in-memory dev store this is what makes a first-time claim
-        // from a player who has never touched the wallet before actually
-        // creditable, instead of throwing IdentityNotFoundError below.
-        await this.economyService.ensureIdentityRegistered(playerId, identityKind);
-        const adjustment = await this.economyService.adminAdjustWallet({
-          identityId: playerId,
-          amountCoins: String(evalResult.coinsAwarded),
-          adminPrincipalId: "system:daily_streak",
-          reason: `Daily login streak reward: Day ${evalResult.claimedDay}`,
-          idempotencyKey: claimIdempotencyKey,
-          entryType: "DAILY_REWARD_CREDIT",
-        });
-        updatedWalletBalance = adjustment.result.balance;
-      } catch (err) {
-        logger.error({
-          message: `StreakService failed to credit wallet coins for player ${playerId}: ${String(err)}`,
-          module: "STREAK",
-        });
-        // The reward was never actually credited — the claim must NOT be
-        // persisted as consumed (that would burn the player's day for
-        // nothing). Report the failure honestly so the client can retry,
-        // rather than the previous behavior of returning success:true with
-        // a stale balance while the streak record advanced anyway.
-        const currentState = buildStreakState(existingRecord, serverTimestamp);
-        const balance = await this.getWalletBalance(playerId);
-        return {
-          success: false,
-          code: "ERROR",
-          message: "Failed to credit your reward. Please try again.",
-          claimedDay: evalResult.claimedDay,
-          reward: evalResult.reward,
-          coinsAwarded: 0,
-          newStreak: evalResult.newStreak,
-          cycleCompleted: false,
-          cycleCount: evalResult.newCycleCount,
-          shieldUsed: false,
-          walletBalance: balance,
-          updatedState: {
-            ...currentState,
-            playerId,
-          },
-        };
+    let pendingUntil: number | undefined;
+    let payingNow = false;
+
+    /** The claim was NOT consumed: the player can try again, and is told why. */
+    const notPaid = async (message: string): Promise<DailyStreakClaimResult> => {
+      const currentState = buildStreakState(existingRecord, serverTimestamp);
+      const balance = await this.getWalletBalance(playerId);
+      return {
+        success: false,
+        code: "ERROR",
+        message,
+        claimedDay: evalResult.claimedDay,
+        reward: evalResult.reward,
+        coinsAwarded: 0,
+        newStreak: evalResult.newStreak,
+        cycleCompleted: false,
+        cycleCount: evalResult.newCycleCount,
+        shieldUsed: false,
+        walletBalance: balance,
+        updatedState: {
+          ...currentState,
+          playerId,
+        },
+      };
+    };
+
+    if (evalResult.coinsAwarded > 0) {
+      if (!this.rewardGateway) {
+        // No gateway, no coins — and no pretending. The day is not burned.
+        return notPaid("Coin rewards are temporarily unavailable. Please try again later.");
       }
-    } else {
-      updatedWalletBalance = await this.getWalletBalance(playerId);
+      const grant = await this.rewardGateway.grantCoins({
+        playerId,
+        identityKind,
+        rewardType: "DAILY_STREAK",
+        reasonCode: REASON.STREAK_DAY,
+        amount: evalResult.coinsAwarded,
+        // The server's UTC date, never client input: one reward per player per day.
+        sourceId: currentUtcDate,
+        description: `Daily login streak reward: Day ${evalResult.claimedDay}`,
+      });
+      if (!grant.ok) {
+        // Reported honestly, and the streak record is NOT advanced, so the player
+        // does not lose their day for coins that were never recorded.
+        return notPaid(grant.message);
+      }
+      if (grant.record.status === "VOIDED") return notPaid("This reward was withdrawn.");
+      if (grant.record.status === "PENDING") pendingUntil = grant.record.vestingUntil;
+      // Being paid right now (or a payment that will be retried): on its way, no promised hour.
+      else if (grant.record.status === "RELEASING") payingNow = true;
     }
+    updatedWalletBalance = await this.getWalletBalance(playerId);
 
     // Prepare updated stored record
     const updatedHistory = existingRecord?.claimHistory
@@ -330,7 +339,11 @@ export class StreakService {
     return {
       success: true,
       code: evalResult.code,
-      message: evalResult.message,
+      message: pendingUntil
+        ? `${evalResult.message} Your coins arrive in about 24 hours.`
+        : payingNow
+          ? `${evalResult.message} Your coins are on their way.`
+          : evalResult.message,
       claimedDay: evalResult.claimedDay,
       reward: evalResult.reward,
       coinsAwarded: evalResult.coinsAwarded,
@@ -339,6 +352,7 @@ export class StreakService {
       cycleCount: evalResult.newCycleCount,
       shieldUsed: evalResult.shieldUsed,
       walletBalance: updatedWalletBalance,
+      ...(pendingUntil !== undefined ? { pendingUntil } : {}),
       updatedState: {
         ...updatedState,
         playerId,
