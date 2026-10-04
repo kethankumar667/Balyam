@@ -81,6 +81,15 @@ export class TransferPolicy {
     }
   }
 
+  /** Only the standing half of `check`: may this account send at all, whatever the amount? */
+  checkStanding(senderId: string): TransferDecision {
+    const state = this.risk.getState(senderId);
+    if (state === "RESTRICTED" || state === "UNDER_REVIEW") {
+      return { ok: false, code: REASON.TRANSFER_RISK_BLOCK, message: "Sending coins is paused on your account for now." };
+    }
+    return { ok: true };
+  }
+
   /** May `senderId` send `amount` coins right now? */
   async check(senderId: string, amount: number): Promise<TransferDecision> {
     const state = this.risk.getState(senderId);

@@ -79,6 +79,9 @@ async function main() {
       "20260826000000_economy_v1.sql",
       "20260930000000_mandali_p2p_wallet_transfer.sql",
       "20261013000000_transfer_daily_cap.sql",
+      "20261001000000_mandali_persistence_foundation.sql",
+      "20261011000000_mandali_coin_request_any_member_pays.sql",
+      "20261014000000_fund_coin_request_daily_cap.sql",
     ]) {
       let err = null;
       try {
@@ -148,7 +151,52 @@ async function main() {
     check("service_role may call it", await priv("service_role"));
     check("authenticated and anon may not", !(await priv("authenticated")) && !(await priv("anon")));
 
-    console.log("\n6. Rollback");
+    console.log("\n6. Paying a coin request is capped the same way");
+    const gid = (c) => `guest_${c.repeat(32)}`;
+    const PAYER = gid("c");
+    const requesters = ["d", "e", "f", "0"].map(gid);
+    await seed(PAYER, 10_000);
+    for (const r of requesters) await seed(r, null);
+    await db.query(`insert into public.mandalis (id, handle, name, owner_identity_id) values ('m1', 'cap-test', 'Cap Test', $1)`, [PAYER]);
+    for (const [i, id] of [PAYER, ...requesters].entries()) {
+      await db.query(
+        `insert into public.mandali_memberships (mandali_id, identity_id, role, display_name) values ('m1', $1, $2, $3)`,
+        [id, i === 0 ? "OWNER" : "MEMBER", `member${i}`],
+      );
+    }
+    for (const [i, r] of requesters.entries()) {
+      await db.query(
+        `insert into public.mandali_coin_requests (id, mandali_id, requester_identity_id, payer_identity_id, amount, expires_at)
+         values ($1, 'm1', $2, $3, 100, now() + interval '1 hour')`,
+        [`req${i}`, r, PAYER],
+      );
+    }
+    const payers = await Promise.all(requesters.map(connect));
+    const pay = (client, i, cap = 200) =>
+      client.query(`select public.fund_coin_request_capped($1,$2,$3,$4,$5)`, [`req${i}`, PAYER, `fund:${i}`, cap, DAY_START]);
+    const paid = await Promise.all(
+      payers.map((c, i) => pay(c, i).then(() => "ok", (e) => (String(e.message).includes("TRANSFER_CAP_EXCEEDED") ? "cap" : `error:${e.message}`))),
+    );
+    await Promise.all(payers.map((c) => c.end()));
+    check("exactly two 100-coin requests are paid under a 200 cap", paid.filter((o) => o === "ok").length === 2, paid.join(","));
+    check("the other two are refused with TRANSFER_CAP_EXCEEDED", paid.filter((o) => o === "cap").length === 2);
+    const sentBy = async () =>
+      (await db.query(`select coalesce(sum(-amount),0)::int as s from public.coin_ledger_entries where wallet_id=$1 and entry_type='P2P_TRANSFER_SEND'`, [PAYER])).rows[0].s;
+    check("the payer's sends total exactly the cap", (await sentBy()) === 200, await sentBy());
+    const open = (await db.query(`select count(*)::int as n from public.mandali_coin_requests where status='OPEN'`)).rows[0].n;
+    check("the refused requests stay OPEN, not lost", open === 2, open);
+
+    const replayed = await pay(db, paid.indexOf("ok")).then((r) => r.rows[0].fund_coin_request_capped, () => null);
+    check("replaying a paid request at the cap answers 'already paid', not 'limit reached'", replayed !== null && replayed.alreadyFunded === true);
+    check("the replay moved nothing", (await sentBy()) === 200, await sentBy());
+    const callable = (await db.query(`select has_function_privilege('authenticated', 'public.fund_coin_request_capped(text,text,text,bigint,timestamptz)', 'execute') as ok`)).rows[0].ok;
+    check("authenticated may not call it", callable === false);
+
+    console.log("\n7. Rollback");
+    await db.query(fs.readFileSync(path.join(ROOT, "supabase/rollbacks/20261014000000_fund_coin_request_daily_cap_rollback.sql"), "utf8"));
+    const fundGone = (await db.query(`select count(*)::int as n from pg_proc where proname='fund_coin_request_capped'`)).rows[0].n;
+    const fundInner = (await db.query(`select count(*)::int as n from pg_proc where proname='fund_coin_request'`)).rows[0].n;
+    check("the rollback removes only the coin-request wrapper", fundGone === 0 && fundInner === 1);
     await db.query(fs.readFileSync(ROLLBACK, "utf8"));
     const gone = (await db.query(`select count(*)::int as n from pg_proc where proname='transfer_wallet_coins_capped'`)).rows[0].n;
     const inner = (await db.query(`select count(*)::int as n from pg_proc where proname='transfer_wallet_coins'`)).rows[0].n;

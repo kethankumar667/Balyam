@@ -883,11 +883,19 @@ export class MandaliRepository {
   }
 
   public async fundCoinRequestDurable(
-    requestId: string, payerIdentityId: string, idempotencyKey: string
+    requestId: string, payerIdentityId: string, idempotencyKey: string,
+    dailyCap?: { maxCoins: string; dayStartMs: number },
   ): Promise<{ alreadyFunded: boolean; request: MandaliCoinRequest }> {
-    const result = await this.pg().rpc<{ alreadyFunded: boolean; request: CoinRequestRow }>("fund_coin_request", {
-      p_request_id: requestId, p_payer_identity_id: payerIdentityId, p_idempotency_key: idempotencyKey,
-    });
+    // With a cap, the database checks it under the payer's wallet lock, so racing
+    // payments cannot each read the same day's total and all pass.
+    const result = dailyCap
+      ? await this.pg().rpc<{ alreadyFunded: boolean; request: CoinRequestRow }>("fund_coin_request_capped", {
+          p_request_id: requestId, p_payer_identity_id: payerIdentityId, p_idempotency_key: idempotencyKey,
+          p_daily_cap: dailyCap.maxCoins, p_day_start: new Date(dailyCap.dayStartMs).toISOString(),
+        })
+      : await this.pg().rpc<{ alreadyFunded: boolean; request: CoinRequestRow }>("fund_coin_request", {
+          p_request_id: requestId, p_payer_identity_id: payerIdentityId, p_idempotency_key: idempotencyKey,
+        });
     return { alreadyFunded: result.alreadyFunded, request: rowToCoinRequest(result.request) };
   }
 

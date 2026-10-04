@@ -98,6 +98,16 @@ function fromRow(row: RewardRow): RewardRecord {
   };
 }
 
+const REWARD_MIGRATION = "20261012000000_reward_gateway.sql";
+const TRANSFER_CAP_MIGRATION = "20261013000000_transfer_daily_cap.sql";
+const FUND_CAP_MIGRATION = "20261014000000_fund_coin_request_daily_cap.sql";
+
+/** PostgREST's answers for "that table or function is not in the schema". */
+function isMissingObject(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /PGRST20[25]|Could not find the (table|function)/.test(message);
+}
+
 export class SupabaseRewardRepository implements RewardRepository {
   readonly kind = "supabase" as const;
   private readonly db: PostgrestClient;
@@ -106,11 +116,53 @@ export class SupabaseRewardRepository implements RewardRepository {
     this.db = new PostgrestClient(config);
   }
 
-  /** Reachable, authorised and migrated — a missing table fails here, at boot, not on a player's claim. */
+  /**
+   * Reachable, authorised and migrated — a missing table or function fails here, at
+   * boot, not on a player's claim or a player's first coin send. Every gap is
+   * reported at once, with the migration that closes it, so a deploy that went out
+   * before its migration says exactly what to run.
+   */
   async ping(): Promise<void> {
-    await this.db.select("reward_ledger", "select=reward_id&limit=1");
-    await this.db.select("account_risk", "select=player_id&limit=1");
-    await this.db.select("risk_events", "select=id&limit=1");
+    const missing: string[] = [];
+    const probeTable = async (table: string, query: string, migration: string) => {
+      try {
+        await this.db.select(table, query);
+      } catch (err) {
+        if (!isMissingObject(err)) throw err;
+        missing.push(`table ${table} (${migration})`);
+      }
+    };
+    await probeTable("reward_ledger", "select=reward_id&limit=1", REWARD_MIGRATION);
+    await probeTable("account_risk", "select=player_id&limit=1", REWARD_MIGRATION);
+    await probeTable("risk_events", "select=id&limit=1", REWARD_MIGRATION);
+
+    // The capped transfer functions refuse a null cap before touching anything, so
+    // calling them with nulls proves they exist without moving a coin. A function
+    // that exists answers with a business error; one that does not answers PGRST202.
+    const probeFunction = async (fn: string, args: Record<string, null>, migration: string) => {
+      try {
+        await this.db.rpc(fn, args);
+      } catch (err) {
+        if (isMissingObject(err)) missing.push(`function ${fn} (${migration})`);
+      }
+    };
+    await probeFunction(
+      "transfer_wallet_coins_capped",
+      { p_from_identity_id: null, p_to_identity_id: null, p_amount: null, p_reason: null, p_idempotency_key: null, p_daily_cap: null, p_day_start: null },
+      TRANSFER_CAP_MIGRATION,
+    );
+    await probeFunction(
+      "fund_coin_request_capped",
+      { p_request_id: null, p_payer_identity_id: null, p_idempotency_key: null, p_daily_cap: null, p_day_start: null },
+      FUND_CAP_MIGRATION,
+    );
+
+    if (missing.length > 0) {
+      throw new Error(
+        `The database is missing ${missing.join("; ")}. Apply the named file(s) from supabase/migrations, in date order, ` +
+          `then restart. See docs/runbooks/reward-gateway.md.`,
+      );
+    }
   }
 
   async insertReward(record: RewardRecord): Promise<{ inserted: boolean; record: RewardRecord }> {
@@ -236,6 +288,11 @@ export class SupabaseRewardRepository implements RewardRepository {
       `created_at=gte.${q(iso(sinceMs))}${kind ? `&kind=eq.${q(kind)}` : ""}&order=created_at.asc&limit=10000`,
     );
     return rows.map(eventFromRow);
+  }
+
+  async eraseRiskData(playerId: string): Promise<void> {
+    await this.db.delete("risk_events", `player_id=eq.${q(playerId)}`);
+    await this.db.delete("account_risk", `player_id=eq.${q(playerId)}`);
   }
 
   async purgeRiskEventsBefore(beforeMs: number): Promise<void> {

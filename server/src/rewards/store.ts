@@ -77,6 +77,7 @@ class DelegatingRewardRepository implements RewardRepository {
   listRiskEventsSince = (since: number, kind?: RiskEventRecord["kind"]) => rewardRepository().listRiskEventsSince(since, kind);
   listRiskEventsForPlayer = (id: string, limit?: number) => rewardRepository().listRiskEventsForPlayer(id, limit);
   purgeRiskEventsBefore = (before: number) => rewardRepository().purgeRiskEventsBefore(before);
+  eraseRiskData = (id: string) => rewardRepository().eraseRiskData(id);
 }
 
 export const rewardStore: RewardRepository = new DelegatingRewardRepository();

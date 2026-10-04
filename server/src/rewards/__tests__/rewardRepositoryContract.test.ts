@@ -294,13 +294,15 @@ describe("SupabaseRewardRepository — every transition is a guarded request", (
     });
   });
 
-  it("pings all three tables so a missing migration stops the boot", async () => {
+  it("pings all three tables and both capped transfer functions, so a missing migration stops the boot", async () => {
     await repo().ping();
 
     expect(calls.map((c) => c.url.pathname)).toEqual([
       "/rest/v1/reward_ledger",
       "/rest/v1/account_risk",
       "/rest/v1/risk_events",
+      "/rest/v1/rpc/transfer_wallet_coins_capped",
+      "/rest/v1/rpc/fund_coin_request_capped",
     ]);
   });
 });

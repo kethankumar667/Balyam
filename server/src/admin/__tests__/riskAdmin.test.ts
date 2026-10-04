@@ -147,6 +147,63 @@ describe("risk admin API", () => {
     });
   });
 
+  describe("erasing an account's risk data", () => {
+    const erase = (body: Record<string, unknown>, authed = true) =>
+      call(`/api/admin/risk/${PLAYER}/data`, { method: "DELETE", body: JSON.stringify(body) }, authed);
+
+    it("is refused without operational credentials", async () => {
+      expect((await erase({ note: "DPDP request 12" }, false)).status).toBe(401);
+    });
+
+    it("needs a note saying which request it answers", async () => {
+      expect((await erase({})).status).toBe(400);
+      expect((await erase({ note: "   " })).status).toBe(400);
+    });
+
+    it("removes the standing and every audit event, in memory and in the store", async () => {
+      await risk.setState(PLAYER, "WATCHLIST", { reasonCodes: ["x"], actor: "op", note: "n" });
+      await risk.setState(PLAYER, "NORMAL", { reasonCodes: ["x"], actor: "op" });
+      expect((await repository.listRiskEventsForPlayer(PLAYER)).length).toBeGreaterThan(0);
+
+      const res = await erase({ note: "DPDP request 12" });
+
+      expect(res.status).toBe(200);
+      expect(await repository.listRiskEventsForPlayer(PLAYER)).toEqual([]);
+      expect(await repository.listRiskStates()).toEqual([]);
+      expect(risk.getState(PLAYER)).toBe("NORMAL");
+    });
+
+    it("refuses to lift a restriction by erasure unless the operator says so outright", async () => {
+      await risk.setState(PLAYER, "RESTRICTED", { reasonCodes: ["x"], actor: "op", note: "farming" });
+
+      const refused = await erase({ note: "DPDP request 12" });
+
+      expect(refused.status).toBe(409);
+      expect(risk.getState(PLAYER)).toBe("RESTRICTED");
+      expect((await erase({ note: "DPDP request 12", confirmStandingLoss: true })).status).toBe(200);
+      expect(risk.getState(PLAYER)).toBe("NORMAL");
+    });
+
+    it("leaves the player's rewards alone, so a milestone cannot be claimed twice", async () => {
+      await gateway.grantCoins({
+        playerId: PLAYER, identityKind: "member", rewardType: "LEVEL_MILESTONE", reasonCode: REASON.MILESTONE_LEVEL,
+        amount: 100, sourceId: "level:5", description: "x",
+      });
+
+      await erase({ note: "DPDP request 12" });
+
+      expect(await repository.listRewardsForPlayer(PLAYER)).toHaveLength(1);
+    });
+
+    it("says so, and changes nothing it cannot confirm, when the store fails", async () => {
+      vi.spyOn(repository, "eraseRiskData").mockRejectedValueOnce(new Error("db down"));
+
+      const res = await erase({ note: "DPDP request 12" });
+
+      expect(res.status).toBe(503);
+    });
+  });
+
   describe("withdrawing a reward", () => {
     async function pendingReward(): Promise<string> {
       const granted = await gateway.grantCoins({

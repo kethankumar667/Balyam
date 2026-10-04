@@ -25,6 +25,7 @@
     "check:deployment": "node scripts/quality-gates/deploymentConfigGuard.mjs",
     "release:check": "node scripts/quality-gates/releaseReadinessReport.mjs",
     "enterprise:check": "node scripts/quality-gates/enterpriseReadinessReport.mjs",
+    "check:schema-ready": "node scripts/persistence/checkSchemaReady.mjs",
     "check:persistence": "node scripts/quality-gates/persistenceVerification.mjs",
     "verify:persistence": "npm run verify:schema && npm run verify:durability",
     "check:mobile-layout": "node client/scripts/mobile-layout/runner.mjs",

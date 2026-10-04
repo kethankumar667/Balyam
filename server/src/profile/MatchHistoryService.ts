@@ -41,6 +41,11 @@ export class MatchHistoryService {
     return { realPeopleMatches, distinctOpponents: distinct.size };
   }
 
+  /** Read-only view of every player's matches, for analysis that looks across accounts. */
+  public allMatchesByPlayer(): ReadonlyMap<string, readonly MatchHistoryItem[]> {
+    return this.playerMatches;
+  }
+
   /** Returns false when this match was already recorded for the player (a replay). */
   public recordMatch(playerId: string, match: MatchHistoryItem): boolean {
     const list = this.playerMatches.get(playerId) ?? [];

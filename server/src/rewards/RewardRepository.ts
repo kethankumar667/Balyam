@@ -61,4 +61,9 @@ export interface RewardRepository extends RiskPersistence {
   listRiskEventsForPlayer(playerId: string, limit?: number): Promise<RiskEventRecord[]>;
   /** Retention: drop audit events older than this. Standing (`account_risk`) and rewards are never purged here. */
   purgeRiskEventsBefore(beforeMs: number): Promise<void>;
+  /**
+   * Erasure: delete a player's standing and their audit events. Rewards stay: they are the
+   * financial record that stops a milestone being claimed twice, and hold only an opaque id.
+   */
+  eraseRiskData(playerId: string): Promise<void>;
 }

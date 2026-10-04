@@ -141,6 +141,12 @@ export default defineConfig(({ mode, command }) => {
     // and would otherwise match Vitest's default *.spec.ts pattern and be
     // silently collected as an empty, failing file.
     exclude: [...configDefaults.exclude, "e2e/**"],
+    // Worker count is capped rather than left at "every core". Uncapped, a 22-core
+    // machine starts so many workers that the module-transform server starves, and
+    // files fail to LOAD with "[vitest-worker]: Timeout calling fetch" — the suite
+    // goes red for load, not for any test. Four is plenty for ~260 small files.
+    maxWorkers: 4,
+    minWorkers: 1,
     /**
      * Real coverage, collected by V8. Thresholds are deliberately absent until
      * the baseline is measured — see docs/remediation/P0-05-QUALITY-GATES.md.

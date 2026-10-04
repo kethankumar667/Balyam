@@ -115,6 +115,11 @@ export class InMemoryRewardRepository implements RewardRepository {
     return this.riskEvents.filter((e) => e.createdAt >= sinceMs && (!kind || e.kind === kind)).map(clone);
   }
 
+  async eraseRiskData(playerId: string): Promise<void> {
+    this.riskStates.delete(playerId);
+    this.riskEvents = this.riskEvents.filter((e) => e.playerId !== playerId);
+  }
+
   async purgeRiskEventsBefore(beforeMs: number): Promise<void> {
     this.riskEvents = this.riskEvents.filter((e) => e.createdAt >= beforeMs);
   }

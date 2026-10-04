@@ -62,6 +62,7 @@ const LazyAdminLeaderboardsPage = lazy(() => import("./pages/admin/leaderboards"
 const LazyAdminAnalyticsPage = lazy(() => import("./pages/admin/analytics"));
 const LazyAdminSystemHealthPage = lazy(() => import("./pages/admin/system-health"));
 const LazyAdminAuditLogsPage = lazy(() => import("./pages/admin/audit-logs"));
+const LazyAdminRiskPage = lazy(() => import("./pages/admin/risk"));
 const LazyAdminSettingsPage = lazy(() => import("./pages/admin/settings"));
 const LazyAdminEconomyPage = lazy(() => import("./pages/admin/economy"));
 const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
@@ -123,6 +124,7 @@ export interface RouteComponents {
   AdminAnalyticsPage?: React.ComponentType;
   AdminSystemHealthPage?: React.ComponentType;
   AdminAuditLogsPage?: React.ComponentType;
+  AdminRiskPage?: React.ComponentType;
   AdminSettingsPage?: React.ComponentType;
   AdminEconomyPage?: React.ComponentType;
   AdminReviewsPage?: React.ComponentType;
@@ -308,6 +310,7 @@ export default function App({ components = {} }: AppProps) {
   const AdminAnalyticsPage = components.AdminAnalyticsPage ?? LazyAdminAnalyticsPage;
   const AdminSystemHealthPage = components.AdminSystemHealthPage ?? LazyAdminSystemHealthPage;
   const AdminAuditLogsPage = components.AdminAuditLogsPage ?? LazyAdminAuditLogsPage;
+  const AdminRiskPage = components.AdminRiskPage ?? LazyAdminRiskPage;
   const AdminSettingsPage = components.AdminSettingsPage ?? LazyAdminSettingsPage;
   const AdminEconomyPage = components.AdminEconomyPage ?? LazyAdminEconomyPage;
   const AdminReviewsPage = components.AdminReviewsPage ?? LazyAdminReviewsPage;
@@ -559,6 +562,16 @@ export default function App({ components = {} }: AppProps) {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminAuditLogsPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/risk"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminRiskPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }

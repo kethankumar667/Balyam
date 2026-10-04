@@ -6,6 +6,7 @@ import type { RewardRepository } from "../rewards/RewardRepository.js";
 import type { RiskService } from "../rewards/RiskService.js";
 import type { TrustService } from "../rewards/TrustService.js";
 import { REASON, isRiskState } from "../rewards/types.js";
+import type { CollusionFinding } from "../rewards/CollusionReport.js";
 
 /**
  * The operator's view of account risk: who is on a watch, why, and the levers to
@@ -32,6 +33,8 @@ export interface RiskAdminDeps {
   repository: RewardRepository;
   risk: RiskService;
   trust: TrustService;
+  /** Accounts that look fed by others, from recent matches. Findings only; changes nothing. */
+  collusion?: () => CollusionFinding[];
 }
 
 function actorOf(req: Request): string {
@@ -59,6 +62,21 @@ export function createRiskAdminRouter(deps: RiskAdminDeps): Router {
     const counts = { WATCHLIST: 0, RESTRICTED: 0, UNDER_REVIEW: 0 };
     for (const a of accounts) if (a.state !== "NORMAL") counts[a.state] += 1;
     res.json({ accounts, counts });
+  });
+
+  /**
+   * GET /api/admin/risk/collusion — accounts whose games are almost all against one
+   * other account that almost always loses to them, with the numbers behind each. A
+   * report for a person to read: it sets no state and sends nothing to any player.
+   */
+  router.get("/collusion", (_req, res) => {
+    try {
+      const findings = deps.collusion ? deps.collusion() : [];
+      res.json({ findings, count: findings.length });
+    } catch (err) {
+      logger.error({ message: `Collusion report failed: ${String(err)}`, module: "RISK" });
+      res.status(503).json({ error: "The report could not be produced right now." });
+    }
   });
 
   /** GET /api/admin/risk/:playerId — the whole picture for one account. */
@@ -124,6 +142,47 @@ export function createRiskAdminRouter(deps: RiskAdminDeps): Router {
       // The store refused (for example: no such player). Memory was not changed.
       logger.error({ message: `Risk state change failed for ${playerId}: ${String(err)}`, module: "RISK" });
       res.status(409).json({ error: "The change could not be recorded. Nothing was changed." });
+    }
+  });
+
+  /**
+   * DELETE /api/admin/risk/:playerId/data  { note, confirmStandingLoss? }
+   *
+   * Erasure for a data-protection request: removes the account's standing and every
+   * audit event about it. Rewards are kept (see RewardRepository.eraseRiskData).
+   *
+   * Erasing is also the one way to clear a RESTRICTED or UNDER_REVIEW account without
+   * a reviewer's reasoning on record, so it is operator-only, needs a note, and refuses
+   * an account that is still under a restriction unless the operator says outright that
+   * losing that standing is intended. The erasure itself is logged, since the events
+   * that would have recorded it are what it deletes.
+   */
+  router.delete("/:playerId/data", async (req, res) => {
+    const { playerId } = req.params;
+    if (!PLAYER_ID.test(playerId ?? "")) return bad(res, "Invalid player id");
+    const body = (req.body ?? {}) as { note?: unknown; confirmStandingLoss?: unknown };
+    if (typeof body.note !== "string" || body.note.trim().length === 0 || body.note.length > MAX_NOTE_LENGTH) {
+      return bad(res, `note is required (at most ${MAX_NOTE_LENGTH} characters): say which request this answers`);
+    }
+    const state = deps.risk.getState(playerId!);
+    if ((state === "RESTRICTED" || state === "UNDER_REVIEW") && body.confirmStandingLoss !== true) {
+      res.status(409).json({
+        error: `This account is ${state}. Erasing its data lifts that. Resolve it first, or send confirmStandingLoss: true.`,
+      });
+      return;
+    }
+
+    try {
+      deps.risk.forget(playerId!);
+      await deps.repository.eraseRiskData(playerId!);
+      logger.warn({
+        message: `Risk data erased for ${playerId} by ${actorOf(req)} (was ${state}): ${body.note.trim()}`,
+        module: "RISK",
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      logger.error({ message: `Risk data erasure failed for ${playerId}: ${String(err)}`, module: "RISK" });
+      res.status(503).json({ error: "Could not erase right now. Nothing was confirmed; try again." });
     }
   });
 

@@ -72,16 +72,25 @@ sending, and paying a coin request.
 ## Applying the migration
 
 1. Take a backup.
-2. Run `supabase/migrations/20261012000000_reward_gateway.sql` and then
-   `supabase/migrations/20261013000000_transfer_daily_cap.sql` (SQL editor or `supabase db push`). Both
-   are re-runnable. The first depends on the progression migration, the second on the P2P transfer one.
+2. Run these three, in order (SQL editor or `supabase db push`). All are re-runnable.
+   - `20261012000000_reward_gateway.sql` — the reward, standing and audit tables (needs the progression migration).
+   - `20261013000000_transfer_daily_cap.sql` — the daily cap on sending coins (needs the P2P transfer migration).
+   - `20261014000000_fund_coin_request_daily_cap.sql` — the same cap on paying a coin request (needs the Mandali coin-request migrations).
+   Then check: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run check:schema-ready` prints `SCHEMA_READY`.
 3. Deploy the server. **A missing migration stops the boot** (the store is pinged before the port
-   opens), so a bad deploy fails at start, not on a player's first claim.
+   opens), so a bad deploy fails at start, not on a player's first claim. The error names every missing
+   table or function and the file that creates it.
+
+   Better, catch it before the deploy: set `npm run check:schema-ready` as Render's **Pre-Deploy
+   Command** (or run it in CI). It checks the same things, changes nothing, and fails the release with
+   the same list, so a migration that was forgotten stops the deploy instead of crash-looping it. Exit
+   codes: 0 ready, 1 something missing, 2 could not check (no credentials, or the database is unreachable).
 4. Confirm the boot log reports the reward gateway ready on the supabase store.
 
 Roll back with `supabase/rollbacks/20261012000000_reward_gateway_rollback.sql`. It is destructive:
-release or void pending rewards first. The cap function rolls back on its own with
-`20261013000000_transfer_daily_cap_rollback.sql`; do that only together with the server, which calls it.
+release or void pending rewards first. The two cap functions roll back on their own
+(`20261013000000_…_rollback.sql`, `20261014000000_…_rollback.sql`); do that only together with the
+server, which calls them.
 
 ## Looking at an account, and changing it
 
@@ -89,10 +98,34 @@ All under `/api/admin/risk`, with the operational key or an admin session.
 
 ```
 GET  /api/admin/risk                          every account that is not NORMAL, with counts
+GET  /api/admin/risk/collusion                accounts that look fed by others (a report; changes nothing)
 GET  /api/admin/risk/:playerId                state, events, rewards, trust checklist
 PUT  /api/admin/risk/:playerId                { "state": "RESTRICTED", "reasonCodes": ["FARM_RING"], "note": "why" }
 POST /api/admin/risk/rewards/:rewardId/void   { "reason": "why" }
+DELETE /api/admin/risk/:playerId/data         { "note": "which request this answers", "confirmStandingLoss"?: true }
 ```
+
+The same things are on the **Risk & Rewards** page of the admin console (`/admin/risk`): the watch list,
+the collusion report, an account lookup, and the two actions (set a state with a note, withdraw a
+pending reward).
+
+### Accounts that look fed by others
+
+`GET /api/admin/risk/collusion` lists an account whose games over the last week are mostly against one
+other account that almost always loses to it (at least 12 games, at least 90% won by the first, at least
+80% of the second's games against the first). Friends who play each other a lot are the product working,
+so this is a **report, not a penalty**: nothing is set automatically. Open the account, read the numbers,
+and set a watch or restriction with a note if it holds up. Thresholds are constants in
+`server/src/rewards/CollusionReport.ts`.
+
+### Erasing an account's risk data
+
+`DELETE /api/admin/risk/:playerId/data` removes the account's standing and every audit event, for a
+data-protection request. It needs a note naming the request, and refuses an account that is still
+RESTRICTED or UNDER_REVIEW unless you pass `confirmStandingLoss: true`, because erasing is otherwise a way
+to lift a restriction with no reviewer's reasoning on record. The erasure is logged (the events that would
+have recorded it are what it deletes). Reward rows are kept: they are the financial record that stops a
+milestone being claimed twice and hold only an opaque id.
 
 - Restricting or reviewing an account **requires a note**. Setting it back to `NORMAL` does not.
 - The actor recorded is the verified credential, never the request body.
@@ -121,17 +154,13 @@ POST /api/admin/risk/rewards/:rewardId/void   { "reason": "why" }
 - **Sending coins is capped inside the database transaction** (`transfer_wallet_coins_capped`, migration
   `20261013000000_transfer_daily_cap.sql`, run it before deploying this server). Both wallet rows are
   locked before the day's total is read, so parallel sends and multiple server instances cannot exceed
-  the cap. `node scripts/persistence/verifyTransferCap.mjs` proves it on a real PostgreSQL with 12
-  concurrent connections.
-- **Paying a Mandali coin request is not yet capped in the database.** It goes through the separate
-  `fund_coin_request` function, which moves the coins itself. It is checked and queued per player in
-  the server, so it holds on one instance; capping it in the database needs that function reworked in a
-  new migration. Requests are a fixed 100 coins with a 4-hour cooldown, which bounds the exposure.
-- **Paying an already-paid coin request while at the cap** is refused with the cap message rather than
-  reported as already paid. The money is not moved twice; only the wording is wrong.
-- **Self-service profile deletion does not erase risk or reward rows**, deliberately: otherwise a watched account
-  could clear itself by deleting. An erasure request for reward/risk data is an operator job (delete the
-  `player_identities` row, which cascades) — the retention basis belongs in the privacy notice.
+  the cap. `node scripts/persistence/verifyTransferCap.mjs` proves it, for sends and for coin-request payments, on a real PostgreSQL with concurrent
+  connections.
+- **Paying a coin request is capped inside the database too** (`fund_coin_request_capped`), under the same
+  wallet locks and against the request's own stored amount. A request that already landed is answered
+  "already paid", never "limit reached", because only an OPEN request is checked.
+- **Self-service profile deletion does not erase risk or reward rows**, deliberately: otherwise a watched
+  account could clear itself by deleting. Use the operator erasure endpoint above.
 - **Streak coins are paid to guests too** (tier 1, 24 h vest); milestone coins need an account.
 
 ## Personal data
@@ -139,5 +168,10 @@ POST /api/admin/risk/rewards/:rewardId/void   { "reason": "why" }
 Server-side rows only: `reward_ledger`, `account_risk`, `risk_events`, each keyed by player id and each
 deleted with the identity row (`on delete cascade`). No browser storage key is added. A player can see
 their own rewards and, if restricted or under review, that fact; they cannot see a WATCHLIST state or
-operator notes. **The privacy notice needs a line saying accounts are checked for reward abuse** — that
-text, and whether it bumps `NOTICE_VERSION`, is a decision for the product owner and counsel.
+operator notes. The privacy notice (`client/src/pages/PrivacyPolicyPage.tsx`, sections 3 and 7) now says
+accounts are checked for reward abuse, what is looked at, that no device or network signal is used, that
+nothing is banned automatically, and how long the records are kept. **One decision is still open:
+whether this change bumps `NOTICE_VERSION`** (`client/src/lib/privacy/consent.ts`). A bump re-asks every
+player for consent on their next visit; not bumping means players who consented to the old notice are not
+asked about the new text. That is the product owner's and counsel's call, and the retention period (one
+year by default, `RISK_EVENT_RETENTION_DAYS`) should be confirmed in the same conversation.

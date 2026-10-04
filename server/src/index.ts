@@ -51,6 +51,7 @@ import { TransferPolicy } from "./rewards/TransferPolicy.js";
 import { createRewardsRouter } from "./rewards/RewardsController.js";
 import { createRiskAdminRouter } from "./admin/RiskAdminController.js";
 import { riskService } from "./rewards/RiskService.js";
+import { findFeedingPatterns } from "./rewards/CollusionReport.js";
 import { trustService } from "./rewards/TrustService.js";
 import { rewardStore, initialiseRewardStore, orderedRiskPersistence } from "./rewards/store.js";
 import { ABNORMAL_WINDOW_MS } from "./rewards/SessionRules.js";
@@ -487,7 +488,13 @@ app.use("/api/admin/dashboard", createDashboardRouter());
 app.use("/api/admin/users", createAdminUsersRouter());
 app.use(
   "/api/admin/risk",
-  createRiskAdminRouter({ gateway: rewardGateway, repository: rewardStore, risk: riskService, trust: trustService }),
+  createRiskAdminRouter({
+    gateway: rewardGateway,
+    repository: rewardStore,
+    risk: riskService,
+    trust: trustService,
+    collusion: () => findFeedingPatterns(matchHistoryService.allMatchesByPlayer(), Date.now()),
+  }),
 );
 
 /**

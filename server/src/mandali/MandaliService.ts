@@ -1166,10 +1166,20 @@ export class MandaliService {
   private async fundCoinRequestChecked(
     requestId: string, payerId: string
   ): Promise<{ success: boolean; request?: import("@shared/mandali/types.js").MandaliCoinRequest; error?: string }> {
-    const verdict = await this.transferPolicy?.check(payerId, MANDALI_COIN_AMOUNT);
-    if (verdict && !verdict.ok) return { success: false, error: verdict.message };
+    // Standing is checked here; the daily total is checked by the database, under the
+    // payer's wallet lock and against the request's own amount. That also means a
+    // replay of a request that already landed is answered "already paid", not "limit
+    // reached", because the database only checks an OPEN request.
+    const standing = this.transferPolicy?.checkStanding(payerId);
+    if (standing && !standing.ok) return { success: false, error: standing.message };
+    let dailyCap: { maxCoins: string; dayStartMs: number } | undefined;
     try {
-      const { alreadyFunded, request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`);
+      dailyCap = await this.transferPolicy?.capFor(payerId);
+    } catch {
+      return { success: false, error: "Coin transfers are temporarily unavailable. Try again in a moment." };
+    }
+    try {
+      const { alreadyFunded, request } = await this.repository.fundCoinRequestDurable(requestId, payerId, `mnd_coin_req:${requestId}`, dailyCap);
       // Now that anyone in the group can pay, two people can tap at once. The
       // database lets only the first through; the second must hear that
       // someone beat them to it, not a success that implies their coins moved.
@@ -1180,6 +1190,9 @@ export class MandaliService {
       this.emitToMandali(request.mandaliId, "mandali:coin_request:updated", { mandaliId: request.mandaliId, request });
       return { success: true, request };
     } catch (err) {
+      if (err instanceof TransferCapExceededError || (err instanceof Error && err.message.includes("TRANSFER_CAP_EXCEEDED"))) {
+        return { success: false, error: "You have reached today's limit for sending coins. It resets at midnight UTC." };
+      }
       return { success: false, error: durableErrorMessage(err, "Could not pay this coin request.") };
     }
   }

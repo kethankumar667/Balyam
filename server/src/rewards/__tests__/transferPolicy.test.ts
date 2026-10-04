@@ -7,6 +7,7 @@ import { MandaliRepository } from "../../mandali/MandaliRepository.js";
 import { MandaliService } from "../../mandali/MandaliService.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
+import { TransferCapExceededError } from "../../persistence/EconomyRepository.js";
 
 const DAY = 86_400_000;
 const T0 = Date.UTC(2026, 8, 29, 12, 0, 0);
@@ -289,15 +290,32 @@ describe("Mandali paying a coin request goes through the same policy", () => {
     return { service, fund };
   }
 
-  it("does not call the database function when the payer is over their cap", async () => {
-    const entries = [sent(500)];
-    const { policy } = policyFor(entries);
+  it("hands the database the payer's cap, so it is enforced under the wallet lock", async () => {
+    const { policy } = policyFor([], 2);
     const { service, fund } = durableService(policy);
+
+    await service.fundCoinRequest("req_1", "payer");
+
+    expect(fund).toHaveBeenCalledWith("req_1", "payer", "mnd_coin_req:req_1", { maxCoins: "1000", dayStartMs: DAY_START });
+  });
+
+  it("tells the payer plainly when the database refuses for the day's limit", async () => {
+    const { service, fund } = durableService(policyFor([]).policy);
+    fund.mockRejectedValueOnce(new TransferCapExceededError("500 sent today, 100 requested, cap 500"));
 
     const result = await service.fundCoinRequest("req_1", "payer");
 
-    expect(result).toMatchObject({ success: false, error: expect.stringContaining("500 coins a day") });
-    expect(fund).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ success: false, error: expect.stringContaining("today's limit") });
+  });
+
+  it("reports a request that already landed as paid, even when the payer is at their cap", async () => {
+    // The database only checks an OPEN request, so a replay comes back alreadyFunded.
+    const { service, fund } = durableService(policyFor([sent(500)]).policy);
+    fund.mockResolvedValueOnce({ alreadyFunded: true, request: { id: "req_1", mandaliId: "m1", fundedByIdentityId: "payer" } } as never);
+
+    const result = await service.fundCoinRequest("req_1", "payer");
+
+    expect(result.success).toBe(true);
   });
 
   it("does not call the database function when the payer is restricted", async () => {

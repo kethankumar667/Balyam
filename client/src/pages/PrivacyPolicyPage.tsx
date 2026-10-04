@@ -345,9 +345,14 @@ export default function PrivacyPolicyPage() {
                 )}
 
                 {sec.id === "how-we-use" && (
+                  <>
                   <p>
                     We process information strictly to: (a) establish and broadcast real-time Socket.IO game rooms, (b) hold disconnected seats for up to 10 minutes so games are not lost, (c) manage seasonal leaderboards and achievement awards, and (d) detect fraudulent move automation or harassment.
                   </p>
+                  <p>
+                    To keep rewards fair we also check how an account plays: how long matches last, how fast they follow one another, and how many different people an account has played with. From this we set a trust tier, which decides how many coins an account can send in a day, and how long earned coins wait before arriving (normally 24 hours). We do not use your device, browser, network address or location for this, and an account is never banned automatically: a person reviews any restriction, and you can contact us to ask for it to be looked at again.
+                  </p>
+                  </>
                 )}
 
                 {sec.id === "multiplayer-profile" && (
@@ -370,7 +375,7 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "data-retention" && (
                   <p>
-                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until an explicit account deletion request is submitted.
+                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until an explicit account deletion request is submitted. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier.
                   </p>
                 )}
 

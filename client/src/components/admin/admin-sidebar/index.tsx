@@ -9,6 +9,7 @@ import {
   BarChart3,
   HeartPulse,
   ScrollText,
+  ShieldAlert,
   Settings,
   X,
   Shield,
@@ -35,6 +36,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "System Health", href: "/admin/system-health", icon: HeartPulse },
   { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
+  { label: "Risk & Rewards", href: "/admin/risk", icon: ShieldAlert },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
