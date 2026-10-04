@@ -197,7 +197,7 @@ export default function DotsBoxesScorecardModal({
               >
                 <div className="w-full h-full rounded-full bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden">
                   {winner?.avatar ? (
-                    <SeatAvatar avatar={winner.avatar} name={winner.name} className="w-full h-full object-cover" />
+                    <SeatAvatar seatId={winner.pid} avatar={winner.avatar} name={winner.name} className="w-full h-full object-cover" />
                   ) : (
                     <span
                       className="font-black text-xl"
@@ -329,7 +329,7 @@ export default function DotsBoxesScorecardModal({
                       >
                         <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden">
                           {p.avatar ? (
-                            <SeatAvatar avatar={p.avatar} name={p.name} className="w-full h-full object-cover" />
+                            <SeatAvatar seatId={p.pid} avatar={p.avatar} name={p.name} className="w-full h-full object-cover" />
                           ) : (
                             <span
                               className="font-bold text-xs"

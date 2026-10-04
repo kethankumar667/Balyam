@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { motion } from "framer-motion";
 import type { Player, UnoPlayerState } from "@shared/types";
 import Modal from "../../components/Modal";
@@ -240,17 +241,19 @@ export default function UnoResultModal({
                       </div>
 
                       {/* Avatar */}
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-amber-400/50 bg-amber-100/50 flex items-center justify-center text-[10px]">
-                        {avatarOpt?.src ? (
-                          <img
-                            src={avatarOpt.src}
-                            alt={nameOf(id)}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span>{nameOf(id).slice(0, 1).toUpperCase()}</span>
-                        )}
-                      </div>
+                      <PlayerCardTrigger seatId={id} name={nameOf(id)} avatar={p?.avatar}>
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-amber-400/50 bg-amber-100/50 flex items-center justify-center text-[10px]">
+                          {avatarOpt?.src ? (
+                            <img
+                              src={avatarOpt.src}
+                              alt={nameOf(id)}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span>{nameOf(id).slice(0, 1).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </PlayerCardTrigger>
 
                       {/* Name */}
                       <span className="truncate flex-1 font-extrabold text-[#2C1D11]">

@@ -83,3 +83,17 @@ export const globalRateLimiter = new SocketRateLimiter(15, 10);
  * a connected socket emits.
  */
 export const machineRateLimiter = new SocketRateLimiter(30, 5);
+
+/**
+ * Profile-card lookups get their own small budget, for two reasons.
+ *
+ * They are a read of three records per call, and nobody legitimately opens
+ * more than a handful of cards in a few seconds, so the interactive limiter's
+ * ten per second is far too generous. And they must not draw from that
+ * interactive bucket: a player tapping through faces should never be able to
+ * run out of the tokens their own game moves need.
+ *
+ * Burst of 6 lets someone flick through a whole table; the refill of one per
+ * second keeps a sustained loop to about sixty lookups a minute.
+ */
+export const playerCardRateLimiter = new SocketRateLimiter(6, 1);

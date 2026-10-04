@@ -3,6 +3,8 @@ import { profileService } from "./ProfileService.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
 import { buildPublicPlayerCard } from "./publicPlayerCard.js";
+import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
+import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import type { GameKind } from "@shared/types.js";
 
 /**
@@ -120,7 +122,18 @@ profileRouter.get("/:playerId/achievements", requireSelfParam(), (req, res) => {
  * Read-only like `GET /:playerId`: an id nobody has played under is a 404,
  * never a created row.
  */
-profileRouter.get("/:playerId/card", (req, res) => {
+/**
+ * A public read of three records, so it gets its own small budget per caller
+ * (verified identity when there is one, otherwise IP). Matches the socket
+ * path's refill rate so the two surfaces cannot be used to double the allowance.
+ */
+const cardLookupLimiter = rateLimitByCaller({
+  capacity: 10,
+  refillPerSec: 1,
+  keyOf: (req) => req.player?.playerId ?? callerIp(req),
+});
+
+profileRouter.get("/:playerId/card", cardLookupLimiter, (req, res) => {
   const accountId = req.params.playerId;
   // Same rule as `GET /:playerId`: a read creates a row only for the person it
   // is about, so you can open your own card before you have played a match.
@@ -128,9 +141,11 @@ profileRouter.get("/:playerId/card", (req, res) => {
     profileService.getProfile(accountId) ??
     (req.player?.playerId === accountId ? profileService.getOrCreateProfile(accountId) : undefined);
   if (!profile) {
+    metricsRegistry.increment("player_card.miss_total");
     res.status(404).json({ error: "No profile for that player" });
     return;
   }
+  metricsRegistry.increment("player_card.served_total");
   res.json({
     card: buildPublicPlayerCard({
       identityId: accountId,

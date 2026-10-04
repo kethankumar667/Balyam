@@ -60,6 +60,13 @@ function formatMemberSince(epochMs: number): string {
  * When a section has nothing honest to say it says so in words instead of
  * drawing zeros or a locked-padlock placeholder.
  */
+/**
+ * Above the standard dialog layer (50) because the card is opened FROM other
+ * dialogs: result screens, scorecards, the Mandali member sheet. It stays
+ * below the first-run consent and tutorial layers, which must still win.
+ */
+const CARD_Z_INDEX = 55;
+
 export default function PlayerCardModal({ hint, view, onClose, onRetry }: PlayerCardModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const card = view.status === "ready" ? view.card : null;
@@ -71,6 +78,7 @@ export default function PlayerCardModal({ hint, view, onClose, onRetry }: Player
       open
       onClose={onClose}
       mobileSheet
+      zIndex={CARD_Z_INDEX}
       initialFocusRef={closeButtonRef}
       ariaLabelledBy="player-card-title"
       panelClassName="bhalyam-font relative w-full md:max-w-md max-h-[92dvh] overflow-hidden flex flex-col
@@ -244,7 +252,7 @@ function CareerStats({ career, scope }: { career: PublicPlayerCardCareer; scope:
 
 function LoadingBlocks() {
   return (
-    <div role="status" aria-label="Loading profile" className="space-y-3 animate-pulse">
+    <div role="status" aria-label="Loading profile" className="space-y-3 motion-safe:animate-pulse">
       <div className="h-16 rounded-2xl bg-bhalyam-wood/10 dark:bg-slate-800" />
       <div className="h-32 rounded-2xl bg-bhalyam-wood/10 dark:bg-slate-800" />
     </div>

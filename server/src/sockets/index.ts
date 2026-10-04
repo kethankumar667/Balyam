@@ -1,13 +1,14 @@
 import type { Server, Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents, AccountKind } from "@shared/types.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
-import { globalRateLimiter, machineRateLimiter } from "../lib/rateLimiter.js";
+import { globalRateLimiter, machineRateLimiter, playerCardRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { capabilitiesFor } from "@shared/permissions.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
+import type { PlayerCardResult } from "@shared/profile/PublicPlayerCard.js";
 import { sanitizeClientTelemetry } from "./telemetry.js";
 
 /**
@@ -21,6 +22,9 @@ import { sanitizeClientTelemetry } from "./telemetry.js";
  * wasted turn timer) is far cheaper than the other one (a player locked out of
  * their own seat).
  */
+/** Named once so the limiter branch and the handler cannot drift apart. */
+const PLAYER_CARD_EVENT = "player:card";
+
 const MACHINE_EVENTS = new Set<string>([
   "webrtc:signal",
   "room:setOrientation",
@@ -38,7 +42,24 @@ export function registerSocketHandlers(
   rooms: RoomManager
 ): void {
   // Socket.IO packet middleware to enforce authoritative rate limits before event dispatch
-  socket.use(([event, ..._args], next) => {
+  socket.use(([event, ...args], next) => {
+    if (event === PLAYER_CARD_EVENT) {
+      const { allowed } = playerCardRateLimiter.consume(socket.id);
+      if (!allowed) {
+        metricsRegistry.increment("player_card.rate_limited_total");
+        logger.warn({ message: "Player card lookup rate limit exceeded", socketId: socket.id, module: "RATE_LIMIT" });
+        // Answer the ack rather than dropping the packet: the client is waiting
+        // on it, and silence would look like a dead connection for eight seconds.
+        const ack: unknown = args[args.length - 1];
+        if (typeof ack === "function") {
+          (ack as (result: PlayerCardResult) => void)({ ok: false, error: "Too many profile lookups. Wait a moment and try again." });
+        }
+        return;
+      }
+      // Deliberately not `noteSocketActivity`: opening a card is not a game
+      // action and must not keep an idle seat from being taken over.
+      return next();
+    }
     if (MACHINE_EVENTS.has(event)) {
       const { allowed } = machineRateLimiter.consume(socket.id);
       if (!allowed) {
@@ -296,11 +317,14 @@ export function registerSocketHandlers(
     if (typeof ack !== "function") return;
     // `seatId` crosses a trust boundary as an untyped string; anything else is
     // answered like an unknown seat rather than thrown on.
-    ack(
+    const result: PlayerCardResult =
       typeof seatId === "string"
         ? rooms.getPlayerCard(socket.id, seatId)
-        : { ok: false, error: "That player is not at this table" }
-    );
+        : { ok: false, error: "That player is not at this table" };
+    // Counted by outcome so a rise in misses (stale seat ids after a reconnect,
+    // or someone probing) is visible on the metrics page without a debugger.
+    metricsRegistry.increment(result.ok ? "player_card.served_total" : "player_card.miss_total");
+    ack(result);
   });
 
   socket.on("chat:send", ({ text }) => {

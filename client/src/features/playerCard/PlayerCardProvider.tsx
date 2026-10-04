@@ -40,6 +40,7 @@ async function loadAccountCard(accountId: string): Promise<LoadResult> {
     // produced a profile row. Telling that apart from a dropped connection is
     // what keeps the dialog from offering a retry that can never succeed.
     if (response.status === 404) return { ok: false, error: NO_RECORD_MESSAGE, retryable: false };
+    if (response.status === 429) return { ok: false, error: "Too many profile lookups. Wait a moment and try again." };
     if (!response.ok) return { ok: false, error: FAILURE_MESSAGE };
     const body = (await response.json()) as { card?: PublicPlayerCard };
     return body.card ? { ok: true, card: body.card } : { ok: false, error: FAILURE_MESSAGE };

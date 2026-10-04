@@ -232,6 +232,12 @@ Copy the *structure* of `client/src/games/tictactoe/`, not its bugs.
 - [ ] `React.lazy` board import so the game is its own chunk (§13).
 - [ ] No hooks after an early `return`. No `key={index}` on reorderable lists.
 - [ ] Sound goes through `AudioManager`, haptics through `HapticsManager`. A mute preference is a **declared** storage key (§12).
+- [ ] **Every face at the table opens the player card.** Pass `seatId={playerSeatId}` to each `<SeatAvatar>`; a game that
+      draws faces with its own component wraps it in `PlayerCardTrigger` (`client/src/features/playerCard/`). Include the
+      result/scorecard modal. `playerCardCoverage.test.ts` fails on any game `SeatAvatar` without `seatId` (opt out with a
+      `player-card:none` comment only for a face that is decorative or already inside a button). At a table the card shows
+      results for **this game only** — the server scopes it to `room.game`, so a new game needs no extra work there, but
+      its stats must be written to `PlayerStats.perGame[game]` for the card to have anything to show.
 
 ---
 

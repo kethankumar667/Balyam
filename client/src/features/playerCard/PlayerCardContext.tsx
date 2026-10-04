@@ -58,7 +58,7 @@ export type PlayerCardTargetProps = {
 export const PLAYER_CARD_BUTTON_CLASSES =
   "relative cursor-pointer before:absolute before:-inset-2 before:content-[''] " +
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark " +
-  "active:scale-95 transition-transform";
+  "active:scale-95 transition-transform motion-reduce:transition-none motion-reduce:active:scale-100";
 
 export interface PlayerCardButtonProps {
   onClick: (event: MouseEvent<HTMLElement>) => void;

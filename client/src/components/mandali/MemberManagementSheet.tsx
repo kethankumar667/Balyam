@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { Crown, ShieldCheck, ChevronDown, UserMinus, Ban, ArrowLeftRight } from "lucide-react";
 import { AlbumSheet } from "./album";
 import type { MandaliMember } from "@shared/mandali/types.js";
@@ -94,12 +95,14 @@ export default function MemberManagementSheet({
                 key={member.playerId}
                 className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-album-field transition-colors relative"
               >
-                <img
-                  src={avatarUrl(member.avatar)}
-                  alt=""
-                  className="w-10 h-10 rounded-full object-cover bg-album-field shrink-0"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
-                />
+                <PlayerCardTrigger accountId={member.playerId} name={member.displayName} avatar={member.avatar}>
+                  <img
+                    src={avatarUrl(member.avatar)}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover bg-album-field shrink-0"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
+                  />
+                </PlayerCardTrigger>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-album-ink truncate flex items-center gap-1.5">
                     {member.displayName}

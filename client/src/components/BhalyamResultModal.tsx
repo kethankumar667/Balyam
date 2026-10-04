@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PlayerCardTrigger } from "../features/playerCard/PlayerCardContext";
 import { motion, useReducedMotion } from "framer-motion";
 import { Crown, RotateCcw, Zap } from "lucide-react";
 import type { Player } from "@shared/types";
@@ -283,13 +284,15 @@ export default function BhalyamResultModal({
                       {rankNum}
                     </div>
 
-                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-amber-300/40 bg-amber-100/50 flex items-center justify-center text-[10px]">
-                      {avatarOpt?.src ? (
-                        <img src={avatarOpt.src} alt={p.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span>{p.name.slice(0, 1).toUpperCase()}</span>
-                      )}
-                    </div>
+                    <PlayerCardTrigger seatId={p.id} name={p.name} avatar={p.avatar}>
+                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-amber-300/40 bg-amber-100/50 flex items-center justify-center text-[10px]">
+                        {avatarOpt?.src ? (
+                          <img src={avatarOpt.src} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{p.name.slice(0, 1).toUpperCase()}</span>
+                        )}
+                      </div>
+                    </PlayerCardTrigger>
 
                     <span className="min-w-0 flex-1 font-extrabold text-[#2C1D11] flex items-center gap-1.5">
                       <span className="truncate">{p.name}</span>

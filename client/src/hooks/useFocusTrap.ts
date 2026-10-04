@@ -4,6 +4,20 @@ const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /**
+ * Every open trap, oldest first. Only the LAST entry may react to the keyboard.
+ *
+ * ── Why a stack ────────────────────────────────────────────────────────
+ * Each trap listens on `window`, so before this existed two dialogs open at
+ * once both heard every key: Escape closed the dialog on top AND the one under
+ * it, and Tab was cycled by two handlers fighting over focus. That is easy to
+ * hit now that a player card can open over a result or scorecard modal. A
+ * module-level list is the smallest thing that gives every dialog in the app
+ * the correct rule — the topmost one owns the keyboard — without each caller
+ * having to know what else might be open.
+ */
+const openTrapStack: symbol[] = [];
+
+/**
  * Focus trap + Escape + focus restoration, extracted from the one pattern
  * that already existed correctly in four places in this codebase
  * (`LeaveRoomModal` is the cleanest copy) — Tab/Shift+Tab cycling inside the
@@ -46,6 +60,9 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
   useEffect(() => {
     if (!open) return;
 
+    const trapId = Symbol("focus-trap");
+    openTrapStack.push(trapId);
+
     previouslyFocusedRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -53,6 +70,8 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
       ?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // A dialog opened on top of this one owns the keyboard until it closes.
+      if (openTrapStack[openTrapStack.length - 1] !== trapId) return;
       if (e.key === "Escape") {
         if (!onClose) return;
         e.preventDefault();
@@ -78,6 +97,8 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      const position = openTrapStack.indexOf(trapId);
+      if (position !== -1) openTrapStack.splice(position, 1);
       // Restore to the trigger, but only if it's still a real, attached
       // element — a re-render can have unmounted it between open and close.
       const toRestore = previouslyFocusedRef.current;
