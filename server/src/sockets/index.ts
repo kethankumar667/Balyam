@@ -292,6 +292,17 @@ export function registerSocketHandlers(
     });
   });
 
+  socket.on("player:card", (seatId, ack) => {
+    if (typeof ack !== "function") return;
+    // `seatId` crosses a trust boundary as an untyped string; anything else is
+    // answered like an unknown seat rather than thrown on.
+    ack(
+      typeof seatId === "string"
+        ? rooms.getPlayerCard(socket.id, seatId)
+        : { ok: false, error: "That player is not at this table" }
+    );
+  });
+
   socket.on("chat:send", ({ text }) => {
     rooms.sendChat(socket.id, text);
   });

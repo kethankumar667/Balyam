@@ -900,6 +900,7 @@ export function SnlPlayerRail({
             <div className="flex-1 min-w-0">
               <div className="text-xs text-slate-100 font-semibold truncate flex items-center gap-1">
                 <SeatAvatar
+                  seatId={id}
                   avatar={p?.avatar}
                   name={p?.name ?? "—"}
                   className="w-5 h-5"

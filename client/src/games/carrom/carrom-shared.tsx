@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import type { CarromPublicState, CarromSeat, Player, StrikerSkin, BoardFeltSkin, CarromMode } from "@shared/types";
 import { CARROM_BOARD } from "@shared/types";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -598,7 +599,7 @@ export function CarromPlayerCards({
                   position="top"
                 />
               )}
-              <LetterAvatar name={name} avatar={avatarOf(s.playerId)} isWhite={isWhite} size={38} isSelf={isSelf} isTurn={isTurn} />
+              <PlayerCardTrigger seatId={s.playerId} name={name} avatar={avatarOf(s.playerId)}><LetterAvatar name={name} avatar={avatarOf(s.playerId)} isWhite={isWhite} size={38} isSelf={isSelf} isTurn={isTurn} /></PlayerCardTrigger>
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-bold truncate block" style={{ color: WARM.woodDark }}>
                   {name}
@@ -692,14 +693,16 @@ export function CarromPlayerCards({
                 position="top"
               />
             )}
-            <LetterAvatar
-              name={name}
-              avatar={avatarOf(s.playerId)}
-              isWhite={isWhite}
-              size={36}
-              isSelf={isSelf}
-              isTurn={isTurn}
-            />
+            <PlayerCardTrigger seatId={s.playerId} name={name} avatar={avatarOf(s.playerId)}>
+              <LetterAvatar
+                name={name}
+                avatar={avatarOf(s.playerId)}
+                isWhite={isWhite}
+                size={36}
+                isSelf={isSelf}
+                isTurn={isTurn}
+              />
+            </PlayerCardTrigger>
             <span
               className="text-[11px] font-bold leading-tight text-center truncate w-full mt-0.5"
               style={{ color: WARM.woodDark }}

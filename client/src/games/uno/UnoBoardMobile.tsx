@@ -428,6 +428,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   >
                     <animated.div style={{ transform: wobbleTargetId === id ? wobble.transform : "none" }}>
                       <StadiumOpponentSeat
+                        seatId={id}
                         name={m.nameOf(id)}
                         avatar={player?.avatar}
                         handSize={state.handSizes[id] ?? 0}
@@ -478,6 +479,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                   <div className="relative">
                     <UnoDeclareBubble declared={selfDeclared} />
                     <StadiumSelfPlate
+                      seatId={selfId}
                       name={selfName}
                       avatar={players.find((p) => p.id === selfId)?.avatar}
                       seatNumber={selfSeatNumber}

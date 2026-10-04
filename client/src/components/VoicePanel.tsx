@@ -160,6 +160,7 @@ export default function VoicePanel({
               >
                 <span className="relative flex-shrink-0">
                   <SeatAvatar
+                    seatId={p.playerId}
                     avatar={avatarOf(p.playerId)}
                     name={nameOf(p.playerId)}
                     className="w-6 h-6"

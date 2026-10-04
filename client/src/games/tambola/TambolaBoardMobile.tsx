@@ -140,6 +140,7 @@ export default function TambolaBoardMobile({ state, selfId, onMove, players, mes
               >
                 <span>{p.isReady ? "✓" : "⏳"}</span>
                 <SeatAvatar
+                  seatId={p.id}
                   avatar={avatarById.get(p.id)}
                   name={p.name ?? p.id}
                   className="w-5 h-5"

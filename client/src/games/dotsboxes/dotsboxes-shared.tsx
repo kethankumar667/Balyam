@@ -997,7 +997,7 @@ export function ScoreBar({
               /* ── Desktop: two-line layout ── */
               <>
                 <div className="flex items-center gap-2">
-                  <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-7 h-7" textClassName="text-[10px]" />
+                  <SeatAvatar seatId={pid} avatar={avatarOf(pid)} name={nameOf(pid)} className="w-7 h-7" textClassName="text-[10px]" />
                   <span className="font-black" style={{ color: pen.color, fontSize: 22 }}>
                     {nameOf(pid)}{me ? " (you)" : ""}
                   </span>
@@ -1013,7 +1013,7 @@ export function ScoreBar({
               /* ── Mobile: compact single-row chip ── */
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
+                  <SeatAvatar seatId={pid} avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
                   <div style={{ minWidth: 0 }}>
                     <div className="font-black truncate" style={{ color: pen.color, fontSize: 15, lineHeight: 1.2 }}>
                       {nameOf(pid)}{me ? " (you)" : ""}

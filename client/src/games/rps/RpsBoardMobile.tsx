@@ -109,6 +109,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
       {/* ── Score cards: side-by-side compact ───────────────────────── */}
       <div className="grid grid-cols-2 gap-2.5 px-4 pt-2">
         <NotebookPlayerCard
+          seatId={m.myId}
           name={m.me?.name ?? "You"}
           avatar={m.me?.avatar}
           isSelf
@@ -124,6 +125,7 @@ export default function RpsBoardMobile(props: RpsBoardProps) {
           cardRef={m.registerCardRef(m.myId)}
         />
         <NotebookPlayerCard
+          seatId={m.opponent?.id}
           name={m.opponent?.name ?? "Opp"}
           avatar={m.opponent?.avatar}
           score={m.oppScore}

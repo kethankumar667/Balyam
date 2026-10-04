@@ -1,3 +1,4 @@
+import type { PlayerCardResult } from "./profile/PublicPlayerCard.js";
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
 
 /**
@@ -3300,6 +3301,11 @@ export interface ClientToServerEvents {
   /** Sent when visibility or orientation becomes invalid while in lobby or starting. */
   "room:reportUnavailable": (payload: { reason: "PAGE_NOT_VISIBLE" | "ORIENTATION_REQUIRED" }) => void;
   "chat:send": (payload: ChatSendPayload) => void;
+  /**
+   * Ask for the public card of one seat at the caller's table. The server
+   * resolves the seat to its account; the client never learns the account id.
+   */
+  "player:card": (seatId: string, ack: (result: PlayerCardResult) => void) => void;
   "game:move": (payload: GameMovePayload) => void;
   "webrtc:signal": (payload: WebRTCSignalSendPayload) => void;
   "room:reaction": (payload: ReactionSendPayload) => void;

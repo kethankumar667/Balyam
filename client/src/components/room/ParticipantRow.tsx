@@ -74,6 +74,7 @@ export default function ParticipantRow({
             }`}
           >
             <SeatAvatar
+              seatId={player.id}
               avatar={player.avatar}
               name={player.name}
               className="w-full h-full rounded-full object-cover"
@@ -225,6 +226,7 @@ export default function ParticipantRow({
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="relative shrink-0">
           <SeatAvatar
+            seatId={player.id}
             avatar={player.avatar}
             name={player.name}
             className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl shadow-xs"

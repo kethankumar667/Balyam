@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ConsentModal from "./components/privacy/ConsentModal";
+import { PlayerCardProvider } from "./features/playerCard/PlayerCardProvider";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
@@ -336,6 +337,7 @@ export default function App({ components = {} }: AppProps) {
           <ScrollToTopOnRouteChange />
           <ToastHost />
           <ConsentModal />
+        <PlayerCardProvider>
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />
@@ -608,6 +610,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </PlayerCardProvider>
         </TooltipProvider>
       </RecoveryProvider>
     </ErrorBoundary>

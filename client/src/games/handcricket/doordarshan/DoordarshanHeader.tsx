@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { PlayerCardTrigger } from "../../../features/playerCard/PlayerCardContext";
 import type { HcState, Player } from "@shared/types";
 import { DD, DdChip, DdLive, IconBat, ddSideFor, DdAvatar } from "./doordarshan-kit";
 import { HcThemeSwitcher } from "../HcThemeSwitcher";
@@ -250,7 +251,7 @@ export function DoordarshanHeader({
               border: `1px solid ${DD.line}`,
             }}
           >
-            <DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} side={ddSideFor(0)} size={26} />
+            <PlayerCardTrigger seatId={p0} name={nameOf(p0)} avatar={avatarOf(p0)} className="rounded"><DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} side={ddSideFor(0)} size={26} /></PlayerCardTrigger>
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>
@@ -291,7 +292,7 @@ export function DoordarshanHeader({
               border: `1px solid ${DD.line}`,
             }}
           >
-            <DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} side={ddSideFor(1)} size={26} />
+            <PlayerCardTrigger seatId={p1} name={nameOf(p1)} avatar={avatarOf(p1)} className="rounded"><DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} side={ddSideFor(1)} size={26} /></PlayerCardTrigger>
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>

@@ -74,6 +74,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
         >
           {/* ── Player 1 card (left) ── */}
           <NotebookPlayerCard
+            seatId={m.myId}
             name={m.me?.name ?? "You"}
             avatar={m.me?.avatar}
             isSelf
@@ -104,6 +105,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
 
           {/* ── Player 2 card (right) ── */}
           <NotebookPlayerCard
+            seatId={m.opponent?.id}
             name={m.opponent?.name ?? "Opponent"}
             avatar={m.opponent?.avatar}
             score={m.oppScore}

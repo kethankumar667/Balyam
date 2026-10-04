@@ -525,6 +525,7 @@ export default function NamePlaceAnimalBoardDesktop({
                   <div>
                     <div className="font-bold text-sm text-ink-hi inline-flex items-center gap-1.5">
                       <SeatAvatar
+                        seatId={p.id}
                         avatar={roster?.avatar}
                         name={displayName}
                         className="w-6 h-6"

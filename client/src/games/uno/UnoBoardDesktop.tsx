@@ -463,6 +463,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                   >
                     <animated.div style={{ transform: wobbleTargetId === id ? wobble.transform : "none" }}>
                       <StadiumOpponentSeat
+                        seatId={id}
                         name={m.nameOf(id)}
                         avatar={player?.avatar}
                         handSize={state.handSizes[id] ?? 0}
@@ -516,6 +517,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                       <div className="relative">
                         <UnoDeclareBubble declared={selfDeclared} />
                         <StadiumSelfPlate
+                          seatId={selfId}
                           name={selfName}
                           avatar={selfPlayer?.avatar}
                           seatNumber={selfSeatNumber}

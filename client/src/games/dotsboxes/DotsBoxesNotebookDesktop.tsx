@@ -408,7 +408,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-stone-100 flex items-center justify-center">
                       {turnPlayerAvatar ? (
-                        <SeatAvatar avatar={turnPlayerAvatar} name={turnPlayerName} className="w-full h-full object-cover" />
+                        <SeatAvatar seatId={state.turnPlayerId} avatar={turnPlayerAvatar} name={turnPlayerName} className="w-full h-full object-cover" />
                       ) : (
                         <span
                           className="font-bold text-base"

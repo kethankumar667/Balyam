@@ -1041,6 +1041,7 @@ export function HcProScoreBug({
         <div className="flex min-w-0 items-center gap-3">
           <TeamPlate team={bat} size={compact ? "md" : "lg"} />
           <SeatAvatar
+            seatId={battingPlayer?.id}
             avatar={battingPlayer?.avatar}
             name={bat.playerName}
             className={compact ? "w-7 h-7" : "w-8 h-8"}
@@ -1269,6 +1270,7 @@ export function HcProPlayersBar({
           name={bowler?.name ?? "Waiting…"}
           avatar={bowler ? bowlingPlayer?.avatar : undefined}
           avatarName={bowler ? bowlingPlayer?.name : undefined}
+          avatarSeatId={bowler ? bowlingPlayer?.id : undefined}
           sub={
             bowler
               ? bowlerStats
@@ -1294,6 +1296,7 @@ function CreaseCell({
   mine,
   avatar,
   avatarName,
+  avatarSeatId,
   dim = false,
   warn = false,
   onStrike = false,
@@ -1316,6 +1319,8 @@ function CreaseCell({
   avatar?: string;
   /** Real player name backing `avatar`, used for the initial/colour fallback. */
   avatarName?: string;
+  /** The seat behind `avatar`, so tapping the face opens that player's card. */
+  avatarSeatId?: string;
   dim?: boolean;
   warn?: boolean;
   onStrike?: boolean;
@@ -1365,6 +1370,7 @@ function CreaseCell({
       <div className="mt-1 flex min-w-0 items-center gap-1.5">
         {avatarName && (
           <SeatAvatar
+            seatId={avatarSeatId}
             avatar={avatar}
             name={avatarName}
             className={compact ? "w-5 h-5" : "w-6 h-6"}

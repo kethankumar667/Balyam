@@ -137,6 +137,7 @@ export default function TambolaBoardDesktop({
               >
                 <span>{p.isReady ? "✓" : "⏳"}</span>
                 <SeatAvatar
+                  seatId={p.id}
                   avatar={avatarById.get(p.id)}
                   name={p.name ?? p.id}
                   className="w-6 h-6"

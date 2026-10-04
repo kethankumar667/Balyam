@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   StarCard,
@@ -1006,6 +1007,7 @@ export function SeatTile({
       }}
     >
       <div className="relative shrink-0">
+        <PlayerCardTrigger seatId={seat.player?.id} name={name} avatar={seat.player?.avatar}>
         <div
           className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-display text-sm font-black text-white"
           style={{ background: showAvatarImg ? undefined : (active ? `linear-gradient(160deg, ${PAPER.gold}, ${PAPER.goldDeep})` : `linear-gradient(160deg, ${PAPER.terracotta}, ${PAPER.clay})`), boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
@@ -1024,6 +1026,7 @@ export function SeatTile({
             name.slice(0, 1).toUpperCase()
           )}
         </div>
+        </PlayerCardTrigger>
         <span
           aria-hidden
           className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"

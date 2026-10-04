@@ -483,7 +483,7 @@ export function StudentBar({
               />
             )}
             <div className="flex items-center gap-1.5">
-              <SeatAvatar avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
+              <SeatAvatar seatId={pid} avatar={avatarOf(pid)} name={nameOf(pid)} className="w-6 h-6" textClassName="text-[9px]" />
               <span className="font-black text-[17px] sm:text-[22px]" style={{ color: getInkDisplayColor(ink, isNeon) }}>
                 {nameOf(pid)}{me ? " (you)" : ""}
               </span>

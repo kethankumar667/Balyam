@@ -31,6 +31,7 @@ import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../compone
 import Chat from "../../components/Chat";
 import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
@@ -2303,14 +2304,16 @@ function OpponentRow({
                 position="bottom"
               />
             )}
-            <Avatar
-              name={player?.name ?? "?"}
-              avatar={player?.avatar}
-              size={52}
-              countdown={isTurn && state.phase === "playing" ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
-              scoreBadge={cumulative !== undefined ? cumulative : undefined}
-              dimmed={isDropped}
-            />
+            <PlayerCardTrigger seatId={id} name={player?.name ?? "Player"} avatar={player?.avatar}>
+              <Avatar
+                name={player?.name ?? "?"}
+                avatar={player?.avatar}
+                size={52}
+                countdown={isTurn && state.phase === "playing" ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
+                scoreBadge={cumulative !== undefined ? cumulative : undefined}
+                dimmed={isDropped}
+              />
+            </PlayerCardTrigger>
           </div>
         );
       })}
@@ -2338,13 +2341,15 @@ function PlayerStrip({
   const cumulative = selfId ? state.cumulativeScores?.[selfId] : undefined;
   return (
     <div className="flex items-center gap-1.5 flex-shrink-0">
-      <Avatar
-        name={myName}
-        avatar={avatar}
-        size={52}
-        countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
-        scoreBadge={cumulative !== undefined ? cumulative : undefined}
-      />
+      <PlayerCardTrigger seatId={selfId ?? undefined} name={myName} avatar={avatar}>
+        <Avatar
+          name={myName}
+          avatar={avatar}
+          size={52}
+          countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
+          scoreBadge={cumulative !== undefined ? cumulative : undefined}
+        />
+      </PlayerCardTrigger>
       <span
         className={`text-[11px] font-extrabold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
           myTurn ? "bg-amber-500 text-slate-900" : "bg-black/60 text-nostalgia-paper"

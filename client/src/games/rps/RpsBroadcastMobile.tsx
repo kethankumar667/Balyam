@@ -49,6 +49,7 @@ export default function RpsBroadcastMobile(props: RpsBoardProps) {
 
       <div className="grid grid-cols-2 gap-2.5 px-3 pt-3">
         <ProPlayerCard
+          seatId={m.myId}
           name={m.me?.name ?? "You"}
           avatar={m.me?.avatar}
           isSelf
@@ -63,6 +64,7 @@ export default function RpsBroadcastMobile(props: RpsBoardProps) {
           compact
         />
         <ProPlayerCard
+          seatId={m.opponent?.id}
           name={m.opponent?.name ?? "Opp"}
           avatar={m.opponent?.avatar}
           score={m.oppScore}

@@ -39,7 +39,7 @@ export default function PlayerList({
           >
             {/* Avatar with presence ring */}
             <span className="relative flex-shrink-0">
-              <SeatAvatar avatar={p.avatar} aura={p.cosmetics?.avatarAura} level={p.level} name={p.name} className="w-7 h-7" />
+              <SeatAvatar seatId={p.id} avatar={p.avatar} aura={p.cosmetics?.avatarAura} level={p.level} name={p.name} className="w-7 h-7" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[#FFF9EE] dark:ring-[#182234] ${
                   p.isConnected ? "bg-emerald-500" : "bg-amber-500"

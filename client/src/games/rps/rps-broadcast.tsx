@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import type { RpsChoice } from "@shared/types";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
 import {
@@ -294,6 +295,7 @@ export function ProTopBar({
 /* ── competitor card ─────────────────────────────────────────────────────── */
 
 export function ProPlayerCard({
+  seatId,
   name,
   avatar,
   isSelf,
@@ -309,6 +311,8 @@ export function ProPlayerCard({
   compact = false,
   className = "",
 }: {
+  /** The seat behind this card, so tapping the face opens that player's card. */
+  seatId?: string;
   name: string;
   avatar?: string;
   isSelf?: boolean;
@@ -334,7 +338,7 @@ export function ProPlayerCard({
       <div ref={cardRef} className="flex-1 flex flex-col justify-between">
         <div>
           <div className={`flex items-center gap-3 ${right ? "flex-row-reverse text-right" : ""}`}>
-            <ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} />
+            <PlayerCardTrigger seatId={seatId} name={name} avatar={avatar}><ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} /></PlayerCardTrigger>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5" style={{ justifyContent: right ? "flex-end" : "flex-start" }}>
                 <span className="truncate text-[13px] font-extrabold" style={{ color: PRO.ink }}>

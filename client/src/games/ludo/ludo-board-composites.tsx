@@ -26,6 +26,7 @@ import { useRecovery } from "../../core/recovery/useRecovery";
 import { COLOR_HEX, COLOR_HEX_DARK, HOME_TOKEN_PCT, PLAYER_COLORS_ORDER } from "./board-layout";
 import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
 import { LUDO_THEMES, LUDO_THEME_LABELS, type LudoTheme } from "./settings";
@@ -513,7 +514,7 @@ function LudoPlayerCard({
             style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
           >
             <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
-              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
+              <PlayerCardTrigger seatId={seat.pid} name={seat.name} avatar={seat.avatar}><Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} /></PlayerCardTrigger>
             </div>
           </div>
 
@@ -645,7 +646,7 @@ function LudoPlayerCard({
             style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
           >
             <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
-              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
+              <PlayerCardTrigger seatId={seat.pid} name={seat.name} avatar={seat.avatar}><Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} /></PlayerCardTrigger>
             </div>
           </div>
 

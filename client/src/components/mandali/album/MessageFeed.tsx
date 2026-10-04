@@ -6,6 +6,7 @@ import { LOCALE_BY_ID } from "../../../i18n/types";
 import RoomInviteCard from "../RoomInviteCard";
 import CoinRequestCard from "../CoinRequestCard";
 import { AlbumAvatar } from "./AlbumAvatar";
+import { PlayerCardTrigger } from "../../../features/playerCard/PlayerCardContext";
 import { AlbumButton } from "./AlbumButton";
 import { DayCaption } from "./DayCaption";
 import { groupMessagesByDay } from "./groupByDay";
@@ -229,7 +230,9 @@ function Row({
 
   const withFace = (card: ReactNode) => (
     <div className={`mt-3 flex gap-2.5 ${isMine ? "flex-row-reverse" : ""}`}>
-      <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" className="mt-1" />
+      <PlayerCardTrigger accountId={message.senderId} name={message.senderName} avatar={message.senderAvatar} className="mt-1 self-start">
+        <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" />
+      </PlayerCardTrigger>
       {card}
     </div>
   );
@@ -260,7 +263,11 @@ function Row({
 
   return (
     <div className={`group flex gap-2.5 ${isRun ? "mt-0.5" : "mt-4"} ${isMine ? "flex-row-reverse" : ""}`}>
-      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" className="mt-0.5" />)}
+      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : (
+        <PlayerCardTrigger accountId={message.senderId} name={message.senderName} avatar={message.senderAvatar} className="mt-0.5 self-start">
+          <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" />
+        </PlayerCardTrigger>
+      ))}
 
       <div className={`flex min-w-0 ${bubbleWidth} flex-col ${isMine ? "items-end" : "items-start"}`}>
         {!isRun && (

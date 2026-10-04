@@ -181,7 +181,7 @@ export default function ChessBoardMobile({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <SeatAvatar seatId={selfId} avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
                   <span className="text-[11px] font-black text-[#2B1909] truncate">{myName}</span>
                   <span className="px-1 rounded text-[7px] font-black bg-[#38A169] text-white uppercase">
                     YOU
@@ -227,7 +227,7 @@ export default function ChessBoardMobile({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <SeatAvatar seatId={opponentId ?? undefined} avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
                   <span className="text-[11px] font-black text-[#2B1909] truncate">{opponentName}</span>
                 </div>
                 <span className="text-[9px] font-bold text-[#6D5432] block">

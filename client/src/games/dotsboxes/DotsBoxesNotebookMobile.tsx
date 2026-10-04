@@ -226,7 +226,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
                     )}
                     <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center">
                       {avatar ? (
-                        <SeatAvatar avatar={avatar} name={name} className="w-full h-full object-cover" />
+                        <SeatAvatar seatId={pid} avatar={avatar} name={name} className="w-full h-full object-cover" />
                       ) : (
                         <span
                           className="font-bold text-xs"

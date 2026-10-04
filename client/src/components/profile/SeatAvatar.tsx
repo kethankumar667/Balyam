@@ -3,6 +3,7 @@ import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { getLevelTier } from "@shared/progression/MiniclipProgression";
+import { PLAYER_CARD_BUTTON_CLASSES, usePlayerCardButtonProps } from "../../features/playerCard/PlayerCardContext";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -72,6 +73,12 @@ export interface SeatAvatarProps {
   objectPosition?: string;
   /** Optional custom fallback element if no avatar is resolved. */
   fallback?: React.ReactNode;
+  /**
+   * The seat this face belongs to. When given, tapping the face opens that
+   * player's card. Leave it off wherever the face sits inside another button,
+   * since a button inside a button is invalid and unreachable by keyboard.
+   */
+  seatId?: string | null;
 }
 
 export default function SeatAvatar({
@@ -83,7 +90,10 @@ export default function SeatAvatar({
   textClassName = "text-[11px]",
   objectPosition = "50% 22%",
   fallback,
+  seatId,
 }: SeatAvatarProps) {
+  const cardButtonProps = usePlayerCardButtonProps(seatId ? { seatId, name, avatar } : null);
+  const isTappable = cardButtonProps !== null;
   const option = findAvatar(avatar);
   const [failed, setFailed] = useState(false);
   const auraConfig = getAvatarAuraConfig(aura);
@@ -108,8 +118,9 @@ export default function SeatAvatar({
   const hasPrestigeAura = !auraConfig && tier !== null && tier.id >= 4;
 
   const wrapWithAura = (node: React.ReactNode) => {
-    return (
-      <span className="relative inline-flex items-center justify-center">
+    const outerClasses = "relative inline-flex items-center justify-center";
+    const decorations = (
+      <>
         {hasPrestigeAura && tier && (
           <span
             className="absolute -inset-1 rounded-full pointer-events-none z-10 animate-pulse border"
@@ -128,8 +139,16 @@ export default function SeatAvatar({
             <MiniclipLevelBadge level={level} size="xs" showTooltip={false} />
           </span>
         )}
-      </span>
+      </>
     );
+    if (isTappable) {
+      return (
+        <button type="button" {...cardButtonProps} className={`${outerClasses} rounded-full ${PLAYER_CARD_BUTTON_CLASSES}`}>
+          {decorations}
+        </button>
+      );
+    }
+    return <span className={outerClasses}>{decorations}</span>;
   };
 
   if (option && !failed) {

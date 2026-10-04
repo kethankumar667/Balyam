@@ -1,4 +1,5 @@
 import React from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import type { CarromPublicState, Player } from "@shared/types";
 import { LetterAvatar } from "./carrom-shared";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
@@ -17,6 +18,7 @@ interface CarromMatchHudProps {
  * Features 3 color transitions: Emerald (>10s) -> Amber (5-10s) -> Urgent Pulsing Crimson (<=5s).
  */
 function MiniclipAvatarTimer({
+  seatId,
   name,
   avatar,
   isWhite,
@@ -27,6 +29,8 @@ function MiniclipAvatarTimer({
   secondsLeft,
   totalSeconds = 30,
 }: {
+  /** The seat behind this face, so tapping it opens that player's card. */
+  seatId?: string;
   name: string;
   avatar?: string;
   isWhite: boolean;
@@ -101,14 +105,16 @@ function MiniclipAvatarTimer({
       <div className={`relative rounded-full p-0.5 transition-all duration-300 ${
         isTurn ? "" : "border border-amber-900/40 opacity-90"
       }`}>
-        <LetterAvatar
-          name={name}
-          avatar={avatar}
-          isWhite={isWhite}
-          size={size}
-          isSelf={isSelf}
-          isTurn={isTurn}
-        />
+        <PlayerCardTrigger seatId={seatId} name={name} avatar={avatar}>
+          <LetterAvatar
+            name={name}
+            avatar={avatar}
+            isWhite={isWhite}
+            size={size}
+            isSelf={isSelf}
+            isTurn={isTurn}
+          />
+        </PlayerCardTrigger>
       </div>
 
       {/* Numerical countdown badge when turn is active */}
@@ -185,6 +191,7 @@ export function CarromMatchHud({
         {p1Seat && (
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <MiniclipAvatarTimer
+              seatId={p1Seat.playerId}
               name={p1Name}
               avatar={p1Avatar}
               isWhite={p1Seat.color === "white"}
@@ -304,6 +311,7 @@ export function CarromMatchHud({
               )}
             </div>
             <MiniclipAvatarTimer
+              seatId={p2Seat.playerId}
               name={p2Name}
               avatar={p2Avatar}
               isWhite={p2Seat.color === "white"}

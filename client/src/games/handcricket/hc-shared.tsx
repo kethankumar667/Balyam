@@ -1978,6 +1978,7 @@ export function TossPhase({
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
+                seatId={selfId}
                 avatar={myAvatar}
                 name={myName}
                 className="w-full h-full object-cover rounded-full"
@@ -2110,6 +2111,7 @@ export function TossPhase({
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
+                seatId={oppId}
                 avatar={oppAvatar}
                 name={oppName}
                 className="w-full h-full object-cover rounded-full"
@@ -3922,6 +3924,7 @@ export function CurrentPlayersBar({
       >
         <div className="relative shrink-0">
           <SeatAvatar
+            seatId={bowlingPlayer?.id}
             avatar={bowlingPlayer?.avatar}
             name={bowlingPlayer?.name ?? "Bowler"}
             className="w-10 h-10 sm:w-11 sm:h-11 rounded-full ring-2 ring-rose-400/80 shadow-2xs"
@@ -4051,7 +4054,7 @@ export function Scoreboard({
               <HcTeamCrest id={batterTeam.id} flag={batterTeam.flag} size={46} />
             </div>
             <div className="-ml-3 relative z-20 shrink-0">
-              <SeatAvatar avatar={batterPlayer?.avatar} name={batterTeam.playerName} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full ring-2 ring-white shadow-2xs" />
+              <SeatAvatar seatId={batterPlayer?.id} avatar={batterPlayer?.avatar} name={batterTeam.playerName} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full ring-2 ring-white shadow-2xs" />
             </div>
           </div>
 
@@ -4172,6 +4175,7 @@ export function RevealStage({
       <div className="flex items-center justify-center gap-6 sm:gap-10 py-2 w-full select-none">
         {/* You Card */}
         <RevealPlayerCard
+          seatId={me?.id}
           name={me?.name ?? "You"}
           avatar={me?.avatar}
           role="You"
@@ -4211,6 +4215,7 @@ export function RevealStage({
 
         {/* Opponent Card */}
         <RevealPlayerCard
+          seatId={opp?.id}
           name={opp?.name ?? "Opponent"}
           avatar={opp?.avatar}
           role="Opp"
@@ -4279,6 +4284,7 @@ export function RevealStage({
 }
 
 function RevealPlayerCard({
+  seatId,
   name,
   avatar,
   role,
@@ -4287,6 +4293,7 @@ function RevealPlayerCard({
   hidden,
   big: _big,
 }: {
+  seatId?: string;
   name: string;
   avatar?: string;
   role: string;
@@ -4308,7 +4315,7 @@ function RevealPlayerCard({
   return (
     <div className="flex flex-col items-center min-w-[70px] sm:min-w-[90px]">
       <div className="flex items-center gap-1.5 mb-1">
-        <SeatAvatar avatar={avatar} name={name} className="w-5 h-5" textClassName="text-[9px]" />
+        <SeatAvatar seatId={seatId} avatar={avatar} name={name} className="w-5 h-5" textClassName="text-[9px]" />
         <span className="font-hand font-bold text-xs text-stone-800 truncate max-w-[65px] sm:max-w-[85px]">
           {name}
         </span>

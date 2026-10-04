@@ -207,7 +207,7 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
                           {idx + 1}
                         </span>
                         <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
-                        <SeatAvatar avatar={avatarById.get(p.id)} name={p.name} className="w-6 h-6" textClassName="text-[9px]" />
+                        <SeatAvatar seatId={p.id} avatar={avatarById.get(p.id)} name={p.name} className="w-6 h-6" textClassName="text-[9px]" />
                         <span className={`font-extrabold ${p.isAlive ? "" : "line-through opacity-50"}`}>
                           {isSelf ? "You" : p.name}
                         </span>

@@ -173,7 +173,7 @@ export function CricbuzzHeader({
         <div className="flex items-center justify-between gap-2 w-full">
           {/* Team 1 */}
           <div className="flex flex-1 items-center gap-2 rounded bg-[#035A46]/70 px-2.5 py-1.5 border border-[#047857]/50 min-w-0">
-            <SeatAvatar avatar={avatarOf(p0)} name={nameOf(p0)} className="w-6 h-6 shrink-0" />
+            <SeatAvatar seatId={p0} avatar={avatarOf(p0)} name={nameOf(p0)} className="w-6 h-6 shrink-0" />
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-extrabold text-xs uppercase tracking-wide truncate text-white">
@@ -198,7 +198,7 @@ export function CricbuzzHeader({
 
           {/* Team 2 */}
           <div className="flex flex-1 items-center gap-2 rounded bg-[#035A46]/70 px-2.5 py-1.5 border border-[#047857]/50 min-w-0">
-            <SeatAvatar avatar={avatarOf(p1)} name={nameOf(p1)} className="w-6 h-6 shrink-0" />
+            <SeatAvatar seatId={p1} avatar={avatarOf(p1)} name={nameOf(p1)} className="w-6 h-6 shrink-0" />
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-extrabold text-xs uppercase tracking-wide truncate text-white">

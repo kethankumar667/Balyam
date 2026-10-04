@@ -17,6 +17,7 @@ import type {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { findAvatar } from "../../lib/avatars";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { PlayingCard, FaceDownCard } from "./Card";
 import CardTracker from "./CardTracker";
 import QrCodeModal from "../../components/QrCodeModal";
@@ -2062,18 +2063,20 @@ function SeatCard({
         />
       )}
       <div className="rm-seat__top">
-        <span className="rm-seat__avatar" aria-hidden>
-          {showAvatarImg ? (
-            <img
-              src={avatarOption!.src}
-              alt=""
-              onError={() => setImgFailed(true)}
-              draggable={false}
-            />
-          ) : (
-            letter
-          )}
-        </span>
+        <PlayerCardTrigger seatId={playerId} name={name.replace(/ \(You\)$/, "")} avatar={avatar}>
+          <span className="rm-seat__avatar" aria-hidden>
+            {showAvatarImg ? (
+              <img
+                src={avatarOption!.src}
+                alt=""
+                onError={() => setImgFailed(true)}
+                draggable={false}
+              />
+            ) : (
+              letter
+            )}
+          </span>
+        </PlayerCardTrigger>
         <span className="rm-seat__id">
           <span className="rm-seat__name" title={name}>
             {name}

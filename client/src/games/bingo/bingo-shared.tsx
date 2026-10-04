@@ -363,6 +363,7 @@ export function AllPlayerBoardsView({
             <div className="flex items-center justify-between w-full font-bold text-sm text-bhalyam-wood-dark px-1">
               <span className="flex items-center gap-1.5">
                 <SeatAvatar
+                  seatId={p.id}
                   avatar={avatarById.get(p.id)}
                   name={p.name}
                   className="w-6 h-6"

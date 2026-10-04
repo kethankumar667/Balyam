@@ -2,6 +2,7 @@ import { Router } from "express";
 import { profileService } from "./ProfileService.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
+import { buildPublicPlayerCard } from "./publicPlayerCard.js";
 import type { GameKind } from "@shared/types.js";
 
 /**
@@ -109,6 +110,35 @@ profileRouter.get("/:playerId/matches/:matchId", requireSelfParam(), (req, res) 
  */
 profileRouter.get("/:playerId/achievements", requireSelfParam(), (req, res) => {
   res.json({ achievements: profileService.getAchievements(callerId(req)) });
+});
+
+/**
+ * PUBLIC — the stranger-facing player card, for surfaces that already hold an
+ * account id (the Mandali people list, leaderboards). In a room the client has
+ * only a seat id and uses the `player:card` socket event instead.
+ *
+ * Read-only like `GET /:playerId`: an id nobody has played under is a 404,
+ * never a created row.
+ */
+profileRouter.get("/:playerId/card", (req, res) => {
+  const accountId = req.params.playerId;
+  // Same rule as `GET /:playerId`: a read creates a row only for the person it
+  // is about, so you can open your own card before you have played a match.
+  const profile =
+    profileService.getProfile(accountId) ??
+    (req.player?.playerId === accountId ? profileService.getOrCreateProfile(accountId) : undefined);
+  if (!profile) {
+    res.status(404).json({ error: "No profile for that player" });
+    return;
+  }
+  res.json({
+    card: buildPublicPlayerCard({
+      identityId: accountId,
+      kind: "member",
+      seatName: profile.displayName,
+      seatAvatar: profile.avatar,
+    }),
+  });
 });
 
 /** PUBLIC — full Miniclip XP progression, tier details, and milestone roadmap. */

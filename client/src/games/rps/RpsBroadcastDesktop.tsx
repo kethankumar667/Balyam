@@ -63,6 +63,7 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
             style={{ gridTemplateColumns: "minmax(220px,1fr) minmax(0,1.55fr) minmax(220px,1fr)" }}
           >
             <ProPlayerCard
+              seatId={m.myId}
               name={m.me?.name ?? "You"}
               avatar={m.me?.avatar}
               isSelf
@@ -90,6 +91,7 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
             />
 
             <ProPlayerCard
+              seatId={m.opponent?.id}
               name={m.opponent?.name ?? "Opponent"}
               avatar={m.opponent?.avatar}
               score={m.oppScore}

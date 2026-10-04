@@ -347,7 +347,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                         >
                           <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 flex items-center justify-center">
                             {avatar ? (
-                              <SeatAvatar avatar={avatar} name={name} className="w-full h-full object-cover" />
+                              <SeatAvatar seatId={pid} avatar={avatar} name={name} className="w-full h-full object-cover" />
                             ) : (
                               <span className="font-black text-xs text-white">
                                 {getPlayerInitials(name)}

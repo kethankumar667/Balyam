@@ -40,6 +40,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import type { ReactNode } from "react";
 import type { RpsChoice } from "@shared/types";
 import type { RoundOutcome } from "./useRpsBoard";
@@ -263,6 +264,7 @@ function SvgPaperclip({ color }: { color: string }) {
 /* ─────────────────────── Player score card ─────────────────────── */
 
 export function NotebookPlayerCard({
+  seatId,
   name,
   avatar,
   isSelf,
@@ -282,6 +284,8 @@ export function NotebookPlayerCard({
   locked = false,
   className = "",
 }: {
+  /** The seat behind this card, so tapping the face opens that player's card. */
+  seatId?: string;
   name: string;
   avatar?: string;
   isSelf?: boolean;
@@ -365,7 +369,7 @@ export function NotebookPlayerCard({
         <div>
           {/* Avatar + name row */}
           <div className="flex items-center gap-2.5 mt-2">
-            <CartoonAvatar color={color} avatar={avatar} />
+            <PlayerCardTrigger seatId={seatId} name={name} avatar={avatar}><CartoonAvatar color={color} avatar={avatar} /></PlayerCardTrigger>
             <div className="min-w-0 flex-1">
               <div className="font-black leading-tight truncate" style={{ color, fontSize: 15 }}>
                 {name}

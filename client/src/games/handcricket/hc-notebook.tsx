@@ -1275,7 +1275,7 @@ export function HcNotebookHeader({
             )}
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFFDF5] border border-stone-300 shadow-xs max-w-[260px] min-w-0">
-              <SeatAvatar avatar={me?.avatar} name={me?.name ?? "Player"} className="w-6 h-6" textClassName="text-[10px]" />
+              <SeatAvatar seatId={me?.id} avatar={me?.avatar} name={me?.name ?? "Player"} className="w-6 h-6" textClassName="text-[10px]" />
               <div className="flex flex-col text-left min-w-0">
                 <span className="text-xs font-hand font-bold text-stone-800 leading-tight truncate">
                   {me?.name ?? "Player"}

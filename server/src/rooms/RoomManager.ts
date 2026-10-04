@@ -1,3 +1,5 @@
+import { buildPublicPlayerCard } from "../profile/publicPlayerCard.js";
+import type { PlayerCardResult, PublicPlayerCardKind } from "@shared/profile/PublicPlayerCard.js";
 import type { Server } from "socket.io";
 import type {
   ChatMessage,
@@ -6742,6 +6744,39 @@ export class RoomManager {
       if (player.identityId === identityId) return true;
     }
     return false;
+  }
+
+  /**
+   * The stranger-facing card for one seat at the caller's own table.
+   *
+   * The caller names a SEAT; the account behind it is resolved here and never
+   * returned. Only someone inside the room (seated or watching) may ask, so a
+   * socket cannot enumerate seats of rooms it has no business in.
+   *
+   * Bots, guests and pass-and-play seats have no account, so they get a card
+   * built from what the seat already shows the table, with no career.
+   */
+  getPlayerCard(socketId: string, seatId: string): PlayerCardResult {
+    const code = this.socketToRoom.get(socketId) ?? this.spectatorToRoom.get(socketId);
+    const room = code ? this.rooms.get(code) : undefined;
+    const seat = room?.players.get(seatId);
+    if (!room || !seat) return { ok: false, error: "That player is not at this table" };
+
+    const hasAccount = !seat.isBot && !seat.isLocal && !!seat.identityId?.trim();
+    // Same convention as the match-record `accountType`: a guest still has a
+    // server-minted identity (and therefore a record), but is labelled a guest.
+    const kind: PublicPlayerCardKind = seat.isBot ? "bot" : seat.isGuest || !hasAccount ? "guest" : "member";
+    return {
+      ok: true,
+      card: buildPublicPlayerCard({
+        identityId: hasAccount ? seat.identityId ?? null : null,
+        kind,
+        seatName: seat.name,
+        seatAvatar: seat.avatar,
+        seatLevel: seat.level,
+        seatCosmetics: seat.cosmetics,
+      }),
+    };
   }
 
   protected lookup(socketId: string): { room: Room | null; player: Player | null } {

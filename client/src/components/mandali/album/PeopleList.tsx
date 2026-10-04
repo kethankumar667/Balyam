@@ -2,6 +2,7 @@ import { Crown, HandCoins } from "lucide-react";
 import type { MandaliMember } from "@shared/mandali/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { AlbumAvatar } from "./AlbumAvatar";
+import { PlayerCardTrigger } from "../../../features/playerCard/PlayerCardContext";
 import { AlbumButton } from "./AlbumButton";
 import { roleLabelKey } from "./roleLabel";
 
@@ -34,7 +35,9 @@ export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListPr
         const online = member.presence === "online" || member.presence === "in-game";
         return (
           <li key={member.memberId} className="group flex min-h-[64px] items-center gap-3 rounded-2xl px-2 py-1.5 hover:bg-album-field/60">
-            <AlbumAvatar avatar={member.avatar} name="" online={online} />
+            <PlayerCardTrigger accountId={member.playerId} name={member.displayName} avatar={member.avatar}>
+              <AlbumAvatar avatar={member.avatar} name="" online={online} />
+            </PlayerCardTrigger>
             <div className="min-w-0 flex-1">
               <p className="m-0 flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-album-ink">
                 <span className="truncate">{member.displayName}</span>

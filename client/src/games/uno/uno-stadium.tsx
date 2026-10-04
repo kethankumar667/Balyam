@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { UnoCardBack } from "./uno-shared";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { UnoTableCenter, type UnoTableCenterProps } from "./uno-table";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import Avatar from "../rummy/Avatar";
@@ -690,6 +691,8 @@ export function UnoSeatAvatar({
 }
 
 export interface StadiumOpponentSeatProps {
+  /** The seat behind this face, so tapping it opens that player's card. */
+  seatId?: string | null;
   name: string;
   avatar?: string;
   handSize: number;
@@ -706,6 +709,7 @@ export interface StadiumOpponentSeatProps {
 }
 
 export function StadiumOpponentSeat({
+  seatId,
   name,
   avatar,
   handSize,
@@ -833,7 +837,7 @@ export function StadiumOpponentSeat({
               boxShadow: `0 4px 14px rgba(0,0,0,0.6), 0 0 12px ${accent.border}70`,
             }}
           >
-            <UnoSeatAvatar avatar={avatar} name={name} size={tile} />
+            <PlayerCardTrigger seatId={seatId} name={name} avatar={avatar} className="rounded-2xl"><UnoSeatAvatar avatar={avatar} name={name} size={tile} /></PlayerCardTrigger>
 
             {/* Dynamic Emotion Badge Overlays */}
             {handSize <= 2 && (
@@ -949,12 +953,15 @@ function StadiumMiniFan({ count, compact }: { count: number; compact: boolean })
 }
 
 export function StadiumSelfPlate({
+  seatId,
   name,
   avatar,
   seatNumber,
   handSize,
   isTurn,
 }: {
+  /** The seat behind this face, so tapping it opens that player's card. */
+  seatId?: string | null;
   name: string;
   avatar?: string;
   seatNumber: number;
@@ -982,7 +989,7 @@ export function StadiumSelfPlate({
             boxShadow: "0 6px 16px rgba(0,0,0,0.6), 0 0 16px rgba(56,189,248,0.8)",
           }}
         >
-          <UnoSeatAvatar avatar={avatar} name={name} size={54} />
+          <PlayerCardTrigger seatId={seatId} name={name} avatar={avatar} className="rounded-2xl"><UnoSeatAvatar avatar={avatar} name={name} size={54} /></PlayerCardTrigger>
         </div>
         {/* YOU badge — gold pill overlapping the avatar's base */}
         <span

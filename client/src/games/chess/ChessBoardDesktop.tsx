@@ -187,14 +187,14 @@ export default function ChessBoardDesktop({
                   valid even if only this panel is present in a future layout. */}
               <div ref={reactions.registerCardRef(selfId)} className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-950/30 border border-amber-500/20">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
-                  <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <SeatAvatar seatId={selfId} avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
                   <span className="font-bold text-stone-200 truncate">{myName}</span>
                 </span>
                 <span className="font-mono font-black text-amber-400">{state.capturedPieces.white.length} pts</span>
               </div>
               <div ref={reactions.registerCardRef(opponentId ?? null)} className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-950/30 border border-white/5">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
-                  <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                  <SeatAvatar seatId={opponentId ?? undefined} avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
                   <span className="font-bold text-stone-300 truncate">{opponentName}</span>
                 </span>
                 <span className="font-mono font-black text-amber-400">{state.capturedPieces.black.length} pts</span>
@@ -239,7 +239,7 @@ export default function ChessBoardDesktop({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <SeatAvatar avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
+                    <SeatAvatar seatId={selfId} avatar={myAvatar} name={myName} className="w-6 h-6" textClassName="text-[9px]" />
                     <span className="text-xs font-black text-amber-100 truncate">{myName}</span>
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500 text-stone-950 uppercase">
                       YOU
@@ -281,7 +281,7 @@ export default function ChessBoardDesktop({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <SeatAvatar avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
+                    <SeatAvatar seatId={opponentId ?? undefined} avatar={opponentAvatar} name={opponentName} className="w-6 h-6" textClassName="text-[9px]" />
                     <span className="text-xs font-black text-amber-100 truncate">{opponentName}</span>
                   </div>
                   <span className="text-[10px] font-bold text-amber-400/80 block">

@@ -16,6 +16,7 @@ import { Gamepad2 } from "lucide-react";
 import type { MandaliParty } from "@shared/mandali/types.js";
 import { useTranslation } from "../../hooks/useTranslation";
 import { AlbumAvatar } from "./album/AlbumAvatar";
+import { PlayerCardTrigger } from "../../features/playerCard/PlayerCardContext";
 import { AlbumButton } from "./album/AlbumButton";
 import { gameLabel } from "./album/games";
 
@@ -82,7 +83,9 @@ export const PartyLoungeCard: React.FC<PartyLoungeCardProps> = ({
             const isHost = member.playerId === party.leaderId;
             return (
               <li key={member.playerId || index} className="flex w-14 flex-col items-center gap-1">
-                <AlbumAvatar avatar={member.avatar} name="" />
+                <PlayerCardTrigger accountId={member.playerId} name={member.displayName} avatar={member.avatar}>
+                  <AlbumAvatar avatar={member.avatar} name="" />
+                </PlayerCardTrigger>
                 <span className="w-full truncate text-center text-xs font-medium text-album-ink2">{member.displayName.split(" ")[0]}</span>
                 {isHost && <span className="-mt-1 text-xs font-semibold text-album-foil">{t("mandali.party.host")}</span>}
               </li>
