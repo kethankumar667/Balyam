@@ -6775,6 +6775,9 @@ export class RoomManager {
         seatAvatar: seat.avatar,
         seatLevel: seat.level,
         seatCosmetics: seat.cosmetics,
+        // A table plays one game, and that game is all the card may say about
+        // results: you see how this person plays UNO while you play UNO.
+        gameScope: room.game,
       }),
     };
   }

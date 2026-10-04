@@ -4,7 +4,9 @@ import { RoomManager } from "../../rooms/RoomManager.js";
 import { profileService } from "../ProfileService.js";
 import { buildPublicPlayerCard } from "../publicPlayerCard.js";
 import { AVATAR_FILES } from "@shared/avatars.js";
-import type { ClientToServerEvents, Player, ServerToClientEvents } from "@shared/types.js";
+import type { ClientToServerEvents, GameKind, Player, ServerToClientEvents } from "@shared/types.js";
+import type { PlayerStats } from "@shared/profile/PlayerStats.js";
+import { INITIAL_PLAYER_STATS } from "@shared/profile/PlayerStats.js";
 
 /**
  * THE CARD A STRANGER SEES.
@@ -19,6 +21,7 @@ const ACCOUNT_ID = "account-secret-id-123";
 
 type SeededRoom = {
   code: string;
+  game: GameKind;
   players: Map<string, Player>;
   socketToPlayer: Map<string, string>;
 };
@@ -36,13 +39,14 @@ function seat(overrides: Partial<Player> & { id: string; name: string }): Player
 }
 
 /** Puts a room in place and seats `viewerSocketId` at it, without going through createRoom's 24 positional parameters. */
-function seedRoom(rooms: RoomManager, players: Player[], viewerSocketId: string): void {
+function seedRoom(rooms: RoomManager, players: Player[], viewerSocketId: string, game: GameKind = "ludo"): void {
   const internals = rooms as unknown as {
     rooms: Map<string, SeededRoom>;
     socketToRoom: Map<string, string>;
   };
   const room: SeededRoom = {
     code: "ABC123",
+    game,
     players: new Map(players.map((p) => [p.id, p])),
     socketToPlayer: new Map([[viewerSocketId, players[0].id]]),
   };
@@ -187,5 +191,91 @@ describe("buildPublicPlayerCard", () => {
     for (const forbidden of ["wallet", "balance", "winnings", "achievement", "matchhistory", "risk", "playerid"]) {
       expect(serialised).not.toContain(forbidden);
     }
+  });
+});
+
+/**
+ * GAME-SCOPED RESULTS.
+ *
+ * At a table the card may only describe how the person plays the game being
+ * played. Every number below is distinctive on purpose so that a leak from the
+ * aggregate or from another game cannot pass by coincidence.
+ */
+describe("player card — results are limited to the game being played", () => {
+  const OPPONENT_ACCOUNT = "opponent-account";
+
+  function seedOpponentStats(): void {
+    profileService.getOrCreateProfile(OPPONENT_ACCOUNT, "Faisal");
+    const stats: PlayerStats = {
+      ...INITIAL_PLAYER_STATS(OPPONENT_ACCOUNT),
+      totalMatches: 77,
+      wins: 41,
+      losses: 30,
+      draws: 6,
+      winRate: 53,
+      currentWinStreak: 9,
+      bestWinStreak: 13,
+      favoriteGame: "uno",
+      perGame: {
+        ludo: { game: "ludo", matchesPlayed: 8, wins: 5, losses: 2, draws: 1, winRate: 62.5, averageMatchDurationMinutes: 10, totalPlayTimeMinutes: 80 },
+        uno: { game: "uno", matchesPlayed: 69, wins: 36, losses: 28, draws: 5, winRate: 52.2, averageMatchDurationMinutes: 6, totalPlayTimeMinutes: 414 },
+      },
+    };
+    (profileService as unknown as { stats: Map<string, PlayerStats> }).stats.set(OPPONENT_ACCOUNT, stats);
+  }
+
+  function opponentCardIn(game: GameKind) {
+    const rooms = makeRoomManager();
+    seedRoom(
+      rooms,
+      [seat({ id: "seat-me", name: "kethan" }), seat({ id: "seat-opp", name: "Faisal", identityId: OPPONENT_ACCOUNT })],
+      "socket-me",
+      game
+    );
+    const result = rooms.getPlayerCard("socket-me", "seat-opp");
+    if (!result.ok) throw new Error("expected a card");
+    return result.card;
+  }
+
+  beforeEach(() => {
+    profileService.reset();
+    seedOpponentStats();
+  });
+
+  it("in a Ludo room shows only Ludo results", () => {
+    const card = opponentCardIn("ludo");
+    expect(card.statsScope).toBe("ludo");
+    expect(card.career).toEqual({ totalMatches: 8, wins: 5, losses: 2, draws: 1, winRatePercent: 63 });
+  });
+
+  it("in a UNO room shows only UNO results", () => {
+    const card = opponentCardIn("uno");
+    expect(card.statsScope).toBe("uno");
+    expect(card.career?.totalMatches).toBe(69);
+    expect(card.career?.wins).toBe(36);
+  });
+
+  it("never carries cross-game fields on a game-scoped card", () => {
+    const career = opponentCardIn("ludo").career;
+    expect(career).not.toHaveProperty("currentWinStreak");
+    expect(career).not.toHaveProperty("bestWinStreak");
+    expect(career).not.toHaveProperty("favoriteGame");
+    // The aggregate and the other game's totals must not appear anywhere.
+    const serialised = JSON.stringify(opponentCardIn("ludo"));
+    for (const aggregateOnly of ['"totalMatches":77', '"wins":41', '"totalMatches":69', "uno"]) {
+      expect(serialised).not.toContain(aggregateOnly);
+    }
+  });
+
+  it("reports no record, scoped to this game, when they have only played other games", () => {
+    const card = opponentCardIn("chess");
+    expect(card.statsScope).toBe("chess");
+    expect(card.career).toBeNull();
+  });
+
+  it("keeps the all-games record, with streaks, where no game is in context", () => {
+    const card = buildPublicPlayerCard({ identityId: OPPONENT_ACCOUNT, kind: "member", seatName: "Faisal" });
+    expect(card.statsScope).toBeNull();
+    expect(card.career).toMatchObject({ totalMatches: 77, wins: 41, currentWinStreak: 9, bestWinStreak: 13, favoriteGame: "uno" });
   });
 });

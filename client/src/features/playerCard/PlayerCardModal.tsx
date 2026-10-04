@@ -25,11 +25,12 @@ const KIND_LABEL: Record<PublicPlayerCard["kind"], string> = {
   bot: "Bot",
 };
 
-const KIND_NOTE: Record<PublicPlayerCard["kind"], string> = {
-  member: "No finished matches yet.",
-  guest: "No finished matches yet.",
-  bot: "A BHALYAM bot. Bots do not keep a career record.",
-};
+function emptyRecordNote(card: PublicPlayerCard): string {
+  if (card.kind === "bot") return "A BHALYAM bot. Bots do not keep a career record.";
+  // Name the game so "no matches yet" is understood as "none in THIS game",
+  // not "this person has never played anything".
+  return card.statsScope ? `No finished ${gameTitle(card.statsScope)} matches yet.` : "No finished matches yet.";
+}
 
 /** "aura_radiant_vanguard" becomes "Radiant Vanguard". The catalogue has no display names for auras, only ids. */
 function humanizeCosmeticId(id: string): string {
@@ -201,27 +202,34 @@ function CardDetails({ card }: { card: PublicPlayerCard }) {
       )}
 
       {card.career ? (
-        <CareerStats career={card.career} />
+        <CareerStats career={card.career} scope={card.statsScope} />
       ) : (
         <p className="rounded-2xl p-4 text-sm text-center bg-bhalyam-cream-warm/70 dark:bg-[#182234] border border-bhalyam-cream-edge/60 dark:border-slate-700/60">
-          {KIND_NOTE[card.kind]}
+          {emptyRecordNote(card)}
         </p>
       )}
     </>
   );
 }
 
-function CareerStats({ career }: { career: PublicPlayerCardCareer }) {
+function CareerStats({ career, scope }: { career: PublicPlayerCardCareer; scope: PublicPlayerCard["statsScope"] }) {
+  const heading = scope ? `${gameTitle(scope)} record` : "All games";
   const rows: Array<{ label: string; value: string }> = [
     { label: "Games won", value: `${career.wins} out of ${career.totalMatches}` },
     { label: "Win rate", value: `${career.winRatePercent}%` },
-    { label: "Current win streak", value: String(career.currentWinStreak) },
-    { label: "Best win streak", value: String(career.bestWinStreak) },
   ];
+  if (scope) {
+    rows.push({ label: "Lost", value: String(career.losses) }, { label: "Drawn", value: String(career.draws) });
+  }
+  // Streaks and the favourite game span every game, so the server only sends
+  // them on the all-games scope; a game-scoped card simply has none to draw.
+  if (career.currentWinStreak !== undefined) rows.push({ label: "Current win streak", value: String(career.currentWinStreak) });
+  if (career.bestWinStreak !== undefined) rows.push({ label: "Best win streak", value: String(career.bestWinStreak) });
   if (career.favoriteGame) rows.push({ label: "Favourite game", value: gameTitle(career.favoriteGame) });
 
   return (
-    <section aria-label="Career" className="rounded-2xl p-4 bg-bhalyam-cream-warm/70 dark:bg-[#182234] border border-bhalyam-cream-edge/60 dark:border-slate-700/60">
+    <section aria-label={heading} className="rounded-2xl p-4 bg-bhalyam-cream-warm/70 dark:bg-[#182234] border border-bhalyam-cream-edge/60 dark:border-slate-700/60">
+      <h3 className="mb-2 text-[10px] uppercase tracking-widest font-extrabold text-[#7B5024] dark:text-slate-400">{heading}</h3>
       <dl className="space-y-2">
         {rows.map((row) => (
           <div key={row.label} className="flex items-baseline justify-between gap-3 text-sm">

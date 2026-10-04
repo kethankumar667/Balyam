@@ -30,6 +30,12 @@ export interface CardSubject {
   seatAvatar?: string;
   seatLevel?: number;
   seatCosmetics?: PublicPresentationLoadout;
+  /**
+   * Limit the career block to this game. Set by anything that starts from a
+   * table (the room is playing exactly one game); left unset by surfaces with
+   * no game in context, such as the Mandali, which show the all-games record.
+   */
+  gameScope?: GameKind;
 }
 
 export function buildPublicPlayerCard(subject: CardSubject): PublicPlayerCard {
@@ -60,12 +66,26 @@ export function buildPublicPlayerCard(subject: CardSubject): PublicPlayerCard {
       levelProgressPercent: progression && profile ? progression.levelProgressPercent : 0,
     },
     cosmetics: subject.seatCosmetics ?? {},
-    career: subject.identityId && profile ? careerFor(subject.identityId) : null,
+    statsScope: subject.gameScope ?? null,
+    career: subject.identityId && profile ? careerFor(subject.identityId, subject.gameScope) : null,
   };
 }
 
-function careerFor(identityId: string): PublicPlayerCardCareer | null {
+function careerFor(identityId: string, gameScope: GameKind | undefined): PublicPlayerCardCareer | null {
   const stats = profileService.getStats(identityId);
+  if (gameScope) {
+    const gameStats = stats.perGame[gameScope];
+    // Only this game's own counters are read; nothing from the aggregate or any
+    // other game can reach the card on this path.
+    if (!gameStats || gameStats.matchesPlayed === 0) return null;
+    return {
+      totalMatches: gameStats.matchesPlayed,
+      wins: gameStats.wins,
+      losses: gameStats.losses,
+      draws: gameStats.draws,
+      winRatePercent: Math.round(gameStats.winRate),
+    };
+  }
   // No finished matches means no record, which is not the same as a record of
   // zero wins. Returning null lets the card say "no matches yet" truthfully.
   if (stats.totalMatches === 0) return null;
@@ -73,6 +93,8 @@ function careerFor(identityId: string): PublicPlayerCardCareer | null {
   return {
     totalMatches: stats.totalMatches,
     wins: stats.wins,
+    losses: stats.losses,
+    draws: stats.draws,
     winRatePercent: Math.round(stats.winRate),
     currentWinStreak: stats.currentWinStreak,
     bestWinStreak: stats.bestWinStreak,

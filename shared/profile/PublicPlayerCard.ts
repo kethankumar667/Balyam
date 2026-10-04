@@ -21,13 +21,25 @@ import type { GameKind, PublicPresentationLoadout } from "../types.js";
  */
 export type PublicPlayerCardKind = "member" | "guest" | "bot";
 
+/**
+ * Career numbers for ONE scope. At a table the scope is the game being played,
+ * so a Ludo opponent shows Ludo results and nothing about what they play
+ * elsewhere. The streak and favourite-game fields exist only on the all-games
+ * scope: the stored streaks are not tracked per game, so showing them next to a
+ * game-scoped record would quietly leak cross-game history.
+ */
 export interface PublicPlayerCardCareer {
   totalMatches: number;
   wins: number;
+  losses: number;
+  draws: number;
   winRatePercent: number;
-  currentWinStreak: number;
-  bestWinStreak: number;
-  favoriteGame: GameKind | null;
+  /** All-games scope only. */
+  currentWinStreak?: number;
+  /** All-games scope only. */
+  bestWinStreak?: number;
+  /** All-games scope only. */
+  favoriteGame?: GameKind | null;
 }
 
 export interface PublicPlayerCardProgression {
@@ -49,6 +61,8 @@ export interface PublicPlayerCard {
   memberSince?: number;
   progression: PublicPlayerCardProgression;
   cosmetics: PublicPresentationLoadout;
+  /** The game `career` is limited to, or null when it spans every game. Lets an empty card say "no Ludo matches yet" rather than a vague "no matches". */
+  statsScope: GameKind | null;
   career: PublicPlayerCardCareer | null;
 }
 
