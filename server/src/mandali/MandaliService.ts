@@ -1188,12 +1188,28 @@ export class MandaliService {
         return { success: false, request, error: "Someone in the group has already paid this request." };
       }
       this.emitToMandali(request.mandaliId, "mandali:coin_request:updated", { mandaliId: request.mandaliId, request });
+      // Only the call that actually moved the coins announces it; a harmless retry stays quiet.
+      if (!alreadyFunded) this.notifyWalletsChanged(request.mandaliId, request.id, [request.requesterIdentityId, payerId]);
       return { success: true, request };
     } catch (err) {
       if (err instanceof TransferCapExceededError || (err instanceof Error && err.message.includes("TRANSFER_CAP_EXCEEDED"))) {
         return { success: false, error: "You have reached today's limit for sending coins. It resets at midnight UTC." };
       }
       return { success: false, error: durableErrorMessage(err, "Could not pay this coin request.") };
+    }
+  }
+
+  /**
+   * Tell the wallets whose balance just changed, wherever they are in the app.
+   *
+   * The group broadcast above only reaches people who have that Mandali open (they join its
+   * room when they view it). A requester who went back to the home screen would otherwise not
+   * learn that a friend paid until they next opened the wallet. Every signed-in socket is in its
+   * own `user:<id>` room (see MandaliSocketHandlers), so this reaches all of that person's devices.
+   */
+  private notifyWalletsChanged(mandaliId: string, requestId: string, identityIds: readonly string[]): void {
+    for (const identityId of new Set(identityIds)) {
+      this.io?.to(`user:${identityId}`).emit("mandali:wallet_changed" as never, { mandaliId, requestId, reason: "coin_request_funded" } as never);
     }
   }
 

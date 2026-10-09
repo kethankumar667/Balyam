@@ -10,6 +10,7 @@ import type { NotificationItem } from "../lib/profileNotifications";
 import { authenticateMandaliSocket, useMandaliStore } from "../store/mandaliStore";
 import { useMandaliInboxStore } from "../store/mandaliInboxStore";
 import { useAuthStore } from "../store/authStore";
+import { refreshCurrentWallet } from "./useEconomy";
 
 /**
  * The signed-in member's Mandali notifications, app-wide.
@@ -175,6 +176,15 @@ export function useMandaliInbox(): {
       );
     };
 
+    /**
+     * A friend paid a coin request this member sent or paid. It arrives on the
+     * personal room, so the wallet is reloaded on every page, not only while the
+     * Mandali is open — otherwise the coins show up only after a manual refresh.
+     */
+    const onWalletChanged = () => {
+      void refreshCurrentWallet();
+    };
+
     const sync = () => {
       void authenticateMandaliSocket().then(() => {
         if (!cancelled) void store.getState().refresh();
@@ -188,6 +198,7 @@ export function useMandaliInbox(): {
     socket.on("connect", sync);
     socket.on("mandali:activity" as any, onActivity);
     socket.on("mandali:deleted" as any, onDeleted);
+    socket.on("mandali:wallet_changed" as any, onWalletChanged);
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
@@ -195,6 +206,7 @@ export function useMandaliInbox(): {
       socket.off("connect", sync);
       socket.off("mandali:activity" as any, onActivity);
       socket.off("mandali:deleted" as any, onDeleted);
+      socket.off("mandali:wallet_changed" as any, onWalletChanged);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [enabled, userId]);

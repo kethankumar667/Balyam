@@ -113,6 +113,47 @@ describe("Mandali live updates", () => {
     expect(event?.payload.request.status).toBe("FUNDED");
   });
 
+  it("tells the requester's and the payer's wallets directly, so the coins show up even when neither is viewing the group", async () => {
+    // The group broadcast only reaches people with that Mandali open. A requester who went back to the
+    // home screen must still see the coins arrive, and so must a payer's other device.
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    const walletEvents = emitted.filter((e) => e.event === "mandali:wallet_changed");
+    expect(walletEvents.map((e) => e.room).sort()).toEqual([`user:${REQUESTER}`, "user:guest_bystander"].sort());
+    expect(walletEvents[0]?.payload).toMatchObject({ mandaliId: MANDALI, requestId: "cr_1" });
+  });
+
+  it("does not wake the person the request was addressed to if somebody else paid it", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    // PAYER (who it was addressed to) did not pay, so their wallet did not change.
+    expect(emitted.some((e) => e.event === "mandali:wallet_changed" && e.room === `user:${PAYER}`)).toBe(false);
+  });
+
+  it("does not repeat the wallet notice when the payer retries a request that already landed", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: true, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    expect(emitted.some((e) => e.event === "mandali:wallet_changed")).toBe(false);
+  });
+
   it("tells a second member that someone else already paid, instead of reporting success", async () => {
     const { io, emitted } = fakeIo();
     const { client } = fakePostgrest({

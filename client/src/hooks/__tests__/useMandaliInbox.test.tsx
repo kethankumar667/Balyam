@@ -24,7 +24,11 @@ const join = vi.hoisted(() => vi.fn());
 /** Stands in for the Mandali store's "forget this Mandali" — true means it was news to this client. */
 const deleted = vi.hoisted(() => ({ apply: vi.fn() }));
 
+/** Stands in for the wallet reload that follows a coin request being paid. */
+const wallet = vi.hoisted(() => ({ refresh: vi.fn(async () => undefined) }));
+
 vi.mock("../../lib/socket", () => ({ getSocket: () => io.socket }));
+vi.mock("../useEconomy", () => ({ refreshCurrentWallet: wallet.refresh }));
 vi.mock("../../store/mandaliStore", () => ({
   authenticateMandaliSocket: vi.fn(async () => undefined),
   useMandaliStore: { getState: () => ({ applyMandaliDeleted: deleted.apply }) },
@@ -441,6 +445,27 @@ describe("useMandaliInbox", () => {
     });
   });
 
+  describe("a friend pays a coin request", () => {
+    beforeEach(() => wallet.refresh.mockClear());
+
+    it("reloads the wallet wherever the member is in the app, not only inside that Mandali", async () => {
+      await mount([digest("m1", "Ludo Lounge")], "/");
+
+      act(() => io.fire("mandali:wallet_changed", { mandaliId: "m1", requestId: "cr_1", reason: "coin_request_funded" }));
+
+      expect(wallet.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("reloads on each payment, so a second request paid later is picked up too", async () => {
+      await mount([digest("m1", "Ludo Lounge")]);
+
+      act(() => io.fire("mandali:wallet_changed", { mandaliId: "m1", requestId: "cr_1" }));
+      act(() => io.fire("mandali:wallet_changed", { mandaliId: "m1", requestId: "cr_2" }));
+
+      expect(wallet.refresh).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("clears everything when the member signs out", async () => {
     const { result } = await mount([digest("m1", "Ludo Lounge", { unreadCount: 2, senderCount: 1, topSenders: [{ name: "A", count: 2 }] })]);
     expect(result.current.items).toHaveLength(1);
@@ -458,5 +483,6 @@ describe("useMandaliInbox", () => {
 
     expect(io.handlers.get("mandali:activity")?.size ?? 0).toBe(0);
     expect(io.handlers.get("mandali:deleted")?.size ?? 0).toBe(0);
+    expect(io.handlers.get("mandali:wallet_changed")?.size ?? 0).toBe(0);
   });
 });
