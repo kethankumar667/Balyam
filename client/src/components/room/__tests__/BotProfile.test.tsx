@@ -6,6 +6,9 @@ import { buildBotProfile, pickBotCosmetics } from "@shared/bot-profile";
 import BotProfileCard from "../BotProfileCard";
 import BotStyleChip from "../BotStyleChip";
 import ParticipantRow from "../ParticipantRow";
+import BotResultNote from "../BotResultNote";
+import PlayerList from "../../PlayerList";
+import WinnerCelebration from "../../../games/ludo/WinnerCelebration";
 
 function makeBot(over: Partial<Player> = {}): Player {
   return {
@@ -29,6 +32,102 @@ const human = (over: Partial<Player> = {}): Player => ({
   isReady: true,
   isConnected: true,
   ...over,
+});
+
+vi.mock("../../../animations/particles/comicBursts", () => ({ fireFireworksBurst: vi.fn() }));
+vi.mock("../../../animations/comic/ComicBurstText", () => ({ default: () => null }));
+
+describe("BotResultNote", () => {
+  it("shows a bot's title and tagline", () => {
+    const bot = makeBot({ cosmetics: { podiumTitle: "title_grandmaster" } });
+    render(<BotResultNote player={bot} />);
+
+    expect(screen.getByText("Grandmaster")).toBeInTheDocument();
+    expect(screen.getByText(bot.botProfile!.tagline)).toBeInTheDocument();
+  });
+
+  it("shows just the tagline when the bot has no title", () => {
+    const bot = makeBot({ cosmetics: {} });
+    render(<BotResultNote player={bot} />);
+
+    expect(screen.getByText(bot.botProfile!.tagline)).toBeInTheDocument();
+    expect(screen.queryByText(/master/i)).toBeNull();
+  });
+
+  it("renders nothing for a human, a missing player, or a bot with no profile", () => {
+    const { container: human } = render(<BotResultNote player={{ id: "p", name: "A", isHost: false, isReady: true, isConnected: true }} />);
+    const { container: none } = render(<BotResultNote player={undefined} />);
+    const { container: bare } = render(<BotResultNote player={makeBot({ botProfile: undefined })} />);
+
+    expect(human).toBeEmptyDOMElement();
+    expect(none).toBeEmptyDOMElement();
+    expect(bare).toBeEmptyDOMElement();
+  });
+
+  it("never shows a title it does not know", () => {
+    render(<BotResultNote player={makeBot({ cosmetics: { podiumTitle: "title_not_in_the_catalogue" } })} />);
+
+    expect(screen.queryByText(/not_in_the_catalogue/)).toBeNull();
+  });
+});
+
+describe("Ludo winner banner — a bot champion", () => {
+  it("carries the bot's character to the champion screen", () => {
+    const bot = makeBot();
+    render(<WinnerCelebration winner={bot} color="red" />);
+
+    expect(screen.getByText("Pintu")).toBeInTheDocument();
+    expect(screen.getByText(bot.botProfile!.tagline)).toBeInTheDocument();
+  });
+
+  it("shows only the name for a human champion", () => {
+    render(<WinnerCelebration winner={human()} color="red" />);
+
+    expect(screen.getByText("Anand")).toBeInTheDocument();
+    expect(screen.queryByText(/Counts|Never|Always/)).toBeNull();
+  });
+});
+
+describe("PlayerList — a bot in a running game", () => {
+  it("shows the bot's play style next to its name", () => {
+    const bot = makeBot();
+    render(<PlayerList players={[bot]} selfId="p_self" />);
+
+    expect(screen.getByText(bot.botProfile!.playStyle)).toBeInTheDocument();
+  });
+
+  it("opens the bot's profile from its own button", () => {
+    render(<PlayerList players={[makeBot()]} selfId="p_self" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "View Pintu's profile" }));
+
+    expect(screen.getByRole("dialog", { name: "Pintu" })).toBeInTheDocument();
+  });
+
+  it("keeps the profile button apart from the row's reaction tap", () => {
+    const onTapPlayer = vi.fn();
+    render(<PlayerList players={[makeBot()]} selfId="p_self" onTapPlayer={onTapPlayer} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "View Pintu's profile" }));
+    expect(onTapPlayer).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Pintu", { selector: "span.truncate" }));
+    expect(onTapPlayer).toHaveBeenCalledWith("bot_1");
+  });
+
+  it("gives a human no profile button and no style chip", () => {
+    render(<PlayerList players={[human()]} selfId="p_self" />);
+
+    expect(screen.queryByRole("button", { name: /profile/i })).toBeNull();
+    expect(screen.queryByText("Cautious")).toBeNull();
+  });
+
+  it("shows a bot with no profile exactly as before", () => {
+    render(<PlayerList players={[makeBot({ botProfile: undefined })]} selfId="p_self" />);
+
+    expect(screen.queryByRole("button", { name: /profile/i })).toBeNull();
+    expect(screen.getByText("Bot")).toBeInTheDocument();
+  });
 });
 
 describe("BotStyleChip", () => {

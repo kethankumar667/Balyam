@@ -8,6 +8,7 @@ import RematchPanel from "../../components/RematchPanel";
 import { svgToPngBlob } from "../../lib/svgExport";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import BotResultNote from "../../components/room/BotResultNote";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
@@ -53,6 +54,8 @@ export default function RummyResultModal({
     players.find((p) => p.id === id)?.name ??
     useRoomStore.getState().knownPlayers[id]?.name ??
     "?";
+  /** A bot's seat, for its title and tagline; `undefined` for a human. */
+  const botOf = (id: string) => players.find((p) => p.id === id && p.isBot);
   const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
 
   // Chips: normal round → winner takes Σ(losers' hand values), each loser pays
@@ -364,6 +367,7 @@ export default function RummyResultModal({
                           </span>
                         )}
                         {prize && <PrizeWonChip amount={prize} />}
+                        <BotResultNote player={botOf(id)} className="basis-full text-white" />
                       </div>
                     </div>
 
@@ -465,6 +469,7 @@ export default function RummyResultModal({
                         </span>
                       )}
                       {prize && <PrizeWonChip amount={prize} />}
+                      <BotResultNote player={botOf(id)} className="basis-full text-white" />
                     </div>
 
                     {/* Cards / Melds */}

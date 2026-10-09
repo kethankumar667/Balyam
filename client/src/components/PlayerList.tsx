@@ -1,6 +1,9 @@
+import { useState } from "react";
 import type { Player } from "@shared/types";
-import { Users, Crown, Check, Target } from "lucide-react";
+import { Users, Crown, Check, Target, Info } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
+import BotProfileCard from "./room/BotProfileCard";
+import BotStyleChip, { botTitleBadgeClass } from "./room/BotStyleChip";
 import { getPodiumTitleConfig } from "../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "./progression/MiniclipLevelBadge";
 
@@ -13,6 +16,10 @@ export default function PlayerList({
   selfId: string | null;
   onTapPlayer?: (id: string) => void;
 }) {
+  // A bot's profile is opened from its own small button, not from the row: the row's tap already
+  // means "send this player a reaction", and a bot is a fine target for one.
+  const [profileFor, setProfileFor] = useState<Player | null>(null);
+
   return (
     <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
@@ -33,7 +40,9 @@ export default function PlayerList({
             onClick={p.id !== selfId && onTapPlayer ? () => onTapPlayer(p.id) : undefined}
             role={p.id !== selfId && onTapPlayer ? "button" : undefined}
             tabIndex={p.id !== selfId && onTapPlayer ? 0 : undefined}
-            className={`flex items-center gap-2.5 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5 transition ${
+            className={`flex items-center gap-x-2.5 gap-y-1 bg-[#FFF9EE] dark:bg-[#182234] border border-[#EEDBCA] dark:border-slate-700/60 rounded-xl px-3 py-1.5 transition ${
+              p.isBot && p.botProfile ? "flex-wrap" : ""
+            } ${
               p.id !== selfId && onTapPlayer ? "cursor-pointer hover:bg-[#FFF4E0] dark:hover:bg-[#1E2738] active:scale-[0.99]" : ""
             }`}
           >
@@ -49,8 +58,13 @@ export default function PlayerList({
             </span>
 
             {/* Name + details */}
-            <div className="flex-1 min-w-0 flex items-center gap-1.5">
-              <span className="truncate font-semibold text-xs sm:text-sm text-[#2B3550] dark:text-slate-100">
+            <div
+              className={`flex-1 flex items-center gap-x-1.5 gap-y-0.5 ${
+                // A bot's row wraps in a narrow rail: the name gets a floor so it is never squeezed to nothing.
+                p.isBot && p.botProfile ? "flex-wrap min-w-[7.5rem]" : "min-w-0"
+              }`}
+            >
+              <span className="truncate max-w-full font-semibold text-xs sm:text-sm text-[#2B3550] dark:text-slate-100">
                 {p.name}
               </span>
               {p.level !== undefined && (
@@ -66,10 +80,11 @@ export default function PlayerList({
                   <Crown size={13} aria-hidden />
                 </span>
               )}
+              {p.isBot && p.botProfile && <BotStyleChip profile={p.botProfile} />}
               {p.cosmetics?.podiumTitle && getPodiumTitleConfig(p.cosmetics.podiumTitle) && (
                 <span
                   className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex-shrink-0 ${
-                    getPodiumTitleConfig(p.cosmetics.podiumTitle)!.badgeClass
+                    p.isBot ? botTitleBadgeClass(p.cosmetics.podiumTitle) : getPodiumTitleConfig(p.cosmetics.podiumTitle)!.badgeClass
                   }`}
                 >
                   {getPodiumTitleConfig(p.cosmetics.podiumTitle)!.label}
@@ -78,7 +93,7 @@ export default function PlayerList({
             </div>
 
             {/* Badges */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 ml-auto">
               {p.hasQuit && (
                 <span
                   className="text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 bg-slate-500/20 text-slate-600 dark:text-slate-300"
@@ -117,6 +132,21 @@ export default function PlayerList({
                   •••
                 </span>
               )}
+              {p.isBot && p.botProfile && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    // Not a reaction: keep the row's own tap out of it.
+                    e.stopPropagation();
+                    setProfileFor(p);
+                  }}
+                  className="min-w-[44px] min-h-[44px] -my-2 flex items-center justify-center text-[#8A6D4B] hover:text-[#EA5A1F] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] rounded-lg cursor-pointer"
+                  title={`View ${p.name}'s profile`}
+                  aria-label={`View ${p.name}'s profile`}
+                >
+                  <Info size={16} aria-hidden />
+                </button>
+              )}
               {p.id !== selfId && onTapPlayer && (
                 <button
                   type="button"
@@ -136,6 +166,8 @@ export default function PlayerList({
         <Users size={14} aria-hidden />
         <span>{players.length > 0 && players.every((p) => p.isReady) ? "All players ready!" : "Waiting for players..."}</span>
       </div>
+
+      {profileFor && <BotProfileCard player={profileFor} onClose={() => setProfileFor(null)} />}
     </div>
   );
 }

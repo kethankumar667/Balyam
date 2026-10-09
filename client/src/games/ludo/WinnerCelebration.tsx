@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { LudoColor, Player } from "@shared/types";
 import { COLOR_HEX, COLOR_HEX_DARK } from "./board-layout";
 import ComicBurstText from "../../animations/comic/ComicBurstText";
+import BotResultNote from "../../components/room/BotResultNote";
 import { fireFireworksBurst } from "../../animations/particles/comicBursts";
 
 /**
@@ -89,6 +90,7 @@ export default function WinnerCelebration({
           <div className="text-3xl sm:text-4xl font-black text-white drop-shadow-lg leading-tight mt-0.5">
             {winner.name}
           </div>
+          <BotResultNote player={winner} className="justify-center mt-1 text-white" />
         </div>
 
         <motion.div

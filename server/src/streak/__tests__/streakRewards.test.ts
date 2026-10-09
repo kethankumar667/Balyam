@@ -8,6 +8,7 @@ import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 
 const PLAYER = "streak_player";
+const GUEST = "guest_streak_player";
 const DAY = 86_400_000;
 const T0 = Date.UTC(2026, 8, 29, 9, 0, 0);
 
@@ -63,27 +64,52 @@ describe("daily streak coins go through the reward gateway", () => {
     rig = makeRig();
   });
 
-  it("makes a new (tier-1) account wait a day for its coins, and says so", async () => {
+  it("pays a signed-in member's coins at once, even a brand-new tier-1 account", async () => {
     const before = await rig.balance();
 
     const claim = await rig.streak.claimStreak(PLAYER, "member");
 
     expect(claim.success).toBe(true);
     expect(claim.coinsAwarded).toBeGreaterThan(0);
-    expect(claim.pendingUntil).toBe(T0 + VESTING_MS);
-    expect(claim.message).toContain("24 hours");
-    expect(claim.walletBalance).toBe(before.toString());
-    expect(await rig.balance()).toBe(before);
+    expect(claim.pendingUntil).toBeUndefined();
+    expect(claim.message).not.toContain("24 hours");
+    expect(claim.walletBalance).toBe((before + BigInt(claim.coinsAwarded)).toString());
+    expect(await rig.balance()).toBe(before + BigInt(claim.coinsAwarded));
   });
 
-  it("pays the coins into the wallet once the day has passed", async () => {
-    const before = await rig.balance();
-    const claim = await rig.streak.claimStreak(PLAYER, "member");
+  it("makes a guest wait a day for its coins, and says so", async () => {
+    const guestBalance = async () => {
+      await rig.economy.ensureIdentityRegistered(GUEST, "guest");
+      return BigInt((await rig.economy.getWallet(GUEST)).balance);
+    };
+    const before = await guestBalance();
+
+    const claim = await rig.streak.claimStreak(GUEST, "guest");
+
+    expect(claim.success).toBe(true);
+    expect(claim.pendingUntil).toBe(T0 + VESTING_MS);
+    expect(claim.message).toContain("24 hours");
+    expect(await guestBalance()).toBe(before);
+  });
+
+  it("pays a guest's held coins into the wallet once the day has passed", async () => {
+    await rig.economy.ensureIdentityRegistered(GUEST, "guest");
+    const before = BigInt((await rig.economy.getWallet(GUEST)).balance);
+    const claim = await rig.streak.claimStreak(GUEST, "guest");
 
     rig.clock.now = T0 + VESTING_MS;
     await rig.gateway.releaseDue();
 
-    expect(await rig.balance()).toBe(before + BigInt(claim.coinsAwarded));
+    expect(BigInt((await rig.economy.getWallet(GUEST)).balance)).toBe(before + BigInt(claim.coinsAwarded));
+  });
+
+  it("holds a watched member's coins for a day, like anyone else under suspicion", async () => {
+    await rig.risk.setState(PLAYER, "WATCHLIST", { reasonCodes: ["x"], actor: "op" });
+
+    const claim = await rig.streak.claimStreak(PLAYER, "member");
+
+    expect(claim.success).toBe(true);
+    expect(claim.pendingUntil).toBe(T0 + VESTING_MS);
   });
 
   it("does not promise coins for a day whose reward an operator has withdrawn", async () => {
@@ -126,7 +152,7 @@ describe("daily streak coins go through the reward gateway", () => {
       rewardType: "DAILY_STREAK",
       reasonCode: "STREAK_DAY",
       sourceId: "2026-09-29",
-      status: "PENDING",
+      status: "RELEASED",
     });
   });
 
@@ -138,6 +164,7 @@ describe("daily streak coins go through the reward gateway", () => {
     expect(again.success).toBe(false);
     rig.clock.now = T0 + VESTING_MS;
     await rig.gateway.releaseDue();
+    // Paid once, at the first claim; a second claim and a later sweep add nothing.
     expect(await rig.balance()).toBe(before + BigInt((await rig.rewards.listRewardsForPlayer(PLAYER))[0]!.amount));
   });
 

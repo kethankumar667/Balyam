@@ -236,7 +236,7 @@ export class StreakService {
     }
 
     // Coins go through the reward gateway: a row with a reason and the player's
-    // risk state, paid at once for a trusted member and after a day otherwise.
+    // risk state, paid at once for a signed-in member in good standing, after a day otherwise.
     // Nothing here credits a wallet directly.
     let updatedWalletBalance = "0";
     let pendingUntil: number | undefined;

@@ -5,6 +5,7 @@ import Modal from "../../components/Modal";
 import RematchPanel from "../../components/RematchPanel";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import { findAvatar } from "../../lib/avatars";
+import BotResultNote from "../../components/room/BotResultNote";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
 import { WinnerCelebration } from "../../animations/card/WinnerCelebration";
@@ -219,6 +220,8 @@ export default function UnoResultModal({
                     <div
                       key={id}
                       className={`flex items-center gap-2 sm:gap-2.5 px-2.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold border-b border-[#EADBCA]/70 transition-colors ${
+                        p?.isBot && p.botProfile ? "flex-wrap" : ""
+                      } ${
                         isWinnerRow
                           ? "bg-[#FFECC7]/60 text-[#2B1B0E]"
                           : "text-[#4A3828]"
@@ -270,6 +273,8 @@ export default function UnoResultModal({
 
                       {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
                       {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
+
+                      <BotResultNote player={p} className="basis-full pl-[3.25rem] sm:pl-[3.6rem] -mt-0.5 text-[#5C4533]" />
                     </div>
                   );
                 })}

@@ -6,8 +6,7 @@ import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { useScorecardStore } from "../store/scorecardStore";
 import { findAvatar } from "../lib/avatars";
-import { getPodiumTitleConfig } from "../lib/cosmeticsResolver";
-import { botTitleBadgeClass } from "./room/BotStyleChip";
+import BotResultNote from "./room/BotResultNote";
 import { getGameLimits } from "@shared/catalog";
 import CountUp from "./CountUp";
 import Modal from "./Modal";
@@ -250,7 +249,6 @@ export default function BhalyamResultModal({
                 const avatarOpt = p.avatar ? findAvatar(p.avatar) : null;
                 // A bot's character shows under its placement: its title and its one-line tagline.
                 const botSeat = players.find((seat) => seat.id === p.id && seat.isBot && seat.botProfile);
-                const botTitle = botSeat ? getPodiumTitleConfig(botSeat.cosmetics?.podiumTitle) : null;
                 const rankNum = index + 1;
                 // A placement badge only means something when this score is
                 // genuinely higher than every player ranked below it, and
@@ -326,16 +324,7 @@ export default function BhalyamResultModal({
                     {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
                     {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
 
-                    {botSeat?.botProfile && (
-                      <div className="basis-full flex flex-wrap items-center gap-x-1.5 gap-y-0.5 pl-[4rem] -mt-0.5 text-[10px] font-semibold text-[#7C6652] min-w-0">
-                        {botTitle && (
-                          <span className={`shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${botTitleBadgeClass(botSeat.cosmetics?.podiumTitle)}`}>
-                            {botTitle.label}
-                          </span>
-                        )}
-                        <span className="min-w-0 sm:truncate">{botSeat.botProfile.tagline}</span>
-                      </div>
-                    )}
+                    <BotResultNote player={botSeat} className="basis-full pl-[4rem] -mt-0.5 text-[#7C6652]" />
                   </div>
                 );
               })}

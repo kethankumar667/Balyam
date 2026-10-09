@@ -13,6 +13,7 @@ import {
   type DotsBoxesSkin,
 } from "./dotsboxes-theme";
 import type { RankedPlayer } from "./useDotsBoxesBoard";
+import BotResultNote from "../../components/room/BotResultNote";
 import type { Player } from "@shared/types";
 
 interface DotsBoxesScorecardModalProps {
@@ -224,6 +225,10 @@ export default function DotsBoxesScorecardModal({
               <div className={`text-xs font-bold mb-2 ${isNotebook ? "text-amber-800" : "text-amber-400"}`}>
                 1st Place Champion
               </div>
+              <BotResultNote
+                player={players.find((pl) => pl.id === winner?.pid && pl.isBot)}
+                className={`justify-center mb-2 ${isNotebook ? "text-stone-800" : "text-slate-200"}`}
+              />
               {winnerPrizes?.[0] && (
                 <div className="mb-2">
                   <PrizeWonChip amount={winnerPrizes[0]} size="md" />
@@ -298,11 +303,14 @@ export default function DotsBoxesScorecardModal({
                 const isSecond = p.rank === 2;
                 const isThird = p.rank === 3;
                 const handwritingFont = p.theme.fontFamily ?? "inherit";
+                const botSeat = players.find((pl) => pl.id === p.pid && pl.isBot && pl.botProfile);
 
                 return (
                   <div
                     key={p.pid}
                     className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all ${
+                      botSeat ? "flex-wrap" : ""
+                    } ${
                       isNotebook
                         ? isFirst
                           ? "bg-amber-100/90 border-amber-500 shadow-sm"
@@ -379,6 +387,8 @@ export default function DotsBoxesScorecardModal({
                         Boxes
                       </span>
                     </div>
+
+                    <BotResultNote player={botSeat} className={`basis-full pl-[4.5rem] mt-0.5 ${isNotebook ? "text-stone-700" : "text-slate-300"}`} />
                   </div>
                 );
               })}

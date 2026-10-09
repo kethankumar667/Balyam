@@ -3,6 +3,7 @@ import {
   RELEASE_CLAIM_LEASE_MS,
   RESTRICTED_VESTING_MS,
   RewardGateway,
+  SWEEP_TIMEOUT_MS,
   VESTING_MS,
   type GrantRequest,
   type RewardEconomy,
@@ -11,6 +12,7 @@ import { InMemoryRewardRepository } from "../InMemoryRewardRepository.js";
 import { RiskService } from "../RiskService.js";
 import { TrustService } from "../TrustService.js";
 import { REASON } from "../types.js";
+import { logger } from "../../lib/logger.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 
@@ -221,16 +223,28 @@ describe("RewardGateway — vesting policy by trust and risk", () => {
     expect(await rig.balance()).toBe(before + 50n);
   });
 
-  it("makes a tier-1 account wait 24 hours for the same streak reward", async () => {
+  it("pays a signed-in member's daily streak reward at once even at trust tier 1", async () => {
+    // Tier 2 needs matches against other signed-in people, which a player who mostly plays bots
+    // never reaches; making them wait a day for a daily gift read as "my coins never arrived".
     const rig = makeRig();
     rig.trust.setProviders(tierProviders(1));
     const before = await rig.balance();
 
     const result = await rig.gateway.grantCoins(streak());
 
+    expect(result.ok && result.record.status).toBe("RELEASED");
+    expect(await rig.balance()).toBe(before + 50n);
+  });
+
+  it("makes a guest wait 24 hours for the same streak reward", async () => {
+    // A guest is a value in browser storage and can be remade at will, so the hold stays for them.
+    const rig = makeRig();
+    rig.trust.setProviders(tierProviders(1));
+
+    const result = await rig.gateway.grantCoins(streak({ identityKind: "guest" }));
+
     expect(result.ok && result.record.status).toBe("PENDING");
     expect(result.ok && result.record.vestingUntil).toBe(T0 + VESTING_MS);
-    expect(await rig.balance()).toBe(before);
   });
 
   it("never pays a level milestone at once, however trusted the account", async () => {
@@ -449,5 +463,48 @@ describe("RewardGateway — the sweeper", () => {
     await rig.gateway.sweep();
 
     expect(rig.risk.getState(PLAYER)).toBe("NORMAL");
+  });
+});
+
+describe("RewardGateway — a stalled sweep cannot block every later one", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("gives up on a sweep that never returns, so held rewards are still paid by the next one", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const rig = makeRig();
+    await rig.gateway.grantCoins(milestone({ identityKind: "guest" }));
+    const before = await rig.balance();
+    rig.clock.now = T0 + VESTING_MS;
+    // The first look at the store never answers, the way a dropped database connection can.
+    vi.spyOn(rig.repository, "listDueForRelease").mockImplementationOnce(() => new Promise(() => undefined));
+
+    void rig.gateway.sweep();
+    await vi.advanceTimersByTimeAsync(SWEEP_TIMEOUT_MS + 1_000);
+    await rig.gateway.sweep();
+
+    expect(await rig.balance()).toBe(before + 500n);
+  });
+
+  it("says in the log that it gave up, rather than staying silent", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const rig = makeRig();
+    const errors = vi.spyOn(logger, "error").mockImplementation(() => undefined);
+    vi.spyOn(rig.repository, "listDueForRelease").mockImplementationOnce(() => new Promise(() => undefined));
+
+    void rig.gateway.sweep();
+    await vi.advanceTimersByTimeAsync(SWEEP_TIMEOUT_MS + 1_000);
+
+    expect(errors).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/sweep.*did not finish/i) }));
+  });
+
+  it("lets two overlapping calls share one sweep while it is healthy", async () => {
+    const rig = makeRig();
+    const list = vi.spyOn(rig.repository, "listDueForRelease");
+
+    await Promise.all([rig.gateway.sweep(), rig.gateway.sweep()]);
+
+    expect(list).toHaveBeenCalledTimes(1);
   });
 });

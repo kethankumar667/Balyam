@@ -29,10 +29,11 @@ import {
  *
  * ── Vesting ───────────────────────────────────────────────────────────
  * A reward waits 24 hours before it is paid: long enough for the daily risk
- * checks to look, short enough not to feel like punishment. A trusted member's
- * small daily streak reward is the one thing paid at once — a delay on a daily
- * login gift would be felt every single day, and the accounts that farm it are
- * exactly the new, low-trust ones the delay still applies to.
+ * checks to look, short enough not to feel like punishment. A signed-in member's
+ * small daily streak reward, and the hourly faucet, are paid at once while the
+ * account is in good standing — a delay on a daily login gift is felt every single
+ * day, and read as "my coins never arrived". The hold still applies to guests (who
+ * can be remade at will), to watched accounts and to restricted ones.
  *
  * ── Never paid twice, never lost ──────────────────────────────────────
  * Paying is PENDING -> RELEASING -> RELEASED, each step an atomic guarded
@@ -49,6 +50,8 @@ export const RESTRICTED_VESTING_MS = 72 * 60 * 60 * 1_000;
 /** How long a RELEASING claim may sit before the sweeper assumes it died and redrives it. */
 export const RELEASE_CLAIM_LEASE_MS = 5 * 60 * 1_000;
 export const SWEEP_INTERVAL_MS = 60_000;
+/** How long one sweep may run before it is abandoned so the next can start; far longer than a healthy one. */
+export const SWEEP_TIMEOUT_MS = 120_000;
 const SWEEP_BATCH = 100;
 const MAX_SWEEP_BATCHES = 10;
 
@@ -136,9 +139,13 @@ export class RewardGateway {
   }
 
   /** How long a reward waits before it is paid. Pure, so the policy can be read and tested on its own. */
-  vestingFor(type: RewardType, tier: TrustTier, state: RiskState): number {
+  vestingFor(type: RewardType, tier: TrustTier, state: RiskState, identityKind: PlayerIdentityKind = "guest"): number {
     if (state === "RESTRICTED") return RESTRICTED_VESTING_MS;
-    if (type === "DAILY_STREAK" && tier >= 2 && state === "NORMAL") return 0;
+    // A signed-in member's small daily gift is paid at once, whatever their trust tier. Tier 2 needs
+    // matches against other signed-in people, which someone who mostly plays bots never reaches, so
+    // gating on it meant their daily coins sat unseen for a day and looked like they never arrived.
+    // A guest can be remade at will, so the hold stays for them (and for a watched account).
+    if (type === "DAILY_STREAK" && state === "NORMAL" && (identityKind === "member" || tier >= 2)) return 0;
     // The hourly faucet is a small gift meant to be spent in the next few minutes; a day's wait would
     // defeat it. What stops farming is the transfer cap and the account's standing, not a delay here.
     if (type === "HOURLY_FAUCET" && state === "NORMAL") return 0;
@@ -173,7 +180,7 @@ export class RewardGateway {
         amount: req.amount,
         sourceId: req.sourceId,
         earnedAt,
-        vestingUntil: earnedAt + this.vestingFor(req.rewardType, tier, state),
+        vestingUntil: earnedAt + this.vestingFor(req.rewardType, tier, state, req.identityKind),
         status: "PENDING",
         riskState: state,
         ledgerEntryId: null,
@@ -299,7 +306,19 @@ export class RewardGateway {
   /** One sweep: pay what is due, let stale system watches lapse. Overlapping calls share one run. */
   sweep(): Promise<void> {
     if (this.sweeping) return this.sweeping;
-    this.sweeping = (async () => {
+    let run: Promise<void> | undefined;
+    const started: Promise<void> = (async () => {
+      // A sweep that never returns (a dropped database connection can do that) used to hold
+      // `this.sweeping` for ever, so every later sweep just waited on it and no held reward was
+      // ever paid, with nothing in the log to say why. Give each sweep a deadline instead.
+      const deadline = setTimeout(() => {
+        if (this.sweeping === run) this.sweeping = null;
+        logger.error({
+          message: `Reward sweep did not finish within ${SWEEP_TIMEOUT_MS / 1_000}s and was abandoned; the next sweep starts fresh.`,
+          module: "REWARDS",
+        });
+      }, SWEEP_TIMEOUT_MS);
+      deadline.unref?.();
       try {
         const result = await this.releaseDue();
         this.risk.expireStaleWatchlist(this.now());
@@ -313,10 +332,13 @@ export class RewardGateway {
       } catch (err) {
         logger.error({ message: `Reward sweep failed: ${err instanceof Error ? err.message : String(err)}`, module: "REWARDS" });
       } finally {
-        this.sweeping = null;
+        clearTimeout(deadline);
+        if (this.sweeping === run) this.sweeping = null;
       }
     })();
-    return this.sweeping;
+    run = started;
+    this.sweeping = started;
+    return started;
   }
 
   /** Audit events are kept for a set time, not forever: this runs at most once a day. */

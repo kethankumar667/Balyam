@@ -13,7 +13,7 @@ Verification against a real PostgreSQL: `node scripts/persistence/verifyRewardSc
 game / event
    → RewardGateway.grantCoins        (refuses: not signed in, no economy, UNDER_REVIEW)
    → reward_ledger row               (a reason code, the player's risk state, a vesting time)
-   → wait (vesting)                  (24 h; 72 h if RESTRICTED; a trusted member's daily streak is paid at once)
+   → wait (vesting)                  (24 h; 72 h if RESTRICTED; a signed-in member's daily streak and the faucet are paid at once)
    → sweeper (every 60 s)            (PENDING → RELEASING → RELEASED, one idempotent wallet credit)
    → wallet ledger entry             (linked back on the reward row as ledger_entry_id)
 ```
@@ -170,6 +170,22 @@ milestone being claimed twice and hold only an opaque id.
 1. `GET /api/admin/risk/:playerId` — is the state `RESTRICTED` or `UNDER_REVIEW`? Is there a `PENDING` reward whose `vestingUntil` is still in the future?
 2. A reward stuck in `RELEASING` for more than 5 minutes is redriven by the next sweep.
 3. If the account is under review by mistake: `PUT … { "state": "NORMAL" }` — held rewards are paid on the next sweep.
+4. Is the sweeper itself paying? In the Supabase SQL editor, rewards that are due but unpaid:
+
+   ```sql
+   select reward_type, status, count(*) as n, min(vesting_until) as oldest_due
+     from public.reward_ledger
+    where status in ('PENDING', 'RELEASING') and vesting_until < now() - interval '10 minutes'
+    group by reward_type, status
+    order by oldest_due;
+   ```
+
+   No rows means everything due has been paid. Rows mean the sweep is not paying: look in the server log
+   for `Reward sweep failed`, `Reward sweep did not finish ... abandoned`, or `Reward ... payment did not
+   complete`, and fix what it names (a missing migration, an unreachable database). The next healthy sweep
+   pays every row listed, with no manual step, because each payment is keyed on its reward id.
+5. A signed-in member's daily streak and faucet coins should never appear here: they are paid in the same
+   request as the claim. If they do, that claim's payment failed and the row is waiting for a sweep.
 
 ## What is deliberately not here
 
@@ -195,7 +211,13 @@ milestone being claimed twice and hold only an opaque id.
   "already paid", never "limit reached", because only an OPEN request is checked.
 - **Self-service profile deletion does not erase risk or reward rows**, deliberately: otherwise a watched
   account could clear itself by deleting. Use the operator erasure endpoint above.
-- **Streak coins are paid to guests too** (tier 1, 24 h vest); milestone coins need an account.
+- **Streak coins are paid to guests too**, but a guest's wait 24 h. A signed-in member's daily coins are paid
+  at once at any trust tier (changed after members who mostly play bots, and so never reach tier 2, read the
+  24 h hold as "my daily coins never arrive"). Watched and restricted members, and guests, still wait.
+  Milestone coins need an account and always vest 24 h.
+- **A sweep that stalls is abandoned after 2 minutes** (`SWEEP_TIMEOUT_MS`) and logged as
+  `Reward sweep did not finish ... and was abandoned`. Before this, one hung database call could stop every
+  held reward from ever being paid, silently.
 
 ## Personal data
 

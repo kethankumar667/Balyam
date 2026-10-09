@@ -460,6 +460,12 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
   // gate alone.
   // Rummy has no free-amount stake: it starts on the 1-point table (80 coins) and is picked by point rate.
   const [entryStakeTier, setEntryStakeTier] = useState<string>(() => String(defaultEntryStakeFor(game)));
+  // The sheet stays mounted while the `game` prop is swapped (the home page opens it with no game and
+  // sets one when a tile is tapped), so a stake chosen for one game must not outlive it. Without this a
+  // Rummy table was created at 100 coins — not one of its tiers — and the server refused it.
+  useEffect(() => {
+    setEntryStakeTier(String(defaultEntryStakeFor(game)));
+  }, [game]);
   const [customStake, setCustomStake] = useState<number>(500);
   const isGuestHost = currentAccountKind() === "guest";
   const entryStakeCoins = entryStakeTier === "custom" ? customStake : Number(entryStakeTier);

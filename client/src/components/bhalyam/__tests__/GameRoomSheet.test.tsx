@@ -424,3 +424,40 @@ describe("GameRoomSheet — guest token failure prevents room creation & joining
     });
   });
 });
+
+describe("GameRoomSheet — the stake follows the game that is picked", () => {
+  beforeEach(() => {
+    mockEmit.mockClear();
+    mockNavigate.mockClear();
+    useAuthStore.setState({ kind: "member", capabilities: capabilitiesFor("member") });
+    useRoomStore.setState({ playerId: null, roomState: null, gameState: null, playerName: "" });
+  });
+
+  /**
+   * The home page mounts the sheet ONCE with no game chosen and swaps the `game` prop when a tile is
+   * tapped, so state seeded from the first render (100 coins) used to outlive the choice. Rummy only
+   * has 80/160/320/640/1280 tables, so a plain "Create Room" sent an illegal stake and the server
+   * refused it: Rummy could not be hosted from the home page without first touching the rate picker.
+   */
+  it("hosts a Rummy table at its 80-coin default when the sheet was mounted before Rummy was picked", async () => {
+    const { rerender } = render(React.createElement(GameRoomSheet, { game: null, onClose: () => {} }));
+    rerender(React.createElement(GameRoomSheet, { game: "rummy", onClose: () => {} }));
+
+    fillNameAndClickCreate("Krishna");
+
+    await waitFor(() =>
+      expect(mockEmit).toHaveBeenCalledWith("room:create", expect.objectContaining({ game: "rummy", entryStakeCoins: 80 }), expect.any(Function)),
+    );
+  });
+
+  it("goes back to the platform's 100-coin default when the next game is not Rummy", async () => {
+    const { rerender } = render(React.createElement(GameRoomSheet, { game: "rummy", onClose: () => {} }));
+    rerender(React.createElement(GameRoomSheet, { game: "ludo", onClose: () => {} }));
+
+    fillNameAndClickCreate("Krishna");
+
+    await waitFor(() =>
+      expect(mockEmit).toHaveBeenCalledWith("room:create", expect.objectContaining({ game: "ludo", entryStakeCoins: 100 }), expect.any(Function)),
+    );
+  });
+});
