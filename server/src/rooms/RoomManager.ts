@@ -92,6 +92,7 @@ import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
 import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
 import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
+import { buildBotProfile, pickBotCosmetics } from "@shared/bot-profile.js";
 import {
   sanitizePublicPresentation,
   getDefaultCosmetic,
@@ -2374,6 +2375,7 @@ export class RoomManager {
     const botId = `bot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const cleaned = customName?.trim().slice(0, 20);
     const botName = cleaned && cleaned.length > 0 ? cleaned : pickBotName(room.game, existingNames);
+    const level = Math.floor(Math.random() * 8) + 2;
     const bot: Player = {
       id: botId,
       name: botName,
@@ -2381,12 +2383,16 @@ export class RoomManager {
       isReady: true,
       isConnected: true,
       isBot: true,
-      level: Math.floor(Math.random() * 8) + 2,
+      level,
       bingoDifficulty: difficulty ?? "medium",
       // Deterministic, not random: the same bot name always gets the same
       // face (see pickAvatarForName's doc comment for why "matching the
       // name" can only mean stable, not thematically on-theme).
       avatar: pickAvatarForName(botName),
+      // Same idea, one level up: a character and a loadout, derived from the name
+      // and picked from fixed lists, so a bot reads like someone at the table.
+      botProfile: buildBotProfile(room.game, botName, { level, difficulty: difficulty ?? "medium" }),
+      cosmetics: pickBotCosmetics(room.game, botName),
     };
     room.players.set(botId, bot);
     this.broadcastRoomState(room);
@@ -2418,6 +2424,12 @@ export class RoomManager {
     // Re-derive rather than leave the old face behind — the avatar is
     // supposed to track the name, not the seat.
     target.avatar = pickAvatarForName(cleaned);
+    // The character and the loadout follow the name too, for the same reason.
+    target.botProfile = buildBotProfile(room.game, cleaned, {
+      level: target.level,
+      difficulty: target.bingoDifficulty,
+    });
+    target.cosmetics = pickBotCosmetics(room.game, cleaned);
     this.broadcastRoomState(room);
   }
 

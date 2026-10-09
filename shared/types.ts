@@ -1,3 +1,5 @@
+import type { BotProfile } from "./bot-profile.js";
+
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
 
 /**
@@ -73,6 +75,12 @@ export interface Player {
   cosmetics?: PublicPresentationLoadout;
   /** True if this is a server-controlled AI player (no real socket). */
   isBot?: boolean;
+  /**
+   * A bot's character: tagline, hometown, play style and a simulated record.
+   * Built by the server from fixed lists (see `shared/bot-profile.ts`), never
+   * from typed text, and only ever present on bot seats. Absent on humans.
+   */
+  botProfile?: BotProfile;
   /**
    * True if this is a "pass and play" local player — a human who is sharing
    * the host's device. They have no socket of their own; the host's socket

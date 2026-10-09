@@ -4,11 +4,42 @@ import { Crown, Bot, Pencil, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import SeatAvatar from "../profile/SeatAvatar";
 import RenameBotModal from "./RenameBotModal";
+import BotProfileCard from "./BotProfileCard";
+import BotStyleChip, { botTitleBadgeClass } from "./BotStyleChip";
+import { getPodiumTitleConfig } from "../../lib/cosmeticsResolver";
 import { ReadyCheckmarkPencil } from "../../animations/app/ReadyCheckmarkDraw";
 import { COLOR_HEX } from "../../games/ludo/board-layout";
 import { COIN_COLOR_HEX } from "../CoinColorPicker";
 import { getPlayerThemeByColor } from "../../games/dotsboxes/dotsboxes-theme";
 import { dominantBlockerFor, describeStartBlocker, shortStartBlockerLabel } from "../../hooks/useRoomViewModel";
+
+/**
+ * A bot's seat opens its profile; anyone else's seat is not interactive. A button for a
+ * bot so the whole avatar-and-name area is a real, keyboard-reachable tap target.
+ */
+function ProfileTap({
+  player,
+  onOpen,
+  className,
+  children,
+}: {
+  player: Player;
+  onOpen: () => void;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (!player.isBot) return <div className={className}>{children}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`View ${player.name}'s profile`}
+      className={`${className} cursor-pointer rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function ParticipantRow({
   player,
@@ -32,7 +63,9 @@ export default function ParticipantRow({
   variant?: "row" | "card";
 }) {
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const isMe = player.id === selfId;
+  const botTitle = player.isBot ? getPodiumTitleConfig(player.cosmetics?.podiumTitle) : null;
   const dominantBlocker = dominantBlockerFor(blockers);
 
   // Derive color swatch if set
@@ -65,7 +98,7 @@ export default function ParticipantRow({
         className="flex flex-col items-center gap-1.5 min-w-[88px] max-w-[104px] shrink-0 text-center relative group select-none"
       >
         {/* Large Circular Avatar with Presence & Active Status */}
-        <div className="relative">
+        <ProfileTap player={player} onOpen={() => setShowProfile(true)} className="relative">
           <div
             className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 transition-all shadow-xs ${
               player.isReady
@@ -75,6 +108,8 @@ export default function ParticipantRow({
           >
             <SeatAvatar
               avatar={player.avatar}
+              aura={player.isBot ? player.cosmetics?.avatarAura : undefined}
+              level={player.isBot ? player.level : undefined}
               name={player.name}
               className="w-full h-full rounded-full object-cover"
             />
@@ -89,7 +124,7 @@ export default function ParticipantRow({
             }`}
             title={player.isConnected ? "Connected & Online" : "Away / Reconnecting..."}
           />
-        </div>
+        </ProfileTap>
 
         {/* Player Name and Badges */}
         <div className="w-full min-w-0 space-y-0.5">
@@ -116,6 +151,7 @@ export default function ParticipantRow({
                 <span>Bot</span>
               </span>
             )}
+            {player.isBot && player.botProfile && <BotStyleChip profile={player.botProfile} />}
           </div>
 
           {/* Readiness Status Subtext */}
@@ -198,6 +234,8 @@ export default function ParticipantRow({
             }}
           />
         )}
+
+        {showProfile && <BotProfileCard player={player} onClose={() => setShowProfile(false)} />}
       </motion.div>
     );
   }
@@ -222,10 +260,12 @@ export default function ParticipantRow({
       }`}
     >
       {/* Left: Avatar + Details */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <ProfileTap player={player} onOpen={() => setShowProfile(true)} className={`flex items-center gap-2 min-w-0 flex-1 ${player.isBot ? "min-h-[44px]" : ""}`}>
         <div className="relative shrink-0">
           <SeatAvatar
             avatar={player.avatar}
+            aura={player.isBot ? player.cosmetics?.avatarAura : undefined}
+            level={player.isBot ? player.level : undefined}
             name={player.name}
             className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl shadow-xs"
           />
@@ -285,6 +325,12 @@ export default function ParticipantRow({
                 Player
               </span>
             )}
+            {player.isBot && player.botProfile && <BotStyleChip profile={player.botProfile} />}
+            {botTitle && (
+              <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 ${botTitleBadgeClass(player.cosmetics?.podiumTitle)}`}>
+                {botTitle.label}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-[#5C4328] dark:text-slate-300 mt-0.5">
@@ -302,13 +348,13 @@ export default function ParticipantRow({
                 <span>{colorBadgeLabel}</span>
               </span>
             ) : (
-              <span className="text-[10px] font-bold text-[#5C4328] dark:text-slate-300">
-                {player.isBot ? "Bot" : player.isHost ? "Host" : "Player"}
+              <span className="min-w-0 truncate text-[10px] font-bold text-[#5C4328] dark:text-slate-300">
+                {player.isBot ? (player.botProfile ? `${player.botProfile.tagline} · ${player.botProfile.hometown}` : "Bot") : player.isHost ? "Host" : "Player"}
               </span>
             )}
           </div>
         </div>
-      </div>
+      </ProfileTap>
 
       {/* Right: Readiness Badge & Host Action Menu */}
       <div className="flex items-center gap-1.5 shrink-0">
@@ -383,6 +429,8 @@ export default function ParticipantRow({
           }}
         />
       )}
+
+      {showProfile && <BotProfileCard player={player} onClose={() => setShowProfile(false)} />}
     </motion.div>
   );
 }
