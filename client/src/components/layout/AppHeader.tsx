@@ -25,6 +25,8 @@ import { bhalyamSpring } from "../../lib/motion";
 import { WalletBalanceChip } from "../economy/WalletBalanceChip";
 import { useWallet } from "../../hooks/useEconomy";
 import { DailyStreakEntryChip } from "../streak/DailyStreakEntryChip";
+import { FaucetChip } from "../faucet/FaucetChip";
+import { FaucetReadyDot } from "../faucet/FaucetReadyDot";
 import { CosmeticsStoreEntryChip } from "../cosmetics/CosmeticsStoreEntryChip";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { usePlayerSnapshot } from "../../hooks/usePlayerSnapshot";
@@ -191,20 +193,26 @@ export default function AppHeader({
         {/* Right: Actions */}
         <div className="flex-1 md:flex-none flex items-center justify-end px-3 sm:px-6">
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Free coins every four hours — signed-in members only; a guest has no faucet. */}
+            {isMember && <FaucetChip />}
+
             {/* Daily Login Streak Entry Chip */}
             <DailyStreakEntryChip />
 
             {/* Cosmetics Boutique Customization Shop Chip */}
             <CosmeticsStoreEntryChip />
 
-            {/* Global Wallet Balance Chip */}
-            <WalletBalanceChip
-              balance={balance}
-              isLoading={walletLoading}
-              syncStatus={walletSyncStatus}
-              isMember={isMember}
-              onClick={onOpenWallet}
-            />
+            {/* Global Wallet Balance Chip. On a phone the faucet has no chip of its own, so a dot here says coins are waiting. */}
+            <div className="relative flex-shrink-0">
+              <WalletBalanceChip
+                balance={balance}
+                isLoading={walletLoading}
+                syncStatus={walletSyncStatus}
+                isMember={isMember}
+                onClick={onOpenWallet}
+              />
+              {isMember && <FaucetReadyDot />}
+            </div>
 
             {/* User Profile Chip — notifications live inside this sheet now
                 instead of a standalone bell button, so the unread count

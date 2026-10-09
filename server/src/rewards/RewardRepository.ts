@@ -38,6 +38,12 @@ export interface RewardRepository extends RiskPersistence {
   getReward(rewardId: string): Promise<RewardRecord | null>;
   /** Newest first. */
   listRewardsForPlayer(playerId: string, limit?: number): Promise<RewardRecord[]>;
+  /**
+   * One player's newest reward of one type, or `null`. Asked of the store rather than
+   * found by scanning a recent window, because "newest of this type" must stay right
+   * however many rewards of other types have come since.
+   */
+  latestRewardOfType(playerId: string, rewardType: RewardType): Promise<RewardRecord | null>;
   /** Every reward of one type, oldest first, for rebuilding "already claimed" at boot. */
   listRewardsByType(rewardType: RewardType, opts?: { limit?: number; offset?: number }): Promise<RewardRecord[]>;
 

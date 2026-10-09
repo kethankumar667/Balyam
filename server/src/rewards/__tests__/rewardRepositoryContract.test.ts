@@ -130,6 +130,25 @@ function contract(name: string, make: () => RewardRepository): void {
       expect((await repo.listRewardsByType("LEVEL_MILESTONE")).map((r) => r.rewardId)).toEqual(["old", "new", "other"]);
       expect((await repo.listRewardsByType("LEVEL_MILESTONE", { limit: 1, offset: 1 })).map((r) => r.rewardId)).toEqual(["new"]);
     });
+
+    it("finds a player's newest reward of one type, however many of other types came after it", async () => {
+      await repo.insertReward(reward({ rewardId: "f_old", rewardType: "HOURLY_FAUCET", sourceId: "first", earnedAt: T0 }));
+      await repo.insertReward(reward({ rewardId: "f_new", rewardType: "HOURLY_FAUCET", sourceId: "after:f_old", earnedAt: T0 + 100 }));
+      for (let i = 0; i < 30; i++) {
+        await repo.insertReward(reward({ rewardId: `m${i}`, sourceId: `level:${i}`, earnedAt: T0 + 1_000 + i }));
+      }
+      await repo.insertReward(reward({ rewardId: "someone_else", playerId: "p2", rewardType: "HOURLY_FAUCET", sourceId: "first", earnedAt: T0 + 5_000 }));
+
+      expect((await repo.latestRewardOfType("p1", "HOURLY_FAUCET"))?.rewardId).toBe("f_new");
+      expect((await repo.latestRewardOfType("p2", "HOURLY_FAUCET"))?.rewardId).toBe("someone_else");
+    });
+
+    it("reports no reward of a type the player has never earned", async () => {
+      await repo.insertReward(reward());
+
+      expect(await repo.latestRewardOfType("p1", "HOURLY_FAUCET")).toBeNull();
+      expect(await repo.latestRewardOfType("nobody", "LEVEL_MILESTONE")).toBeNull();
+    });
   });
 
   describe(`${name} — risk`, () => {

@@ -66,6 +66,7 @@ class DelegatingRewardRepository implements RewardRepository {
   insertReward = (r: RewardRecord) => rewardRepository().insertReward(r);
   getReward = (id: string) => rewardRepository().getReward(id);
   listRewardsForPlayer = (id: string, limit?: number) => rewardRepository().listRewardsForPlayer(id, limit);
+  latestRewardOfType = (id: string, t: RewardType) => rewardRepository().latestRewardOfType(id, t);
   listRewardsByType = (t: RewardType, opts?: { limit?: number; offset?: number }) => rewardRepository().listRewardsByType(t, opts);
   listDueForRelease = (now: number, stale: number, limit: number) => rewardRepository().listDueForRelease(now, stale, limit);
   claimForRelease = (id: string, now: number, stale: number) => rewardRepository().claimForRelease(id, now, stale);

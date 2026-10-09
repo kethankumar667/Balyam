@@ -24,6 +24,7 @@ export type TrustTier = 1 | 2 | 3 | 4;
 export type RewardType =
   | "LEVEL_MILESTONE"
   | "DAILY_STREAK"
+  | "HOURLY_FAUCET"
   | "ACHIEVEMENT"
   | "TOURNAMENT"
   | "SEASONAL"
@@ -54,6 +55,7 @@ export const REASON = {
   // coin rewards
   MILESTONE_LEVEL: "MILESTONE_LEVEL",
   STREAK_DAY: "STREAK_DAY",
+  FAUCET_CLAIM: "FAUCET_CLAIM",
   VESTING: "VESTING",
   VESTED: "VESTED",
   // refusals

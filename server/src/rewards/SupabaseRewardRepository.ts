@@ -194,6 +194,14 @@ export class SupabaseRewardRepository implements RewardRepository {
     return rows.map(fromRow);
   }
 
+  async latestRewardOfType(playerId: string, rewardType: RewardType): Promise<RewardRecord | null> {
+    const rows = await this.db.select<RewardRow>(
+      "reward_ledger",
+      `player_id=eq.${q(playerId)}&reward_type=eq.${q(rewardType)}&order=earned_at.desc,reward_id.desc&limit=1`,
+    );
+    return rows[0] ? fromRow(rows[0]) : null;
+  }
+
   async listRewardsByType(rewardType: RewardType, opts: { limit?: number; offset?: number } = {}): Promise<RewardRecord[]> {
     const rows = await this.db.select<RewardRow>(
       "reward_ledger",

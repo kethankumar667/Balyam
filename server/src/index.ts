@@ -49,6 +49,8 @@ import { StreakService } from "./streak/StreakService.js";
 import { RewardGateway } from "./rewards/RewardGateway.js";
 import { TransferPolicy } from "./rewards/TransferPolicy.js";
 import { createRewardsRouter } from "./rewards/RewardsController.js";
+import { createFaucetRouter } from "./rewards/FaucetController.js";
+import { HourlyFaucetService } from "./rewards/HourlyFaucetService.js";
 import { createRiskAdminRouter } from "./admin/RiskAdminController.js";
 import { riskService } from "./rewards/RiskService.js";
 import { findFeedingPatterns } from "./rewards/CollusionReport.js";
@@ -458,6 +460,9 @@ app.use(
   "/api/rewards",
   createRewardsRouter({ gateway: rewardGateway, trust: trustService, risk: riskService, transferPolicy }),
 );
+
+/** Free coins for signed-in players every four hours; a claim is an ordinary reward-ledger row. */
+app.use("/api/faucet", createFaucetRouter(new HourlyFaucetService({ gateway: rewardGateway })));
 
 
 /**

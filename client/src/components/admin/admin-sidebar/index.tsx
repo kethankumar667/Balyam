@@ -80,7 +80,7 @@ export default function AdminSidebar({
         {/* Brand Header */}
         <div>
           <div className="h-24 px-6 border-b border-[var(--chrome-border)] flex items-center justify-between">
-            <Link to="/admin" className="flex items-center gap-3.5">
+            <Link to="/admin" className="flex min-h-[44px] items-center gap-3.5">
               <BhalyamLogo size={42} decorative />
               <div className="flex flex-col leading-none">
                 <span className="bhalyam-display font-black text-lg text-[var(--chrome-ink)] tracking-tight">
@@ -96,7 +96,7 @@ export default function AdminSidebar({
               <button
                 type="button"
                 onClick={onClose}
-                className="lg:hidden p-2 rounded-xl text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] border border-transparent hover:border-[var(--chrome-border)]"
+                className="lg:hidden inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] border border-transparent hover:border-[var(--chrome-border)]"
                 aria-label="Close sidebar"
               >
                 <X className="w-5 h-5" />
@@ -115,7 +115,7 @@ export default function AdminSidebar({
                   key={item.href}
                   to={item.href}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group ${
+                  className={`flex min-h-[44px] items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 group ${
                     active
                       ? "bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/35 shadow-2xs font-bold"
                       : "text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)]"

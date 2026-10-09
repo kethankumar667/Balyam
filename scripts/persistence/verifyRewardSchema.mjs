@@ -39,6 +39,8 @@ const ROOT = path.resolve(__dirname, "../..");
 const PROGRESSION = path.join(ROOT, "supabase/migrations/20260818000000_progression_persistence.sql");
 const MIGRATION = path.join(ROOT, "supabase/migrations/20261012000000_reward_gateway.sql");
 const ROLLBACK = path.join(ROOT, "supabase/rollbacks/20261012000000_reward_gateway_rollback.sql");
+const FAUCET_MIGRATION = path.join(ROOT, "supabase/migrations/20261020000000_hourly_faucet.sql");
+const FAUCET_ROLLBACK = path.join(ROOT, "supabase/rollbacks/20261020000000_hourly_faucet_rollback.sql");
 
 const PORT = Number(process.env.VERIFY_PG_PORT) || 55434;
 const DATA_DIR = path.join(os.tmpdir(), `bhalyam-reward-pg-verify-${process.pid}`);
@@ -326,6 +328,50 @@ async function main() {
     await db.query(`delete from public.player_identities where player_id=$1`, [p]);
     const after = (await db.query(counts, [p])).rows[0];
     check("deleting the identity removes their rewards, risk state and risk events", after.r === 0 && after.a === 0 && after.e === 0, JSON.stringify(after));
+
+    /* ═════════ 7b. Hourly faucet migration ═════════ */
+    console.log("\n7b. Hourly faucet migration widens reward_type, and its rollback narrows it again");
+    const faucetPlayer = guest();
+    await db.query(`insert into public.player_identities (player_id, kind) values ($1, 'guest')`, [faucetPlayer]);
+    const faucetRow = (source, type = "HOURLY_FAUCET") => db.query(
+      `insert into public.reward_ledger (reward_id, player_id, reward_type, reason_code, amount, source_id, vesting_until)
+       values ($1,$2,$3,'FAUCET_CLAIM',100,$4,$5)`,
+      [`rwd_${crypto.randomBytes(6).toString("hex")}`, faucetPlayer, type, source, inMs(-1000)],
+    );
+    const code = async (run) => {
+      try {
+        await run();
+        return "accepted";
+      } catch (err) {
+        return String(err.code);
+      }
+    };
+
+    check("before the faucet migration a faucet reward is refused", (await code(() => faucetRow("first"))) === "23514");
+
+    const faucetSql = fs.readFileSync(FAUCET_MIGRATION, "utf8");
+    const faucetApplied = await code(async () => { await db.query(faucetSql); });
+    check("the faucet migration applies cleanly", faucetApplied === "accepted", faucetApplied);
+    const faucetAgain = await code(async () => { await db.query(faucetSql); });
+    check("the faucet migration is re-runnable", faucetAgain === "accepted", faucetAgain);
+
+    check("a faucet reward is accepted afterwards", (await code(() => faucetRow("first"))) === "accepted");
+    check("a second claim with the same source is refused", (await code(() => faucetRow("first"))) === "23505");
+    check("a claim that names the previous one is accepted", (await code(() => faucetRow("after:rwd_previous"))) === "accepted");
+    check("an unknown reward type is still refused", (await code(() => faucetRow("x", "FREE_MONEY"))) === "23514");
+    check("the older reward types are still accepted", (await code(() => faucetRow("level:99", "LEVEL_MILESTONE"))) === "accepted");
+    const constraints = (await db.query(
+      `select count(*)::int n from pg_constraint where conrelid='public.reward_ledger'::regclass and contype='c' and pg_get_constraintdef(oid) like '%reward_type%' and pg_get_constraintdef(oid) like '%LEVEL_MILESTONE%'`,
+    )).rows[0].n;
+    check("exactly one reward_type check remains (no duplicates after two applies)", constraints === 1, `${constraints}`);
+
+    const faucetRolledBack = await code(async () => { await db.query(fs.readFileSync(FAUCET_ROLLBACK, "utf8")); });
+    check("the faucet rollback applies cleanly", faucetRolledBack === "accepted", faucetRolledBack);
+    const faucetLeft = (await db.query(`select count(*)::int n from public.reward_ledger where reward_type='HOURLY_FAUCET'`)).rows[0].n;
+    check("the faucet rollback removes the faucet rows it cannot keep", faucetLeft === 0, `${faucetLeft} left`);
+    check("after the rollback a faucet reward is refused again", (await code(() => faucetRow("first"))) === "23514");
+    const faucetReapplied = await code(async () => { await db.query(faucetSql); });
+    check("the faucet migration re-applies after its rollback", faucetReapplied === "accepted", faucetReapplied);
 
     /* ═════════ 8. Rollback ═════════ */
     console.log("\n8. Rollback");

@@ -18,6 +18,7 @@ import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyActionButton } from "./EconomyActionButton";
 import { VoucherRedemptionModal } from "./VoucherRedemptionModal";
 import { useWallet, useLedger } from "../../hooks/useEconomy";
+import { FaucetClaimRow } from "../faucet/FaucetClaimRow";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
@@ -322,6 +323,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     </div>
                   </div>
                 </div>
+
+                {/* Free coins. On a phone the header has no room for a faucet chip, so the claim lives here. */}
+                <FaucetClaimRow className="sm:hidden" />
 
                 {/* Lifetime Stats */}
                 {wallet && !isWalletError && (

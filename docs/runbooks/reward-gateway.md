@@ -69,6 +69,39 @@ Coins can be sent per UTC day up to **500 / 1,000 / 2,500 / 5,000** for tiers 1�
 wallet ledger (so a restart cannot reset it). Both ways coins move between players are checked:
 sending, and paying a coin request.
 
+## The free-coins faucet
+
+A signed-in player may claim **100 coins**, then must wait **4 hours from that claim** (not a fixed clock
+time, so claiming late costs nothing and claims cannot be banked). It is separate from the 50-coin daily
+streak: the streak rewards showing up once a day, the faucet rewards coming back during it. Constants:
+`shared/faucet.ts`. Code: `server/src/rewards/HourlyFaucetService.ts` and `FaucetController.ts`.
+
+- **A claim is an ordinary reward row** (`reward_type = HOURLY_FAUCET`, `reason_code = FAUCET_CLAIM`), so it
+  carries the player's risk state and goes through the same wallet credit as everything else. There is no
+  table of its own; "when did they last claim" is the newest such row.
+- **Paid at once for a NORMAL account, at any trust tier.** The gate is the transfer cap (500/day at tier 1),
+  not a delay. A WATCHLIST account's claim vests 24 h, RESTRICTED 72 h, UNDER_REVIEW is refused. A held claim
+  still starts the wait.
+- **Signed-in players only.** A guest gets `NOT_MEMBER`. In `auth: off` mode no real member exists
+  (`verifyAccessToken` returns null), so the faucet pays nobody there. That is deliberate: a guest identity is
+  a value in browser storage and could be remade at will.
+- **Two simultaneous claims pay once.** A claim's source id names the claim before it
+  (`after:<previous reward id>`, or `first`), so both requests build the same key and the ledger's unique
+  constraint admits one. The other is told to wait; it is not an error.
+- **The server decides everything.** The POST body is never read; every answer carries `serverNow` so the
+  countdown does not depend on the device clock.
+- **Where it shows.** `sm` and wider: a chip in the header. On a phone the header is full, so the claim is a
+  row in the wallet drawer and a green dot on the wallet chip says it is ready. All of them read one store.
+- **No new browser storage key and no device, browser or IP signal**, so the privacy inventory is unchanged.
+
+Economy effect, for whoever sets prices: at most **600 coins a day** per account. A COMMON cosmetic (up to
+1,000) is under two days of claims; a LEGENDARY (4,000-11,000) is one to three weeks. The cosmetic prices are
+still development seed values pending economy sign-off, so revisit them together with this rate.
+
+Roll back with `supabase/rollbacks/20261020000000_hourly_faucet_rollback.sql` (deletes the faucet rows it
+cannot keep) and only together with the server. `node scripts/persistence/verifyRewardSchema.mjs` proves the
+migration and its rollback on a real PostgreSQL.
+
 ## Applying the migration
 
 1. Take a backup.
@@ -76,6 +109,7 @@ sending, and paying a coin request.
    - `20261012000000_reward_gateway.sql` — the reward, standing and audit tables (needs the progression migration).
    - `20261013000000_transfer_daily_cap.sql` — the daily cap on sending coins (needs the P2P transfer migration).
    - `20261014000000_fund_coin_request_daily_cap.sql` — the same cap on paying a coin request (needs the Mandali coin-request migrations).
+   - `20261020000000_hourly_faucet.sql` — lets `reward_ledger` hold the `HOURLY_FAUCET` reward type (see "The free-coins faucet" below). Apply it before deploying a server that serves `/api/faucet`; until then a claim is refused honestly and nothing is paid.
    Then check: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run check:schema-ready` prints `SCHEMA_READY`.
 3. Deploy the server. **A missing migration stops the boot** (the store is pinged before the port
    opens), so a bad deploy fails at start, not on a player's first claim. The error names every missing

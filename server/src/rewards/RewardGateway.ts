@@ -104,6 +104,8 @@ function payoutShape(type: RewardType): PayoutShape {
       return { entryType: "DAILY_REWARD_CREDIT", principal: "system:daily_streak" };
     case "LEVEL_MILESTONE":
       return { entryType: "ADMIN_ADJUSTMENT", principal: "system:level_milestone" };
+    case "HOURLY_FAUCET":
+      return { entryType: "ADMIN_ADJUSTMENT", principal: "system:hourly_faucet" };
     default:
       return { entryType: "ADMIN_ADJUSTMENT", principal: `system:${type.toLowerCase()}` };
   }
@@ -137,6 +139,9 @@ export class RewardGateway {
   vestingFor(type: RewardType, tier: TrustTier, state: RiskState): number {
     if (state === "RESTRICTED") return RESTRICTED_VESTING_MS;
     if (type === "DAILY_STREAK" && tier >= 2 && state === "NORMAL") return 0;
+    // The hourly faucet is a small gift meant to be spent in the next few minutes; a day's wait would
+    // defeat it. What stops farming is the transfer cap and the account's standing, not a delay here.
+    if (type === "HOURLY_FAUCET" && state === "NORMAL") return 0;
     return VESTING_MS;
   }
 
@@ -284,6 +289,11 @@ export class RewardGateway {
 
   listForPlayer(playerId: string, limit = 20): Promise<RewardRecord[]> {
     return this.repository.listRewardsForPlayer(playerId, limit);
+  }
+
+  /** The player's newest reward of one type, however many of other types came after it. */
+  latestOfType(playerId: string, type: RewardType): Promise<RewardRecord | null> {
+    return this.repository.latestRewardOfType(playerId, type);
   }
 
   /** One sweep: pay what is due, let stale system watches lapse. Overlapping calls share one run. */

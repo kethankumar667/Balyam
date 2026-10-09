@@ -46,6 +46,15 @@ export class InMemoryRewardRepository implements RewardRepository {
       .map(clone);
   }
 
+  async latestRewardOfType(playerId: string, rewardType: RewardType): Promise<RewardRecord | null> {
+    let latest: RewardRecord | null = null;
+    for (const r of this.rewards.values()) {
+      if (r.playerId !== playerId || r.rewardType !== rewardType) continue;
+      if (latest === null || r.earnedAt > latest.earnedAt) latest = r;
+    }
+    return latest ? clone(latest) : null;
+  }
+
   async listRewardsByType(rewardType: RewardType, opts: { limit?: number; offset?: number } = {}): Promise<RewardRecord[]> {
     const offset = opts.offset ?? 0;
     const limit = opts.limit ?? 500;
