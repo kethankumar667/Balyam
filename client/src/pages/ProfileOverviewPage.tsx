@@ -29,6 +29,7 @@ import {
 } from "../features/profile/ProfilePrimitives";
 import { getProfileGameLabel } from "../features/profile/gameLabel";
 import { TrustTierCard } from "../features/profile/TrustTierCard";
+import LevelJourneyCard from "../features/profile/LevelJourneyCard";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { Achievement } from "@shared/profile/Achievements";
 import type { GameStats } from "@shared/profile/PlayerStats";
@@ -103,6 +104,8 @@ export default function ProfileOverviewPage() {
         description="Your verified match record, strongest games, recent results, and achievement progress in one focused view."
         accent="gold"
       />
+
+      <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} />
 
       {resources.stats.status === "loading" ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

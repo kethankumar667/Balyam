@@ -59,6 +59,7 @@ const LazyPreviewLudo = lazy(() => import("./pages/PreviewLudo"));
 const LazyPreviewMandali = import.meta.env.DEV ? lazy(() => import("./pages/PreviewMandali")) : null;
 // Development only: the free-coins claim dialog against a stub server. Not registered in production builds.
 const LazyPreviewFaucet = import.meta.env.DEV ? lazy(() => import("./pages/PreviewFaucet")) : null;
+const LazyPreviewLevelJourney = import.meta.env.DEV ? lazy(() => import("./pages/PreviewLevelJourney")) : null;
 const LazyPreviewAnimations3D = lazy(() => import("./pages/PreviewAnimations3D"));
 const LazyAdminDashboardPage = lazy(() => import("./pages/admin/dashboard"));
 const LazyAdminUsersPage = lazy(() => import("./pages/admin/users"));
@@ -446,6 +447,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/preview/ludo" element={<PreviewLudo />} />
             {LazyPreviewMandali && <Route path="/preview/mandali" element={<LazyPreviewMandali />} />}
             {LazyPreviewFaucet && <Route path="/preview/faucet" element={<LazyPreviewFaucet />} />}
+            {LazyPreviewLevelJourney && <Route path="/preview/level" element={<LazyPreviewLevelJourney />} />}
             <Route path="/preview/loader" element={<PreviewLoader />} />
             <Route path="/loader" element={<PreviewLoader />} />
             <Route path="/preview/tiles" element={<GameTileShowcase />} />
