@@ -69,6 +69,7 @@ import { startMandaliRetentionJob } from "./mandali/MandaliRetentionJob.js";
 import { MandaliService } from "./mandali/MandaliService.js";
 import { createMandaliRouter } from "./mandali/MandaliController.js";
 import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
+import { createPresenceSources } from "./mandali/presenceSources.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -446,10 +447,7 @@ app.use("/api/mandali", createMandaliRouter(mandaliService));
  * without a Mandali event (a game starting, the last tab closing).
  */
 const MANDALI_PRESENCE_SWEEP_MS = 5_000;
-mandaliService.setPresenceSources({
-  isConnected: (playerId) => (io.sockets.adapter.rooms.get(`user:${playerId}`)?.size ?? 0) > 0,
-  activeGames: () => roomManager.getActiveGamesByPlayer(),
-});
+mandaliService.setPresenceSources(createPresenceSources(io, roomManager));
 const mandaliPresenceTimer = setInterval(() => {
   const seated = roomManager.getActiveGamesByPlayer().keys();
   void mandaliService.refreshPresence([...mandaliService.presenceWatchList(), ...seated]);
