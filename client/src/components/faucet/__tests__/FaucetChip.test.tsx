@@ -56,12 +56,15 @@ describe("FaucetChip", () => {
     expect(button).toHaveAttribute("aria-disabled", "false");
   });
 
-  it("claims when pressed", () => {
+  it("opens the claim dialog when pressed, and claims only from inside it", () => {
     seed(status());
     render(<FaucetChip />);
 
     fireEvent.click(screen.getByRole("button", { name: /claim 100 free coins/i }));
 
+    expect(claim).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^claim 100 coins$/i }));
     expect(claim).toHaveBeenCalledTimes(1);
   });
 

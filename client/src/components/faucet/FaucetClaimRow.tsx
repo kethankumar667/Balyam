@@ -17,7 +17,7 @@ import { HapticsManager } from "../../services/HapticsManager";
 export function FaucetClaimRow({ className = "" }: { className?: string }) {
   const hasStatus = useFaucetStore((s) => s.status !== null);
   const fetchStatus = useFaucetStore((s) => s.fetchStatus);
-  const claim = useFaucetStore((s) => s.claim);
+  const openClaimModal = useFaucetStore((s) => s.openClaimModal);
   const message = useFaucetStore((s) => s.message);
   const cooldownMs = useFaucetStore((s) => s.status?.cooldownMs ?? 0);
   const { isEligible, isWaiting, isReady, isClaiming, remainingSeconds, amount } = useFaucetCountdown();
@@ -36,7 +36,7 @@ export function FaucetClaimRow({ className = "" }: { className?: string }) {
     if (!isReady) return;
     HapticsManager.trigger("subtle");
     AudioManager.play(AUDIO.UI_CLICK);
-    void claim();
+    openClaimModal();
   };
 
   return (

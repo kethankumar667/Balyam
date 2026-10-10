@@ -47,13 +47,14 @@ describe("faucet surfaces for a phone", () => {
       expect(container).toBeEmptyDOMElement();
     });
 
-    it("offers the claim with its amount and claims when pressed", () => {
+    it("offers the claim with its amount and opens the claim dialog when pressed", () => {
       seed(status());
       render(<FaucetClaimRow />);
 
       fireEvent.click(screen.getByRole("button", { name: /claim 100/i }));
 
-      expect(claim).toHaveBeenCalledTimes(1);
+      expect(useFaucetStore.getState().isClaimModalOpen).toBe(true);
+      expect(claim).not.toHaveBeenCalled();
       expect(screen.getByText(/100 coins every 4 hours/i)).toBeInTheDocument();
     });
 

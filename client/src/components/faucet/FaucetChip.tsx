@@ -8,6 +8,7 @@ import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
+import { FaucetClaimModal } from "./FaucetClaimModal";
 
 /** How long the "+100" confirmation stays on the chip. */
 const JUST_CLAIMED_VISIBLE_MS = 2_500;
@@ -32,7 +33,7 @@ export function FaucetChip() {
   const justClaimed = useFaucetStore((s) => s.justClaimed);
   const message = useFaucetStore((s) => s.message);
   const fetchStatus = useFaucetStore((s) => s.fetchStatus);
-  const claim = useFaucetStore((s) => s.claim);
+  const openClaimModal = useFaucetStore((s) => s.openClaimModal);
   const clearJustClaimed = useFaucetStore((s) => s.clearJustClaimed);
   const reset = useFaucetStore((s) => s.reset);
   const reducedMotion = useReducedMotion();
@@ -65,12 +66,14 @@ export function FaucetChip() {
     if (!isReady) return;
     HapticsManager.trigger("subtle");
     AudioManager.play(AUDIO.UI_CLICK);
-    void claim();
+    openClaimModal();
   };
 
   return (
     <>
       <ClaimAnnouncement justClaimed={justClaimed} message={message} />
+      {/* Mounted here because the chip is the one faucet control every signed-in page has, even on a phone where it is hidden. */}
+      <FaucetClaimModal />
       <div className="hidden sm:contents">
         <Tooltip content={tooltip} side="bottom">
           <motion.button

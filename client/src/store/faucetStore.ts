@@ -18,6 +18,8 @@ export interface FaucetStore {
   /** Server time minus device time at the last answer, in ms. */
   clockOffsetMs: number;
   isClaiming: boolean;
+  /** The claim dialog is open. Every claim control opens it; the claim itself happens inside. */
+  isClaimModalOpen: boolean;
   /** Coins just paid, shown briefly as "+100". Cleared by `clearJustClaimed`. */
   justClaimed: number | null;
   /** The last refusal worth showing, or `null`. */
@@ -25,6 +27,8 @@ export interface FaucetStore {
 
   fetchStatus: () => Promise<void>;
   claim: () => Promise<FaucetClaimResult | null>;
+  openClaimModal: () => void;
+  closeClaimModal: () => void;
   clearJustClaimed: () => void;
   reset: () => void;
 }
@@ -49,6 +53,7 @@ const INITIAL = {
   status: null,
   clockOffsetMs: 0,
   isClaiming: false,
+  isClaimModalOpen: false,
   justClaimed: null,
   message: null,
 } satisfies Partial<FaucetStore>;
@@ -104,6 +109,9 @@ export const useFaucetStore = create<FaucetStore>((set, get) => ({
       set({ isClaiming: false });
     }
   },
+
+  openClaimModal: () => set({ isClaimModalOpen: true, message: null }),
+  closeClaimModal: () => set({ isClaimModalOpen: false }),
 
   clearJustClaimed: () => set({ justClaimed: null }),
 
