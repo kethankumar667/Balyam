@@ -32,4 +32,13 @@ describe("wallet ledger direction", () => {
     expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "100", "admin_42")).toEqual({ type: "CREDIT", label: "Adjustment" });
     expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "100")).toEqual({ type: "CREDIT", label: "Adjustment" });
   });
+
+  it("labels the coins a guest brought to an account, and the welcome bonus", () => {
+    expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "3000", "system:guest_carryover")).toEqual({ type: "CREDIT", label: "Brought Over From Guest" });
+    expect(mapEntryToDeltaType("ADMIN_ADJUSTMENT", "5000", "system:guest_upgrade_bonus")).toEqual({ type: "CREDIT", label: "Welcome Bonus" });
+  });
+
+  it("shows the guest wallet's side of a carry-over as a debit", () => {
+    expect(mapEntryToDeltaType("GUEST_CARRYOVER_DEBIT", "-3000")).toEqual({ type: "DEBIT", label: "Moved To Your Account" });
+  });
 });

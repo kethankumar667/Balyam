@@ -29,7 +29,9 @@ export type RewardType =
   | "TOURNAMENT"
   | "SEASONAL"
   | "REFERRAL"
-  | "MANDALI";
+  | "MANDALI"
+  | "GUEST_CARRYOVER"
+  | "GUEST_UPGRADE_BONUS";
 
 /**
  * PENDING   earned, waiting out its vesting period; the only state an operator can void
@@ -56,6 +58,8 @@ export const REASON = {
   MILESTONE_LEVEL: "MILESTONE_LEVEL",
   STREAK_DAY: "STREAK_DAY",
   FAUCET_CLAIM: "FAUCET_CLAIM",
+  GUEST_CARRYOVER: "GUEST_CARRYOVER",
+  GUEST_UPGRADE_BONUS: "GUEST_UPGRADE_BONUS",
   VESTING: "VESTING",
   VESTED: "VESTED",
   // refusals

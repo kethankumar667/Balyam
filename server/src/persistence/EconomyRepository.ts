@@ -70,7 +70,8 @@ export type WalletLedgerEntryType =
   | "COSMETIC_PURCHASE"
   | "COSMETIC_REFUND"
   | "P2P_TRANSFER_SEND"
-  | "P2P_TRANSFER_RECEIVE";
+  | "P2P_TRANSFER_RECEIVE"
+  | "GUEST_CARRYOVER_DEBIT";
 
 /* ═══════════════════════════ Output DTOs (repository models) ════════════ */
 

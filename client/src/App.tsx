@@ -8,6 +8,7 @@ import ConsentModal from "./components/privacy/ConsentModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
+import { useGuestCarryOver } from "./lib/guestCarryOver";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
@@ -329,6 +330,7 @@ export default function App({ components = {} }: AppProps) {
     getSocket();
   }, []);
   useAdminAutoCheck();
+  useGuestCarryOver();
   useStructuredData();
   useMetadata();
 

@@ -50,6 +50,9 @@ import { TransferPolicy } from "./rewards/TransferPolicy.js";
 import { createRewardsRouter } from "./rewards/RewardsController.js";
 import { createFaucetRouter } from "./rewards/FaucetController.js";
 import { HourlyFaucetService } from "./rewards/HourlyFaucetService.js";
+import { carryOverStore, initialiseCarryOverStore } from "./rewards/carryOverBoot.js";
+import { createCarryOverRouter } from "./rewards/GuestCarryOverController.js";
+import { GuestCarryOverService } from "./rewards/GuestCarryOverService.js";
 import { createRiskAdminRouter } from "./admin/RiskAdminController.js";
 import { riskService } from "./rewards/RiskService.js";
 import { findFeedingPatterns } from "./rewards/CollusionReport.js";
@@ -474,6 +477,12 @@ app.use(
 /** Free coins for signed-in players every four hours; a claim is an ordinary reward-ledger row. */
 app.use("/api/faucet", createFaucetRouter(new HourlyFaucetService({ gateway: rewardGateway })));
 
+/** A guest who signs up brings their coins; both payments go through the gateway, so both are held. */
+app.use(
+  "/api/carryover",
+  createCarryOverRouter(new GuestCarryOverService({ store: carryOverStore, gateway: rewardGateway, trust: trustService })),
+);
+
 
 /**
  * Operational surface. The gate lives ON this router (see
@@ -623,6 +632,7 @@ async function boot(): Promise<void> {
    * row references the profile row those writes create.
    */
   const rewards = await initialiseRewardStore();
+  await initialiseCarryOverStore(economyService);
   riskService.attachStore(orderedRiskPersistence(rewards, (work) => progressionSync.afterPending(work)));
   riskService.hydrate(
     await rewards.listRiskStates(),

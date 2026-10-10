@@ -32,6 +32,9 @@ function friendlyGameName(gameKind: string | null): string | null {
 
 /** The `sourceId` the reward gateway stamps on a faucet payout (RewardGateway `payoutShape`). */
 const HOURLY_FAUCET_PRINCIPAL = "system:hourly_faucet";
+/** The same, for the coins a guest brought to a new account and the welcome bonus that follows. */
+const GUEST_CARRYOVER_PRINCIPAL = "system:guest_carryover";
+const GUEST_UPGRADE_BONUS_PRINCIPAL = "system:guest_upgrade_bonus";
 
 export interface WalletDrawerProps {
   isOpen: boolean;
@@ -58,7 +61,15 @@ export function mapEntryToDeltaType(
   if (entryType === "ADMIN_ADJUSTMENT" && sourceId === HOURLY_FAUCET_PRINCIPAL) {
     return { type: "CREDIT", label: "Hourly Reward" };
   }
+  if (entryType === "ADMIN_ADJUSTMENT" && sourceId === GUEST_CARRYOVER_PRINCIPAL) {
+    return { type: "CREDIT", label: "Brought Over From Guest" };
+  }
+  if (entryType === "ADMIN_ADJUSTMENT" && sourceId === GUEST_UPGRADE_BONUS_PRINCIPAL) {
+    return { type: "CREDIT", label: "Welcome Bonus" };
+  }
   switch (entryType) {
+    case "GUEST_CARRYOVER_DEBIT":
+      return { type: "DEBIT", label: "Moved To Your Account" };
     case "P2P_TRANSFER_SEND":
       return { type: "DEBIT", label: "Coins Sent" };
     case "P2P_TRANSFER_RECEIVE":

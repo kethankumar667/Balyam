@@ -18,7 +18,8 @@ export type WalletLedgerEntryType =
   | "MATCH_REFUND"
   | "ADMIN_ADJUSTMENT"
   | "P2P_TRANSFER_SEND"
-  | "P2P_TRANSFER_RECEIVE";
+  | "P2P_TRANSFER_RECEIVE"
+  | "GUEST_CARRYOVER_DEBIT";
 
 export interface CoinWalletRecord {
   identityId: string;

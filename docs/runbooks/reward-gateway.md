@@ -102,6 +102,20 @@ Roll back with `supabase/rollbacks/20261020000000_hourly_faucet_rollback.sql` (d
 cannot keep) and only together with the server. `node scripts/persistence/verifyRewardSchema.mjs` proves the
 migration and its rollback on a real PostgreSQL.
 
+## Guest to account carry-over
+
+A guest who signs up brings their coins with them, and earns a 5,000-coin welcome bonus after their first match with real people. `shared/carryover.ts`, `server/src/rewards/GuestCarryOverService.ts`, migration `20261025000000_guest_carryover.sql`.
+
+- **One guest per account, one account per guest** is a database fact: `guest_wallet_claims` has `guest_id` as its primary key and a unique `member_id`. `claim_guest_wallet()` does the whole step atomically: it checks the account, debits the guest wallet to zero (`GUEST_CARRYOVER_DEBIT` ledger row), and writes the claim. It never credits the member.
+- **The email must be confirmed.** The function reads `auth.users.email_confirmed_at` and refuses an unconfirmed or unknown account (`EMAIL_NOT_CONFIRMED`, `MEMBER_NOT_FOUND`). This is the only place the server learns that an email is real, so it only holds if Supabase's "Confirm email" is ON in production. Google sign-in arrives confirmed.
+- **Both payments go through the gateway** as `GUEST_CARRYOVER` and `GUEST_UPGRADE_BONUS` rows keyed `guest:<guest id>`, so each is granted once, waits the standard 24 h hold (72 h if RESTRICTED), and is refused while the account is UNDER_REVIEW. Neither is in the instant-pay list in `vestingFor`.
+- **If the credit fails after the debit,** the amount is on the claim and the next `POST /api/carryover/claim` grants it. The guest wallet cannot be claimed twice, so coins are late, never lost.
+- **The bonus is gated on play:** `POST /api/carryover/bonus` is refused (`NEEDS_MATCH`) until the trust service counts one finished match against another signed-in person. A sign-up alone, or a match against bots, earns nothing.
+- **The guest is proved by its own signed token** in the request body; a guest id in a body or URL moves nothing. The client (`client/src/lib/guestCarryOver.ts`) sends the stored guest token once per signed-in session and drops it when the server says it is finished with it.
+- **Verify it:** `npm run verify:carryover` applies every migration to a real PostgreSQL and checks the refusals, the race between two claims, the rollback and the reward types. Prints `GUEST_CARRYOVER_VERIFIED`.
+
+Known limits: a throwaway guest with a wallet can still be turned into an account and a bonus by anyone with many real mailboxes; what bounds it is the hold, the tier-1 transfer cap (500 a day) and the first-real-match gate. Yahoo `-` aliases, iCloud Hide My Email and custom-domain catch-alls are not folded by the one-mailbox guard.
+
 ## Applying the migration
 
 1. Take a backup.
