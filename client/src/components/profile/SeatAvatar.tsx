@@ -109,7 +109,11 @@ export default function SeatAvatar({
 
   const wrapWithAura = (node: React.ReactNode) => {
     return (
-      <span className="relative inline-flex items-center justify-center">
+      // A caller that sizes the avatar as `w-full h-full` is relying on this wrapper having a size to be a
+      // percentage OF. An `inline-flex` box with no size of its own gives it nothing, so the avatar took its
+      // dimensions from the image file: a portrait-shaped picture became an egg. Passing the fill down fixes
+      // that for every caller at once.
+      <span className={`relative inline-flex items-center justify-center ${className.includes("w-full") ? "h-full w-full" : ""}`}>
         {hasPrestigeAura && tier && (
           <span
             className="absolute -inset-1 rounded-full pointer-events-none z-10 animate-pulse border"
@@ -134,7 +138,7 @@ export default function SeatAvatar({
 
   if (option && !failed) {
     return wrapWithAura(
-      <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+      <span className={`inline-block aspect-square rounded-full overflow-hidden flex-shrink-0 ${className}`}>
         <img
           src={option.src}
           alt=""
@@ -150,7 +154,7 @@ export default function SeatAvatar({
 
   if (isDirectImage && !failed) {
     return wrapWithAura(
-      <span className={`inline-block rounded-full overflow-hidden flex-shrink-0 ${className}`}>
+      <span className={`inline-block aspect-square rounded-full overflow-hidden flex-shrink-0 ${className}`}>
         <img
           src={avatar}
           alt=""
