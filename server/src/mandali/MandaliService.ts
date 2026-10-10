@@ -1271,7 +1271,13 @@ export class MandaliService {
       }
       this.emitToMandali(request.mandaliId, "mandali:coin_request:updated", { mandaliId: request.mandaliId, request });
       // Only the call that actually moved the coins announces it; a harmless retry stays quiet.
-      if (!alreadyFunded) this.notifyWalletsChanged(request.mandaliId, request.id, [request.requesterIdentityId, payerId]);
+      if (!alreadyFunded) {
+        this.notifyWalletsChanged(request.mandaliId, request.id, [request.requesterIdentityId, payerId], {
+          amount: request.amount,
+          requesterIdentityId: request.requesterIdentityId,
+          fundedByIdentityId: payerId,
+        });
+      }
       return { success: true, request };
     } catch (err) {
       if (err instanceof TransferCapExceededError || (err instanceof Error && err.message.includes("TRANSFER_CAP_EXCEEDED"))) {
@@ -1289,9 +1295,17 @@ export class MandaliService {
    * learn that a friend paid until they next opened the wallet. Every signed-in socket is in its
    * own `user:<id>` room (see MandaliSocketHandlers), so this reaches all of that person's devices.
    */
-  private notifyWalletsChanged(mandaliId: string, requestId: string, identityIds: readonly string[]): void {
+  private notifyWalletsChanged(
+    mandaliId: string,
+    requestId: string,
+    identityIds: readonly string[],
+    /** What happened, so the app can celebrate it: who asked, who paid and how much. Nothing private beyond what the group already sees on the card. */
+    detail?: { amount: number; requesterIdentityId: string; fundedByIdentityId: string },
+  ): void {
     for (const identityId of new Set(identityIds)) {
-      this.io?.to(`user:${identityId}`).emit("mandali:wallet_changed" as never, { mandaliId, requestId, reason: "coin_request_funded" } as never);
+      this.io
+        ?.to(`user:${identityId}`)
+        .emit("mandali:wallet_changed" as never, { mandaliId, requestId, reason: "coin_request_funded", ...detail } as never);
     }
   }
 

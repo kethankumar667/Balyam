@@ -129,6 +129,26 @@ describe("Mandali live updates", () => {
     expect(walletEvents[0]?.payload).toMatchObject({ mandaliId: MANDALI, requestId: "cr_1" });
   });
 
+  it("tells each wallet who asked, who paid and how much, so the app can celebrate it", async () => {
+    const { io, emitted } = fakeIo();
+    const { client } = fakePostgrest({
+      rpc: () => ({ alreadyFunded: false, request: { ...coinRequestRow("FUNDED"), funded_by_identity_id: "guest_bystander" } }),
+    });
+    const service = new MandaliService(new MandaliRepository(client), undefined, io);
+
+    await service.fundCoinRequest("cr_1", "guest_bystander");
+
+    const walletEvents = emitted.filter((e) => e.event === "mandali:wallet_changed");
+    for (const event of walletEvents) {
+      expect(event.payload).toMatchObject({
+        reason: "coin_request_funded",
+        requesterIdentityId: REQUESTER,
+        fundedByIdentityId: "guest_bystander",
+      });
+      expect(typeof (event.payload as { amount: unknown }).amount).toBe("number");
+    }
+  });
+
   it("does not wake the person the request was addressed to if somebody else paid it", async () => {
     const { io, emitted } = fakeIo();
     const { client } = fakePostgrest({

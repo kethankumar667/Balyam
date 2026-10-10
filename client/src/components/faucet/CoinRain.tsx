@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useReducedMotion } from "framer-motion";
+import { isLowEndDevice, scaledCount } from "../../lib/deviceTier";
+import { lighten, useFramePressure } from "../../hooks/useFramePressure";
 
 /**
  * A single drawn gold coin: a lit disc, a milled rim and an embossed star. Authored SVG, so it
@@ -43,10 +45,10 @@ export function GoldCoin({ size = 32, className = "" }: { size?: number; classNa
 /** How long the rain lasts before it removes itself. */
 export const COIN_RAIN_MS = 4_200;
 
-const COIN_COUNT = 44;
+const COIN_COUNT = 34;
 
 /** A stable 0..1 value per (index, salt), so the rain looks scattered but never changes between renders. */
-function spread(index: number, salt: number): number {
+export function spread(index: number, salt: number): number {
   const x = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
   return x - Math.floor(x);
 }
@@ -62,7 +64,7 @@ interface Drop {
 }
 
 function makeDrops(): Drop[] {
-  return Array.from({ length: COIN_COUNT }, (_, i) => ({
+  return Array.from({ length: scaledCount(COIN_COUNT) }, (_, i) => ({
     left: spread(i, 1) * 100,
     size: 20 + Math.round(spread(i, 2) * 24),
     delay: spread(i, 3) * 1.3,
@@ -85,6 +87,9 @@ function makeDrops(): Drop[] {
 export function CoinRain({ onDone, zIndex = 80 }: { onDone?: () => void; /** Above the dialog it rains over; 80 clears the app's standard dialogs. */ zIndex?: number }) {
   const reduceMotion = useReducedMotion();
   const drops = useMemo(makeDrops, []);
+  // A weak device skips the per-coin flip (the costliest effect) and keeps the fall.
+  const pressured = useFramePressure();
+  const lite = isLowEndDevice() || pressured;
 
   // The latest callback, without it being a dependency: the parent re-renders every second (the countdown),
   // and a timer that restarted on each render would never fire.
@@ -111,7 +116,7 @@ export function CoinRain({ onDone, zIndex = 80 }: { onDone?: () => void; /** Abo
           50% { transform: scaleX(0.12); }
         }
       `}</style>
-      {drops.map((drop, i) => (
+      {lighten(drops, pressured).map((drop, i) => (
         <span
           key={i}
           className="absolute top-0 block will-change-transform"
@@ -124,12 +129,13 @@ export function CoinRain({ onDone, zIndex = 80 }: { onDone?: () => void; /** Abo
             } as CSSProperties
           }
         >
-          <span
-            className="block will-change-transform"
-            style={{ animation: `coin-rain-flip ${drop.flip}s ease-in-out ${drop.delay}s infinite` }}
-          >
+          {lite ? (
             <GoldCoin size={drop.size} />
-          </span>
+          ) : (
+            <span className="block" style={{ animation: `coin-rain-flip ${drop.flip}s ease-in-out ${drop.delay}s infinite` }}>
+              <GoldCoin size={drop.size} />
+            </span>
+          )}
         </span>
       ))}
     </div>,

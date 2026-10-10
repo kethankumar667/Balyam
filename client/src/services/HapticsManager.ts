@@ -93,6 +93,10 @@ export class HapticsManager {
   private fire(pattern: number | number[]): void {
     if (!this.enabled) return;
     if (!this.isSupported()) return;
+    // Browsers refuse to vibrate before the person has tapped the page, and log an error when asked to.
+    // Nothing a player could feel is lost by not asking, so stay quiet until they have interacted.
+    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (activation && !activation.hasBeenActive) return;
     try {
       navigator.vibrate(pattern);
     } catch {

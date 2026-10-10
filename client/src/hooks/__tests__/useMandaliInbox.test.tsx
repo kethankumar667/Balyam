@@ -24,6 +24,9 @@ const join = vi.hoisted(() => vi.fn());
 /** Stands in for the Mandali store's "forget this Mandali" — true means it was news to this client. */
 const deleted = vi.hoisted(() => ({ apply: vi.fn() }));
 
+/** Who this device is, and who is in the group, for the coin-request celebration. */
+const who = vi.hoisted(() => ({ me: "me_1" as string | null, members: [{ playerId: "friend_1", displayName: "Bala" }, { playerId: "me_1", displayName: "Kethan" }] }));
+
 /** Stands in for the wallet reload that follows a coin request being paid. */
 const wallet = vi.hoisted(() => ({ refresh: vi.fn(async () => undefined) }));
 
@@ -31,12 +34,13 @@ vi.mock("../../lib/socket", () => ({ getSocket: () => io.socket }));
 vi.mock("../useEconomy", () => ({ refreshCurrentWallet: wallet.refresh }));
 vi.mock("../../store/mandaliStore", () => ({
   authenticateMandaliSocket: vi.fn(async () => undefined),
-  useMandaliStore: { getState: () => ({ applyMandaliDeleted: deleted.apply }) },
+  useMandaliStore: { getState: () => ({ applyMandaliDeleted: deleted.apply, members: who.members }) },
 }));
 vi.mock("../../lib/playerIdentity", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/playerIdentity")>()),
   apiJson: api.apiJson,
   apiFetch: api.apiFetch,
+  peekPlayerCredential: () => (who.me ? { playerId: who.me, token: "t", kind: "member" as const } : null),
 }));
 vi.mock("../../lib/roomJoin", () => ({
   joinRoomByCode: join,
@@ -48,6 +52,7 @@ import { useMandaliInbox, resetChatToastCooldown } from "../useMandaliInbox";
 import { useMandaliInboxStore } from "../../store/mandaliInboxStore";
 import { useAuthStore } from "../../store/authStore";
 import { toastStore } from "../../lib/toastStore";
+import { useMandaliJoyStore } from "../../store/mandaliJoyStore";
 
 const digest = (id: string, name: string, over: Partial<MandaliDigest> = {}): MandaliDigest => ({
   mandaliId: id, handle: id, name, emblem: "", level: "ALL", lastReadAt: "2026-09-24T08:00:00.000Z",
@@ -454,6 +459,67 @@ describe("useMandaliInbox", () => {
       act(() => io.fire("mandali:wallet_changed", { mandaliId: "m1", requestId: "cr_1", reason: "coin_request_funded" }));
 
       expect(wallet.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    describe("the celebration", () => {
+      const funded = (over: Record<string, unknown> = {}) => ({
+        mandaliId: "m1",
+        requestId: "cr_1",
+        reason: "coin_request_funded",
+        amount: 100,
+        requesterIdentityId: "me_1",
+        fundedByIdentityId: "friend_1",
+        ...over,
+      });
+
+      beforeEach(() => {
+        who.me = "me_1";
+        useMandaliJoyStore.getState().clear();
+      });
+
+      it("celebrates for the person who asked, naming the friend who sent the coins", async () => {
+        await mount([digest("m1", "Ludo Lounge")]);
+
+        act(() => io.fire("mandali:wallet_changed", funded()));
+
+        expect(useMandaliJoyStore.getState().moment).toMatchObject({ kind: "received", amount: 100, otherName: "Bala" });
+      });
+
+      it("gives the person who paid a quieter thank-you", async () => {
+        who.me = "friend_1";
+        await mount([digest("m1", "Ludo Lounge")]);
+
+        act(() => io.fire("mandali:wallet_changed", funded()));
+
+        expect(useMandaliJoyStore.getState().moment).toMatchObject({ kind: "sent", amount: 100, otherName: "Kethan" });
+      });
+
+      it("celebrates nothing when the event carries no amount (an older server)", async () => {
+        await mount([digest("m1", "Ludo Lounge")]);
+
+        act(() => io.fire("mandali:wallet_changed", { mandaliId: "m1", requestId: "cr_1", reason: "coin_request_funded" }));
+
+        expect(useMandaliJoyStore.getState().moment).toBeNull();
+      });
+
+      it("celebrates nothing for someone who is neither side of the request", async () => {
+        who.me = "stranger_1";
+        await mount([digest("m1", "Ludo Lounge")]);
+
+        act(() => io.fire("mandali:wallet_changed", funded()));
+
+        expect(useMandaliJoyStore.getState().moment).toBeNull();
+      });
+
+      it("says 'a friend' when the name is not known on this screen", async () => {
+        who.members = [];
+        await mount([digest("m1", "Ludo Lounge")]);
+
+        act(() => io.fire("mandali:wallet_changed", funded()));
+
+        expect(useMandaliJoyStore.getState().moment?.otherName).toBeNull();
+        who.members = [{ playerId: "friend_1", displayName: "Bala" }, { playerId: "me_1", displayName: "Kethan" }];
+      });
     });
 
     it("reloads on each payment, so a second request paid later is picked up too", async () => {

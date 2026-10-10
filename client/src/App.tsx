@@ -9,7 +9,10 @@ import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import { useGuestCarryOver } from "./lib/guestCarryOver";
+import { useLevelUpWatcher } from "./hooks/useLevelUpWatcher";
+import { LevelUpAscension } from "./components/progression/LevelUpAscension";
 import { CarryOverArrivalDialog } from "./components/carryover/CarryOverArrivalDialog";
+import { CoinJoyOverlay } from "./components/mandali/CoinJoyOverlay";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
@@ -334,6 +337,7 @@ export default function App({ components = {} }: AppProps) {
   }, []);
   useAdminAutoCheck();
   useGuestCarryOver();
+  useLevelUpWatcher();
   useStructuredData();
   useMetadata();
 
@@ -345,6 +349,8 @@ export default function App({ components = {} }: AppProps) {
           <ToastHost />
           <ConsentModal />
           <CarryOverArrivalDialog />
+          <CoinJoyOverlay />
+          <LevelUpAscension />
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />

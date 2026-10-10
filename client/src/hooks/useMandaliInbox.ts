@@ -11,6 +11,8 @@ import { authenticateMandaliSocket, useMandaliStore } from "../store/mandaliStor
 import { useMandaliInboxStore } from "../store/mandaliInboxStore";
 import { useAuthStore } from "../store/authStore";
 import { refreshCurrentWallet } from "./useEconomy";
+import { peekPlayerCredential } from "../lib/playerIdentity";
+import { useMandaliJoyStore } from "../store/mandaliJoyStore";
 
 /**
  * The signed-in member's Mandali notifications, app-wide.
@@ -35,6 +37,29 @@ const chatToastKey = (mandaliId: string): string => `mandali-chat:${mandaliId}`;
 const lastChatToastAt = new Map<string, number>();
 
 /** Forget every cooldown. Called on sign-out, and by tests that need a clean slate. */
+/**
+ * A friend answered a coin request: celebrate it for whichever side this player is on.
+ * The person who asked is glad (coins and hearts); the person who paid gets a quieter thank-you.
+ * Anything missing from the event (an older server, a different reason) celebrates nothing.
+ */
+function celebrateCoinRequest(payload: unknown): void {
+  const event = payload as
+    | { reason?: unknown; amount?: unknown; requesterIdentityId?: unknown; fundedByIdentityId?: unknown }
+    | null
+    | undefined;
+  if (!event || event.reason !== "coin_request_funded") return;
+  const amount = typeof event.amount === "number" ? event.amount : 0;
+  if (amount <= 0 || typeof event.requesterIdentityId !== "string" || typeof event.fundedByIdentityId !== "string") return;
+
+  const me = peekPlayerCredential()?.playerId;
+  if (!me) return;
+  const nameOf = (id: string): string | null =>
+    useMandaliStore.getState().members.find((m) => m.playerId === id)?.displayName?.trim() || null;
+
+  if (me === event.requesterIdentityId) useMandaliJoyStore.getState().show("received", amount, nameOf(event.fundedByIdentityId));
+  else if (me === event.fundedByIdentityId) useMandaliJoyStore.getState().show("sent", amount, nameOf(event.requesterIdentityId));
+}
+
 export function resetChatToastCooldown(): void {
   lastChatToastAt.clear();
 }
@@ -181,8 +206,9 @@ export function useMandaliInbox(): {
      * personal room, so the wallet is reloaded on every page, not only while the
      * Mandali is open — otherwise the coins show up only after a manual refresh.
      */
-    const onWalletChanged = () => {
+    const onWalletChanged = (payload?: unknown) => {
       void refreshCurrentWallet();
+      celebrateCoinRequest(payload);
     };
 
     const sync = () => {

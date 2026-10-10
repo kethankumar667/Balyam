@@ -17,7 +17,7 @@ import { AUDIO } from "../../constants/audio";
 import { bhalyamSpring } from "../../lib/motion";
 import CountUp from "../CountUp";
 import { getChestImageUrl, PremiumRewardChest } from "./PremiumRewardChest";
-import { CoinRain } from "../faucet/CoinRain";
+import { CoinFountain } from "../faucet/CoinCelebrations";
 
 interface StreakClaimCelebrationProps {
   result: DailyStreakClaimResult;
@@ -114,8 +114,8 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none">
-        {/* The same coin rain every coin reward in the app uses, so a streak reward lands the way a free claim or a prize does. */}
-        {stage === "revealed" && <CoinRain />}
+        {/* A fountain of its own, not the top-down rain a free claim or a prize gets: the streak is a flame, so the coins erupt from below with ember sparks. */}
+        {stage === "revealed" && <CoinFountain />}
 
         {/* Confetti Explosion Layer (Active in revealed stage) */}
         {stage === "revealed" && (
