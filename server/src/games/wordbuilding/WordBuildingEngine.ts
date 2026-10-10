@@ -28,6 +28,13 @@ import { isDictionaryWord } from "./dictionary.js";
 
 const RECENT_MOVES_CAP = 32;
 
+/** Bot search limits: how many scoring moves it weighs against the reply, how many quiet ones, and how long it may think. */
+const BOT_SCORING_CANDIDATES = 14;
+const BOT_QUIET_CANDIDATES = 10;
+const BOT_THINK_MS = 120;
+/** How much of the opponent's best reply to hold against a move (1 would be a full minimax). */
+const BOT_DEFENCE_WEIGHT = 0.85;
+
 interface InternalState {
   phase: "playing" | "finished";
   options: WordBuildingOptions;
@@ -844,29 +851,69 @@ export class WordBuildingEngine implements GameEngine {
       };
     }
 
-    // Score every candidate (cell, letter) by the points it would book.
-    let best: { cell: { r: number; c: number }; letter: string; score: number } | null = null;
+    type Candidate = { cell: { r: number; c: number }; letter: string; score: number };
+
+    // Every scoring placement, best first.
+    const scoring: Candidate[] = [];
     for (const cell of adjacent) {
       for (let code = 65; code <= 90; code++) {
         const letter = String.fromCharCode(code);
         const score = this.dryRunPlacementScore(cell.r, cell.c, letter);
-        if (!best || score > best.score) {
-          best = { cell, letter, score };
-        }
+        if (score > 0) scoring.push({ cell, letter, score });
       }
     }
-    if (best && best.score > 0) return best;
+    scoring.sort((a, b) => b.score - a.score);
 
-    // Nothing scores — fall back to a common-letter placement adjacent
-    // to an existing letter (sets up the opponent — or our own next
-    // turn — to extend into a word).
+    // A few quiet placements too: sometimes the best move is to score nothing and leave the opponent nothing.
     const common = "EARIOTNSL".split("");
+    const quiet: Candidate[] = [];
+    for (let i = 0; i < BOT_QUIET_CANDIDATES; i++) {
+      const cell = adjacent[Math.floor(Math.random() * adjacent.length)];
+      const letter = common[Math.floor(Math.random() * common.length)];
+      if (this.dryRunPlacementScore(cell.r, cell.c, letter) === 0) quiet.push({ cell, letter, score: 0 });
+    }
+
+    // Judge each by what it books minus what the next player can take in reply. The scoring candidates go
+    // first (best first); the clock stops the search before it can stall a turn on a crowded board.
+    const deadline = Date.now() + BOT_THINK_MS;
+    const pool = [...scoring.slice(0, BOT_SCORING_CANDIDATES), ...quiet];
+    let chosen: (Candidate & { net: number }) | null = null;
+    for (let i = 0; i < pool.length; i++) {
+      if (i > 0 && Date.now() > deadline) break;
+      const candidate = pool[i];
+      const reply = this.bestReplyScore(candidate.cell.r, candidate.cell.c, candidate.letter);
+      const net = candidate.score - BOT_DEFENCE_WEIGHT * reply + Math.random() * 0.01;
+      if (!chosen || net > chosen.net) chosen = { ...candidate, net };
+    }
+    if (chosen) return { cell: chosen.cell, letter: chosen.letter, score: chosen.score };
+
     const fallbackCell = adjacent[Math.floor(Math.random() * adjacent.length)];
-    return {
-      cell: fallbackCell,
-      letter: common[Math.floor(Math.random() * common.length)],
-      score: 0,
-    };
+    return { cell: fallbackCell, letter: common[Math.floor(Math.random() * common.length)], score: 0 };
+  }
+
+  /**
+   * The most the next player could score on the board as it would stand after `letter` lands on (r,c).
+   * Places the letter for the duration of the look and takes it back, in a `finally`, so a throw cannot
+   * leave a phantom letter on the board.
+   */
+  private bestReplyScore(r: number, c: number, letter: string): number {
+    const size = this.s.options.boardSize;
+    this.s.board[r][c] = letter;
+    try {
+      let best = 0;
+      for (let rr = 0; rr < size; rr++) {
+        for (let cc = 0; cc < size; cc++) {
+          if (this.s.board[rr][cc] !== "" || !this.hasNeighborLetter(rr, cc)) continue;
+          for (let code = 65; code <= 90; code++) {
+            const score = this.dryRunPlacementScore(rr, cc, String.fromCharCode(code));
+            if (score > best) best = score;
+          }
+        }
+      }
+      return best;
+    } finally {
+      this.s.board[r][c] = "";
+    }
   }
 
   /**

@@ -1,12 +1,12 @@
 import type { Card, CoachHint, Rank } from "@shared/types.js";
 import { bestArrangementForScoring } from "./score.js";
-import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
+import { chooseDiscard, chooseDraw, findDeclaration } from "./rummyStrategy.js";
 
 /**
  * Rummy coach.
  *
  * Deliberately thin. Every judgement here already existed for the bot AI —
- * `findValidDeclaration`, `pickBestDiscard`, `shouldDrawFromOpen`,
+ * `findDeclaration`, `chooseDiscard`, `chooseDraw` (rummyStrategy.ts),
  * `bestArrangementForScoring`. Writing a second, separate "hint intelligence"
  * would mean two engines that can disagree about the same hand, and the one
  * the player sees would be the one nobody tested against real rounds.
@@ -67,7 +67,7 @@ export function rummyHint(input: RummyHintInput): CoachHint {
   }
 
   if (turnAction === "draw") {
-    const takeOpen = openTop ? shouldDrawFromOpen(hand, openTop, wildJokerRank) : false;
+    const takeOpen = openTop ? chooseDraw(hand, openTop, wildJokerRank) === "open" : false;
     return {
       kind: "draw",
       headline: takeOpen && openTop ? `Take ${cardLabel(openTop)} from the open pile` : "Draw from the closed deck",
@@ -83,7 +83,7 @@ export function rummyHint(input: RummyHintInput): CoachHint {
   }
 
   // discardOrDeclare — the decision that actually wins or loses the round.
-  const declaration = findValidDeclaration(hand, wildJokerRank);
+  const declaration = findDeclaration(hand, wildJokerRank);
   if (declaration) {
     const toss = hand.find((c) => c.id === declaration.discardCardId);
     return {
@@ -95,7 +95,7 @@ export function rummyHint(input: RummyHintInput): CoachHint {
     };
   }
 
-  const discardId = pickBestDiscard(hand, wildJokerRank);
+  const discardId = chooseDiscard(hand, wildJokerRank);
   const discard = hand.find((c) => c.id === discardId);
   return {
     kind: "discard",

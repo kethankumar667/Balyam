@@ -17,7 +17,7 @@ import {
   scoreFromArrangement,
   INVALID_DECLARE_PENALTY,
 } from "./score.js";
-import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "./botArrange.js";
+import { chooseDiscard, chooseDraw, findDeclaration } from "./rummyStrategy.js";
 import { rummyHint } from "./coach.js";
 
 interface InternalState {
@@ -273,7 +273,7 @@ export class RummyEngine implements GameEngine {
       const from =
         !this.s.firstDrawTaken && openTop?.isPrintedJoker
           ? "open"
-          : shouldDrawFromOpen(hand, openTop, wildRank)
+          : chooseDraw(hand, openTop, wildRank) === "open"
           ? "open"
           : "closed";
       return this.handleDraw({
@@ -288,7 +288,7 @@ export class RummyEngine implements GameEngine {
     // discard with retain-value awareness instead of blindly dumping the
     // highest-point card (which used to break up near-melds the bot had been
     // building — most visible on the score-card's leftover hand).
-    const declaration = findValidDeclaration(hand, wildRank);
+    const declaration = findDeclaration(hand, wildRank);
     if (declaration) {
       return this.handleDeclare({
         playerId,
@@ -300,7 +300,7 @@ export class RummyEngine implements GameEngine {
       });
     }
 
-    const discardId = pickBestDiscard(hand, wildRank);
+    const discardId = chooseDiscard(hand, wildRank);
     return this.handleDiscard({
       playerId,
       type: "discard",

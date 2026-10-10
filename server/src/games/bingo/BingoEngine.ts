@@ -14,6 +14,7 @@ import type {
 import { BINGO_MARK_WINDOW_MS, DEFAULT_BINGO_OPTIONS } from "@shared/types.js";
 import { generateUniqueBoard, boardFingerprint } from "./board.js";
 import { evaluateBoardLines } from "./win.js";
+import { chooseBingoCall } from "./bingoStrategy.js";
 
 /**
  * How long players get to arrange and lock their board before the server
@@ -564,15 +565,13 @@ export class BingoEngine implements GameEngine {
       }
 
       if (playerId === this.currentTurnPlayerId()) {
-        // Pick random uncalled number 1-25
-        const uncalled: number[] = [];
-        for (let v = 1; v <= 25; v++) {
-          if (!this.calledSet.has(v)) uncalled.push(v);
-        }
-        if (uncalled.length > 0) {
-          const choice = uncalled[Math.floor(this.rng() * uncalled.length)];
-          return this.handleCallNumber(playerId, choice);
-        }
+        // Call the number that helps this board most and a rival's least (see bingoStrategy).
+        // An open mark window still has to settle before the call lands, so count it as called.
+        const called = new Set(this.calledSet);
+        if (this.pendingMark) called.add(this.pendingMark.value);
+        const rivals = this.seatOrder.filter((id) => id !== playerId).map((id) => this.players.get(id)!.board);
+        const choice = p ? chooseBingoCall({ mine: p.board, rivals, called, random: this.rng }) : null;
+        if (choice != null) return this.handleCallNumber(playerId, choice);
       }
     }
     return { ok: false, error: "Nothing to auto-play" };

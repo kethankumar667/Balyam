@@ -15,6 +15,7 @@ import {
 } from "@shared/ludo-pacing.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { pickReactionEmoji } from "@shared/reactions.js";
+import { chooseLudoToken, type LudoPositionView } from "./ludoStrategy.js";
 import {
   PLAYER_COLORS_ORDER,
   STRETCH_LENGTH,
@@ -631,69 +632,11 @@ export class LudoEngine implements GameEngine {
   }
 
   /**
-   * Heuristic AI move picker — used for auto-skip and disconnected players.
-   * Priority: capture an opponent > finish a token > bring a yard token out >
-   * advance the most-progressed token furthest.
+   * The move for a seat the table is playing on someone's behalf (auto-skip, a disconnected player).
+   * Same brain as a bot, so a player who steps away is not punished by a worse mover than a bot would be.
    */
   pickAiMove(playerId: string): string | null {
-    const movable = this.s.movableTokenIds;
-    if (movable.length === 0) return null;
-    if (movable.length === 1) return movable[0];
-
-    const dice = this.s.diceValue ?? 0;
-    const list = this.s.tokens.get(playerId) ?? [];
-    const byId = new Map(list.map((t) => [t.id, t]));
-
-    // 1. Capture
-    for (const id of movable) {
-      const t = byId.get(id);
-      if (!t) continue;
-      const dest = this.simulateMove(playerId, t, dice);
-      if (dest?.state === "track" && dest.trackPos != null) {
-        const isSafe = this.s.options.noSafeSquares
-          ? this.s.playerOrder.some((p) => this.startFor(this.s.colorOf.get(p)!) === dest.trackPos)
-          : this.safeSquares().has(dest.trackPos);
-        if (!isSafe) {
-          for (const [opid, olist] of this.s.tokens.entries()) {
-            if (opid === playerId) continue;
-            for (const ot of olist) {
-              if (ot.state === "track" && ot.trackPos === dest.trackPos) {
-                return id;
-              }
-            }
-          }
-        }
-      }
-    }
-    // 2. Reach home
-    for (const id of movable) {
-      const t = byId.get(id);
-      if (!t) continue;
-      const dest = this.simulateMove(playerId, t, dice);
-      if (dest?.state === "home") return id;
-    }
-    // 3. Bring a yard token out (only when rolling 6 so a yard token is even movable)
-    if (dice === 6) {
-      for (const id of movable) {
-        const t = byId.get(id);
-        if (t?.state === "yard") return id;
-      }
-    }
-    // 4. Advance the most-progressed token
-    let best = movable[0];
-    let bestScore = -1;
-    for (const id of movable) {
-      const t = byId.get(id);
-      if (!t) continue;
-      let score = 0;
-      if (t.state === "track") score = 100 + (t.trackPos ?? 0);
-      if (t.state === "stretch") score = 1000 + (t.stretchPos ?? 0);
-      if (score > bestScore) {
-        bestScore = score;
-        best = id;
-      }
-    }
-    return best;
+    return chooseLudoToken(this.positionFor(playerId));
   }
 
   /**
@@ -825,136 +768,30 @@ export class LudoEngine implements GameEngine {
   }
 
   /**
-   * Bot heuristic for choosing which movable token to advance. The previous
-   * version was three signals (finish / capture / further along) and lost a
-   * lot of fights by walking into capture range, never releasing yard
-   * tokens, and breaking up stacks. This pass adds danger awareness,
-   * stacking, escape, and yard-release urgency so bots actually contest.
-   *
-   * Scoring (per candidate destination):
-   *   +1500  reaches home
-   *   +600   per opponent token captured at the destination
-   *   +90    destination is a safe square (bunker)
-   *   −180   per opponent threat within 1–6 squares behind the dest
-   *          (an opponent token that could land here on their next roll)
-   *   +80    we'd be escaping a square that's currently under threat
-   *   +70    destination already has one of our own tokens (forms a stack)
-   *   +60    releasing a yard token on a 6, scaled by yard-token urgency
-   *          (more tokens left in yard → bigger incentive to release now)
-   *   +small progress bonuses (stretch > track > yard)
-   *
-   * Ties default to the first movable id.
+   * Which movable token a bot advances. The judgement lives in `ludoStrategy.ts` as a pure function of the
+   * position, so it can be tested against the engine's own rules without a running game; this only describes
+   * the position to it.
    */
   private pickBestMovableToken(pid: string): string | null {
-    const movable = this.s.movableTokenIds;
-    if (movable.length === 0) return null;
-    const dice = this.s.diceValue ?? 0;
-    const list = this.s.tokens.get(pid) ?? [];
-    const safeSet = this.safeSquares();
-    const tokensInYard = list.filter((t) => t.state === "yard").length;
-
-    let best: { id: string; score: number } | null = null;
-    for (const id of movable) {
-      const token = list.find((t) => t.id === id);
-      if (!token) continue;
-      const dest = this.simulateMove(pid, token, dice);
-      if (!dest) continue;
-      let score = 0;
-
-      // -- Hard outcomes --
-      if (dest.state === "home") score += 1500;
-
-      // Capture count (only on unsafe track squares).
-      let captures = 0;
-      if (
-        dest.state === "track" &&
-        dest.trackPos != null &&
-        !safeSet.has(dest.trackPos)
-      ) {
-        for (const [otherPid, otherList] of this.s.tokens.entries()) {
-          if (otherPid === pid) continue;
-          for (const ot of otherList) {
-            if (ot.state === "track" && ot.trackPos === dest.trackPos) {
-              captures += 1;
-            }
-          }
-        }
-      }
-      score += captures * 600;
-
-      // -- Safety / danger / escape --
-      if (dest.state === "track" && dest.trackPos != null) {
-        if (safeSet.has(dest.trackPos)) {
-          score += 90;
-        } else {
-          const threats = this.countThreatsAt(pid, dest.trackPos);
-          if (threats > 0) score -= threats * 180;
-        }
-
-        // Stack with own existing token on the same square — captures need
-        // to match all tokens on the square, which (in practice) makes
-        // stacks a strong defensive shape.
-        for (const myT of list) {
-          if (myT.id === token.id) continue;
-          if (myT.state === "track" && myT.trackPos === dest.trackPos) {
-            score += 70;
-            break;
-          }
-        }
-      }
-      // Escape bonus — leaving a square currently under threat.
-      if (
-        token.state === "track" &&
-        token.trackPos != null &&
-        !safeSet.has(token.trackPos)
-      ) {
-        const currentThreats = this.countThreatsAt(pid, token.trackPos);
-        if (currentThreats > 0) score += 80 + currentThreats * 20;
-      }
-
-      // -- Yard release on a 6 --
-      // Scaled by how many tokens are still parked. Early game (4 in yard)
-      // the bonus is huge; once most pieces are out, releasing is less
-      // urgent than progressing the leaders.
-      if (token.state === "yard" && dice === 6 && dest.state === "track") {
-        score += 60 + Math.max(0, tokensInYard - 1) * 30;
-      }
-
-      // -- Progress (small, breaks ties between equally-safe options) --
-      if (dest.state === "stretch") {
-        score += 40 + (dest.stretchPos ?? 0) * 5;
-      } else if (dest.state === "track") {
-        score += 8;
-      }
-      // Carry-forward preference: further-along tokens get a tiny edge so
-      // we don't oscillate between equally-good candidates.
-      if (token.state === "track") score += (token.trackPos ?? 0) * 0.1;
-      else if (token.state === "stretch") score += 5 + (token.stretchPos ?? 0);
-
-      if (!best || score > best.score) best = { id, score };
-    }
-    return best?.id ?? movable[0];
+    return chooseLudoToken(this.positionFor(pid));
   }
 
-  /**
-   * Count opponent track tokens that could capture `dest` on their next
-   * roll — i.e. those sitting 1..6 squares behind on the shared loop.
-   * We don't account for opponents who'd actually turn into their own
-   * stretch before reaching `dest`; that conservatively over-estimates
-   * threats, which biases the bot toward safer play. Fine.
-   */
-  private countThreatsAt(myPid: string, dest: number): number {
-    const TL = this.trackLen();
-    let threats = 0;
-    for (const [otherPid, list] of this.s.tokens.entries()) {
-      if (otherPid === myPid) continue;
-      for (const ot of list) {
-        if (ot.state !== "track" || ot.trackPos == null) continue;
-        const dist = (dest - ot.trackPos + TL) % TL;
-        if (dist >= 1 && dist <= 6) threats += 1;
-      }
-    }
-    return threats;
+  /** The board as `pid` sees it, in the shape the strategy reads. */
+  private positionFor(pid: string): LudoPositionView {
+    const seat = (id: string) => ({
+      arm: this.s.colorOf.get(id)!,
+      tokens: this.s.tokens.get(id) ?? [],
+      hasCaptured: this.s.hasCaptured.get(id) ?? false,
+    });
+    return {
+      playerCount: this.playerCount(),
+      dice: this.s.diceValue ?? 0,
+      mine: seat(pid),
+      rivals: this.s.playerOrder.filter((id) => id !== pid && this.s.tokens.has(id)).map(seat),
+      movable: this.s.movableTokenIds,
+      mandatoryCapture: this.s.options.mandatoryCapture,
+      noSafeSquares: this.s.options.noSafeSquares,
+    };
   }
 
   serializeState(): unknown {
