@@ -116,6 +116,30 @@ A guest who signs up brings their coins with them, and earns a 5,000-coin welcom
 
 Known limits: a throwaway guest with a wallet can still be turned into an account and a bonus by anyone with many real mailboxes; what bounds it is the hold, the tier-1 transfer cap (500 a day) and the first-real-match gate. Yahoo `-` aliases, iCloud Hide My Email and custom-domain catch-alls are not folded by the one-mailbox guard.
 
+## Guest identity: created just in time, bounded, and purged
+
+A visitor who only looks around has no identity. A guest is created at the first action that needs
+one (creating or joining a room, a deliberate write such as recording a score), never on page load.
+Reads (the wallet chip, leaderboards, history) never create one, and a first-time visitor's wallet
+shows nothing rather than a zero. Client: `peekPlayerCredential` (never creates) versus
+`getPlayerCredential` (creates, for deliberate actions) in `client/src/lib/playerIdentity.ts`.
+
+- **A flood ceiling on the write that matters.** `POST /api/auth/guest` is stateless and stays open;
+  the first request that carries a guest token is what writes the identity row and, through the wallet,
+  the welcome grant. `server/src/auth/guestProvisioningGate.ts` caps NEW guests written per minute
+  (`GUEST_PROVISION_PER_MINUTE`, default 600). It uses no device, browser, IP or location signal, so it
+  is a global ceiling, not a per-caller one. A per-network-address limit is the stronger control and
+  needs a privacy-notice decision first. A throttled new guest still plays as themself for that request;
+  only the database write waits for the next minute. An existing guest is unaffected.
+- **Retention.** `purge_idle_guests` (migration `20261026000000`) runs daily from the server and removes
+  guest identities idle for `IDLE_GUEST_DAYS` (default 45, minimum 7) that never got a wallet and were
+  never absorbed into an account. The wallet ledger is immutable, so a guest who has a wallet is never
+  purged; that, plus the welcome grant being a permanent audit row, is why the grant belongs at the first
+  real action and not at arrival. Each deletion is isolated: anything that still references a guest makes
+  the purge skip that guest, never delete part of them.
+- **Verify it:** `npm run verify:guestpurge` runs the purge on a real PostgreSQL (prints
+  `IDLE_GUEST_PURGE_VERIFIED`).
+
 ## Applying the migration
 
 1. Take a backup.

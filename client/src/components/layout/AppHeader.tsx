@@ -203,6 +203,7 @@ export default function AppHeader({
             <CosmeticsStoreEntryChip />
 
             {/* Global Wallet Balance Chip. On a phone the faucet has no chip of its own, so a dot here says coins are waiting. */}
+            {walletStatus !== "none" && (
             <div className="relative flex-shrink-0">
               <WalletBalanceChip
                 balance={balance}
@@ -213,6 +214,7 @@ export default function AppHeader({
               />
               {isMember && <FaucetReadyDot />}
             </div>
+            )}
 
             {/* User Profile Chip — notifications live inside this sheet now
                 instead of a standalone bell button, so the unread count

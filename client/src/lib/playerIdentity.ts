@@ -168,7 +168,20 @@ async function mintGuest(): Promise<PlayerCredential | null> {
 }
 
 /**
- * Who this browser is, minting a guest identity if it has none.
+ * Who this browser is RIGHT NOW, creating nothing.
+ *
+ * ── Guest identity is created just in time, not on arrival ────────────
+ * A visitor who only looks around has done nothing that needs an identity, so nothing is created
+ * for them: no guest id, no database row, no welcome coins. That is the standard approach for
+ * anonymous users (create the account at the first action that needs one) and it closes three
+ * problems the old "mint on first page" flow had: rows and wallets for every drive-by and crawler,
+ * unlimited free welcome grants by clearing storage, and personal-data records for people who did
+ * nothing. Reads use this; only a deliberate action (see `apiFetch` and `resolveRoomCredential`)
+ * mints, through `getPlayerCredential` below.
+ */
+
+/**
+ * Who this browser is, minting a guest identity if it has none. Call this only for a deliberate action.
  *
  * A signed-in session always wins, and note what that means in practice: sign
  * in and your guest identity is simply not consulted any more. Carrying guest
@@ -176,6 +189,13 @@ async function mintGuest(): Promise<PlayerCredential | null> {
  * there is nowhere durable to carry it FROM (see P0-3) — and pretending
  * otherwise by merging ids client-side would be worse than being explicit.
  */
+export function peekPlayerCredential(): PlayerCredential | null {
+  const { userId } = useAuthStore.getState();
+  const token = currentAccessToken();
+  if (userId && token) return { playerId: userId, token, kind: "member" };
+  return storedGuest();
+}
+
 export async function getPlayerCredential(): Promise<PlayerCredential | null> {
   const { userId } = useAuthStore.getState();
   const token = currentAccessToken();
@@ -251,7 +271,12 @@ export async function ensureGuestToken(): Promise<string | undefined> {
  * surface as a permanently broken profile screen with no way back.
  */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const credential = await getPlayerCredential();
+  // A read never creates a guest. A write from someone with no identity yet is a deliberate action, so the
+  // identity is created now, at the moment it is needed (and not before).
+  const method = (init.method ?? "GET").toUpperCase();
+  const isWrite = method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
+  const existing = peekPlayerCredential();
+  const credential = existing ?? (isWrite ? await getPlayerCredential() : null);
   const auth = useAuthStore.getState();
   const adminHeaders: Record<string, string> = {};
   if (auth.isAdmin || auth.isSuperAdmin) {
@@ -315,17 +340,13 @@ export function usePlayerId(): { playerId: string | null; ready: boolean; kind: 
   );
   const [ready, setReady] = useState(false);
 
+  // Passive: it reports who this browser already is and never creates anyone. A first-time visitor is
+  // `ready` with no id, and an identity appears when they do something that needs one.
   useEffect(() => {
     if (!authReady) return;
-    let cancelled = false;
-    void getPlayerCredential().then((cred) => {
-      if (cancelled) return;
-      setState({ playerId: cred?.playerId ?? null, kind: cred?.kind ?? null });
-      setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    const cred = peekPlayerCredential();
+    setState({ playerId: cred?.playerId ?? null, kind: cred?.kind ?? null });
+    setReady(true);
   }, [userId, authReady]);
 
   return { ...state, ready };

@@ -37,6 +37,7 @@
     "verify:mandali": "node scripts/mandali/verifyMandaliRpcs.mjs",
     "verify:emailguard": "node scripts/persistence/verifyEmailGuard.mjs",
     "verify:carryover": "node scripts/economy/verifyGuestCarryOver.mjs",
+    "verify:guestpurge": "node scripts/persistence/verifyIdleGuestPurge.mjs",
     "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs",
     "design:colors": "node scripts/design-audit/colors.mjs",
     "design:tokens": "node scripts/design-audit/tokens.mjs",

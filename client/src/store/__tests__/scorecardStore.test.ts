@@ -5,6 +5,7 @@ vi.mock("../../lib/playerIdentity", () => ({
   apiJson: (...args: unknown[]) => mockApiJson(...args),
   apiFetch: vi.fn(),
   getPlayerCredential: vi.fn().mockResolvedValue(null),
+  peekPlayerCredential: vi.fn().mockReturnValue(null),
 }));
 
 // Imported AFTER the mock so the store picks up the mocked apiJson.

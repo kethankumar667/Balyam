@@ -29,7 +29,8 @@ import { getGuestIdSnapshot, subscribeGuestId } from "../lib/playerIdentity";
  * a malformed response) and carries no claim about the real balance either
  * way.
  */
-export type WalletStatus = "loading" | "loaded" | "zero" | "error" | "unavailable";
+/** `none`: this visitor has no identity yet, so there is no wallet to show. Not an error and not a zero. */
+export type WalletStatus = "loading" | "loaded" | "zero" | "error" | "unavailable" | "none";
 
 export interface WalletState {
   wallet: CoinWalletRecord | null;
@@ -131,6 +132,12 @@ function getWalletCacheSnapshot(): WalletCacheEntry | null {
  */
 function loadWallet(userId: string | null, guestId: string | null): Promise<void> {
   const tag = identityTag(userId, guestId);
+  // Nobody to fetch a wallet for: a visitor who has not done anything yet has no identity, and creating
+  // one just to read a balance would defeat creating it only when it is needed.
+  if (tag === "unresolved") {
+    setWalletCache({ tag, wallet: null, status: "none", error: null, correlationId: null });
+    return Promise.resolve();
+  }
   if (walletInFlight && walletInFlight.tag === tag) {
     return walletInFlight.promise;
   }

@@ -40,6 +40,9 @@ describe("Economy V1 UI Integration Suite", () => {
 
   describe("WalletDrawer Component", () => {
     it("renders server-authoritative balance and transaction history", async () => {
+      // A wallet belongs to an identity, and a visitor only has one once they have done something. This is a
+      // player who already has one.
+      localStorage.setItem("bhalyam.guest.id", "guest_0333360bb1b9febd4f0df7b2f5e49286");
       global.fetch = vi.fn().mockImplementation((url: string) => {
         if (url.includes("/api/economy/wallet/ledger")) {
           return Promise.resolve({

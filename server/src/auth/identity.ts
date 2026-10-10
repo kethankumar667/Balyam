@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { logger } from "../lib/logger.js";
 import { verifyAccessToken, verificationMode } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "./guestToken.js";
+import { GuestProvisioningThrottledError, tryTakeGuestProvisioningSlot } from "./guestProvisioningGate.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
 import { progressionRepository } from "../persistence/index.js";
 
@@ -135,6 +136,10 @@ export async function ensureGuestIdentityProvisioned(guestId: string): Promise<v
     return;
   }
 
+  // The write that can be turned into unbounded rows and free coins is bounded (see the gate). A guest that
+  // already has a row loses nothing by this being skipped; only a brand-new one waits for the next minute.
+  if (!tryTakeGuestProvisioningSlot()) throw new GuestProvisioningThrottledError();
+
   const write = (async () => {
     await progressionRepository().upsertIdentity({
       playerId: guestId,
@@ -240,6 +245,9 @@ export async function resolvePlayerIdentity(
     try {
       await ensureGuestIdentityProvisioned(guestId);
     } catch (err) {
+      // A flood is already visible as the throttle itself; logging every refused request would let the
+      // flood fill the log as well.
+      if (err instanceof GuestProvisioningThrottledError) return { kind: "guest", playerId: guestId };
       // Provisioning is not memoized on failure (see the comment above),
       // so the next request from this guest simply retries it. The guest
       // still gets treated as themself for THIS request — a transient

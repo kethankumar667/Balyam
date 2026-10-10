@@ -51,6 +51,7 @@ import { createRewardsRouter } from "./rewards/RewardsController.js";
 import { createFaucetRouter } from "./rewards/FaucetController.js";
 import { HourlyFaucetService } from "./rewards/HourlyFaucetService.js";
 import { carryOverStore, initialiseCarryOverStore } from "./rewards/carryOverBoot.js";
+import { startIdleGuestPurge } from "./auth/idleGuestPurge.js";
 import { createCarryOverRouter } from "./rewards/GuestCarryOverController.js";
 import { GuestCarryOverService } from "./rewards/GuestCarryOverService.js";
 import { createRiskAdminRouter } from "./admin/RiskAdminController.js";
@@ -633,6 +634,8 @@ async function boot(): Promise<void> {
    */
   const rewards = await initialiseRewardStore();
   await initialiseCarryOverStore(economyService);
+  // Guests who showed up and did nothing are purged after a quiet period; everyone else is kept whole.
+  startIdleGuestPurge();
   riskService.attachStore(orderedRiskPersistence(rewards, (work) => progressionSync.afterPending(work)));
   riskService.hydrate(
     await rewards.listRiskStates(),
