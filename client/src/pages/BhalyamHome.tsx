@@ -85,7 +85,7 @@ export default function BhalyamHome() {
             onSelectGame={setSheetGame}
             onOpenCreateRoom={() => setJoinOpen(true)}
           />
-          <PlayerJourneyDashboard onSelect={setSheetGame} snapshot={playerSnapshot} />
+          <PlayerJourneyDashboard onSelect={setSheetGame} snapshot={playerSnapshot} isMember={isMember} />
           <Footer />
         </div>
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />

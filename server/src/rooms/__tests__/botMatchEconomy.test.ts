@@ -62,6 +62,18 @@ function peek(rooms: RoomManager, code: string): Room {
   return (rooms as unknown as { rooms: Map<string, Room> }).rooms.get(code)!;
 }
 
+/**
+ * Makes the bot in `socketId`'s room throw `choice` every round. The RPS bot now learns its opponent, so a
+ * player throwing "rock" every round is countered rather than beaten by a random throw; this says what the
+ * test means instead of pinning `Math.random`.
+ */
+function pinBotThrow(rooms: RoomManager, socketId: string, choice: "rock" | "paper" | "scissors"): void {
+  const internals = rooms as unknown as { socketToRoom: Map<string, string>; rooms: Map<string, Room> };
+  const room = internals.rooms.get(internals.socketToRoom.get(socketId)!)!;
+  const engine = room.engine as unknown as { applyAutoMove: (id: string) => unknown; applyMove: (m: unknown) => unknown };
+  engine.applyAutoMove = (playerId: string) => engine.applyMove({ playerId, type: "choose", data: { choice } });
+}
+
 function freshEconomy() {
   const repo = new InMemoryEconomyRepository();
   const service = new EconomyService(repo, {
@@ -215,8 +227,9 @@ describe("Free Bot Matches Economy Rule", () => {
 
     // Drive the match to a real finish via the engine, not a forced phase
     // flip, so `finalizeMatch`'s own purge actually runs.
+    pinBotThrow(rooms, "s_host", "scissors");
     const originalRandom = Math.random;
-    Math.random = () => 0.8; // bot auto-throw is scissors; host always plays rock
+    Math.random = () => 0.8; // pins the bot's think-time pacing; the host always plays rock
     try {
       for (let round = 0; round < 10 && room.phase === "playing"; round++) {
         rooms.applyMove("s_host", "choose", { choice: "rock" });

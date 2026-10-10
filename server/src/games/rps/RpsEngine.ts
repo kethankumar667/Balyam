@@ -1,5 +1,6 @@
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import type { Player, RpsChoice, RpsRoundResult, RpsState } from "@shared/types.js";
+import { chooseRpsMove } from "./rpsStrategy.js";
 
 const VALID_CHOICES: RpsChoice[] = ["rock", "paper", "scissors"];
 const TARGET = 10;
@@ -26,12 +27,15 @@ export class RpsEngine implements GameEngine {
   private state!: RpsState;
   private currentChoices: Record<string, RpsChoice> = {};
   private playerIds: string[] = [];
+  /** Seats the table's bots are playing. Only these get the learning throw; see applyAutoMove. */
+  private botIds = new Set<string>();
 
   init(players: Player[]): void {
     if (players.length !== 2) {
       throw new Error("RPS requires exactly 2 players");
     }
     this.playerIds = players.map((p) => p.id);
+    this.botIds = new Set(players.filter((p) => p.isBot === true).map((p) => p.id));
     this.state = this.freshState(1);
     this.currentChoices = {};
   }
@@ -216,7 +220,24 @@ export class RpsEngine implements GameEngine {
     if (!this.state.pendingChoices[playerId]) {
       return { ok: false, error: "Already chose this round" };
     }
-    const pick = VALID_CHOICES[Math.floor(Math.random() * VALID_CHOICES.length)];
+    // This also plays for a HUMAN whose round timer ran out. They get the plain random throw they always
+    // did: a learned counter-throw is for bots, and handing it to anyone who lets the clock lapse would
+    // reward stalling.
+    if (!this.botIds.has(playerId)) {
+      const pick = VALID_CHOICES[Math.floor(Math.random() * VALID_CHOICES.length)];
+      return this.applyMove({ playerId, type: "choose", data: { choice: pick } });
+    }
+    // Learn from COMPLETED rounds only: the human's throw in this round is never read, even though the bot
+    // moves after them (see chooseRpsMove).
+    const opponent = this.playerIds.find((id) => id !== playerId);
+    const history = opponent
+      ? this.state.history.flatMap((round) => {
+          const mine = round.choices[playerId];
+          const theirs = round.choices[opponent];
+          return mine && theirs ? [{ mine, theirs }] : [];
+        })
+      : [];
+    const pick = chooseRpsMove(history);
     return this.applyMove({ playerId, type: "choose", data: { choice: pick } });
   }
 
@@ -225,6 +246,7 @@ export class RpsEngine implements GameEngine {
       state: this.state,
       currentChoices: this.currentChoices,
       playerIds: this.playerIds,
+      botIds: [...this.botIds],
     };
   }
 
@@ -234,6 +256,7 @@ export class RpsEngine implements GameEngine {
       state: RpsState;
       currentChoices: Record<string, RpsChoice>;
       playerIds: string[];
+      botIds: string[];
     }>;
     if (s.state && typeof s.state === "object") {
       this.state = {
@@ -246,6 +269,9 @@ export class RpsEngine implements GameEngine {
     }
     if (Array.isArray(s.playerIds)) {
       this.playerIds = [...s.playerIds];
+    }
+    if (Array.isArray(s.botIds)) {
+      this.botIds = new Set(s.botIds.filter((id) => this.playerIds.includes(id)));
     }
   }
 }

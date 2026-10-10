@@ -124,6 +124,9 @@ describe("chess search", () => {
   });
 });
 
+/** The fraction of a move's budget each look at the clock uses up in the tournament. */
+const TOURNAMENT_BUDGET_PER_CHECK = 0.5;
+
 /** The bot as it was: a random legal move, preferring captures and checks. Kept here as the opponent to beat. */
 function legacyMove(chess: Chess, random: () => number) {
   const legal = chess.moves({ verbose: true });
@@ -146,9 +149,15 @@ function playGame(level: "medium" | "master", newBotIsWhite: boolean, seed: numb
   const newColor = newBotIsWhite ? "w" : "b";
 
   for (let ply = 0; ply < 200 && !chess.isGameOver(); ply++) {
+    // A clock that advances a fixed step per look at it, not per millisecond of wall time. The search reads
+    // the clock only between depths, so this gives it the same amount of thinking on a busy machine as on
+    // an idle one, and the tournament cannot flake under load.
+    const budgetMs = level === "master" ? 40 : 20;
+    let ticks = 0;
+    const steppedClock = () => (ticks += budgetMs * TOURNAMENT_BUDGET_PER_CHECK);
     const move =
       chess.turn() === newColor
-        ? chooseChessMove(chess, level, { budgetMs: level === "master" ? 40 : 20, random })
+        ? chooseChessMove(chess, level, { budgetMs, random, now: steppedClock })
         : legacyMove(chess, random);
     if (!move) break;
     chess.move(move);

@@ -24,9 +24,16 @@ import { WhatsappGlyph } from "./icons";
 export function PlayerJourneyDashboard({
   onSelect,
   snapshot,
+  isMember = true,
 }: {
   onSelect: (slug: BhalyamGameSlug) => void;
   snapshot: PlayerSnapshot;
+  /**
+   * Whether the viewer has an account. The snapshot is only fetched for members, so for a guest it never
+   * becomes ready; without this a guest saw grey placeholders forever. A guest gets an honest invitation
+   * to sign in where the level card would be.
+   */
+  isMember?: boolean;
 }) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -71,7 +78,7 @@ export function PlayerJourneyDashboard({
         </div>
       </div>
 
-      {!snapshot.ready ? (
+      {isMember && !snapshot.ready ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse" role="status" aria-busy="true">
           <span className="sr-only">Loading player progress</span>
           {[1, 2, 3].map((i) => (
@@ -193,8 +200,48 @@ export function PlayerJourneyDashboard({
             )}
           </article>
 
-          {/* Card 2: Real level progress and the real closest-to-unlocking
-              achievement. */}
+          {/* Card 2 for a guest: no level to show, so say where it will live rather than a placeholder. */}
+          {!isMember ? (
+            <article
+              aria-label="Your level and XP"
+              className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
+                isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className={`font-display font-black text-[18px] ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
+                    🏆 Your level &amp; XP
+                  </span>
+                </div>
+                <div
+                  aria-hidden="true"
+                  className={`w-full h-2.5 rounded-full mb-3 ${isDark ? "bg-slate-800" : "bg-[#ECD9BA]"}`}
+                />
+                <p className={`text-[13px] font-medium ${isDark ? "text-slate-300" : "text-[#6D5C4D]"}`}>
+                  Create a free account to see your level, XP and achievements here, and keep them on every device.
+                </p>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  to="/signup?from=home"
+                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 text-[13px] font-black uppercase tracking-wider text-white shadow-md transition hover:brightness-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926]"
+                >
+                  Create account
+                </Link>
+                <Link
+                  to="/login"
+                  className={`min-h-[44px] inline-flex items-center justify-center rounded-2xl border px-4 text-[13px] font-bold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                    isDark ? "border-white/15 text-slate-200 hover:bg-white/5" : "border-[#ECD9BA] text-[#1D2C4A] hover:bg-[#FAF2DF]"
+                  }`}
+                >
+                  Sign in
+                </Link>
+              </div>
+            </article>
+          ) : (
+          /* Card 2: Real level progress and the real closest-to-unlocking
+              achievement. */
           <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
             isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
           }`}>
@@ -261,6 +308,7 @@ export function PlayerJourneyDashboard({
               )}
             </div>
           </article>
+          )}
 
           {/* Card 3: Invite Friends — real WhatsApp share action */}
           <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors ${

@@ -3,6 +3,7 @@ import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import { apiJson, peekPlayerCredential } from "../lib/playerIdentity";
 import { useAuthStore } from "../store/authStore";
 import { useLevelUpStore } from "../store/levelUpStore";
+import { useXpGainStore } from "../store/xpGainStore";
 import { useRoomStore } from "../store/roomStore";
 
 /**
@@ -25,15 +26,25 @@ const AFTER_MATCH_DELAYS_MS = [3_000, 12_000] as const;
 
 /** Level last seen per player, so signing in as someone else starts a fresh baseline instead of a false rise. */
 const baselines = new Map<string, number>();
+/** XP last seen per player, for the "XP earned this match" card. */
+const xpBaselines = new Map<string, number>();
 let inFlight = false;
 
 /** Test seam. */
 export function resetLevelUpBaselines(): void {
   baselines.clear();
+  xpBaselines.clear();
   inFlight = false;
 }
 
-export async function checkForLevelUp(): Promise<void> {
+/**
+ * Reads the profile and shows the level-up moment if the level rose.
+ *
+ * `afterMatch` is true for the reads made just after a match finishes. Only those may show the "XP earned
+ * this match" card, so XP that arrives while someone is simply browsing never pops a card up. A level-up
+ * has its own, bigger moment, so when the level rose the plain card is not shown on top of it.
+ */
+export async function checkForLevelUp(afterMatch = false): Promise<void> {
   if (inFlight) return;
   const credential = peekPlayerCredential();
   if (!credential) return;
@@ -44,9 +55,16 @@ export async function checkForLevelUp(): Promise<void> {
     if (!profile || !Number.isFinite(profile.level)) return;
 
     const previous = baselines.get(credential.playerId);
+    const previousXp = xpBaselines.get(credential.playerId);
+    const xp = Number.isFinite(profile.experiencePoints) ? profile.experiencePoints : undefined;
     baselines.set(credential.playerId, profile.level);
-    if (previous !== undefined && profile.level > previous) {
+    if (xp !== undefined) xpBaselines.set(credential.playerId, xp);
+
+    const leveledUp = previous !== undefined && profile.level > previous;
+    if (leveledUp) {
       useLevelUpStore.getState().show(previous, profile.level, profile.experiencePoints ?? 0);
+    } else if (afterMatch && previousXp !== undefined && xp !== undefined && xp > previousXp) {
+      useXpGainStore.getState().show(previousXp, xp);
     }
   } finally {
     inFlight = false;
@@ -69,7 +87,7 @@ export function useLevelUpWatcher(): void {
     const timers: number[] = [];
     const unsubscribe = useRoomStore.subscribe((state, previous) => {
       if (state.roomState?.phase === "finished" && previous.roomState?.phase !== "finished") {
-        for (const delay of AFTER_MATCH_DELAYS_MS) timers.push(window.setTimeout(() => void checkForLevelUp(), delay));
+        for (const delay of AFTER_MATCH_DELAYS_MS) timers.push(window.setTimeout(() => void checkForLevelUp(true), delay));
       }
     });
 

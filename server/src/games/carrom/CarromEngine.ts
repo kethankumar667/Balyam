@@ -9,6 +9,7 @@ import type {
 } from "@shared/types.js";
 import { CARROM_BOARD, DEFAULT_CARROM_OPTIONS } from "@shared/types.js";
 import { allAtRest, launchVelocity, radiusOf, step } from "./physics.js";
+import { chooseCarromShot } from "./carromStrategy.js";
 
 /**
  * Carrom.
@@ -38,6 +39,12 @@ const TICK_HZ = 60;
 const DT = 1 / TICK_HZ;
 /** A strike that somehow never settles must not spin forever. */
 const MAX_RESOLVE_TICKS = TICK_HZ * 12;
+
+/** How many of the best-lined-up shots a bot plays through the physics, and how far it may miss its aim by (radians). */
+const SEARCH_CANDIDATES_MEDIUM = 8;
+const SEARCH_CANDIDATES_PRO = 20;
+const AIM_NOISE_MEDIUM = 0.02;
+const AIM_NOISE_PRO = 0.004;
 
 export class CarromEngine implements GameEngine {
   readonly kind = "carrom" as const;
@@ -515,11 +522,34 @@ export class CarromEngine implements GameEngine {
   }
 
   /**
-   * Bot / timeout shot. Aims at the nearest coin of the bot's own colour with
-   * moderate power — good enough to keep a table moving when someone drops,
-   * which is what this exists for.
+   * Bot / timeout shot. Unless the bot is on "easy", it lines up the shots that would pot a coin, plays each
+   * through the real physics and takes the best (see carromStrategy.ts); when nothing pots, or on easy, it
+   * falls back to the plain shot below.
    */
   applyAutoMove(playerId: string): MoveResult {
+    const seat = this.seats.find((s) => s.playerId === playerId);
+    const level = this.opts.botDifficulty ?? "medium";
+    if (seat && this.phase === "aiming" && level !== "easy") {
+      const shot = chooseCarromShot({
+        pieces: this.pieces,
+        color: seat.color,
+        mode: this.opts.mode ?? "classic",
+        turnIndex: this.turnIndex,
+        candidates: level === "pro" ? SEARCH_CANDIDATES_PRO : SEARCH_CANDIDATES_MEDIUM,
+        aimNoise: level === "pro" ? AIM_NOISE_PRO : AIM_NOISE_MEDIUM,
+        rng: this.rng,
+      });
+      if (shot) {
+        this.strikerPos = shot.pos;
+        this.placeStriker();
+        return this.applyMove({ playerId, type: "shoot", data: { angle: shot.angle, power: shot.power } });
+      }
+    }
+    return this.simpleShot(playerId);
+  }
+
+  /** Aims at the nearest coin of the bot's own colour with moderate power. */
+  private simpleShot(playerId: string): MoveResult {
     const seat = this.seats.find((s) => s.playerId === playerId);
     let striker = this.pieces.find((p) => p.kind === "striker");
     if (!seat || !striker || this.phase !== "aiming") return { ok: false, error: "Cannot shoot" };

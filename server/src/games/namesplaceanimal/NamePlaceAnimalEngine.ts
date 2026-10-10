@@ -428,10 +428,10 @@ export class NamePlaceAnimalEngine implements GameEngine {
       const diff = this.opts.difficulty ?? "medium";
       const chance = diff === "easy" ? 0.55 : diff === "hard" ? 0.95 : 0.75;
       const botAnswers: NamePlaceAnimalAnswers = {
-        name: existing.name || (this.rng() < chance ? getBotAnswer("name", this.currentLetter) : ""),
-        place: existing.place || (this.rng() < chance ? getBotAnswer("place", this.currentLetter) : ""),
-        animal: existing.animal || (this.rng() < chance ? getBotAnswer("animal", this.currentLetter) : ""),
-        thing: existing.thing || (this.rng() < chance ? getBotAnswer("thing", this.currentLetter) : ""),
+        name: existing.name || (this.rng() < chance ? getBotAnswer("name", this.currentLetter, this.rng) : ""),
+        place: existing.place || (this.rng() < chance ? getBotAnswer("place", this.currentLetter, this.rng) : ""),
+        animal: existing.animal || (this.rng() < chance ? getBotAnswer("animal", this.currentLetter, this.rng) : ""),
+        thing: existing.thing || (this.rng() < chance ? getBotAnswer("thing", this.currentLetter, this.rng) : ""),
       };
       return this.handleSubmitAnswers(playerId, botAnswers);
     }

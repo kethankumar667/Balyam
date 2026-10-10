@@ -76,6 +76,20 @@ function peek(rooms: RoomManager, code: string): Room {
   return (rooms as unknown as { rooms: Map<string, Room> }).rooms.get(code)!;
 }
 
+/**
+ * Makes the bot in `socketId`'s room throw `choice` every round.
+ *
+ * These tests need a match with a known winner against a bot. The RPS bot now learns its opponent's habits,
+ * so a player who throws "rock" every round is countered instead of losing to a random throw, and a test can
+ * no longer rely on pinning `Math.random`. Pinning the bot's throw says what the test means.
+ */
+function pinBotThrow(rooms: RoomManager, socketId: string, choice: "rock" | "paper" | "scissors"): void {
+  const internals = rooms as unknown as { socketToRoom: Map<string, string>; rooms: Map<string, Room> };
+  const room = internals.rooms.get(internals.socketToRoom.get(socketId)!)!;
+  const engine = room.engine as unknown as { applyAutoMove: (id: string) => unknown; applyMove: (m: unknown) => unknown };
+  engine.applyAutoMove = (playerId: string) => engine.applyMove({ playerId, type: "choose", data: { choice } });
+}
+
 /** Arity-derived padding, same reasoning as avatarSharing.test.ts's hostWithAvatar — never hand-count the gap. */
 function createRoomAs(
   rooms: RoomManager,
@@ -135,6 +149,7 @@ function playRpsToCompletion(rooms: RoomManager, winnerSocket: string, loserSock
  * directly by each caller, not assumed.
  */
 function playToNaturalCompletion(rooms: RoomManager, winnerSocketId: string): void {
+  pinBotThrow(rooms, winnerSocketId, "scissors");
   const originalRandom = Math.random;
   Math.random = () => 0.8;
   try {
@@ -1484,6 +1499,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(peek(rooms, host.code).phase).toBe("playing");
 
       // Play match to completion: Guest "rock" beats bot "scissors"
+      pinBotThrow(rooms, "s_g", "scissors");
       const originalRandom = Math.random;
       Math.random = () => 0.8; // bot auto-throw is scissors
       try {

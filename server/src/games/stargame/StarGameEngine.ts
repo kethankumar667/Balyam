@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_STARGAME_OPTIONS } from "@shared/types.js";
 import { getStarTheme } from "@shared/star-themes.js";
 import { keyBetween } from "@shared/frac-index.js";
+import { chooseStarPass } from "./starGameStrategy.js";
 
 const TOKENS_PER_VALUE = 4;
 const ACTIVITY_CAP = 80;
@@ -800,20 +801,16 @@ export class StarGameEngine implements GameEngine {
       case "shuffle":
         return this.handleShuffle(playerId);
       case "pass": {
-        // Bots pick RANDOMLY among their held cards — NOT hand[length-1].
-        // A received card is always appended to the END of the recipient's
-        // hand (see handlePass's `this.hands.get(destId)!.push(card)`), so
-        // "last card in hand order" for a bot is *always* the card it just
-        // received. Blindly forwarding that card every turn turns the
-        // whole relay into a single chit orbiting the table forever while
-        // every bot's real hand sits frozen untouched — the exact "same
-        // slip every round" bug this replaces. "Last card in hand order"
-        // (below, in handlePass's own fallback) is the correct default
-        // ONLY for a human who hasn't rearranged/selected — a bot has no
-        // visual order to respect, so it needs real variety instead.
+        // A bot builds toward its biggest group and sends on its thinnest chit (see starGameStrategy.ts).
+        // It is NOT hand[length-1]: a received card is always appended to the END of the recipient's hand
+        // (see handlePass), so "last in hand order" is always the chit it was just handed, and forwarding
+        // that every turn turns the relay into one chit orbiting the table while every real hand sits
+        // frozen — the "same slip every round" bug. The strategy only sends the just-received chit when
+        // it really is the poorest one.
         const hand = this.hands.get(playerId) ?? [];
-        const pick = hand[Math.floor(this.rng() * hand.length)];
-        if (pick) this.handleSelectCard(playerId, pick.id);
+        const justReceivedId = this.lastPass?.toId === playerId ? this.lastPass.cardId : null;
+        const pickId = chooseStarPass({ hand, justReceivedId, random: this.rng });
+        if (pickId) this.handleSelectCard(playerId, pickId);
         return this.handlePass(playerId);
       }
       case "star":

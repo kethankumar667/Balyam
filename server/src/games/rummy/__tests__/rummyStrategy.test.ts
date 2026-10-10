@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import type { Card, Player, Rank, Suit } from "@shared/types.js";
 import { RummyEngine } from "../RummyEngine.js";
 import { buildDoubleDeck } from "../deck.js";
-import { findValidDeclaration, pickBestDiscard, shouldDrawFromOpen } from "../botArrange.js";
+import { findValidDeclaration } from "../botArrange.js";
 import { validateDeclare } from "../declare.js";
 import { bestArrangementForScoring } from "../score.js";
 import { chooseDiscard, chooseDraw, findDeclaration, handCost } from "../rummyStrategy.js";
@@ -145,7 +145,71 @@ interface RummyInternals {
   };
 }
 
-/** The bot as it was: the partner-count discard, the any-adjacent-card draw and the greedy declaration. Kept here as the opponent to beat. */
+/* ── The old brain, kept here as the opponent to beat ─────────────────
+ * Per-card "retain value" from pair partners, a discard that drops the lowest, and a draw rule that takes the
+ * open card whenever it sits next to anything in the hand. These used to live in botArrange.ts; nothing in the
+ * game uses them now. */
+
+const RANK_ORDER: Rank[] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"];
+const RANK_INDEX: Record<Rank, number> = Object.fromEntries(RANK_ORDER.map((r, i) => [r, i] as const)) as Record<Rank, number>;
+const RANK_POINTS: Record<Rank, number> = { A: 10, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, T: 10, J: 10, Q: 10, K: 10 };
+
+function legacyRetainValues(hand: Card[], wildJokerRank: Rank): Map<string, number> {
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  const scores = new Map<string, number>();
+  for (const c of hand) {
+    if (isWild(c)) {
+      scores.set(c.id, 1000);
+      continue;
+    }
+    let s = 0;
+    for (const other of hand) {
+      if (other.id === c.id || isWild(other)) continue;
+      if (other.suit === c.suit) {
+        const diff = Math.abs(RANK_INDEX[c.rank] - RANK_INDEX[other.rank]);
+        if (diff === 1) s += 30;
+        else if (diff === 2) s += 12;
+      } else if (other.rank === c.rank) {
+        s += 25;
+      }
+    }
+    scores.set(c.id, s - RANK_POINTS[c.rank] * 0.5);
+  }
+  return scores;
+}
+
+function pickBestDiscard(hand: Card[], wildJokerRank: Rank): string {
+  const scores = legacyRetainValues(hand, wildJokerRank);
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  let bestId: string | null = null;
+  let bestScore = Infinity;
+  let bestPts = -1;
+  for (const c of hand) {
+    if (isWild(c)) continue;
+    const s = scores.get(c.id)!;
+    const pts = RANK_POINTS[c.rank];
+    if (s < bestScore || (s === bestScore && pts > bestPts)) {
+      bestScore = s;
+      bestPts = pts;
+      bestId = c.id;
+    }
+  }
+  return bestId ?? hand[hand.length - 1].id;
+}
+
+function shouldDrawFromOpen(hand: Card[], openTop: Card | null, wildJokerRank: Rank): boolean {
+  if (!openTop || openTop.isPrintedJoker) return false;
+  if (openTop.rank === wildJokerRank) return true;
+  const isWild = (c: Card) => c.isPrintedJoker || c.rank === wildJokerRank;
+  for (const c of hand) {
+    if (isWild(c)) continue;
+    if (c.rank === openTop.rank && c.suit !== openTop.suit) return true;
+    if (c.suit === openTop.suit && Math.abs(RANK_INDEX[c.rank] - RANK_INDEX[openTop.rank]) === 1) return true;
+  }
+  return false;
+}
+
+/** The bot as it was: the partner-count discard, the any-adjacent-card draw and the greedy declaration. */
 function legacyMove(engine: RummyEngine, id: string): void {
   const s = (engine as unknown as RummyInternals).s;
   const hand = s.hands.get(id)!;

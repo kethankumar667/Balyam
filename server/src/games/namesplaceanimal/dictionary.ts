@@ -169,15 +169,22 @@ export function validateAnswer(
   return /^[A-Za-z\s'-]{2,30}$/.test(trimmed);
 }
 
-/** Get a random valid suggestion for bot auto-moves. */
+/**
+ * Get a random valid suggestion for bot auto-moves.
+ *
+ * Only entries the game itself would accept are offered, so a bot can never fill a box with an answer that
+ * scores nothing (a few catalogue entries contain characters `validateAnswer` rejects). `random` defaults to
+ * `Math.random`; the engine passes its own so a seeded game picks the same answers every time.
+ */
 export function getBotAnswer(
   category: NamePlaceAnimalCategory,
   letter: string,
+  random: () => number = Math.random,
 ): string {
   const targetLetter = letter.toUpperCase();
-  const list = DICTIONARY[targetLetter]?.[category];
+  const list = DICTIONARY[targetLetter]?.[category]?.filter((entry) => validateAnswer(category, targetLetter, entry));
   if (list && list.length > 0) {
-    return list[Math.floor(Math.random() * list.length)];
+    return list[Math.floor(random() * list.length)];
   }
   return `${targetLetter}${category}`;
 }

@@ -11,6 +11,7 @@ import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import { useGuestCarryOver } from "./lib/guestCarryOver";
 import { useLevelUpWatcher } from "./hooks/useLevelUpWatcher";
 import { LevelUpAscension } from "./components/progression/LevelUpAscension";
+import { XpGainToast } from "./components/progression/XpGainToast";
 import { CarryOverArrivalDialog } from "./components/carryover/CarryOverArrivalDialog";
 import { CoinJoyOverlay } from "./components/mandali/CoinJoyOverlay";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
@@ -352,6 +353,7 @@ export default function App({ components = {} }: AppProps) {
           <CarryOverArrivalDialog />
           <CoinJoyOverlay />
           <LevelUpAscension />
+          <XpGainToast />
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />

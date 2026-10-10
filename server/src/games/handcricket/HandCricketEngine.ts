@@ -29,6 +29,7 @@ import {
 } from "@shared/hc-rosters.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
 import { milestoneCrossed } from "./milestones.js";
+import { chooseHandCricketPick } from "./handCricketStrategy.js";
 import { GAME_REACTIONS, pickReactionEmoji } from "@shared/reactions.js";
 
 const VALID_PICKS = [1, 2, 3, 4, 5, 6];
@@ -1273,116 +1274,38 @@ export class HandCricketEngine implements GameEngine {
   }
 
   /**
-   * Smart pick selection:
-   *   • Look at the opponent's last few picks in this innings.
-   *   • Bowler tries to MATCH the batter's most-frequent recent pick
-   *     (a match = wicket). Batter tries to AVOID the bowler's most-frequent
-   *     recent pick (a match = out).
-   *   • Layer match-context bias on top:
-   *       - Batter chasing a tight target → lean toward 4/5/6.
-   *       - Bowler defending a small total → bias picks toward common boundary
-   *         values to convert big shots into wickets.
-   *   • Pick weights are mixed with a uniform floor so the bot stays
-   *     unpredictable — pure pattern-matching is easy to exploit.
+   * The number the bot shows on this ball. The judgement lives in `handCricketStrategy.ts` (a model of the
+   * opponent's habits, valued by what each number is worth); this describes the innings to it.
+   *
+   * Only COMPLETED balls are described: the opponent's pick for the ball in play is never read.
    */
   private chooseSmartPick(
-    playerId: string,
+    _playerId: string,
     innings: HcInnings,
     isBowler: boolean,
     allowed: number[],
   ): number {
-    const opponentId = isBowler ? innings.battingPlayerId : innings.bowlingPlayerId;
-    // Last up to 6 picks from this opponent in the current innings.
-    const recent: number[] = [];
-    for (let i = innings.history.length - 1; i >= 0 && recent.length < 6; i--) {
-      const ball = innings.history[i];
-      const pick = isBowler ? ball.batterPick : ball.bowlerPick;
-      if (Number.isInteger(pick)) recent.push(pick);
-      void opponentId; // playerId disambiguation; history is already innings-scoped.
-    }
-
-    const freq = new Map<number, number>();
-    for (const v of recent) freq.set(v, (freq.get(v) ?? 0) + 1);
-
-    // Base weights: floor of 1 so every allowed pick stays reachable.
-    const weights = new Map<number, number>();
-    for (const v of allowed) weights.set(v, 1);
-
-    if (isBowler) {
-      // Match the batter — heavier weight where the batter is most predictable.
-      for (const [v, c] of freq) {
-        if (!allowed.includes(v)) continue;
-        weights.set(v, (weights.get(v) ?? 1) + c * 1.4);
-      }
-    } else {
-      // Avoid the bowler — lighter weight where the bowler keeps picking.
-      // We don't drop to zero; just reduce. Then add weight to picks the
-      // bowler has been cold on.
-      for (const [v, c] of freq) {
-        if (!allowed.includes(v)) continue;
-        weights.set(v, Math.max(0.2, (weights.get(v) ?? 1) - c * 0.5));
-      }
-      for (const v of allowed) {
-        const c = freq.get(v) ?? 0;
-        if (c === 0) weights.set(v, (weights.get(v) ?? 1) + 0.8);
-      }
-      // Powerplay Mystery Yorker awareness: if bowler still has a Yorker available,
-      // boost defensive weights (1, 2, 3) to survive toe-crushing yorkers.
-      const currentOver = Math.floor(innings.balls / 6) + 1;
-      const isPowerplay = currentOver <= innings.powerplayOvers;
-      if (isPowerplay && !innings.yorkerUsedByOver[currentOver]) {
-        if (allowed.includes(1)) weights.set(1, (weights.get(1) ?? 1) * 1.5);
-        if (allowed.includes(2)) weights.set(2, (weights.get(2) ?? 1) * 1.5);
-        if (allowed.includes(3)) weights.set(3, (weights.get(3) ?? 1) * 1.4);
+    const opponentPicks: number[] = [];
+    const ownPicks: number[] = [];
+    for (const ball of innings.history) {
+      const theirs = isBowler ? ball.batterPick : ball.bowlerPick;
+      const mine = isBowler ? ball.bowlerPick : ball.batterPick;
+      if (Number.isInteger(theirs) && Number.isInteger(mine)) {
+        opponentPicks.push(theirs);
+        ownPicks.push(mine);
       }
     }
 
-    // Match-context bias.
-    const target =
-      this.state.innings1 && innings.number === 2
-        ? this.state.innings1.runs + 1
-        : null;
-    const ballsLeft = innings.overs * 6 - innings.balls;
-    const runsNeeded = target != null ? target - innings.runs : null;
-    const requiredRate = runsNeeded != null && ballsLeft > 0 ? runsNeeded / ballsLeft : null;
-    if (!isBowler) {
-      // Batting bias: more aggressive when run-rate demands it.
-      if (requiredRate != null) {
-        if (requiredRate >= 1.5) {
-          weights.set(6, (weights.get(6) ?? 1) * 1.6);
-          weights.set(5, (weights.get(5) ?? 1) * 1.4);
-          weights.set(4, (weights.get(4) ?? 1) * 1.3);
-        } else if (requiredRate >= 1.0) {
-          weights.set(4, (weights.get(4) ?? 1) * 1.25);
-          weights.set(6, (weights.get(6) ?? 1) * 1.2);
-        }
-      }
-    } else {
-      // Bowling bias when defending a small total: tilt toward boundary values
-      // so wickets are more likely when the batter swings for the fence.
-      if (
-        innings.number === 2 &&
-        target != null &&
-        target - innings.runs <= 30 &&
-        ballsLeft > 0
-      ) {
-        weights.set(6, (weights.get(6) ?? 1) * 1.35);
-        weights.set(4, (weights.get(4) ?? 1) * 1.2);
-      }
-    }
-
-    // Weighted sample.
-    let total = 0;
-    for (const v of allowed) total += weights.get(v) ?? 0;
-    if (total <= 0) {
-      return allowed[Math.floor(Math.random() * allowed.length)];
-    }
-    let r = Math.random() * total;
-    for (const v of allowed) {
-      r -= weights.get(v) ?? 0;
-      if (r <= 0) return v;
-    }
-    return allowed[allowed.length - 1];
+    const target = this.state.innings1 && innings.number === 2 ? this.state.innings1.runs + 1 : null;
+    return chooseHandCricketPick({
+      isBowler,
+      allowed,
+      opponentPicks,
+      ownPicks,
+      wicketsLeft: Math.max(0, 10 - innings.wickets),
+      ballsLeft: innings.overs * 6 - innings.balls,
+      runsNeeded: target != null ? target - innings.runs : null,
+    });
   }
 
   /**
