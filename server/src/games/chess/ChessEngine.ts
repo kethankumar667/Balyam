@@ -10,6 +10,7 @@ import type {
   Player,
 } from "@shared/types.js";
 import { DEFAULT_CHESS_OPTIONS } from "@shared/types.js";
+import { chooseChessMove } from "./chessSearch.js";
 
 export class ChessEngine implements GameEngine {
   readonly kind = "chess" as const;
@@ -204,20 +205,10 @@ export class ChessEngine implements GameEngine {
   applyAutoMove(playerId: string): MoveResult {
     if (this.isFinished) return { ok: false, error: "Finished" };
 
-    const legalMoves = this.chess.moves({ verbose: true });
-    if (legalMoves.length === 0) return { ok: false, error: "No legal moves" };
-
-    const diff = this.opts.botDifficulty ?? "medium";
-
-    let chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-
-    if (diff === "medium" || diff === "master") {
-      // Prioritize captures and checks
-      const priorityMoves = legalMoves.filter((m) => m.captured || m.san.includes("+") || m.san.includes("#"));
-      if (priorityMoves.length > 0) {
-        chosenMove = priorityMoves[Math.floor(Math.random() * priorityMoves.length)];
-      }
-    }
+    // Look ahead, within a strict time budget (see `chessSearch.ts`). "master" used to play exactly like
+    // "medium", and both were random moves with a taste for captures.
+    const chosenMove = chooseChessMove(this.chess, this.opts.botDifficulty ?? "medium");
+    if (!chosenMove) return { ok: false, error: "No legal moves" };
 
     return this.applyMove({
       playerId,

@@ -9,6 +9,7 @@ import type {
 } from "@shared/types.js";
 import { DEFAULT_TICTACTOE_OPTIONS, sanitizeTicTacToeOptions } from "@shared/types.js";
 import { orderForAlternatingFirstMove } from "../seating.js";
+import { chooseTicTacToeCell } from "./tictactoeSearch.js";
 
 /**
  * The client plays a start ceremony (countdown + reveal) before the board is
@@ -297,29 +298,17 @@ export class TicTacToeEngine implements GameEngine {
     }
 
     const mark = this.playerMarks[playerId];
-    const opponentMark: TicTacToeMark = mark === "X" ? "O" : "X";
 
-    // 1. Check if we have an immediate winning move
-    const winningMove = this.findWinningMove(mark);
-    if (winningMove !== null) {
-      return this.applyMove({ playerId, type: "place", data: { cellIndex: winningMove } });
-    }
-
-    // 2. Check if opponent has an immediate winning move and block it
-    const blockingMove = this.findWinningMove(opponentMark);
-    if (blockingMove !== null) {
-      return this.applyMove({ playerId, type: "place", data: { cellIndex: blockingMove } });
-    }
-
-    // 3. Positional heuristics (Center > Corners > Edges)
-    const priority = [4, 0, 2, 6, 8, 1, 3, 5, 7];
-    for (const cell of priority) {
-      if (this.grid[cell] === null) {
-        return this.applyMove({ playerId, type: "place", data: { cellIndex: cell } });
-      }
-    }
-
-    return { ok: false, error: "No legal moves remaining" };
+    // Plan ahead rather than only "win now, block now" (see `tictactoeSearch.ts`): perfect play in classic, and in
+    // quantum a search that follows the vanishing marks exactly as `applyMove` does.
+    const cell = chooseTicTacToeCell({
+      cells: this.grid.map((c) => c?.mark ?? null),
+      queues: { X: this.pieceQueues.X, O: this.pieceQueues.O },
+      mode: this.options.mode,
+      mark,
+    });
+    if (cell === null) return { ok: false, error: "No legal moves remaining" };
+    return this.applyMove({ playerId, type: "place", data: { cellIndex: cell } });
   }
 
   private findWinningMove(targetMark: TicTacToeMark): number | null {

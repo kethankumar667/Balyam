@@ -10,6 +10,7 @@ import type {
   UnoRank,
 } from "@shared/types.js";
 import { DEFAULT_UNO_OPTIONS } from "@shared/types.js";
+import { chooseUnoCard } from "./unoStrategy.js";
 
 const STARTING_HAND_SIZE = 7;
 const DRAW_PILE_SHUFFLE_THRESHOLD = 2; // Reshuffle when < this many cards left
@@ -1164,23 +1165,22 @@ export class UnoEngine implements GameEngine {
 
     const topCard = this.state.discard[this.state.discard.length - 1];
 
-    // Find first valid card
-    const validCard = hand.find((card) =>
-      this.isPlayableNow(card, topCard, this.state.currentColor)
-    );
+    // Play the best legal card, not merely the first one (see `unoStrategy.ts`). It sees what a player at
+    // the table sees: its own hand, the top card and how many cards the next player is holding.
+    const playable = hand.filter((card) => this.isPlayableNow(card, topCard, this.state.currentColor));
+    const nextId = this.state.playerOrder[this.stepIndex(this.state.turnIndex, 1)];
+    const choice = chooseUnoCard({
+      hand,
+      playable,
+      currentColor: this.state.currentColor,
+      nextOpponentHandSize: this.state.hands[nextId]?.length ?? 7,
+    });
 
-    if (validCard) {
-      // Play the first valid card. For Wild cards, pick a color via the
-      // shared majority-color heuristic (also used by Force Play).
-      const chosenColor =
-        validCard.rank === "Wild" || validCard.rank === "Wild+4"
-          ? this.pickColorForHand(hand)
-          : undefined;
-
+    if (choice) {
       return this.applyMove({
         playerId,
         type: "play",
-        data: { cardId: validCard.id, color: chosenColor },
+        data: { cardId: choice.card.id, color: choice.color },
       });
     }
 

@@ -7,6 +7,7 @@ import type {
 } from "@shared/types.js";
 import { DEFAULT_DOTSBOXES_OPTIONS } from "@shared/types.js";
 import type { GameEngine, MoveContext, MoveResult } from "../GameEngine.js";
+import { chooseDotsBoxesLine } from "./dotsBoxesStrategy.js";
 
 /**
  * Dots & Boxes — Rough Notebook Edition (Phase 2).
@@ -262,17 +263,17 @@ export class DotsBoxesEngine implements GameEngine {
       return { ok: true, isOver: true };
     }
 
-    // (1) Greedy capture
-    for (const line of all) {
-      const closes = this.countClosuresFor(line);
-      if (closes >= 1) {
-        return this.applyMove({ playerId, type: "draw", data: line });
-      }
+    // Capture, then safe lines, then the cheapest sacrifice; the endgame is solved exactly (see dotsBoxesStrategy).
+    const pick = chooseDotsBoxesLine({
+      size: this.s.options.boardSize,
+      h: this.s.hGrid,
+      v: this.s.vGrid,
+      playerCount: this.s.playerOrder.length,
+    });
+    if (!pick) {
+      this.finalize();
+      return { ok: true, isOver: true };
     }
-    // (2) Safe moves
-    const safe = all.filter((line) => !this.givesOpponentABox(line));
-    const pickFrom = safe.length > 0 ? safe : all;
-    const pick = pickFrom[Math.floor(Math.random() * pickFrom.length)];
     return this.applyMove({ playerId, type: "draw", data: pick });
   }
 
