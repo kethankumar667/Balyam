@@ -14,6 +14,7 @@ import Toast from "./Toast";
 import Confetti from "./Confetti";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import CursorLayer from "./CursorLayer";
+import SeatProfileButton from "../../components/room/SeatProfileButton";
 import EndGameCard from "./EndGameCard";
 import EmojiRain from "./EmojiRain";
 import WinnerCelebration from "./WinnerCelebration";
@@ -323,6 +324,8 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
  *  (finishedCount). The active seat gets a colored glow. */
 type LudoSeatMeta = {
   pid: string;
+  /** The full seat, so its profile card can open from the card. Not optional, for the same predicate reason as `avatar`. */
+  player: Player | undefined;
   name: string;
   /** The seat's chosen avatar filename, from server state. Not optional for
    *  the same reason as `autoReason` below — an optional field here breaks
@@ -376,6 +379,7 @@ function orderedSeats(state: LudoState, players: Player[] = [], selfId?: string 
       const p = byId.get(pid);
       return {
         pid,
+        player: p,
         color,
         name: p?.name ?? "Player",
         avatar: p?.avatar,
@@ -517,6 +521,15 @@ function LudoPlayerCard({
             </div>
           </div>
 
+          {seat.player && (
+            <SeatProfileButton
+              player={seat.player}
+              isSelf={isSelf}
+              compact
+              iconSize={13}
+              className="absolute -left-2.5 -top-2.5 z-20 rounded-full bg-white/90 text-stone-600 shadow-sm hover:text-[#EA5A1F] dark:bg-slate-800/90 dark:text-slate-200"
+            />
+          )}
           {/* Online status indicator */}
           <span
             className={`absolute -bottom-0.5 right-1/4 w-2 h-2 rounded-full z-10 ${
@@ -649,6 +662,15 @@ function LudoPlayerCard({
             </div>
           </div>
 
+          {seat.player && (
+            <SeatProfileButton
+              player={seat.player}
+              isSelf={isSelf}
+              compact
+              iconSize={13}
+              className="absolute -left-2.5 -top-2.5 z-20 rounded-full bg-white/90 text-stone-600 shadow-sm hover:text-[#EA5A1F] dark:bg-slate-800/90 dark:text-slate-200"
+            />
+          )}
           {/* Presence Status Dot */}
           <span
             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full z-10 ${

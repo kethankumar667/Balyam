@@ -82,7 +82,7 @@ function makeDrops(): Drop[] {
  * blocked, and removes itself after `COIN_RAIN_MS`. With reduced motion it renders nothing: the
  * dialog already says what happened in words.
  */
-export function CoinRain({ onDone }: { onDone?: () => void }) {
+export function CoinRain({ onDone, zIndex = 80 }: { onDone?: () => void; /** Above the dialog it rains over; 80 clears the app's standard dialogs. */ zIndex?: number }) {
   const reduceMotion = useReducedMotion();
   const drops = useMemo(makeDrops, []);
 
@@ -98,7 +98,7 @@ export function CoinRain({ onDone }: { onDone?: () => void }) {
   if (reduceMotion) return null;
 
   return createPortal(
-    <div aria-hidden="true" data-testid="coin-rain" className="pointer-events-none fixed inset-0 z-[80] overflow-hidden">
+    <div aria-hidden="true" data-testid="coin-rain" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex }}>
       <style>{`
         @keyframes coin-rain-fall {
           0% { transform: translate3d(0, -14vh, 0) rotate(0deg); opacity: 0; }

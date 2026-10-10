@@ -1,3 +1,5 @@
+import type { Player } from "@shared/types";
+import SeatProfileButton from "../../components/room/SeatProfileButton";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { UnoCardBack } from "./uno-shared";
@@ -703,6 +705,8 @@ export interface StadiumOpponentSeatProps {
   canCatch?: boolean;
   onCatch?: () => void;
   onReact?: (emoji: string) => void;
+  /** Opens this seat's profile card from a small corner button; the seat's own tap stays the emoji wheel. */
+  profilePlayer?: Player;
 }
 
 export function StadiumOpponentSeat({
@@ -719,6 +723,7 @@ export function StadiumOpponentSeat({
   canCatch = false,
   onCatch,
   onReact,
+  profilePlayer,
 }: StadiumOpponentSeatProps) {
   const isSpotlight = variant === "spotlight";
   const tile = isSpotlight ? 68 : 58;
@@ -795,6 +800,14 @@ export function StadiumOpponentSeat({
           onClick={() => onReact && setShowWheel((v) => !v)}
           title={`Click to throw an item at ${name}`}
         >
+          {profilePlayer && (
+            <SeatProfileButton
+              player={profilePlayer}
+              compact
+              iconSize={14}
+              className="absolute -left-2 -top-2 z-30 rounded-full bg-black/70 text-amber-200 hover:text-amber-100 shadow-md"
+            />
+          )}
           {/* Spotlight aura */}
           {isSpotlight && (
             <span

@@ -440,6 +440,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                         dense={dense}
                         canCatch={m.catchableOpponents.includes(id)}
                         onCatch={() => m.catchUno(id)}
+                        profilePlayer={player}
                         onReact={(emoji) => getSocket().emit("room:reaction", { emoji, targetPlayerId: id })}
                       />
                     </animated.div>

@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
 import BotResultNote from "./room/BotResultNote";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
-import { MatchXPBreakdownCard, MiniclipLevelUpModal } from "./progression";
-import { calculateMiniclipMatchXP } from "@shared/progression/MiniclipProgression";
 
 /**
  * Full-viewport end-of-session screen — game-agnostic.
@@ -49,20 +47,6 @@ export default function GameOverScreen({
   const total = AUTO_LEAVE_MS / 1000; // 100
 
   const selfPlayer = players.find((p) => p.id === selfId);
-  const isWinner = Boolean(winnerName && selfPlayer && selfPlayer.name === winnerName);
-  const isDraw = !winnerName;
-
-  const breakdown = useMemo(() => {
-    return calculateMiniclipMatchXP({
-      isWinner,
-      isDraw,
-      durationMs: 60000,
-      previousXP: 240,
-    });
-  }, [isWinner, isDraw]);
-
-  const [showLevelUp, setShowLevelUp] = useState(breakdown.leveledUp);
-
   useEffect(() => {
     fireFireworksBurst({ intensity: 0.9 });
     const id = window.setInterval(() => {
@@ -114,12 +98,8 @@ export default function GameOverScreen({
           className="font-display font-black uppercase tracking-wide"
           style={{
             fontSize: "clamp(34px, 6.5vw, 80px)",
-            background:
-              "linear-gradient(180deg, #FFF7C2 0%, #E4B128 45%, #92660A 100%)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-            filter: "drop-shadow(0 4px 20px rgba(255,143,0,0.55))",
+            color: "#FFE08A",
+            textShadow: "0 2px 0 #92660A, 0 6px 24px rgba(255,143,0,0.55)",
             lineHeight: 1.05,
           }}
         >
@@ -228,13 +208,6 @@ export default function GameOverScreen({
         </p>
       </div>
 
-      {/* Miniclip-Style Match XP Progression Card */}
-      <MatchXPBreakdownCard
-        breakdown={breakdown}
-        onOpenLevelUpCelebration={() => setShowLevelUp(true)}
-        className="w-full max-w-sm z-10"
-      />
-
       {/* Primary CTA — Leave Room */}
       <LeaveButton onLeave={onLeave} urgent={secondsLeft <= 15} />
 
@@ -255,13 +228,6 @@ export default function GameOverScreen({
         <RematchPanel players={players} selfId={selfId} />
       </div>
 
-      {/* Level-Up Celebration Modal */}
-      <MiniclipLevelUpModal
-        isOpen={showLevelUp}
-        level={breakdown.newLevel}
-        onClose={() => setShowLevelUp(false)}
-        customRewards={breakdown.rewardsUnlocked}
-      />
     </div>
   );
 }

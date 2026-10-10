@@ -473,6 +473,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                         variant={variant}
                         canCatch={m.catchableOpponents.includes(id)}
                         onCatch={() => m.catchUno(id)}
+                        profilePlayer={player}
                         onReact={(emoji) => {
                           getSocket().emit("room:reaction", { emoji, targetPlayerId: id });
                         }}

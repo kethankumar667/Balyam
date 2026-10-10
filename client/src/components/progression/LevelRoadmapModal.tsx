@@ -17,6 +17,7 @@ import { useAuthStore } from "../../store/authStore";
 import { MiniclipLevelBadge } from "./MiniclipLevelBadge";
 import { RoadmapLootChest } from "./RoadmapLootChest";
 import { PendingRewards } from "./PendingRewards";
+import { CoinRain } from "../faucet/CoinRain";
 import { formatArrival } from "./formatArrival";
 import {
   LEVEL_MILESTONES,
@@ -62,6 +63,8 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
   const [claimedLevels, setClaimedLevels] = useState<Set<number>>(new Set());
   const [claimingLevel, setClaimingLevel] = useState<number | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  /** Coins pour only for a reward that was paid at once; a held one says when it arrives instead. */
+  const [raining, setRaining] = useState(false);
   /** level -> when its coins arrive, for rewards claimed this session that are still vesting. */
   const [pendingUntil, setPendingUntil] = useState<Record<number, number>>({});
   // What the server says is still vesting, so a reopened modal shows the same arrival
@@ -104,6 +107,8 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
         if (body?.payout?.status === "PENDING" && typeof body.payout.vestingUntil === "number") {
           const arrivesAt = body.payout.vestingUntil;
           setPendingUntil((prev) => ({ ...prev, [level]: arrivesAt }));
+        } else if (body?.payout?.status === "RELEASED") {
+          setRaining(true);
         }
         setRewardsRefresh((n) => n + 1);
         if (onClaimReward) {
@@ -125,6 +130,7 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
 
   return (
     <AnimatePresence>
+      {raining && <CoinRain zIndex={100} onDone={() => setRaining(false)} />}
       {isOpen && (
         <div
           ref={containerRef}
