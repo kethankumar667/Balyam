@@ -3,6 +3,7 @@ import type { CoinColor, Player, SnlEvent, SnlState } from "@shared/types";
 import { COIN_COLOR_HEX } from "../../components/CoinColorPicker";
 import { Dice } from "../ludo/Dice";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatProfileButton from "../../components/room/SeatProfileButton";
 import { SnakeBiteOverlay, LadderClimbOverlay } from "./SnlAnimations";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import { useRoomStore } from "../../store/roomStore";
@@ -919,6 +920,7 @@ export function SnlPlayerRail({
                 )}
               </div>
             </div>
+            {p && <SeatProfileButton player={p} isSelf={id === selfId} compact className="text-slate-300 hover:text-white" />}
           </div>
         );
       })}

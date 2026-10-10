@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
 import RematchPanel from "./RematchPanel";
+import BotResultNote from "./room/BotResultNote";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
 import { MatchXPBreakdownCard, MiniclipLevelUpModal } from "./progression";
 import { calculateMiniclipMatchXP } from "@shared/progression/MiniclipProgression";
@@ -136,6 +137,7 @@ export default function GameOverScreen({
 
       {/* Winner badge — orange-amber gradient with dark ink */}
       {winnerName ? (
+        <>
         <div
           className="flex items-center gap-2.5 px-5 py-2.5 rounded-full z-10"
           style={{
@@ -151,6 +153,8 @@ export default function GameOverScreen({
             {winnerName} won!
           </span>
         </div>
+        <BotResultNote player={players.find((p) => p.name === winnerName)} className="z-10 max-w-xs justify-center text-center" />
+        </>
       ) : (
         <div
           className="text-sm font-semibold z-10"

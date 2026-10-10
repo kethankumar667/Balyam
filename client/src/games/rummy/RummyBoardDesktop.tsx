@@ -41,8 +41,7 @@ import VoicePanel from "../../components/VoicePanel";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyPureSequenceBurst, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import PlayerList from "../../components/PlayerList";
-import BotProfileCard from "../../components/room/BotProfileCard";
-import { Info } from "lucide-react";
+import SeatProfileButton from "../../components/room/SeatProfileButton";
 import { enterFullscreen, exitFullscreen, isFullscreenActive } from "../../lib/fullscreen";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
@@ -220,8 +219,6 @@ export default function RummyBoardDesktop({
   const [showQrModal, setShowQrModal] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  /** The bot whose profile card is open, opened from the ⓘ on its seat. */
-  const [botProfileFor, setBotProfileFor] = useState<Player | null>(null);
   const initialized = useRef(false);
 
   /* ─── Reconcile hand → layout: ALL cards sit inside meld groups ───
@@ -1062,14 +1059,10 @@ export default function RummyBoardDesktop({
                 onTarget={() => reactions.openTarget(id)}
                 isTargetActive={reactions.activeTargetId === id}
                 onCloseTarget={reactions.closeTarget}
-                onOpenProfile={(() => {
-                  const seat = players.find((p) => p.id === id);
-                  return seat?.isBot && seat.botProfile ? () => setBotProfileFor(seat) : undefined;
-                })()}
+                profilePlayer={players.find((p) => p.id === id)}
               />
             ))}
           </div>
-          {botProfileFor && <BotProfileCard player={botProfileFor} onClose={() => setBotProfileFor(null)} />}
 
           {/* ── 2 · the lit centre ──
               The pool of light IS the container: no dashed frame around the
@@ -1990,10 +1983,10 @@ function SeatCard({
   onTarget,
   isTargetActive,
   onCloseTarget,
-  onOpenProfile,
+  profilePlayer,
 }: {
-  /** Set only for a bot with a profile; the seat's own tap is a reaction, so this is a separate button. */
-  onOpenProfile?: () => void;
+  /** The seat's player, for the ⓘ that opens their profile. The seat's own tap is a reaction, so this is a separate button. */
+  profilePlayer?: Player;
   letter: string;
   name: string;
   avatar?: string;
@@ -2100,19 +2093,13 @@ function SeatCard({
             {sub}
           </span>
         </span>
-        {onOpenProfile && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenProfile();
-            }}
-            className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-amber-200/80 hover:text-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            title={`View ${name}'s profile`}
-            aria-label={`View ${name}'s profile`}
-          >
-            <Info size={16} aria-hidden />
-          </button>
+        {profilePlayer && (
+          <SeatProfileButton
+            player={profilePlayer}
+            isSelf={isSelf}
+            compact
+            className="text-amber-200/80 hover:text-amber-100"
+          />
         )}
         <span
           className={`rm-dot${connected ? "" : " rm-dot--away"}`}

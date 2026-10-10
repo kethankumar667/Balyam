@@ -14,6 +14,7 @@ import { PlayYourWaySection } from "./home/PlayYourWaySection";
 import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
+import { FaucetClaimRow } from "../components/faucet/FaucetClaimRow";
 
 /**
  * BHALYAM home — the app's landing surface.
@@ -64,6 +65,8 @@ export default function BhalyamHome() {
         <FallingPetals />
         <div className="relative z-10 mx-auto w-full max-w-[1100px] px-3 sm:px-6 py-4 pb-12 flex-1">
           {tour.showPrompt && <WelcomeTourPrompt onStart={tour.start} onDismiss={tour.dismissPrompt} />}
+          {/* The free-coins claim, where a phone player lands. The header has no room for its own chip on a phone, and the wallet drawer is a tap away from a player who does not know to look. Desktop has the header chip. Members only: it renders nothing for a guest. */}
+          <FaucetClaimRow className="mb-4 sm:hidden" />
           <Hero
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}

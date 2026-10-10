@@ -415,6 +415,7 @@ export function ClaimButton({
 import { useState } from "react";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import BotResultNote from "../../components/room/BotResultNote";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
@@ -462,6 +463,7 @@ export function BingoResultOverlay({
         <h2 className="text-3xl font-black text-bhalyam-wood-dark mb-1">
           {iWon ? "YOU WON BINGO!" : `${winnerName} WON BINGO!`}
         </h2>
+        <BotResultNote player={players.find((p) => p.id === winner?.playerId)} className="justify-center text-bhalyam-wood-dark mb-2" />
         <p className={`text-sm font-medium text-bhalyam-wood-dark/70 ${winnerPrize ? "mb-1" : "mb-4"}`}>
           Completed 5 lines in {calledCount} number callouts!
         </p>

@@ -1,11 +1,12 @@
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
-import type { ReactionRecvPayload, RpsChoice } from "@shared/types";
+import type { Player, ReactionRecvPayload, RpsChoice } from "@shared/types";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import EmojiRain from "../ludo/EmojiRain";
 import Confetti from "../ludo/Confetti";
 import type { ClientRpsState, RoundOutcome } from "./useRpsBoard";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import BotResultNote from "../../components/room/BotResultNote";
 import type { MatchEconomySettlementRecord } from "../../lib/economyApi";
 import {
   CheckIcon,
@@ -734,11 +735,14 @@ export function RpsScorecardModal({
    *  computed by the caller since this file holds no state of its own. */
   myRank,
   isGuest,
+  opponent,
 }: {
   state: ClientRpsState;
   myId: string;
   myName: string;
   oppName: string;
+  /** The other seat, so a practice bot's character can be carried through to the result. */
+  opponent?: Player | null;
   myScore: number;
   oppScore: number;
   onClose: () => void;
@@ -813,6 +817,8 @@ export function RpsScorecardModal({
           >
             {iWon ? "You Won!" : isDraw ? "It's a Draw" : `${oppName} Wins`}
           </div>
+
+          <BotResultNote player={opponent} className="mt-1.5 justify-center" />
 
           {winnerPrize && (
             <div className="flex justify-center mt-1.5">

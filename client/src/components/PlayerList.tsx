@@ -1,8 +1,7 @@
-import { useState } from "react";
 import type { Player } from "@shared/types";
-import { Users, Crown, Check, Target, Info } from "lucide-react";
+import { Users, Crown, Check, Target } from "lucide-react";
 import SeatAvatar from "./profile/SeatAvatar";
-import BotProfileCard from "./room/BotProfileCard";
+import SeatProfileButton from "./room/SeatProfileButton";
 import BotStyleChip, { botTitleBadgeClass } from "./room/BotStyleChip";
 import { getPodiumTitleConfig } from "../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "./progression/MiniclipLevelBadge";
@@ -16,10 +15,8 @@ export default function PlayerList({
   selfId: string | null;
   onTapPlayer?: (id: string) => void;
 }) {
-  // A bot's profile is opened from its own small button, not from the row: the row's tap already
+  // A profile is opened from its own small button, not from the row: the row's tap already
   // means "send this player a reaction", and a bot is a fine target for one.
-  const [profileFor, setProfileFor] = useState<Player | null>(null);
-
   return (
     <div className="bg-[#FFFDF8] dark:bg-[var(--surface-1)] border-2 border-[#EEDBCA] dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-sm space-y-2">
       <div className="flex items-center justify-between">
@@ -132,21 +129,7 @@ export default function PlayerList({
                   •••
                 </span>
               )}
-              {p.isBot && p.botProfile && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    // Not a reaction: keep the row's own tap out of it.
-                    e.stopPropagation();
-                    setProfileFor(p);
-                  }}
-                  className="min-w-[44px] min-h-[44px] -my-2 flex items-center justify-center text-[#8A6D4B] hover:text-[#EA5A1F] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] rounded-lg cursor-pointer"
-                  title={`View ${p.name}'s profile`}
-                  aria-label={`View ${p.name}'s profile`}
-                >
-                  <Info size={16} aria-hidden />
-                </button>
-              )}
+              <SeatProfileButton player={p} isSelf={p.id === selfId} className="-my-2" />
               {p.id !== selfId && onTapPlayer && (
                 <button
                   type="button"
@@ -167,7 +150,6 @@ export default function PlayerList({
         <span>{players.length > 0 && players.every((p) => p.isReady) ? "All players ready!" : "Waiting for players..."}</span>
       </div>
 
-      {profileFor && <BotProfileCard player={profileFor} onClose={() => setProfileFor(null)} />}
     </div>
   );
 }

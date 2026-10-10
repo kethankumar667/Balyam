@@ -115,10 +115,11 @@ describe("PlayerList — a bot in a running game", () => {
     expect(onTapPlayer).toHaveBeenCalledWith("bot_1");
   });
 
-  it("gives a human no profile button and no style chip", () => {
+  it("gives a human a profile button, but no bot style chip", () => {
     render(<PlayerList players={[human()]} selfId="p_self" />);
 
-    expect(screen.queryByRole("button", { name: /profile/i })).toBeNull();
+    // Humans have a profile now (see SeatProfile.test.tsx); what they must not get is a bot's play style.
+    expect(screen.getByRole("button", { name: /profile/i })).toBeInTheDocument();
     expect(screen.queryByText("Cautious")).toBeNull();
   });
 

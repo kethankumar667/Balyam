@@ -212,6 +212,7 @@ export default function RpsBoardDesktop(props: RpsBoardProps) {
           settlement={settlement}
           myRank={myRank}
           isGuest={m.me?.isGuest ?? false}
+          opponent={m.opponent}
         />
       )}
     </NotebookPage>
