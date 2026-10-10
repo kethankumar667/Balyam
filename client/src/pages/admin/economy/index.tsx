@@ -58,7 +58,7 @@ interface TabDefinition {
  * 1. Economy Overview (KPI Cards, World Bank, Health score)
  * 2. Match Settlement Monitor (Table with search, sort, filter, pagination)
  * 3. Stale Settlement Monitor (>5m, >15m, >60m severity alerts)
- * 4. World Bank Dashboard (Base fee, Bot prize, Abandonment, Escrow, Redemptions)
+ * 4. World Bank Dashboard (Base fee, Bot prize, Abandonment)
  * 5. Refund & Forfeiture Analytics (Charts, rate metrics)
  * 6. Player Economy Investigation (Identity lookup, wallet balance, ledger entries)
  * 7. Match Investigation Page (Timeline UI, participants, conservation check)

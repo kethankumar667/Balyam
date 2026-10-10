@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { Router, type Request, type Response } from "express";
-import { callerId, requireIdentity, requireMember } from "../auth/identity.js";
+import { callerId, requireIdentity } from "../auth/identity.js";
 import { requireOperationalAuth } from "../security/operationalAuth.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 import { logger } from "../lib/logger.js";
@@ -17,7 +17,6 @@ import {
   InvalidParticipantShapeError,
   InvalidRankingShapeError,
   InvalidRequestError,
-  VoucherHashPolicyViolationError,
 } from "./EconomyService.js";
 import {
   EconomyInfrastructureError,
@@ -30,18 +29,12 @@ import {
   InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
   InvalidTerminalIntentPayloadError,
-  InvalidVoucherHashError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
-  OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
-  VoucherAlreadyRedeemedError,
-  VoucherCodeCollisionError,
-  VoucherNotActiveError,
-  VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
   type TerminalIntentStatus,
@@ -73,9 +66,6 @@ import {
  *                            settlement lookup — any authenticated identity,
  *                            member or guest, exactly like every other
  *                            "this is MY data" route in this codebase.
- *   requireMember             voucher redemption — reuses the EXISTING
- *                            403-for-guest behavior verbatim (blueprint
- *                            §2.6), no new member-only guard invented.
  *   requireOperationalAuth    settlement reconciliation, stale-settlement
  *                            listing, World Bank snapshot — all three are
  *                            platform-financial/audit surfaces, not player
@@ -84,25 +74,6 @@ import {
  *                            dashboard panel). Reuses the SAME gate
  *                            `DashboardController.ts`/`OperationalController.ts`
  *                            already use — no new admin boundary invented.
- *   (none)                    voucher status lookup — see the flagged
- *                            conflict below.
- *
- * ── A flagged architectural conflict, not silently resolved ──────────────
- * `GET /vouchers/:voucherId` is defined by this phase's own endpoint
- * inventory, but `EconomyService` has no method that looks up a voucher by
- * an id — `getVoucherStatus` takes the RAW BEARER CODE (the only key the
- * frozen service contract supports; a `voucherId`-keyed lookup does not
- * exist and this phase may not add one). Putting the bearer secret in a URL
- * PATH is a real anti-pattern this project has otherwise been careful about
- * (§3.1 of economy-v1.md, the whole reason `voucherCrypto.ts` exists) — a
- * URL path can land in browser history, `Referer` headers, and any
- * proxy/CDN access log this codebase does not control. This route is
- * implemented literally as specified, with this comment and the completion
- * report flagging it prominently, and no auth guard (consistent with the
- * bearer nature already established for redemption eligibility — whoever
- * holds the code already holds the "credential"). It is NOT logged with its
- * request path (see `logOutcome` below) as the one mitigation available at
- * this layer. Recommended follow-up: migrate to a POST body.
  */
 
 function durationCategory(ms: number): "fast" | "normal" | "slow" {
@@ -202,9 +173,8 @@ const GENERIC_INFRA_ERROR: ApiError = {
 /**
  * The full catalogue: every `EconomyRepositoryError` and every
  * `EconomyServiceError` subclass, mapped once. Endpoint-specific handlers
- * may override a mapping (see the voucher-redeem oracle-prevention merge
- * below) by checking their own `instanceof` cases FIRST and falling back to
- * this function — never the other way around.
+ * may override a mapping by checking their own `instanceof` cases FIRST and
+ * falling back to this function — never the other way around.
  */
 function mapEconomyError(err: unknown): ApiError {
   // Infrastructure failures never carry their original detail past this
@@ -229,16 +199,6 @@ function mapEconomyError(err: unknown): ApiError {
   }
   if (err instanceof InvalidIdentityIdError) {
     return { status: 400, error: "InvalidIdentityId", message: "The supplied identity id is malformed." };
-  }
-  if (err instanceof InvalidVoucherHashError) {
-    return { status: 400, error: "InvalidRequest", message: "The supplied voucher code is malformed." };
-  }
-  if (err instanceof VoucherNotFoundError || err instanceof VoucherNotActiveError || err instanceof VoucherAlreadyRedeemedError) {
-    // Generic catalogue entry — the redeem endpoint overrides this to a
-    // single merged slug (see below) so these three never distinguish
-    // themselves at the API boundary for THAT specific call. Kept distinct
-    // here only so the catalogue documents every class individually.
-    return { status: 422, error: "VoucherNotRedeemable", message: "This code isn't valid or has already been used." };
   }
   if (err instanceof InvalidSeatConfigurationError) {
     return { status: 422, error: "InvalidSeatConfiguration", message: "seatCount must be a positive integer matching humanSeatCount + botSeatCount." };
@@ -267,14 +227,6 @@ function mapEconomyError(err: unknown): ApiError {
   if (err instanceof MatchNotFoundError) {
     return { status: 404, error: "MatchNotFound", message: "No settlement exists for this match." };
   }
-  if (err instanceof VoucherCodeCollisionError) {
-    // Should never reach here — EconomyService retries this internally,
-    // bounded. Reaching this line means the bound was exhausted.
-    return { status: 503, error: "VoucherIssuanceUnavailable", message: "Could not issue a voucher for this match right now. Try again shortly." };
-  }
-  if (err instanceof OnlyMembersCanRedeemError) {
-    return { status: 403, error: "OnlyMembersCanRedeem", message: "Only a registered member account can redeem a voucher." };
-  }
   if (err instanceof InvalidRequestError) {
     return { status: 400, error: "InvalidRequest", message: err.message };
   }
@@ -289,13 +241,6 @@ function mapEconomyError(err: unknown): ApiError {
   }
   if (err instanceof InvalidParticipantShapeError) {
     return { status: 422, error: "InvalidParticipantShape", message: "A participant's identityId, identityKind, or placement is malformed." };
-  }
-  if (err instanceof VoucherHashPolicyViolationError) {
-    // An internal EconomyService invariant, never a caller mistake — see
-    // that class's own doc comment. 500 is correct here, not 4xx: this
-    // means our OWN construction broke, not that the caller sent something
-    // wrong.
-    return { status: 500, error: "InternalError", message: "Settlement could not be processed due to an internal error." };
   }
   if (err instanceof TerminalIntentNotFoundError) {
     return { status: 404, error: "TerminalIntentNotFound", message: "No durable terminal intent exists with this id." };
@@ -599,100 +544,6 @@ export function createEconomyRouter(service: EconomyService): Router {
     }
   });
 
-  /**
-   * POST /vouchers/redeem
-   *
-   * `VoucherNotFoundError`/`VoucherNotActiveError`/`VoucherAlreadyRedeemedError`/
-   * `InvalidVoucherHashError` are deliberately merged into ONE generic
-   * response here (blueprint §2.6): distinguishing "not found" from
-   * "already used" from "malformed" for a bearer instrument is an oracle for
-   * guessing other people's codes one bit at a time. The real distinction
-   * IS logged (`errorCode` in `logOutcome`), for support/ops purposes only
-   * — never returned to the caller.
-   */
-  router.post("/vouchers/redeem", requireMember, async (req: Request, res: Response) => {
-    const startedAt = Date.now();
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const { code } = body;
-    if (!isNonEmptyString(code)) {
-      res.status(400).json({ error: "InvalidRequest", message: "code must be a non-empty string." });
-      return;
-    }
-    const memberIdentityId = callerId(req);
-    try {
-      const result = await service.redeemVoucher(code, memberIdentityId);
-      const wallet = await service.getWallet(memberIdentityId);
-      res.json({ applied: result.applied, voucher: result.voucher, newBalance: wallet.balance });
-      logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "ok");
-    } catch (err) {
-      if (
-        err instanceof VoucherNotFoundError ||
-        err instanceof VoucherNotActiveError ||
-        err instanceof VoucherAlreadyRedeemedError ||
-        err instanceof InvalidVoucherHashError
-      ) {
-        res.status(422).json({ error: "VoucherNotRedeemable", message: "This code isn't valid or has already been used." });
-        logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", safeErrorCode(err));
-        return;
-      }
-      const mapped = sendError(req, res, err);
-      logOutcome(req, res, "POST /vouchers/redeem", "redeemVoucher", null, startedAt, "error", mapped.error);
-    }
-  });
-
-  /**
-   * GET /vouchers/:voucherId — PUBLIC, no auth guard (see the file header's
-   * flagged conflict: `:voucherId` must actually contain the raw bearer
-   * code, the only key `getVoucherStatus` accepts). `matchId` is
-   * deliberately NOT logged for this one route — see `logOutcome` call
-   * below, which passes `null` even though a real match reference may be
-   * knowable, to avoid the raw code's presence in this request being
-   * correlated any more than the URL itself already allows.
-   */
-  router.get("/vouchers/:voucherId", async (req: Request, res: Response) => {
-    const startedAt = Date.now();
-    const rawCode = req.params.voucherId;
-    if (!isNonEmptyString(rawCode)) {
-      res.status(400).json({ error: "InvalidRequest", message: "A voucher code is required." });
-      return;
-    }
-    try {
-      const status = await service.getVoucherStatus(rawCode);
-      if (!status) {
-        res.status(404).json({ error: "VoucherNotFound", message: "No voucher matches this code." });
-        logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", "VoucherNotFound");
-        return;
-      }
-      res.json({ voucher: status });
-      logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "ok");
-    } catch (err) {
-      const mapped = sendError(req, res, err);
-      logOutcome(req, res, "GET /vouchers/:voucherId", "getVoucherStatus", null, startedAt, "error", mapped.error);
-    }
-  });
-
-  /**
-   * POST /admin/vouchers/issue — operational test endpoint to issue test vouchers for verification.
-   */
-  router.post("/admin/vouchers/issue", requireOperationalAuth, async (req: Request, res: Response) => {
-    const startedAt = Date.now();
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const amount = typeof body.coinAmount === "string" && /^\d+$/.test(body.coinAmount.trim())
-      ? body.coinAmount.trim()
-      : "250";
-    const customCode = typeof body.code === "string" && body.code.trim().length > 0
-      ? body.code.trim()
-      : undefined;
-    try {
-      const voucher = await service.issueTestVoucher(amount, customCode);
-      res.json(voucher);
-      logOutcome(req, res, "POST /admin/vouchers/issue", "issueTestVoucher", null, startedAt, "ok");
-    } catch (err) {
-      console.error("[TEST_VOUCHER_ERROR]", err);
-      res.status(500).json({ error: "Failed", detail: err instanceof Error ? err.message : String(err) });
-    }
-  });
-
   /** GET /world-bank — platform treasury figures; admin/audit surface, not player data. */
   router.get("/world-bank", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
@@ -745,7 +596,7 @@ export function createEconomyRouter(service: EconomyService): Router {
     }
   });
 
-  /** GET /terminal-intents/:intentId — inspect one intent, including its full replay payload (no secrets/voucher codes ever live in it — see the migration's own column comment). */
+  /** GET /terminal-intents/:intentId — inspect one intent, including its full replay payload (no secrets ever live in it — see the migration's own column comment). */
   router.get("/terminal-intents/:intentId", requireOperationalAuth, async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const { intentId } = req.params;

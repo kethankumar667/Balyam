@@ -26,10 +26,7 @@ import { EconomyRepositoryError, type ParticipantIdentityKind } from "../Economy
  *
  * ── What this is NOT ─────────────────────────────────────────────────────
  * Not proof of anything PostgreSQL itself guarantees: no real row locks, no
- * real advisory locks, no real unique-index enforcement (the one exception —
- * voucher `code_hash` collisions — is specifically emulated below, see that
- * section, because `InMemoryEconomyRepository` already throws the same
- * class for the same reason and the wire-format translation matters), no
+ * real advisory locks, no real unique-index enforcement, no
  * real RLS, no real network latency or partial failure modes. Every business
  * rule this simulator appears to enforce is actually `InMemoryEconomyRepository`
  * enforcing it — this file only translates HTTP <-> repository calls.
@@ -48,25 +45,9 @@ function jsonResponse(status: number, body: unknown): Response {
  * own `.code` — sufficient for `SupabaseEconomyRepository.mapError`'s
  * `TOKEN:`-anchored matching, without needing the exact human-readable
  * wording the real migration happens to use.
- *
- * `VoucherCodeCollisionError` is special-cased: the real database never
- * raises a custom token for this — it is a genuine Postgres unique-violation
- * on `reward_vouchers_code_hash_key`, and `SupabaseEconomyRepository` matches
- * on that constraint name specifically, not a token. Encoding this one
- * error generically (as `"VOUCHER_CODE_COLLISION: ..."`) would silently
- * fail to exercise the real matching path — this is exactly the kind of
- * gap an isolated unit test would not have caught.
  */
 function errorToResponse(err: unknown): Response {
   if (err instanceof EconomyRepositoryError) {
-    if (err.name === "VoucherCodeCollisionError") {
-      return jsonResponse(409, {
-        code: "23505",
-        message: 'duplicate key value violates unique constraint "reward_vouchers_code_hash_key"',
-        details: "Key (code_hash)=(...) already exists.",
-        hint: null,
-      });
-    }
     return jsonResponse(400, {
       code: "P0001",
       message: `${err.code}: ${err.message}`,
@@ -130,23 +111,6 @@ function encodeLedgerEntry(e: {
   };
 }
 
-function encodeVoucher(v: {
-  id: string; codeHash: string; coinAmount: string; matchId: string; issuedToGuestId: string;
-  status: string; redeemedByMemberId: string | null; redeemedAt: number | null; createdAt: number;
-}): unknown {
-  return {
-    id: v.id,
-    code_hash: v.codeHash,
-    coin_amount: bigText(v.coinAmount),
-    match_id: v.matchId,
-    issued_to_guest_id: v.issuedToGuestId,
-    status: v.status,
-    redeemed_by_member_id: v.redeemedByMemberId,
-    redeemed_at: iso(v.redeemedAt),
-    created_at: iso(v.createdAt),
-  };
-}
-
 function encodeSettlement(s: {
   matchId: string; roomCode: string; hostIdentityId: string; seatCount: number; humanSeatCount: number;
   botSeatCount: number; costPerSeat: string; totalCollected: string; totalWalletRewarded: string;
@@ -207,7 +171,6 @@ const RAW_TABLES = new Set([
   "coin_ledger_entries",
   "match_economy_settlements",
   "world_bank_accounts",
-  "reward_vouchers",
   "economy_configurations",
   "economy_prize_schedules",
   "world_bank_ledger",
@@ -219,7 +182,6 @@ const SAFE_VIEWS = new Set([
   "coin_ledger_entries_safe",
   "match_economy_settlements_safe",
   "world_bank_accounts_safe",
-  "reward_vouchers_safe",
   "economy_configurations_safe",
   "economy_prize_schedules_safe",
 ]);
@@ -229,7 +191,6 @@ const PRIVATE_FUNCTIONS = new Set([
   "prevent_ledger_mutation",
   "wallet_to_safe_jsonb",
   "settlement_to_safe_jsonb",
-  "voucher_to_safe_jsonb",
 ]);
 
 function extractRole(init?: RequestInit): "service_role" | "authenticated" | "anon" {
@@ -366,7 +327,7 @@ async function dispatchRpc(
         matchId: args.p_match_id as string,
         isValidRanking: args.p_is_valid_ranking as boolean,
         participants: args.p_participants as Array<{
-          identityId: string; identityKind: ParticipantIdentityKind; placement: number; voucherCodeHash?: string;
+          identityId: string; identityKind: ParticipantIdentityKind; placement: number;
         }>,
         refundReason: (args.p_refund_reason as string | null) ?? undefined,
       });
@@ -381,22 +342,6 @@ async function dispatchRpc(
     case "forfeit_match_entry": {
       const r = await backend.forfeitMatchEntry(args.p_match_id as string, args.p_reason as string);
       return { ...r, result: encodeSettlement(r.result) };
-    }
-
-    case "issue_guest_voucher": {
-      const r = await backend.issueGuestVoucher({
-        voucherId: args.p_voucher_id as string,
-        codeHash: args.p_code_hash as string,
-        coinAmount: String(args.p_coin_amount),
-        matchId: args.p_match_id as string,
-        issuedToGuestId: args.p_issued_to_guest_id as string,
-      });
-      return { ...r, result: encodeVoucher(r.result) };
-    }
-
-    case "redeem_reward_voucher": {
-      const r = await backend.redeemRewardVoucher(args.p_code_hash as string, args.p_member_identity_id as string);
-      return { ...r, result: encodeVoucher(r.result) };
     }
 
     case "reconcile_match_settlement": {
@@ -472,15 +417,6 @@ async function dispatchSelect(
           abandonment_forfeiture_revenue: bigText(snapshot.abandonmentForfeitureRevenue),
         },
       ];
-    }
-
-    case "reward_vouchers_safe": {
-      const status = await backend.getVoucherStatus(filters.get("code_hash")!);
-      if (!status) return [];
-      if (select && select.length === 2 && select.includes("status") && select.includes("coin_amount")) {
-        return [{ status: status.status, coin_amount: bigText(status.coinAmount) }];
-      }
-      return [{ status: status.status, coin_amount: bigText(status.coinAmount) }];
     }
 
     case "economy_configurations_safe": {

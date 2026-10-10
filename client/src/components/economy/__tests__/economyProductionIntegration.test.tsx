@@ -62,7 +62,6 @@ describe("Economy Motion Production Integration Suite", () => {
             commitment={motion.activeCommitment}
             settlement={motion.activeSettlement}
             refund={motion.activeRefund}
-            escrow={motion.activeEscrow}
           />
         </div>
       );
@@ -288,10 +287,10 @@ describe("Economy Motion Production Integration Suite", () => {
       expect(screen.getByText("40 coins")).toBeDefined();
     });
 
-    it("renders EscrowSequence on authoritative SETTLED record with non-zero guest escrow", async () => {
+    it("shows a guest winner's prize as an ordinary wallet prize, with no escrow card", async () => {
       vi.mocked(economyApi.getMatchSettlement).mockResolvedValueOnce({
         settlement: {
-          matchId: "match-escrow-001",
+          matchId: "match-guest-prize-001",
           roomCode: "TEST03",
           hostIdentityId: "host-003",
           seatCount: 2,
@@ -300,8 +299,8 @@ describe("Economy Motion Production Integration Suite", () => {
           costPerSeat: "100",
           status: "SETTLED",
           totalCollected: "200",
-          totalWalletRewarded: "0",
-          totalGuestEscrow: "180",
+          totalWalletRewarded: "180",
+          totalGuestEscrow: "0",
           totalBotCollection: "0",
           totalWorldBankCut: "20",
           totalRefunded: "0",
@@ -311,16 +310,16 @@ describe("Economy Motion Production Integration Suite", () => {
         },
       });
 
-      render(<SettlementView matchId="match-escrow-001" />);
+      render(<SettlementView matchId="match-guest-prize-001" />);
 
       await act(async () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("Winnings Secured in Escrow")).toBeDefined();
+      expect(screen.getByText("Prize Distribution Complete")).toBeDefined();
       expect(screen.getAllByText("180").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText("ESCROW")).toBeDefined();
-      expect(screen.getByText("Stored in Safe Escrow")).toBeDefined();
+      expect(screen.queryByText("Winnings Secured in Escrow")).toBeNull();
+      expect(screen.queryByText("Guest Escrow")).toBeNull();
     });
 
     it("cancels pending motion and announces error gracefully on failure", () => {

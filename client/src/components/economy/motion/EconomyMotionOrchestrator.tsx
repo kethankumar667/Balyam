@@ -4,13 +4,11 @@ import { CoinTransferLayer, type ActiveCoinTransfer } from "./CoinTransferLayer"
 import { GameStartSequence } from "./GameStartSequence";
 import { SettlementSequence } from "./SettlementSequence";
 import { RefundSequence } from "./RefundSequence";
-import { EscrowSequence } from "./EscrowSequence";
 import type {
   EconomyMotionPhase,
   MatchCommitmentMotionPayload,
   MatchSettlementMotionPayload,
   MatchRefundMotionPayload,
-  GuestEscrowMotionPayload,
 } from "./types";
 import type { GameKind } from "@shared/types";
 
@@ -19,12 +17,10 @@ export interface EconomyMotionOrchestratorProps {
   commitment?: MatchCommitmentMotionPayload | null;
   settlement?: MatchSettlementMotionPayload | null;
   refund?: MatchRefundMotionPayload | null;
-  escrow?: GuestEscrowMotionPayload | null;
   errorMessage?: string | null;
   /** Selects the Chapter 2 game-start countdown's per-game theme/slogans (UNO card-color cycle, Rummy felt-and-gold). */
   game?: GameKind;
   onGameStartComplete?: () => void;
-  onClaimVoucher?: () => void;
   className?: string;
 }
 
@@ -37,11 +33,9 @@ export const EconomyMotionOrchestrator: React.FC<EconomyMotionOrchestratorProps>
   commitment,
   settlement,
   refund,
-  escrow,
   errorMessage,
   game,
   onGameStartComplete,
-  onClaimVoucher,
   className = "",
 }) => {
   // Compute active coin flight transfers based on current phase and geometry
@@ -105,16 +99,12 @@ export const EconomyMotionOrchestrator: React.FC<EconomyMotionOrchestratorProps>
         return refund
           ? `Match refunded. ${refund.refundAmount} coins restored to wallet.`
           : "Match refunded.";
-      case "escrowed":
-        return escrow
-          ? `Guest winnings of ${escrow.voucherAmount} coins stored in escrow voucher.`
-          : "Winnings stored in escrow.";
       case "failed":
         return errorMessage || "Action could not be completed.";
       default:
         return "";
     }
-  }, [phase, commitment, settlement, refund, escrow, errorMessage]);
+  }, [phase, commitment, settlement, refund, errorMessage]);
 
   return (
     <div className={`economy-motion-orchestrator ${className}`}>
@@ -147,10 +137,6 @@ export const EconomyMotionOrchestrator: React.FC<EconomyMotionOrchestratorProps>
         <RefundSequence payload={refund} />
       )}
 
-      {/* Chapter 5: Guest Escrow View */}
-      {phase === "escrowed" && escrow && (
-        <EscrowSequence payload={escrow} onClaimVoucher={onClaimVoucher} />
-      )}
     </div>
   );
 };

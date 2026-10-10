@@ -86,7 +86,7 @@ export function MatchInvestigationTab({ initialMatchId = "" }: MatchInvestigatio
       timelineItems.push({
         id: "t-2",
         title: "Gameplay Completed & Settled",
-        description: `Rewards: ${settlement.totalWalletRewarded} 🪙 wallet credits, ${settlement.totalGuestEscrow} 🪙 guest escrow, ${settlement.totalWorldBankCut} 🪙 protocol cut.`,
+        description: `Rewards: ${settlement.totalWalletRewarded} 🪙 wallet credits, ${settlement.totalWorldBankCut} 🪙 protocol cut.`,
         timestamp: settlement.settledAt ? new Date(settlement.settledAt).toLocaleTimeString() : "Settled",
         icon: <ShieldCheck className="w-2.5 h-2.5" />,
         iconBg: "bg-emerald-500 text-zinc-950",
@@ -252,11 +252,6 @@ export function MatchInvestigationTab({ initialMatchId = "" }: MatchInvestigatio
                 <div className="p-3.5 flex items-center justify-between gap-2">
                   <span className="text-[var(--chrome-ink-soft)]">Wallet Credits (1st/2nd/3rd Prizes)</span>
                   <CoinAmount amount={settlement.totalWalletRewarded} size="sm" className="font-bold text-emerald-700 dark:text-emerald-400" />
-                </div>
-
-                <div className="p-3.5 flex items-center justify-between gap-2">
-                  <span className="text-[var(--chrome-ink-soft)]">Guest Escrow Allocation</span>
-                  <CoinAmount amount={settlement.totalGuestEscrow} size="sm" className="font-bold text-purple-700 dark:text-purple-400" />
                 </div>
 
                 <div className="p-3.5 flex items-center justify-between gap-2">

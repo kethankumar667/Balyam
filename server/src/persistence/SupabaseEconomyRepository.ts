@@ -10,20 +10,14 @@ import {
   InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
   InvalidTerminalIntentPayloadError,
-  InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
-  OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
-  VoucherAlreadyRedeemedError,
-  VoucherCodeCollisionError,
-  VoucherNotActiveError,
-  VoucherNotFoundError,
   TransferCapExceededError,
   WalletFrozenError,
   WalletNotFoundError,
@@ -40,14 +34,12 @@ import {
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
   type IntentUpdateResult,
-  type IssueGuestVoucherInput,
   type ListTerminalIntentsOptions,
   type MarkIntentFailedInput,
   type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
   type MatchSettlementStatus,
   type PlayerIdentityKind,
-  type RewardVoucherRecord,
   type SettleMatchEconomyInput,
   type SettlementEventRecord,
   type SettlementEventType,
@@ -58,8 +50,6 @@ import {
   type TerminalIntentPayload,
   type TerminalIntentRecord,
   type TerminalIntentStatus,
-  type VoucherStatus,
-  type VoucherStatusView,
   type WalletLedgerEntryType,
   type WorldBankSnapshot,
 } from "./EconomyRepository.js";
@@ -89,10 +79,10 @@ import {
  * That gap is now closed at the SOURCE, not papered over here: every read
  * this class issues targets a `*_safe` VIEW (`coin_wallets_safe`,
  * `coin_ledger_entries_safe`, `match_economy_settlements_safe`,
- * `world_bank_accounts_safe`, `reward_vouchers_safe`,
+ * `world_bank_accounts_safe`,
  * `economy_configurations_safe`, `economy_prize_schedules_safe`), and every
  * RPC's jsonb envelope is built by `wallet_to_safe_jsonb()` /
- * `settlement_to_safe_jsonb()` / `voucher_to_safe_jsonb()` instead of a bare
+ * `settlement_to_safe_jsonb()` instead of a bare
  * `to_jsonb(row)` — all defined in the migration's §11a, casting every
  * bigint column to `text` before it is ever serialized. `bigStr()` below
  * has correspondingly changed roles: it is no longer a lenient
@@ -177,18 +167,6 @@ interface LedgerRow {
   description: string;
   /** Which game this match-related entry belongs to (e.g. "handcricket") — `null` for non-match entries (starter grants, admin adjustments, voucher redemptions). */
   game_kind: string | null;
-  created_at: string;
-}
-
-interface VoucherRow {
-  id: string;
-  code_hash: string;
-  coin_amount: string;
-  match_id: string;
-  issued_to_guest_id: string;
-  status: VoucherStatus;
-  redeemed_by_member_id: string | null;
-  redeemed_at: string | null;
   created_at: string;
 }
 
@@ -358,20 +336,6 @@ function toLedgerEntry(row: LedgerRow): CoinLedgerEntryRecord {
   };
 }
 
-function toVoucher(row: VoucherRow): RewardVoucherRecord {
-  return {
-    id: row.id,
-    codeHash: row.code_hash,
-    coinAmount: bigStr(row.coin_amount),
-    matchId: row.match_id,
-    issuedToGuestId: row.issued_to_guest_id,
-    status: row.status,
-    redeemedByMemberId: row.redeemed_by_member_id,
-    redeemedAt: row.redeemed_at ? ms(row.redeemed_at) : null,
-    createdAt: ms(row.created_at),
-  };
-}
-
 function toSettlement(row: SettlementRow): MatchEconomySettlementRecord {
   return {
     matchId: row.match_id,
@@ -495,14 +459,6 @@ function toSettlementEvent(row: SettlementEventRow): SettlementEventRecord {
  * other line of this file only ever sees named DTOs and named error classes.
  * Every token below is matched as `TOKEN:` (the exact shape every
  * `raise exception` in the migration uses), never a loose substring.
- *
- * `VOUCHER_INVALID` and `INVALID_VOUCHER_HASH` are two DIFFERENT tokens the
- * migration raises for the SAME conceptual failure (malformed code_hash
- * shape) from different functions — `redeem_reward_voucher` uses the
- * former, `issue_guest_voucher`/`settle_match_economy`'s guest branch use
- * the latter. Both normalize to `InvalidVoucherHashError`, per Phase 3's
- * explicit instruction — a caller of this repository must never need to
- * know which underlying function phrased the rejection differently.
  */
 const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> = [
   [/\bIDENTITY_NOT_FOUND:/, IdentityNotFoundError],
@@ -511,11 +467,6 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bWALLET_FROZEN:/, WalletFrozenError],
   [/\bINSUFFICIENT_FUNDS:/, InsufficientFundsError],
   [/\bTRANSFER_CAP_EXCEEDED:/, TransferCapExceededError],
-  [/\bINVALID_VOUCHER_HASH:/, InvalidVoucherHashError],
-  [/\bVOUCHER_INVALID:/, InvalidVoucherHashError],
-  [/\bVOUCHER_NOT_FOUND:/, VoucherNotFoundError],
-  [/\bVOUCHER_NOT_ACTIVE:/, VoucherNotActiveError],
-  [/\bVOUCHER_ALREADY_REDEEMED:/, VoucherAlreadyRedeemedError],
   [/\bINVALID_SEAT_CONFIGURATION:/, InvalidSeatConfigurationError],
   [/\bUNSUPPORTED_SEAT_COUNT:/, UnsupportedSeatCountError],
   [/\bINVALID_IDENTITY_KIND:/, InvalidIdentityKindError],
@@ -525,7 +476,6 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bMATCH_ALREADY_FORFEITED:/, MatchAlreadyForfeitedError],
   [/\bSETTLEMENT_CONSERVATION_VIOLATION:/, SettlementConservationViolationError],
   [/\bMATCH_NOT_FOUND:/, MatchNotFoundError],
-  [/\bONLY_MEMBERS_CAN_REDEEM_VOUCHERS:/, OnlyMembersCanRedeemError],
   [/\bINTENT_NOT_FOUND:/, TerminalIntentNotFoundError],
   [/\bINVALID_STATE_TRANSITION:/, InvalidIntentStateTransitionError],
   [/\bLEASE_STILL_ACTIVE:/, IntentLeaseStillActiveError],
@@ -538,9 +488,6 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bINVALID_OPERATOR:/, InvalidTerminalIntentPayloadError],
 ];
 
-/** Never a custom `raise exception` — a genuine Postgres unique-violation. */
-const VOUCHER_COLLISION_PATTERN = /reward_vouchers_code_hash_key/;
-
 export class SupabaseEconomyRepository implements EconomyRepository {
   readonly kind = "supabase" as const;
   private readonly db: PostgrestClient;
@@ -552,9 +499,6 @@ export class SupabaseEconomyRepository implements EconomyRepository {
   /** Never throws a raw `PostgrestError` or any other unmapped error — always one of the named classes in `EconomyRepository.ts`. */
   private mapError(err: unknown): Error {
     if (err instanceof PostgrestError) {
-      if (VOUCHER_COLLISION_PATTERN.test(err.message)) {
-        return new VoucherCodeCollisionError("A voucher with this code hash already exists");
-      }
       for (const [pattern, ErrorClass] of ERROR_TOKEN_MAP) {
         if (pattern.test(err.message)) {
           return new ErrorClass(err.message);
@@ -632,14 +576,6 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       throw new EconomyInfrastructureError("world_bank_accounts singleton row ('primary') is missing");
     }
     return toWorldBank(rows[0]);
-  }
-
-  async getVoucherStatus(codeHash: string): Promise<VoucherStatusView | null> {
-    const rows = await this.select<{ status: VoucherStatus; coin_amount: string }>(
-      "reward_vouchers_safe",
-      `code_hash=eq.${encodeURIComponent(codeHash)}&select=status,coin_amount&limit=1`,
-    );
-    return rows[0] ? { status: rows[0].status, coinAmount: bigStr(rows[0].coin_amount) } : null;
   }
 
   async getActiveConfiguration(): Promise<EconomyConfigurationRecord> {
@@ -818,7 +754,7 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_match_id: input.matchId,
       p_is_valid_ranking: input.isValidRanking,
       // The migration's own jsonb_array_elements loop reads camelCase keys
-      // (`identityId`, `identityKind`, `placement`, `voucherCodeHash`) from
+      // (`identityId`, `identityKind`, `placement`) from
       // each participant object — unlike every top-level RPC parameter
       // (snake_case `p_xxx`) and every table column (snake_case). Passed
       // through as-is; no case conversion here would be a real bug.
@@ -886,32 +822,6 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_reason: reason,
     });
     return { ...envelope, result: toSettlement(envelope.result) };
-  }
-
-  async issueGuestVoucher(
-    input: IssueGuestVoucherInput,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    const envelope = await this.rpc<RawEnvelope<VoucherRow>>("issue_guest_voucher", {
-      p_voucher_id: input.voucherId,
-      p_code_hash: input.codeHash,
-      // Sent as the DTO's own string — PostgREST casts a JSON string to the
-      // RPC's declared `bigint` parameter. Never coerced to a JS number here.
-      p_coin_amount: input.coinAmount,
-      p_match_id: input.matchId,
-      p_issued_to_guest_id: input.issuedToGuestId,
-    });
-    return { ...envelope, result: toVoucher(envelope.result) };
-  }
-
-  async redeemRewardVoucher(
-    codeHash: string,
-    memberIdentityId: string,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    const envelope = await this.rpc<RawEnvelope<VoucherRow>>("redeem_reward_voucher", {
-      p_code_hash: codeHash,
-      p_member_identity_id: memberIdentityId,
-    });
-    return { ...envelope, result: toVoucher(envelope.result) };
   }
 
   async adminAdjustWallet(

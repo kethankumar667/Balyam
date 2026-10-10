@@ -9,19 +9,13 @@ import {
   InvalidIdentityIdError,
   InvalidIdentityKindError,
   InvalidSeatConfigurationError,
-  InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
-  OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
   UnsupportedSeatCountError,
-  VoucherAlreadyRedeemedError,
-  VoucherCodeCollisionError,
-  VoucherNotActiveError,
-  VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
   type EconomyPrizeScheduleRecord,
@@ -106,7 +100,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         await ctx.repo.ensureWallet(id);
         const wallet = await ctx.repo.getWallet(id);
         expect(wallet?.identityId).toBe(id);
-        expect(wallet?.balance).toBe("2000");
+        expect(wallet?.balance).toBe("3000");
         expect(typeof wallet?.balance).toBe("string");
       });
 
@@ -190,41 +184,13 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
       });
     });
 
-    /* ── getVoucherStatus ── */
-    describe("getVoucherStatus", () => {
-      it("returns status and coinAmount for an existing voucher", async () => {
-        const host = freshId("guest");
-        ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host);
-        const guest = freshId("guest_winner");
-        ctx.seedIdentity(guest, "guest");
-        const hash = fakeHash();
-        const matchId = freshId("m");
-        await ctx.repo.commitMatchEntry({
-          matchId, roomCode: "R", hostIdentityId: host,
-          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
-        });
-        await ctx.repo.settleMatchEconomy({
-          matchId, isValidRanking: true,
-          participants: [{ identityId: guest, identityKind: "guest", placement: 1, voucherCodeHash: hash }],
-        });
-        const status = await ctx.repo.getVoucherStatus(hash);
-        expect(status?.status).toBe("ACTIVE");
-        expect(status?.coinAmount).toBe("160");
-      });
-
-      it("returns null for a codeHash matching no voucher", async () => {
-        await expect(ctx.repo.getVoucherStatus(fakeHash())).resolves.toBeNull();
-      });
-    });
-
     /* ── getActiveConfiguration ── */
     describe("getActiveConfiguration", () => {
       it("returns the singleton active configuration, never null, with the documented defaults", async () => {
         const config = await ctx.repo.getActiveConfiguration();
         expect(config.isActive).toBe(true);
         expect(config.seatCostCoins).toBe("100");
-        expect(config.guestStarterCoins).toBe("2000");
+        expect(config.guestStarterCoins).toBe("3000");
         expect(config.memberStarterCoins).toBe("5000");
       });
     });
@@ -304,7 +270,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const id = freshId("guest");
         ctx.seedIdentity(id, "guest");
         const wallet = await ctx.repo.ensureWallet(id);
-        expect(wallet.balance).toBe("2000");
+        expect(wallet.balance).toBe("3000");
         expect(wallet.starterGranted).toBe(true);
       });
 
@@ -327,12 +293,12 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
 
     /* ── grantStarterCoins ── */
     describe("grantStarterCoins", () => {
-      it("grants 2000 to a guest and 5000 to a member, returning applied:true, when called on a wallet that has not yet been granted", async () => {
+      it("grants 3000 to a guest and 5000 to a member, returning applied:true, when called on a wallet that has not yet been granted", async () => {
         const guest = freshId("guest");
         ctx.seedUngrantedWallet(guest, "guest");
         const guestResult = await ctx.repo.grantStarterCoins(guest);
         expect(guestResult.applied).toBe(true);
-        expect(guestResult.result.balance).toBe("2000");
+        expect(guestResult.result.balance).toBe("3000");
 
         const member = freshMemberId();
         ctx.seedUngrantedWallet(member, "member");
@@ -353,7 +319,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         await ctx.repo.ensureWallet(id); // grants once
         const replay = await ctx.repo.grantStarterCoins(id);
         expect(replay.applied).toBe(false);
-        expect(replay.result.balance).toBe("2000");
+        expect(replay.result.balance).toBe("3000");
       });
     });
 
@@ -372,7 +338,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         expect(result.result.status).toBe("COMMITTED");
         expect(result.result.totalCollected).toBe("300");
         const wallet = await ctx.repo.getWallet(host);
-        expect(wallet?.balance).toBe("1700"); // 2000 - 300
+        expect(wallet?.balance).toBe("2700"); // 3000 - 300
       });
 
       it("rejects with WalletFrozenError for a frozen host wallet, checked before balance", async () => {
@@ -391,11 +357,11 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
       it("rejects with InsufficientFundsError once committed spend exceeds the remaining balance", async () => {
         const host = freshId("guest");
         ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host); // 2000
-        for (let i = 0; i < 4; i++) {
+        await ctx.repo.ensureWallet(host); // 3000
+        for (let i = 0; i < 6; i++) {
           await ctx.repo.commitMatchEntry({
             matchId: freshId("m"), roomCode: null, hostIdentityId: host,
-            seatCount: 5, humanSeatCount: 5, botSeatCount: 0, isSolo: false, // 500 each, 4x = 2000
+            seatCount: 5, humanSeatCount: 5, botSeatCount: 0, isSolo: false, // 500 each, 6x = 3000
           });
         }
         await expect(
@@ -490,7 +456,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
       });
 
-      it("escrows a guest participant's prize with ZERO coin_ledger_entries impact on their own wallet", async () => {
+      it("pays a guest winner's prize into their wallet, like a member, with a Match Prize ledger row and nothing escrowed", async () => {
         const host = freshId("guest");
         ctx.seedIdentity(host, "guest");
         await ctx.repo.ensureWallet(host);
@@ -501,12 +467,35 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
           matchId, roomCode: "R", hostIdentityId: host,
           seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
         });
-        await ctx.repo.settleMatchEconomy({
+        const settled = await ctx.repo.settleMatchEconomy({
           matchId, isValidRanking: true,
-          participants: [{ identityId: guest, identityKind: "guest", placement: 1, voucherCodeHash: fakeHash() }],
+          participants: [{ identityId: guest, identityKind: "guest", placement: 1 }],
         });
-        await expect(ctx.repo.getWallet(guest)).resolves.toBeNull();
-        await expect(ctx.repo.listLedger(guest)).resolves.toEqual([]);
+        expect(settled.result.totalWalletRewarded).toBe("160");
+        expect(settled.result.totalGuestEscrow).toBe("0");
+        const wallet = await ctx.repo.getWallet(guest);
+        expect(wallet?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
+        const ledger = await ctx.repo.listLedger(guest);
+        expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
+      });
+
+      it("ignores a voucher hash from a caller that has not been updated: it still pays the wallet and issues nothing", async () => {
+        const host = freshId("guest");
+        ctx.seedIdentity(host, "guest");
+        await ctx.repo.ensureWallet(host);
+        const guest = freshId("guest_winner");
+        ctx.seedIdentity(guest, "guest");
+        const matchId = freshId("m");
+        await ctx.repo.commitMatchEntry({
+          matchId, roomCode: "R", hostIdentityId: host,
+          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
+        });
+        const settled = await ctx.repo.settleMatchEconomy({
+          matchId, isValidRanking: true,
+          participants: [{ identityId: guest, identityKind: "guest", placement: 1, voucherCodeHash: fakeHash() } as never],
+        });
+        expect(settled.result.totalGuestEscrow).toBe("0");
+        expect((await ctx.repo.getWallet(guest))?.balance).toBe("3160");
       });
 
       it("routes a bot participant's prize to bot_prize_revenue, never to a wallet", async () => {
@@ -584,58 +573,6 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         expect(memberAfter?.balance).toBe(memberBefore.balance);
         const settlement = await ctx.repo.getSettlement(matchId);
         expect(settlement?.status).toBe("COMMITTED");
-      });
-
-      it("rejects with InvalidVoucherHashError for a guest prize missing a voucherCodeHash", async () => {
-        const host = freshId("guest");
-        ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host);
-        const guest = freshId("guest_winner");
-        ctx.seedIdentity(guest, "guest");
-        const matchId = freshId("m");
-        await ctx.repo.commitMatchEntry({
-          matchId, roomCode: "R", hostIdentityId: host,
-          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
-        });
-        await expect(
-          ctx.repo.settleMatchEconomy({
-            matchId, isValidRanking: true,
-            participants: [{ identityId: guest, identityKind: "guest", placement: 1 }],
-          }),
-        ).rejects.toBeInstanceOf(InvalidVoucherHashError);
-      });
-
-      it("rejects with VoucherCodeCollisionError for a genuine codeHash collision across two different settlements", async () => {
-        const host = freshId("guest");
-        ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host);
-        const guestA = freshId("guest_a");
-        ctx.seedIdentity(guestA, "guest");
-        const guestB = freshId("guest_b");
-        ctx.seedIdentity(guestB, "guest");
-        const sharedHash = fakeHash();
-
-        const matchA = freshId("m");
-        await ctx.repo.commitMatchEntry({
-          matchId: matchA, roomCode: "R", hostIdentityId: host,
-          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
-        });
-        await ctx.repo.settleMatchEconomy({
-          matchId: matchA, isValidRanking: true,
-          participants: [{ identityId: guestA, identityKind: "guest", placement: 1, voucherCodeHash: sharedHash }],
-        });
-
-        const matchB = freshId("m");
-        await ctx.repo.commitMatchEntry({
-          matchId: matchB, roomCode: "R", hostIdentityId: host,
-          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
-        });
-        await expect(
-          ctx.repo.settleMatchEconomy({
-            matchId: matchB, isValidRanking: true,
-            participants: [{ identityId: guestB, identityKind: "guest", placement: 1, voucherCodeHash: sharedHash }],
-          }),
-        ).rejects.toBeInstanceOf(VoucherCodeCollisionError);
       });
 
       it("rejects with MatchNotCommittedError when no COMMITTED settlement exists for the matchId", async () => {
@@ -856,158 +793,6 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
       });
     });
 
-    /* ── issueGuestVoucher ── */
-    describe("issueGuestVoucher", () => {
-      it("creates an ACTIVE voucher on success", async () => {
-        const guest = freshId("guest");
-        ctx.seedIdentity(guest, "guest");
-        const voucherId = freshId("vch");
-        const result = await ctx.repo.issueGuestVoucher({
-          voucherId, codeHash: fakeHash(), coinAmount: "100", matchId: freshId("m"), issuedToGuestId: guest,
-        });
-        expect(result.applied).toBe(true);
-        expect(result.result.status).toBe("ACTIVE");
-      });
-
-      it("rejects with InvalidVoucherHashError for a non-64-hex codeHash", async () => {
-        const guest = freshId("guest");
-        ctx.seedIdentity(guest, "guest");
-        await expect(
-          ctx.repo.issueGuestVoucher({
-            voucherId: freshId("vch"), codeHash: "not-64-hex", coinAmount: "100", matchId: freshId("m"), issuedToGuestId: guest,
-          }),
-        ).rejects.toBeInstanceOf(InvalidVoucherHashError);
-      });
-
-      it("rejects with VoucherCodeCollisionError when a DIFFERENT voucherId reuses an existing codeHash", async () => {
-        const guest = freshId("guest");
-        ctx.seedIdentity(guest, "guest");
-        const sharedHash = fakeHash();
-        await ctx.repo.issueGuestVoucher({
-          voucherId: freshId("vch"), codeHash: sharedHash, coinAmount: "100", matchId: freshId("m"), issuedToGuestId: guest,
-        });
-        await expect(
-          ctx.repo.issueGuestVoucher({
-            voucherId: freshId("vch"), codeHash: sharedHash, coinAmount: "50", matchId: freshId("m"), issuedToGuestId: guest,
-          }),
-        ).rejects.toBeInstanceOf(VoucherCodeCollisionError);
-      });
-
-      it("rejects with IdentityNotFoundError when issuedToGuestId does not exist", async () => {
-        await expect(
-          ctx.repo.issueGuestVoucher({
-            voucherId: freshId("vch"), codeHash: fakeHash(), coinAmount: "100", matchId: freshId("m"),
-            issuedToGuestId: freshId("ghost"),
-          }),
-        ).rejects.toBeInstanceOf(IdentityNotFoundError);
-      });
-
-      it("returns applied:false with the ORIGINAL voucher on replay of the SAME voucherId", async () => {
-        const guest = freshId("guest");
-        ctx.seedIdentity(guest, "guest");
-        const voucherId = freshId("vch");
-        const originalHash = fakeHash();
-        await ctx.repo.issueGuestVoucher({
-          voucherId, codeHash: originalHash, coinAmount: "100", matchId: freshId("m"), issuedToGuestId: guest,
-        });
-        const replay = await ctx.repo.issueGuestVoucher({
-          voucherId, codeHash: fakeHash(), coinAmount: "999", matchId: freshId("m"), issuedToGuestId: guest,
-        });
-        expect(replay.applied).toBe(false);
-        expect(replay.result.codeHash).toBe(originalHash);
-      });
-    });
-
-    /* ── redeemRewardVoucher ── */
-    describe("redeemRewardVoucher", () => {
-      async function issueRealVoucher(): Promise<{ hash: string }> {
-        const host = freshId("guest");
-        ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host);
-        const guest = freshId("guest_winner");
-        ctx.seedIdentity(guest, "guest");
-        const hash = fakeHash();
-        const matchId = freshId("m");
-        await ctx.repo.commitMatchEntry({
-          matchId, roomCode: "R", hostIdentityId: host,
-          seatCount: 2, humanSeatCount: 1, botSeatCount: 1, isSolo: false,
-        });
-        await ctx.repo.settleMatchEconomy({
-          matchId, isValidRanking: true,
-          participants: [{ identityId: guest, identityKind: "guest", placement: 1, voucherCodeHash: hash }],
-        });
-        return { hash };
-      }
-
-      it("credits the member wallet, releases guest_escrow_liability, and increments total_voucher_redeemed atomically on success", async () => {
-        const { hash } = await issueRealVoucher();
-        const worldBankBefore = await ctx.repo.getWorldBankSnapshot();
-        const member = freshMemberId();
-        ctx.seedIdentity(member, "member");
-        const memberBefore = await ctx.repo.ensureWallet(member);
-        const result = await ctx.repo.redeemRewardVoucher(hash, member);
-        expect(result.result.status).toBe("REDEEMED");
-        const memberAfter = await ctx.repo.getWallet(member);
-        expect(BigInt(memberAfter!.balance) - BigInt(memberBefore.balance)).toBe(160n);
-        const worldBankAfter = await ctx.repo.getWorldBankSnapshot();
-        expect(BigInt(worldBankBefore.guestEscrowLiability) - BigInt(worldBankAfter.guestEscrowLiability)).toBe(160n);
-        expect(BigInt(worldBankAfter.totalVoucherRedeemed) - BigInt(worldBankBefore.totalVoucherRedeemed)).toBe(160n);
-      });
-
-      it("rejects with OnlyMembersCanRedeemError for a guest caller, before disclosing whether the code exists", async () => {
-        const guest = freshId("guest_trying");
-        ctx.seedIdentity(guest, "guest");
-        await expect(ctx.repo.redeemRewardVoucher(fakeHash(), guest)).rejects.toBeInstanceOf(OnlyMembersCanRedeemError);
-      });
-
-      it("rejects with WalletFrozenError for a frozen member wallet, checked after voucher existence/status", async () => {
-        const { hash } = await issueRealVoucher();
-        const member = freshMemberId();
-        ctx.seedIdentity(member, "member");
-        await ctx.repo.ensureWallet(member);
-        ctx.setFrozen(member, true);
-        await expect(ctx.repo.redeemRewardVoucher(hash, member)).rejects.toBeInstanceOf(WalletFrozenError);
-      });
-
-      it("rejects with VoucherNotFoundError for a codeHash matching no voucher", async () => {
-        const member = freshMemberId();
-        ctx.seedIdentity(member, "member");
-        await expect(ctx.repo.redeemRewardVoucher(fakeHash(), member)).rejects.toBeInstanceOf(VoucherNotFoundError);
-      });
-
-      it("rejects with VoucherAlreadyRedeemedError when a DIFFERENT member attempts an already-redeemed voucher", async () => {
-        const { hash } = await issueRealVoucher();
-        const firstMember = freshMemberId();
-        ctx.seedIdentity(firstMember, "member");
-        await ctx.repo.ensureWallet(firstMember);
-        await ctx.repo.redeemRewardVoucher(hash, firstMember);
-
-        const secondMember = freshMemberId();
-        ctx.seedIdentity(secondMember, "member");
-        await ctx.repo.ensureWallet(secondMember);
-        await expect(ctx.repo.redeemRewardVoucher(hash, secondMember)).rejects.toBeInstanceOf(VoucherAlreadyRedeemedError);
-      });
-
-      it("rejects with InvalidVoucherHashError for a malformed codeHash", async () => {
-        const member = freshMemberId();
-        ctx.seedIdentity(member, "member");
-        await expect(ctx.repo.redeemRewardVoucher("not-a-real-hash", member)).rejects.toBeInstanceOf(
-          InvalidVoucherHashError,
-        );
-      });
-
-      it("returns applied:false with the ORIGINAL voucher when the SAME member replays an already-redeemed-by-them voucher", async () => {
-        const { hash } = await issueRealVoucher();
-        const member = freshMemberId();
-        ctx.seedIdentity(member, "member");
-        await ctx.repo.ensureWallet(member);
-        await ctx.repo.redeemRewardVoucher(hash, member);
-        const replay = await ctx.repo.redeemRewardVoucher(hash, member);
-        expect(replay.applied).toBe(false);
-        expect(replay.result.status).toBe("REDEEMED");
-      });
-    });
-
     /* ── defensive result isolation ── */
     describe("defensive result isolation", () => {
       it("mutating a returned record never affects a subsequent read from either repository", async () => {
@@ -1016,7 +801,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const wallet = await ctx.repo.ensureWallet(id);
         (wallet as { balance: string }).balance = "999999999";
         const reread = await ctx.repo.getWallet(id);
-        expect(reread?.balance).toBe("2000");
+        expect(reread?.balance).toBe("3000");
       });
     });
   });

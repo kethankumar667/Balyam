@@ -131,25 +131,26 @@ describe("Phase 3B: Reward Distribution & Winner Celebration System", () => {
       expect(container.querySelector(".bg-amber-500\\/20.border-amber-500\\/50")).toBeNull();
     });
 
-    it("displays guest escrow voucher sequence when guest winnings are present", async () => {
-      const escrowRecord: economyApi.MatchEconomySettlementRecord = {
+    it("shows a guest winner's prize with the wallet prizes, and no escrow sequence", async () => {
+      const guestWinRecord: economyApi.MatchEconomySettlementRecord = {
         ...mockSettledRecord,
-        matchId: "m_escrow_phase3b",
-        totalGuestEscrow: "150",
+        matchId: "m_guest_win_phase3b",
+        totalWalletRewarded: "150",
+        totalGuestEscrow: "0",
       };
 
       vi.spyOn(economyApi, "getMatchSettlement").mockResolvedValueOnce({
-        settlement: escrowRecord,
+        settlement: guestWinRecord,
       });
 
-      render(<SettlementView matchId="m_escrow_phase3b" />);
+      render(<SettlementView matchId="m_guest_win_phase3b" />);
 
       await act(async () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText(/Winnings Secured in Escrow/i)).toBeDefined();
       expect(screen.getAllByText("150").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/Winnings Secured in Escrow/i)).toBeNull();
     });
 
     it("displays refund sequence when settlement status is REFUNDED", async () => {

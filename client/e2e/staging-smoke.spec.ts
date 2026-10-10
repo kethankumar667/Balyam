@@ -47,15 +47,11 @@ test.describe("SMOKE-01: Backend health contract", () => {
     expect(body).toHaveProperty("progression");
     expect(body).toHaveProperty("economy");
     expect(body.economy).toHaveProperty("durable");
-    // voucher durability status — added alongside the production fail-closed
-    // guard; present here as a boolean/reason pair, never the secret itself.
-    expect(body.economy).toHaveProperty("voucher");
-    expect(typeof body.economy.voucher.durable).toBe("boolean");
 
     // Structural checks above already prove the only fields present are the
     // known-safe ones (status/uptime/counts/durability booleans+reasons). A
     // bare substring scan for "SECRET" would false-positive on the durability
-    // reason text itself (e.g. "VOUCHER_HMAC_SECRET is not set..." legitimately
+    // reason text itself (e.g. "SESSION_SECRET is not set..." legitimately
     // names the variable without ever revealing its value) — so this checks
     // for a value shaped like a credential, never a variable NAME.
     const raw = JSON.stringify(body);

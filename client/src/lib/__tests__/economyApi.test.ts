@@ -5,8 +5,6 @@ import {
   quoteMatchCheckout,
   commitMatchCheckout,
   getMatchSettlement,
-  redeemRewardVoucher,
-  getVoucherStatus,
   getWorldBankSnapshot,
   getStaleSettlements,
   reconcileMatchSettlement,
@@ -195,47 +193,5 @@ describe("Economy V1 Client API Suite", () => {
     const res = await getMatchSettlement("match-100");
     expect(res.settlement.status).toBe("SETTLED");
     expect(res.settlement.totalWalletRewarded).toBe("175");
-  });
-
-  it("redeemRewardVoucher posts raw code and returns new balance without leakage", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        applied: true,
-        voucher: {
-          id: "vouch-uuid",
-          codeHash: "hash64chars",
-          coinAmount: "125",
-          matchId: "match-100",
-          issuedToGuestId: "guest-1",
-          status: "REDEEMED",
-          redeemedByMemberId: "user-123",
-          redeemedAt: 1787700060000,
-          createdAt: 1787700000000,
-        },
-        newBalance: "5125",
-      }),
-    } as Response);
-
-    const res = await redeemRewardVoucher("SECRET-BEARER-CODE-123");
-    expect(res.applied).toBe(true);
-    expect(res.newBalance).toBe("5125");
-    expect(res.voucher.coinAmount).toBe("125");
-  });
-
-  it("getVoucherStatus checks status of unredeemed voucher", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        voucher: {
-          status: "ACTIVE",
-          coinAmount: "150",
-        },
-      }),
-    } as Response);
-
-    const res = await getVoucherStatus("TEST-VOUCH-123");
-    expect(res.voucher.status).toBe("ACTIVE");
-    expect(res.voucher.coinAmount).toBe("150");
   });
 });

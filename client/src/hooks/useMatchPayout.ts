@@ -55,8 +55,8 @@ export function findMatchPayout(entries: CoinLedgerEntryRecord[], matchId: strin
  * Looks up what this player was paid once a match's settlement is final.
  *
  * `settlement` is the record `useMatchSettlement` already polls; nothing is fetched until
- * it leaves `COMMITTED`, and a `null` result means "nothing to announce" (a loss, a guest —
- * whose win arrives as a voucher instead — or a free match), never an error.
+ * it leaves `COMMITTED`, and a `null` result means "nothing to announce" (a loss or a free
+ * match), never an error.
  */
 export function useMatchPayout(
   matchId: string | null | undefined,

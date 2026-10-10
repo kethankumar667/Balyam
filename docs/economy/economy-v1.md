@@ -1,5 +1,14 @@
 # BHALYAM Economy V1 Specification & Database Architecture
 
+> **Update 2026-10-10 — vouchers are gone.** A guest who wins a prize is now paid straight into
+> their wallet, with the same `MATCH_PRIZE_CREDIT` ledger row a member gets, and nothing is
+> escrowed (`20261023000000_guest_prizes_to_wallet.sql`). The voucher table, the issue and
+> redeem functions and the application routes were then removed
+> (`20261024000000_remove_vouchers.sql`). Everything below that describes bearer vouchers,
+> guest escrow or voucher redemption is the original design and **no longer applies**; it is
+> kept as the record of how the economy was first specified. The guest welcome grant is also
+> now 3,000 coins (`20261022000000_guest_welcome_3000.sql`).
+
 > **Status:** REMEDIATED DRAFT — NOT APPLIED. This revision resolves the BLOCKER/HIGH/MEDIUM
 > findings of the hostile NO-GO audit dated 2026-08-26. It has been verified against a real
 > local PostgreSQL 17 instance only (`scripts/economy/verifyEconomySchema.mjs`,

@@ -14,7 +14,6 @@ import {
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
   type IntentUpdateResult,
-  type IssueGuestVoucherInput,
   type ListTerminalIntentsOptions,
   type MarkIntentFailedInput,
   type MarkIntentRetryableInput,
@@ -22,7 +21,6 @@ import {
   type MatchSettlementStatus,
   type ParticipantIdentityKind,
   type PlayerIdentityKind,
-  type RewardVoucherRecord,
   type SettleMatchEconomyInput,
   type SettlementEventRecord,
   type SettlementEventType,
@@ -30,7 +28,6 @@ import {
   type SettlementParticipantInput,
   type SettlementReconciliation,
   type TerminalIntentRecord,
-  type VoucherStatusView,
   type WalletLedgerEntryType,
   type WorldBankSnapshot,
   IdentityNotFoundError,
@@ -41,20 +38,14 @@ import {
   InvalidIntentStateTransitionError,
   InvalidSeatConfigurationError,
   InvalidTerminalIntentPayloadError,
-  InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
-  OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
-  VoucherAlreadyRedeemedError,
-  VoucherCodeCollisionError,
-  VoucherNotActiveError,
-  VoucherNotFoundError,
   TransferCapExceededError,
   WalletFrozenError,
   WalletNotFoundError,
@@ -78,8 +69,7 @@ import { isStructurallyValidSeatConfiguration } from "../economy/economyCapacity
  * no true parallelism to defend against. What genuinely matters here is
  * narrower and different: several public methods call ANOTHER public method
  * internally (`commitMatchEntry` calls `ensureWallet`; `settleMatchEconomy`
- * calls `ensureWallet` per credited member; `redeemRewardVoucher` calls
- * `ensureWallet` for the redeemer) — and each of those internal calls is a
+ * calls `ensureWallet` per credited member) — and each of those internal calls is a
  * real `await`, a real suspension point. Without per-key serialization, two
  * `Promise.all`-issued calls sharing a key COULD interleave at exactly that
  * point and both observe "not yet applied." `KeyedMutex` below exists
@@ -87,7 +77,7 @@ import { isStructurallyValidSeatConfiguration } from "../economy/economyCapacity
  * compose, not because this file is pretending to be Postgres.
  *
  * Lock-ordering discipline (deadlock-free by construction, not by luck):
- * match/voucher-scoped locks may acquire a wallet-scoped lock as a child;
+ * match-scoped locks may acquire a wallet-scoped lock as a child;
  * a wallet-scoped lock's own critical section never acquires anything else.
  * Wallet locks are always leaves. No two top-level operations ever want
  * each other's lock in the opposite order.
@@ -180,7 +170,6 @@ export interface EconomyRepositorySnapshot {
   worldBankLedger: WorldBankLedgerEntry[];
   settlements: MatchEconomySettlementRecord[];
   participants: MatchEconomyParticipantRecord[];
-  vouchers: RewardVoucherRecord[];
   settlementEvents: SettlementEventRecord[];
   idempotencyLog: Array<{ idempotencyKey: string; operation: string }>;
 }
@@ -248,8 +237,6 @@ function fromBig(amount: bigint): string {
   return amount.toString();
 }
 
-const HEX64 = /^[0-9a-f]{64}$/;
-
 /**
  * A FIFO queue per key, not a true OS mutex — see the file header. Released
  * in a `finally`, so a throw inside `fn` never leaves the key permanently
@@ -284,7 +271,7 @@ class KeyedMutex {
 const DEFAULT_CONFIG: EconomyConfigurationRecord = {
   id: "active",
   version: 1,
-  guestStarterCoins: "2000",
+  guestStarterCoins: "3000",
   memberStarterCoins: "5000",
   seatCostCoins: "100",
   isActive: true,
@@ -339,8 +326,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   private settlements = new Map<string, MatchEconomySettlementRecord>();
   private settlementSnapshots = new Map<string, SettlementSnapshot>();
   private participants: MatchEconomyParticipantRecord[] = [];
-  private vouchers = new Map<string, RewardVoucherRecord>();
-  private voucherIdByCodeHash = new Map<string, string>();
   private settlementEvents: SettlementEventRecord[] = [];
   private nextSettlementEventId = 1;
   /** Diagnostic only — see the completion report's "Idempotency implementation" section. Applied/not-applied is always determined by row state, never by this map. */
@@ -409,7 +394,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
         worldBankLedger: this.worldBankLedger.map(clone),
         settlements: [...this.settlements.values()].map(clone),
         participants: this.participants.map(clone),
-        vouchers: [...this.vouchers.values()].map(clone),
         settlementEvents: this.settlementEvents.map(clone),
         idempotencyLog: [...this.idempotencyLog.entries()].map(([idempotencyKey, operation]) => ({ idempotencyKey, operation })),
       }),
@@ -436,8 +420,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.settlements = new Map();
     this.settlementSnapshots = new Map();
     this.participants = [];
-    this.vouchers = new Map();
-    this.voucherIdByCodeHash = new Map();
     this.settlementEvents = [];
     this.nextSettlementEventId = 1;
     this.idempotencyLog = new Map();
@@ -474,14 +456,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
 
   async getWorldBankSnapshot(): Promise<WorldBankSnapshot> {
     return clone(this.worldBank);
-  }
-
-  async getVoucherStatus(codeHash: string): Promise<VoucherStatusView | null> {
-    const voucherId = this.voucherIdByCodeHash.get(codeHash);
-    if (!voucherId) return null;
-    const voucher = this.vouchers.get(voucherId);
-    if (!voucher) return null;
-    return { status: voucher.status, coinAmount: voucher.coinAmount };
   }
 
   async getActiveConfiguration(): Promise<EconomyConfigurationRecord> {
@@ -651,23 +625,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     return this.mutex.runExclusive(`match:${matchId}`, () =>
       this.withRollback(() => this.forfeitMatchEntryLocked(matchId, reason)),
-    );
-  }
-
-  async issueGuestVoucher(
-    input: IssueGuestVoucherInput,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    return this.mutex.runExclusive(`voucher:${input.voucherId}`, () =>
-      this.withRollback(() => this.issueGuestVoucherLocked(input)),
-    );
-  }
-
-  async redeemRewardVoucher(
-    codeHash: string,
-    memberIdentityId: string,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    return this.mutex.runExclusive(`voucher-code:${codeHash}`, () =>
-      this.withRollback(() => this.redeemRewardVoucherLocked(codeHash, memberIdentityId)),
     );
   }
 
@@ -1093,7 +1050,9 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     for (const participant of input.participants) {
       const prize = prizeByPlacement(participant.placement);
 
-      if (participant.identityKind === "member") {
+      // A guest winner is paid into their wallet exactly like a member (migration 20261023000000):
+      // there is no voucher any more, so a stray voucherCodeHash from an older caller is ignored.
+      if (participant.identityKind === "member" || participant.identityKind === "guest") {
         if (prize > 0n) {
           this.ensureWalletLocked(participant.identityId);
           const wallet = this.wallets.get(participant.identityId)!;
@@ -1109,47 +1068,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
           this.wallets.set(participant.identityId, credited);
           totalWalletRewarded += prize;
           this.recordParticipant(input.matchId, participant, prize, "PAID_WALLET", null);
-        } else {
-          this.recordParticipant(input.matchId, participant, 0n, "NO_PRIZE", null);
-        }
-      } else if (participant.identityKind === "guest") {
-        if (prize > 0n) {
-          if (!participant.voucherCodeHash || !HEX64.test(participant.voucherCodeHash)) {
-            throw new InvalidVoucherHashError(
-              "Guest prize requires a 64-hex-character voucher code hash",
-            );
-          }
-          if (this.voucherIdByCodeHash.has(participant.voucherCodeHash)) {
-            throw new VoucherCodeCollisionError(
-              "A voucher with this code hash already exists",
-            );
-          }
-          const voucherId = this.generateVoucherId();
-          const now = Date.now();
-          const voucher: RewardVoucherRecord = {
-            id: voucherId,
-            codeHash: participant.voucherCodeHash,
-            coinAmount: fromBig(prize),
-            matchId: input.matchId,
-            issuedToGuestId: participant.identityId,
-            status: "ACTIVE",
-            redeemedByMemberId: null,
-            redeemedAt: null,
-            createdAt: now,
-          };
-          this.vouchers.set(voucherId, voucher);
-          this.voucherIdByCodeHash.set(participant.voucherCodeHash, voucherId);
-
-          this.moveWorldBank("guestEscrowLiability", prize, {
-            entryType: "GUEST_ESCROW_DEPOSIT",
-            sourceKind: "match",
-            sourceId: input.matchId,
-            idempotencyKey: `${idempotencyKey}:escrow:${participant.identityId}`,
-            description: "Guest match prize placed in bearer voucher escrow",
-          });
-
-          totalGuestEscrow += prize;
-          this.recordParticipant(input.matchId, participant, prize, "ESCROWED_VOUCHER", voucherId);
         } else {
           this.recordParticipant(input.matchId, participant, 0n, "NO_PRIZE", null);
         }
@@ -1437,128 +1355,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
 
     this.logIdempotency(idempotencyKey, "refund_match_entry");
     return { applied: true, operation: "refund_match_entry", idempotencyKey, result: clone(updated) };
-  }
-
-  private issueGuestVoucherLocked(
-    input: IssueGuestVoucherInput,
-  ): EconomyOperationResult<RewardVoucherRecord> {
-    const idempotencyKey = `voucher-issue:${input.voucherId}`;
-    if (!HEX64.test(input.codeHash)) {
-      throw new InvalidVoucherHashError("Code hash must be exactly 64 hex characters");
-    }
-    if (toBig(input.coinAmount) <= 0n) {
-      throw new InvalidVoucherHashError("Voucher coin amount must be greater than zero");
-    }
-
-    const existing = this.vouchers.get(input.voucherId);
-    if (existing) {
-      this.logIdempotency(idempotencyKey, "issue_guest_voucher");
-      return { applied: false, operation: "issue_guest_voucher", idempotencyKey, result: clone(existing) };
-    }
-
-    if (this.voucherIdByCodeHash.has(input.codeHash)) {
-      throw new VoucherCodeCollisionError("A voucher with this code hash already exists");
-    }
-    if (!this.identities.has(input.issuedToGuestId)) {
-      throw new IdentityNotFoundError(`Player identity ${input.issuedToGuestId} is not registered`);
-    }
-
-    const now = Date.now();
-    const voucher: RewardVoucherRecord = {
-      id: input.voucherId,
-      codeHash: input.codeHash,
-      coinAmount: input.coinAmount,
-      matchId: input.matchId,
-      issuedToGuestId: input.issuedToGuestId,
-      status: "ACTIVE",
-      redeemedByMemberId: null,
-      redeemedAt: null,
-      createdAt: now,
-    };
-    this.vouchers.set(input.voucherId, voucher);
-    this.voucherIdByCodeHash.set(input.codeHash, input.voucherId);
-
-    this.logIdempotency(idempotencyKey, "issue_guest_voucher");
-    return { applied: true, operation: "issue_guest_voucher", idempotencyKey, result: clone(voucher) };
-  }
-
-  private redeemRewardVoucherLocked(
-    codeHash: string,
-    memberIdentityId: string,
-  ): EconomyOperationResult<RewardVoucherRecord> {
-    // Real RPC note: redeem_reward_voucher raises `VOUCHER_INVALID` for a
-    // malformed hash while issue_guest_voucher/settle_match_economy raise
-    // `INVALID_VOUCHER_HASH` for the same shape failure — this repository
-    // deliberately normalizes both to InvalidVoucherHashError. See
-    // "Contract mismatches discovered".
-    if (!HEX64.test(codeHash)) {
-      throw new InvalidVoucherHashError("Malformed code hash");
-    }
-
-    const kind = this.identities.get(memberIdentityId);
-    if (kind !== "member") {
-      // Checked BEFORE voucher lookup, deliberately — never discloses
-      // whether codeHash exists to a non-member caller.
-      throw new OnlyMembersCanRedeemError(
-        `Identity ${memberIdentityId} is not a registered member`,
-      );
-    }
-
-    const voucherId = this.voucherIdByCodeHash.get(codeHash);
-    const voucher = voucherId ? this.vouchers.get(voucherId) : undefined;
-    if (!voucher) {
-      throw new VoucherNotFoundError("No active voucher matches this code hash");
-    }
-
-    const idempotencyKey = `voucher-redeem:${voucher.id}:${memberIdentityId}`;
-    if (voucher.status === "REDEEMED") {
-      if (voucher.redeemedByMemberId === memberIdentityId) {
-        this.logIdempotency(idempotencyKey, "redeem_reward_voucher");
-        return { applied: false, operation: "redeem_reward_voucher", idempotencyKey, result: clone(voucher) };
-      }
-      throw new VoucherAlreadyRedeemedError("Voucher has already been claimed by another member");
-    }
-    if (voucher.status !== "ACTIVE") {
-      throw new VoucherNotActiveError(`Voucher status is ${voucher.status}`);
-    }
-
-    this.ensureWalletLocked(memberIdentityId);
-    const memberWallet = this.wallets.get(memberIdentityId)!;
-    if (memberWallet.isFrozen) {
-      throw new WalletFrozenError(`Member ${memberIdentityId} cannot redeem a voucher while frozen`);
-    }
-
-    const amount = toBig(voucher.coinAmount);
-    const credited = this.applyWalletCredit(memberWallet, amount, {
-      entryType: "VOUCHER_REDEMPTION",
-      sourceKind: "voucher",
-      sourceId: voucher.id,
-      idempotencyKey,
-      description: `Redeemed guest reward voucher (${voucher.id})`,
-      lifetimeField: "lifetimeEarned",
-    });
-    this.wallets.set(memberIdentityId, credited);
-
-    this.moveWorldBank("guestEscrowLiability", -amount, {
-      entryType: "GUEST_ESCROW_REDEMPTION",
-      sourceKind: "voucher",
-      sourceId: voucher.id,
-      idempotencyKey: `${idempotencyKey}:escrow`,
-      description: "Escrow liability released on redemption",
-    });
-    this.worldBank.totalVoucherRedeemed = fromBig(toBig(this.worldBank.totalVoucherRedeemed) + amount);
-
-    const now = Date.now();
-    const updatedVoucher: RewardVoucherRecord = {
-      ...voucher,
-      status: "REDEEMED",
-      redeemedByMemberId: memberIdentityId,
-      redeemedAt: now,
-    };
-    this.vouchers.set(voucher.id, updatedVoucher);
-
-    this.logIdempotency(idempotencyKey, "redeem_reward_voucher");
-    return { applied: true, operation: "redeem_reward_voucher", idempotencyKey, result: clone(updatedVoucher) };
   }
 
   private adminAdjustWalletLocked(
@@ -1953,10 +1749,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     });
   }
 
-  private generateVoucherId(): string {
-    return `vch_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}${(this.nextWorldBankLedgerId++).toString(36)}`;
-  }
-
   private emitSettlementEvent(
     matchId: string,
     eventType: SettlementEventType,
@@ -2029,8 +1821,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     const settlements = new Map(this.settlements);
     const settlementSnapshots = new Map(this.settlementSnapshots);
     const participantsLength = this.participants.length;
-    const vouchers = new Map(this.vouchers);
-    const voucherIdByCodeHash = new Map(this.voucherIdByCodeHash);
     const identities = new Map(this.identities);
     const settlementEventsLength = this.settlementEvents.length;
 
@@ -2044,8 +1834,6 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       this.settlements = settlements;
       this.settlementSnapshots = settlementSnapshots;
       this.participants.length = participantsLength;
-      this.vouchers = vouchers;
-      this.voucherIdByCodeHash = voucherIdByCodeHash;
       this.identities = identities;
       this.settlementEvents.length = settlementEventsLength;
       throw err;

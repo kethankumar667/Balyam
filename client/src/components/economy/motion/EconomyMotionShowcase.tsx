@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, RotateCcw, Award, Lock, XCircle, RefreshCw } from "lucide-react";
+import { Play, RotateCcw, Award, XCircle, RefreshCw } from "lucide-react";
 import { useEconomyMotion } from "./useEconomyMotion";
 import { EconomyMotionOrchestrator } from "./EconomyMotionOrchestrator";
 import { CeremonialSeatRing } from "../CeremonialSeatRing";
@@ -17,13 +17,11 @@ export const EconomyMotionShowcase: React.FC<{ className?: string }> = ({
     activeCommitment,
     activeSettlement,
     activeRefund,
-    activeEscrow,
     errorMessage,
     startAwaitingAuthority,
     triggerCommitmentSequence,
     triggerSettlementSequence,
     triggerRefundSequence,
-    triggerEscrowSequence,
     cancelMotion,
     resetMotion,
   } = useEconomyMotion();
@@ -67,15 +65,6 @@ export const EconomyMotionShowcase: React.FC<{ className?: string }> = ({
     });
   };
 
-  const handleRunEscrow = () => {
-    triggerEscrowSequence({
-      sequenceId: `seq-escrow-${Date.now()}`,
-      matchId: "match-demo-001",
-      voucherAmount: "360",
-      voucherCode: "BH-ESCROW-789",
-    });
-  };
-
   const handleRunError = () => {
     startAwaitingAuthority();
     window.setTimeout(() => {
@@ -92,7 +81,7 @@ export const EconomyMotionShowcase: React.FC<{ className?: string }> = ({
             <span>Economy Motion System Showcase</span>
           </h2>
           <p className="text-xs text-ink-lo dark:text-text-lo mt-0.5">
-            Production-grade choreographed lifecycle for match commitments, prize pots, settlements, and escrow.
+            Production-grade choreographed lifecycle for match commitments, prize pots, settlements, and refunds.
           </p>
         </div>
 
@@ -132,16 +121,6 @@ export const EconomyMotionShowcase: React.FC<{ className?: string }> = ({
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>3. Refund Reversal</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleRunEscrow}
-          disabled={phase !== "idle" && phase !== "complete"}
-          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer min-h-[44px]"
-        >
-          <Lock className="w-3.5 h-3.5" />
-          <span>4. Guest Escrow</span>
         </button>
 
         <button
@@ -195,7 +174,6 @@ export const EconomyMotionShowcase: React.FC<{ className?: string }> = ({
         commitment={activeCommitment}
         settlement={activeSettlement}
         refund={activeRefund}
-        escrow={activeEscrow}
         errorMessage={errorMessage}
       />
     </div>

@@ -563,7 +563,6 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
               settledAt: Date.now(),
               createdAt: Date.now(),
             },
-            issuedVouchers: [],
           };
         }),
       };
@@ -738,7 +737,7 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
       const mockEconomyService: Partial<EconomyService> = {
         settleMatchEconomy: vi.fn().mockImplementation(async (req: SettleMatchEconomyRequest) => {
           executionOrder.push(req.matchId);
-          return { applied: true, settlement: {} as never, issuedVouchers: [] };
+          return { applied: true, settlement: {} as never };
         }),
       };
 

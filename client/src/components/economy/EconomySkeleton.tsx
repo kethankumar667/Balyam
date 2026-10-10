@@ -1,6 +1,6 @@
 import React from "react";
 
-export type EconomySkeletonVariant = "wallet" | "checkout" | "prize" | "voucher" | "coin" | "generic";
+export type EconomySkeletonVariant = "wallet" | "checkout" | "prize" | "coin" | "generic";
 
 export interface EconomySkeletonProps {
   variant?: EconomySkeletonVariant;
@@ -12,7 +12,7 @@ export interface EconomySkeletonProps {
 /**
  * Reusable Economy Skeleton Loader.
  * Provides accessible, dark/light theme-aligned shimmer placeholders
- * for wallet balances, checkout cards, prize schedules, vouchers, and coin chips.
+ * for wallet balances, checkout cards, prize schedules, and coin chips.
  */
 export const EconomySkeleton: React.FC<EconomySkeletonProps> = ({
   variant = "generic",
@@ -96,29 +96,6 @@ export const EconomySkeleton: React.FC<EconomySkeletonProps> = ({
               <div className="h-9 rounded-xl bg-slate-500/20" />
               <div className="h-9 rounded-xl bg-orange-500/20" />
               <div className="h-9 rounded-xl bg-indigo-500/20" />
-            </div>
-          </div>
-        );
-
-      case "voucher":
-        return (
-          <div
-            key={key}
-            className={`relative p-4 rounded-2xl border-2 border-dashed border-amber-500/30 bg-amber-500/5 space-y-3 animate-pulse ${className}`}
-            aria-busy="true"
-            aria-label={ariaLabel}
-          >
-            <div className="flex justify-between items-start">
-              <div className="space-y-1.5">
-                <div className="h-4 w-32 bg-amber-500/25 rounded" />
-                <div className="h-3 w-20 bg-amber-500/15 rounded" />
-              </div>
-              <div className="h-7 w-20 bg-amber-500/30 rounded-lg" />
-            </div>
-            <div className="h-px w-full bg-amber-500/20 my-2" />
-            <div className="flex justify-between items-center">
-              <div className="h-3 w-28 bg-black/10 dark:bg-white/10 rounded" />
-              <div className="h-4 w-16 bg-amber-500/25 rounded" />
             </div>
           </div>
         );

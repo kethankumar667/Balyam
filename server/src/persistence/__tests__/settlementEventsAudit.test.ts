@@ -17,7 +17,6 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
   const HOST_ID = "usr_host_123";
   const GUEST_ID = "usr_guest_456";
   const MEMBER_WINNER_ID = "usr_member_winner";
-  const VOUCHER_HASH = "a".repeat(64);
 
   beforeEach(async () => {
     repo = new InMemoryEconomyRepository();
@@ -696,7 +695,7 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
   });
 
   describe("9. Mixed Participant Settlements & Solo Sessions", () => {
-    it("records guest escrow and bot collection accurately in MATCH_SETTLED event", async () => {
+    it("records a guest winner paid to the wallet, and bot collection, accurately in MATCH_SETTLED event", async () => {
       const matchId = "match_mixed_001";
       await repo.commitMatchEntry({
         matchId,
@@ -712,7 +711,7 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
         matchId,
         isValidRanking: true,
         participants: [
-          { identityId: GUEST_ID, identityKind: "guest", placement: 1, voucherCodeHash: VOUCHER_HASH },
+          { identityId: GUEST_ID, identityKind: "guest", placement: 1 },
           { identityId: "bot_1", identityKind: "bot", placement: 2 },
           { identityId: HOST_ID, identityKind: "member", placement: 3 },
         ],
@@ -726,8 +725,8 @@ describe("Phase 6A: Durable Settlement Event Auditing", () => {
       const settleEvent = events[1];
       expect(settleEvent.eventType).toBe("MATCH_SETTLED");
       expect(settleEvent.payload).toMatchObject({
-        totalWalletRewarded: "0",
-        totalGuestEscrow: "150",
+        totalWalletRewarded: "150",
+        totalGuestEscrow: "0",
         totalBotCollection: "90",
         totalWorldBankCut: "60",
         totalCollected: "300",

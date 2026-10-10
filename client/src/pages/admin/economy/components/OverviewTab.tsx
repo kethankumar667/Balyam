@@ -64,11 +64,8 @@ export function OverviewTab({
   const refundedCount = recentSettlements.filter((s) => s.status === "REFUNDED").length;
   const forfeitedCount = recentSettlements.filter((s) => s.status === "ABANDONMENT_FORFEITED").length;
 
-  // Total protocol REVENUE only — excludes guestEscrowLiability, which is a
-  // liability BHALYAM owes guests, not revenue BHALYAM earned. See
-  // WorldBankSnapshot's own doc comment for why the four balances are never
-  // merged into one; this is a derived display total of real fields, not a
-  // new invented figure.
+  // Total protocol REVENUE only: the three revenue balances. A derived display total of real
+  // fields (see WorldBankSnapshot's doc comment), not a new invented figure.
   const totalRevenue = worldBank
     ? (
         BigInt(worldBank.baseFeeRevenue) +
@@ -165,33 +162,6 @@ export function OverviewTab({
               </span>
             </div>
 
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-                Guest Escrow Liability
-              </span>
-              <CoinAmount
-                amount={worldBank.guestEscrowLiability}
-                size="lg"
-                className="font-bold text-purple-700 dark:text-purple-400"
-              />
-              <span className="text-xs text-[var(--chrome-ink-soft)] block">
-                Held for guests, not protocol revenue
-              </span>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-1 min-w-0">
-              <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-                Vouchers Redeemed
-              </span>
-              <CoinAmount
-                amount={worldBank.totalVoucherRedeemed}
-                size="lg"
-                className="font-bold text-indigo-700 dark:text-indigo-400"
-              />
-              <span className="text-xs text-[var(--chrome-ink-soft)] block">
-                Escrow converted into member balances
-              </span>
-            </div>
           </div>
         ) : (
           <div className="p-6 rounded-2xl bg-[var(--chrome-control)] text-center text-xs text-[var(--chrome-ink-soft)] border border-[var(--chrome-border)]">
@@ -387,25 +357,6 @@ export function OverviewTab({
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
-                <div>
-                  <span className="font-bold text-[var(--chrome-ink)] block">Guest Escrow Solvency</span>
-                  <span className="text-[11px] text-[var(--chrome-ink-soft)]">
-                    World Bank reserve fully covers all outstanding bearer voucher liabilities.
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
-                <div>
-                  <span className="font-bold text-[var(--chrome-ink)] block">Cryptographic Security</span>
-                  <span className="text-[11px] text-[var(--chrome-ink-soft)]">
-                    Vouchers hashed via SHA-256; zero plaintext bearer code leakage.
-                  </span>
-                </div>
-              </div>
             </div>
 
             <button

@@ -48,25 +48,10 @@ export function HealthCenterTab({
     healthScore = Math.max(75, 100 - staleSettlements.length * 5);
   }
 
-  // Escrow solvency is the one other check with a real, live signal to
-  // compute from. `worldBank.guestEscrowLiability` is a real field from
-  // `getWorldBankSnapshot()`; "reserve" here is the sum of the platform's
-  // three real REVENUE balances (baseFeeRevenue + botPrizeRevenue +
-  // abandonmentForfeitureRevenue) — never merged with the liability itself,
-  // same non-fungibility rule the schema enforces everywhere else. BigInt,
-  // not Number, for the same reason every other coin comparison in this
-  // codebase is: these are arbitrary-precision decimal strings.
-  const totalRevenue = worldBank
-    ? BigInt(worldBank.baseFeeRevenue) + BigInt(worldBank.botPrizeRevenue) + BigInt(worldBank.abandonmentForfeitureRevenue)
-    : null;
-  const escrowSolvent =
-    worldBank !== null && totalRevenue !== null ? totalRevenue >= BigInt(worldBank.guestEscrowLiability) : null;
-
   type CheckStatus = "HEALTHY" | "WARNING" | "CRITICAL" | "NOT_MONITORED";
 
-  // Health checks. Only two have a real, live signal behind them today
-  // (stale-commitment count, and escrow solvency — both computed from
-  // actual API responses above). The other three would need server-side
+  // Health checks. Only one has a real, live signal behind them today
+  // (the stale-commitment count, computed from an actual API response above). The others would need server-side
   // aggregation this dashboard doesn't have yet; they are listed as
   // NOT_MONITORED rather than a fabricated "HEALTHY" — an operator needs
   // to know what genuinely isn't being watched, not see a false all-clear.
@@ -92,17 +77,6 @@ export function HealthCenterTab({
       actionLabel: "Review Stale Queue",
     },
     {
-      id: "check-escrow-solvency",
-      name: "Guest Escrow Treasury Solvency",
-      description: "Verifies that World Bank reserves exceed outstanding unredeemed guest voucher liabilities.",
-      status: worldBank === null ? "NOT_MONITORED" : escrowSolvent ? "HEALTHY" : "CRITICAL",
-      detail: worldBank && totalRevenue !== null
-        ? escrowSolvent
-          ? `Revenue (${totalRevenue} 🪙) covers Escrow Liability (${worldBank.guestEscrowLiability} 🪙).`
-          : `Revenue (${totalRevenue} 🪙) is BELOW Escrow Liability (${worldBank.guestEscrowLiability} 🪙) — investigate immediately.`
-        : "World Bank snapshot unavailable — cannot evaluate reserve coverage.",
-    },
-    {
       id: "check-conservation",
       name: "Mathematical Balance Conservation",
       description: "Verifies double-entry ledger balance conservation: Total Collected = Total Disbursed + World Bank Cut.",
@@ -113,13 +87,6 @@ export function HealthCenterTab({
       id: "check-queue-concurrency",
       name: "Settlement Queue Serial Integrity",
       description: "Guarantees match completions, refunds, and forfeitures execute serially without race conditions.",
-      status: "NOT_MONITORED",
-      detail: "No client-observable signal for this exists yet — this is a server-internal invariant with no operational endpoint to report it.",
-    },
-    {
-      id: "check-crypto-safety",
-      name: "Cryptographic Bearer Token Isolation",
-      description: "Validates SHA-256 voucher hashing and operational token privilege boundaries.",
       status: "NOT_MONITORED",
       detail: "No client-observable signal for this exists yet — this is a server-internal invariant with no operational endpoint to report it.",
     },
@@ -159,7 +126,7 @@ export function HealthCenterTab({
         </div>
 
         <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed pt-2 border-t border-[var(--chrome-hairline)]">
-          The Economy Health Center actively monitors the stale-commitment queue and World Bank escrow solvency from live data. Balance conservation, settlement-queue concurrency, and cryptographic token hygiene have no server-side check wired up yet — see their status below.
+          The Economy Health Center actively monitors the stale-commitment queue from live data. Balance conservation and settlement-queue concurrency have no server-side check wired up yet — see their status below.
         </p>
       </div>
 

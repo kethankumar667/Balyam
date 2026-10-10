@@ -4,7 +4,6 @@ import {
   Wallet,
   X,
   RefreshCw,
-  Ticket,
   Clock,
   ArrowUpRight,
   ArrowDownLeft,
@@ -16,7 +15,6 @@ import { CoinAmount, AshthaKonaCoinIcon } from "./CoinAmount";
 import { CoinDelta, type CoinDeltaType } from "./CoinDelta";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyActionButton } from "./EconomyActionButton";
-import { VoucherRedemptionModal } from "./VoucherRedemptionModal";
 import { useWallet, useLedger } from "../../hooks/useEconomy";
 import { FaucetClaimRow } from "../faucet/FaucetClaimRow";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
@@ -114,7 +112,6 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
   } = useLedger();
 
   const [selectedEntry, setSelectedEntry] = useState<CoinLedgerEntryRecord | null>(null);
-  const [voucherModalOpen, setVoucherModalOpen] = useState(false);
 
   const drawerRef = React.useRef<HTMLElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
@@ -310,7 +307,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     <div className="my-1">
                       <CoinAmount amount="0" size="hero" className="font-black text-ink-hi dark:text-text-hi" />
                       <p className="mt-1.5 text-[11px] text-ink-lo dark:text-text-lo">
-                        Your wallet balance is 0. Play matches or redeem a reward voucher to earn coins.
+                        Your wallet balance is 0. Play matches or claim your free coins to earn more.
                       </p>
                     </div>
                   ) : (
@@ -319,17 +316,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                     </div>
                   )}
 
-                  {/* Actions & Vouchers */}
-                  <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setVoucherModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
-                    >
-                      <Ticket className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>Redeem Voucher</span>
-                    </button>
-
+                  <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
                     <div className="text-[11px] text-ink-lo dark:text-text-lo flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
                       <span>Cryptographic Audit v{wallet?.version ?? 1}</span>
@@ -407,7 +394,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                       </div>
                       <p className="text-xs font-bold text-ink-hi dark:text-text-hi">No Transactions Yet</p>
                       <p className="text-[11px] text-ink-lo dark:text-text-lo max-w-xs mx-auto">
-                        Your match fees, victory payouts, and redeemed vouchers will appear in this ledger.
+                        Your match fees, victory payouts, and free coins will appear in this ledger.
                       </p>
                     </div>
                   ) : (
@@ -561,13 +548,6 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
         )}
       </AnimatePresence>
 
-      <VoucherRedemptionModal
-        isOpen={voucherModalOpen}
-        onClose={() => setVoucherModalOpen(false)}
-        onSuccess={() => {
-          handleRefreshAll();
-        }}
-      />
     </>
   );
 };

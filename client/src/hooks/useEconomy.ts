@@ -251,7 +251,7 @@ export function useWallet(): WalletState {
  *
  * Also re-fetches whenever the SHARED wallet cache reports a new balance
  * version for this identity (`refreshCurrentWallet()` — daily streak
- * claims, match settlements, voucher redemptions, admin top-ups all call
+ * claims, match settlements, admin top-ups all call
  * it). Every one of those writes a ledger row, but this hook's `entries`
  * were previously local state with no listener on that cache at all: the
  * balance updated instantly (via the shared cache `useWallet()` reads),

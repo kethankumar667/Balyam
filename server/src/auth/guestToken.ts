@@ -80,9 +80,8 @@ function isProduction(): boolean {
 /**
  * Refuse to boot a production process with no stable guest-signing key.
  *
- * Mirrors `security/operationalAuth.ts`'s `assertOperationalAuthConfigured()`
- * and `economy/voucherCrypto.ts`'s `assertVoucherHmacConfigured()`: an
- * ephemeral key is the normal, harmless default in development (see
+ * Mirrors `security/operationalAuth.ts`'s `assertOperationalAuthConfigured()`:
+ * an ephemeral key is the normal, harmless default in development (see
  * `signingKey()` above) and a silent economy-integrity defect in production —
  * every outstanding guest wallet becomes permanently unreachable across the
  * very next restart or redeploy, with no error surfaced anywhere except a log

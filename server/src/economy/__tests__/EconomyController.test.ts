@@ -97,7 +97,7 @@ describe("GET /api/economy/wallet", () => {
     repo.testFixture.seedIdentity(playerId, "guest");
     const res = await server.request("/api/economy/wallet", { token });
     expect(res.status).toBe(200);
-    expect((res.body as { wallet: { balance: string } }).wallet.balance).toBe("2000"); // guest starter grant
+    expect((res.body as { wallet: { balance: string } }).wallet.balance).toBe("3000"); // guest starter grant
   });
 
   it("service-layer failure propagation: IdentityNotFoundError maps to a structured 404, never a raw throw", async () => {
@@ -542,127 +542,25 @@ describe("GET /api/economy/wallet — the proven production ledger sequence", ()
   });
 });
 
-/* ═══════════════════════ voucher redemption & status ═══════════════════════ */
+/* ═══════════════════════ vouchers are gone ═════════════════════════════════ */
 
-async function settleWithGuestWinner(matchId: string, hostId: string): Promise<string> {
-  seedHost(hostId, "1000");
-  await service.commitMatchEntry({
-    matchId, roomCode: "R1", hostIdentityId: hostId, seatCount: 2, humanSeatCount: 2, botSeatCount: 0, isSolo: false,
-  });
-  repo.testFixture.seedIdentity(`guest_${matchId}`, "guest");
-  repo.testFixture.seedIdentity(`member_${matchId}`, "member");
-  const result = await service.settleMatchEconomy({
-    matchId, isValidRanking: true,
-    participants: [
-      { identityId: `guest_${matchId}`, identityKind: "guest", placement: 1 },
-      { identityId: `member_${matchId}`, identityKind: "member", placement: 2 },
-    ],
-  });
-  return result.issuedVouchers[0]!.rawCode;
-}
-
-describe("POST /api/economy/vouchers/redeem", () => {
-  it("redeems successfully: 200, applied true, newBalance reflects the credit", async () => {
+describe("the voucher routes no longer exist", () => {
+  it("redeeming, looking up and minting a voucher all answer 404, not 401/403 — there is nothing there to protect", async () => {
     repo.testFixture.seedIdentity(ALICE, "member");
-    const rawCode = await settleWithGuestWinner("m_api_redeem", "host_redeem");
-    const res = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: rawCode }),
+    const redeem = await server.request("/api/economy/vouchers/redeem", {
+      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: "ANY-CODE" }),
     });
-    expect(res.status).toBe(200);
-    const body = res.body as { applied: boolean; voucher: { status: string }; newBalance: string };
-    expect(body.applied).toBe(true);
-    expect(body.voucher.status).toBe("REDEEMED");
-    expect(body.newBalance).toBe("5160"); // 5000 starter grant + 150
-    expect("codeHash" in body.voucher).toBe(false);
-  });
+    expect(redeem.status).toBe(404);
 
-  it("voucher replay: the SAME member redeeming again gets applied:false, not an error", async () => {
-    repo.testFixture.seedIdentity(ALICE, "member");
-    const rawCode = await settleWithGuestWinner("m_api_redeem_replay", "host_redeem_replay");
-    await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: rawCode }),
-    });
-    const second = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: rawCode }),
-    });
-    expect(second.status).toBe(200);
-    expect((second.body as { applied: boolean }).applied).toBe(false);
-  });
+    const lookup = await server.request("/api/economy/vouchers/ANY-CODE");
+    expect(lookup.status).toBe(404);
 
-  it("voucher validation: an empty code is rejected before the service is called", async () => {
-    const res = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: "" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("authorization failure: a guest is refused 403 before the service is called", async () => {
-    const { token } = mintGuestToken();
-    const res = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token, body: JSON.stringify({ code: "whatever" }),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it("structured error response: a bogus code is 422 VoucherNotRedeemable, never leaking which specific reason", async () => {
-    repo.testFixture.seedIdentity(ALICE, "member");
-    const res = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: "totally-made-up-code" }),
-    });
-    expect(res.status).toBe(422);
-    expect(res.body).toEqual({ error: "VoucherNotRedeemable", message: "This code isn't valid or has already been used." });
-  });
-
-  it("a cross-redeemer attempt on an already-redeemed voucher is ALSO merged into VoucherNotRedeemable (oracle prevention)", async () => {
-    const rawCode = await settleWithGuestWinner("m_api_cross_redeem", "host_cross");
-    repo.testFixture.seedIdentity(ALICE, "member");
-    repo.testFixture.seedIdentity(BOB, "member");
-    await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: rawCode }),
-    });
-    const res = await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(BOB), body: JSON.stringify({ code: rawCode }),
-    });
-    expect(res.status).toBe(422);
-    expect((res.body as { error: string }).error).toBe("VoucherNotRedeemable");
-  });
-});
-
-describe("GET /api/economy/vouchers/:voucherId", () => {
-  it("is public: no credential required", async () => {
-    const rawCode = await settleWithGuestWinner("m_api_status", "host_status");
-    const res = await server.request(`/api/economy/vouchers/${encodeURIComponent(rawCode)}`);
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ voucher: { status: "ACTIVE", coinAmount: "160" } });
-  });
-
-  it("returns 404 for a code that matches no voucher", async () => {
-    const res = await server.request("/api/economy/vouchers/not-a-real-code");
-    expect(res.status).toBe(404);
-    expect((res.body as { error: string }).error).toBe("VoucherNotFound");
-  });
-});
-
-describe("POST /api/economy/admin/vouchers/issue", () => {
-  it("security regression: refuses an anonymous caller with no credential (previously had no auth guard at all)", async () => {
-    const res = await server.request("/api/economy/admin/vouchers/issue", {
-      method: "POST",
-      body: JSON.stringify({ coinAmount: "999999", code: "SHOULD-NOT-BE-MINTED" }),
-    });
-    expect(res.status).toBe(401);
-
-    // The voucher must never have been created.
-    const status = await server.request("/api/economy/vouchers/SHOULD-NOT-BE-MINTED");
-    expect(status.status).toBe(404);
-  });
-
-  it("allows a caller presenting the operational key", async () => {
-    const res = await server.request("/api/economy/admin/vouchers/issue", {
+    const mint = await server.request("/api/economy/admin/vouchers/issue", {
       method: "POST",
       headers: { "x-operational-key": OPS_KEY },
       body: JSON.stringify({ coinAmount: "250" }),
     });
-    expect(res.status).toBe(200);
+    expect(mint.status).toBe(404);
   });
 });
 
@@ -701,7 +599,7 @@ describe("Economy API — bigint boundary values over HTTP", () => {
 
 /* ═══════════════════════ logging safety ═══════════════════════════════════ */
 
-describe("Economy API — logging never carries voucher secrets", () => {
+describe("Economy API — logging never carries credentials", () => {
   let logSpies: Array<{ mockRestore: () => void; mock: { calls: unknown[][] } }>;
 
   beforeEach(() => {
@@ -717,17 +615,13 @@ describe("Economy API — logging never carries voucher secrets", () => {
     for (const spy of logSpies) spy.mockRestore();
   });
 
-  it("no logger call across a redeem-then-status-check flow over HTTP contains the raw code", async () => {
+  it("no logger call across a wallet request over HTTP contains the caller's bearer token", async () => {
     repo.testFixture.seedIdentity(ALICE, "member");
-    const rawCode = await settleWithGuestWinner("m_api_log_safety", "host_log_safety");
-    await server.request("/api/economy/vouchers/redeem", {
-      method: "POST", token: mintMemberToken(ALICE), body: JSON.stringify({ code: rawCode }),
-    });
-    await server.request(`/api/economy/vouchers/${encodeURIComponent(rawCode)}`);
+    const token = mintMemberToken(ALICE);
+    await server.request("/api/economy/wallet", { token });
 
     const allCalls = logSpies.flatMap((spy) => spy.mock.calls);
     expect(allCalls.length).toBeGreaterThan(0);
-    const serialized = JSON.stringify(allCalls);
-    expect(serialized).not.toContain(rawCode);
+    expect(JSON.stringify(allCalls)).not.toContain(token);
   });
 });

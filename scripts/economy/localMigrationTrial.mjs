@@ -115,7 +115,7 @@ async function main() {
       `select count(*)::int n from information_schema.tables where table_schema='public' and table_type='BASE TABLE'`,
     )).rows[0].n;
     const economyTables = (await db.query(
-      `select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name like '%economy%' or table_name in ('coin_wallets','coin_ledger_entries','reward_vouchers','world_bank_accounts','world_bank_ledger')`,
+      `select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name like '%economy%' or table_name in ('coin_wallets','coin_ledger_entries','world_bank_accounts','world_bank_ledger')`,
     )).rows.map((r) => r.table_name).sort();
     console.log(`Final schema: ${tableCount} public base tables total. Economy tables present: ${economyTables.join(", ")}`);
 
@@ -125,7 +125,7 @@ async function main() {
     // Postgres GRANT/REVOKE facts, introspected via the same information the
     // CLI's local stack would ultimately read.
     const economyFns = ["ensure_wallet", "grant_starter_coins", "commit_match_entry", "settle_match_economy",
-      "refund_match_entry", "issue_guest_voucher", "redeem_reward_voucher", "reconcile_match_settlement",
+      "refund_match_entry", "reconcile_match_settlement",
       "list_stale_committed_settlements"];
     console.log("\nFunction privilege snapshot (proxy for PostgREST /rpc/* exposure — see trial report for the caveat):");
     for (const fn of economyFns) {

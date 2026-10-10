@@ -546,7 +546,7 @@ export function PlayerInvestigationTab() {
                 <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
                   +{Number(wallet.lifetimeEarned).toLocaleString()}
                 </div>
-                <div className="text-[10px] text-[var(--chrome-ink-soft)]">Prizes & Vouchers</div>
+                <div className="text-[10px] text-[var(--chrome-ink-soft)]">Prizes</div>
               </div>
 
               {/* Lifetime Spent */}

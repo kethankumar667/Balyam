@@ -25,7 +25,6 @@ import { createAdminUsersRouter } from "./admin/AdminUsersController.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
-import { assertVoucherHmacConfigured, voucherHmacDurability } from "./economy/voucherCrypto.js";
 import { assertSeatTokenConfigured } from "./lib/seatToken.js";
 import { initialiseProgressionStore, persistenceStatus } from "./persistence/index.js";
 import { initialiseEconomyStore, economyStoreStatus } from "./economy/index.js";
@@ -86,7 +85,6 @@ import { createPresenceSources } from "./mandali/presenceSources.js";
  */
 try {
   assertOperationalAuthConfigured();
-  assertVoucherHmacConfigured();
   assertGuestTokenDurabilityConfigured();
   assertSeatTokenConfigured();
 } catch (err) {
@@ -198,13 +196,9 @@ app.get("/health", (_req, res) => {
     // settlement/refund counters — a rising `failed` count here means real
     // matches are finishing without their settlement/refund landing; see
     // EconomySettlementQueue's own doc comment for the reconciliation path.
-    // `voucher` is independent of `durable` above: even a Supabase-backed
-    // store can hash new vouchers with an ephemeral key if
-    // VOUCHER_HMAC_SECRET is unset — see voucherCrypto.ts's own header.
     economy: {
       ...economyStoreStatus(),
       queue: roomManager.economySettlementQueueStatus(),
-      voucher: voucherHmacDurability(),
     },
     reviews: reviewsStoreStatus(),
     durability: roomSnapshotStoreStatus(),
@@ -363,7 +357,7 @@ if (economyService) {
 roomManager.startEconomyRecovery();
 
 /**
- * Economy V1's HTTP surface (wallet, ledger, checkout, vouchers,
+ * Economy V1's HTTP surface (wallet, ledger, checkout,
  * settlements — see EconomyController.ts). Built and fully tested in
  * Phase 6 via its own `startTestServer` harness, but never actually
  * mounted onto the real app — every `/api/economy/*` request in

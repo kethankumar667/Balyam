@@ -6,7 +6,6 @@ import { operationalFetch, operationalPost } from "./operationalApi";
 
 export type PlayerIdentityKind = "member" | "guest";
 export type ParticipantIdentityKind = "member" | "guest" | "bot";
-export type VoucherStatus = "ACTIVE" | "REDEEMED" | "CANCELLED";
 export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED" | "ABANDONMENT_FORFEITED";
 
 export type WalletLedgerEntryType =
@@ -110,23 +109,6 @@ export interface MatchEconomySettlementRecord {
   status: MatchSettlementStatus;
   createdAt: number;
   settledAt: number | null;
-}
-
-export interface RewardVoucherRecord {
-  id: string;
-  codeHash: string;
-  coinAmount: string;
-  matchId: string;
-  issuedToGuestId: string;
-  status: VoucherStatus;
-  redeemedByMemberId: string | null;
-  redeemedAt: number | null;
-  createdAt: number;
-}
-
-export interface VoucherStatusView {
-  status: VoucherStatus;
-  coinAmount: string;
 }
 
 /**
@@ -353,31 +335,6 @@ export async function getMatchSettlement(
 ): Promise<{ settlement: MatchEconomySettlementRecord }> {
   const res = await apiFetch(`/api/economy/settlements/${encodeURIComponent(matchId)}`);
   return handleResponse<{ settlement: MatchEconomySettlementRecord }>(res);
-}
-
-/**
- * POST /api/economy/vouchers/redeem — redeems a guest reward bearer voucher.
- * Note: Never logs the raw code or stores it in telemetry.
- */
-export async function redeemRewardVoucher(
-  code: string,
-): Promise<{ applied: boolean; voucher: RewardVoucherRecord; newBalance: string }> {
-  const res = await apiFetch("/api/economy/vouchers/redeem", {
-    method: "POST",
-    body: JSON.stringify({ code: code.trim() }),
-  });
-  return handleResponse<{ applied: boolean; voucher: RewardVoucherRecord; newBalance: string }>(res);
-}
-
-/**
- * GET /api/economy/vouchers/:voucherId — public pre-redemption status check.
- * (Note: Uses raw bearer code as parameter).
- */
-export async function getVoucherStatus(
-  rawCode: string,
-): Promise<{ voucher: VoucherStatusView }> {
-  const res = await fetch(`${getApiBaseUrl()}/api/economy/vouchers/${encodeURIComponent(rawCode.trim())}`);
-  return handleResponse<{ voucher: VoucherStatusView }>(res);
 }
 
 /**

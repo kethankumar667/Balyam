@@ -58,11 +58,10 @@ function isProduction(): boolean {
 
 /**
  * Boot-time symmetry check with `guestToken.ts`'s
- * `assertGuestTokenDurabilityConfigured()` and `voucherCrypto.ts`'s
- * `assertVoucherHmacConfigured()`. An ephemeral seat-signing key is coherent
+ * `assertGuestTokenDurabilityConfigured()`. An ephemeral seat-signing key is coherent
  * today — see the "On expiry" note above: a restart destroys every room a
  * seat token could reference at the same moment it invalidates the key, so
- * this alone doesn't hard-fail production like its two siblings do. It only
+ * this alone doesn't hard-fail production like its sibling does. It only
  * warns outside production, matching the ephemeral case being the normal,
  * harmless local-dev default; SESSION_SECRET is already mandatory in
  * production via `assertGuestTokenDurabilityConfigured()`, so in a correctly

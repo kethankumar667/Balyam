@@ -5,8 +5,6 @@ import {
   TrendingUp,
   Bot,
   AlertTriangle,
-  Gift,
-  Lock,
   Info,
 } from "lucide-react";
 import SectionHeader from "../../../../components/admin/section-header";
@@ -20,13 +18,8 @@ interface WorldBankTabProps {
 }
 
 export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
-  // Total protocol REVENUE only — baseFeeRevenue + botPrizeRevenue +
-  // abandonmentForfeitureRevenue. Deliberately excludes
-  // guestEscrowLiability: that balance is money BHALYAM is HOLDING for a
-  // guest, not money BHALYAM HAS, and this schema's own design (see
-  // WorldBankSnapshot's doc comment) never merges the two. A client-side
-  // sum of the three real revenue fields for display is not the same
-  // mistake the schema was fixed to avoid — it's a derived total of real,
+  // Total protocol REVENUE only — baseFeeRevenue + botPrizeRevenue + abandonmentForfeitureRevenue.
+  // A client-side sum of the three real revenue fields for display: a derived total of real,
   // already-authoritative numbers, not a new number invented from nothing.
   const totalRevenue = useMemo(() => {
     if (!worldBank) return null;
@@ -81,15 +74,9 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Solvency Fully Guaranteed</span>
-            </span>
-          </div>
         </div>
 
-        <div className="pt-2 border-t border-[var(--chrome-hairline)] grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="pt-2 border-t border-[var(--chrome-hairline)] grid grid-cols-1 gap-4">
           <div className="min-w-0">
             <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase block">
               Total Protocol Revenue
@@ -104,19 +91,6 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </span>
           </div>
 
-          <div>
-            <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase block">
-              Outstanding Escrow Liability
-            </span>
-            <CoinAmount
-              amount={worldBank.guestEscrowLiability}
-              size="lg"
-              className="font-bold text-purple-700 dark:text-purple-400 mt-0.5"
-            />
-            <span className="text-[11px] text-[var(--chrome-ink-soft)] mt-0.5 block">
-              Held for guests until voucher redemption — not protocol revenue
-            </span>
-          </div>
         </div>
       </div>
 
@@ -188,60 +162,9 @@ export function WorldBankTab({ worldBank, isLoading }: WorldBankTabProps) {
             </p>
           </div>
 
-          {/* Guest Escrow Liability */}
-          <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
-                Guest Escrow Liability
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                <Lock className="w-4 h-4" />
-              </div>
-            </div>
-            <CoinAmount
-              amount={worldBank.guestEscrowLiability}
-              size="lg"
-              className="font-bold text-purple-700 dark:text-purple-400"
-            />
-            <p className="text-[11px] text-[var(--chrome-ink-soft)] leading-relaxed">
-              Outstanding guest rewards held in cryptographic escrow until converted to verified member accounts.
-            </p>
-          </div>
-
-          {/* Voucher Redemptions */}
-          <div className="p-5 rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] shadow-2xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--chrome-ink-soft)] uppercase tracking-wider">
-                Vouchers Redeemed
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <Gift className="w-4 h-4" />
-              </div>
-            </div>
-            <CoinAmount
-              amount={worldBank.totalVoucherRedeemed}
-              size="lg"
-              className="font-bold text-amber-700 dark:text-amber-400"
-            />
-            <p className="text-[11px] text-[var(--chrome-ink-soft)] leading-relaxed">
-              Total lifetime escrow successfully redeemed into member balances upon account verification.
-            </p>
-          </div>
         </div>
       </section>
 
-      {/* 3. Non-Fungibility & Balance Separation Explainer */}
-      <div className="p-4 rounded-2xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)] text-xs text-[var(--chrome-ink-soft)] flex items-start gap-3">
-        <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <span className="font-bold text-[var(--chrome-ink)] block">
-            Non-Fungible Treasury Balance Architecture
-          </span>
-          <p>
-            BHALYAM strictly isolates World Bank reserves from Guest Escrow liabilities. Escrow is a liability the platform owes to unredeemed bearer voucher holders and is never counted as protocol profit or merged into general operating balance.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

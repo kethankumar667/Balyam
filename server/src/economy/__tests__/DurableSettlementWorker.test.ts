@@ -91,7 +91,6 @@ class ScriptedFailureRepository implements EconomyRepository {
   listLedger(id: string, o?: { limit?: number; offset?: number }) { return this.inner.listLedger(id, o); }
   getSettlement(id: string) { return this.inner.getSettlement(id); }
   getWorldBankSnapshot() { return this.inner.getWorldBankSnapshot(); }
-  getVoucherStatus(h: string) { return this.inner.getVoucherStatus(h); }
   getActiveConfiguration() { return this.inner.getActiveConfiguration(); }
   getPrizeSchedule(n: number) { return this.inner.getPrizeSchedule(n); }
   reconcileSettlement(id: string) { return this.inner.reconcileSettlement(id); }
@@ -110,8 +109,6 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   refundMatchEntry(id: string, r: string) { return this.inner.refundMatchEntry(id, r); }
   forfeitMatchEntry(id: string, r: string) { return this.inner.forfeitMatchEntry(id, r); }
-  issueGuestVoucher(i: Parameters<EconomyRepository["issueGuestVoucher"]>[0]) { return this.inner.issueGuestVoucher(i); }
-  redeemRewardVoucher(h: string, m: string) { return this.inner.redeemRewardVoucher(h, m); }
   createTerminalIntent(i: Parameters<EconomyRepository["createTerminalIntent"]>[0]) { return this.inner.createTerminalIntent(i); }
   claimTerminalIntent(w: string, l?: number) { return this.inner.claimTerminalIntent(w, l); }
   completeTerminalIntent(id: string, w: string) { return this.inner.completeTerminalIntent(id, w); }
@@ -550,74 +547,35 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
   });
 
   /**
-   * 2026-09-07 finding: a winning guest's raw voucher code was generated
-   * then discarded — `economySettlementQueue.ts` (the superseded queue) and
-   * this worker both only ever logged a COUNT of issued vouchers. Since the
-   * repository stores only a hash of the code, that meant the win was
-   * permanently unclaimable. `onVouchersIssued` is the fix: it must fire,
-   * with the real raw code, exactly once per genuinely-new settlement.
+   * A guest who wins is paid into their wallet like anyone else. The worker has no voucher to hand
+   * over any more, so what must hold is that the durable path pays exactly once, and that a second
+   * enqueue of the same match — which the terminal-intent table answers with the existing COMPLETED
+   * intent — never pays again.
    */
-  it("fires onVouchersIssued with the raw code when a guest wins a nonzero prize", async () => {
+  it("pays a guest winner into their wallet through the durable path, exactly once even if enqueued twice", async () => {
     const repo = freshRepo();
     seedHost(repo, MEMBER_A);
-    const matchId = "match_voucher_delivery";
+    const matchId = "match_guest_paid";
     const service = freshService(repo);
     await commitTwoSeatMatch(service, matchId, MEMBER_A);
 
-    const received: { matchId: string; vouchers: { identityId: string; rawCode: string; coinAmount: string }[] }[] = [];
-    const worker = new DurableSettlementWorker(service, {
-      onVouchersIssued: (m, vouchers) => received.push({ matchId: m, vouchers }),
-    });
-
-    const GUEST_WINNER = "guest_voucher_delivery_test";
-    await worker.enqueueSettlement({
+    const GUEST_WINNER = "guest_paid_through_worker";
+    repo.testFixture.seedIdentity(GUEST_WINNER, "guest");
+    const request: SettleMatchEconomyRequest = {
       matchId,
       isValidRanking: true,
       participants: [
         { identityId: GUEST_WINNER, identityKind: "guest", placement: 1 },
         { identityId: MEMBER_A, identityKind: "member", placement: 2 },
       ],
-    });
-    await worker.drain();
-
-    expect(received).toHaveLength(1);
-    expect(received[0].matchId).toBe(matchId);
-    expect(received[0].vouchers).toHaveLength(1);
-    expect(received[0].vouchers[0].identityId).toBe(GUEST_WINNER);
-    expect(received[0].vouchers[0].coinAmount).toBe("160"); // 2-seat 1st place
-    expect(received[0].vouchers[0].rawCode.length).toBeGreaterThan(0);
-  });
-
-  it("does not fire onVouchersIssued on an idempotent replay of an already-settled match", async () => {
-    const repo = freshRepo();
-    seedHost(repo, MEMBER_A);
-    const matchId = "match_voucher_replay";
-    const service = freshService(repo);
-    await commitTwoSeatMatch(service, matchId, MEMBER_A);
-
-    const received: unknown[] = [];
-    const request: SettleMatchEconomyRequest = {
-      matchId,
-      isValidRanking: true,
-      participants: [
-        { identityId: "guest_voucher_replay_test", identityKind: "guest", placement: 1 },
-        { identityId: MEMBER_A, identityKind: "member", placement: 2 },
-      ],
     };
-    const worker = new DurableSettlementWorker(service, {
-      onVouchersIssued: (m, vouchers) => received.push({ m, vouchers }),
-    });
+    const worker = new DurableSettlementWorker(service);
     await worker.enqueueSettlement(request);
     await worker.drain();
-    expect(received).toHaveLength(1);
+    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
 
-    // A second `enqueueSettlement` for the SAME matchId hits the terminal-
-    // intent table's own uniqueness (matchId is its idempotency key): it
-    // returns the existing COMPLETED intent rather than creating new work,
-    // so the worker has nothing left to claim/process — the callback must
-    // not fire a second time either way.
     await worker.enqueueSettlement(request);
     await worker.drain();
-    expect(received).toHaveLength(1);
+    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("3160"); // paid once
   });
 });

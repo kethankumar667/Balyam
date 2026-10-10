@@ -121,7 +121,7 @@ export default function DeleteAccountModal({
             </li>
             <li className="flex items-center gap-2">
               <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[2.5]" aria-hidden="true" />
-              <span>All unredeemed vouchers &amp; permanent coin balance</span>
+              <span>Your permanent coin balance</span>
             </li>
             <li className="flex items-center gap-2">
               <Trophy className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[2.5]" aria-hidden="true" />

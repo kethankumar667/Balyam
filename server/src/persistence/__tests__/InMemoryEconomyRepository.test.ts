@@ -5,8 +5,6 @@ import {
   IdentityNotFoundError,
   InsufficientFundsError,
   InvalidIdentityKindError,
-  OnlyMembersCanRedeemError,
-  VoucherAlreadyRedeemedError,
   WalletFrozenError,
   type ParticipantIdentityKind,
 } from "../EconomyRepository.js";
@@ -54,7 +52,7 @@ describe("InMemoryEconomyRepository", () => {
       wallet.isFrozen = true;
 
       const reread = await repo.getWallet("guest_clone_read");
-      expect(reread?.balance).toBe("2000");
+      expect(reread?.balance).toBe("3000");
       expect(reread?.isFrozen).toBe(false);
     });
 
@@ -126,12 +124,6 @@ describe("InMemoryEconomyRepository", () => {
       ).rejects.toBeInstanceOf(InvalidIdentityKindError);
     });
 
-    it("rejects redemption by a guest identity with OnlyMembersCanRedeemError, before disclosing whether the code exists", async () => {
-      fixture.seedIdentity("guest_trying_redeem", "guest");
-      await expect(repo.redeemRewardVoucher(fakeHash(), "guest_trying_redeem")).rejects.toBeInstanceOf(
-        OnlyMembersCanRedeemError,
-      );
-    });
   });
 
   describe("atomic rollback", () => {
@@ -205,7 +197,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(second.result.roomCode).toBe("R"); // the ORIGINAL value, not the replay's differing input
 
       const wallet = await repo.getWallet("host_replay");
-      expect(wallet?.balance).toBe("1900"); // debited exactly once (2000 - 100)
+      expect(wallet?.balance).toBe("2900"); // debited exactly once (3000 - 100)
     });
   });
 
@@ -220,7 +212,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("guest_race_grant");
-      expect(wallet?.balance).toBe("2000");
+      expect(wallet?.balance).toBe("3000");
     });
   });
 
@@ -245,17 +237,16 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("host_race_commit");
-      expect(wallet?.balance).toBe("1800"); // 2000 - 200, once
+      expect(wallet?.balance).toBe("2800"); // 3000 - 200, once
     });
   });
 
   describe("concurrent settlement", () => {
-    it("produces exactly one applied:true and exactly one voucher issued across 8 concurrent callers for the same matchId", async () => {
+    it("produces exactly one applied:true and exactly one prize credit across 8 concurrent callers for the same matchId", async () => {
       fixture.seedIdentity("host_race_settle", "guest");
       await repo.ensureWallet("host_race_settle");
       const raceGuest = crypto.randomUUID();
       fixture.seedIdentity(raceGuest, "guest");
-      const raceHash = fakeHash();
 
       // 2 seats: 1st=150, world bank=50 — a single 1st-place participant
       // fully conserves the 200 total.
@@ -275,7 +266,7 @@ describe("InMemoryEconomyRepository", () => {
             .settleMatchEconomy({
               matchId: "m_race_settle",
               isValidRanking: true,
-              participants: [{ identityId: raceGuest, identityKind: "guest", placement: 1, voucherCodeHash: raceHash }],
+              participants: [{ identityId: raceGuest, identityKind: "guest", placement: 1 }],
             })
             .then((r) => r.applied)
             .catch(() => "error" as const),
@@ -283,9 +274,10 @@ describe("InMemoryEconomyRepository", () => {
       );
       expect(results.filter((r) => r === true).length).toBe(1);
 
-      const voucherStatus = await repo.getVoucherStatus(raceHash);
-      expect(voucherStatus?.coinAmount).toBe("160");
-      expect(fixture.snapshot().vouchers.filter((v) => v.codeHash === raceHash)).toHaveLength(1);
+      // Paid once, into the guest's wallet: the 3,000 welcome grant plus the 160 prize.
+      expect((await repo.getWallet(raceGuest))?.balance).toBe("3160");
+      const credits = (await repo.listLedger(raceGuest)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT");
+      expect(credits).toHaveLength(1);
     });
   });
 
@@ -309,49 +301,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("host_race_refund");
-      expect(wallet?.balance).toBe("2000"); // fully restored, once
-    });
-  });
-
-  describe("concurrent voucher redemption", () => {
-    it("produces exactly one applied:true, credited once, across 8 concurrent callers for the same voucher", async () => {
-      fixture.seedIdentity("host_race_redeem", "guest");
-      await repo.ensureWallet("host_race_redeem");
-      const winningGuest = crypto.randomUUID();
-      fixture.seedIdentity(winningGuest, "guest");
-      const redeemHash = fakeHash();
-
-      await repo.commitMatchEntry({
-        matchId: "m_race_redeem",
-        roomCode: "RACE",
-        hostIdentityId: "host_race_redeem",
-        seatCount: 2,
-        humanSeatCount: 1,
-        botSeatCount: 1,
-        isSolo: false,
-      });
-      await repo.settleMatchEconomy({
-        matchId: "m_race_redeem",
-        isValidRanking: true,
-        participants: [{ identityId: winningGuest, identityKind: "guest", placement: 1, voucherCodeHash: redeemHash }],
-      });
-
-      const redeemer = crypto.randomUUID();
-      fixture.seedIdentity(redeemer, "member");
-      await repo.ensureWallet(redeemer);
-
-      const results = await Promise.all(
-        Array.from({ length: 8 }, () => repo.redeemRewardVoucher(redeemHash, redeemer)),
-      );
-      expect(results.filter((r) => r.applied).length).toBe(1);
-
-      const wallet = await repo.getWallet(redeemer);
-      expect(wallet?.balance).toBe("5160"); // 5000 starter + 150 voucher, once
-
-      // A DIFFERENT member attempting the same voucher after it's redeemed is a hard rejection, not a replay.
-      const otherMember = crypto.randomUUID();
-      fixture.seedIdentity(otherMember, "member");
-      await expect(repo.redeemRewardVoucher(redeemHash, otherMember)).rejects.toBeInstanceOf(VoucherAlreadyRedeemedError);
+      expect(wallet?.balance).toBe("3000"); // fully restored, once
     });
   });
 
@@ -413,14 +363,13 @@ describe("InMemoryEconomyRepository", () => {
   });
 
   describe("World Bank balance separation", () => {
-    it("keeps base fee revenue, bot prize revenue, and guest escrow liability independently correct after a mixed settlement", async () => {
+    it("keeps base fee revenue and bot prize revenue correct, and escrows nothing, after a mixed member, guest and bot settlement", async () => {
       fixture.seedIdentity("wb_host", "guest");
       await repo.ensureWallet("wb_host");
       const wbMember = crypto.randomUUID();
       fixture.seedIdentity(wbMember, "member");
       const wbGuest = crypto.randomUUID();
       fixture.seedIdentity(wbGuest, "guest");
-      const wbHash = fakeHash();
 
       // 5 seats: 1st=200, 2nd=150, 3rd=100, world bank=50 (total 500).
       await repo.commitMatchEntry({
@@ -437,65 +386,24 @@ describe("InMemoryEconomyRepository", () => {
         isValidRanking: true,
         participants: [
           { identityId: wbMember, identityKind: "member", placement: 1 },
-          { identityId: wbGuest, identityKind: "guest", placement: 2, voucherCodeHash: wbHash },
+          { identityId: wbGuest, identityKind: "guest", placement: 2 },
           { identityId: "bot_seat_3", identityKind: "bot", placement: 3 },
         ],
       });
-      expect(settled.result.totalWalletRewarded).toBe("200");
-      expect(settled.result.totalGuestEscrow).toBe("120");
+      expect(settled.result.totalWalletRewarded).toBe("320"); // the member's 200 and the guest's 120
+      expect(settled.result.totalGuestEscrow).toBe("0");
       expect(settled.result.totalBotCollection).toBe("80");
       expect(settled.result.totalWorldBankCut).toBe("100");
 
       const snapshot = await repo.getWorldBankSnapshot();
       expect(snapshot.baseFeeRevenue).toBe("100");
       expect(snapshot.botPrizeRevenue).toBe("80");
-      expect(snapshot.guestEscrowLiability).toBe("120");
+      expect(snapshot.guestEscrowLiability).toBe("0");
       expect(snapshot.totalVoucherRedeemed).toBe("0");
 
-      // The guest's own wallet must never change — no ledger row for the escrow event.
+      // The guest is paid into their own wallet: the 3,000 welcome grant plus the 120 prize.
       const guestWallet = await repo.getWallet(wbGuest);
-      expect(guestWallet).toBeNull();
-    });
-  });
-
-  describe("Guest escrow deposit and redemption", () => {
-    it("moves the liability from deposit to redemption exactly, and credits the redeeming member", async () => {
-      fixture.seedIdentity("escrow_host", "guest");
-      await repo.ensureWallet("escrow_host");
-      const escrowGuest = crypto.randomUUID();
-      fixture.seedIdentity(escrowGuest, "guest");
-      const escrowHash = fakeHash();
-
-      await repo.commitMatchEntry({
-        matchId: "m_escrow",
-        roomCode: "R",
-        hostIdentityId: "escrow_host",
-        seatCount: 2,
-        humanSeatCount: 1,
-        botSeatCount: 1,
-        isSolo: false,
-      });
-      await repo.settleMatchEconomy({
-        matchId: "m_escrow",
-        isValidRanking: true,
-        participants: [{ identityId: escrowGuest, identityKind: "guest", placement: 1, voucherCodeHash: escrowHash }],
-      });
-
-      const afterDeposit = await repo.getWorldBankSnapshot();
-      expect(afterDeposit.guestEscrowLiability).toBe("160");
-
-      const redeemer = crypto.randomUUID();
-      fixture.seedIdentity(redeemer, "member");
-      await repo.ensureWallet(redeemer);
-      const redeemed = await repo.redeemRewardVoucher(escrowHash, redeemer);
-      expect(redeemed.result.status).toBe("REDEEMED");
-
-      const afterRedemption = await repo.getWorldBankSnapshot();
-      expect(afterRedemption.guestEscrowLiability).toBe("0");
-      expect(afterRedemption.totalVoucherRedeemed).toBe("160");
-
-      const memberWallet = await repo.getWallet(redeemer);
-      expect(memberWallet?.balance).toBe("5160");
+      expect(guestWallet?.balance).toBe("3120");
     });
   });
 
@@ -526,8 +434,7 @@ describe("InMemoryEconomyRepository", () => {
 
     it("gameKind flows onto the debit at commit time, is null when omitted, and carries through to a later prize credit and to a refund", async () => {
       // Match A: gameKind supplied — the debit AND the eventual prize credit both carry it.
-      // Both seats are members so the winner's payout is a real wallet credit
-      // (a wired guest win escrows into a voucher instead, with no coin_ledger_entries row at all).
+      // Both seats are members; a guest winner is paid the same way, into their wallet.
       fixture.seedIdentity("game_kind_p1", "member");
       fixture.seedIdentity("game_kind_p2", "member");
       await repo.ensureWallet("game_kind_p1");
@@ -582,7 +489,7 @@ describe("InMemoryEconomyRepository", () => {
   });
 
   describe("reset behavior", () => {
-    it("restores a clean baseline — no leftover wallets/settlements/vouchers, default configuration intact", async () => {
+    it("restores a clean baseline — no leftover wallets or settlements, default configuration intact", async () => {
       fixture.seedIdentity("to_be_reset", "guest");
       await repo.ensureWallet("to_be_reset");
       await repo.commitMatchEntry({

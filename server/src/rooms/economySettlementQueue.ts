@@ -108,7 +108,7 @@ export class EconomySettlementQueue {
       const result = await this.economyService.settleMatchEconomy(request);
       this.settled += 1;
       logger.info({
-        message: `Match ${request.matchId} settled (applied=${result.applied}, vouchers issued=${result.issuedVouchers.length})`,
+        message: `Match ${request.matchId} settled (applied=${result.applied})`,
         module: "ECONOMY_ROOM",
         matchId: request.matchId,
       });

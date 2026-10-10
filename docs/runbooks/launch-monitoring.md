@@ -23,7 +23,7 @@ provide without a dashboard.
 
 | Signal | Where | What to look for |
 |---|---|---|
-| Overall health | `GET /health` | `status: "healthy"`, `progression` and `economy` present, `economy.voucher.durable: true` in any environment that sets `VOUCHER_HMAC_SECRET` |
+| Overall health | `GET /health` | `status: "healthy"`, `progression` and `economy` present |
 | Active rooms / sockets | `GET /health` → `activeRooms`, `socketCount` | A sudden drop to 0 with real traffic expected is itself a signal — check the backend didn't just restart |
 | Room-level detail (requires `OPERATIONAL_SECRET`) | Operational endpoints under `/api/operational/*` (see `server/src/security/operationalAuth.ts`) | Per-room lifecycle state, disconnected/rejoin-eligible seats, active takeovers — see `getOperationalRoomSummaries`/`getOperationalRecoverySummary` in `RoomManager.ts` |
 | Platform health counters | Same operational surface → `getOperationalDetailedStats` | `onlineHumans`, `activeBots`, `disconnectedUsers`, `rejoinEligibleUsers`, `recoverySuccessRate` (null until at least one grace session has resolved — not a bug, see that method's own doc comment), `hostMigrationCount`, `abandonmentRate` |

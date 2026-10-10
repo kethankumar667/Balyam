@@ -8,7 +8,6 @@ import {
   GameStartSequence,
   SettlementSequence,
   RefundSequence,
-  EscrowSequence,
   CoinTransferLayer,
   EconomyMotionOrchestrator,
   CoinFlight,
@@ -200,29 +199,6 @@ describe("Economy Motion System Suite", () => {
         vi.advanceTimersByTime(1600);
       });
       expect(onComplete).toHaveBeenCalled();
-    });
-  });
-
-  // ── 6. Chapter 5: EscrowSequence ───────────────────────────────────────────
-
-  describe("EscrowSequence component", () => {
-    it("renders guest escrow voucher amount without sending coins to wallet", () => {
-      const onClaim = vi.fn();
-      render(
-        <EscrowSequence
-          payload={{
-            sequenceId: "seq-3",
-            matchId: "m-3",
-            voucherAmount: "360",
-            voucherCode: "BH-ESCROW-001",
-          }}
-          onClaimVoucher={onClaim}
-        />,
-      );
-
-      expect(screen.getByText("Winnings Secured in Escrow")).toBeDefined();
-      expect(screen.getByText("360")).toBeDefined();
-      expect(screen.getByText("Create Account to Claim Coins")).toBeDefined();
     });
   });
 

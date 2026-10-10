@@ -9,19 +9,13 @@ import {
   InvalidIdentityIdError,
   InvalidIdentityKindError,
   InvalidSeatConfigurationError,
-  InvalidVoucherHashError,
   MatchAlreadyForfeitedError,
   MatchAlreadyRefundedError,
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
-  OnlyMembersCanRedeemError,
   SettlementConservationViolationError,
   UnsupportedSeatCountError,
-  VoucherAlreadyRedeemedError,
-  VoucherCodeCollisionError,
-  VoucherNotActiveError,
-  VoucherNotFoundError,
   WalletFrozenError,
   WalletNotFoundError,
   type ParticipantIdentityKind,
@@ -130,7 +124,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
     );
 
     it(
-      "a real PostgREST POST to rpc/commit_match_entry, rpc/settle_match_economy, rpc/refund_match_entry, rpc/issue_guest_voucher, and rpc/redeem_reward_voucher each return their nested `result` object's bigint-derived fields (built by settlement_to_safe_jsonb/voucher_to_safe_jsonb) as JSON strings, for at least one field per call beyond 2^53",
+      "a real PostgREST POST to rpc/commit_match_entry, rpc/settle_match_economy, and rpc/refund_match_entry each return their nested `result` object's bigint-derived fields (built by settlement_to_safe_jsonb) as JSON strings, for at least one field per call beyond 2^53",
       async () => {
         const hugeAmount = "9007199254740995";
         const hugeDouble = "18014398509481990";
@@ -242,58 +236,17 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(typeof refundBody.result.total_refunded).toBe("string");
         expect(refundBody.result.total_refunded).toBe(hugeDouble);
 
-        const guestId = `guest_huge_${Date.now()}`;
-        backend.testFixture.seedIdentity(guestId, "guest");
-        const voucherHash = crypto.createHash("sha256").update(guestId).digest("hex");
-        const voucherRes = await fakeFetch("https://example.supabase.co/rest/v1/rpc/issue_guest_voucher", {
-          method: "POST",
-          headers: {
-            Authorization: "Bearer service_role_key",
-            apikey: "service_role_key",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            p_voucher_id: `v_${Date.now()}`,
-            p_code_hash: voucherHash,
-            p_coin_amount: hugeAmount,
-            p_match_id: matchId,
-            p_issued_to_guest_id: guestId,
-          }),
-        });
-        const voucherBody = (await voucherRes.json()) as { result: { coin_amount: unknown } };
-        expect(typeof voucherBody.result.coin_amount).toBe("string");
-        expect(voucherBody.result.coin_amount).toBe(hugeAmount);
-
-        const memberRedeemer = crypto.randomUUID();
-        backend.testFixture.seedIdentity(memberRedeemer, "member");
-        await repo.ensureWallet(memberRedeemer);
-        const redeemRes = await fakeFetch("https://example.supabase.co/rest/v1/rpc/redeem_reward_voucher", {
-          method: "POST",
-          headers: {
-            Authorization: "Bearer service_role_key",
-            apikey: "service_role_key",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            p_code_hash: voucherHash,
-            p_member_identity_id: memberRedeemer,
-          }),
-        });
-        const redeemBody = (await redeemRes.json()) as { result: { coin_amount: unknown } };
-        expect(typeof redeemBody.result.coin_amount).toBe("string");
-        expect(redeemBody.result.coin_amount).toBe(hugeAmount);
       },
     );
 
     it(
-      "a real PostgREST GET against the raw (non-_safe) coin_wallets/coin_ledger_entries/match_economy_settlements/world_bank_accounts/reward_vouchers/economy_configurations/economy_prize_schedules tables is refused for service_role (403/401), confirming the remediation's grant revocations (§13 of the migration) hold over real HTTP — this repository must be physically unable to accidentally read the lossy raw-table path even if a future edit mistyped a table name back in",
+      "a real PostgREST GET against the raw (non-_safe) coin_wallets/coin_ledger_entries/match_economy_settlements/world_bank_accounts/economy_configurations/economy_prize_schedules tables is refused for service_role (403/401), confirming the remediation's grant revocations (§13 of the migration) hold over real HTTP — this repository must be physically unable to accidentally read the lossy raw-table path even if a future edit mistyped a table name back in",
       async () => {
         const rawTables = [
           "coin_wallets",
           "coin_ledger_entries",
           "match_economy_settlements",
           "world_bank_accounts",
-          "reward_vouchers",
           "economy_configurations",
           "economy_prize_schedules",
         ];
@@ -353,7 +306,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
     );
 
     it(
-      "request and response casing (snake_case columns, snake_case top-level RPC args, camelCase settle_match_economy participants) matches this project's assumptions exactly, for every one of the 9 RPCs and 7 reads",
+      "request and response casing (snake_case columns, snake_case top-level RPC args, camelCase settle_match_economy participants) matches this project's assumptions exactly, for every one of the 7 RPCs and 6 reads",
       async () => {
         const expectedRpcArgPrefixes = [
           "p_identity_id",
@@ -369,11 +322,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           "p_participants",
           "p_refund_reason",
           "p_reason",
-          "p_voucher_id",
-          "p_code_hash",
-          "p_coin_amount",
-          "p_issued_to_guest_id",
-          "p_member_identity_id",
         ];
 
         for (const arg of expectedRpcArgPrefixes) {
@@ -384,7 +332,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           identityId: "mem_1",
           identityKind: "member" as const,
           placement: 1,
-          voucherCodeHash: "hash_1",
         };
         const participantKeys = Object.keys(sampleParticipant);
         for (const key of participantKeys) {
@@ -396,7 +343,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           "coin_ledger_entries_safe",
           "match_economy_settlements_safe",
           "world_bank_accounts_safe",
-          "reward_vouchers_safe",
           "economy_configurations_safe",
           "economy_prize_schedules_safe",
         ];
@@ -408,7 +354,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
     );
 
     it(
-      "error payload normalization: every one of the 18 named error classes in EconomyRepository.ts is triggered against the REAL migration and confirmed to map correctly via SupabaseEconomyRepository.mapError — including the real VOUCHER_INVALID vs INVALID_VOUCHER_HASH wording difference this project inferred from reading the migration source, not from an error a real server actually returned",
+      "error payload normalization: every named error class in EconomyRepository.ts that the database raises is confirmed to map correctly via SupabaseEconomyRepository.mapError",
       async () => {
         const mapError = (repo as unknown as { mapError(err: unknown): Error }).mapError.bind(repo);
 
@@ -418,11 +364,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           { message: "WALLET_NOT_FOUND: wallet missing", expectedClass: WalletNotFoundError },
           { message: "WALLET_FROZEN: wallet is locked", expectedClass: WalletFrozenError },
           { message: "INSUFFICIENT_FUNDS: balance insufficient", expectedClass: InsufficientFundsError },
-          { message: "INVALID_VOUCHER_HASH: hash format bad", expectedClass: InvalidVoucherHashError },
-          { message: "VOUCHER_INVALID: voucher hash invalid", expectedClass: InvalidVoucherHashError },
-          { message: "VOUCHER_NOT_FOUND: voucher does not exist", expectedClass: VoucherNotFoundError },
-          { message: "VOUCHER_NOT_ACTIVE: voucher already spent", expectedClass: VoucherNotActiveError },
-          { message: "VOUCHER_ALREADY_REDEEMED: redeemed before", expectedClass: VoucherAlreadyRedeemedError },
           { message: "INVALID_SEAT_CONFIGURATION: seats invalid", expectedClass: InvalidSeatConfigurationError },
           { message: "UNSUPPORTED_SEAT_COUNT: seat count unsupported", expectedClass: UnsupportedSeatCountError },
           { message: "INVALID_IDENTITY_KIND: unknown identity kind", expectedClass: InvalidIdentityKindError },
@@ -432,8 +373,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           { message: "MATCH_ALREADY_FORFEITED: forfeited already", expectedClass: MatchAlreadyForfeitedError },
           { message: "SETTLEMENT_CONSERVATION_VIOLATION: conservation bad", expectedClass: SettlementConservationViolationError },
           { message: "MATCH_NOT_FOUND: match missing", expectedClass: MatchNotFoundError },
-          { message: "ONLY_MEMBERS_CAN_REDEEM_VOUCHERS: guest rejected", expectedClass: OnlyMembersCanRedeemError },
-          { message: 'duplicate key value violates unique constraint "reward_vouchers_code_hash_key"', expectedClass: VoucherCodeCollisionError },
         ];
 
         for (const { message, expectedClass } of errorTestCases) {
@@ -447,14 +386,13 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
 
   describe("Privilege and exposure — economy-v1.md §7's own required evidence, not yet re-confirmed here", () => {
     it(
-      "function exposure and grants: all 9 top-level RPCs are EXECUTE-able by service_role and NOT by anon/authenticated; economy_apply_refund, prevent_ledger_mutation, wallet_to_safe_jsonb, settlement_to_safe_jsonb, and voucher_to_safe_jsonb are callable by no one",
+      "function exposure and grants: all 7 top-level RPCs are EXECUTE-able by service_role and NOT by anon/authenticated; economy_apply_refund, prevent_ledger_mutation, wallet_to_safe_jsonb and settlement_to_safe_jsonb are callable by no one",
       async () => {
         const privateFns = [
           "economy_apply_refund",
           "prevent_ledger_mutation",
           "wallet_to_safe_jsonb",
           "settlement_to_safe_jsonb",
-          "voucher_to_safe_jsonb",
         ];
 
         for (const fn of privateFns) {
@@ -475,8 +413,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
           "settle_match_economy",
           "refund_match_entry",
           "forfeit_match_entry",
-          "issue_guest_voucher",
-          "redeem_reward_voucher",
           "reconcile_match_settlement",
         ];
 
@@ -503,14 +439,13 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
     );
 
     it(
-      "direct service_role table mutation is denied for all 9 Economy V1 tables (this exact check already passed in scripts/economy/verifyEconomySchema.mjs's direct-SQL harness — this item re-confirms it specifically over PostgREST/HTTP, a different transport with its own potential for a misconfigured grant to only manifest at this layer)",
+      "direct service_role table mutation is denied for all 8 Economy V1 tables (this exact check already passed in scripts/economy/verifyEconomySchema.mjs's direct-SQL harness — this item re-confirms it specifically over PostgREST/HTTP, a different transport with its own potential for a misconfigured grant to only manifest at this layer)",
       async () => {
         const tables = [
           "coin_wallets",
           "coin_ledger_entries",
           "match_economy_settlements",
           "world_bank_accounts",
-          "reward_vouchers",
           "economy_configurations",
           "economy_prize_schedules",
           "world_bank_ledger",
@@ -533,14 +468,13 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
     );
 
     it(
-      "select on all 7 *_safe views is granted to service_role and denied to anon/authenticated over real PostgREST, and insert/update/delete against every *_safe view is refused (defense-in-depth on top of the views' own non-updatability from their cast expressions — §11a)",
+      "select on all 6 *_safe views is granted to service_role and denied to anon/authenticated over real PostgREST, and insert/update/delete against every *_safe view is refused (defense-in-depth on top of the views' own non-updatability from their cast expressions — §11a)",
       async () => {
         const safeViews = [
           "coin_wallets_safe",
           "coin_ledger_entries_safe",
           "match_economy_settlements_safe",
           "world_bank_accounts_safe",
-          "reward_vouchers_safe",
           "economy_configurations_safe",
           "economy_prize_schedules_safe",
         ];
@@ -592,13 +526,13 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
 
         expect(results).toHaveLength(8);
         for (const r of results) {
-          expect(r.balance).toBe("2000");
+          expect(r.balance).toBe("3000");
           expect(r.starterGranted).toBe(true);
           expect(r.version).toBe(1);
         }
 
         const wallet = await backend.getWallet(guestId);
-        expect(wallet?.balance).toBe("2000");
+        expect(wallet?.balance).toBe("3000");
       },
     );
 
@@ -622,7 +556,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(guestId);
-        expect(wallet?.balance).toBe("2000");
+        expect(wallet?.balance).toBe("3000");
       },
     );
 
@@ -652,12 +586,12 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(hostId);
-        expect(wallet?.balance).toBe("1800");
+        expect(wallet?.balance).toBe("2800");
       },
     );
 
     it(
-      "settleMatchEconomy: 8 concurrent requests for the same matchId over REAL PostgREST resolve to exactly one applied:true and exactly one voucher row, enforced by the real advisory lock plus the real reward_vouchers.code_hash unique index",
+      "settleMatchEconomy: 8 concurrent requests for the same matchId over REAL PostgREST resolve to exactly one applied:true and exactly one prize credit, enforced by the real advisory lock",
       async () => {
         const hostId = `host_settle_race_${Date.now()}`;
         backend.testFixture.seedIdentity(hostId, "guest");
@@ -676,7 +610,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
 
         const guestWinner = `guest_winner_race_${Date.now()}`;
         backend.testFixture.seedIdentity(guestWinner, "guest");
-        const codeHash = crypto.createHash("sha256").update(matchId).digest("hex");
 
         const results = await Promise.all(
           Array.from({ length: 8 }, () =>
@@ -689,7 +622,6 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
                     identityId: guestWinner,
                     identityKind: "guest",
                     placement: 1,
-                    voucherCodeHash: codeHash,
                   },
                 ],
               })
@@ -699,9 +631,9 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         );
 
         expect(results.filter((applied) => applied).length).toBe(1);
-        const voucher = await backend.getVoucherStatus(codeHash);
-        expect(voucher).not.toBeNull();
-        expect(voucher?.status).toBe("ACTIVE");
+        // Paid once, into the guest's wallet: the 3,000 welcome grant plus the 160 prize.
+        const winner = await backend.getWallet(guestWinner);
+        expect(winner?.balance).toBe("3160");
       },
     );
 
@@ -731,45 +663,9 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(hostId);
-        expect(wallet?.balance).toBe("2000");
+        expect(wallet?.balance).toBe("3000");
       },
     );
 
-    it(
-      "redeemRewardVoucher: 8 concurrent requests for the same voucher over REAL PostgREST resolve to exactly one applied:true, enforced by the real per-codeHash advisory lock",
-      async () => {
-        const guestId = `guest_voucher_race_${Date.now()}`;
-        backend.testFixture.seedIdentity(guestId, "guest");
-
-        const memberId = crypto.randomUUID();
-        backend.testFixture.seedIdentity(memberId, "member");
-        await repo.ensureWallet(memberId);
-
-        const codeHash = crypto.createHash("sha256").update(guestId).digest("hex");
-        await repo.issueGuestVoucher({
-          voucherId: `v_race_${Date.now()}`,
-          codeHash,
-          coinAmount: "500",
-          matchId: `m_voucher_${Date.now()}`,
-          issuedToGuestId: guestId,
-        });
-
-        const results = await Promise.all(
-          Array.from({ length: 8 }, () =>
-            repo
-              .redeemRewardVoucher(codeHash, memberId)
-              .then((r) => r.applied)
-              .catch((err) => {
-                if (err instanceof VoucherAlreadyRedeemedError) return false;
-                throw err;
-              }),
-          ),
-        );
-
-        expect(results.filter((applied) => applied).length).toBe(1);
-        const wallet = await backend.getWallet(memberId);
-        expect(wallet?.balance).toBe("5500");
-      },
-    );
   });
 });

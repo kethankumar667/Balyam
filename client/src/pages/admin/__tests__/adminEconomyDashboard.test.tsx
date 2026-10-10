@@ -17,8 +17,8 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
     baseFeeRevenue: "450000",
     botPrizeRevenue: "35000",
     abandonmentForfeitureRevenue: "14000",
-    guestEscrowLiability: "120000",
-    totalVoucherRedeemed: "155000",
+    guestEscrowLiability: "0",
+    totalVoucherRedeemed: "0",
   };
 
   const mockRecentSettlements: economyApi.MatchEconomySettlementRecord[] = [
@@ -156,17 +156,18 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
       // "World Bank Treasury Reserves" is the section title and renders
       // unconditionally, even while worldBank is still loading — waiting on
       // it alone lets this proceed before the mocked snapshot has resolved.
-      // "Guest Escrow Liability" only renders once worldBank is populated,
+      // "Match Entry Protocol Rake" only renders once worldBank is populated,
       // so waiting on it guarantees the data-dependent assertions below see
       // the loaded state instead of racing it.
       await waitFor(() => {
-        expect(screen.getByText("Guest Escrow Liability")).toBeDefined();
+        expect(screen.getByText("Match Entry Protocol Rake")).toBeDefined();
       });
 
       expect(screen.getByText("World Bank Treasury Reserves")).toBeDefined();
       expect(screen.getByText("BHALYAM Economy Health & Operations")).toBeDefined();
       expect(screen.getByText("HEALTHY")).toBeDefined();
-      expect(screen.getByText("Vouchers Redeemed")).toBeDefined();
+      expect(screen.queryByText("Vouchers Redeemed")).toBeNull();
+      expect(screen.queryByText("Guest Escrow Liability")).toBeNull();
     });
 
     it("renders settlement statistics (Settled, Refunded, Abandonment Forfeitures)", async () => {
@@ -269,7 +270,7 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
   });
 
   describe("4. World Bank Dashboard Module (Module 4)", () => {
-    it("renders Treasury Solvency Hero and 5 revenue & liability pillars", async () => {
+    it("renders the Treasury hero and the three revenue pillars, with no escrow or voucher figures", async () => {
       renderDashboard();
 
       await screen.findByText("World Bank Treasury Reserves");
@@ -284,9 +285,8 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
       expect(screen.getByText("Base Fee Revenue")).toBeDefined();
       expect(screen.getByText("Bot Victory Prize Rake")).toBeDefined();
       expect(screen.getByText("Abandonment Forfeitures")).toBeDefined();
-      expect(screen.getByText("Guest Escrow Liability")).toBeDefined();
-      expect(screen.getByText("Vouchers Redeemed")).toBeDefined();
-      expect(screen.getByText("Non-Fungible Treasury Balance Architecture")).toBeDefined();
+      expect(screen.queryByText("Guest Escrow Liability")).toBeNull();
+      expect(screen.queryByText("Vouchers Redeemed")).toBeNull();
     });
   });
 
@@ -422,7 +422,7 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
   });
 
   describe("8. Economy Health Center Module (Module 8)", () => {
-    it("renders 5 automated health checks and operator intervention playbook", async () => {
+    it("renders the automated health checks and operator intervention playbook", async () => {
       renderDashboard();
 
       await screen.findByText("World Bank Treasury Reserves");
@@ -436,16 +436,15 @@ describe("Admin Economy Operations Dashboard (/admin/economy)", () => {
 
       expect(screen.getByText("Stale Commitment Queue")).toBeDefined();
       expect(screen.getByText("Mathematical Balance Conservation")).toBeDefined();
-      expect(screen.getByText("Guest Escrow Treasury Solvency")).toBeDefined();
+      expect(screen.queryByText("Guest Escrow Treasury Solvency")).toBeNull();
       expect(screen.getByText("Settlement Queue Serial Integrity")).toBeDefined();
-      expect(screen.getByText("Cryptographic Bearer Token Isolation")).toBeDefined();
+      expect(screen.queryByText("Cryptographic Bearer Token Isolation")).toBeNull();
       expect(screen.getByText("Operational Guidance & Recommendations")).toBeDefined();
 
-      // Only checks backed by a real, live signal (stale queue count,
-      // escrow solvency from the real World Bank snapshot) may claim
-      // HEALTHY. The three with no server-side aggregate wired up yet must
+      // Only the check backed by a real, live signal (the stale queue count) may claim
+      // HEALTHY. The two with no server-side aggregate wired up yet must
       // say so plainly, never a fabricated all-clear.
-      expect(screen.getAllByText("NOT MONITORED").length).toBe(3);
+      expect(screen.getAllByText("NOT MONITORED").length).toBe(2);
       expect(screen.getAllByText("HEALTHY").length).toBeGreaterThanOrEqual(1);
     });
   });

@@ -401,14 +401,15 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.totalForfeited).toBe("0"); // nothing confiscated
       expect(settlement?.totalRefunded).toBe("0");
       // 200 collected → 20% platform cut, 160 to the sole winner. Casey is a
-      // guest, so her prize is escrowed as a redeemable voucher rather than
-      // credited to a wallet she doesn't have.
+      // guest, and her prize is paid into her wallet like anyone else's.
       expect(settlement?.totalWorldBankCut).toBe("40");
-      expect(settlement?.totalGuestEscrow).toBe("160");
+      expect(settlement?.totalWalletRewarded).toBe("160");
+      expect(settlement?.totalGuestEscrow).toBe("0");
+      expect((await service.getWallet(guestB)).balance).toBe("3060"); // 3,000 welcome - 100 stake + 160 prize
 
       const worldBank = await service.getWorldBankSnapshot();
       expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
-      expect(worldBank.guestEscrowLiability).toBe("160");
+      expect(worldBank.guestEscrowLiability).toBe("0");
     });
 
     it("duplicate forfeiture attempt: a second abandonment of an already-forfeited match is a safe no-op", async () => {
@@ -749,13 +750,14 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await rooms.leaveRoom("s_host"); // host walks out mid-match
       await drainRoomEconomy(rooms);
 
-      // 1. The guest is actually paid — 200 collected, 20% cut, 160 escrowed
-      //    as a redeemable voucher because a guest has no wallet to credit.
+      // 1. The guest is actually paid — 200 collected, 20% cut, 160 into their wallet.
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("SETTLED");
-      expect(settlement?.totalGuestEscrow).toBe("160");
+      expect(settlement?.totalWalletRewarded).toBe("160");
+      expect(settlement?.totalGuestEscrow).toBe("0");
       expect(settlement?.totalForfeited).toBe("0");
-      expect((await service.getWorldBankSnapshot()).guestEscrowLiability).toBe("160");
+      expect((await service.getWallet(guestB)).balance).toBe("3060");
+      expect((await service.getWorldBankSnapshot()).guestEscrowLiability).toBe("0");
 
       // 2. The guest's client is told, over BOTH channels — `game:state`
       //    carries the board's own terminal state (the half that used to be
@@ -1241,18 +1243,17 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
     });
   });
 
-  describe("voucher issuance and redemption lifecycle", () => {
+  describe("a guest winner is paid", () => {
     /**
      * Guest-token socket resolution exists via `server/src/sockets/index.ts`
      * (using `resolveIdentity()` and `verifyGuestToken()` from `economyIdentity.ts`).
-     * This specific test bypasses the socket layer by seating a guest seat
-     * with a directly-supplied `guestIdentityId` into `RoomManager.joinRoom()`.
-     * This test focuses on the settlement engine and voucher issuance/redemption
-     * lifecycle itself. Complementary socket identity verification and guest
-     * token resolution tests live in `server/src/rooms/__tests__/terminalFailureRetry.test.ts`
-     * and `server/src/auth/__tests__/guestIdentityProvisioning.test.ts`.
+     * This test bypasses the socket layer by seating a guest with a directly-supplied
+     * `guestIdentityId` into `RoomManager.joinRoom()` and focuses on the settlement itself.
+     * Complementary socket identity verification lives in
+     * `server/src/rooms/__tests__/terminalFailureRetry.test.ts` and
+     * `server/src/auth/__tests__/guestIdentityProvisioning.test.ts`.
      */
-    it("a guest winner receives an escrowed voucher, never a wallet credit; a member can then redeem it", async () => {
+    it("a guest winner is credited to their own wallet, with a Match Prize ledger row and nothing escrowed", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       const guestIdentityId = "guest_integration_test";
@@ -1269,41 +1270,14 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       playRpsToCompletion(rooms, "s_guest", "s_a");
       await drainRoomEconomy(rooms);
 
+      expect((await service.getWallet(guestIdentityId)).balance).toBe("3060"); // 3,000 welcome - 100 stake + 160 prize
+      const prize = (await repo.listLedger(guestIdentityId)).find((e) => e.entryType === "MATCH_PRIZE_CREDIT");
+      expect(prize?.amount).toBe("160");
+
       const worldBank = await service.getWorldBankSnapshot();
-      expect(worldBank.guestEscrowLiability).toBe("160");
-      // No repository method exists to enumerate vouchers by guest — this
-      // integration proves issuance via the World Bank escrow liability
-      // moving by exactly the prize amount, matching Phase 5's own test
-      // strategy for "a guest winner gets a voucher, never a wallet credit."
-
-      // Redemption after settlement: a real, separate member claims the
-      // voucher RoomManager's own settlement queue just issued. RoomManager
-      // itself never touches redemption (that's the player-facing API,
-      // Phase 6 — no redeem call site exists in RoomManager by design); a
-      // spy on the SAME `service.settleMatchEconomy` the queue calls is
-      // what captures the raw code, proving it's the queue's own result,
-      // not a separately-constructed one.
-      seedMember(repo, MEMBER_C, "1000"); // enough to fund the 2-seat commitment below
-      const settleSpy = vi.spyOn(service, "settleMatchEconomy");
-
-      const secondGuest = "guest_integration_test_2";
-      repo.testFixture.seedIdentity(secondGuest, "guest");
-      const hostB = createRoomAs(rooms, "s_c", "Deepa", "rps", "member", MEMBER_C);
-      joinRoomAs(rooms, "s_guest2", "Eli", hostB.code, "guest", secondGuest);
-      rooms.setReady("s_c", true);
-      rooms.setReady("s_guest2", true);
-      await rooms.requestGameStart("s_c");
-      playRpsToCompletion(rooms, "s_guest2", "s_c");
-      await drainRoomEconomy(rooms);
-
-      const settleResult = await settleSpy.mock.results[0]!.value;
-      const issuedRawCode: string = settleResult.issuedVouchers[0].rawCode;
-      expect(typeof issuedRawCode).toBe("string");
-
-      const redemption = await service.redeemVoucher(issuedRawCode, MEMBER_C);
-      expect(redemption.applied).toBe(true);
-      expect(redemption.voucher.status).toBe("REDEEMED");
-      expect((await service.getWallet(MEMBER_C)).balance).toBe("1060"); // 1000 - 100 (commitment) + 160 (redemption)
+      expect(worldBank.guestEscrowLiability).toBe("0");
+      // The loser (a member) lost their stake and was not paid.
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("4900");
     });
   });
 
@@ -1396,7 +1370,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
   });
 
   describe("Phase 4 — guest socket identity resolves through to settlement", () => {
-    it("a guest with a resolved identityId (a valid guest token) settles as a real participant and receives a voucher, not a forced refund", async () => {
+    it("a guest with a resolved identityId (a valid guest token) settles as a real participant and is paid into their wallet, not a forced refund", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       repo.testFixture.seedIdentity("guest_phase4_g1", "guest");
@@ -1418,7 +1392,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const matchId = peek(rooms, host.code).currentMatchId;
       expect(matchId).not.toBeNull();
 
-      playRpsToCompletion(rooms, "s_g", "s_a"); // the GUEST wins — proves guest wallet/voucher wiring, not just host accounting
+      playRpsToCompletion(rooms, "s_g", "s_a"); // the GUEST wins — proves guest wallet wiring, not just host accounting
       await drainRoomEconomy(rooms);
 
       expect(peek(rooms, host.code).currentMatchId).toBeNull(); // cleared once settlement is queued+processed
@@ -1428,8 +1402,9 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       const settlement = await service.getSettlement(matchId!);
       expect(settlement?.status).toBe("SETTLED"); // not REFUNDED — a resolved guest identity let this settle for real
-      expect(settlement?.totalGuestEscrow).toBe("160"); // 1st-place prize, paid into escrow (a guest never gets a wallet credit)
-      expect(settlement?.totalWalletRewarded).toBe("0"); // the winner is a guest, so no member wallet was credited
+      expect(settlement?.totalGuestEscrow).toBe("0"); // nothing is escrowed any more
+      expect(settlement?.totalWalletRewarded).toBe("160"); // 1st-place prize, paid into the guest's own wallet
+      expect((await service.getWallet("guest_phase4_g1")).balance).toBe("3060");
     });
 
     it("allows a guest host with 1 bot to start a free practice match with 0 coins deducted", async () => {
@@ -2584,18 +2559,15 @@ describe("P0 seat-capacity contract (2026-08-28 production incident regression)"
 });
 
 /**
- * 2026-09-07 finding: a winning guest's voucher was generated then
- * discarded — nothing ever delivered the raw code (the only thing that can
- * redeem it) anywhere the guest could see it. `RoomManager.
- * handleVouchersIssued` (wired as `DurableSettlementWorker`'s
- * `onVouchersIssued` callback) is the fix; these prove it end to end
- * through the real `RoomManager`, not just the worker in isolation.
+ * 2026-09-07 finding: a winning guest's prize could be lost outright, because it was sealed in a
+ * voucher whose code had to reach a socket that might already be gone. A guest is now paid into
+ * their wallet, so there is nothing left to deliver and nothing that can be missed.
  */
-describe("guest voucher delivery", () => {
-  it("delivers a winning guest's voucher code directly to their own socket, never broadcast to the room", async () => {
+describe("a winning guest is paid whether or not they are still connected", () => {
+  it("pays a winning guest and never emits a voucher event", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, MEMBER_A);
-    const guestWinner = "guest_voucher_room_test";
+    const guestWinner = "guest_paid_room_test";
     repo.testFixture.seedIdentity(guestWinner, "guest");
     const { io, socketEmits, roomEmits } = makeIo();
     const rooms = new RoomManager(io, service);
@@ -2608,22 +2580,17 @@ describe("guest voucher delivery", () => {
     playRpsToCompletion(rooms, "s_b", "s_a"); // the guest (s_b) wins
     await drainRoomEconomy(rooms);
 
-    const voucherEmit = socketEmits.find((e) => e.event === "economy:voucherIssued");
-    expect(voucherEmit).toBeDefined();
-    expect(voucherEmit?.socketId).toBe("s_b"); // the WINNER's own socket, not the host's or a broadcast
-    const payload = voucherEmit?.data as { matchId: string; coinAmount: string; rawCode: string };
-    expect(payload.rawCode.length).toBeGreaterThan(0);
-    expect(payload.coinAmount).toBe("160"); // 2-seat 1st place
-
+    expect((await service.getWallet(guestWinner)).balance).toBe("3060");
+    expect(socketEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
     expect(roomEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
   });
 
-  it("logs loudly instead of silently dropping the code when the winning guest has no connected socket anywhere", async () => {
+  it("still pays a winning guest who has disconnected before settlement runs", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, MEMBER_A);
-    const guestWinner = "guest_voucher_disconnected_test";
+    const guestWinner = "guest_paid_disconnected_test";
     repo.testFixture.seedIdentity(guestWinner, "guest");
-    const { io, socketEmits } = makeIo();
+    const { io } = makeIo();
     const rooms = new RoomManager(io, service);
 
     const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
@@ -2636,7 +2603,8 @@ describe("guest voucher delivery", () => {
     rooms.handleDisconnect("s_b"); // the winning guest is gone before settlement even runs
     await drainRoomEconomy(rooms);
 
-    expect(socketEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
+    // Under vouchers this win was unclaimable. Now the coins are simply in the wallet.
+    expect((await service.getWallet(guestWinner)).balance).toBe("3060");
   });
 });
 

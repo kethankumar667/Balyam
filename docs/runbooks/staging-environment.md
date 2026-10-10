@@ -75,7 +75,7 @@ change is how the isolated instance is created.
 - Separate API credentials (own `SUPABASE_URL`, own keys — never production's).
 - Separate database — zero shared rows with production.
 - **No production customer data.** Do not copy `auth.users`, `profiles`,
-  wallets, guest identities, tokens, or vouchers from production into
+  wallets, guest identities, or tokens from production into
   staging, under any circumstance.
 - Same migration history — all 11 files, in order, nothing skipped.
 - Equivalent RLS policies — the same 6 migrations that define them, applied
@@ -214,7 +214,7 @@ of these requires a new build+deploy, not just a variable edit):
 |---|---|
 | `VITE_OPERATIONAL_KEY` | Any `VITE_`-prefixed variable is inlined into the public JS bundle. This one is DEV-gated in code (`import.meta.env.DEV` — see `client/src/lib/operationalApi.ts`'s ADMIN-SEC-001 comment) so a production-mode build strips it entirely regardless, but it should never be set on a deployed service's env either, staging included — there is no scenario where a deployed build needs it. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only secret; must never reach a build the browser downloads. |
-| `SESSION_SECRET`, `VOUCHER_HMAC_SECRET`, `OPERATIONAL_SECRET` | Backend-only secrets; have no `VITE_` prefix and are never read by client code — their presence in a frontend service's env is always a mistake. |
+| `SESSION_SECRET`, `OPERATIONAL_SECRET` | Backend-only secrets; have no `VITE_` prefix and are never read by client code — their presence in a frontend service's env is always a mistake. |
 
 ## 7. Backend staging variables
 
@@ -222,12 +222,11 @@ Set on `bhalyam-backend-staging`:
 
 | Variable | Required? | Rule |
 |---|---|---|
-| `NODE_ENV` | Required | `production` — this is what activates the fail-closed boot gates (`assertOperationalAuthConfigured`, `assertVoucherHmacConfigured`, `assertGuestTokenDurabilityConfigured`); staging should run under the same gates production does, or it isn't really validating anything |
+| `NODE_ENV` | Required | `production` — this is what activates the fail-closed boot gates (`assertOperationalAuthConfigured`, `assertGuestTokenDurabilityConfigured`); staging should run under the same gates production does, or it isn't really validating anything |
 | `PORT` | Required | `4000` (or whatever Render assigns — match `render.yaml`'s production pattern) |
 | `CLIENT_ORIGIN` | Required | Must exactly equal `bhalyam-staging`'s actual URL. Wrong values fail silently on WebSocket (see the rollback runbook's CORS trigger) |
 | `OPERATIONAL_SECRET` | Required | Staging-only value, distinct from production's. Server refuses to boot without one in `NODE_ENV=production` |
 | `SESSION_SECRET` | Required | Staging-only, and must stay **stable** across restarts/redeploys — rotating it signs every guest out |
-| `VOUCHER_HMAC_SECRET` | Required | Staging-only, and must stay stable for the same reason — rotating it orphans any voucher issued before the rotation |
 | `SUPABASE_URL` | Required | The staging Supabase project's URL |
 | `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) | Required | The staging project's own service-role/secret key — code accepts either name (`server/src/persistence/postgrest.ts`) |
 | `SUPABASE_JWT_SECRET` (or `SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_ANON_KEY`) | Required (one path) | Legacy projects: the JWT secret, verified in-process with no network call (preferred). Newer projects on asymmetric keys: the publishable key instead, verified via one cached API call — see `docs/runbooks/supabase.md` §4 |
@@ -235,8 +234,8 @@ Set on `bhalyam-backend-staging`:
 | `TURN_URLS`/`TURN_URL`, `TURN_SECRET` or `TURN_USERNAME`/`TURN_PASSWORD` | Optional | Only relevant if staging needs to validate WebRTC voice chat under a real symmetric-NAT condition. No TURN credentials are currently provisioned anywhere in this project (a known, pre-existing gap) — leave unset unless voice validation is explicitly in scope for this staging pass |
 
 Rules, restated because they're the ones most likely to be violated under
-time pressure: `CLIENT_ORIGIN` matches the staging frontend, both secrets
-(`SESSION_SECRET`, `VOUCHER_HMAC_SECRET`) are staging-only and stable,
+time pressure: `CLIENT_ORIGIN` matches the staging frontend, the session
+secret (`SESSION_SECRET`) is staging-only and stable,
 `OPERATIONAL_SECRET` is staging-only, every Supabase credential belongs to
 the staging project, and nothing here is copy-pasted from production's
 Render environment. Health check path: `/health` (matches `render.yaml`).
@@ -273,7 +272,7 @@ Render environment. Health check path: `/health` (matches `render.yaml`).
 ## 9. Synthetic test data policy
 
 No production data, ever, in staging — no copied rows, no copied tokens, no
-copied wallet balances, no real customer email addresses, no real vouchers.
+copied wallet balances, no real customer email addresses.
 
 - **Guest identities** — created the normal way: let the running staging
   app mint them through its own guest-token flow. Never hand-construct a

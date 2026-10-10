@@ -372,37 +372,6 @@ describe("runDeploymentConfigGuard — end to end against an isolated temp copy"
     expect(code).toBe(0);
   });
 
-  it("Case: missing voucher-secret declaration fails closed", () => {
-    const renderPath = path.join(tmpRoot, "render.yaml");
-    const original = fs.readFileSync(renderPath, "utf8");
-    const mutated = original.replace(/\s*- key: VOUCHER_HMAC_SECRET\r?\n\s*sync: false[^\r\n]*\r?\n/, "\n");
-    expect(mutated).not.toBe(original);
-    fs.writeFileSync(renderPath, mutated);
-
-    const { code, stderr } = runGuardInTmp();
-    expect(code).toBe(1);
-    expect(stderr).toMatch(/VOUCHER_HMAC_SECRET/);
-
-    fs.writeFileSync(renderPath, original);
-  });
-
-  it("Case: voucher-secret declaration without sync: false fails closed", () => {
-    const renderPath = path.join(tmpRoot, "render.yaml");
-    const original = fs.readFileSync(renderPath, "utf8");
-    const mutated = original.replace(
-      /- key: VOUCHER_HMAC_SECRET\r?\n(\s*)sync: false[^\r\n]*/,
-      "- key: VOUCHER_HMAC_SECRET\n$1sync: true",
-    );
-    expect(mutated).not.toBe(original);
-    fs.writeFileSync(renderPath, mutated);
-
-    const { code, stderr } = runGuardInTmp();
-    expect(code).toBe(1);
-    expect(stderr).toMatch(/sync: false/);
-
-    fs.writeFileSync(renderPath, original);
-  });
-
   it("Case: missing privacy-contact declaration fails closed", () => {
     const renderPath = path.join(tmpRoot, "render.yaml");
     const original = fs.readFileSync(renderPath, "utf8");

@@ -2,8 +2,7 @@
  * BHALYAM Deployment Configuration & Render Blueprint Guard
  *
  * Verifies repository-level production deployment contracts:
- * 1. render.yaml includes secure declarations for VOUCHER_HMAC_SECRET (sync: false)
- *    and VITE_PRIVACY_CONTACT_EMAIL (sync: false).
+ * 1. render.yaml includes a secure declaration for VITE_PRIVACY_CONTACT_EMAIL (sync: false).
  * 2. Every route in the AUTHORITATIVE public route catalog (excluding root /) has an
  *    explicit Render rewrite rule, with the correct destination.
  * 3. Zero extra rewrites exist for routes the catalog does not declare.
@@ -15,7 +14,7 @@
  * 7. client/src/vite-env.d.ts declares typing for VITE_PRIVACY_CONTACT_EMAIL.
  * 8. Environment example files ACTIVELY declare every production-required variable —
  *    a commented-out line or a bare prose mention of the name does not count.
- * 9. Secret boundaries: no VITE_VOUCHER_HMAC_SECRET or VITE_SESSION_SECRET exists in
+ * 9. Secret boundaries: no VITE_SESSION_SECRET exists in
  *    client code or configuration.
  *
  * ── Route truth: one authoritative source ─────────────────────────────────
@@ -155,17 +154,9 @@ export function runDeploymentConfigGuard() {
   }
   const renderContent = fs.readFileSync(RENDER_YAML, "utf8");
 
-  // Verify backend VOUCHER_HMAC_SECRET
-  const backendMatch = renderContent.match(/name:\s*bhalyam-backend[\s\S]*?(?=name:\s*bhalyam-frontend|$)/);
-  if (!backendMatch) {
+  // The backend service must exist: it is what the rest of this guard reads its section of.
+  if (!/name:\s*bhalyam-backend/.test(renderContent)) {
     issues.push("bhalyam-backend service definition not found in render.yaml.");
-  } else {
-    const backendSection = backendMatch[0];
-    if (!backendSection.includes("key: VOUCHER_HMAC_SECRET")) {
-      issues.push("bhalyam-backend missing VOUCHER_HMAC_SECRET declaration in render.yaml.");
-    } else if (!/key:\s*VOUCHER_HMAC_SECRET[\r\n\s]+sync:\s*false/.test(backendSection)) {
-      issues.push("VOUCHER_HMAC_SECRET must use 'sync: false' in render.yaml.");
-    }
   }
 
   // Verify frontend VITE_PRIVACY_CONTACT_EMAIL
@@ -289,7 +280,6 @@ export function runDeploymentConfigGuard() {
     "CLIENT_ORIGIN",
     "OPERATIONAL_SECRET",
     "SESSION_SECRET",
-    "VOUCHER_HMAC_SECRET",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
   ];
@@ -323,12 +313,10 @@ export function runDeploymentConfigGuard() {
 
   // ── 6. Secret Boundaries ─────────────────────────────────────────────────
   if (
-    clientEnv.includes("VITE_VOUCHER_HMAC_SECRET") ||
     clientEnv.includes("VITE_SESSION_SECRET") ||
-    renderContent.includes("VITE_VOUCHER_HMAC_SECRET") ||
     renderContent.includes("VITE_SESSION_SECRET")
   ) {
-    issues.push("Prohibited client-side secret variable (VITE_VOUCHER_HMAC_SECRET / VITE_SESSION_SECRET) detected.");
+    issues.push("Prohibited client-side secret variable (VITE_SESSION_SECRET) detected.");
   }
 
   return { ok: issues.length === 0, issues };

@@ -12,17 +12,14 @@ import {
   type EconomyPrizeScheduleRecord,
   type EconomyRepository,
   type IntentUpdateResult,
-  type IssueGuestVoucherInput,
   type ListTerminalIntentsOptions,
   type MarkIntentFailedInput,
   type MarkIntentRetryableInput,
   type MatchEconomySettlementRecord,
-  type RewardVoucherRecord,
   type SettleMatchEconomyInput,
   type SettlementEventRecord,
   type SettlementReconciliation,
   type TerminalIntentRecord,
-  type VoucherStatusView,
   type WorldBankSnapshot,
   EconomyInfrastructureError,
   IdentityNotFoundError,
@@ -30,7 +27,6 @@ import {
   InvalidSeatConfigurationError,
   MatchNotCommittedError,
   UnsupportedSeatCountError,
-  VoucherCodeCollisionError,
   WalletFrozenError,
 } from "../../persistence/EconomyRepository.js";
 import { logger } from "../../lib/logger.js";
@@ -46,7 +42,6 @@ import {
   computePrizePool,
   winnersForSeatCount,
 } from "../EconomyService.js";
-import { hashVoucherCode } from "../voucherCrypto.js";
 
 /* ═══════════════════════ fixtures ═══════════════════════════════════════ */
 
@@ -122,9 +117,6 @@ class ScriptedFailureRepository implements EconomyRepository {
   getWorldBankSnapshot(): Promise<WorldBankSnapshot> {
     return this.invoke("getWorldBankSnapshot", () => this.inner.getWorldBankSnapshot());
   }
-  getVoucherStatus(codeHash: string): Promise<VoucherStatusView | null> {
-    return this.invoke("getVoucherStatus", () => this.inner.getVoucherStatus(codeHash));
-  }
   getActiveConfiguration(): Promise<EconomyConfigurationRecord> {
     return this.invoke("getActiveConfiguration", () => this.inner.getActiveConfiguration());
   }
@@ -166,12 +158,6 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   forfeitMatchEntry(matchId: string, reason: string): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     return this.invoke("forfeitMatchEntry", () => this.inner.forfeitMatchEntry(matchId, reason));
-  }
-  issueGuestVoucher(input: IssueGuestVoucherInput): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    return this.invoke("issueGuestVoucher", () => this.inner.issueGuestVoucher(input));
-  }
-  redeemRewardVoucher(codeHash: string, memberIdentityId: string): Promise<EconomyOperationResult<RewardVoucherRecord>> {
-    return this.invoke("redeemRewardVoucher", () => this.inner.redeemRewardVoucher(codeHash, memberIdentityId));
   }
   createTerminalIntent(input: CreateTerminalIntentInput): Promise<CreateTerminalIntentResult> {
     return this.invoke("createTerminalIntent", () => this.inner.createTerminalIntent(input));
@@ -219,7 +205,7 @@ describe("EconomyService — wallet & ledger", () => {
     const service = freshService(repo);
     const wallet = await service.getWallet("guest_a");
     expect(wallet.identityId).toBe("guest_a");
-    expect(wallet.balance).toBe("2000"); // starter grant, per DEFAULT_CONFIG
+    expect(wallet.balance).toBe("3000"); // starter grant, per DEFAULT_CONFIG
     expect(wallet.starterGranted).toBe(true);
   });
 
@@ -237,7 +223,7 @@ describe("EconomyService — wallet & ledger", () => {
     const entries = await service.getLedger("guest_b");
     expect(entries.length).toBe(1);
     expect(entries[0].entryType).toBe("STARTER_GRANT");
-    expect(entries[0].amount).toBe("2000");
+    expect(entries[0].amount).toBe("3000");
   });
 });
 
@@ -541,7 +527,6 @@ describe("EconomyService — settleMatchEconomy validation", () => {
     });
     expect(result.applied).toBe(true);
     expect(result.settlement.status).toBe("REFUNDED");
-    expect(result.issuedVouchers).toEqual([]);
     const wallet = await repo.getWallet("host_ir");
     expect(wallet?.balance).toBe("1000"); // fully refunded
   });
@@ -561,7 +546,7 @@ describe("EconomyService — settleMatchEconomy validation", () => {
   });
 });
 
-/* ═══════════════════════ settlement — success, replay, vouchers ═════════ */
+/* ═══════════════════════ settlement — success, replay ═════════ */
 
 describe("EconomyService — settleMatchEconomy outcomes", () => {
   it("settles successfully: member winner credited, loser gets nothing, world bank collects", async () => {
@@ -581,14 +566,13 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     expect(result.settlement.status).toBe("SETTLED");
     expect(result.settlement.totalWalletRewarded).toBe("160");
     expect(result.settlement.totalWorldBankCut).toBe("40");
-    expect(result.issuedVouchers).toEqual([]);
     const winner = await repo.getWallet("member_winner");
     // ensureWallet's first-touch provisioning grants the member starter bonus
     // (5000, DEFAULT_CONFIG) before the 160 prize credit lands on top of it.
     expect(winner?.balance).toBe("5160");
   });
 
-  it("a guest winner gets a server-generated voucher, never a wallet credit", async () => {
+  it("a guest winner is paid into their wallet, like a member", async () => {
     const repo = freshRepo();
     const service = freshService(repo);
     await commitTwoSeatMatch(service, repo, { matchId: "m_settle_guest", hostIdentityId: "host_guest_settle" });
@@ -601,21 +585,17 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
         { identityId: "member_second", identityKind: "member", placement: 2 },
       ],
     });
-    expect(result.issuedVouchers).toHaveLength(1);
-    const ack = result.issuedVouchers[0]!;
-    expect(ack.identityId).toBe("guest_winner");
-    expect(ack.coinAmount).toBe("160");
-    expect(typeof ack.rawCode).toBe("string");
-    expect(ack.rawCode.length).toBeGreaterThan(0);
+    expect(result.settlement.totalWalletRewarded).toBe("160");
+    expect(result.settlement.totalGuestEscrow).toBe("0");
+    expect("issuedVouchers" in result).toBe(false); // nothing is issued any more
 
     const guestWallet = await repo.getWallet("guest_winner");
-    expect(guestWallet).toBeNull(); // never credited — escrowed instead
-
-    const status = await service.getVoucherStatus(ack.rawCode);
-    expect(status).toEqual({ status: "ACTIVE", coinAmount: "160" });
+    expect(guestWallet?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
+    const ledger = await repo.listLedger("guest_winner");
+    expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
   });
 
-  it("a replayed settlement returns applied:false with the original settlement and issues NO new vouchers", async () => {
+  it("a replayed settlement returns applied:false with the original settlement and pays nothing a second time", async () => {
     const repo = freshRepo();
     const service = freshService(repo);
     await commitTwoSeatMatch(service, repo, { matchId: "m_settle_replay", hostIdentityId: "host_settle_replay" });
@@ -632,35 +612,9 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     const second = await service.settleMatchEconomy(request);
     expect(second.applied).toBe(false);
     expect(second.settlement).toEqual(first.settlement);
-    expect(second.issuedVouchers).toEqual([]);
+    expect((await repo.getWallet("guest_replay"))?.balance).toBe("3160"); // paid once
   });
 
-  it("retries with a freshly generated voucher hash on a code_hash collision, without changing the settlement idempotency key", async () => {
-    const repo = freshRepo();
-    await commitTwoSeatMatch(
-      new EconomyService(repo, { delay: async () => undefined }),
-      repo,
-      { matchId: "m_collision", hostIdentityId: "host_collision" },
-    );
-    repo.testFixture.seedIdentity("guest_collision", "guest");
-    repo.testFixture.seedIdentity("member_collision", "member");
-
-    const scripted = new ScriptedFailureRepository(repo, {
-      settleMatchEconomy: (count) => (count === 1 ? new VoucherCodeCollisionError("collided") : null),
-    });
-    const service = new EconomyService(scripted, { delay: async () => undefined });
-
-    const result = await service.settleMatchEconomy({
-      matchId: "m_collision", isValidRanking: true,
-      participants: [
-        { identityId: "guest_collision", identityKind: "guest", placement: 1 },
-        { identityId: "member_collision", identityKind: "member", placement: 2 },
-      ],
-    });
-    expect(result.applied).toBe(true);
-    expect(scripted.callCounts.get("settleMatchEconomy")).toBe(2); // one collision, one success
-    expect(result.issuedVouchers).toHaveLength(1);
-  });
 });
 
 /* ═══════════════════════ refund ══════════════════════════════════════════ */
@@ -693,60 +647,6 @@ describe("EconomyService — refundMatchEntry", () => {
     const service = freshService(scripted);
     await expect(service.refundMatchEntry("m_x", "")).rejects.toBeInstanceOf(InvalidRequestError);
     expect(scripted.callCounts.size).toBe(0);
-  });
-});
-
-/* ═══════════════════════ voucher redemption ══════════════════════════════ */
-
-describe("EconomyService — voucher redemption", () => {
-  async function settleWithGuestWinner(repo: InMemoryEconomyRepository, service: EconomyService, matchId: string) {
-    await commitTwoSeatMatch(service, repo, { matchId, hostIdentityId: `host_${matchId}` });
-    repo.testFixture.seedIdentity(`guest_${matchId}`, "guest");
-    repo.testFixture.seedIdentity(`member_${matchId}`, "member");
-    const result = await service.settleMatchEconomy({
-      matchId, isValidRanking: true,
-      participants: [
-        { identityId: `guest_${matchId}`, identityKind: "guest", placement: 1 },
-        { identityId: `member_${matchId}`, identityKind: "member", placement: 2 },
-      ],
-    });
-    return result.issuedVouchers[0]!.rawCode;
-  }
-
-  it("redeems successfully: member wallet credited, voucher REDEEMED, no codeHash on the returned record", async () => {
-    const repo = freshRepo();
-    const service = freshService(repo);
-    const rawCode = await settleWithGuestWinner(repo, service, "m_redeem_ok");
-    repo.testFixture.seedIdentity("redeemer", "member");
-    const result = await service.redeemVoucher(rawCode, "redeemer");
-    expect(result.applied).toBe(true);
-    expect(result.voucher.status).toBe("REDEEMED");
-    expect(result.voucher.coinAmount).toBe("160");
-    expect("codeHash" in result.voucher).toBe(false);
-    const wallet = await repo.getWallet("redeemer");
-    // 5000 member starter grant (first-touch provisioning) + 160 redeemed.
-    expect(wallet?.balance).toBe("5160");
-  });
-
-  it("a replayed redemption by the SAME member returns applied:false, credited only once", async () => {
-    const repo = freshRepo();
-    const service = freshService(repo);
-    const rawCode = await settleWithGuestWinner(repo, service, "m_redeem_replay");
-    repo.testFixture.seedIdentity("redeemer2", "member");
-    const first = await service.redeemVoucher(rawCode, "redeemer2");
-    const second = await service.redeemVoucher(rawCode, "redeemer2");
-    expect(first.applied).toBe(true);
-    expect(second.applied).toBe(false);
-    const wallet = await repo.getWallet("redeemer2");
-    expect(wallet?.balance).toBe("5160"); // 5000 starter grant + 150, credited exactly once
-  });
-
-  it("a frozen redeemer wallet is refused with WalletFrozenError", async () => {
-    const repo = freshRepo();
-    const service = freshService(repo);
-    const rawCode = await settleWithGuestWinner(repo, service, "m_redeem_frozen");
-    repo.testFixture.seedWallet({ identityId: "frozen_redeemer", identityKind: "member", isFrozen: true });
-    await expect(service.redeemVoucher(rawCode, "frozen_redeemer")).rejects.toBeInstanceOf(WalletFrozenError);
   });
 });
 
@@ -815,36 +715,11 @@ describe("EconomyService — error and retry policy", () => {
     expect((caught as InsufficientFundsError).code).toBe("INSUFFICIENT_FUNDS");
   });
 
-  it("redeemVoucher never retries, even on an infrastructure error", async () => {
-    const repo = freshRepo();
-    const service0 = freshService(repo);
-    const rawCode = await (async () => {
-      await commitTwoSeatMatch(service0, repo, { matchId: "m_no_retry_redeem", hostIdentityId: "host_nrr" });
-      repo.testFixture.seedIdentity("guest_nrr", "guest");
-      repo.testFixture.seedIdentity("member_nrr", "member");
-      const result = await service0.settleMatchEconomy({
-        matchId: "m_no_retry_redeem", isValidRanking: true,
-        participants: [
-          { identityId: "guest_nrr", identityKind: "guest", placement: 1 },
-          { identityId: "member_nrr", identityKind: "member", placement: 2 },
-        ],
-      });
-      return result.issuedVouchers[0]!.rawCode;
-    })();
-
-    repo.testFixture.seedIdentity("redeemer_nrr", "member");
-    const scripted = new ScriptedFailureRepository(repo, {
-      redeemRewardVoucher: () => new EconomyInfrastructureError("blip"),
-    });
-    const service = freshService(scripted);
-    await expect(service.redeemVoucher(rawCode, "redeemer_nrr")).rejects.toBeInstanceOf(EconomyServiceInfrastructureError);
-    expect(scripted.callCounts.get("redeemRewardVoucher")).toBe(1); // no retry attempted
-  });
 });
 
 /* ═══════════════════════ logging & secret-safety ═════════════════════════ */
 
-describe("EconomyService — logging never carries voucher secrets", () => {
+describe("EconomyService — logging never carries player identities", () => {
   let logSpies: Array<{ mockRestore: () => void; mock: { calls: unknown[][] } }>;
 
   beforeEach(() => {
@@ -860,31 +735,26 @@ describe("EconomyService — logging never carries voucher secrets", () => {
     for (const spy of logSpies) spy.mockRestore();
   });
 
-  it("no logger call anywhere in an issue-then-redeem flow contains the raw code or its hash", async () => {
+  it("no logger call anywhere in a settlement flow contains a player's identity id", async () => {
     const repo = freshRepo();
     const service = freshService(repo);
     await commitTwoSeatMatch(service, repo, { matchId: "m_log_safety", hostIdentityId: "host_log_safety" });
     repo.testFixture.seedIdentity("guest_log_safety", "guest");
     repo.testFixture.seedIdentity("member_log_safety", "member");
 
-    const settleResult = await service.settleMatchEconomy({
+    await service.settleMatchEconomy({
       matchId: "m_log_safety", isValidRanking: true,
       participants: [
         { identityId: "guest_log_safety", identityKind: "guest", placement: 1 },
         { identityId: "member_log_safety", identityKind: "member", placement: 2 },
       ],
     });
-    const rawCode = settleResult.issuedVouchers[0]!.rawCode;
-    const codeHash = hashVoucherCode(rawCode);
-
-    repo.testFixture.seedIdentity("redeemer_log_safety", "member");
-    await service.redeemVoucher(rawCode, "redeemer_log_safety");
 
     const allCalls = logSpies.flatMap((spy) => spy.mock.calls);
     expect(allCalls.length).toBeGreaterThan(0); // sanity: logging actually happened
     const serialized = JSON.stringify(allCalls);
-    expect(serialized).not.toContain(rawCode);
-    expect(serialized).not.toContain(codeHash);
+    expect(serialized).not.toContain("guest_log_safety");
+    expect(serialized).not.toContain("member_log_safety");
   });
 });
 

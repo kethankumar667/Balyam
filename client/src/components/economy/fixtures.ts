@@ -176,6 +176,5 @@ export const DEMO_DELTAS = [
   { delta: "+5000", type: "CREDIT" as const, desc: "Starter grant welcome bonus" },
   { delta: "-400", type: "DEBIT" as const, desc: "Match commitment: 4 seats (KD22TL)" },
   { delta: "+175", type: "CREDIT" as const, desc: "Match 1st place champion prize" },
-  { delta: "+150", type: "ESCROW" as const, desc: "Guest match prize in bearer escrow" },
   { delta: "+400", type: "REFUND" as const, desc: "Restored commitment: match aborted" },
 ];

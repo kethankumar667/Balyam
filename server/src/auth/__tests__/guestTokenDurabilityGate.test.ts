@@ -5,11 +5,10 @@ import { logger } from "../../lib/logger.js";
 /**
  * Production fail-closed behavior for SESSION_SECRET.
  *
- * Mirrors `economy/__tests__/voucherCrypto.test.ts`'s "production startup
- * guard" describe block exactly — same env-save/restore discipline, same
- * assertion shape (`toThrow(/Refusing to start in production/)`), because
- * `assertGuestTokenDurabilityConfigured()` deliberately follows
- * `assertVoucherHmacConfigured()`'s pattern (see guestToken.ts's own header).
+ * Same env-save/restore discipline and assertion shape
+ * (`toThrow(/Refusing to start in production/)`) as the other production
+ * startup guards; `assertGuestTokenDurabilityConfigured()` follows
+ * `assertOperationalAuthConfigured()`'s pattern (see guestToken.ts's own header).
  *
  * This is the T7 regression test for the guest-wallet-consistency audit:
  * an unset SESSION_SECRET used to be a boot-time log line only, which meant

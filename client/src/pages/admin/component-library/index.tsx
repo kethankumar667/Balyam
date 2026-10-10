@@ -587,10 +587,6 @@ export default function AdminComponentLibraryPage() {
                 <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">Coin Skeleton</span>
                 <EconomySkeleton variant="coin" />
               </div>
-              <div className="space-y-2 p-3 rounded-xl bg-black/5 dark:bg-white/5">
-                <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">Voucher Skeleton</span>
-                <EconomySkeleton variant="voucher" />
-              </div>
               <div className="space-y-2 p-3 rounded-xl bg-black/5 dark:bg-white/5 md:col-span-2">
                 <span className="text-[10px] uppercase font-bold text-[var(--chrome-ink-soft)]">Checkout Skeleton</span>
                 <EconomySkeleton variant="checkout" />

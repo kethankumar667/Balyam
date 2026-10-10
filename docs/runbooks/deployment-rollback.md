@@ -41,12 +41,10 @@ do not wait for all of them:
 - Missing migration — the backend boots against a schema that does not yet
   have a column/table/function a just-deployed code path expects.
 - Client secret exposure — any of `SUPABASE_SERVICE_ROLE_KEY`,
-  `SESSION_SECRET`, `OPERATIONAL_SECRET`, or `VOUCHER_HMAC_SECRET` observed
+  `SESSION_SECRET`, or `OPERATIONAL_SECRET` observed
   in a client bundle, log line, or error message. Treat as a security
   incident, not just a deploy problem — see §9.
 - Server crash loop (Render shows repeated restarts, not a single blip).
-- Voucher durability misconfiguration — `/health`'s `economy.voucher.durable`
-  reads `false` in an environment that should have `VOUCHER_HMAC_SECRET` set.
 - Guest-token durability misconfiguration (session durability) — `/health`
   (or the boot log) shows the ephemeral-signing-key warning from
   `assertGuestTokenDurabilityConfigured` (`server/src/auth/guestToken.ts`)
@@ -66,7 +64,7 @@ owner is not a reason to leave a broken deploy live.
 ## 3. Freeze first, roll back second
 
 Before touching any deploy, if the trigger involves the economy (wallet
-mutation, voucher, or settlement) or match correctness:
+mutation or settlement) or match correctness:
 
 1. In Render, note the current `bhalyam-backend`/`bhalyam-backend-staging`
    deploy id — you will need it to confirm what you're rolling back *from*.
@@ -99,7 +97,7 @@ no way to hot-patch a live frontend's env).
 1. Render dashboard → the backend service → **Deploys** tab.
 2. Roll back to the last known-good deploy the same way as §4.
 3. Watch **Logs** for the boot sequence to complete cleanly — specifically,
-   confirm no `assertOperationalAuthConfigured`/`assertVoucherHmacConfigured`/
+   confirm no `assertOperationalAuthConfigured`/
    `assertGuestTokenDurabilityConfigured` failure fires (those are fail-closed
    boot gates; a rollback to an OLDER build that predates one of those gates
    will simply not have it, which is fine — the newer build's stricter

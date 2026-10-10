@@ -4,7 +4,6 @@ import {
   EconomyServiceError,
   EconomyServiceInfrastructureError,
   type EconomyService,
-  type IssuedVoucherAck,
   type SettleMatchEconomyRequest,
 } from "./EconomyService.js";
 import {
@@ -51,7 +50,7 @@ import {
  * whichever worker reclaims the expired lease calls the SAME economy
  * operation again, gets the authoritative `applied:false` result, and
  * completes the intent under its own worker id. No duplicate wallet,
- * ledger, voucher, or world-bank mutation — proven by the UNDERLYING
+ * ledger, or world-bank mutation — proven by the UNDERLYING
  * operation's own idempotency, not reimplemented here.
  */
 
@@ -68,19 +67,6 @@ export interface DurableSettlementWorkerOptions {
   periodicSweepIntervalMs?: number;
   /** Injectable for deterministic tests — never a raw `Date.now()` call outside this indirection. */
   now?: () => number;
-  /**
-   * Fired synchronously, right after a SETTLEMENT intent applies with a
-   * nonzero `issuedVouchers` array — the ONLY moment a winning guest's raw
-   * voucher code exists in plaintext anywhere in this process (the
-   * repository only ever persists `hashVoucherCode(rawCode)`; see
-   * `EconomyService.ts`'s own header). This worker has no notion of rooms
-   * or sockets, so delivering the code to that guest is entirely the
-   * caller's job — `RoomManager` wires this to find a currently-connected
-   * socket for the identity and emit it directly. Never invoked for a
-   * replayed (`applied:false`) settlement — a replay issues no new
-   * vouchers by construction, so there is nothing new to deliver.
-   */
-  onVouchersIssued?: (matchId: string, vouchers: IssuedVoucherAck[]) => void;
 }
 
 export interface WorkerStatusSnapshot {
@@ -132,7 +118,6 @@ export class DurableSettlementWorker {
   private readonly leaseSeconds: number;
   private readonly batchSize: number;
   private readonly maxInfrastructureRetries: number;
-  private readonly onVouchersIssued?: (matchId: string, vouchers: IssuedVoucherAck[]) => void;
   private readonly periodicSweepIntervalMs: number;
   private readonly now: () => number;
 
@@ -226,7 +211,6 @@ export class DurableSettlementWorker {
     this.maxInfrastructureRetries = options.maxInfrastructureRetries ?? DEFAULT_MAX_INFRASTRUCTURE_RETRIES;
     this.periodicSweepIntervalMs = options.periodicSweepIntervalMs ?? DEFAULT_PERIODIC_SWEEP_INTERVAL_MS;
     this.now = options.now ?? Date.now;
-    this.onVouchersIssued = options.onVouchersIssued;
   }
 
   /* ═══════════════════════ enqueue (the RoomManager-facing API) ══════════
@@ -358,20 +342,6 @@ export class DurableSettlementWorker {
           refundReason: intent.payload.refundReason,
           gameKind: intent.payload.gameKind,
         });
-        if (result.applied && result.issuedVouchers.length > 0) {
-          try {
-            this.onVouchersIssued?.(intent.matchId, result.issuedVouchers);
-          } catch (err) {
-            // Delivery is best-effort by nature (see the option's own doc
-            // comment) — a callback failure must never fail the settlement
-            // itself, which has already durably applied.
-            logger.error({
-              message: `onVouchersIssued callback threw for match ${intent.matchId}: ${err instanceof Error ? err.message : String(err)}`,
-              module: "ECONOMY_DURABLE_WORKER",
-              matchId: intent.matchId,
-            });
-          }
-        }
         return result.applied;
       }
       case "REFUND": {

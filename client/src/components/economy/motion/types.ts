@@ -2,12 +2,11 @@
  * BHALYAM Economy Motion System — Type Definitions & State Contracts.
  *
  * Implements the state machine contracts, coordinate targets, idempotency keys,
- * and string-safe payload types for the 5 lifecycle motion chapters:
+ * and string-safe payload types for the 4 lifecycle motion chapters:
  * 1. Match Commitment
  * 2. Game Start
  * 3. Settlement Payout
  * 4. Refund Reversal
- * 5. Guest Escrow
  */
 
 export type EconomyMotionPhase =
@@ -21,7 +20,6 @@ export type EconomyMotionPhase =
   | "result_pending"
   | "settled"
   | "refunded"
-  | "escrowed"
   | "failed"
   | "complete";
 
@@ -100,21 +98,11 @@ export interface MatchRefundMotionPayload {
   walletPoint?: Point2D;
 }
 
-export interface GuestEscrowMotionPayload {
-  sequenceId: string;
-  matchId: string;
-  voucherAmount: string;
-  voucherCode?: string;
-  potPoint?: Point2D;
-  voucherPoint?: Point2D;
-}
-
 export interface OptionalSoundHooks {
   onCommitSound?: () => void;
   onCoinClinkSound?: () => void;
   onPotFormSound?: () => void;
   onWinFanfareSound?: () => void;
   onRefundSound?: () => void;
-  onEscrowSound?: () => void;
   onErrorSound?: () => void;
 }

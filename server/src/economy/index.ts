@@ -22,7 +22,7 @@ import { validateEconomyCapacityContract, formatEconomyCapacityContractReport } 
  *   absent, PRODUCTION        ->  refuse to start
  *
  * A production process that silently ran Economy V1 in memory would mean
- * every wallet, every ledger entry, and every outstanding voucher vanishes
+ * every wallet and every ledger entry vanishes
  * on the next restart or idle spin-down — the exact failure class P0-3
  * already exists to prevent for progression, now real for money. It must be
  * impossible to deploy that by forgetting an environment variable.
@@ -101,7 +101,7 @@ export async function initialiseEconomyStore(): Promise<{ service: EconomyServic
         "Refusing to start in production without durable Economy V1 persistence. " +
           "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must both be set, and " +
           "supabase/migrations/20260826000000_economy_v1.sql must have been applied. " +
-          "Without them every wallet, ledger entry, and outstanding voucher is lost on restart. " +
+          "Without them every wallet and ledger entry is lost on restart. " +
           "Set ALLOW_EPHEMERAL_ECONOMY=true only for a smoke test that must not keep anything.",
       );
     }
@@ -126,7 +126,6 @@ export async function initialiseEconomyStore(): Promise<{ service: EconomyServic
     await assertEconomyCapacityContract(repository);
     status = { kind: "memory", durable: false, reachable: true, detail: "no service-role key configured" };
     const service = new EconomyService(repository);
-    await service.seedTestVouchers();
     return { service, status: economyStoreStatus() };
   }
 

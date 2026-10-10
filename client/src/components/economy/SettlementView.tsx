@@ -3,7 +3,7 @@ import { Trophy, RefreshCw, AlertCircle, ShieldAlert, Award, Landmark, RotateCcw
 import { CoinAmount } from "./CoinAmount";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyStatusBanner } from "./EconomyStatusBanner";
-import { RefundSequence, SettlementSequence, EscrowSequence } from "./motion";
+import { RefundSequence, SettlementSequence } from "./motion";
 import { getMatchSettlement, type MatchEconomySettlementRecord, EconomyClientError } from "../../lib/economyApi";
 
 export interface SettlementViewProps {
@@ -142,17 +142,7 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
         }}
       />
 
-      {settlement.totalGuestEscrow && settlement.totalGuestEscrow !== "0" && (
-        <EscrowSequence
-          payload={{
-            sequenceId: `settlement-escrow-${settlement.matchId}`,
-            matchId: settlement.matchId,
-            voucherAmount: settlement.totalGuestEscrow,
-          }}
-        />
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-sans">
+      <div className="grid grid-cols-3 gap-2 text-xs font-sans">
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">Total Pot</span>
           <CoinAmount amount={settlement.totalCollected} size="sm" className="font-bold" />
@@ -160,10 +150,6 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">Wallet Prizes</span>
           <CoinAmount amount={settlement.totalWalletRewarded} size="sm" className="font-bold text-emerald-700 dark:text-emerald-400" />
-        </div>
-        <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
-          <span className="text-[10px] text-ink-lo dark:text-text-lo block">Guest Escrow</span>
-          <CoinAmount amount={settlement.totalGuestEscrow} size="sm" className="font-bold text-purple-700 dark:text-purple-400" />
         </div>
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">World Bank</span>

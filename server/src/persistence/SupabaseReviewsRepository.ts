@@ -32,7 +32,7 @@ import {
  * the problem entirely: Postgres raises a real `23505` unique-violation
  * error regardless of which of the two partial indexes caught it, and this
  * class recognizes that error by pattern (`DUPLICATE_REVIEW_PATTERN`) the
- * same way `SupabaseEconomyRepository` recognizes `VOUCHER_COLLISION_PATTERN`
+ * same way `SupabaseEconomyRepository` recognizes a named database error
  * — never a bespoke second mechanism.
  */
 

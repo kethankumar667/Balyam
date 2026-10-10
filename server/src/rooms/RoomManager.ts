@@ -142,7 +142,7 @@ import {
   orderForAlternatingFirstMove,
 } from "../games/tictactoe/TicTacToeEngine.js";
 import { Connect4Engine, scoreConnect4Win } from "../games/connect4/Connect4Engine.js";
-import type { EconomyService, IssuedVoucherAck, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
+import type { EconomyService, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
 import {
   EconomyRepositoryError,
@@ -861,11 +861,7 @@ export class RoomManager {
     snapshotRepo?: RoomSnapshotRepository,
   ) {
     this.snapshotRepo = snapshotRepo ?? roomSnapshotStore();
-    this.durableWorker = economyService
-      ? new DurableSettlementWorker(economyService, {
-          onVouchersIssued: (matchId, vouchers) => this.handleVouchersIssued(matchId, vouchers),
-        })
-      : null;
+    this.durableWorker = economyService ? new DurableSettlementWorker(economyService) : null;
   }
 
   getSnapshotRepository(): RoomSnapshotRepository {
@@ -1207,58 +1203,6 @@ export class RoomManager {
       }
     }
     return restored;
-  }
-
-  /**
-   * Best-effort delivery of a just-issued guest voucher's RAW code — the
-   * ONLY moment it exists in plaintext (see `DurableSettlementWorkerOptions
-   * .onVouchersIssued`'s own doc comment). This is the fix for the
-   * 2026-09-07 finding: before this existed, `economySettlementQueue.ts`
-   * and this worker both logged only a COUNT of issued vouchers and threw
-   * the codes away, making every winning guest's prize permanently
-   * unclaimable by construction — not a display bug, an unrecoverable loss.
-   *
-   * Delivery is genuinely best-effort, not guaranteed: it requires a live,
-   * connected socket for that identity RIGHT NOW, which is the common case
-   * (the periodic sweep runs every 5s, so this normally fires while the
-   * winner is still looking at their own result screen) but not certain — a
-   * guest who has fully left every room by the time this fires has no
-   * reachable code, and that loss is now at least LOGGED loudly instead of
-   * silently invisible.
-   */
-  private handleVouchersIssued(matchId: string, vouchers: IssuedVoucherAck[]): void {
-    for (const voucher of vouchers) {
-      const socketId = this.findConnectedSocketForIdentity(voucher.identityId);
-      if (!socketId) {
-        logger.error({
-          message:
-            `Could not deliver voucher for match ${matchId} to identity ${voucher.identityId} — no ` +
-            "connected socket found for this guest. This win is now unclaimable; the raw code is never " +
-            "stored anywhere, by design (only its hash is persisted).",
-          module: "ECONOMY_ROOM",
-          matchId,
-        });
-        continue;
-      }
-      this.io.sockets.sockets.get(socketId)?.emit("economy:voucherIssued", {
-        matchId,
-        coinAmount: voucher.coinAmount,
-        rawCode: voucher.rawCode,
-      });
-    }
-  }
-
-  /** The current socket for a CONNECTED player whose resolved `identityId` matches, searching every live room. `null` if that identity has no connected seat anywhere right now. */
-  private findConnectedSocketForIdentity(identityId: string): string | null {
-    for (const room of this.rooms.values()) {
-      for (const player of room.players.values()) {
-        if (player.identityId !== identityId || !player.isConnected) continue;
-        for (const [socketId, playerId] of room.socketToPlayer.entries()) {
-          if (playerId === player.id) return socketId;
-        }
-      }
-    }
-    return null;
   }
 
   /**
@@ -4356,7 +4300,7 @@ export class RoomManager {
       // removes the departed seat from the engine and calls `finalizeMatch`
       // the moment `isOver()` goes true, so the pool settles through the
       // exact same ranked-payout path as any other forfeit, and the guest's
-      // prize is escrowed as a redeemable voucher. If the match does NOT end
+      // prize is paid into their wallet. If the match does NOT end
       // on this departure (a larger table plays on), the pool stays
       // committed and settles normally when the game actually finishes —
       // money is never left stranded either way.

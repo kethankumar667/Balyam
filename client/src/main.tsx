@@ -6,10 +6,12 @@ import { AudioProvider } from "./context/AudioContext";
 import { resolveTheme } from "./lib/useTheme";
 import { initLayoutGuard } from "./lib/layoutGuard";
 import { initErrorMonitoring } from "./lib/errorMonitoring";
+import { purgeRetiredStorage } from "./lib/retiredStorage";
 import { timelineRecorder } from "./core/events/TimelineRecorder";
 import "./index.css";
 
 if (typeof document !== "undefined") {
+  purgeRetiredStorage();
   initErrorMonitoring();
   timelineRecorder.start();
   document.documentElement.setAttribute("data-theme", resolveTheme());

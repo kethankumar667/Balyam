@@ -124,7 +124,7 @@ When adding or repairing a multiplayer room game, work in this order:
 
 - Room/game state is still in process memory under `RoomManager`; game loops should not move to Redis or a database.
 - Persistent product data is supported through progression/economy/reviews/cosmetics/streak modules, with Supabase/PostgREST-backed or in-memory modes depending on environment.
-- Server startup refuses unsafe production configuration for operational auth, voucher HMAC durability, guest token durability, and some store modes.
+- Server startup refuses unsafe production configuration for operational auth, guest token durability, and some store modes.
 - Seat ownership is separate from account identity. Room seats use server-signed tokens; account/member/admin identity flows through auth/profile/economy routes and `attachPlayerIdentity`.
 - `GET /health` reports active rooms, socket count, TURN/auth/operational/progression/economy/reviews/memory status.
 

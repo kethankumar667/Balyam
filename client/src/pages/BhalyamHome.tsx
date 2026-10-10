@@ -14,8 +14,6 @@ import { PlayYourWaySection } from "./home/PlayYourWaySection";
 import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
-import { VoucherRedemptionModal } from "../components/economy";
-import { getPendingVouchers, type PendingVoucherData } from "../components/economy/pendingVoucher";
 
 /**
  * BHALYAM home — the app's landing surface.
@@ -43,25 +41,10 @@ export default function BhalyamHome() {
   const [joinOpen, setJoinOpen] = useState(false);
   const isMember = useAuthStore((s) => s.isMember);
   const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
-  // A queue, not a single voucher: a guest who won more than once before
-  // signing up has one entry per unclaimed win, oldest first. The modal
-  // below always shows `pendingVouchers[0]`; closing or redeeming it advances
-  // to the next instead of losing every OTHER win the moment one is handled.
-  const [pendingVouchers, setPendingVouchers] = useState<PendingVoucherData[]>([]);
-
-  // Check for unredeemed vouchers preserved across guest signup
-  useEffect(() => {
-    if (hasMemberAccount) {
-      setPendingVouchers(getPendingVouchers());
-    }
-  }, [hasMemberAccount]);
-
-  const currentVoucher = pendingVouchers[0] ?? null;
-
   // The welcome tour opens by itself at most once per visit, and never over
-  // something the person is already doing (a voucher, a game sheet, joining a room).
+  // something the person is already doing (a game sheet, joining a room).
   // Otherwise it is a quiet prompt on this page and a button in the Help pages.
-  const tour = useWelcomeTour({ suppressed: Boolean(currentVoucher) || sheetGame !== null || joinOpen });
+  const tour = useWelcomeTour({ suppressed: sheetGame !== null || joinOpen });
 
   // Guests get the honest "Guest Mode" branch in WelcomePlayerStrip and never
   // reach PlayerJourneyDashboard's member content, so there is nothing for
@@ -105,21 +88,9 @@ export default function BhalyamHome() {
         <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
         <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
         <WelcomeModal
-          open={tour.open && !currentVoucher}
+          open={tour.open}
           onClose={tour.close}
           onStartQuest={() => setSheetGame("uno")}
-        />
-        <VoucherRedemptionModal
-          isOpen={Boolean(currentVoucher)}
-          initialCode={currentVoucher?.code}
-          initialAmount={currentVoucher?.amount}
-          isAutoClaimPrompt={true}
-          // The modal already removed THIS voucher from storage (on redeem,
-          // or on dismiss — see VoucherRedemptionModal's handleClose/
-          // handleRedeem). Dropping it from local state here is what reveals
-          // the next queued voucher, if any, since `currentVoucher` is always
-          // `pendingVouchers[0]`.
-          onClose={() => setPendingVouchers((prev) => prev.slice(1))}
         />
       </div>
     </AppLayout>

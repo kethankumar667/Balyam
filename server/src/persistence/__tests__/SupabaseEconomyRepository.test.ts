@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { SupabaseEconomyRepository } from "../SupabaseEconomyRepository.js";
 import {
   EconomyInfrastructureError,
-  InvalidVoucherHashError,
-  VoucherCodeCollisionError,
   WalletFrozenError,
   IdentityNotFoundError,
 } from "../EconomyRepository.js";
@@ -520,49 +518,6 @@ describe("SupabaseEconomyRepository", () => {
           isSolo: true,
         }),
       ).rejects.toBeInstanceOf(WalletFrozenError);
-    });
-
-    it("maps BOTH INVALID_VOUCHER_HASH and the redeem-specific VOUCHER_INVALID to the SAME InvalidVoucherHashError class", async () => {
-      const repo = new SupabaseEconomyRepository(CONFIG);
-
-      fetchMock.mockResolvedValueOnce(
-        pgrestError("INVALID_VOUCHER_HASH: guest prize requires a 64-hex-character voucher code hash"),
-      );
-      await expect(
-        repo.issueGuestVoucher({
-          voucherId: "vch_1",
-          codeHash: "not-a-real-hash",
-          coinAmount: "100",
-          matchId: "m5",
-          issuedToGuestId: "guest_y",
-        }),
-      ).rejects.toBeInstanceOf(InvalidVoucherHashError);
-
-      fetchMock.mockResolvedValueOnce(pgrestError("VOUCHER_INVALID: malformed code hash"));
-      await expect(repo.redeemRewardVoucher("not-a-real-hash", "member_1")).rejects.toBeInstanceOf(
-        InvalidVoucherHashError,
-      );
-    });
-
-    it("maps a real unique-violation on the code_hash constraint to VoucherCodeCollisionError, never a raw Postgres string", async () => {
-      fetchMock.mockResolvedValueOnce(
-        jsonResponse(409, {
-          code: "23505",
-          message: 'duplicate key value violates unique constraint "reward_vouchers_code_hash_key"',
-          details: "Key (code_hash)=(aaaa...) already exists.",
-          hint: null,
-        }),
-      );
-      const repo = new SupabaseEconomyRepository(CONFIG);
-      await expect(
-        repo.issueGuestVoucher({
-          voucherId: "vch_2",
-          codeHash: "a".repeat(64),
-          coinAmount: "100",
-          matchId: "m6",
-          issuedToGuestId: "guest_z",
-        }),
-      ).rejects.toBeInstanceOf(VoucherCodeCollisionError);
     });
 
     it("maps IDENTITY_NOT_FOUND to IdentityNotFoundError from ensureWallet", async () => {

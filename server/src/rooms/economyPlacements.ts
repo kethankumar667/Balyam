@@ -81,7 +81,7 @@ export interface PlacementExtractionResult {
  * `identityId` happens to be set. Getting this backwards — "has an id, so
  * must be a member" — would misclassify a guest whose identity a future
  * fix DOES manage to resolve, sending them down the member wallet-credit
- * path instead of the guest voucher-escrow path: the wrong outcome even
+ * path instead of the guest path: the wrong outcome even
  * though nothing was technically "unresolvable."
  */
 function identityKindFor(player: Player): SettlementParticipantOutcome["identityKind"] {

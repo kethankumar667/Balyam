@@ -5,7 +5,6 @@ import type {
   MatchCommitmentMotionPayload,
   MatchSettlementMotionPayload,
   MatchRefundMotionPayload,
-  GuestEscrowMotionPayload,
   OptionalSoundHooks,
 } from "./types";
 
@@ -23,7 +22,6 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
   const [activeCommitment, setActiveCommitment] = useState<MatchCommitmentMotionPayload | null>(null);
   const [activeSettlement, setActiveSettlement] = useState<MatchSettlementMotionPayload | null>(null);
   const [activeRefund, setActiveRefund] = useState<MatchRefundMotionPayload | null>(null);
-  const [activeEscrow, setActiveEscrow] = useState<GuestEscrowMotionPayload | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Idempotency tracking: Set of completed sequence IDs
@@ -215,33 +213,6 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
   );
 
   /**
-   * 5. Trigger Guest Escrow Sequence (Chapter 5)
-   */
-  const triggerEscrowSequence = useCallback(
-    (payload: GuestEscrowMotionPayload) => {
-      if (completedSequencesRef.current.has(payload.sequenceId)) {
-        return;
-      }
-
-      clearTimers();
-      setErrorMessage(null);
-      setActiveEscrow(payload);
-      changePhase("escrowed");
-      soundHooks?.onEscrowSound?.();
-
-      const duration = reduceMotion ? 500 : 2000;
-      const t = window.setTimeout(() => {
-        changePhase("complete");
-        recordCompletedSequence(payload.sequenceId);
-        onSequenceComplete?.(payload.sequenceId);
-      }, duration);
-
-      activeTimersRef.current.push(t);
-    },
-    [clearTimers, changePhase, reduceMotion, soundHooks, onSequenceComplete],
-  );
-
-  /**
    * 6. Cancel & Halt (on error or rejected commitment)
    */
   const cancelMotion = useCallback(
@@ -267,7 +238,6 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
     setActiveCommitment(null);
     setActiveSettlement(null);
     setActiveRefund(null);
-    setActiveEscrow(null);
     setErrorMessage(null);
     changePhase("idle");
   }, [clearTimers, changePhase]);
@@ -277,14 +247,12 @@ export function useEconomyMotion(options: UseEconomyMotionOptions = {}) {
     activeCommitment,
     activeSettlement,
     activeRefund,
-    activeEscrow,
     errorMessage,
     startAwaitingAuthority,
     triggerCommitmentSequence,
     triggerGameStartSequence,
     triggerSettlementSequence,
     triggerRefundSequence,
-    triggerEscrowSequence,
     cancelMotion,
     resetMotion,
   };

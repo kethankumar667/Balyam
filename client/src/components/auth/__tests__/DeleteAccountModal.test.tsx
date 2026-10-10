@@ -44,7 +44,7 @@ describe("DeleteAccountModal Component", () => {
     expect(screen.getByText("Delete BHALYAM Account")).toBeDefined();
     expect(screen.getByText("Permanent & Irreversible")).toBeDefined();
     expect(screen.getByText(/Your username, email address, bio/i)).toBeDefined();
-    expect(screen.getByText(/All unredeemed vouchers & permanent coin balance/i)).toBeDefined();
+    expect(screen.getByText(/Your permanent coin balance/i)).toBeDefined();
     expect(screen.getByText(/Match histories, tournament trophies/i)).toBeDefined();
 
     const deleteBtn = screen.getByRole("button", { name: /Delete My Account/i });

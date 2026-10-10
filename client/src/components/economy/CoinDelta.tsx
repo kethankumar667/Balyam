@@ -1,7 +1,7 @@
 import React from "react";
 import { formatCoinString, AshthaKonaCoinIcon } from "./CoinAmount";
 
-export type CoinDeltaType = "CREDIT" | "DEBIT" | "ESCROW" | "REFUND";
+export type CoinDeltaType = "CREDIT" | "DEBIT" | "REFUND";
 
 export interface CoinDeltaProps {
   /**
@@ -43,14 +43,6 @@ const TYPE_CONFIG: Record<
     borderClass: "border-amber-500/20",
     ariaWord: "Debit",
   },
-  ESCROW: {
-    prefix: "",
-    label: "ESCROW",
-    textClass: "text-purple-700 dark:text-purple-400",
-    bgClass: "bg-purple-500/10",
-    borderClass: "border-purple-500/20",
-    ariaWord: "Escrow voucher",
-  },
   REFUND: {
     prefix: "+",
     label: "REFUND",
@@ -64,7 +56,7 @@ const TYPE_CONFIG: Record<
 /**
  * Presentational CoinDelta badge.
  * Complies with Color Independence (WCAG 1.4.1): Always renders explicit
- * semantic badge text (`[CREDIT]`, `[DEBIT]`, `[ESCROW]`, `[REFUND]`)
+ * semantic badge text (`[CREDIT]`, `[DEBIT]`, `[REFUND]`)
  * alongside directional symbols and color.
  */
 export const CoinDelta: React.FC<CoinDeltaProps> = ({

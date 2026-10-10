@@ -158,7 +158,6 @@ class FailNTimesRepository implements EconomyRepository {
   listLedger(id: string, o?: { limit?: number; offset?: number }) { return this.inner.listLedger(id, o); }
   getSettlement(id: string) { return this.inner.getSettlement(id); }
   getWorldBankSnapshot() { return this.inner.getWorldBankSnapshot(); }
-  getVoucherStatus(h: string) { return this.inner.getVoucherStatus(h); }
   getActiveConfiguration() { return this.inner.getActiveConfiguration(); }
   getPrizeSchedule(n: number) { return this.inner.getPrizeSchedule(n); }
   reconcileSettlement(id: string) { return this.inner.reconcileSettlement(id); }
@@ -174,8 +173,6 @@ class FailNTimesRepository implements EconomyRepository {
   settleMatchEconomy(i: Parameters<EconomyRepository["settleMatchEconomy"]>[0]) { return this.inner.settleMatchEconomy(i); }
   refundMatchEntry(id: string, r: string) { return this.inner.refundMatchEntry(id, r); }
   forfeitMatchEntry(id: string, r: string) { return this.inner.forfeitMatchEntry(id, r); }
-  issueGuestVoucher(i: Parameters<EconomyRepository["issueGuestVoucher"]>[0]) { return this.inner.issueGuestVoucher(i); }
-  redeemRewardVoucher(h: string, m: string) { return this.inner.redeemRewardVoucher(h, m); }
   async createTerminalIntent(i: Parameters<EconomyRepository["createTerminalIntent"]>[0]) {
     this.maybeFail();
     return this.inner.createTerminalIntent(i);
@@ -580,10 +577,10 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(settlement?.totalWorldBankCut).toBe("40");
   });
 
-  it("Test L (Phase 7): guest winner failure-retry issues exactly one bearer voucher in escrow without leaking raw codes", async () => {
+  it("Test L (Phase 7): guest winner failure-retry pays the guest wallet exactly once", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
-    const guestId = "guest_escrow_retry_1";
+    const guestId = "guest_prize_retry_1";
     repo.testFixture.seedIdentity(guestId, "guest");
 
     const { io } = makeIo();
@@ -608,28 +605,26 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(intents.length).toBe(1);
     expect(intents[0].operationKind).toBe("SETTLEMENT");
 
-    // Worker executes settlement, issuing bearer voucher
+    // Worker executes the settlement and pays the guest like any other winner
     await rooms.drainEconomySettlementQueue();
     const matchId = intents[0].matchId;
 
-    // Exactly one guest voucher record created
-    const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
-    expect(vouchers.length).toBe(1);
-    expect(vouchers[0].coinAmount).toBe("160");
-    expect(vouchers[0].issuedToGuestId).toBe(guestId);
-    expect(vouchers[0].status).toBe("ACTIVE");
-    expect(vouchers[0].codeHash).toMatch(/^[0-9a-f]{64}$/); // Hash only, no raw code leak
+    // 3,000 welcome grant - 100 entry + 160 prize
+    expect((await service.getWallet(guestId)).balance).toBe("3060");
+    const prizeRows = (await repo.listLedger(guestId)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.sourceId === matchId);
+    expect(prizeRows).toHaveLength(1);
+    expect(prizeRows[0].amount).toBe("160");
 
     // Signed participant did NOT incorrectly receive the guest reward
     expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // 5000 - 100 entry + 0 prize
 
-    // Duplicate worker processing does not create a second voucher
+    // Duplicate worker processing does not pay a second time
     await rooms.drainEconomySettlementQueue();
-    const vouchersAfter = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
-    expect(vouchersAfter.length).toBe(1);
+    expect((await service.getWallet(guestId)).balance).toBe("3060");
+    expect((await repo.listLedger(guestId)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.sourceId === matchId)).toHaveLength(1);
   });
 
-  it("Test L Companion: socket layer 'room:join' resolves guestToken into verified identityId and reaches escrow voucher on retry", async () => {
+  it("Test L Companion: socket layer 'room:join' resolves guestToken into verified identityId and gets paid on retry", async () => {
     const { repo, service } = freshFailingEconomy(1);
     seedMember(repo, MEMBER_A);
     const { playerId: guestId, token: guestToken } = mintGuestToken();
@@ -691,14 +686,11 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     const matchId = intents[0].matchId;
     const settlement = await service.getSettlement(matchId);
     expect(settlement?.status).toBe("SETTLED");
-    expect(settlement?.totalGuestEscrow).toBe("160");
+    expect(settlement?.totalGuestEscrow).toBe("0");
+    expect(settlement?.totalWalletRewarded).toBe("160");
 
-    // Exactly one voucher created for the guest who joined via socket event
-    const vouchers = [...(repo as any).vouchers.values()].filter((v: any) => v.matchId === matchId);
-    expect(vouchers.length).toBe(1);
-    expect(vouchers[0].coinAmount).toBe("160");
-    expect(vouchers[0].issuedToGuestId).toBe(guestId);
-    expect(vouchers[0].status).toBe("ACTIVE");
+    // The guest who joined via a socket event is paid into their wallet, once
+    expect((await service.getWallet(guestId)).balance).toBe("3060"); // 3,000 welcome - 100 entry + 160 prize
   });
 
   describe("Phase 8: Concurrent Cleanup Regression Scenarios", () => {

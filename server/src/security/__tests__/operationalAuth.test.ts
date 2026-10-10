@@ -537,7 +537,6 @@ describe("P0-1 — the real server refuses to boot misconfigured", () => {
         NODE_ENV: "production",
         PORT: "4933",
         OPERATIONAL_SECRET: OPS_KEY,
-        VOUCHER_HMAC_SECRET: "a-stable-test-voucher-secret",
         SESSION_SECRET: "a-stable-test-session-secret",
         ALLOW_EPHEMERAL_PROGRESSION: "",
         SUPABASE_SERVICE_ROLE_KEY: "",
@@ -556,7 +555,6 @@ ${output}`).toBe(1);
         NODE_ENV: "production",
         PORT: "4932",
         OPERATIONAL_SECRET: OPS_KEY,
-        VOUCHER_HMAC_SECRET: "a-stable-test-voucher-secret",
         SESSION_SECRET: "a-stable-test-session-secret",
       });
       // null == we killed a running server, which is the pass condition here.

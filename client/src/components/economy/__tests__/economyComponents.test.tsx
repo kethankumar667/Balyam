@@ -76,10 +76,6 @@ describe("Economy V1 Presentational Components Suite", () => {
       expect(screen.getByText("-500")).toBeDefined();
       expect(screen.getByLabelText("Debit of 500 coins")).toBeDefined();
 
-      rerender(<CoinDelta delta="150" type="ESCROW" />);
-      expect(screen.getByText("ESCROW")).toBeDefined();
-      expect(screen.getByLabelText("Escrow voucher of 150 coins")).toBeDefined();
-
       rerender(<CoinDelta delta="+500" type="REFUND" />);
       expect(screen.getByText("REFUND")).toBeDefined();
       expect(screen.getByLabelText("Refund of 500 coins")).toBeDefined();
@@ -311,7 +307,7 @@ describe("Economy V1 Presentational Components Suite", () => {
   // ── 10. EconomySkeleton (Loading Placeholders) ───────────────────────────
 
   describe("EconomySkeleton", () => {
-    it("renders wallet, checkout, prize, voucher, and coin loading skeletons with aria-busy", () => {
+    it("renders wallet, checkout, prize, and coin loading skeletons with aria-busy", () => {
       const { rerender } = render(<EconomySkeleton variant="wallet" />);
       expect(screen.getByLabelText("Loading economy data")).toBeDefined();
 
@@ -319,9 +315,6 @@ describe("Economy V1 Presentational Components Suite", () => {
       expect(screen.getByLabelText("Loading economy data")).toBeDefined();
 
       rerender(<EconomySkeleton variant="prize" />);
-      expect(screen.getByLabelText("Loading economy data")).toBeDefined();
-
-      rerender(<EconomySkeleton variant="voucher" />);
       expect(screen.getByLabelText("Loading economy data")).toBeDefined();
 
       rerender(<EconomySkeleton variant="coin" />);

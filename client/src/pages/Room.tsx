@@ -75,7 +75,6 @@ const Connect4Board = lazy(() => import("../games/connect4/Connect4Board"));
 // ── Lazy-loaded modals & conditional overlays (code-split) ──
 const BhalyamResultModal = lazy(() => import("../components/BhalyamResultModal"));
 const LeaveRoomModal = lazy(() => import("../components/room/LeaveRoomModal"));
-const VoucherWonModal = lazy(() => import("../components/economy/VoucherWonModal"));
 const ChangeStakeModal = lazy(() => import("../components/room/ChangeStakeModal").then((m) => ({ default: m.ChangeStakeModal })));
 const RoomNameEntryChamber = lazy(() => import("../components/room/RoomNameEntryChamber"));
 const PreflightRotatePrompt = lazy(() => import("../components/room/PreflightRotatePrompt"));
@@ -92,10 +91,10 @@ const EveryoneReadyBanner = lazy(() => import("../animations/app/ReadyCheckmarkD
  * Fallback for the modal Suspense boundary below. Most of the lazy modals it
  * covers (LeaveRoomModal, ChangeStakeModal) mount unconditionally and render
  * nothing while closed, so their own chunk load is invisible either way —
- * but BhalyamResultModal/VoucherWonModal/PreflightRotatePrompt only start
- * loading the moment their trigger condition (match end, voucher win,
+ * but BhalyamResultModal/PreflightRotatePrompt only start
+ * loading the moment their trigger condition (match end,
  * orientation lock) flips true, which re-suspends the whole boundary. A
- * `null` fallback there meant the scorecard/voucher/rotate-prompt appeared
+ * `null` fallback there meant the scorecard/rotate-prompt appeared
  * to just not show up for a beat right when the player most needs it.
  */
 function ModalSuspenseFallback() {
@@ -720,9 +719,6 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
-  /** The one moment a guest's raw voucher code exists in plaintext client-side — see `economy:voucherIssued`'s own doc comment. Never persisted. */
-  const [wonVoucher, setWonVoucher] = useState<{ coinAmount: string; rawCode: string } | null>(null);
-
   const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
     // Wait for the real auth session before resolving a credential — see the
     // `authReady` comment above `mustDeclare`. Without this, a reconnect
@@ -845,10 +841,6 @@ export default function Room() {
       setError(startCancelledMessage(payload.reason));
     };
     socket.on("room:startCancelled", onStartCancelled);
-    const onVoucherIssued = (payload: { matchId: string; coinAmount: string; rawCode: string }) => {
-      setWonVoucher({ coinAmount: payload.coinAmount, rawCode: payload.rawCode });
-    };
-    socket.on("economy:voucherIssued", onVoucherIssued);
     /**
      * Root-caused 2026-09-09 from a live report: a post-match table used to
      * close in complete silence (host leaves after the match ends, or a
@@ -879,7 +871,6 @@ export default function Room() {
       socket.off("game:error", setError);
       socket.off("rematch:state", setRematch);
       socket.off("room:startCancelled", onStartCancelled);
-      socket.off("economy:voucherIssued", onVoucherIssued);
       socket.off("room:closed", onRoomClosed);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
       // but the user can navigate away via browser back / tab close without
@@ -2180,7 +2171,6 @@ export default function Room() {
         commitment={economyMotion.activeCommitment}
         settlement={economyMotion.activeSettlement}
         refund={economyMotion.activeRefund}
-        escrow={economyMotion.activeEscrow}
         errorMessage={economyMotion.errorMessage}
         game={roomState?.game}
         onGameStartComplete={() => {
@@ -2229,14 +2219,6 @@ export default function Room() {
 
         {matchPayout && matchPayout.matchId !== dismissedPayoutMatchId && (
           <MatchPayoutBanner payout={matchPayout} onDismiss={dismissMatchPayout} />
-        )}
-
-        {wonVoucher && (
-          <VoucherWonModal
-            coinAmount={wonVoucher.coinAmount}
-            rawCode={wonVoucher.rawCode}
-            onClose={() => setWonVoucher(null)}
-          />
         )}
 
         {selfIsHost && (

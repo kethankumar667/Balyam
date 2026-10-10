@@ -6,7 +6,7 @@
  * Every mutation this interface exposes maps to exactly one `SECURITY
  * DEFINER` RPC in `supabase/migrations/20260826000000_economy_v1.sql`. That
  * migration already decided every business rule that matters — sufficient
- * balance, frozen-wallet enforcement, voucher single-use, settlement
+ * balance, frozen-wallet enforcement, settlement
  * conservation — under real row locks, proven under real concurrency
  * (`scripts/economy/verifyEconomySchema.mjs`, five scenarios, eight parallel
  * callers each, exactly one `applied:true` every time). This file's only job
@@ -40,7 +40,6 @@
 
 export type PlayerIdentityKind = "member" | "guest";
 export type ParticipantIdentityKind = "member" | "guest" | "bot";
-export type VoucherStatus = "ACTIVE" | "REDEEMED" | "CANCELLED";
 export type MatchSettlementStatus = "COMMITTED" | "SETTLED" | "REFUNDED" | "ABANDONMENT_FORFEITED";
 
 /**
@@ -110,32 +109,6 @@ export interface CoinLedgerEntryRecord {
   /** Which game this match-related entry belongs to (e.g. "handcricket") — `null` for non-match entries (starter grants, admin adjustments, voucher redemptions). */
   gameKind: string | null;
   createdAt: number;
-}
-
-export interface RewardVoucherRecord {
-  id: string;
-  /** Exactly 64 lowercase hex characters — the ONLY form of the code this repository ever holds. */
-  codeHash: string;
-  coinAmount: string;
-  matchId: string;
-  issuedToGuestId: string;
-  status: VoucherStatus;
-  /**
-   * Present on the model, but never surfaced by any read method's public
-   * consumers as "who redeemed this" beyond what the database itself
-   * already restricts — see invariant 9 in the Phase 1 implementation
-   * package. No convenience lookup for this field is exposed anywhere in
-   * this interface.
-   */
-  redeemedByMemberId: string | null;
-  redeemedAt: number | null;
-  createdAt: number;
-}
-
-/** A narrow read — status and amount only, deliberately not the full record. */
-export interface VoucherStatusView {
-  status: VoucherStatus;
-  coinAmount: string;
 }
 
 export interface MatchEconomySettlementRecord {
@@ -320,8 +293,6 @@ export interface SettlementParticipantInput {
   identityId: string;
   identityKind: ParticipantIdentityKind;
   placement: number;
-  /** Required only when `identityKind === "guest"` AND the placement pays a nonzero prize. */
-  voucherCodeHash?: string;
 }
 
 export interface SettleMatchEconomyInput {
@@ -341,15 +312,6 @@ export interface SettleMatchEconomyInput {
   prizeByPlacement?: string[];
   /** The platform's cut for THIS settlement — required together with `prizeByPlacement`, ignored otherwise. */
   worldBankCutCoins?: string;
-}
-
-export interface IssueGuestVoucherInput {
-  /** This operation's idempotency key — NOT `codeHash`; see the collision-vs-replay note below. */
-  voucherId: string;
-  codeHash: string;
-  coinAmount: string;
-  matchId: string;
-  issuedToGuestId: string;
 }
 
 export interface AdminAdjustWalletInput {
@@ -564,7 +526,6 @@ export abstract class EconomyRepositoryError extends Error {
 }
 
 export abstract class WalletError extends EconomyRepositoryError {}
-export abstract class VoucherError extends EconomyRepositoryError {}
 export abstract class SettlementError extends EconomyRepositoryError {}
 export abstract class ConcurrencyError extends EconomyRepositoryError {}
 export abstract class AuthorizationError extends EconomyRepositoryError {}
@@ -584,7 +545,7 @@ export class InvalidIdentityIdError extends WalletError {
 export class WalletNotFoundError extends WalletError {
   readonly code = "WALLET_NOT_FOUND";
 }
-/** `commitMatchEntry` or `redeemRewardVoucher` attempted against a frozen wallet. Never thrown by `settleMatchEconomy`'s credit path or `refundMatchEntry` — a frozen wallet may always receive. */
+/** `commitMatchEntry` attempted against a frozen wallet. Never thrown by `settleMatchEconomy`'s credit path or `refundMatchEntry` — a frozen wallet may always receive. */
 export class WalletFrozenError extends WalletError {
   readonly code = "WALLET_FROZEN";
 }
@@ -595,23 +556,6 @@ export class TransferCapExceededError extends WalletError {
 /** `commitMatchEntry`'s host balance is below the required commitment, checked AFTER the frozen check. */
 export class InsufficientFundsError extends WalletError {
   readonly code = "INSUFFICIENT_FUNDS";
-}
-
-/** `codeHash` is not exactly 64 lowercase hex characters. Thrown BEFORE any query, by this repository. */
-export class InvalidVoucherHashError extends VoucherError {
-  readonly code = "INVALID_VOUCHER_HASH";
-}
-/** `redeemRewardVoucher`'s `codeHash` matches no row, checked AFTER the membership check already passed. */
-export class VoucherNotFoundError extends VoucherError {
-  readonly code = "VOUCHER_NOT_FOUND";
-}
-/** Voucher status is `CANCELLED` (or any non-`ACTIVE`, non-`REDEEMED` state). */
-export class VoucherNotActiveError extends VoucherError {
-  readonly code = "VOUCHER_NOT_ACTIVE";
-}
-/** Voucher status is `REDEEMED` and the caller is NOT the original redeemer — a different redeemer attempting an already-redeemed voucher. The same-redeemer case is `applied:false`, never this error. */
-export class VoucherAlreadyRedeemedError extends VoucherError {
-  readonly code = "VOUCHER_ALREADY_REDEEMED";
 }
 
 /** `seatCount` does not equal `humanSeatCount + botSeatCount`. */
@@ -649,29 +593,6 @@ export class SettlementConservationViolationError extends SettlementError {
 /** `reconcileSettlement`'s specific "does not exist at all" — distinct from the `null`-returning plain reads. */
 export class MatchNotFoundError extends SettlementError {
   readonly code = "MATCH_NOT_FOUND";
-}
-
-/**
- * A genuine unique-constraint race: two DIFFERENT `voucherId`s attempting to
- * use the SAME `codeHash`. The only member of this category by design, not
- * by omission — this repository's concurrency model is entirely pessimistic
- * (row locks + advisory locks), proven to resolve every genuinely-idempotent
- * operation to exactly one `applied:true` with zero errors. This is the one
- * place two both-legitimate operations can still collide on a real
- * constraint.
- */
-export class VoucherCodeCollisionError extends ConcurrencyError {
-  readonly code = "VOUCHER_CODE_COLLISION";
-}
-
-/**
- * The caller's identity is `kind: 'guest'`, attempting a member-only action.
- * Checked by the database BEFORE voucher lookup — this error can occur even
- * for a `codeHash` that doesn't exist, deliberately, so voucher existence is
- * never disclosed to a non-member.
- */
-export class OnlyMembersCanRedeemError extends AuthorizationError {
-  readonly code = "ONLY_MEMBERS_CAN_REDEEM_VOUCHERS";
 }
 
 /**
@@ -728,9 +649,6 @@ export interface EconomyRepository {
 
   /** Non-nullable — `world_bank_accounts` is a database-enforced singleton. */
   getWorldBankSnapshot(): Promise<WorldBankSnapshot>;
-
-  /** `null` if no voucher matches. */
-  getVoucherStatus(codeHash: string): Promise<VoucherStatusView | null>;
 
   /** Non-nullable — the active configuration is a database-enforced singleton. */
   getActiveConfiguration(): Promise<EconomyConfigurationRecord>;
@@ -800,7 +718,6 @@ export interface EconomyRepository {
    * `applied:false` regardless of what `isValidRanking` the replay passes.
    *
    * Atomicity guarantee: on ANY failure (`InvalidIdentityKindError`,
-   * `InvalidVoucherHashError`, `VoucherCodeCollisionError`,
    * `SettlementConservationViolationError`, `IdentityNotFoundError` for a
    * member participant), this method leaves zero partial effect — no wallet
    * credit, no ledger row, no participant row survives for ANY participant
@@ -832,7 +749,7 @@ export interface EconomyRepository {
    * ENTIRE `total_collected` pool to the dedicated
    * `abandonmentForfeitureRevenue` World Bank balance; the economic owner
    * (`hostIdentityId`) is never credited, and no participant row, wallet
-   * credit, or voucher is ever created by this method. Deliberately takes
+   * or credit is ever created by this method. Deliberately takes
    * no amount — the forfeited total is always derived from the settlement's
    * own `totalCollected`, never a caller-supplied value.
    *
@@ -847,25 +764,6 @@ export interface EconomyRepository {
     matchId: string,
     reason: string,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>>;
-
-  /**
-   * Keyed by `voucherId`, NOT by `codeHash`. A replay with the same
-   * `voucherId` is `applied:false`; a DIFFERENT `voucherId` reusing the same
-   * `codeHash` is a `VoucherCodeCollisionError`, thrown, never a replay.
-   */
-  issueGuestVoucher(
-    input: IssueGuestVoucherInput,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>>;
-
-  /**
-   * Keyed by `(voucherId, memberIdentityId)` together. The SAME member
-   * redeeming an already-redeemed-by-them voucher is `applied:false`. A
-   * DIFFERENT member attempting the same voucher is `VoucherAlreadyRedeemedError`.
-   */
-  redeemRewardVoucher(
-    codeHash: string,
-    memberIdentityId: string,
-  ): Promise<EconomyOperationResult<RewardVoucherRecord>>;
 
   /**
    * Super Admin manual top-up / wallet adjustment with ledger auditing and
