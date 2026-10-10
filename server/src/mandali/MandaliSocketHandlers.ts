@@ -85,6 +85,8 @@ export function registerMandaliSocketHandlers(
         // A personal room, so "something new in one of your Mandalis" can reach
         // this person anywhere in the app — not only while a hub page is open.
         void socket.join(`user:${identity.playerId}`);
+        // Coming online is told at once; going offline and starting a game are noticed by the sweep.
+        void mandaliService.refreshPresence([identity.playerId]);
         ack?.({ success: true, playerId: identity.playerId });
       } catch (err) {
         logger.error({

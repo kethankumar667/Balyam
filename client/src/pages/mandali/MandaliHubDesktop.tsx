@@ -395,7 +395,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
             <ul aria-label={t("mandali.people.title")} className="m-0 flex list-none flex-col items-center gap-2.5 p-0">
               {members.slice(0, PEOPLE_SHOWN_WHEN_FOLDED).map((member) => (
                 <li key={member.playerId} title={member.displayName}>
-                  <AlbumAvatar avatar={member.avatar} name={member.displayName} size="sm" online={isHere(member.presence)} />
+                  <AlbumAvatar avatar={member.avatar} name={member.displayName} size="sm" presence={member.presence} />
                 </li>
               ))}
             </ul>

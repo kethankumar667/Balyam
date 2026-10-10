@@ -23,12 +23,27 @@ import type {
   RoomInviteState,
   RoomInviteStatus,
 } from "@shared/mandali/notifications.js";
+import type { MandaliPresenceChangedBroadcast } from "@shared/mandali/socketContract.js";
 import { MANDALI_COIN_AMOUNT, MANDALI_COIN_REQUEST_COOLDOWN_MS } from "@shared/mandali/coinRules.js";
 import { MandaliRepository } from "./MandaliRepository.js";
 import { MembershipStateMachine } from "./MembershipStateMachine.js";
 import type { RoomManager } from "../rooms/RoomManager.js";
 import type { GameKind } from "@shared/types.js";
 import { logger } from "../lib/logger.js";
+
+/** The two live facts presence is made from. Supplied at boot; see `setPresenceSources`. */
+export interface MandaliPresenceSources {
+  /** Has this person any open, signed-in connection right now? */
+  isConnected(playerId: string): boolean;
+  /** Everyone seated in a game that is under way, and which game. */
+  activeGames(): ReadonlyMap<string, GameKind>;
+}
+
+/** What a member's dot says. "Away" is not worked out: nothing here can tell idle from engaged. */
+interface MandaliPresence {
+  presence: "online" | "in-game" | "offline";
+  activeGame?: GameKind;
+}
 import type { EconomyService } from "../economy/EconomyService.js";
 import type { TransferPolicy } from "../rewards/TransferPolicy.js";
 import { InsufficientFundsError, TransferCapExceededError, WalletFrozenError } from "../persistence/EconomyRepository.js";
@@ -93,6 +108,9 @@ function deleteFailure(err: unknown): DeleteMandaliResult {
 
 export class MandaliService {
   private readonly memberIdCache = new Map<string, { ids: string[]; at: number }>();
+  private presenceSources: MandaliPresenceSources | null = null;
+  /** The last presence each person was announced with. Absent means "not here", so only changes are sent. */
+  private readonly lastPresence = new Map<string, MandaliPresence>();
 
   constructor(
     private readonly repository: MandaliRepository,
@@ -349,7 +367,71 @@ export class MandaliService {
   /* ── Membership Operations ── */
 
   public async getMembers(mandaliId: string): Promise<MandaliMember[]> {
-    return this.repository.isDurable() ? this.repository.getMembersDurable(mandaliId) : this.repository.getMembers(mandaliId);
+    const members = this.repository.isDurable()
+      ? await this.repository.getMembersDurable(mandaliId)
+      : this.repository.getMembers(mandaliId);
+    return this.withLivePresence(members);
+  }
+
+  /**
+   * Where presence comes from. Set at boot with the two live facts the rest of the
+   * server already owns — who has a connection open, and who is seated in a game that
+   * is under way — so presence is never stored and never stale after a restart.
+   */
+  public setPresenceSources(sources: MandaliPresenceSources): void {
+    this.presenceSources = sources;
+  }
+
+  /** Online, in a game, or not here — right now. Without sources (a test, a tool) everyone reads as not here. */
+  private presenceOf(playerId: string, games: ReadonlyMap<string, GameKind>): MandaliPresence {
+    const activeGame = games.get(playerId);
+    if (activeGame) return { presence: "in-game", activeGame };
+    return { presence: this.presenceSources?.isConnected(playerId) ? "online" : "offline" };
+  }
+
+  private withLivePresence(members: MandaliMember[]): MandaliMember[] {
+    const games = this.presenceSources?.activeGames() ?? new Map<string, GameKind>();
+    return members.map((member) => {
+      const { activeGame: _stale, ...rest } = member;
+      return { ...rest, ...this.presenceOf(member.playerId, games) };
+    });
+  }
+
+  /**
+   * Re-check these people and tell their Mandalis about anyone whose presence changed.
+   *
+   * Only a change is sent: a person first seen not-here is not "going offline", and a
+   * check that finds the same answer says nothing. The group's live room is joined only
+   * by people looking at that Mandali, so this costs nothing for groups nobody has open.
+   */
+  public async refreshPresence(playerIds: readonly string[]): Promise<void> {
+    if (!this.io) return;
+    const games = this.presenceSources?.activeGames() ?? new Map<string, GameKind>();
+    for (const playerId of new Set(playerIds)) {
+      const now = this.presenceOf(playerId, games);
+      const before = this.lastPresence.get(playerId) ?? { presence: "offline" as const };
+      if (before.presence === now.presence && before.activeGame === now.activeGame) continue;
+      if (now.presence === "offline") this.lastPresence.delete(playerId);
+      else this.lastPresence.set(playerId, now);
+      try {
+        for (const mandali of await this.getPlayerMandalis(playerId)) {
+          const member = (await this.getMembers(mandali.id)).find((m) => m.playerId === playerId);
+          if (!member) continue;
+          const broadcast: MandaliPresenceChangedBroadcast = { mandaliId: mandali.id, member };
+          this.io.to(`mandali:${mandali.id}`).emit("mandali:presence:changed" as never, broadcast as never);
+        }
+      } catch (err) {
+        logger.warn({
+          message: `[MANDALI] presence fan-out skipped for a member: ${err instanceof Error ? err.message : String(err)}`,
+          module: "MANDALI",
+        });
+      }
+    }
+  }
+
+  /** Everyone whose presence is currently something other than "not here" — the people worth re-checking. */
+  public presenceWatchList(): string[] {
+    return [...this.lastPresence.keys()];
   }
 
   /** Server-side membership gate — the only trustworthy way to answer "can this caller see private community content?" */

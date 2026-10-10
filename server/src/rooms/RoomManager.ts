@@ -1370,6 +1370,25 @@ export class RoomManager {
     };
   }
 
+  /**
+   * Everyone with a live seat in a game that is under way, and which game. Keyed by both the
+   * seat id and the verified account id, because a Mandali knows a member by the second.
+   * Bots and disconnected seats do not count: a seat held open for a dropped player is not
+   * someone playing. Read-only; built fresh each call, so it is never stale.
+   */
+  getActiveGamesByPlayer(): Map<string, GameKind> {
+    const active = new Map<string, GameKind>();
+    for (const room of this.rooms.values()) {
+      if (room.phase !== "playing") continue;
+      for (const player of room.players.values()) {
+        if (player.isBot || !player.isConnected) continue;
+        active.set(player.id, room.game);
+        if (player.identityId) active.set(player.identityId, room.game);
+      }
+    }
+    return active;
+  }
+
   getRoomCount(): number {
     return this.rooms.size;
   }

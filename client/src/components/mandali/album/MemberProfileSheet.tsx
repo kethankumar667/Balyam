@@ -56,7 +56,7 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
   return (
     <AlbumSheet open onClose={onClose} title={t("mandali.profile.title")}>
       <div className="flex flex-col items-center pb-2 pt-1 text-center">
-        <AlbumAvatar avatar={member.avatar} name="" size="lg" online={member.presence === "online" || member.presence === "in-game"} />
+        <AlbumAvatar avatar={member.avatar} name="" size="lg" presence={member.presence} />
         <h3 className="m-0 mt-3 flex items-center gap-1.5 text-xl font-semibold text-album-ink">
           <span>{member.displayName}</span>
           {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}

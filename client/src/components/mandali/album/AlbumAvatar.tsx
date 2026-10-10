@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FALLBACK_AVATAR, getAvatarUrl } from "./avatarUrl";
 
 const SIZES = {
@@ -11,17 +12,42 @@ export interface AlbumAvatarProps {
   /** Read out by screen readers; pass an empty string when the name is already written beside it. */
   name: string;
   size?: keyof typeof SIZES;
-  /** Draws the small presence dot. Leave undefined where presence is not shown. */
-  online?: boolean;
+  /** Draws the presence badge. Leave undefined where presence is not shown. */
+  presence?: AvatarPresence;
   className?: string;
 }
 
+export type AvatarPresence = "online" | "in-game" | "idle" | "offline";
+
+/**
+ * The badge the way Teams draws it. Each state has its own fill AND its own mark, so it
+ * reads the same to someone who cannot tell green from red: a tick for around, a bar for
+ * busy in a game, a clock for away, and an empty ring with a cross for not here.
+ */
+const BADGE: Record<AvatarPresence, { fill: string; mark: ReactNode }> = {
+  online: {
+    fill: "bg-album-success text-white",
+    mark: <path d="M2.2 5.2 4.2 7.2 7.8 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
+  },
+  "in-game": {
+    fill: "bg-album-danger text-white",
+    mark: <path d="M2.4 5h5.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />,
+  },
+  idle: {
+    fill: "bg-album-foilfill text-album-onfoil",
+    mark: <path d="M5 2.6V5l1.7 1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
+  },
+  offline: {
+    fill: "bg-album-page border-[1.5px] border-album-ink3/70 text-album-ink3",
+    mark: <path d="M3.2 3.2 6.8 6.8M6.8 3.2 3.2 6.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />,
+  },
+};
+
 /**
  * A person's picture. Round, hairline-ringed, and never broken: a failed image
- * quietly becomes the BHALYAM logo. The presence dot pairs colour with a ring
- * so it does not rely on hue alone.
+ * quietly becomes the BHALYAM logo.
  */
-export function AlbumAvatar({ avatar, name, size = "md", online, className = "" }: AlbumAvatarProps) {
+export function AlbumAvatar({ avatar, name, size = "md", presence, className = "" }: AlbumAvatarProps) {
   return (
     <span className={`relative inline-flex flex-shrink-0 ${className}`}>
       <img
@@ -33,13 +59,16 @@ export function AlbumAvatar({ avatar, name, size = "md", online, className = "" 
           if (!img.src.endsWith(FALLBACK_AVATAR)) img.src = FALLBACK_AVATAR;
         }}
       />
-      {online !== undefined && (
+      {presence !== undefined && (
         <span
           aria-hidden="true"
-          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-album-page ${
-            online ? "bg-album-success" : "bg-album-ink3/60"
-          }`}
-        />
+          data-presence={presence}
+          className={`absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-album-page ${BADGE[presence].fill}`}
+        >
+          <svg viewBox="0 0 10 10" className="h-2.5 w-2.5">
+            {BADGE[presence].mark}
+          </svg>
+        </span>
       )}
     </span>
   );

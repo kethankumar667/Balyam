@@ -439,6 +439,24 @@ const mandaliService = new MandaliService(mandaliRepository, roomManager, io, ec
 app.use("/api/mandali", createMandaliRouter(mandaliService));
 
 /**
+ * Who is around, for the dots in a Mandali's People list. Presence is never stored: a
+ * member is online while any signed-in connection of theirs sits in their personal
+ * `user:<id>` room, and in a game while they hold a live seat in a running one.
+ * Changes are pushed as they are noticed; this sweep notices the ones that happen
+ * without a Mandali event (a game starting, the last tab closing).
+ */
+const MANDALI_PRESENCE_SWEEP_MS = 5_000;
+mandaliService.setPresenceSources({
+  isConnected: (playerId) => (io.sockets.adapter.rooms.get(`user:${playerId}`)?.size ?? 0) > 0,
+  activeGames: () => roomManager.getActiveGamesByPlayer(),
+});
+const mandaliPresenceTimer = setInterval(() => {
+  const seated = roomManager.getActiveGamesByPlayer().keys();
+  void mandaliService.refreshPresence([...mandaliService.presenceWatchList(), ...seated]);
+}, MANDALI_PRESENCE_SWEEP_MS);
+mandaliPresenceTimer.unref();
+
+/**
  * Trust tiers and the daily transfer cap. The tiers are computed from data the
  * server already holds (account age, matches against signed-in opponents,
  * Mandali membership) — nothing about the device or network.

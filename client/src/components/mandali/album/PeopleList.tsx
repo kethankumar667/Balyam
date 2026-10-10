@@ -36,7 +36,6 @@ export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListPr
     <ul className="m-0 list-none space-y-1 p-0">
       {members.map((member) => {
         const isSelf = member.playerId === currentUserId;
-        const online = member.presence === "online" || member.presence === "in-game";
         return (
           <li key={member.memberId} className="group flex min-h-[64px] items-center gap-3 rounded-2xl px-2 py-1.5 hover:bg-album-field/60">
             {/* The face and name are one tap target: it opens this person's profile. */}
@@ -46,7 +45,7 @@ export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListPr
               aria-label={t("mandali.people.viewProfile", { name: member.displayName })}
               className="flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-foil"
             >
-              <AlbumAvatar avatar={member.avatar} name="" online={online} />
+              <AlbumAvatar avatar={member.avatar} name="" presence={member.presence} />
               <div className="min-w-0 flex-1">
                 <p className="m-0 flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-album-ink">
                   <span className="truncate">{member.displayName}</span>
