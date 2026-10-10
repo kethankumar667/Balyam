@@ -9,6 +9,7 @@ import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import { useGuestCarryOver } from "./lib/guestCarryOver";
+import { CarryOverArrivalDialog } from "./components/carryover/CarryOverArrivalDialog";
 import BhalyamLogo from "./components/bhalyam/BhalyamLogo";
 import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
@@ -343,6 +344,7 @@ export default function App({ components = {} }: AppProps) {
           <ScrollToTopOnRouteChange />
           <ToastHost />
           <ConsentModal />
+          <CarryOverArrivalDialog />
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route path="/" element={<BhalyamHome />} />

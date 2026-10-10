@@ -3,33 +3,11 @@ import { motion, useReducedMotion } from "framer-motion";
 import Modal from "../Modal";
 import { formatCountdown, useFaucetStore } from "../../store/faucetStore";
 import { useFaucetCountdown } from "../../hooks/useFaucetCountdown";
+import { useCountTicker } from "../../hooks/useCountTicker";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 import { CoinRain, GoldCoin } from "./CoinRain";
-
-/** 0 up to `end` over `ms`, easing out, then stays there. Honest for reduced motion: it simply shows `end`. */
-function useTicker(end: number, ms: number, enabled: boolean): number {
-  const reduceMotion = useReducedMotion();
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!enabled) return undefined;
-    if (reduceMotion) {
-      setValue(end);
-      return undefined;
-    }
-    let frame = 0;
-    const startedAt = performance.now();
-    const step = (now: number) => {
-      const t = Math.min(1, (now - startedAt) / ms);
-      setValue(Math.round(end * (1 - Math.pow(1 - t, 3))));
-      if (t < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [end, ms, enabled, reduceMotion]);
-  return enabled ? value : 0;
-}
 
 type Phase = "ready" | "claiming" | "celebrate" | "pending" | "refused";
 
@@ -63,7 +41,7 @@ export function FaucetClaimModal() {
   const [phase, setPhase] = useState<Phase>("ready");
   const [paid, setPaid] = useState(0);
   const [raining, setRaining] = useState(false);
-  const ticked = useTicker(paid, 1_200, phase === "celebrate");
+  const ticked = useCountTicker(paid, 1_200, phase === "celebrate");
 
   // Every opening starts fresh: a dialog reopened four hours later must not still say "Coins added!".
   useEffect(() => {

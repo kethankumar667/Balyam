@@ -17,6 +17,7 @@ import { AUDIO } from "../../constants/audio";
 import { bhalyamSpring } from "../../lib/motion";
 import CountUp from "../CountUp";
 import { getChestImageUrl, PremiumRewardChest } from "./PremiumRewardChest";
+import { CoinRain } from "../faucet/CoinRain";
 
 interface StreakClaimCelebrationProps {
   result: DailyStreakClaimResult;
@@ -113,6 +114,9 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none">
+        {/* The same coin rain every coin reward in the app uses, so a streak reward lands the way a free claim or a prize does. */}
+        {stage === "revealed" && <CoinRain />}
+
         {/* Confetti Explosion Layer (Active in revealed stage) */}
         {stage === "revealed" && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">

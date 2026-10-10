@@ -16,6 +16,7 @@ import { CoinDelta, type CoinDeltaType } from "./CoinDelta";
 import { EconomySkeleton } from "./EconomySkeleton";
 import { EconomyActionButton } from "./EconomyActionButton";
 import { useWallet, useLedger } from "../../hooks/useEconomy";
+import { CarryOverCard } from "../carryover/CarryOverCard";
 import { FaucetClaimRow } from "../faucet/FaucetClaimRow";
 import { type CoinLedgerEntryRecord } from "../../lib/economyApi";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
@@ -337,6 +338,9 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
 
                 {/* Free coins. On a phone the header has no room for a faucet chip, so the claim lives here. */}
                 <FaucetClaimRow className="sm:hidden" />
+
+                {/* Coins brought over from a guest account and the welcome bonus; renders nothing unless there is something to say. */}
+                <CarryOverCard />
 
                 {/* Lifetime Stats */}
                 {wallet && !isWalletError && (

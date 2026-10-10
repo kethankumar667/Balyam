@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import MatchPayoutBanner, { PAYOUT_BANNER_VISIBLE_MS } from "../MatchPayoutBanner";
@@ -12,6 +13,10 @@ describe("MatchPayoutBanner", () => {
 
   it("tells the winner how many coins they won and where they went", () => {
     render(<MatchPayoutBanner payout={{ matchId: "m_1", kind: "prize", amount: "1600" }} onDismiss={() => {}} />);
+    // The amount counts up; let it finish.
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
     const status = screen.getByRole("status");
     expect(status.textContent).toContain("You won");
     expect(status.textContent).toContain("1,600");
@@ -43,5 +48,18 @@ describe("MatchPayoutBanner", () => {
       vi.advanceTimersByTime(1);
     });
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("pours coins for a real prize", () => {
+    render(<MatchPayoutBanner payout={{ matchId: "m_1", kind: "prize", amount: "1600" }} onDismiss={() => {}} />);
+
+    expect(screen.getByTestId("coin-rain")).toBeInTheDocument();
+  });
+
+  it("stays calm for a refund: it is returned money, not a win", () => {
+    render(<MatchPayoutBanner payout={{ matchId: "m_2", kind: "refund", amount: "100" }} onDismiss={() => {}} />);
+
+    expect(screen.queryByTestId("coin-rain")).not.toBeInTheDocument();
+    expect(screen.getByRole("status").textContent).toContain("Entry fee refunded");
   });
 });

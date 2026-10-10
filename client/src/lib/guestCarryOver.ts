@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { BonusResult, CarryOverResult } from "@shared/carryover";
 import { useAuthStore } from "../store/authStore";
+import { useCarryOverStore } from "../store/carryOverStore";
 import { refreshCurrentWallet } from "../hooks/useEconomy";
 import { apiJson, clearGuestIdentity, currentGuestToken } from "./playerIdentity";
 
@@ -41,7 +42,11 @@ export async function runGuestCarryOver(userId: string): Promise<void> {
       body: JSON.stringify({ guestToken }),
     });
     if (claim?.ok || (claim && !claim.ok && FINISHED_CODES.has(claim.code))) clearGuestIdentity();
-    if (claim?.ok && claim.amount > 0) void refreshCurrentWallet();
+    if (claim?.ok && claim.amount > 0) {
+      // The one-time "your coins came with you" moment, only for a claim made now, not a replay of an old one.
+      if (!claim.replay) useCarryOverStore.getState().setArrival({ amount: claim.amount, vestingUntil: claim.vestingUntil });
+      void refreshCurrentWallet();
+    }
   }
 
   // Harmless for everyone else: "nothing to claim" and "play a match first" are plain answers.
