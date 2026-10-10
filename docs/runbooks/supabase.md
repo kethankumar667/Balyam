@@ -342,6 +342,7 @@ For the DPDP surfaces (`client/src/lib/privacy/`), the facts as built:
 | --- | --- |
 | `auth.users` (Supabase) | Email, a bcrypt hash of the password, sign-in timestamps, and the IP the sign-in came from |
 | `public.profiles` | Display name and avatar id |
+| `public.account_emails` | A simplified form of each account's email (lower-case, `+tag` dropped, Gmail dots dropped), so one mailbox cannot open two accounts. Server-only (RLS forced, no client grants); deleted with the account. See "One mailbox, one account" below |
 | Browser `bhalyam.session` | The session tokens that keep a player signed in |
 | Browser `bhalyam.session-code-verifier` | A one-time PKCE secret, deleted on return from Google |
 
@@ -360,6 +361,30 @@ than code:
   picked in step 1.
 
 ---
+
+## One mailbox, one account
+
+Migration `20261021000000_email_uniqueness_guard.sql` puts a trigger on `auth.users`, the one table
+every signup path writes to (email + password, Google, an email change). It refuses a second
+account whose address reduces to the same mailbox: another case, a dot (Gmail only), a `+tag`, or
+`googlemail.com`. It also refuses a short list of throwaway-mail domains
+(`public.blocked_email_domains`, which you can add to with an `insert`).
+
+- **Apply it in the SQL editor, before deploying the client.** Rollback:
+  `supabase/rollbacks/20261021000000_email_uniqueness_guard_rollback.sql`.
+- **Prove it** with `node scripts/persistence/verifyEmailGuard.mjs` (a real PostgreSQL, 36 checks).
+- **Existing accounts are untouched.** If two already collide, the earliest owns the address and the
+  later one keeps working. To list them: select the `auth.users` rows whose
+  `public.canonical_email(email)` appears more than once.
+- **What a refused person sees.** Supabase reports the failure as "Database error saving new user"
+  and drops the reason, so the client shows one message for both cases ("we couldn't create an
+  account with that email — sign in if you have one, or try a different address"). It does not
+  confirm whose address is taken.
+- **What it cannot do.** Five genuinely different mailboxes are five accounts. That is why the
+  guest-to-member carry-over (not yet built) is held and capped by trust tier, and takes one
+  guest per account.
+- **Privacy.** The privacy page now says the simplified email is kept. Whether that change needs
+  `NOTICE_VERSION` bumped (which asks every player to re-consent) is a decision for you.
 
 ## Troubleshooting
 

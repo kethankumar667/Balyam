@@ -140,8 +140,20 @@ export function authErrorMessage(err: unknown): string {
   if (/email not confirmed/i.test(text)) {
     return "Confirm your email first — the link is in your inbox.";
   }
-  if (/user already registered|already been registered/i.test(text)) {
+  if (/user already registered|already been registered|EMAIL_ALREADY_REGISTERED/i.test(text)) {
     return "That email already has an account. Try signing in instead.";
+  }
+  if (/EMAIL_DOMAIN_NOT_ALLOWED/i.test(text)) {
+    return "Temporary or disposable email addresses can't be used. Use your regular email.";
+  }
+  /**
+   * The one-mailbox-one-account trigger on auth.users (migration 20261021000000). When it refuses
+   * a signup, Supabase's auth service reports a generic "Database error saving new user" and
+   * drops the reason, so this is all the browser ever sees. It must not say "database error", and
+   * it must not confirm that someone else's address is taken, so it names both ways out.
+   */
+  if (/database error saving new user/i.test(text)) {
+    return "We couldn't create an account with that email. If you already have one, sign in instead — otherwise try a different address.";
   }
   if (/token has expired or is invalid|otp_expired|invalid.*(otp|token)/i.test(text)) {
     // One message for expired and mistyped on purpose. Supabase does not

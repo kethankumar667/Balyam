@@ -64,6 +64,29 @@ describe("isEmailNotConfirmed", () => {
   });
 });
 
+describe("the one-mailbox-one-account guard", () => {
+  // The database refuses a second account for the same mailbox (a dot, a +tag, googlemail).
+  // Supabase's auth service reports a trigger failure as a generic "Database error saving new
+  // user" and drops the reason, so the player must be told what to do without being told why a
+  // stranger's address is or is not taken.
+  it("tells someone refused at signup to sign in or use another address, not 'database error'", () => {
+    const msg = authErrorMessage(new Error("Database error saving new user"));
+    expect(msg).not.toMatch(/database/i);
+    expect(msg).toMatch(/sign in/i);
+    expect(msg).toMatch(/different|another/i);
+  });
+
+  it("explains a refused throwaway address if the reason does come through", () => {
+    const msg = authErrorMessage(new Error("EMAIL_DOMAIN_NOT_ALLOWED: this kind of email address cannot be used"));
+    expect(msg).toMatch(/temporary|disposable|throwaway/i);
+  });
+
+  it("points a refused look-alike address at signing in, if the reason does come through", () => {
+    const msg = authErrorMessage(new Error("EMAIL_ALREADY_REGISTERED: an account already exists"));
+    expect(msg).toMatch(/sign(ing)? in/i);
+  });
+});
+
 describe("messages that were already right", () => {
   it("refuses to say which half of a bad login was wrong", () => {
     const msg = authErrorMessage(new Error("Invalid login credentials"));

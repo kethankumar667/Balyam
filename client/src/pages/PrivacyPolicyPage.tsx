@@ -339,6 +339,7 @@ export default function PrivacyPolicyPage() {
                     <ul className="list-disc pl-5 space-y-1">
                       <li><strong>Guest Players:</strong> No email or credentials required. We assign a device-local temporary seat token stored in your browser's Local Storage.</li>
                       <li><strong>Registered Members:</strong> Your verified email address, hashed credentials, custom avatar identifier, and display name.</li>
+                      <li><strong>One account per mailbox:</strong> To stop one inbox being used to open several accounts, we also keep a simplified form of your email (lower-case, with any "+tag" removed and, for Gmail, the dots removed). It is visible only to our server, used for nothing else, and deleted with your account.</li>
                       <li><strong>Match Telemetry:</strong> Moves made, round timers, outcome state, and player disconnect timestamps to ensure fair play and seat recovery.</li>
                     </ul>
                   </div>
