@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Crown, HandCoins } from "lucide-react";
 import type { MandaliMember } from "@shared/mandali/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { AlbumAvatar } from "./AlbumAvatar";
 import { AlbumButton } from "./AlbumButton";
+import { MemberProfileSheet } from "./MemberProfileSheet";
 import { roleLabelKey } from "./roleLabel";
 
 export interface PeopleListProps {
@@ -27,24 +29,35 @@ const PRESENCE_KEY = {
 export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListProps) {
   const { t } = useTranslation();
 
+  const [profileOf, setProfileOf] = useState<MandaliMember | null>(null);
+
   return (
+    <>
     <ul className="m-0 list-none space-y-1 p-0">
       {members.map((member) => {
         const isSelf = member.playerId === currentUserId;
         const online = member.presence === "online" || member.presence === "in-game";
         return (
           <li key={member.memberId} className="group flex min-h-[64px] items-center gap-3 rounded-2xl px-2 py-1.5 hover:bg-album-field/60">
-            <AlbumAvatar avatar={member.avatar} name="" online={online} />
-            <div className="min-w-0 flex-1">
-              <p className="m-0 flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-album-ink">
-                <span className="truncate">{member.displayName}</span>
-                {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}
-                {member.role === "OWNER" && <Crown className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />}
-              </p>
-              <p className="m-0 mt-0.5 truncate text-sm leading-tight text-album-ink3">
-                {t(roleLabelKey(member.role))} · {t(PRESENCE_KEY[member.presence] ?? PRESENCE_KEY.offline)}
-              </p>
-            </div>
+            {/* The face and name are one tap target: it opens this person's profile. */}
+            <button
+              type="button"
+              onClick={() => setProfileOf(member)}
+              aria-label={t("mandali.people.viewProfile", { name: member.displayName })}
+              className="flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-foil"
+            >
+              <AlbumAvatar avatar={member.avatar} name="" online={online} />
+              <div className="min-w-0 flex-1">
+                <p className="m-0 flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-album-ink">
+                  <span className="truncate">{member.displayName}</span>
+                  {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}
+                  {member.role === "OWNER" && <Crown className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />}
+                </p>
+                <p className="m-0 mt-0.5 truncate text-sm leading-tight text-album-ink3">
+                  {t(roleLabelKey(member.role))} · {t(PRESENCE_KEY[member.presence] ?? PRESENCE_KEY.offline)}
+                </p>
+              </div>
+            </button>
             {!isSelf && onCoinsWith && (
               <AlbumButton
                 variant="ghost"
@@ -61,5 +74,12 @@ export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListPr
         );
       })}
     </ul>
+    <MemberProfileSheet
+      member={profileOf}
+      isSelf={profileOf?.playerId === currentUserId}
+      onClose={() => setProfileOf(null)}
+      onCoinsWith={onCoinsWith}
+    />
+    </>
   );
 }
