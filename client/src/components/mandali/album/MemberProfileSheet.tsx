@@ -25,6 +25,14 @@ const PRESENCE_KEY = {
   offline: "mandali.people.presence.offline",
 } as const;
 
+/** The same colour each state wears on the avatar badge, so the dot and the badge never disagree. */
+const PRESENCE_DOT = {
+  online: "bg-album-success",
+  "in-game": "bg-album-danger",
+  idle: "bg-album-foilfill",
+  offline: "border-[1.5px] border-album-ink3/70 bg-transparent",
+} as const;
+
 /**
  * Someone in the group, up close: who they are, what they are to the group, whether
  * they are around, and since when.
@@ -53,29 +61,41 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
       : presence;
   const roleKey = roleLabelKey(member.role);
 
+  const isLeader = roleKey === "mandali.role.host" || roleKey === "mandali.role.admin";
+
   return (
     <AlbumSheet open onClose={onClose} title={t("mandali.profile.title")}>
-      <div className="flex flex-col items-center pb-2 pt-1 text-center">
-        <AlbumAvatar avatar={member.avatar} name="" size="lg" presence={member.presence} />
-        <h3 className="m-0 mt-3 flex items-center gap-1.5 text-xl font-semibold text-album-ink">
-          <span>{member.displayName}</span>
+      {/* The portrait, mounted on the page with photo corners like every pinned thing in the album. */}
+      <div className="album-corners album-rise mx-auto mt-1 flex w-full flex-col items-center rounded-2xl bg-album-field/60 px-6 pb-6 pt-8 text-center">
+        <span className="rounded-full p-1 ring-2 ring-album-foilfill/60 ring-offset-4 ring-offset-album-field">
+          <AlbumAvatar avatar={member.avatar} name="" size="xl" presence={member.presence} />
+        </span>
+        <h3 className="m-0 mt-5 flex items-baseline justify-center gap-2 text-2xl font-semibold leading-tight text-album-ink">
+          <span className="break-words">{member.displayName}</span>
           {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}
         </h3>
-        <p className="m-0 mt-1 flex items-center gap-1.5 text-[15px] text-album-ink2">
-          {roleKey === "mandali.role.host" && <Crown className="h-4 w-4 text-album-foil" aria-hidden="true" />}
-          {roleKey === "mandali.role.admin" && <ShieldCheck className="h-4 w-4 text-album-foil" aria-hidden="true" />}
+        <p
+          className={`m-0 mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+            isLeader ? "bg-album-foilfill/20 text-album-foil" : "bg-album-page text-album-ink2"
+          }`}
+        >
+          {roleKey === "mandali.role.host" && <Crown className="h-4 w-4" aria-hidden="true" />}
+          {roleKey === "mandali.role.admin" && <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
           <span>{t(roleKey)}</span>
         </p>
       </div>
 
-      <dl className="m-0 mt-3 divide-y divide-album-line rounded-2xl border border-album-line">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <dl className="m-0 mt-5 grid gap-3">
+        <div className="flex items-center justify-between gap-3">
           <dt className="text-sm text-album-ink3">{t("mandali.profile.status")}</dt>
-          <dd className="m-0 text-[15px] text-album-ink">{activity}</dd>
+          <dd className="m-0 inline-flex items-center gap-2 text-[15px] font-semibold text-album-ink">
+            <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${PRESENCE_DOT[member.presence] ?? PRESENCE_DOT.offline}`} />
+            {activity}
+          </dd>
         </div>
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-t border-album-line pt-3">
           <dt className="text-sm text-album-ink3">{t("mandali.profile.joined")}</dt>
-          <dd className="m-0 text-[15px] text-album-ink">{joined}</dd>
+          <dd className="m-0 text-[15px] text-album-ink2">{joined}</dd>
         </div>
       </dl>
 

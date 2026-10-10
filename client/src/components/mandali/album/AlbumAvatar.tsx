@@ -5,7 +5,16 @@ const SIZES = {
   sm: "w-8 h-8",
   md: "w-10 h-10",
   lg: "w-14 h-14",
+  xl: "w-24 h-24",
 } as const;
+
+/** The presence badge grows with the picture, so it stays readable on a large portrait. */
+const BADGE_SIZE: Record<keyof typeof SIZES, { box: string; glyph: string }> = {
+  sm: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
+  md: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
+  lg: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
+  xl: { box: "h-6 w-6", glyph: "h-4 w-4" },
+};
 
 export interface AlbumAvatarProps {
   avatar?: string;
@@ -63,9 +72,9 @@ export function AlbumAvatar({ avatar, name, size = "md", presence, className = "
         <span
           aria-hidden="true"
           data-presence={presence}
-          className={`absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-album-page ${BADGE[presence].fill}`}
+          className={`absolute -bottom-0.5 -right-0.5 flex ${BADGE_SIZE[size].box} items-center justify-center rounded-full ring-2 ${size === "xl" ? "ring-album-raised" : "ring-album-page"} ${BADGE[presence].fill}`}
         >
-          <svg viewBox="0 0 10 10" className="h-2.5 w-2.5">
+          <svg viewBox="0 0 10 10" className={BADGE_SIZE[size].glyph}>
             {BADGE[presence].mark}
           </svg>
         </span>
