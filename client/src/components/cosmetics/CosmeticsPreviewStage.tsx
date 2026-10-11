@@ -31,6 +31,7 @@ import {
   getDefaultCosmetic,
 } from "@shared/cosmetics";
 import SeatAvatar from "../profile/SeatAvatar";
+import { EnchantedAvatarFramePreview, EnchantedCarromCoinSetPreview } from "./FrameAndCoinPreviews";
 import { useRoomStore } from "../../store/roomStore";
 import { bhalyamSpring } from "../../lib/motion";
 import {
@@ -328,6 +329,19 @@ export function CosmeticsPreviewStage({
               />
             )}
 
+            {category === "AVATAR_FRAME" && (
+              <EnchantedAvatarFramePreview
+                frameId={previewItem.id}
+                mode={previewMode}
+                displayName={displayName}
+                avatarId={avatarId}
+              />
+            )}
+
+            {category === "CARROM_COIN_SET" && (
+              <EnchantedCarromCoinSetPreview setId={previewItem.id} mode={previewMode} />
+            )}
+
             {category === "PODIUM_TITLE" && (
               <EnchantedPodiumTitlePreview
                 skinId={previewItem.id}
@@ -348,7 +362,7 @@ export function CosmeticsPreviewStage({
             <span
               className={`text-[10px] font-black uppercase tracking-wider ${rarityTheme.accent}`}
             >
-              {rarity} • {category.replace("_", " ")}
+              {rarity} • {category.replace(/_/g, " ")}
             </span>
             <span className="text-[11px] text-amber-300 font-mono font-black">
               {previewItem.priceCoins > 0

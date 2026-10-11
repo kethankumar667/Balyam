@@ -109,6 +109,7 @@ export default function ParticipantRow({
             <SeatAvatar
               avatar={player.avatar}
               aura={player.isBot ? player.cosmetics?.avatarAura : undefined}
+              frame={player.cosmetics?.avatarFrame}
               level={player.isBot ? player.level : undefined}
               name={player.name}
               className="w-full h-full rounded-full object-cover"

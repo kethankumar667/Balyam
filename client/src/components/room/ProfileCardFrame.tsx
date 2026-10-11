@@ -63,6 +63,7 @@ export default function ProfileCardFrame({
           <SeatAvatar
             avatar={player.avatar}
             aura={player.cosmetics?.avatarAura}
+            frame={player.cosmetics?.avatarFrame}
             level={player.level}
             name={player.name}
             className="w-20 h-20 shrink-0"

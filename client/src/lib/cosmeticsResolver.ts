@@ -10,6 +10,8 @@
  * - Card Back Privacy: always uses local viewer's preferred card back for face-down cards to prevent information leakage.
  */
 
+import { AVATAR_FRAME_DEFAULT_ID } from "@shared/cosmeticsFramesAndCoins";
+import { getCarromCoinSetStyle, type CarromCoinSetStyle } from "./carromCoinSetStyles";
 import { useMemo } from "react";
 import { useCosmeticsStore } from "../store/cosmeticsStore";
 import {
@@ -749,6 +751,15 @@ export function usePodiumTitle(seatTitle?: string): PodiumTitleConfig | null {
 }
 
 /**
+ * Resolves the local viewer's Carrom coin set. Strictly a viewer preference: it is never
+ * broadcast, so nobody else's board changes and two players' sets can never clash on one board.
+ */
+export function useCarromCoinSet(): CarromCoinSetStyle {
+  const resolved = useResolvedCosmetics();
+  return useMemo(() => getCarromCoinSetStyle(resolved.carromCoinSet), [resolved.carromCoinSet]);
+}
+
+/**
  * Formats the public presentation payload to broadcast to the room.
  */
 export function getPublicPresentationLoadout(
@@ -759,6 +770,7 @@ export function getPublicPresentationLoadout(
   return {
     avatarAura: resolved.avatarAura !== "aura_none" ? resolved.avatarAura : undefined,
     podiumTitle: resolved.podiumTitle !== "title_none" ? resolved.podiumTitle : undefined,
+    avatarFrame: resolved.avatarFrame !== AVATAR_FRAME_DEFAULT_ID ? resolved.avatarFrame : undefined,
     tokenSkin: resolved.tokenSkins[gameScope] ?? resolved.tokenSkins.GLOBAL,
     diceSkin: resolved.diceSkins[gameScope] ?? resolved.diceSkins.GLOBAL,
   };

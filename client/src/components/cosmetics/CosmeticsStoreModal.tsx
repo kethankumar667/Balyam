@@ -32,6 +32,8 @@ import {
   CircleDot,
   Crown,
   Info,
+  UserCircle,
+  Disc3,
 } from "lucide-react";
 import Modal from "../Modal";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
@@ -57,6 +59,7 @@ import { bhalyamSpring } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
 import { useViewport } from "../../lib/useViewport";
 import { CosmeticsStoreMobile } from "./CosmeticsStoreMobile";
+import { equippedIdFor } from "./equippedSlot";
 
 // Tables, Auras, and Titles are removed from the shop (2026-09-10) — their
 // catalog rows are deactivated server-side (see InMemoryCosmeticsRepository's
@@ -70,6 +73,8 @@ const CATEGORY_TABS: Array<{
   { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
   { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
   { category: "CARD_BACK", label: "Cards", icon: Layers },
+  { category: "AVATAR_FRAME", label: "Frames", icon: UserCircle },
+  { category: "CARROM_COIN_SET", label: "Carrom Coins", icon: Disc3 },
 ];
 
 export function CosmeticsStoreModal() {
@@ -166,26 +171,7 @@ export function CosmeticsStoreModal() {
   // Determine if previewed item is equipped in current slot
   const isPreviewEquipped = useMemo(() => {
     if (!previewItem) return false;
-    if (selectedCategory === "TABLE_THEME") {
-      return equipped.tableThemes?.[selectedScope] === previewItem.id;
-    }
-    if (selectedCategory === "DICE_SKIN") {
-      return equipped.diceSkins?.[selectedScope] === previewItem.id;
-    }
-    if (selectedCategory === "TOKEN_SKIN") {
-      return equipped.tokenSkins?.[selectedScope] === previewItem.id;
-    }
-    if (selectedCategory === "CARD_BACK") {
-      const s = selectedScope === "uno" ? "uno" : "rummy";
-      return equipped.cardBacks?.[s] === previewItem.id;
-    }
-    if (selectedCategory === "AVATAR_AURA") {
-      return equipped.avatarAura === previewItem.id;
-    }
-    if (selectedCategory === "PODIUM_TITLE") {
-      return equipped.podiumTitle === previewItem.id;
-    }
-    return false;
+    return equippedIdFor(equipped, selectedCategory, selectedScope) === previewItem.id;
   }, [previewItem, selectedCategory, selectedScope, equipped]);
 
   const isPreviewOwned = previewItem
@@ -247,6 +233,10 @@ export function CosmeticsStoreModal() {
         return "AURA COLLECTION";
       case "PODIUM_TITLE":
         return "PODIUM TITLES";
+      case "AVATAR_FRAME":
+        return "AVATAR FRAMES";
+      case "CARROM_COIN_SET":
+        return "CARROM COIN SETS";
       default:
         return "CUSTOMIZATIONS";
     }
@@ -332,7 +322,7 @@ export function CosmeticsStoreModal() {
               )}
             </h3>
             <p className="text-xs text-stone-500 dark:text-zinc-400 truncate font-semibold">
-              {isAdminUser ? "All finishes unlocked for free" : "Curated collectible finishes for dice, cards & tokens."}
+              {isAdminUser ? "All finishes unlocked for free" : "Curated collectible finishes for dice, cards, tokens, frames & Carrom coins."}
             </p>
           </div>
         </div>
@@ -478,18 +468,7 @@ export function CosmeticsStoreModal() {
                 const isSelected = previewItem?.id === item.id;
                 const isItemOwned =
                   isAdminUser || ownedIds.has(item.id) || item.unlockMethod === "DEFAULT";
-                const isItemEquipped =
-                  selectedCategory === "TABLE_THEME"
-                    ? equipped.tableThemes?.[selectedScope] === item.id
-                    : selectedCategory === "DICE_SKIN"
-                      ? equipped.diceSkins?.[selectedScope] === item.id
-                      : selectedCategory === "TOKEN_SKIN"
-                        ? equipped.tokenSkins?.[selectedScope] === item.id
-                        : selectedCategory === "CARD_BACK"
-                          ? equipped.cardBacks?.[selectedScope as "uno" | "rummy"] === item.id
-                          : selectedCategory === "AVATAR_AURA"
-                            ? equipped.avatarAura === item.id
-                            : equipped.podiumTitle === item.id;
+                const isItemEquipped = equippedIdFor(equipped, selectedCategory, selectedScope) === item.id;
 
                 return (
                   <div

@@ -14,6 +14,9 @@ import {
 } from "./carromFeed";
 import { computeCarromTrajectory } from "@shared/carromTrajectory";
 import { CarromAudio } from "./carromAudio";
+import { CarromCoinPattern } from "./CarromCoinPattern";
+import { useCarromCoinSet } from "../../lib/cosmeticsResolver";
+import { coinFaceCss } from "../../lib/carromCoinSetStyles";
 
 export type { CarromFeedEntry };
 
@@ -546,6 +549,7 @@ export function CarromPlayerCards({
   activeTargetId?: string | null;
   onCloseTarget?: () => void;
 }) {
+  const coinSet = useCarromCoinSet();
   const nameOf = useMemo(() => {
     const map = new Map(players.map((p) => [p.id, p.name]));
     return (id: string) => map.get(id) ?? "Player";
@@ -614,10 +618,8 @@ export function CarromPlayerCards({
                     <div
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{
-                        background: isWhite
-                          ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
-                          : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
-                        border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
+                        background: coinFaceCss(isWhite ? coinSet.white : coinSet.black),
+                        border: `1px solid ${(isWhite ? coinSet.white : coinSet.black).rim}`,
                       }}
                     />
                     <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood + "AA" }}>
@@ -718,10 +720,8 @@ export function CarromPlayerCards({
                 <div
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{
-                    background: isWhite
-                      ? `radial-gradient(circle at 35% 35%, ${CARROM_THEME.whiteCoinStart}, ${CARROM_THEME.whiteCoinEnd})`
-                      : `radial-gradient(circle at 35% 35%, ${CARROM_THEME.blackCoinStart}, ${CARROM_THEME.blackCoinEnd})`,
-                    border: `1px solid ${isWhite ? CARROM_THEME.whiteCoinRim : CARROM_THEME.blackCoinRim}`,
+                    background: coinFaceCss(isWhite ? coinSet.white : coinSet.black),
+                    border: `1px solid ${(isWhite ? coinSet.white : coinSet.black).rim}`,
                   }}
                 />
                 <span className="text-[9px] font-bold uppercase" style={{ color: WARM.wood }}>
@@ -891,6 +891,7 @@ export function CarromSvgBoard({
 
   const feltSkin = BOARD_SKINS[state.boardSkin ?? "birch"] ?? BOARD_SKINS.birch;
   const strikerSkin = STRIKER_SKINS[state.strikerSkin ?? "pearl"] ?? STRIKER_SKINS.pearl;
+  const coinSet = useCarromCoinSet();
 
   const pockets = [
     { x: cushion, y: cushion },
@@ -1071,21 +1072,21 @@ export function CarromSvgBoard({
           </linearGradient>
 
           <radialGradient id="whiteCoinGrad" cx="35%" cy="32%" r="68%">
-            <stop offset="0%" stopColor={CARROM_THEME.whiteCoinStart} />
-            <stop offset="70%" stopColor="#ECE0C8" />
-            <stop offset="100%" stopColor={CARROM_THEME.whiteCoinEnd} />
+            <stop offset="0%" stopColor={coinSet.white.highlight} />
+            <stop offset="65%" stopColor={coinSet.white.body} />
+            <stop offset="100%" stopColor={coinSet.white.shade} />
           </radialGradient>
 
           <radialGradient id="blackCoinGrad" cx="35%" cy="32%" r="68%">
-            <stop offset="0%" stopColor="#4A403A" />
-            <stop offset="60%" stopColor={CARROM_THEME.blackCoinStart} />
-            <stop offset="100%" stopColor={CARROM_THEME.blackCoinEnd} />
+            <stop offset="0%" stopColor={coinSet.black.highlight} />
+            <stop offset="65%" stopColor={coinSet.black.body} />
+            <stop offset="100%" stopColor={coinSet.black.shade} />
           </radialGradient>
 
           <radialGradient id="queenGrad" cx="35%" cy="32%" r="68%">
-            <stop offset="0%" stopColor="#FF77DD" />
-            <stop offset="50%" stopColor="#E0115F" />
-            <stop offset="100%" stopColor="#770033" />
+            <stop offset="0%" stopColor={coinSet.queen.highlight} />
+            <stop offset="50%" stopColor={coinSet.queen.body} />
+            <stop offset="100%" stopColor={coinSet.queen.shade} />
           </radialGradient>
 
           <radialGradient id="customStrikerGrad" cx="35%" cy="32%" r="68%">
@@ -1379,10 +1380,10 @@ export function CarromSvgBoard({
                       isStriker
                         ? strikerSkin.rim
                         : isQueen
-                        ? CARROM_THEME.queenRim
+                        ? coinSet.queen.rim
                         : isWhite
-                        ? CARROM_THEME.whiteCoinRim
-                        : CARROM_THEME.blackCoinRim
+                        ? coinSet.white.rim
+                        : coinSet.black.rim
                     }
                     strokeWidth={isStriker ? 0.5 : 0.38}
                   />
@@ -1400,6 +1401,17 @@ export function CarromSvgBoard({
                   {/* Lathe-turned Concentric Grooves */}
                   <circle cx={p.x} cy={p.y} r={r * 0.72} fill="none" stroke={ringColor} strokeWidth={0.32} />
                   <circle cx={p.x} cy={p.y} r={r * 0.46} fill="none" stroke={ringColor} strokeWidth={0.25} />
+
+                  {/* The equipped coin set's own decoration; strikers keep their skin. */}
+                  {!isStriker && (
+                    <CarromCoinPattern
+                      pattern={coinSet.pattern}
+                      cx={p.x}
+                      cy={p.y}
+                      r={r}
+                      color={(isQueen ? coinSet.queen : isWhite ? coinSet.white : coinSet.black).rim}
+                    />
+                  )}
 
                   {/* Top-Left Specular Gloss Highlight */}
                   <ellipse

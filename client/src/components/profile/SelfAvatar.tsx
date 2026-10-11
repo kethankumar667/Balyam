@@ -1,4 +1,5 @@
 import SeatAvatar from "./SeatAvatar";
+import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import { useRoomStore } from "../../store/roomStore";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 
@@ -31,11 +32,13 @@ export default function SelfAvatar({
   const avatarId = useRoomStore((s) => s.avatarId);
   const playerName = useRoomStore((s) => s.playerName);
   const identity = useIdentityPresentation();
+  const { avatarFrame } = useResolvedCosmetics();
   const displayName = playerName.trim() || identity.label;
 
   return (
     <SeatAvatar
       avatar={avatarId || undefined}
+      frame={avatarFrame}
       name={displayName}
       className={className}
       textClassName={textClassName}

@@ -30,6 +30,7 @@ import {
 import { apiFetch, apiJson } from "../lib/playerIdentity";
 import { refreshCurrentWallet } from "../hooks/useEconomy";
 import { getSocket } from "../lib/socket";
+import { getPublicPresentationLoadout } from "../lib/cosmeticsResolver";
 import { useRoomStore } from "./roomStore";
 import { useAuthStore } from "./authStore";
 
@@ -67,17 +68,29 @@ const initialEquipped: EquippedCosmeticsLoadout = {
   cardBacks: {},
 };
 
+/**
+ * The scope a category opens on. Per-game categories open on their first game; everything else
+ * is global. `openStore` used to hard-code GLOBAL, which was harmless while it was only ever
+ * opened onto a global category, and would have left a Carrom coin shelf looking empty.
+ */
+function defaultScopeFor(category: CosmeticCategory): CosmeticGameScope {
+  switch (category) {
+    case "TOKEN_SKIN":
+      return "ludo";
+    case "CARD_BACK":
+      return "rummy";
+    case "CARROM_COIN_SET":
+      return "carrom";
+    default:
+      return "GLOBAL";
+  }
+}
+
 function syncRoomCosmetics(resolved: ResolvedCosmeticsLoadout) {
   try {
     const roomState = useRoomStore.getState().roomState;
     if (roomState) {
-      const gameScope = (roomState.game as CosmeticGameScope) ?? "GLOBAL";
-      getSocket().emit("room:setCosmetics", {
-        avatarAura: resolved.avatarAura !== "aura_none" ? resolved.avatarAura : undefined,
-        podiumTitle: resolved.podiumTitle !== "title_none" ? resolved.podiumTitle : undefined,
-        tokenSkin: resolved.tokenSkins[gameScope] ?? resolved.tokenSkins.GLOBAL,
-        diceSkin: resolved.diceSkins[gameScope] ?? resolved.diceSkins.GLOBAL,
-      });
+      getSocket().emit("room:setCosmetics", getPublicPresentationLoadout(resolved, roomState.game));
     }
   } catch {
     // Socket may not be initialized yet
@@ -135,7 +148,7 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
 
   openStore: (category?: CosmeticCategory, scope?: CosmeticGameScope) => {
     const nextCategory = category ?? get().selectedCategory;
-    const nextScope = scope ?? "GLOBAL";
+    const nextScope = scope ?? defaultScopeFor(nextCategory);
     set({
       isOpen: true,
       selectedCategory: nextCategory,
@@ -150,16 +163,9 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
   },
 
   selectCategory: (category: CosmeticCategory) => {
-    const scope: CosmeticGameScope =
-      category === "TOKEN_SKIN"
-        ? "ludo"
-        : category === "CARD_BACK"
-          ? "rummy"
-          : "GLOBAL";
-
     set({
       selectedCategory: category,
-      selectedScope: scope,
+      selectedScope: defaultScopeFor(category),
       selectedItemId: null,
       errorMessage: null,
     });

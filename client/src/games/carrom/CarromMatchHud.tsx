@@ -1,6 +1,8 @@
 import React from "react";
 import type { CarromPublicState, Player } from "@shared/types";
 import { LetterAvatar } from "./carrom-shared";
+import { useCarromCoinSet } from "../../lib/cosmeticsResolver";
+import { coinFaceCss } from "../../lib/carromCoinSetStyles";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 
 interface CarromMatchHudProps {
@@ -137,6 +139,7 @@ export function CarromMatchHud({
   avatarOf,
   stakeCoins = 5000,
 }: CarromMatchHudProps) {
+  const coinSet = useCarromCoinSet();
   const seats = state.seats;
   const p1Seat = seats[0];
   const p2Seat = seats[1];
@@ -215,9 +218,7 @@ export function CarromMatchHud({
                   <div
                     className="w-3.5 h-3.5 rounded-full shadow-sm"
                     style={{
-                      background: p1Seat.color === "white"
-                        ? "radial-gradient(circle at 35% 35%, #FFFDF7, #E3D3B4)"
-                        : "radial-gradient(circle at 35% 35%, #A855F7, #6B21A8)",
+                      background: coinFaceCss(p1Seat.color === "white" ? coinSet.white : coinSet.black),
                       border: "1px solid rgba(255,255,255,0.4)",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
                     }}
@@ -291,7 +292,7 @@ export function CarromMatchHud({
                   <div
                     className="w-3.5 h-3.5 rounded-full shadow-sm"
                     style={{
-                      background: "radial-gradient(circle at 35% 35%, #4B5563, #111827)",
+                      background: coinFaceCss(p2Seat.color === "white" ? coinSet.white : coinSet.black),
                       border: "1px solid rgba(255,255,255,0.3)",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
                     }}

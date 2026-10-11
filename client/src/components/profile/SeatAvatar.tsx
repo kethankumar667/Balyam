@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
+import AvatarFrameRing from "./AvatarFrameRing";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { getLevelTier } from "@shared/progression/MiniclipProgression";
 
@@ -57,6 +58,10 @@ export interface SeatAvatarProps {
   avatar?: string;
   /** Cosmetic avatar aura identifier (e.g. aura_radiant_vanguard, aura_ludo_king) */
   aura?: string;
+  /** Cosmetic avatar frame identifier (e.g. frame_royal_crown). Unknown or absent draws nothing. */
+  frame?: string;
+  /** Scales the frame for large portraits; 1 suits a seat-sized avatar. */
+  frameScale?: number;
   /** Player's progression level for Miniclip-style corner badge */
   level?: number;
   /** Used for the initial and for picking the fallback colour. */
@@ -77,6 +82,8 @@ export interface SeatAvatarProps {
 export default function SeatAvatar({
   avatar,
   aura,
+  frame,
+  frameScale,
   level,
   name,
   className = "w-8 h-8",
@@ -127,6 +134,7 @@ export default function SeatAvatar({
           <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
         {node}
+        <AvatarFrameRing frameId={frame} scale={frameScale} />
         {level !== undefined && level >= 1 && (
           <span className="absolute -bottom-1 -right-1 z-20 pointer-events-none drop-shadow-md">
             <MiniclipLevelBadge level={level} size="xs" showTooltip={false} />

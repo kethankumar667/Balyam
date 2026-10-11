@@ -31,6 +31,8 @@ import {
   RotateCcw,
   Eye,
   Lock,
+  UserCircle,
+  Disc3,
 } from "lucide-react";
 import {
   type CosmeticCategory,
@@ -56,6 +58,7 @@ import { HapticsManager } from "../../services/HapticsManager";
 import { bhalyamSpring } from "../../lib/motion";
 import { useTheme } from "../../lib/useTheme";
 import { getDiceSkinConfig, getTokenSkinConfig } from "../../lib/cosmeticsResolver";
+import { equippedIdFor } from "./equippedSlot";
 import { PawnGlyph } from "../../games/ludo/PawnGlyph";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
 
@@ -67,7 +70,20 @@ const CATEGORY_TABS: Array<{
   { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
   { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
   { category: "CARD_BACK", label: "Cards", icon: Layers },
+  { category: "AVATAR_FRAME", label: "Frames", icon: UserCircle },
+  { category: "CARROM_COIN_SET", label: "Coins", icon: Disc3 },
 ];
+
+const CATEGORY_SHELF_TITLES: Record<CosmeticCategory, string> = {
+  TABLE_THEME: "Table themes",
+  DICE_SKIN: "Dice skins",
+  TOKEN_SKIN: "Token finishes",
+  CARD_BACK: "Card designs",
+  AVATAR_AURA: "Aura collection",
+  PODIUM_TITLE: "Podium titles",
+  AVATAR_FRAME: "Avatar frames",
+  CARROM_COIN_SET: "Carrom coin sets",
+};
 
 export interface CosmeticsStoreMobileProps {
   catalog: CosmeticCatalogItem[];
@@ -79,6 +95,8 @@ export interface CosmeticsStoreMobileProps {
     cardBacks?: { uno?: string; rummy?: string };
     avatarAura?: string | null;
     podiumTitle?: string | null;
+    avatarFrame?: string | null;
+    carromCoinSet?: string | null;
   };
   selectedCategory: CosmeticCategory;
   selectedScope: CosmeticGameScope;
@@ -151,17 +169,7 @@ export function CosmeticsStoreMobile({
   // Determine if active item is equipped
   const isPreviewEquipped = useMemo(() => {
     if (!selectedItem) return false;
-    if (selectedCategory === "DICE_SKIN") {
-      return equipped.diceSkins?.[selectedScope] === selectedItem.id;
-    }
-    if (selectedCategory === "TOKEN_SKIN") {
-      return equipped.tokenSkins?.[selectedScope] === selectedItem.id;
-    }
-    if (selectedCategory === "CARD_BACK") {
-      const s = selectedScope === "uno" ? "uno" : "rummy";
-      return equipped.cardBacks?.[s] === selectedItem.id;
-    }
-    return false;
+    return equippedIdFor(equipped, selectedCategory, selectedScope) === selectedItem.id;
   }, [selectedItem, selectedCategory, selectedScope, equipped]);
 
   const isPreviewOwned = selectedItem
@@ -392,7 +400,7 @@ export function CosmeticsStoreMobile({
       <div className="flex-1 overflow-y-auto px-3.5 pt-2.5 pb-28 min-h-0 relative z-10">
         <div className="flex items-center justify-between mb-2.5 px-0.5">
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500 dark:text-zinc-400">
-            {selectedCategory === "DICE_SKIN" ? "Dice skins" : selectedCategory === "TOKEN_SKIN" ? "Token finishes" : "Card designs"}
+            {CATEGORY_SHELF_TITLES[selectedCategory]}
           </span>
           <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-bold">
             Tap to preview
@@ -410,12 +418,7 @@ export function CosmeticsStoreMobile({
               const isSelected = selectedItem?.id === item.id;
               const isItemOwned =
                 isAdminUser || ownedIds.has(item.id) || item.unlockMethod === "DEFAULT";
-              const isItemEquipped =
-                selectedCategory === "DICE_SKIN"
-                  ? equipped.diceSkins?.[selectedScope] === item.id
-                  : selectedCategory === "TOKEN_SKIN"
-                    ? equipped.tokenSkins?.[selectedScope] === item.id
-                    : equipped.cardBacks?.[selectedScope as "uno" | "rummy"] === item.id;
+              const isItemEquipped = equippedIdFor(equipped, selectedCategory, selectedScope) === item.id;
 
               return (
                 <MobileCosmeticsCard

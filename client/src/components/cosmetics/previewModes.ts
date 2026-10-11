@@ -151,6 +151,40 @@ export const PREVIEW_MODES_BY_CATEGORY: Record<
       icon: Crown,
     },
   ],
+  AVATAR_FRAME: [
+    {
+      id: "PROFILE",
+      label: "Profile",
+      accessibleLabel: "Preview frame on a large profile portrait",
+      icon: User,
+    },
+    {
+      id: "GAME_SEAT",
+      label: "Game Seat",
+      accessibleLabel: "Preview frame on a live game seat",
+      icon: Gamepad2,
+    },
+    {
+      id: "LOBBY",
+      label: "Lobby",
+      accessibleLabel: "Preview frame at lobby list size",
+      icon: Users,
+    },
+  ],
+  CARROM_COIN_SET: [
+    {
+      id: "INSPECT",
+      label: "Inspect",
+      accessibleLabel: "Inspect the white coin, queen and black coin up close",
+      icon: Eye,
+    },
+    {
+      id: "ON_BOARD",
+      label: "On Board",
+      accessibleLabel: "Preview the coin set on a miniature Carrom board",
+      icon: MapPin,
+    },
+  ],
   PODIUM_TITLE: [
     {
       id: "PROFILE",

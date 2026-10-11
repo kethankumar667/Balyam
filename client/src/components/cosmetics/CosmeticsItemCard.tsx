@@ -33,6 +33,7 @@ import {
   Palette,
   Eye,
   Award,
+  UserRound,
 } from "lucide-react";
 import {
   type CosmeticCatalogItem,
@@ -50,6 +51,9 @@ import {
   getTokenSkinConfig,
 } from "../../lib/cosmeticsResolver";
 import { PawnGlyph } from "../../games/ludo/PawnGlyph";
+import { CarromCoinDisc } from "../../games/carrom/CarromCoinPattern";
+import AvatarFrameRing from "../profile/AvatarFrameRing";
+import { getCarromCoinSetStyle } from "../../lib/carromCoinSetStyles";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
 
 /** No real seat exists at shop-browse time — every token thumbnail/preview
@@ -273,6 +277,14 @@ export function CollectibleThumbnail({
     );
   }
 
+  if (category === "AVATAR_FRAME") {
+    return <AvatarFrameThumbnail frameId={item.id} isSelected={isSelected} />;
+  }
+
+  if (category === "CARROM_COIN_SET") {
+    return <CarromCoinSetThumbnail setId={item.id} isSelected={isSelected} />;
+  }
+
   if (category === "DICE_SKIN") {
     const dice = getDiceSkinConfig(item.id);
     return (
@@ -391,6 +403,44 @@ export function TokenSkinThumbnail({ skinId, isSelected }: { skinId: string; isS
           uid={uid}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * A stand-in portrait wearing the frame. The portrait is a plain silhouette on purpose: the shop
+ * is showing the frame, and a real avatar would make every card look different for a reason that
+ * has nothing to do with the item.
+ */
+export function AvatarFrameThumbnail({ frameId, isSelected }: { frameId: string; isSelected: boolean }) {
+  return (
+    <div
+      className={`flex h-12 w-12 shrink-0 items-center justify-center transition-transform ${isSelected ? "scale-105" : ""}`}
+    >
+      <div className="relative h-8 w-8 rounded-full bg-gradient-to-b from-stone-600 to-zinc-800">
+        <UserRound className="absolute inset-0 m-auto h-5 w-5 text-stone-200" aria-hidden />
+        <AvatarFrameRing frameId={frameId} />
+      </div>
+    </div>
+  );
+}
+
+/** A white-side coin, a black-side coin and the queen, fanned out the way a break leaves them. */
+export function CarromCoinSetThumbnail({ setId, isSelected }: { setId: string; isSelected: boolean }) {
+  const style = getCarromCoinSetStyle(setId);
+  return (
+    <div
+      className={`relative flex h-11 w-14 shrink-0 items-center justify-center transition-transform ${isSelected ? "scale-105" : ""}`}
+    >
+      <span className="absolute left-0 top-1/2 -translate-y-1/2">
+        <CarromCoinDisc face={style.white} pattern={style.pattern} size={26} />
+      </span>
+      <span className="absolute right-0 top-1/2 -translate-y-1/2">
+        <CarromCoinDisc face={style.black} pattern={style.pattern} size={26} />
+      </span>
+      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <CarromCoinDisc face={style.queen} pattern={style.pattern} size={22} isQueen />
+      </span>
     </div>
   );
 }
