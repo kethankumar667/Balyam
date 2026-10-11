@@ -10,6 +10,7 @@ import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import { useGuestCarryOver } from "./lib/guestCarryOver";
 import { useGuestNameHygiene } from "./hooks/useGuestNameHygiene";
+import { useCosmeticsLoadoutBootstrap } from "./hooks/useCosmeticsLoadoutBootstrap";
 import { useLevelUpWatcher } from "./hooks/useLevelUpWatcher";
 import { LevelUpAscension } from "./components/progression/LevelUpAscension";
 import { XpGainToast } from "./components/progression/XpGainToast";
@@ -341,6 +342,7 @@ export default function App({ components = {} }: AppProps) {
   useAdminAutoCheck();
   useGuestCarryOver();
   useGuestNameHygiene();
+  useCosmeticsLoadoutBootstrap();
   useLevelUpWatcher();
   useStructuredData();
   useMetadata();
