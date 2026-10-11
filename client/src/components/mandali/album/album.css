@@ -196,6 +196,119 @@
   animation: album-rise 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ── Coin transfer stage ────────────────────────────────────────────────
+ * One 5-second story, told in transform and opacity only:
+ *   0.0s  the card settles in
+ *   0.7s  coins start leaving the sender, one every 0.38s, each on an arc
+ *   1.8s  the first coin lands; the receiver's ring pulses once per coin
+ *   3.7s  the last coin lands: ring flash, sparks, "+amount" floats up
+ *   5.0s  the progress bar is full and the stage closes itself
+ * `--stage-ms` is the whole length; the keyframe delays below are written against 5000.
+ */
+.coin-stage-card {
+  animation: coin-stage-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.coin-stage-glow {
+  background: radial-gradient(60% 55% at 50% 38%, rgb(var(--album-foil-fill) / 0.28), transparent 70%);
+}
+.coin-stage-track {
+  background-image: linear-gradient(90deg, rgb(var(--album-foil) / 0.55) 50%, transparent 50%);
+  background-size: 10px 2px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+.coin-stage-flyer {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 0;
+  animation: coin-stage-x 1100ms cubic-bezier(0.45, 0.05, 0.35, 1) var(--coin-delay, 0ms) both;
+}
+.coin-stage-flyer > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: -14px 0 0 -14px;
+  animation: coin-stage-y 1100ms ease-in-out var(--coin-delay, 0ms) both;
+  will-change: transform, opacity;
+}
+.coin-stage-catch {
+  animation: coin-stage-catch 380ms ease-out 1800ms 6 both;
+}
+.coin-stage-flash {
+  animation: coin-stage-flash 900ms ease-out 3700ms both;
+}
+.coin-stage-spark {
+  animation: coin-stage-spark 900ms cubic-bezier(0.2, 0.7, 0.3, 1) 3700ms both;
+}
+.coin-stage-pop {
+  animation: coin-stage-pop 1100ms cubic-bezier(0.16, 1, 0.3, 1) 3700ms both;
+}
+.coin-stage-clock {
+  transform-origin: left center;
+  animation: coin-stage-clock var(--stage-ms, 5000ms) linear both;
+}
+.coin-stage-caption {
+  animation: coin-stage-caption 500ms ease-out 3700ms both;
+}
+
+@keyframes coin-stage-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes coin-stage-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@keyframes coin-stage-y {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  12% { opacity: 1; }
+  50% { transform: translateY(-26px) scale(1.12) rotate(180deg); }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(0) scale(0.6) rotate(360deg); }
+}
+@keyframes coin-stage-catch {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgb(var(--album-foil-fill) / 0.55); }
+  45% { transform: scale(1.09); box-shadow: 0 0 0 10px rgb(var(--album-foil-fill) / 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgb(var(--album-foil-fill) / 0); }
+}
+@keyframes coin-stage-flash {
+  from { opacity: 0.9; transform: scale(0.7); }
+  to { opacity: 0; transform: scale(2.1); }
+}
+@keyframes coin-stage-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--sx, 0), var(--sy, 0)) scale(1); }
+}
+@keyframes coin-stage-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.6); }
+  35% { opacity: 1; transform: translateY(-10px) scale(1.15); }
+  100% { opacity: 1; transform: translateY(-4px) scale(1); }
+}
+@keyframes coin-stage-clock {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes coin-stage-caption {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+/* Reduced motion: nothing flies. The two faces, the amount and the sentence say it all. */
+@media (prefers-reduced-motion: reduce) {
+  .coin-stage-card,
+  .coin-stage-catch,
+  .coin-stage-caption,
+  .coin-stage-clock { animation: none; }
+  .coin-stage-flyer,
+  .coin-stage-flash,
+  .coin-stage-spark { display: none; }
+  .coin-stage-pop { animation: none; opacity: 1; }
+  .coin-stage-clock { transform: none; }
+}
+
 /* A small control keeps a 44 px target without looking 44 px: the invisible
    halo is the tap area. The parent must be `relative`. */
 .album-hit::after {

@@ -12,7 +12,7 @@ import { useMandaliInboxStore } from "../store/mandaliInboxStore";
 import { useAuthStore } from "../store/authStore";
 import { refreshCurrentWallet } from "./useEconomy";
 import { peekPlayerCredential } from "../lib/playerIdentity";
-import { useMandaliJoyStore } from "../store/mandaliJoyStore";
+import { useMandaliJoyStore, type JoyParty } from "../store/mandaliJoyStore";
 
 /**
  * The signed-in member's Mandali notifications, app-wide.
@@ -53,11 +53,19 @@ function celebrateCoinRequest(payload: unknown): void {
 
   const me = peekPlayerCredential()?.playerId;
   if (!me) return;
-  const nameOf = (id: string): string | null =>
-    useMandaliStore.getState().members.find((m) => m.playerId === id)?.displayName?.trim() || null;
+  const partyOf = (id: string): JoyParty => {
+    const member = useMandaliStore.getState().members.find((m) => m.playerId === id);
+    return { name: member?.displayName?.trim() || null, avatar: member?.avatar };
+  };
+  const self = partyOf(me);
 
-  if (me === event.requesterIdentityId) useMandaliJoyStore.getState().show("received", amount, nameOf(event.fundedByIdentityId));
-  else if (me === event.fundedByIdentityId) useMandaliJoyStore.getState().show("sent", amount, nameOf(event.requesterIdentityId));
+  if (me === event.requesterIdentityId) {
+    const other = partyOf(event.fundedByIdentityId);
+    useMandaliJoyStore.getState().show("received", amount, other.name, { self, other });
+  } else if (me === event.fundedByIdentityId) {
+    const other = partyOf(event.requesterIdentityId);
+    useMandaliJoyStore.getState().show("sent", amount, other.name, { self, other });
+  }
 }
 
 export function resetChatToastCooldown(): void {

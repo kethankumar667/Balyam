@@ -18,6 +18,7 @@ import NotificationLevelSheet from "../components/mandali/NotificationLevelSheet
 import { CreateMandaliModal } from "./mandali/CreateMandaliModal";
 import { useMandaliStore } from "../store/mandaliStore";
 import { useMandaliInboxStore } from "../store/mandaliInboxStore";
+import { useRoomInviteStatusStore } from "../store/roomInviteStatusStore";
 
 /**
  * Development-only design preview for the Mandali screens.
@@ -114,6 +115,16 @@ const messages: MandaliMessage[] = [
   line("me", "Good morning, family. Here is to Sunday.", 6),
   line("asha", "Bringing the sweets 🍬 — Devi, please don't forget the chairs.", 4),
   line("devi", "మర్చిపోను! 😄", 2),
+  line("bala", "Hand Cricket room K9G6NB", 1.5, {
+    kind: "ROOM_INVITE",
+    roomCode: "K9G6NB",
+    roomInvite: { game: "handcricket", gameName: "Hand Cricket 🏏", maxPlayers: 2, hostName: "Bala" },
+  } as Partial<MandaliMessage>),
+  line("asha", "Ludo room LDO482", 1, {
+    kind: "ROOM_INVITE",
+    roomCode: "LDO482",
+    roomInvite: { game: "ludo", gameName: "Ludo 🎲", maxPlayers: 4, roomName: "Sunday night Ludo", hostName: "Asha" },
+  } as Partial<MandaliMessage>),
 ];
 
 const parties: MandaliParty[] = [
@@ -199,6 +210,15 @@ export default function PreviewMandali() {
   const theme = readParam<Theme>("theme", ["light", "dark"], "dark");
   const sheet = readParam<Sheet>("sheet", ["none", "info", "leave", "invite", "members", "notify", "create"], "none");
   useState(() => {
+    // The two invitation cards read a live status the real poller would fetch; here the table is set by hand.
+    useRoomInviteStatusStore.setState({
+      statuses: {
+        K9G6NB: { code: "K9G6NB", state: "CLOSED", players: 0, maxPlayers: 2, youAreIn: false } as never,
+        LDO482: { code: "LDO482", state: "OPEN", players: 2, maxPlayers: 4, youAreIn: false } as never,
+      },
+      subscribe: () => () => undefined,
+      refresh: async () => undefined,
+    });
     if (view === "shelf" || view === "shelf-empty") seedShelf(view === "shelf");
     return null;
   });

@@ -124,6 +124,24 @@ describe("RoomInviteCard", () => {
     expect(join).not.toHaveBeenCalled();
   });
 
+  it("writes the game's name without its decorative emoji, in the title and the subtitle", () => {
+    renderCard(
+      message({
+        roomInvite: { game: "handcricket", gameName: "Hand Cricket 🏏", maxPlayers: 2, hostName: "Senthil" },
+      } as Partial<MandaliMessage>),
+    );
+
+    expect(screen.getByText("Hand Cricket room")).toBeTruthy();
+    expect(screen.getByText("Hand Cricket · hosted by Senthil")).toBeTruthy();
+    expect(screen.queryByText(/🏏/)).toBeNull();
+  });
+
+  it("shows the host's picture on the invitation", () => {
+    const { container } = renderCard(message({ senderAvatar: "rajesh.png" }));
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("/Avatars/rajesh.png");
+  });
+
   it("recognises your own invitation", () => {
     renderCard(message({ senderId: "me" }), "me");
 

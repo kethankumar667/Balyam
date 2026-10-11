@@ -1,30 +1,34 @@
 /**
- * BHALYAM Mandali — a game room someone shared into the chat.
+ * BHALYAM Mandali — a game room someone shared into the chat, drawn as a ticket.
  *
- * Pinned to the page like an invitation: who is hosting, which game, how many
- * seats are taken right now, and a Join button that takes you straight in.
+ * A gold band carries the host's face and the invitation; below it the room, its code and its seats;
+ * a perforated tear line separates all that from the one thing to do, a Join button that takes you
+ * straight in. When the room can no longer be joined the band goes quiet and the ticket is clearly
+ * spent, with the reason in words.
  *
- * The card never lets you walk into a wall. Its status is live (see
- * roomInviteStatusStore), and a full, started or closed room is shown as a
- * calm, plain fact rather than an error — with the reason and what you can do
- * about it. If the room fills up in the moment between your tap and the
- * server's answer, that is explained too, in words, not as a red failure.
+ * The card never lets you walk into a wall. Its status is live (see roomInviteStatusStore), and a
+ * full, started or closed room is shown as a calm, plain fact rather than an error — with the reason
+ * and what you can do about it. If the room fills up in the moment between your tap and the server's
+ * answer, that is explained too, in words, not as a red failure.
  *
  * Requirements:
- * - Light and dark themes both flip fully (panels and ink together).
+ * - Light and dark themes both flip fully (album tokens only: panels and ink together).
  * - 44x44px touch targets.
+ * - Status is a word with an icon, never colour alone.
  * - Zero usage of Sparkles from lucide-react.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Clock, DoorClosed, Gamepad2, Lock } from "lucide-react";
+import { ArrowRight, Clock, DoorClosed, Gamepad2, Lock, Users } from "lucide-react";
 import type { MandaliMessage } from "@shared/mandali/types.js";
 import type { RoomInviteState } from "@shared/mandali/notifications.js";
 import { joinRoomByCode, joinFailureMessage, type RoomJoinFailure } from "../../lib/roomJoin";
 import { useRoomInviteStatusStore } from "../../store/roomInviteStatusStore";
 import { useTranslation } from "../../hooks/useTranslation";
+import { AlbumAvatar } from "./album/AlbumAvatar";
 import { AlbumButton } from "./album/AlbumButton";
+import { gameLabel, plainGameName } from "./album/games";
 
 export interface RoomInviteCardProps {
   message: MandaliMessage;
@@ -70,7 +74,7 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
   const isMine = message.senderId === selfId;
   const canJoin = !youAreIn ? state === null || state === "OPEN" : true;
 
-  const gameName = meta?.gameName ?? "Game";
+  const gameName = plainGameName(meta?.gameName ?? "") || (meta?.game ? gameLabel(meta.game) : "Game");
   const title = meta?.roomName ? `${meta.roomName}` : t("mandali.invite.roomOf", { game: gameName });
   const host = meta?.hostName ?? message.senderName;
 
@@ -118,75 +122,116 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
             ? t("mandali.invite.btn.started")
             : t("mandali.invite.btn.closed");
 
+  const bandTone = muted
+    ? "bg-album-field text-album-ink2"
+    : "bg-gradient-to-br from-album-foilfill via-album-foilfill to-album-foilfill/75 text-album-onfoil";
+
   return (
     <div
       role="group"
       aria-label={`${t("mandali.invite.label", { title })}${seatsTaken ? `, ${seatsTaken}` : ""}${stateLabel ? `, ${stateLabel}` : ""}`}
-      className={`album-corners w-full max-w-sm rounded-2xl border bg-album-raised p-4 ${muted ? "border-album-line" : "border-album-foil/40"}`}
+      className={`relative w-full max-w-sm overflow-hidden rounded-3xl border bg-album-raised shadow-md ${
+        muted ? "border-album-line" : "border-album-foil/50"
+      }`}
     >
-      <div className="flex items-start gap-3">
-        <span
-          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-            muted ? "bg-album-field text-album-ink3" : "bg-album-foilfill/20 text-album-foil"
-          }`}
-        >
-          <Gamepad2 className="h-5 w-5" aria-hidden="true" />
+      {/* The invitation band: who is asking, and the state of the table. */}
+      <div className={`relative flex items-center gap-3 px-4 py-3.5 ${bandTone}`}>
+        <Gamepad2
+          aria-hidden="true"
+          className={`pointer-events-none absolute -right-3 -top-3 h-24 w-24 -rotate-12 ${muted ? "opacity-[0.07]" : "opacity-[0.16]"}`}
+        />
+        <span className="relative flex-shrink-0 rounded-full p-0.5 ring-2 ring-current/40">
+          <AlbumAvatar avatar={message.senderAvatar} name="" size="md" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="m-0 truncate text-sm font-semibold leading-snug text-album-ink">
+        <div className="relative min-w-0 flex-1">
+          <p className="m-0 truncate text-[15px] font-semibold leading-snug">
             {isMine ? t("mandali.invite.youInvited") : t("mandali.invite.invitedYou", { name: message.senderName })}
           </p>
-          <p className="m-0 truncate text-[13px] text-album-ink3">{t("mandali.invite.hostedBy", { game: gameName, host })}</p>
+          <p className="m-0 truncate text-[13px] leading-snug opacity-80">{t("mandali.invite.hostedBy", { game: gameName, host })}</p>
         </div>
-        {state && (
-          <span className={`flex flex-shrink-0 items-center gap-1 text-[13px] font-medium ${state === "OPEN" ? "text-album-success" : "text-album-ink3"}`}>
-            {StateIcon && <StateIcon className="h-3.5 w-3.5" aria-hidden="true" />}
-            {stateLabel}
-          </span>
+      </div>
+
+      {/* The room: its name, the code to say out loud, and who is already at the table. */}
+      <div className="px-4 pb-4 pt-4">
+        <p className={`m-0 truncate text-xl font-semibold leading-tight ${muted ? "text-album-ink3" : "text-album-ink"}`}>{title}</p>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="m-0 rounded-lg border border-dashed border-album-ink3/50 bg-album-field px-2.5 py-1 font-mono text-[15px] font-bold tracking-[0.3em] text-album-ink2">
+            {code}
+          </p>
+          {state && (
+            <span className="flex flex-shrink-0 items-center gap-1.5 rounded-full border border-album-line bg-album-field px-2.5 py-1 text-[13px] font-semibold text-album-ink">
+              {StateIcon ? (
+                <StateIcon className="h-3.5 w-3.5 text-album-ink3" aria-hidden="true" />
+              ) : (
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-album-success motion-safe:animate-pulse" />
+              )}
+              {stateLabel}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            {maxPlayers > 0 && (
+              <div className="flex flex-wrap items-center gap-1" aria-hidden="true">
+                {Array.from({ length: maxPlayers }).map((_, i) => {
+                  const taken = players !== null && i < players;
+                  return (
+                    <span
+                      key={i}
+                      className={`flex h-[22px] w-[22px] items-center justify-center rounded-full ${
+                        taken
+                          ? muted
+                            ? "bg-album-ink3/35 text-album-raised"
+                            : "bg-album-foilfill text-album-onfoil"
+                          : "border border-dashed border-album-ink3/60"
+                      }`}
+                    >
+                      {taken && <Users className="h-3 w-3" />}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <p className="m-0 flex-shrink-0 text-[13px] text-album-ink3">{seatSummary ?? t("mandali.invite.checking")}</p>
+        </div>
+
+        {stateHint && !youAreIn && (
+          <p className="m-0 mt-3 flex items-start gap-2 rounded-xl bg-album-field px-3 py-2 text-sm leading-relaxed text-album-ink2">
+            {StateIcon && <StateIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-album-ink3" aria-hidden="true" />}
+            <span>{stateHint}</span>
+          </p>
+        )}
+
+        {failureText && (
+          <p role="status" className="m-0 mt-3 text-sm font-medium leading-relaxed text-album-foil">
+            {failureText}
+          </p>
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`m-0 truncate text-lg font-semibold leading-tight ${muted ? "text-album-ink3" : "text-album-ink"}`}>{title}</p>
-          <p className="m-0 font-mono text-[13px] font-semibold tracking-[0.2em] text-album-ink3">{code}</p>
-        </div>
-        <div className="flex-shrink-0 text-right">
-          {maxPlayers > 0 && (
-            <div className="flex items-center justify-end gap-1" aria-hidden="true">
-              {Array.from({ length: maxPlayers }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    players !== null && i < players ? (muted ? "bg-album-ink3" : "bg-album-foilfill") : "bg-album-line"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-          <p className="m-0 mt-1 text-[13px] text-album-ink3">{seatSummary ?? t("mandali.invite.checking")}</p>
-        </div>
+      {/* The tear line: two notches and a dashed rule, so the button reads as the ticket's stub. */}
+      <div aria-hidden="true" className="relative h-0">
+        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full border border-album-line bg-album-page" />
+        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full border border-album-line bg-album-page" />
+        <span className="absolute inset-x-6 top-0 border-t border-dashed border-album-line" />
       </div>
 
-      {stateHint && !youAreIn && <p className="m-0 mt-3 text-sm leading-relaxed text-album-ink2">{stateHint}</p>}
-
-      {failureText && (
-        <p role="status" className="m-0 mt-3 text-sm font-medium leading-relaxed text-album-foil">
-          {failureText}
-        </p>
-      )}
-
-      <AlbumButton
-        variant={canJoin ? "primary" : "quiet"}
-        size="lg"
-        onClick={handleJoin}
-        loading={joining}
-        disabled={!canJoin && !youAreIn}
-        className="mt-3 w-full"
-        icon={!joining && (youAreIn || canJoin) ? <ArrowRight className="h-4 w-4 order-last" aria-hidden="true" /> : undefined}
-      >
-        {buttonLabel}
-      </AlbumButton>
+      <div className="px-4 pb-4 pt-4">
+        <AlbumButton
+          variant={canJoin ? "primary" : "quiet"}
+          size="lg"
+          onClick={handleJoin}
+          loading={joining}
+          disabled={!canJoin && !youAreIn}
+          className="w-full"
+          icon={!joining && (youAreIn || canJoin) ? <ArrowRight className="h-4 w-4 order-last" aria-hidden="true" /> : undefined}
+        >
+          {buttonLabel}
+        </AlbumButton>
+      </div>
     </div>
   );
 }

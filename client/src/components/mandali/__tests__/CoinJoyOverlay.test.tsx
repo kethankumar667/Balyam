@@ -8,8 +8,15 @@ vi.mock("../../../services/AudioManager", () => ({ AudioManager: { play: (...a: 
 vi.mock("../../../services/HapticsManager", () => ({ HapticsManager: { trigger: (...a: unknown[]) => trigger(...a) } }));
 
 import { CoinJoyOverlay, JOY_VISIBLE_MS } from "../CoinJoyOverlay";
+import { STAGE_ARRIVAL_MS } from "../CoinTransferStage";
 import { CoinFountain, JoyBurst, RisingHearts } from "../../faucet/CoinCelebrations";
 import { useMandaliJoyStore } from "../../../store/mandaliJoyStore";
+
+const show = useMandaliJoyStore.getState().show;
+/** The avatar pictures on the stage, left to right. They carry alt="" (the names are written beside them), so they have no `img` role. */
+const faces = (): Array<string | null> => Array.from(document.querySelectorAll("img")).map((img) => img.getAttribute("src"));
+const bala = { name: "Bala", avatar: "bala.png" };
+const kethan = { name: "Kethan", avatar: "kethan.png" };
 
 describe("CoinJoyOverlay", () => {
   beforeEach(() => {
@@ -29,59 +36,116 @@ describe("CoinJoyOverlay", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("tells the person who asked who sent how much, with the coins-and-hearts burst", () => {
-    useMandaliJoyStore.getState().show("received", 1500, "Bala");
+  it("runs for exactly five seconds", () => {
+    expect(JOY_VISIBLE_MS).toBe(5_000);
+  });
+
+  it("shows the sender and the receiver side by side, so the person who asked sees who sent how much", () => {
+    show("received", 1500, "Bala", { self: kethan, other: bala });
 
     render(<CoinJoyOverlay />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Bala sent you 1,500 coins");
-    expect(screen.getByTestId("joy-burst")).toBeInTheDocument();
-    expect(screen.queryByTestId("rising-hearts")).not.toBeInTheDocument();
-    expect(trigger).toHaveBeenCalledWith("reward");
+    expect(faces()).toEqual(["/Avatars/bala.png", "/Avatars/kethan.png"]);
+    expect(screen.getByText("Sender")).toBeInTheDocument();
+    expect(screen.getByText("Receiver")).toBeInTheDocument();
+    expect(screen.getByText("+1,500")).toBeInTheDocument();
   });
 
-  it("gives the person who paid a quieter thank-you with hearts only, and no reward sound", () => {
-    useMandaliJoyStore.getState().show("sent", 100, "Kethan");
+  it("puts this player on the sending side when they paid", () => {
+    show("sent", 100, "Kethan", { self: bala, other: kethan });
 
     render(<CoinJoyOverlay />);
 
     expect(screen.getByRole("status")).toHaveTextContent("You sent 100 coins to Kethan. That was kind.");
-    expect(screen.getByTestId("rising-hearts")).toBeInTheDocument();
-    expect(screen.queryByTestId("joy-burst")).not.toBeInTheDocument();
-    expect(play).not.toHaveBeenCalled();
+    expect(faces()).toEqual(["/Avatars/bala.png", "/Avatars/kethan.png"]);
+    expect(screen.getByText("You")).toBeInTheDocument();
   });
 
-  it("says 'A friend' when the name is not known", () => {
-    useMandaliJoyStore.getState().show("received", 100, null);
+  it("says 'A friend' and draws the logo when the friend is not known on this screen", () => {
+    show("received", 100, null);
 
     render(<CoinJoyOverlay />);
 
     expect(screen.getByRole("status")).toHaveTextContent("A friend sent you 100 coins");
+    expect(faces()[0]).toBe("/Bhalyam-logo.png");
   });
 
-  it("closes itself after a few seconds", () => {
-    useMandaliJoyStore.getState().show("received", 100, "Bala");
+  it("gives the receiver the coin chime when the last coin lands, not before", () => {
+    show("received", 100, "Bala", { self: kethan, other: bala });
     render(<CoinJoyOverlay />);
 
     act(() => {
-      vi.advanceTimersByTime(JOY_VISIBLE_MS + 100);
+      vi.advanceTimersByTime(STAGE_ARRIVAL_MS - 100);
     });
+    expect(play).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(trigger).toHaveBeenCalledWith("reward");
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the payer a quieter buzz and no reward sound", () => {
+    show("sent", 100, "Kethan", { self: bala, other: kethan });
+    render(<CoinJoyOverlay />);
+
+    act(() => {
+      vi.advanceTimersByTime(JOY_VISIBLE_MS);
+    });
+
+    expect(trigger).toHaveBeenCalledWith("subtle");
+    expect(trigger).not.toHaveBeenCalledWith("reward");
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it("closes itself after the five seconds", () => {
+    show("received", 100, "Bala");
+    render(<CoinJoyOverlay />);
+
+    act(() => {
+      vi.advanceTimersByTime(JOY_VISIBLE_MS - 50);
+    });
+    expect(useMandaliJoyStore.getState().moment).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(useMandaliJoyStore.getState().moment).toBeNull();
+  });
+
+  it("can be skipped mid-animation with the Skip button", () => {
+    show("received", 100, "Bala");
+    render(<CoinJoyOverlay />);
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /skip the coin animation/i }));
 
     expect(useMandaliJoyStore.getState().moment).toBeNull();
   });
 
-  it("closes from the close button", () => {
-    useMandaliJoyStore.getState().show("received", 100, "Bala");
+  it("can be skipped with Escape", () => {
+    show("sent", 100, "Kethan");
     render(<CoinJoyOverlay />);
 
-    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    fireEvent.keyDown(window, { key: "Escape" });
 
     expect(useMandaliJoyStore.getState().moment).toBeNull();
+  });
+
+  it("does not take focus, so a game in progress keeps its keyboard", () => {
+    show("received", 100, "Bala");
+    render(<CoinJoyOverlay />);
+
+    expect(document.body).toHaveFocus();
   });
 
   it("replaces an older moment with the newest rather than queueing", () => {
-    useMandaliJoyStore.getState().show("received", 100, "Bala");
-    useMandaliJoyStore.getState().show("received", 250, "Anitha");
+    show("received", 100, "Bala");
+    show("received", 250, "Anitha");
 
     render(<CoinJoyOverlay />);
 

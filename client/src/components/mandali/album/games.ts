@@ -10,6 +10,14 @@ export const GAMES: ReadonlyArray<{ kind: GameKind; name: string; min: number; m
   { kind: "dotsboxes", name: "Dots & Boxes", min: 2, max: 2 },
 ];
 
+/**
+ * A game name with its decorative emoji taken off. The shared catalogue writes "Hand Cricket 🏏", which
+ * is fine in a menu but reads as noise inside a card title, where the card draws its own mark.
+ */
+export function plainGameName(raw: string): string {
+  return raw.replace(/[\p{Extended_Pictographic}️‍]/gu, "").replace(/\s+/g, " ").trim();
+}
+
 /** A game's name as people say it. Falls back to a tidied version of the kind for anything not listed. */
 export function gameLabel(kind: string): string {
   const known = GAMES.find((g) => g.kind === kind);

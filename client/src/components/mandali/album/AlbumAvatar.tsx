@@ -5,6 +5,8 @@ const SIZES = {
   sm: "w-8 h-8",
   md: "w-10 h-10",
   lg: "w-14 h-14",
+  /** Between lg and xl: big enough to be the point of a card, small enough for two to sit side by side at 320 px. */
+  hero: "w-[72px] h-[72px]",
   xl: "w-24 h-24",
 } as const;
 
@@ -13,6 +15,7 @@ const BADGE_SIZE: Record<keyof typeof SIZES, { box: string; glyph: string }> = {
   sm: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
   md: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
   lg: { box: "h-3.5 w-3.5", glyph: "h-2.5 w-2.5" },
+  hero: { box: "h-5 w-5", glyph: "h-3.5 w-3.5" },
   xl: { box: "h-6 w-6", glyph: "h-4 w-4" },
 };
 

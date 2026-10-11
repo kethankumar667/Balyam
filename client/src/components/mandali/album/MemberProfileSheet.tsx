@@ -3,10 +3,12 @@ import type { GameKind } from "@shared/types";
 import { GAME_DISPLAY_NAMES } from "@shared/catalog";
 import type { MandaliMember } from "@shared/mandali/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
+import { useMemberGameRecord } from "../../../hooks/useMemberGameRecord";
 import { LOCALE_BY_ID } from "../../../i18n/types";
 import { AlbumAvatar } from "./AlbumAvatar";
 import { AlbumButton } from "./AlbumButton";
 import { AlbumSheet } from "./AlbumSheet";
+import { LevelPanel, RecordPanel, RecordSkeleton, RecordUnavailable } from "./MemberRecordPanels";
 import { roleLabelKey } from "./roleLabel";
 
 export interface MemberProfileSheetProps {
@@ -34,16 +36,18 @@ const PRESENCE_DOT = {
 } as const;
 
 /**
- * Someone in the group, up close: who they are, what they are to the group, whether
- * they are around, and since when.
+ * Someone in the group, up close, the way a game shows a player card: their face and level up top,
+ * their XP bar, then how they play (games played, won, win rate), and one tap to send or ask for coins.
  *
- * Every line here is something the People list and member roster already show every
- * other member. Nothing new crosses the wire for this card, and it deliberately
- * leaves out a wallet balance, a contribution score and anything about activity
- * outside this group: a friend is not a leaderboard row.
+ * Who they are, whether they are around and since when are what the People list already shows every
+ * other member. The game record is the public career total the leaderboards are built from (see
+ * `useMemberGameRecord`): a level, XP, played, won, lost, drawn, best streak, favourite game. It
+ * leaves out a wallet balance, match history, who they played, achievement progress and any rank
+ * against other people: a friend is a person to play with, not a leaderboard row.
  */
 export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: MemberProfileSheetProps) {
   const { t, locale } = useTranslation();
+  const record = useMemberGameRecord(member?.playerId ?? null);
   if (!member) return null;
 
   const localeTag = LOCALE_BY_ID[locale]?.tag ?? "en";
@@ -62,57 +66,98 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
   const roleKey = roleLabelKey(member.role);
 
   const isLeader = roleKey === "mandali.role.host" || roleKey === "mandali.role.admin";
+  const tier = record.progression?.tier;
+  const canSendCoins = !isSelf && Boolean(onCoinsWith);
 
   return (
-    <AlbumSheet open onClose={onClose} title={t("mandali.profile.title")}>
-      {/* The portrait, mounted on the page with photo corners like every pinned thing in the album. */}
-      <div className="album-corners album-rise mx-auto mt-1 flex w-full flex-col items-center rounded-2xl bg-album-field/60 px-6 pb-6 pt-8 text-center">
-        <span className="rounded-full p-1 ring-2 ring-album-foilfill/60 ring-offset-4 ring-offset-album-field">
-          <AlbumAvatar avatar={member.avatar} name="" size="xl" presence={member.presence} />
-        </span>
-        <h3 className="m-0 mt-5 flex items-baseline justify-center gap-2 text-2xl font-semibold leading-tight text-album-ink">
-          <span className="break-words">{member.displayName}</span>
-          {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}
-        </h3>
-        <p
-          className={`m-0 mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
-            isLeader ? "bg-album-foilfill/20 text-album-foil" : "bg-album-page text-album-ink2"
-          }`}
-        >
-          {roleKey === "mandali.role.host" && <Crown className="h-4 w-4" aria-hidden="true" />}
-          {roleKey === "mandali.role.admin" && <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
-          <span>{t(roleKey)}</span>
-        </p>
+    <AlbumSheet
+      open
+      onClose={onClose}
+      title={t("mandali.profile.title")}
+      footer={
+        canSendCoins ? (
+          <AlbumButton
+            variant="primary"
+            size="lg"
+            icon={<HandCoins className="h-5 w-5" aria-hidden="true" />}
+            onClick={() => {
+              onClose();
+              onCoinsWith?.(member.playerId);
+            }}
+            className="w-full"
+          >
+            {t("mandali.profile.coins")}
+          </AlbumButton>
+        ) : undefined
+      }
+    >
+      {/* The player card, mounted on the page with photo corners like every pinned thing in the album. */}
+      <div className="album-corners album-rise relative mx-auto mt-1 w-full overflow-hidden rounded-2xl bg-album-field/60 px-6 pb-6 pt-8 text-center">
+        {tier && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: `linear-gradient(180deg, ${tier.themeColor}38 0%, ${tier.themeColor}00 70%)` }}
+          />
+        )}
+        <div className="relative flex flex-col items-center">
+          <span className="relative">
+            <span
+              className="block rounded-full p-1 ring-2 ring-offset-4 ring-offset-album-field"
+              style={{ ["--tw-ring-color" as string]: tier ? tier.themeColor : "rgb(var(--album-foil-fill) / 0.6)" }}
+            >
+              <AlbumAvatar avatar={member.avatar} name="" size="xl" presence={member.presence} />
+            </span>
+            {record.progression && (
+              <span
+                className="absolute -bottom-1 -left-3 rounded-full border-2 bg-album-raised px-2 py-0.5 text-xs font-bold tabular-nums leading-tight text-album-ink shadow-sm"
+                style={{ borderColor: record.progression.tier.themeColor }}
+              >
+                {t("mandali.profile.level", { level: record.progression.currentLevel })}
+              </span>
+            )}
+          </span>
+
+          <h3 className="m-0 mt-5 flex items-baseline justify-center gap-2 text-2xl font-semibold leading-tight text-album-ink">
+            <span className="break-words">{member.displayName}</span>
+            {isSelf && <span className="text-sm font-normal text-album-ink3">({t("mandali.you")})</span>}
+          </h3>
+
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <p
+              className={`m-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+                isLeader ? "bg-album-foilfill/20 text-album-foil" : "bg-album-page text-album-ink2"
+              }`}
+            >
+              {roleKey === "mandali.role.host" && <Crown className="h-4 w-4" aria-hidden="true" />}
+              {roleKey === "mandali.role.admin" && <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+              <span>{t(roleKey)}</span>
+            </p>
+            <p className="m-0 inline-flex items-center gap-2 rounded-full bg-album-page px-3 py-1 text-sm font-medium text-album-ink2">
+              <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${PRESENCE_DOT[member.presence] ?? PRESENCE_DOT.offline}`} />
+              {activity}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <dl className="m-0 mt-5 grid gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-sm text-album-ink3">{t("mandali.profile.status")}</dt>
-          <dd className="m-0 inline-flex items-center gap-2 text-[15px] font-semibold text-album-ink">
-            <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${PRESENCE_DOT[member.presence] ?? PRESENCE_DOT.offline}`} />
-            {activity}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-album-line pt-3">
-          <dt className="text-sm text-album-ink3">{t("mandali.profile.joined")}</dt>
-          <dd className="m-0 text-[15px] text-album-ink2">{joined}</dd>
-        </div>
-      </dl>
+      <div className="mt-4 grid gap-3">
+        {record.status === "loading" ? (
+          <RecordSkeleton />
+        ) : record.progression || record.stats ? (
+          <>
+            {record.progression && <LevelPanel progression={record.progression} />}
+            {record.stats && <RecordPanel stats={record.stats} name={member.displayName} />}
+          </>
+        ) : (
+          <RecordUnavailable />
+        )}
+      </div>
 
-      {!isSelf && onCoinsWith && (
-        <AlbumButton
-          variant="primary"
-          size="lg"
-          icon={<HandCoins className="h-5 w-5" aria-hidden="true" />}
-          onClick={() => {
-            onClose();
-            onCoinsWith(member.playerId);
-          }}
-          className="mt-4 w-full"
-        >
-          {t("mandali.profile.coins")}
-        </AlbumButton>
-      )}
+      <dl className="m-0 mt-4 flex items-center justify-between gap-3 border-t border-album-line pt-3">
+        <dt className="text-sm text-album-ink3">{t("mandali.profile.joined")}</dt>
+        <dd className="m-0 text-[15px] text-album-ink2">{joined}</dd>
+      </dl>
     </AlbumSheet>
   );
 }

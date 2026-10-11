@@ -27,7 +27,11 @@ export default function PreviewFaucet() {
     if (!started) return undefined;
     if (view === "joy" || view === "joysent") {
       document.documentElement.setAttribute("data-theme", new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
-      useMandaliJoyStore.getState().show(view === "joy" ? "received" : "sent", 1500, view === "joy" ? "Bala" : "Kethan");
+      const friend = view === "joy" ? "Bala" : "Kethan";
+      useMandaliJoyStore.getState().show(view === "joy" ? "received" : "sent", 1500, friend, {
+        self: { name: "You", avatar: AVATARS[0]?.id },
+        other: { name: friend, avatar: AVATARS[1]?.id },
+      });
       return () => useMandaliJoyStore.getState().clear();
     }
     if (view === "levelup") {
