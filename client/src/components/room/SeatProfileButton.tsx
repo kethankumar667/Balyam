@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Player } from "@shared/types";
 import { Info } from "lucide-react";
 import BotProfileCard from "./BotProfileCard";
@@ -20,6 +20,7 @@ export default function SeatProfileButton({
   className = "",
   iconSize = 16,
   compact = false,
+  children,
 }: {
   player: Player;
   isSelf?: boolean;
@@ -28,11 +29,45 @@ export default function SeatProfileButton({
   iconSize?: number;
   /** A 32px target instead of 44px, for a seat with no room (desktop, mouse-driven). */
   compact?: boolean;
+  /**
+   * When given, the button wraps this (normally the seat's avatar) instead of drawing an info
+   * icon. The avatar is the thing people already expect to tap for a profile, and it costs the
+   * seat no extra space, so nothing has to sit on top of the picture.
+   */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   if (player.isBot && !player.botProfile) return null;
 
   const label = `View ${player.name}'s profile`;
+  const card = open && (player.isBot ? (
+    <BotProfileCard player={player} onClose={() => setOpen(false)} />
+  ) : (
+    <PlayerProfileCard player={player} isSelf={isSelf} onClose={() => setOpen(false)} />
+  ));
+
+  if (children) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          // The picture is smaller than a thumb, so the invisible ::before stretches the target
+          // out to roughly 44px without moving anything around it.
+          className={`relative flex items-center justify-center rounded-full cursor-pointer transition active:scale-95 before:absolute before:-inset-2 before:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] focus-visible:ring-offset-1 ${className}`}
+          title={label}
+          aria-label={label}
+        >
+          {children}
+        </button>
+        {card}
+      </>
+    );
+  }
+
   return (
     <>
       <button
@@ -47,11 +82,7 @@ export default function SeatProfileButton({
       >
         <Info size={iconSize} aria-hidden />
       </button>
-      {open && (player.isBot ? (
-        <BotProfileCard player={player} onClose={() => setOpen(false)} />
-      ) : (
-        <PlayerProfileCard player={player} isSelf={isSelf} onClose={() => setOpen(false)} />
-      ))}
+      {card}
     </>
   );
 }

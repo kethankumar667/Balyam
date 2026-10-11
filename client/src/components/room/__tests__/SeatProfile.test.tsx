@@ -90,6 +90,19 @@ describe("SeatProfileButton", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("can wrap an avatar so the picture itself opens the profile, with no icon drawn on it", () => {
+    const { container } = render(
+      <SeatProfileButton player={human()}>
+        <img alt="" src="/Avatars/a.png" />
+      </SeatProfileButton>,
+    );
+
+    expect(container.querySelector("svg")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View Anand's profile" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("keeps the tap off the seat it sits on, because a seat's own tap sends a reaction", () => {
     const onSeatTap = vi.fn();
     render(

@@ -420,6 +420,43 @@ function orderedSeats(state: LudoState, players: Player[] = [], selfId?: string 
   });
 }
 
+/**
+ * A seat's avatar inside its coloured ring. When the seat has a player, the avatar itself is the
+ * button that opens their profile, so no badge has to sit on top of the picture and cover it.
+ */
+function LudoSeatAvatar({
+  seat,
+  tint,
+  rim,
+  size,
+  isSelf,
+}: {
+  seat: LudoSeatMeta;
+  tint: string;
+  rim: string;
+  size: number;
+  isSelf: boolean;
+}) {
+  const ring = (
+    <div
+      className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
+        seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
+      }`}
+      style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
+    >
+      <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
+        <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={size} />
+      </div>
+    </div>
+  );
+  if (!seat.player) return ring;
+  return (
+    <SeatProfileButton player={seat.player} isSelf={isSelf}>
+      {ring}
+    </SeatProfileButton>
+  );
+}
+
 /** Compact, beautiful player seat card. Progressive disclosure per the AAA
  *  critique: one progress indicator only (4 pips — the redundant "x/4 home"
  *  caption is dropped; exact count lives in the title tooltip), slimmer
@@ -510,26 +547,8 @@ function LudoPlayerCard({
         )}
         {/* Top: Avatar + Tokens Badge or Active Timer */}
         <div className="relative flex items-center justify-center w-full">
-          <div
-            className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
-              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
-            }`}
-            style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
-          >
-            <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
-              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
-            </div>
-          </div>
+          <LudoSeatAvatar seat={seat} tint={tint} rim={rim} size={avatarPx} isSelf={isSelf} />
 
-          {seat.player && (
-            <SeatProfileButton
-              player={seat.player}
-              isSelf={isSelf}
-              compact
-              iconSize={13}
-              className="absolute -left-2.5 -top-2.5 z-20 rounded-full bg-white/90 text-stone-600 shadow-sm hover:text-[#EA5A1F] dark:bg-slate-800/90 dark:text-slate-200"
-            />
-          )}
           {/* Online status indicator */}
           <span
             className={`absolute -bottom-0.5 right-1/4 w-2 h-2 rounded-full z-10 ${
@@ -651,26 +670,8 @@ function LudoPlayerCard({
       {/* Left: Avatar Hub */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="relative flex-shrink-0 flex items-center justify-center">
-          <div
-            className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
-              seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
-            }`}
-            style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
-          >
-            <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
-              <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={avatarPx} />
-            </div>
-          </div>
+          <LudoSeatAvatar seat={seat} tint={tint} rim={rim} size={avatarPx} isSelf={isSelf} />
 
-          {seat.player && (
-            <SeatProfileButton
-              player={seat.player}
-              isSelf={isSelf}
-              compact
-              iconSize={13}
-              className="absolute -left-2.5 -top-2.5 z-20 rounded-full bg-white/90 text-stone-600 shadow-sm hover:text-[#EA5A1F] dark:bg-slate-800/90 dark:text-slate-200"
-            />
-          )}
           {/* Presence Status Dot */}
           <span
             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full z-10 ${
