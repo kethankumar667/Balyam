@@ -591,11 +591,11 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
     }, 30_000);
 
     /**
-     * The live report, at the socket layer: A and B play, B wins and leaves. The room
-     * closes the instant B leaves a post-match 2-player table (see
-     * `RoomManager.leaveRoom`), so A is never left on a results screen with no opponent.
+     * The live report, at the socket layer: A and B play, B wins and leaves. A is not sent home
+     * while still reading the results: the finished table stays open for as long as a human is at
+     * it, and nothing is charged or paid a second time.
      */
-    it("live repro — B wins and leaves: the room closes outright, A is never left on the results screen with no opponent", async () => {
+    it("live repro — B wins and leaves a finished table: A stays on it, is not kicked, and nothing is charged again", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B, "1000");
@@ -617,10 +617,9 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       await rooms.leaveRoom("s_b");
       await drainRoomEconomy(rooms);
 
-      expect(room.lifecycleState).toBe("CLOSED"); // closed immediately — not left open for A alone
-      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
-
-      // A's own client would react to room:closed by navigating home.
+      expect(room.lifecycleState).not.toBe("CLOSED"); // A is still at the table
+      expect((rooms as unknown as { rooms: Map<string, unknown> }).rooms.has(host.code)).toBe(true);
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(false);
       expect(commitSpy).toHaveBeenCalledTimes(1); // never a second commit
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched
     });
@@ -1000,15 +999,11 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
     });
 
     /**
-     * Updated 2026-09-09 on an explicit product decision: a post-match
-     * table for a 2-player game now closes the INSTANT the non-host
-     * opponent leaves — not only once the LAST human is gone. Before this,
-     * Alice (still sitting alone) would have been left on a results screen
-     * with no one to play against and no signal anything had changed; now
-     * she gets `room:closed` and the room tears down immediately. See
-     * `RoomManager.leaveRoom`'s own doc comment on this branch.
+     * A finished table stays open for as long as a human is at it, so Alice keeps reading her
+     * results after Bob leaves. When she leaves too, it closes with a notice, still without any
+     * refund or forfeiture (the match's one settlement already happened).
      */
-    it("completed MULTIPLAYER match (two signed-in members, no bots): the non-host leaving alone closes the room outright — no refund, no forfeiture", async () => {
+    it("completed MULTIPLAYER match (two signed-in members, no bots): the non-host leaving keeps the table open for the survivor; the survivor leaving closes it — no refund, no forfeiture", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B);
@@ -1034,15 +1029,18 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       expect(refundSpy).not.toHaveBeenCalled();
       expect(forfeitSpy).not.toHaveBeenCalled();
-      expect(roomRef.lifecycleState).toBe("CLOSED"); // closed immediately, not left open for Alice alone
+      expect(roomRef.lifecycleState).toBe("COMPLETED"); // Alice is still at the finished table
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(false);
       expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // untouched final prize
-      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
 
-      // The room is already gone — Alice's own subsequent leave is a safe no-op.
-      expect(() => rooms.leaveRoom("s_a")).not.toThrow();
+      // Alice leaves too: the last human is gone, so the table closes, and says so.
+      await rooms.leaveRoom("s_a");
       await drainRoomEconomy(rooms);
+      expect(roomRef.lifecycleState).toBe("CLOSED");
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
       expect(refundSpy).not.toHaveBeenCalled();
       expect(forfeitSpy).not.toHaveBeenCalled();
+      expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
     });
 
     it("duplicate post-completion leave is idempotent: the second leaveRoom call for an already-torn-down room is a safe no-op", async () => {
@@ -1073,16 +1071,12 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
     });
 
     /**
-     * Updated 2026-09-09 alongside the leaveRoom case above: the identical
-     * "host leaves a post-match table" rule applies whether the departure
-     * is an explicit click or a connection that never came back. Alice
-     * (the host) disconnecting and staying gone through the full grace
-     * window is, from the room's perspective, indistinguishable from her
-     * clicking Leave — Bob is left with no one to play and the room
-     * closes for him too, rather than quietly promoting him to host of a
-     * table Alice already walked away from.
+     * The same rule whether a departure is a click or a connection that never came back. Alice (the
+     * host) disconnecting and staying gone through the full grace window does not send Bob home:
+     * he is promoted and keeps reading his results, with nothing refunded or forfeited. When he
+     * leaves, the table closes.
      */
-    it("disconnect-expiry after completion: the HOST never returning closes the room for the survivor too — no refund, no forfeiture", async () => {
+    it("disconnect-expiry after completion: the HOST never returning promotes the survivor, and the table closes when they leave — no refund, no forfeiture", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B);
@@ -1109,9 +1103,17 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
 
       expect(refundSpy).not.toHaveBeenCalled();
       expect(forfeitSpy).not.toHaveBeenCalled();
-      expect(abandonedMetricSpy).not.toHaveBeenCalled(); // closeConcludedRoom, never genuine abandonment
-      expect(roomRef.lifecycleState).toBe("CLOSED"); // closed for Bob too, not left open under a new host
+      expect(roomRef.lifecycleState).toBe("COMPLETED"); // Bob is still at the finished table
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(false);
+      expect(roomRef.hostId).not.toBe(host.playerId); // Bob took the host seat
+
+      await rooms.leaveRoom("s_b");
+      await drainRoomEconomy(rooms);
+      expect(roomRef.lifecycleState).toBe("CLOSED");
       expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
+      expect(abandonedMetricSpy).not.toHaveBeenCalled(); // closeConcludedRoom, never genuine abandonment
+      expect(refundSpy).not.toHaveBeenCalled();
+      expect(forfeitSpy).not.toHaveBeenCalled();
       const settlement = await service.getSettlement(matchId);
       expect(settlement?.status).toBe("SETTLED");
       expect(settlement?.totalRefunded).toBe("0");

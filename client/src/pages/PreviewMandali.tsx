@@ -68,7 +68,8 @@ const person = (
 const members: MandaliMember[] = [
   person("me", "Kethan", "OWNER", "online", "file_0000000084c48208b1f893419d784cf2_1.jpg"),
   person("asha", "Asha", "MEMBER", "online", "file_0000000084c48208b1f893419d784cf2_3.jpg"),
-  person("bala", "Bala", "MEMBER", "in-game", "file_0000000084c48208b1f893419d784cf2_5.jpg"),
+  // Mid-match in a room that takes an audience, so the strip offers "Watch".
+  { ...person("bala", "Bala", "MEMBER", "in-game", "file_0000000084c48208b1f893419d784cf2_5.jpg"), activeGame: "ludo", watchCode: "LDO482" },
   person("charan", "Charan", "LEADER", "offline", "file_0000000084c48208b1f893419d784cf2_8.jpg"),
   person("devi", "దేవి", "MEMBER", "idle", "file_0000000084c48208b1f893419d784cf2_10.jpg"),
   person("eswar", "Eswar Rao", "MEMBER", "offline", "file_0000000084c48208b1f893419d784cf2_12.jpg"),

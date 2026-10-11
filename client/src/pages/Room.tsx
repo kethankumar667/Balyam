@@ -1486,6 +1486,13 @@ export default function Room() {
     getSocket().emit("room:startGame");
   }
 
+  /** Set by "Create a new room" on the finished table: leave, then open the create sheet for this game. */
+  const createNextRoomRef = useRef<GameKind | null>(null);
+  function leaveAndCreateRoom() {
+    createNextRoomRef.current = roomState?.game ?? null;
+    leaveRoom();
+  }
+
   function leaveRoom() {
     economyMotion.resetMotion();
     if (isFullscreenActive()) void exitFullscreen();
@@ -1510,7 +1517,10 @@ export default function Room() {
           setPlayerName("");
         }
         reset();
-        navigate("/");
+        const next = createNextRoomRef.current;
+        createNextRoomRef.current = null;
+        if (next) navigate("/", { state: { newRoom: next } });
+        else navigate("/");
       });
   }
 
@@ -1822,7 +1832,7 @@ export default function Room() {
             )}
 
             {roomState.phase === "finished" ? (
-              <FinishedTableCard onLeave={leaveRoom} />
+              <FinishedTableCard game={roomState.game} onNewRoom={leaveAndCreateRoom} onLeave={leaveRoom} />
             ) : (
               <>
             <Suspense fallback={null}>

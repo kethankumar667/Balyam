@@ -437,12 +437,10 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
     });
 
     /**
-     * Product decision, 2026-09-09: RPS needs 2 players, so once the match is over
-     * and the only opponent leaves, the whole post-match table closes outright and
-     * everyone still on it is told why, rather than leaving Alice on a results
-     * screen with no one left to play.
+     * A finished table stays open for as long as a human is at it. When the only opponent leaves,
+     * Alice keeps reading her results; when she leaves too, the table closes and says so.
      */
-    it("closes the room outright if the only other player leaves after the match", () => {
+    it("keeps the table open for the player still reading results, and closes it with a notice when they leave too", () => {
       harness.registerSocket("s_host");
       harness.registerSocket("s_p2");
 
@@ -461,10 +459,14 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
 
       expect(harness.rooms.getRoomStateByCode(code)?.phase).toBe("finished");
 
-      // Bob leaves
+      // Bob leaves: Alice is not sent home
       harness.rooms.leaveRoom("s_p2");
+      expect(harness.getInternalRoom(code)).toBeDefined();
+      expect(harness.emitted.filter((e) => e.event === "room:closed")).toHaveLength(0);
 
-      expect(harness.getInternalRoom(code)).toBeUndefined(); // torn down, not left open for Alice alone
+      // Alice leaves: the last human is gone
+      harness.rooms.leaveRoom("s_host");
+      expect(harness.getInternalRoom(code)).toBeUndefined();
       const closedEmits = harness.emitted.filter((e) => e.event === "room:closed");
       expect(closedEmits.length).toBeGreaterThan(0);
     });

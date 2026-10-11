@@ -386,7 +386,7 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
      * recordMatchFinished, so profileSpy staying at 1 after the reap is the
      * same "no double-finalize" guarantee, via the new mechanism.
      */
-    it("closes the room outright once Alice's stale-host seat is finally reaped after a natural completion — no double-finalize, no reassignment", () => {
+    it("promotes Bob once Alice's stale-host seat is finally reaped after a natural completion — no double-finalize, and the table stays open for him", () => {
       const { io, roomEmits } = makeIo();
       const rooms = new RoomManager(io);
       const profileSpy = vi.spyOn(profileService, "recordMatchFinished");
@@ -411,13 +411,14 @@ describe("Blocker 02 — Terminal Resolution Idempotency", () => {
 
       // Alice's disconnect-grace REMOVAL timer fires ~10 minutes later and
       // finally reaps her seat — she was still nominally host of an
-      // already-finished table, so the room closes for Bob too instead of
-      // promoting him.
+      // already-finished table, so Bob is promoted and stays on it.
       vi.advanceTimersByTime(600_000);
 
-      expect(peek(rooms, host.code)).toBeUndefined(); // torn down, not reassigned
-      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
-      expect(profileSpy).toHaveBeenCalledTimes(1); // still exactly 1 — closing never re-invokes match stats
+      const after = peek(rooms, host.code);
+      expect(after).toBeDefined();
+      expect(after.hostId).not.toBe(host.playerId); // reassigned to Bob
+      expect(roomEmits.some((e) => e.event === "room:closed")).toBe(false);
+      expect(profileSpy).toHaveBeenCalledTimes(1); // still exactly 1 — reassignment never re-invokes match stats
     });
   });
 

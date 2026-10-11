@@ -88,6 +88,12 @@ export interface MandaliMember {
   joinedAt: number;
   presence: "online" | "in-game" | "idle" | "offline";
   activeGame?: GameKind;
+  /**
+   * The room code a co-member can watch this person's match from, present only while they are
+   * mid-match in a room that takes an audience (not a sealed, guest-opened one). Never stored:
+   * it is worked out live with presence and goes only to people in the same Mandali.
+   */
+  watchCode?: string;
   contributionScore: number;
 }
 

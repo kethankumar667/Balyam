@@ -122,7 +122,7 @@ export interface RouteComponents {
   BrickBreakoutPage?: React.ComponentType;
   Game2048Page?: React.ComponentType;
   SudokuPage?: React.ComponentType;
-  PartyScreen?: React.ComponentType;
+  PartyScreen?: React.ComponentType<{ mode?: "tv" | "audience" }>;
   Diagnostics?: React.ComponentType;
   PreviewLudo?: React.ComponentType;
   AdminDashboardPage?: React.ComponentType;
@@ -446,6 +446,7 @@ export default function App({ components = {} }: AppProps) {
 
             {/* Smart TV / Party Mode — big-screen, seat-less view of a room. */}
             <Route path="/tv/:code" element={<PartyScreen />} />
+            <Route path="/watch/:code" element={<PartyScreen mode="audience" />} />
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
             <Route path="/preview/ludo" element={<PreviewLudo />} />

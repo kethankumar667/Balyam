@@ -1,4 +1,13 @@
+import { Plus } from "lucide-react";
+import type { GameKind } from "@shared/types";
+import { GAME_DISPLAY_NAMES } from "@shared/catalog";
+import { plainGameName } from "../mandali/album/games";
+
 export interface FinishedTableCardProps {
+  /** The game just played, so "play again" can open a new room for the same one. */
+  game: GameKind;
+  /** Leave this table and open the create-room sheet for the same game. */
+  onNewRoom: () => void;
   onLeave: () => void;
 }
 
@@ -7,10 +16,11 @@ export interface FinishedTableCardProps {
  *
  * A room hosts one match, so there is nothing left to start here: no Ready, no Start, no stake to
  * change, no code worth sharing (a finished room takes no new players). It says the match is over,
- * says how to play again (make a new room and send its link), and offers the way out. The
- * settlement banners that still matter after a match sit above it in the room, not in here.
+ * offers the one thing to do next (a new room for the same game, then share its link) and the way
+ * out. The settlement banners that still matter after a match sit above it in the room, not in here.
  */
-export default function FinishedTableCard({ onLeave }: FinishedTableCardProps) {
+export default function FinishedTableCard({ game, onNewRoom, onLeave }: FinishedTableCardProps) {
+  const gameName = plainGameName(GAME_DISPLAY_NAMES[game] ?? game);
   return (
     <section
       aria-label="Match finished"
@@ -23,8 +33,16 @@ export default function FinishedTableCard({ onLeave }: FinishedTableCardProps) {
       </p>
       <button
         type="button"
+        onClick={onNewRoom}
+        className="mt-3 inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 text-sm font-black text-stone-950 transition hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+        Create a new {gameName} room
+      </button>
+      <button
+        type="button"
         onClick={onLeave}
-        className="mt-3 min-h-[44px] w-full cursor-pointer rounded-2xl bg-[#4A2D1B] px-5 text-sm font-black text-white transition hover:bg-[#382012] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
+        className="mt-2 min-h-[44px] w-full cursor-pointer rounded-2xl bg-[#4A2D1B] px-5 text-sm font-black text-white transition hover:bg-[#382012] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
       >
         Leave table
       </button>

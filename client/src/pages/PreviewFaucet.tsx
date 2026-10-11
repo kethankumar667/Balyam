@@ -9,6 +9,7 @@ import { CoinFountain } from "../components/faucet/CoinCelebrations";
 import { useLevelUpStore } from "../store/levelUpStore";
 import SeatAvatar from "../components/profile/SeatAvatar";
 import FinishedTableCard from "../components/room/FinishedTableCard";
+import { AudienceBar } from "./party/AudienceBar";
 import { AVATARS } from "../lib/avatars";
 
 /**
@@ -16,7 +17,7 @@ import { AVATARS } from "../lib/avatars";
  * can be looked at at real phone and desktop sizes without a signed-in account. Not registered in
  * production builds.
  *
- *   /preview/faucet?theme=light|dark&view=faucet|payout|carryover|avatars|fountain|joy|joysent|levelup|finished
+ *   /preview/faucet?theme=light|dark&view=faucet|payout|carryover|avatars|fountain|joy|joysent|levelup|finished|audience
  */
 export default function PreviewFaucet() {
   const view = new URLSearchParams(window.location.search).get("view") ?? "faucet";
@@ -42,7 +43,7 @@ export default function PreviewFaucet() {
       useLevelUpStore.getState().show(Number(q.get("from") ?? 13), Number(q.get("to") ?? 14), Number(q.get("xp") ?? 1340));
       return () => useLevelUpStore.getState().clear();
     }
-    if (view === "finished") {
+    if (view === "finished" || view === "audience") {
       document.documentElement.setAttribute("data-theme", new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
       return undefined;
     }
@@ -85,11 +86,20 @@ export default function PreviewFaucet() {
     return () => useFaucetStore.getState().reset();
   }, [view, started]);
 
+  if (view === "audience") {
+    // The audience bar as it sits at the foot of the watch screen (a dark stage, like the TV page).
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-end bg-[#0B0F19] p-3">
+        <AudienceBar onLeave={() => undefined} />
+      </div>
+    );
+  }
+
   if (view === "finished") {
     // The finished-table card as a room shows it once the scorecard is closed.
     return (
       <div className="mx-auto max-w-lg p-4 pt-10">
-        <FinishedTableCard onLeave={() => undefined} />
+        <FinishedTableCard game="ludo" onNewRoom={() => undefined} onLeave={() => undefined} />
       </div>
     );
   }

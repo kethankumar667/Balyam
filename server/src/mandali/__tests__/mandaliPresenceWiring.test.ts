@@ -95,6 +95,57 @@ describe("RoomManager.getActiveGamesByPlayer", () => {
   });
 });
 
+describe("watching a friend's match", () => {
+  async function setup() {
+    const io = new Server();
+    const rooms = new RoomManager(roomManagerIo());
+    const emitted: Array<{ room: string; payload: any }> = [];
+    const fake = { to: (room: string) => ({ emit: (_e: string, payload: unknown) => emitted.push({ room, payload }) }) };
+    const service = new MandaliService(new MandaliRepository(), undefined as never, fake as never);
+    service.setPresenceSources(createPresenceSources(io, rooms));
+    const created = await service.createMandali("acct_alice", "Alice", "avatar_1", {
+      name: "Watch", handle: "watch-test", description: "d", visibility: "PUBLIC",
+    });
+    if (!created.success || !created.mandali) throw new Error("test setup: createMandali failed");
+    const { code } = rooms.createRoom("sockA", "Alice", "ludo");
+    rooms.joinRoom("sockB", "Bob", code);
+    rooms.addBot("sockA");
+    seatOf(rooms, code, "Alice").identityId = "acct_alice";
+    rooms.setReady("sockA", true);
+    rooms.setReady("sockB", true);
+    const alice = async () => (await service.getMembers(created.mandali!.id)).find((m) => m.playerId === "acct_alice")!;
+    return { rooms, service, code, alice };
+  }
+
+  it("carries no watch code while the match is still a lobby", async () => {
+    const { alice } = await setup();
+
+    expect((await alice()).watchCode).toBeUndefined();
+  });
+
+  it("carries the room code once the match is under way, and drops it when the match ends", async () => {
+    const { rooms, service, code, alice } = await setup();
+    rooms.startGame("sockA");
+    await service.refreshPresence(["acct_alice"]);
+    expect((await alice()).watchCode).toBe(code);
+
+    seatOf(rooms, code, "Alice").isConnected = false;
+    await service.refreshPresence(["acct_alice"]);
+    expect((await alice()).watchCode).toBeUndefined();
+  });
+
+  it("offers no watch code for a sealed room, though the person is still shown as in a game", async () => {
+    const { rooms, service, code, alice } = await setup();
+    rooms.startGame("sockA");
+    (rooms as unknown as { sealRoom(r: unknown): void }).sealRoom((rooms as unknown as { rooms: Map<string, unknown> }).rooms.get(code));
+    await service.refreshPresence(["acct_alice"]);
+
+    const member = await alice();
+    expect(member.presence).toBe("in-game");
+    expect(member.watchCode).toBeUndefined();
+  });
+});
+
 describe("a member's dot, end to end", () => {
   it("goes online, then red when their game starts, then to an empty ring", async () => {
     const io = new Server();
@@ -128,6 +179,8 @@ describe("a member's dot, end to end", () => {
     const playing = await dot();
     expect(playing.presence).toBe("in-game");
     expect(playing.activeGame).toBe("ludo");
+    // The room code a friend can watch from, so the group's strip can offer "Watch".
+    expect(playing.watchCode).toBe(code);
 
     io.sockets.adapter.delAll("sock-1");
     seatOf(rooms, code, "Alice").isConnected = false;

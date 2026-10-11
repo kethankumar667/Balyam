@@ -3007,10 +3007,13 @@ export interface ReactionSendPayload {
 
 export interface ReactionRecvPayload {
   id: string;
+  /** The seated player who reacted. For an audience reaction this is the fixed string "audience". */
   fromPlayerId: string;
   emoji: string;
   targetPlayerId?: string;
   ts: number;
+  /** True when someone watching from outside the table cheered. Audience reactions are never aimed at a player. */
+  fromAudience?: boolean;
 }
 
 /**
@@ -3156,15 +3159,13 @@ export interface ServerToClientEvents {
   "room:startCancelled": (payload: { startAttemptId: string; reason: string }) => void;
   /**
    * The room is gone — every remaining client must leave this screen NOW,
-   * not on some later reconnect attempt. Added 2026-09-09: a post-match
-   * room used to be torn down (`closeConcludedRoom`) in complete silence —
-   * the host leaving after the match ended, or the last opponent leaving a
-   * 2-player table, deleted the room with no signal to whoever was still
-   * looking at the results screen. They only found out by refreshing,
-   * which then failed to rejoin with a generic "Room not found." This is
-   * sent BEFORE the room is deleted, while its socket room still has
-   * everyone in it, specifically so a still-connected client can react
-   * immediately instead of discovering the closure secondhand.
+   * not on some later reconnect attempt. A finished table stays open for as
+   * long as any human is still at it, so this is sent when the LAST one has
+   * gone and the room is torn down (`closeConcludedRoom`, `announceAbandonment`):
+   * the only people still attached by then are an audience watching the match.
+   * It goes out BEFORE the room is deleted, while its socket room still has
+   * everyone in it, so a still-connected client reacts immediately instead of
+   * discovering the closure on a refresh ("Room not found.").
    */
   "room:closed": (payload: { reason: string }) => void;
 }

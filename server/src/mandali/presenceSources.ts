@@ -13,10 +13,11 @@ import type { MandaliPresenceSources } from "./MandaliService.js";
  */
 export function createPresenceSources(
   io: Pick<Server, "sockets">,
-  rooms: Pick<RoomManager, "getActiveGamesByPlayer">,
+  rooms: Pick<RoomManager, "getActiveGamesByPlayer"> & Partial<Pick<RoomManager, "getWatchableRoomsByPlayer">>,
 ): MandaliPresenceSources {
   return {
     isConnected: (playerId) => (io.sockets.adapter.rooms.get(`user:${playerId}`)?.size ?? 0) > 0,
     activeGames: () => rooms.getActiveGamesByPlayer(),
+    watchRooms: () => rooms.getWatchableRoomsByPlayer?.() ?? new Map<string, string>(),
   };
 }

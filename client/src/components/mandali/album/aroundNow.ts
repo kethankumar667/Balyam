@@ -42,6 +42,40 @@ export function playingSummary(around: readonly MandaliMember[]): PlayingSummary
   return { first, game: first.activeGame ? gameLabel(first.activeGame) : "", others: playing.length - 1 };
 }
 
+/** A friend’s match in progress that can be watched from outside the table. */
+export interface WatchableMatch {
+  code: string;
+  /** The game as people say it. */
+  game: string;
+  /** Who is in it, as the group sees them: the first is named, the rest are counted. */
+  players: MandaliMember[];
+}
+
+/** How many live matches the strip offers to watch at once. */
+export const WATCHABLE_MATCHES_MAX = 2;
+
+/**
+ * Matches the group can watch right now, one per room however many friends are in it. A match is
+ * only offered when the server gave a watch code for it (a sealed room takes no audience, so it has
+ * none), so there is never a Watch button that would be refused.
+ */
+export function watchableMatches(around: readonly MandaliMember[]): WatchableMatch[] {
+  const byCode = new Map<string, WatchableMatch>();
+  for (const member of around) {
+    if (member.presence !== "in-game" || !member.watchCode) continue;
+    const existing = byCode.get(member.watchCode);
+    if (existing) existing.players.push(member);
+    else {
+      byCode.set(member.watchCode, {
+        code: member.watchCode,
+        game: member.activeGame ? gameLabel(member.activeGame) : "",
+        players: [member],
+      });
+    }
+  }
+  return [...byCode.values()].slice(0, WATCHABLE_MATCHES_MAX);
+}
+
 export interface OpenTable {
   code: string;
   hostName: string;

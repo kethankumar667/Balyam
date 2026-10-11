@@ -171,3 +171,61 @@ describe("WhosAroundStrip", () => {
     expect(join).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("WhosAroundStrip: watching a friend's match", () => {
+  beforeEach(() => {
+    setStatuses({});
+  });
+  afterEach(cleanup);
+
+  const playing = (id: string, code?: string, over: Partial<MandaliMember> = {}) =>
+    member(id, "in-game", { activeGame: "ludo", ...(code ? { watchCode: code } : {}), ...over });
+
+  function renderWithWatchRoute(members: MandaliMember[]) {
+    return render(
+      <MemoryRouter initialEntries={["/mandali/x"]}>
+        <Routes>
+          <Route path="/mandali/x" element={<WhosAroundStrip members={members} messages={[]} selfId="me" />} />
+          <Route path="/watch/:code" element={<div>IN THE AUDIENCE</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it("offers Watch for a friend mid-match, and it takes you into the audience of that room", async () => {
+    renderWithWatchRoute([member("me", "online"), playing("bala", "LDO482")]);
+
+    expect(screen.getByRole("list", { name: "Live matches" })).toBeInTheDocument();
+    expect(screen.getByText("Bala is playing Ludo")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Watch Bala's match live" }));
+
+    await waitFor(() => expect(screen.getByText("IN THE AUDIENCE")).toBeInTheDocument());
+  });
+
+  it("does not repeat who is playing in the summary line when a Watch row says it", () => {
+    renderWithWatchRoute([member("me", "online"), member("asha", "online"), playing("bala", "LDO482")]);
+
+    expect(screen.getByText("2 here now")).toBeInTheDocument();
+    expect(screen.getAllByText(/Bala is playing Ludo/)).toHaveLength(1);
+  });
+
+  it("names the first friend and counts the rest when several are in one match", () => {
+    renderWithWatchRoute([member("me", "online"), playing("bala", "LDO482"), playing("asha", "LDO482")]);
+
+    expect(screen.getByText("Bala and 1 more are playing")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Watch/ })).toHaveLength(1);
+  });
+
+  it("offers no Watch for a friend whose room takes no audience (no watch code)", () => {
+    renderWithWatchRoute([member("me", "online"), playing("bala")]);
+
+    expect(screen.queryByRole("button", { name: /Watch/ })).toBeNull();
+    expect(screen.getByText(/Bala is playing Ludo/)).toBeInTheDocument();
+  });
+
+  it("does not offer to watch yourself", () => {
+    renderWithWatchRoute([playing("me", "LDO482"), member("asha", "online")]);
+
+    expect(screen.queryByRole("button", { name: /Watch/ })).toBeNull();
+  });
+});

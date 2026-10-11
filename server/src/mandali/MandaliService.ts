@@ -37,12 +37,15 @@ export interface MandaliPresenceSources {
   isConnected(playerId: string): boolean;
   /** Everyone seated in a game that is under way, and which game. */
   activeGames(): ReadonlyMap<string, GameKind>;
+  /** For each of those people, the room code an audience can join, when their room takes one. */
+  watchRooms?(): ReadonlyMap<string, string>;
 }
 
 /** What a member's dot says. "Away" is not worked out: nothing here can tell idle from engaged. */
 interface MandaliPresence {
   presence: "online" | "in-game" | "offline";
   activeGame?: GameKind;
+  watchCode?: string;
 }
 import type { EconomyService } from "../economy/EconomyService.js";
 import type { TransferPolicy } from "../rewards/TransferPolicy.js";
@@ -383,17 +386,25 @@ export class MandaliService {
   }
 
   /** Online, in a game, or not here — right now. Without sources (a test, a tool) everyone reads as not here. */
-  private presenceOf(playerId: string, games: ReadonlyMap<string, GameKind>): MandaliPresence {
+  private presenceOf(
+    playerId: string,
+    games: ReadonlyMap<string, GameKind>,
+    watch: ReadonlyMap<string, string> = new Map(),
+  ): MandaliPresence {
     const activeGame = games.get(playerId);
-    if (activeGame) return { presence: "in-game", activeGame };
+    if (activeGame) {
+      const watchCode = watch.get(playerId);
+      return watchCode ? { presence: "in-game", activeGame, watchCode } : { presence: "in-game", activeGame };
+    }
     return { presence: this.presenceSources?.isConnected(playerId) ? "online" : "offline" };
   }
 
   private withLivePresence(members: MandaliMember[]): MandaliMember[] {
     const games = this.presenceSources?.activeGames() ?? new Map<string, GameKind>();
+    const watch = this.presenceSources?.watchRooms?.() ?? new Map<string, string>();
     return members.map((member) => {
-      const { activeGame: _stale, ...rest } = member;
-      return { ...rest, ...this.presenceOf(member.playerId, games) };
+      const { activeGame: _stale, watchCode: _staleCode, ...rest } = member;
+      return { ...rest, ...this.presenceOf(member.playerId, games, watch) };
     });
   }
 
@@ -407,10 +418,11 @@ export class MandaliService {
   public async refreshPresence(playerIds: readonly string[]): Promise<void> {
     if (!this.io) return;
     const games = this.presenceSources?.activeGames() ?? new Map<string, GameKind>();
+    const watch = this.presenceSources?.watchRooms?.() ?? new Map<string, string>();
     for (const playerId of new Set(playerIds)) {
-      const now = this.presenceOf(playerId, games);
+      const now = this.presenceOf(playerId, games, watch);
       const before = this.lastPresence.get(playerId) ?? { presence: "offline" as const };
-      if (before.presence === now.presence && before.activeGame === now.activeGame) continue;
+      if (before.presence === now.presence && before.activeGame === now.activeGame && before.watchCode === now.watchCode) continue;
       if (now.presence === "offline") this.lastPresence.delete(playerId);
       else this.lastPresence.set(playerId, now);
       try {

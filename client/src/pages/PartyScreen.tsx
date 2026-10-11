@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Tv, LogIn, UserPlus } from "lucide-react";
 import type { Player, RoomPublicState } from "@shared/types";
 import { getSocket } from "../lib/socket";
@@ -13,6 +13,7 @@ import { useTvScreenShake } from "./party/useTvScreenShake";
 import { TvCrowdReactions } from "./party/TvCrowdReactions";
 import { TvClimaxBanner, isGameInClimax } from "./party/TvClimaxBanner";
 import { TvCommentaryTicker } from "./party/TvCommentaryTicker";
+import { AudienceBar } from "./party/AudienceBar";
 import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
 
 /**
@@ -26,9 +27,25 @@ import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
  * - It receives ONLY public room and game states (room.engine.getPublicState()).
  * - Private player cards and hidden hands NEVER reach this screen.
  * - Sized for 10-foot viewing (3+ meters away) with high-contrast arcade styling.
+ *
+ * `mode="audience"` is the same view for a friend watching on their own phone or laptop
+ * (`/watch/:code`): they see the entire live game, get a row of cheering emoji (nothing else: no
+ * chat, no moves, nothing aimed at a player) and a Leave button, and are told when the table closes.
  */
-export default function PartyScreen(): JSX.Element {
+export interface PartyScreenProps {
+  mode?: "tv" | "audience";
+}
+
+export default function PartyScreen({ mode = "tv" }: PartyScreenProps = {}): JSX.Element {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
+  const isAudience = mode === "audience";
+  const [closedReason, setClosedReason] = useState<string | null>(null);
+  /** Back to wherever they came from (the Mandali), or the lounge if this page was opened directly. */
+  const leaveAudience = useCallback(() => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/");
+  }, [navigate]);
   const [room, setRoom] = useState<RoomPublicState | null>(null);
   const [gameState, setGameState] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,8 +160,13 @@ export default function PartyScreen(): JSX.Element {
       setGameState(st as Record<string, unknown> | null);
     };
 
+    const onRoomClosed = (payload: { reason: string }) => {
+      setClosedReason(payload.reason);
+    };
+
     socket.on("room:state", onRoomState);
     socket.on("game:state", onGameState);
+    socket.on("room:closed", onRoomClosed);
     socket.on("connect", attach);
 
     attach();
@@ -152,6 +174,7 @@ export default function PartyScreen(): JSX.Element {
     return () => {
       socket.off("room:state", onRoomState);
       socket.off("game:state", onGameState);
+      socket.off("room:closed", onRoomClosed);
       socket.off("connect", attach);
       socket.emit("room:stopSpectate");
     };
@@ -278,27 +301,45 @@ export default function PartyScreen(): JSX.Element {
           <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-2">
             <Tv className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-black text-amber-100">Party Mode Needs an Account</h2>
+          <h2 className="text-3xl font-black text-amber-100">{isAudience ? "Watching Needs an Account" : "Party Mode Needs an Account"}</h2>
           <p className="text-sm sm:text-base text-amber-200/80 leading-relaxed">
-            Putting a table on the big screen is an account feature. Sign in or create a free member
-            account to host the living-room TV arcade!
+            {isAudience
+              ? "Watching a friend's match is an account feature. Sign in or create a free member account to join the audience."
+              : "Putting a table on the big screen is an account feature. Sign in or create a free member account to host the living-room TV arcade!"}
           </p>
           <div className="flex items-center gap-3 mt-4">
             <Link
-              to="/signup?from=tv"
+              to={isAudience ? "/signup?from=watch" : "/signup?from=tv"}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-bold text-sm shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
               <span>Create Free Account</span>
             </Link>
             <Link
-              to="/login?from=tv"
+              to={isAudience ? "/login?from=watch" : "/login?from=tv"}
               className="px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 border border-amber-900/40 text-amber-200 font-bold text-sm active:scale-95 transition-all flex items-center gap-2"
             >
               <LogIn className="w-4 h-4" />
               <span>Sign In</span>
             </Link>
           </div>
+        </div>
+      </TvShell>
+    );
+  }
+
+  if (closedReason) {
+    return (
+      <TvShell>
+        <div role="status" className="max-w-md rounded-3xl border border-amber-900/50 bg-black/70 p-8 text-center shadow-2xl">
+          <h2 className="mb-2 text-2xl font-black text-amber-100">The table has closed</h2>
+          <p className="mb-6 text-sm text-stone-300">{closedReason}</p>
+          <Link
+            to="/"
+            className="inline-flex min-h-[44px] items-center rounded-xl bg-amber-500 px-6 text-sm font-bold text-stone-950 transition hover:bg-amber-400"
+          >
+            Back to the lounge
+          </Link>
         </div>
       </TvShell>
     );
@@ -371,6 +412,7 @@ export default function PartyScreen(): JSX.Element {
             room={room}
             gameState={gameState}
             activeTurn={activeTurn}
+            audience={isAudience}
           />
         )}
 
@@ -399,6 +441,8 @@ export default function PartyScreen(): JSX.Element {
           activePlayerName={activeTurn.name}
         />
       )}
+
+      {isAudience && <AudienceBar onLeave={leaveAudience} />}
     </TvShell>
   );
 }

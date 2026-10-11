@@ -81,9 +81,11 @@ export interface TvGameArenaProps {
   room: RoomPublicState;
   gameState: Record<string, unknown> | null;
   activeTurn: TvActiveTurnInfo;
+  /** A friend watching on their own device, not a living-room screen: nobody here holds a controller. */
+  audience?: boolean;
 }
 
-export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
+export function TvGameArena({ room, gameState, activeTurn, audience = false }: TvGameArenaProps) {
   const game = room.game;
   const players = room.players;
   const [hcSkin] = useHcSkin();
@@ -269,7 +271,7 @@ export function TvGameArena({ room, gameState, activeTurn }: TvGameArenaProps) {
         </div>
 
         <div className="flex items-center gap-2 text-stone-400 text-xs font-mono flex-shrink-0">
-          <span>📱 Phone Controller Enabled</span>
+          <span>{audience ? "Audience view" : "📱 Phone Controller Enabled"}</span>
         </div>
       </div>
     </div>

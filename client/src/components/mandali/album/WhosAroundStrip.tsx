@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, Eye } from "lucide-react";
 import type { MandaliMember, MandaliMessage } from "@shared/mandali/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { useJoinSharedRoom } from "../../../hooks/useJoinSharedRoom";
@@ -12,7 +13,9 @@ import {
   pickOpenTables,
   playingSummary,
   whoIsAround,
+  watchableMatches,
   type OpenTable,
+  type WatchableMatch,
 } from "./aroundNow";
 
 export interface WhosAroundStripProps {
@@ -74,6 +77,7 @@ export function WhosAroundStrip({ members, messages, selfId }: WhosAroundStripPr
   }, [watched, subscribe]);
 
   const tables = pickOpenTables(messages, statuses, Date.now());
+  const matches = watchableMatches(around);
 
   if (around.length === 0 && tables.length === 0) return null;
 
@@ -89,7 +93,10 @@ export function WhosAroundStrip({ members, messages, selfId }: WhosAroundStripPr
         ? t("mandali.around.playing", { name: playing.first.displayName, game: playing.game })
         : t("mandali.around.inGame", { name: playing.first.displayName })
     : null;
-  const summary = [here > 0 ? t("mandali.people.online", { count: here }) : null, playingLine].filter(Boolean).join(" · ");
+  // A Watch row below already says who is playing what; the summary repeats it only when there is no such row.
+  const summary = [here > 0 ? t("mandali.people.online", { count: here }) : null, matches.length > 0 ? null : playingLine]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section aria-label={t("mandali.around.label")} className="flex-shrink-0 border-b border-album-line bg-album-raised/70 px-3 py-2.5">
@@ -116,6 +123,16 @@ export function WhosAroundStrip({ members, messages, selfId }: WhosAroundStripPr
         </div>
       )}
 
+      {matches.length > 0 && (
+        <ul aria-label={t("mandali.around.live")} className={`m-0 grid list-none gap-2 p-0 ${around.length > 0 ? "mt-2.5" : ""}`}>
+          {matches.map((match) => (
+            <li key={match.code}>
+              <WatchRow match={match} />
+            </li>
+          ))}
+        </ul>
+      )}
+
       {tables.length > 0 && (
         <ul aria-label={t("mandali.around.tables")} className={`m-0 grid list-none gap-2 p-0 ${around.length > 0 ? "mt-2.5" : ""}`}>
           {tables.map((table) => (
@@ -126,6 +143,38 @@ export function WhosAroundStrip({ members, messages, selfId }: WhosAroundStripPr
         </ul>
       )}
     </section>
+  );
+}
+
+/** A friend's match in progress: one tap and you are in the audience, seeing the whole game. */
+function WatchRow({ match }: { match: WatchableMatch }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [first, ...rest] = match.players;
+  const line =
+    rest.length > 0
+      ? t("mandali.around.playingMore", { name: first.displayName, count: rest.length })
+      : match.game
+        ? t("mandali.around.playing", { name: first.displayName, game: match.game })
+        : t("mandali.around.inGame", { name: first.displayName });
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-album-line bg-album-field/60 px-3 py-2">
+      <AlbumAvatar avatar={first.avatar} name="" size="md" />
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-[15px] font-semibold leading-snug text-album-ink">{line}</p>
+        <p className="m-0 truncate text-[13px] leading-snug text-album-ink3">{t("mandali.around.watchHint")}</p>
+      </div>
+      <AlbumButton
+        variant="quiet"
+        onClick={() => navigate(`/watch/${match.code}`)}
+        aria-label={t("mandali.around.watchLabel", { name: first.displayName })}
+        icon={<Eye className="h-4 w-4" aria-hidden="true" />}
+        className="flex-shrink-0"
+      >
+        {t("mandali.around.watch")}
+      </AlbumButton>
+    </div>
   );
 }
 

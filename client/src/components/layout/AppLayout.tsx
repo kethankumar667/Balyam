@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode, lazy, Suspense } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import AppHeader from "./AppHeader";
 import AppSidebar from "./AppSidebar";
@@ -85,7 +85,8 @@ export default function AppLayout({
   showBreadcrumbs = true,
   showFallingPetals = false,
 }: AppLayoutProps) {
-  const { pathname, search } = useLocation();
+  const { pathname, search, state: navState } = useLocation();
+  const navigate = useNavigate();
   const [theme] = useTheme();
   const isDark = theme === "dark";
 
@@ -93,6 +94,15 @@ export default function AppLayout({
   const [joinOpen, setJoinOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
+
+  // Arriving with `state.newRoom` (a finished table's "Create a new room") opens the create-room
+  // sheet for that game, once, and clears the state so a refresh or Back does not reopen it.
+  useEffect(() => {
+    const slug = (navState as { newRoom?: string } | null)?.newRoom;
+    if (typeof slug !== "string" || slug === "") return;
+    setSheetGame(slug as BhalyamGameSlug);
+    navigate(`${pathname}${search}`, { replace: true, state: null });
+  }, [navState, navigate, pathname, search]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileInitialView, setProfileInitialView] = useState<"profile" | "notifications">("profile");

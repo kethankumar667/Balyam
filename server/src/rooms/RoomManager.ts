@@ -88,7 +88,7 @@ import { createEngine, getGameLimits, getGameOrientationRequirement } from "../g
 import { NO_ECONOMY_GAMES } from "@shared/catalog.js";
 import type { CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR, capabilitiesFor } from "@shared/permissions.js";
-import { ALLOWED_REACTIONS } from "@shared/reactions.js";
+import { ALLOWED_REACTIONS, QUICK_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
 import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
 import { sanitizeAvatar, pickAvatarForName } from "@shared/avatars.js";
@@ -240,6 +240,10 @@ const AUTO_PLAY_TURN_CAP = 5;
  * turn-count-only with no time floor.
  */
 const DISCONNECT_FORFEIT_TURN_CAP = 5;
+/** What someone watching a match can send: the general cheering set only. */
+const AUDIENCE_REACTIONS: ReadonlySet<string> = new Set<string>(QUICK_REACTIONS);
+/** An audience member’s budget per 4 seconds: tighter than a seated player’s 6. */
+const AUDIENCE_REACTIONS_PER_WINDOW = 3;
 /** Last N finished rounds kept per room (docs/rummy/roadmap.md B.1). */
 const MAX_RUMMY_HISTORY = 20;
 /** Last N finished rounds kept per room, UNO's own history. */
@@ -1300,6 +1304,24 @@ export class RoomManager {
     return active;
   }
 
+  /**
+   * Room code to watch each seated person’s match from, for rooms that are under way and take an
+   * audience. A sealed room (a guest’s solo table) takes nobody new, so it is left out rather than
+   * offered as a "Watch" that would always be refused. Keyed like `getActiveGamesByPlayer`.
+   */
+  getWatchableRoomsByPlayer(): Map<string, string> {
+    const watchable = new Map<string, string>();
+    for (const room of this.rooms.values()) {
+      if (room.phase !== "playing" || room.sealed) continue;
+      for (const player of room.players.values()) {
+        if (player.isBot || !player.isConnected) continue;
+        watchable.set(player.id, room.code);
+        if (player.identityId) watchable.set(player.identityId, room.code);
+      }
+    }
+    return watchable;
+  }
+
   getRoomCount(): number {
     return this.rooms.size;
   }
@@ -2154,7 +2176,6 @@ export class RoomManager {
     // list disappearing; announcing it in chat too would just be noise.
     // Only a mid-MATCH departure gets the real-time notice below.
     const wasPlaying = room.phase === "playing";
-    const wasHostDeparting = room.hostId === playerId;
     room.players.delete(playerId);
     room.roomRevision++;
     this.cancelActiveStartAttempt(room, "roster_changed");
@@ -2166,26 +2187,9 @@ export class RoomManager {
     // lifetime of a long-running room.
     this.forgetSeatTimers(room, playerId);
 
-    // Root-caused 2026-09-09 from a live report: a POST-match table (phase
-    // "finished" — a live match's own forfeit/succession rules below are
-    // untouched, this only fires once there's nothing left to settle) used
-    // to auto-promote a new host and stay open no matter who left, or shrink
-    // silently to a lone player with nobody left to play — either way
-    // leaving someone stuck on the results screen with no path forward.
-    // Close it outright instead, for two distinct reasons a departure can
-    // make it unable to continue:
-    if (room.phase === "finished") {
-      const { min } = getGameLimits(room.game);
-      if (wasHostDeparting) {
-        if (this.closeRoomForEveryone(room, "The host left after the match ended.")) return;
-      } else if (room.players.size < min) {
-        if (this.closeRoomForEveryone(room, "Not enough players remained to continue.")) return;
-      }
-      // Enough non-host players remain and the host is unaffected — fall
-      // through to the ordinary tail below, which already handles a
-      // finished-phase roster shrink correctly (no engine turn to move,
-      // `resumeTable` no-ops on a non-"playing" room).
-    }
+    // A finished table is left to the ordinary tail below, whoever departs. Players still reading
+    // their results stay on it; a departing host is replaced like any other, and the room closes
+    // through the normal teardown once the last human has gone (`hasHumanPlayer`).
 
     // No humans left (empty, or only bots remain) → abandon the room rather
     // than have the engine crown a leftover bot the winner. A remaining HUMAN
@@ -4904,6 +4908,8 @@ export class RoomManager {
     // forfeit leave the opponent's board running until a refresh.
     this.broadcastGameState(room);
     this.broadcastRoomState(room);
+    // No human is left, so whoever is still attached is an audience member: tell them the table is gone.
+    this.io.to(room.code).emit("room:closed", { reason: "This match was closed because no eligible player remained at the table." });
   }
 
   /**
@@ -5093,54 +5099,6 @@ export class RoomManager {
    * because the room happens to already be finished rather than freshly
    * abandoned.
    */
-  /**
-   * Closes an already-finished room (a post-match results table,
-   * never a live match) for every remaining client at once, and
-   * tells them BEFORE it disappears — see `room:closed`'s own doc comment
-   * in shared/types.ts for the silent-teardown bug this replaces.
-   *
-   * Called from `leaveRoom` under two conditions, both product decisions
-   * from a live report (2026-09-09): the HOST leaving after a match ends
-   * (no auto-promoted successor keeps a post-match table open — the room
-   * belongs to whoever was hosting it), or a departure that leaves fewer
-   * players than the game needs to ever field another match (the ordinary
-   * 2-player case: the only opponent left, nobody to play against).
-   */
-  /**
-   * Returns whether the room actually closed — false means the caller must
-   * fall through to its own normal departure handling instead of treating
-   * the room as gone.
-   */
-  private closeRoomForEveryone(room: Room, reason: string): boolean {
-    // The SAME precondition `closeConcludedRoom` itself enforces, checked
-    // BEFORE announcing anything — a room whose terminal persistence is
-    // still in flight or awaiting retry (a settlement PostgreSQL call that
-    // failed, say) must stay open and recoverable. Telling every client
-    // "this room is closed, go home" and detaching their sockets would be
-    // a lie the instant `closeConcludedRoom` then refuses to actually
-    // delete it. Returning false leaves the caller's own existing
-    // hasHumanPlayer/reassignHost path to run exactly as it did before
-    // this feature existed — untouched for the one case where the money
-    // isn't actually settled yet.
-    if (room.terminalStatus === "PERSISTING" || room.terminalStatus === "FAILED") {
-      return false;
-    }
-    if (room.terminalPromise && (room.terminalStatus as RoomTerminalStatus) !== "COMPLETED") {
-      return false;
-    }
-    this.io.to(room.code).emit("room:closed", { reason });
-    // Detach every remaining socket from server-side room bookkeeping so
-    // none of them are left half-tracked once the room object is gone —
-    // the departing player's OWN socket was already detached by the
-    // caller before this runs.
-    for (const socketId of room.socketToPlayer.keys()) {
-      this.io.sockets.sockets.get(socketId)?.leave(room.code);
-      this.socketToRoom.delete(socketId);
-    }
-    this.closeConcludedRoom(room);
-    return true;
-  }
-
   private closeConcludedRoom(room: Room): void {
     if (room.terminalStatus === "PERSISTING" || room.terminalStatus === "FAILED") {
       logger.warn({
@@ -5159,6 +5117,10 @@ export class RoomManager {
       return;
     }
     serverTimelineRecorder.recordPlayerLeft(room.code, "system", "room_closed_after_completion");
+    // Last word to anyone still attached, an audience member watching the table above all: the
+    // room is about to be deleted, and they must leave this screen now rather than discover it
+    // on a refresh.
+    this.io.to(room.code).emit("room:closed", { reason: "This match has ended and the table has closed." });
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
     this.stopSimulation(room);
@@ -6176,7 +6138,10 @@ export class RoomManager {
 
   sendReaction(socketId: string, emoji: string, targetPlayerId?: string): void {
     const { room, player } = this.lookup(socketId);
-    if (!room || !player) return;
+    if (!room || !player) {
+      this.sendAudienceReaction(socketId, emoji);
+      return;
+    }
     if (!ALLOWED_REACTIONS.has(emoji)) return;
 
     // Spam guard. A targeted reaction lands on someone else's screen, so an
@@ -6193,6 +6158,32 @@ export class RoomManager {
       fromPlayerId: player.id,
       emoji,
       targetPlayerId: validTarget,
+      ts: Date.now(),
+    });
+  }
+
+  /**
+   * Someone watching from outside the table can cheer, and only cheer. They take no seat, so this
+   * is the whole of what an audience can do besides look: only the general cheering set (never a
+   * throwable or a nudge, which land on a player), never aimed at anyone, on a tighter budget than
+   * a seated player. Anything else from a spectator socket is dropped silently.
+   */
+  private sendAudienceReaction(socketId: string, emoji: string): void {
+    const code = this.spectatorToRoom.get(socketId);
+    const room = code ? this.rooms.get(code) : undefined;
+    if (!room || !(AUDIENCE_REACTIONS as ReadonlySet<string>).has(emoji)) return;
+
+    const key = `audience:${socketId}`;
+    const now = Date.now();
+    const bucket = (this.reactionRate.get(key) ?? []).filter((t) => now - t < 4000);
+    if (bucket.length >= AUDIENCE_REACTIONS_PER_WINDOW) return;
+    bucket.push(now);
+    this.reactionRate.set(key, bucket);
+    this.io.to(room.code).emit("room:reaction", {
+      id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      fromPlayerId: "audience",
+      fromAudience: true,
+      emoji,
       ts: Date.now(),
     });
   }
@@ -6401,6 +6392,15 @@ export class RoomManager {
     if (room.engine) socket?.emit("game:state", room.engine.getPublicState());
     // Seated players see the count change immediately.
     this.broadcastRoomState(room);
+    // And are told in plain words: being watched is something a player should know. A screen
+    // attaching to a lobby is not announced; only a live match has an audience worth mentioning.
+    if (room.phase === "playing") {
+      const watching = room.spectators.size;
+      this.systemMessage(
+        room,
+        watching === 1 ? "Someone is now watching this match." : `${watching} people are now watching this match.`,
+      );
+    }
     return { ok: true };
   }
 
@@ -6408,6 +6408,7 @@ export class RoomManager {
     const code = this.spectatorToRoom.get(socketId);
     if (!code) return;
     this.spectatorToRoom.delete(socketId);
+    this.reactionRate.delete(`audience:${socketId}`);
     const room = this.rooms.get(code);
     if (!room) return;
     room.spectators.delete(socketId);
@@ -6537,19 +6538,9 @@ export class RoomManager {
         metricsRegistry.increment("recovery.sessions_expired_total");
       }
       const droppedPlayer = stillRoom.players.get(playerId);
-      const wasHostDropping = stillRoom.hostId === playerId;
       this.noteDepartureForSettlement(stillRoom, droppedPlayer);
       this.forgetSeatTimers(stillRoom, playerId);
       stillRoom.players.delete(playerId);
-
-      if (stillRoom.phase === "finished") {
-        const { min } = getGameLimits(stillRoom.game);
-        if (wasHostDropping) {
-          if (this.closeRoomForEveryone(stillRoom, "The host left after the match ended.")) return;
-        } else if (stillRoom.players.size < min) {
-          if (this.closeRoomForEveryone(stillRoom, "Not enough players remained to continue.")) return;
-        }
-      }
 
       if (!this.hasHumanPlayer(stillRoom)) {
         logger.info({

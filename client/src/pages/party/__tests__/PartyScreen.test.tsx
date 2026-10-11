@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import PartyScreen from "../../PartyScreen";
 import type { RoomPublicState, Player } from "@shared/types";
@@ -345,5 +345,75 @@ describe("PartyScreen (TV Mode Spectator Experience)", () => {
     await waitFor(() => {
       expect(screen.getByText("cricbuzz live")).toBeDefined();
     });
+  });
+});
+
+describe("PartyScreen audience mode (watching a friend's match from your own device)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(cleanup);
+
+  const renderAudience = (code = "TV1234") =>
+    render(
+      <MemoryRouter initialEntries={[`/watch/${code}`]}>
+        <Routes>
+          <Route path="/watch/:code" element={<PartyScreen mode="audience" />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+  function attachAndShow(room: RoomPublicState) {
+    const listeners: Record<string, (payload: never) => void> = {};
+    mockSocket.on.mockImplementation((event: string, listener: (payload: never) => void) => {
+      listeners[event] = listener;
+    });
+    mockSocket.emit.mockImplementation((event: string, _payload: unknown, cb?: (res: { ok: boolean }) => void) => {
+      if (event === "room:spectate" && typeof cb === "function") cb({ ok: true });
+    });
+    renderAudience();
+    act(() => {
+      (listeners["room:state"] as (s: RoomPublicState) => void)(room);
+    });
+    return listeners;
+  }
+
+  it("attaches as a spectator, takes no seat, and shows a cheering bar with Leave", async () => {
+    attachAndShow({ ...mockLobbyRoom, phase: "playing" });
+
+    expect(mockSocket.emit).toHaveBeenCalledWith("room:spectate", expect.objectContaining({ code: "TV1234" }), expect.any(Function));
+    expect(await screen.findByRole("toolbar", { name: "Cheer for the players" })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Leave/ })).toBeDefined();
+  });
+
+  it("cheers with an emoji only: no target, no chat box", async () => {
+    attachAndShow({ ...mockLobbyRoom, phase: "playing" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Clap" }));
+
+    expect(mockSocket.emit).toHaveBeenCalledWith("room:reaction", { emoji: "👏" });
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("is not there on the TV screen, which only displays the crowd", async () => {
+    mockSocket.emit.mockImplementation((event: string, _p: unknown, cb?: (res: { ok: boolean }) => void) => {
+      if (event === "room:spectate" && typeof cb === "function") cb({ ok: true });
+    });
+    renderPartyScreen("TV1234");
+
+    expect(screen.queryByRole("toolbar", { name: "Cheer for the players" })).toBeNull();
+  });
+
+  it("tells the audience when the table closes, instead of leaving them on a dead game", async () => {
+    const listeners = attachAndShow({ ...mockLobbyRoom, phase: "finished" });
+
+    act(() => {
+      (listeners["room:closed"] as (p: { reason: string }) => void)({ reason: "This match has ended and the table has closed." });
+    });
+
+    expect(await screen.findByText("The table has closed")).toBeDefined();
+    expect(screen.getByText("This match has ended and the table has closed.")).toBeDefined();
+    expect(screen.getByRole("link", { name: /Back to the lounge/ })).toBeDefined();
+    expect(screen.queryByRole("toolbar", { name: "Cheer for the players" })).toBeNull();
   });
 });

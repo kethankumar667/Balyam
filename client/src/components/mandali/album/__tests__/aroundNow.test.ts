@@ -1,7 +1,15 @@
 import { describe, it, expect } from "vitest";
 import type { MandaliMember, MandaliMessage } from "@shared/mandali/types.js";
 import type { RoomInviteStatus } from "@shared/mandali/notifications.js";
-import { OPEN_TABLE_MAX_AGE_MS, OPEN_TABLES_MAX, pickOpenTables, playingSummary, whoIsAround } from "../aroundNow";
+import {
+  OPEN_TABLE_MAX_AGE_MS,
+  OPEN_TABLES_MAX,
+  WATCHABLE_MATCHES_MAX,
+  pickOpenTables,
+  playingSummary,
+  watchableMatches,
+  whoIsAround,
+} from "../aroundNow";
 
 const NOW = 1_800_000_000_000;
 
@@ -147,5 +155,39 @@ describe("pickOpenTables", () => {
     );
 
     expect(tables.map((t) => t.code)).toEqual(["OPEN11"]);
+  });
+});
+
+describe("watchableMatches", () => {
+  const playing = (id: string, code: string | undefined, over: Partial<MandaliMember> = {}) =>
+    member(id, "in-game", { activeGame: "ludo", ...(code ? { watchCode: code } : {}), ...over });
+
+  it("offers a match that has a watch code, naming the game as people say it", () => {
+    const [match] = watchableMatches([playing("bala", "LDO482")]);
+
+    expect(match).toMatchObject({ code: "LDO482", game: "Ludo" });
+    expect(match.players.map((p) => p.playerId)).toEqual(["bala"]);
+  });
+
+  it("offers no match for someone mid-game without a code: a sealed room takes no audience", () => {
+    expect(watchableMatches([playing("bala", undefined)])).toEqual([]);
+  });
+
+  it("ignores people who are not mid-match, even if a stale code rides along", () => {
+    expect(watchableMatches([member("a", "online", { watchCode: "LDO482" })])).toEqual([]);
+  });
+
+  it("lists one match per room however many friends are in it", () => {
+    const matches = watchableMatches([playing("a", "LDO482"), playing("b", "LDO482"), playing("c", "LDO482")]);
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0].players.map((p) => p.playerId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("offers at most the number the strip can show", () => {
+    const matches = watchableMatches([playing("a", "AAA111"), playing("b", "BBB222"), playing("c", "CCC333")]);
+
+    expect(matches).toHaveLength(WATCHABLE_MATCHES_MAX);
+    expect(matches.map((m) => m.code)).toEqual(["AAA111", "BBB222"]);
   });
 });
