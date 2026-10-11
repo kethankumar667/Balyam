@@ -16,6 +16,7 @@ import { gameLabel } from "./games";
 
 const RING_RADIUS = 38;
 
+/** Level title, tier and XP on one tight strip: the bar is the point, everything else is a caption. */
 export function LevelPanel({ progression }: { progression: MiniclipXPProgression }) {
   const { t } = useTranslation();
   const { currentLevel, levelTitle, tier, currentXP, nextLevelXP, levelProgressPercent, totalLifetimeXP } = progression;
@@ -29,24 +30,17 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
   }, []);
 
   return (
-    <section aria-label={t("mandali.profile.level", { level: currentLevel })} className="rounded-2xl border border-album-line bg-album-raised p-4">
-      <div className="flex items-center gap-3">
-        <span
-          className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-full border-[3px] bg-album-page leading-none"
-          style={{ borderColor: tier.themeColor }}
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-album-ink3">Lv</span>
-          <span className="text-xl font-bold tabular-nums text-album-ink">{currentLevel}</span>
+    <section aria-label={t("mandali.profile.level", { level: currentLevel })} className="rounded-2xl border border-album-line bg-album-raised px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="m-0 flex min-w-0 items-center gap-1.5 text-sm text-album-ink3">
+          <span aria-hidden="true" className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: tier.themeColor }} />
+          <span className="truncate">
+            <span className="font-semibold text-album-ink">{levelTitle}</span> · {tier.name} · {t("mandali.profile.xpTotal", { count: totalLifetimeXP.toLocaleString() })}
+          </span>
+        </p>
+        <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-album-ink2">
+          {t("mandali.profile.xpOfNext", { current: currentXP, next: nextLevelXP })}
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="m-0 truncate text-base font-semibold leading-snug text-album-ink">{levelTitle}</p>
-          <p className="m-0 flex items-center gap-1.5 text-[13px] text-album-ink3">
-            <span aria-hidden="true" className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: tier.themeColor }} />
-            <span className="truncate">
-              {tier.name} · {t("mandali.profile.xpTotal", { count: totalLifetimeXP.toLocaleString() })}
-            </span>
-          </p>
-        </div>
       </div>
 
       <div
@@ -55,7 +49,7 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
         aria-valuemin={0}
         aria-valuemax={nextLevelXP}
         aria-valuenow={currentXP}
-        className="mt-4 h-3 overflow-hidden rounded-full bg-album-line"
+        className="mt-2 h-2 overflow-hidden rounded-full bg-album-line"
       >
         <div
           className="h-full w-full origin-left rounded-full transition-transform duration-700 ease-out motion-reduce:transition-none"
@@ -65,10 +59,7 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
           }}
         />
       </div>
-      <p className="m-0 mt-2 flex items-center justify-between text-[13px] tabular-nums text-album-ink3">
-        <span className="font-semibold text-album-ink2">{t("mandali.profile.xpOfNext", { current: currentXP, next: nextLevelXP })}</span>
-        <span>{t("mandali.profile.xpToNext", { count: toGo })}</span>
-      </p>
+      <p className="m-0 mt-1 text-right text-xs tabular-nums text-album-ink3">{t("mandali.profile.xpToNext", { count: toGo })}</p>
     </section>
   );
 }
@@ -76,15 +67,15 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
 /** A ring that fills to `percent`. Drawn with pathLength so the dash is a plain 0-100. */
 function WinRing({ percent, label }: { percent: number; label: string }) {
   return (
-    <div role="img" aria-label={`${label} ${percent}%`} className="relative h-[88px] w-[88px] flex-shrink-0">
+    <div role="img" aria-label={`${label} ${percent}%`} className="relative h-16 w-16 flex-shrink-0">
       <svg viewBox="0 0 88 88" className="h-full w-full" aria-hidden="true">
-        <circle cx="44" cy="44" r={RING_RADIUS} fill="none" strokeWidth="8" className="stroke-album-line" />
+        <circle cx="44" cy="44" r={RING_RADIUS} fill="none" strokeWidth="9" className="stroke-album-line" />
         <circle
           cx="44"
           cy="44"
           r={RING_RADIUS}
           fill="none"
-          strokeWidth="8"
+          strokeWidth="9"
           strokeLinecap="round"
           pathLength={100}
           strokeDasharray={`${percent} 100`}
@@ -93,8 +84,8 @@ function WinRing({ percent, label }: { percent: number; label: string }) {
         />
       </svg>
       <span aria-hidden="true" className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="text-xl font-bold tabular-nums text-album-ink">{percent}%</span>
-        <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-album-ink3">{label}</span>
+        <span className="text-[15px] font-bold tabular-nums text-album-ink">{percent}%</span>
+        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-album-ink3">{label}</span>
       </span>
     </div>
   );
@@ -102,12 +93,12 @@ function WinRing({ percent, label }: { percent: number; label: string }) {
 
 function Tile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-album-field px-3 py-2.5">
-      <p className="m-0 flex items-center gap-1.5 text-xs text-album-ink3">
-        {icon}
-        {label}
-      </p>
-      <p className="m-0 mt-1 truncate text-[15px] font-semibold text-album-ink">{value}</p>
+    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-album-field px-2.5 py-1.5">
+      {icon}
+      <div className="min-w-0">
+        <p className="m-0 truncate text-[11px] leading-tight text-album-ink3">{label}</p>
+        <p className="m-0 truncate text-sm font-semibold leading-tight text-album-ink">{value}</p>
+      </div>
     </div>
   );
 }
@@ -122,10 +113,12 @@ export function RecordPanel({ stats, name }: { stats: PlayerStats; name: string 
 
   if (stats.totalMatches <= 0) {
     return (
-      <section aria-label={t("mandali.profile.record")} className="rounded-2xl border border-dashed border-album-line bg-album-raised p-4 text-center">
-        <Gamepad2 className="mx-auto h-6 w-6 text-album-ink3" aria-hidden="true" />
-        <p className="m-0 mt-2 text-[15px] font-semibold text-album-ink">{t("mandali.profile.noMatches")}</p>
-        <p className="m-0 mt-1 text-sm leading-relaxed text-album-ink3">{t("mandali.profile.noMatchesBody", { name })}</p>
+      <section aria-label={t("mandali.profile.record")} className="flex items-center gap-3 rounded-2xl border border-dashed border-album-line bg-album-raised px-3 py-2.5">
+        <Gamepad2 className="h-6 w-6 flex-shrink-0 text-album-ink3" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="m-0 text-sm font-semibold text-album-ink">{t("mandali.profile.noMatches")}</p>
+          <p className="m-0 text-xs leading-snug text-album-ink3">{t("mandali.profile.noMatchesBody", { name })}</p>
+        </div>
       </section>
     );
   }
@@ -140,35 +133,35 @@ export function RecordPanel({ stats, name }: { stats: PlayerStats; name: string 
   ];
 
   return (
-    <section aria-label={t("mandali.profile.record")} className="rounded-2xl border border-album-line bg-album-raised p-4">
-      <div className="flex items-center gap-4">
+    <section aria-label={t("mandali.profile.record")} className="rounded-2xl border border-album-line bg-album-raised p-3">
+      <div className="flex items-center gap-3">
         <WinRing percent={percent} label={t("mandali.profile.winRate")} />
-        <dl className="m-0 grid min-w-0 flex-1 gap-1.5">
+        <dl className="m-0 grid min-w-0 flex-1 grid-cols-4 gap-1.5">
           {rows.map((row) => (
-            <div key={row.label} className="flex items-center justify-between gap-2">
-              <dt className="flex min-w-0 items-center gap-2 text-sm text-album-ink3">
-                <span aria-hidden="true" className={`h-2 w-2 flex-shrink-0 rounded-full ${row.swatch}`} />
+            <div key={row.label} className="min-w-0 rounded-lg bg-album-field px-1.5 py-1 text-center">
+              <dd className="m-0 text-base font-bold leading-tight tabular-nums text-album-ink">{row.value.toLocaleString()}</dd>
+              <dt className="flex items-center justify-center gap-1 text-[10px] leading-tight text-album-ink3">
+                <span aria-hidden="true" className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${row.swatch}`} />
                 <span className="truncate">{row.label}</span>
               </dt>
-              <dd className="m-0 text-[15px] font-semibold tabular-nums text-album-ink">{row.value.toLocaleString()}</dd>
             </div>
           ))}
         </dl>
       </div>
 
-      <div aria-hidden="true" className="mt-4 flex h-2 gap-0.5 overflow-hidden rounded-full bg-album-line">
+      <div aria-hidden="true" className="mt-2.5 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-album-line">
         {stats.wins > 0 && <span className="bg-album-success" style={{ flexGrow: stats.wins }} />}
         {stats.draws > 0 && <span className="bg-album-ink3" style={{ flexGrow: stats.draws }} />}
         {stats.losses > 0 && <span className="bg-album-danger" style={{ flexGrow: stats.losses }} />}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
         <Tile
-          icon={<Flame className="h-3.5 w-3.5 text-album-foil" aria-hidden="true" />}
+          icon={<Flame className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />}
           label={t("mandali.profile.bestStreak")}
           value={t("mandali.profile.streakGames", { count: stats.bestWinStreak })}
         />
-        <Tile icon={<Star className="h-3.5 w-3.5 text-album-foil" aria-hidden="true" />} label={t("mandali.profile.favourite")} value={favourite} />
+        <Tile icon={<Star className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />} label={t("mandali.profile.favourite")} value={favourite} />
       </div>
     </section>
   );
@@ -177,9 +170,9 @@ export function RecordPanel({ stats, name }: { stats: PlayerStats; name: string 
 /** What stands in for the record while it loads: the same footprint, so nothing jumps when it lands. */
 export function RecordSkeleton() {
   return (
-    <div aria-hidden="true" className="grid gap-3 motion-safe:animate-pulse">
-      <div className="h-[132px] rounded-2xl bg-album-field" />
-      <div className="h-[200px] rounded-2xl bg-album-field" />
+    <div aria-hidden="true" className="grid gap-2 motion-safe:animate-pulse">
+      <div className="h-[66px] rounded-2xl bg-album-field" />
+      <div className="h-[150px] rounded-2xl bg-album-field" />
     </div>
   );
 }
@@ -187,7 +180,7 @@ export function RecordSkeleton() {
 export function RecordUnavailable() {
   const { t } = useTranslation();
   return (
-    <p role="status" className="m-0 rounded-2xl bg-album-field px-4 py-3 text-sm leading-relaxed text-album-ink3">
+    <p role="status" className="m-0 rounded-2xl bg-album-field px-3 py-2.5 text-sm leading-relaxed text-album-ink3">
       {t("mandali.profile.unavailable")}
     </p>
   );
