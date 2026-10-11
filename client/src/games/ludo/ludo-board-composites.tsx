@@ -500,6 +500,35 @@ function LudoPlayerCard({
   const secondsLeft = useTurnSecondsLeft(timedKey);
   const showTimer = timedKey != null;
 
+  /**
+   * The countdown pill. On a crowded table (five or more seats, or a dense layout) the card is
+   * barely wider than the name, so the pill drops its icon and moves under the name, beside the
+   * home count, instead of taking a column of its own and squeezing the name down to two letters.
+   */
+  const compactCard = isManyPlayers || dense;
+  const turnIsUrgent = showTimer && secondsLeft <= 5;
+  const turnChip = (
+    <div
+      className={`font-black uppercase tracking-wide rounded-full shadow-sm flex items-center gap-1 border transition-all ${
+        compactCard ? "text-[9.5px] px-1 py-px flex-shrink-0 leading-none" : "text-[10px] px-2.5 py-0.5"
+      } ${
+        turnIsUrgent
+          ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-300 animate-pulse shadow-red-500/30"
+          : "text-amber-950 border-amber-300/80 shadow-amber-500/20"
+      }`}
+      style={{
+        background: turnIsUrgent ? undefined : "linear-gradient(135deg, #FDE047 0%, #F59E0B 100%)",
+      }}
+      title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
+    >
+      {!compactCard && <DiceIcon size={10} />}
+      <span className="tabular-nums font-mono font-black">
+        {showTimer ? `${secondsLeft}s` : "Turn"}
+      </span>
+    </div>
+  );
+  const turnChipBesideName = compactCard && seat.active && !offline && !seat.isWinner;
+
   // Ultra-compact card layout for 7-8 players on small mobile screens
   if (ultra) {
     return (
@@ -668,7 +697,7 @@ function LudoPlayerCard({
         </span>
       )}
       {/* Left: Avatar Hub */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className={`flex items-center min-w-0 flex-1 ${compactCard ? "gap-1.5" : "gap-2"}`}>
         <div className="relative flex-shrink-0 flex items-center justify-center">
           <LudoSeatAvatar seat={seat} tint={tint} rim={rim} size={avatarPx} isSelf={isSelf} />
 
@@ -749,20 +778,20 @@ function LudoPlayerCard({
             </div>
           ) : (
             <div
-              className="flex items-center gap-1.5 mt-0.5 leading-none"
+              className={`flex items-center mt-0.5 leading-none min-w-0 ${turnChipBesideName ? "gap-1" : "gap-1.5"}`}
               title={`${seat.tokensHome}/4 tokens reached home`}
             >
               {isManyPlayers ? (
                 /* Numeric notation for 5-6 players */
                 <span
-                  className="inline-flex items-center gap-1 font-mono font-black text-[9.5px] tabular-nums px-1.5 py-0.5 rounded leading-none"
+                  className={`inline-flex items-center gap-1 font-mono font-black text-[9.5px] tabular-nums py-0.5 rounded leading-none ${turnChipBesideName ? "px-1" : "px-1.5"}`}
                   style={{
                     background: seat.tokensHome > 0 ? `${tint}20` : "rgba(109,67,35,0.08)",
                     color: seat.tokensHome > 0 ? rim : "#6D4C3D",
                     border: `1px solid ${seat.tokensHome > 0 ? `${tint}40` : "rgba(109,67,35,0.15)"}`,
                   }}
                 >
-                  <HomeIcon size={9} />
+                  {!turnChipBesideName && <HomeIcon size={9} />}
                   <span>{seat.tokensHome}/4</span>
                 </span>
               ) : (
@@ -787,13 +816,14 @@ function LudoPlayerCard({
                   })}
                 </div>
               )}
+              {turnChipBesideName && turnChip}
             </div>
           )}
         </div>
       </div>
 
       {/* Right: Status & Turn Countdown Hub — ONLY rendered for active turn or finished ranks to eliminate clutter */}
-      {(seat.isWinner || (seat.active && !offline) || seat.rank != null) && (
+      {(seat.isWinner || (seat.active && !offline && !turnChipBesideName) || seat.rank != null) && (
         <div className="flex-shrink-0 flex items-center justify-end">
           {seat.isWinner ? (
             <span
@@ -803,26 +833,8 @@ function LudoPlayerCard({
               <CrownIcon size={11} />
               <span>Won</span>
             </span>
-          ) : seat.active && !offline ? (
-            <div
-              className={`text-[10px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 border transition-all ${
-                showTimer && secondsLeft <= 5
-                  ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-300 animate-pulse shadow-red-500/30"
-                  : "text-amber-950 border-amber-300/80 shadow-amber-500/20"
-              }`}
-              style={{
-                background:
-                  showTimer && secondsLeft <= 5
-                    ? undefined
-                    : "linear-gradient(135deg, #FDE047 0%, #F59E0B 100%)",
-              }}
-              title={showTimer ? `${secondsLeft}s left in this turn` : "Active turn"}
-            >
-              <DiceIcon size={10} />
-              <span className="tabular-nums font-mono font-black">
-                {showTimer ? `${secondsLeft}s` : "Turn"}
-              </span>
-            </div>
+          ) : seat.active && !offline && !turnChipBesideName ? (
+            turnChip
           ) : seat.rank != null ? (
             <span
               className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full text-stone-600 bg-stone-200/80 border border-stone-300"
