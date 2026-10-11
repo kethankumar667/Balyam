@@ -28,6 +28,8 @@ export interface PlayerStats {
   bestPlayStreak: number;
   favoriteGame: GameKind | "none";
   perGame: Partial<Record<GameKind, GameStats>>;
+  /** TEMPORARY: set only on placeholder numbers (see server/src/profile/demoStats.ts). */
+  demo?: boolean;
 }
 
 export const INITIAL_PLAYER_STATS = (playerId: string): PlayerStats => ({

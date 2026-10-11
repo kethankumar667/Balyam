@@ -146,6 +146,11 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
           <RecordSkeleton />
         ) : record.progression || record.stats ? (
           <>
+            {(record.progression?.demo || record.stats?.demo) && (
+              <p className="m-0 inline-flex w-fit rounded-full border border-album-line bg-album-page px-2.5 py-1 text-xs font-semibold text-album-ink3">
+                {t("mandali.profile.demoData")}
+              </p>
+            )}
             {record.progression && <LevelPanel progression={record.progression} />}
             {record.stats && <RecordPanel stats={record.stats} name={member.displayName} />}
           </>

@@ -82,6 +82,8 @@ export interface MiniclipXPProgression {
   levelTitle: string;
   rewardForNextLevel: LevelReward;
   unclaimedRewards?: LevelMilestone[];
+  /** TEMPORARY: set only on placeholder numbers (see server/src/profile/demoStats.ts). */
+  demo?: boolean;
 }
 
 export const XP_CONFIG = {

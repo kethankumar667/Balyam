@@ -72,6 +72,21 @@ describe("MemberProfileSheet", () => {
     expect(apiJson.mock.calls.map((c) => c[0]).sort()).toEqual(["/api/profile/p_senthil/progression", "/api/profile/p_senthil/stats"]);
   });
 
+  it("labels placeholder numbers as demo data", async () => {
+    serve({ stats: stats({ demo: true }), progression: { ...progression(), demo: true } });
+    open();
+
+    expect(await screen.findByText(/Demo data/)).toBeInTheDocument();
+  });
+
+  it("shows no demo label on a real record", async () => {
+    serve({ stats: stats(), progression: progression() });
+    open();
+
+    await screen.findByText("Games played");
+    expect(screen.queryByText(/Demo data/)).toBeNull();
+  });
+
   it("shows their level, XP bar and how far they are to the next level", async () => {
     serve({ stats: stats(), progression: progression() });
     open();

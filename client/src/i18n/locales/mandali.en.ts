@@ -128,6 +128,7 @@ export const mandaliEn = {
   "mandali.profile.favourite": "Favourite game",
   "mandali.profile.noFavourite": "Not yet",
   "mandali.profile.noMatches": "No matches yet",
+  "mandali.profile.demoData": "Demo data: placeholder numbers while we test",
   "mandali.profile.noMatchesBody": "{{name}} has not finished a match yet. Play one together and the numbers start here.",
   "mandali.profile.unavailable": "Their game record can't be loaded right now.",
   "mandali.people.presence.online": "Here now",

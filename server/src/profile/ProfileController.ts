@@ -3,6 +3,7 @@ import { profileService } from "./ProfileService.js";
 import { matchHistoryService } from "./MatchHistoryService.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
 import type { GameKind } from "@shared/types.js";
+import { demoProgressionFor, demoStatsFor } from "./demoStats.js";
 
 /**
  * Player profiles.
@@ -81,7 +82,7 @@ profileRouter.delete("/:playerId", requireSelfParam(), (req, res) => {
 
 /** PUBLIC — career totals. These are what a leaderboard row is made of. */
 profileRouter.get("/:playerId/stats", (req, res) => {
-  res.json({ stats: profileService.getStats(req.params.playerId) });
+  res.json({ stats: demoStatsFor(profileService.getStats(req.params.playerId)) });
 });
 
 /** PRIVATE — who you played, and when. */
@@ -116,7 +117,7 @@ profileRouter.get("/:playerId/achievements", requireSelfParam(), (req, res) => {
 
 /** PUBLIC — full Miniclip XP progression, tier details, and milestone roadmap. */
 profileRouter.get("/:playerId/progression", (req, res) => {
-  res.json({ progression: profileService.getProgression(req.params.playerId) });
+  res.json({ progression: demoProgressionFor(req.params.playerId, profileService.getProgression(req.params.playerId)) });
 });
 
 /** PRIVATE — claim milestone level reward. */
