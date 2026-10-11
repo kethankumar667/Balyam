@@ -133,9 +133,9 @@ comm -23 /tmp/dots.txt /tmp/ttt.txt
 - [ ] Win detection covers **horizontal, vertical, both diagonals**, at every position including board edges, and
       **5+ in a row** counts. Returns the exact winning cells. A win on the very last (42nd) move is a **win, not a draw**.
 - [ ] Draw only when the board is full and nobody has four. `winnerId === null` on a draw.
-- [ ] Turn order: first player chosen fairly and **alternated on rematch** (mirror `orderForAlternatingFirstMove` in the Tic Tac Toe engine).
+- [ ] Turn order: first player chosen fairly (a room hosts one match, so there is no rematch to alternate it for).
 - [ ] Turn clock: a first-turn grace (`TICTACTOE_FIRST_TURN_GRACE_MS` pattern), a `restartTurnClock()`-style re-arm that
-      `RoomManager` can call after a rematch or restart, and the agreed timeout policy from §1. The clock must never be left
+      `RoomManager` can call after a restart, and the agreed timeout policy from §1. The clock must never be left
       un-armed after a restart, and must never fire twice for one turn.
 - [ ] `getWinner(): string | null` implemented (economy + profile code duck-type on it) **and** `winnerId` in public state,
       and the two always agree.
@@ -160,10 +160,8 @@ Tic Tac Toe needed changes at **every** one of these. Use `git grep -n "TicTacTo
       `createMemberRoom` in `RoomInspectorTelemetry.test.ts`, socket handler). Run the whole server suite; positional shifts
       break tests far from your change.
 - [ ] `server/src/sockets/index.ts`: forward `payload.connect4Options` into `createRoom`.
-- [ ] **Every place an engine is created or restarted** applies the options: the normal start path **and the rematch path**
-      (`engine.setOptions(room.connect4Options)` — grep `instanceof TicTacToeEngine`). Forgetting the rematch path silently
-      resets options and the turn clock on game 2.
-- [ ] Rematch: seating / first-move alternation preserved, turn clock re-armed, `departedThisMatch` cleared, options kept.
+- [ ] **Every place an engine is created** applies the options (`engine.setOptions(room.connect4Options)` — grep
+      `instanceof TicTacToeEngine`). Forgetting one silently resets options and the turn clock.
 - [ ] **Pass & Play:** the `addLocalPlayer` allow-list in `RoomManager` includes `connect4` (Tic Tac Toe was missing from it — the
       option was offered in the UI but rejected by the server).
 - [ ] **Guest eligibility:** same-device local seats (`isLocal`) are not "other humans". A guest may host Pass & Play at the
@@ -245,7 +243,7 @@ Copy the *structure* of `client/src/games/tictactoe/`, not its bugs.
       must handle a **draw** (no crown) and a forfeit. Add tests. (Bug fixed once already: a tie crowned the host.)
 - [ ] `useMatchSettlement` is wired for the terminal match id so the wallet refreshes after a paid match (already generic — verify,
       don't duplicate).
-- [ ] Rematch UI works; the opponent leaving mid-game shows the forfeit result, not a frozen board.
+- [ ] The opponent leaving mid-game shows the forfeit result, not a frozen board.
 - [ ] Reconnect: refreshing the page mid-game restores the board (seat token, 90 s grace) without losing the turn.
 
 ---
@@ -354,8 +352,8 @@ Copy the *patterns*: `server/src/games/tictactoe/__tests__/`, `server/src/rooms/
 
 **Server**
 - [ ] Engine: every move rule in §5 including each invalid-input class; all 4 win directions at edges; win on move 42; draw;
-      gravity; turn order + rematch alternation; timeout policy; `removePlayer`; bot legality + determinism.
-- [ ] Room: `sanitizeConnect4Options` (garbage/extreme/missing/wrong types ⇒ defaults or clamped); options survive rematch;
+      gravity; turn order; timeout policy; `removePlayer`; bot legality + determinism.
+- [ ] Room: `sanitizeConnect4Options` (garbage/extreme/missing/wrong types ⇒ defaults or clamped);
       Pass & Play allowed; guest cases; forfeit; departure after game over; disposal leaves no timers.
 - [ ] Economy: the §7 scenarios with a real `RoomManager`.
 - [ ] Scores: forged client post rejected; draws/forfeits/local seats record nothing; idempotent per `matchId`.
@@ -395,7 +393,7 @@ node scripts/quality-gates/bundleBudgetGuard.mjs      # see note
 - [ ] All green **except** `bundleBudgetGuard`, which already fails on `main` for exactly three chunks (`Game2048Page`, `HandCricketBoard`,
       `WordBuildingBoard`). Your change must not add a fourth. Build output shows **no** CSS/Tailwind warnings.
 - [ ] Manual, at least once, on a real dev server (`:4000` / `:5173` belong to the user — start yours on other ports and stop it after):
-      two browsers, play a full game, a draw, a forfeit (close a tab), a rematch, a refresh mid-game, Pass & Play, a guest, a signed-in
+      two browsers, play a full game, a draw, a forfeit (close a tab), a refresh mid-game, Pass & Play, a guest, a signed-in
       paid match with the wallet shown before and after. Say honestly what you did **not** verify.
 - [ ] Re-ran §2 with `connect4`; nothing unexplained.
 
@@ -417,7 +415,6 @@ node scripts/quality-gates/bundleBudgetGuard.mjs      # see note
 | What went wrong | Rule |
 |---|---|
 | Pass & Play offered in the UI but the server rejected it | §6 `addLocalPlayer` allow-list |
-| Game options reset on rematch; turn clock dead on game 2 | §5 clock re-arm, §6 rematch path applies options |
 | Options taken from the client without validation | §4 sanitizer; §6 never use the raw payload |
 | A tie crowned the host on the result modal | §10 `rankMatchPlayers` handles draws |
 | Winner "not credited" — paid on the 5 s sweep, joiner got a 403, wallet never refreshed | §7 tests at ~100 ms; participants may read their settlement |

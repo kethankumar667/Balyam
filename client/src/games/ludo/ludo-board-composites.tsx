@@ -1773,10 +1773,9 @@ export function LudoOverlays({
           finishOrder={state.finishOrder ?? []}
           stats={state.stats}
           finishedCount={state.finishedCount}
-          // Hands off to the platform game-over flow (auto-leave countdown +
-          // rematch), which the generic scorecard used to own.
+          // Hands off to the platform game-over flow (auto-leave countdown),
+          // which the generic scorecard used to own.
           onClose={m.closeScorecard}
-          onRematch={m.rematch}
           selfId={m.selfId}
         />
       )}

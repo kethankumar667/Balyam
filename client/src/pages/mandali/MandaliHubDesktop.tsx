@@ -37,6 +37,7 @@ import {
   Composer,
   GroupMenu,
   MessageFeed,
+  WhosAroundStrip,
   PeopleList,
   StartGameSheet,
   usePanelCollapse,
@@ -347,6 +348,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
           </div>
         ) : (
           <>
+            <WhosAroundStrip members={members} messages={messages} selfId={selfId} />
             <MessageFeed
               variant="desktop"
               messages={messages}

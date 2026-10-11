@@ -15,7 +15,7 @@ import {
 /**
  * Room-level behaviour of Tic Tac Toe: everything the engine tests cannot see
  * because it lives in RoomManager — profile/XP recording, option handling on
- * the create-room path, the turn timer, rematch seating and Pass & Play.
+ * the create-room path, the turn timer and Pass & Play.
  */
 
 function makeIo() {
@@ -176,24 +176,6 @@ describe("Tic Tac Toe through RoomManager", () => {
       expect(rm.joinRoom("sB2", "Bob", code, bobId, bobToken).ok).toBe(true);
       await vi.advanceTimersByTimeAsync(60_000);
       expect(room.engine.getPublicState().moveCount).toBeGreaterThan(0); // an idle X is eventually auto-played
-    });
-  });
-
-  describe("rematch", () => {
-    it("swaps who moves first so the host does not always get X", async () => {
-      const rm = new RoomManager(makeIo());
-      const { aliceId, bobId, room } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
-      expect(room.engine.getPublicState().turnPlayerId).toBe(aliceId);
-      await play(rm, ALICE_WINS_IN_3);
-
-      rm.requestRematch("sA");
-      rm.respondRematch("sB", "accept");
-      await vi.advanceTimersByTimeAsync(10_000);
-
-      expect(room.phase).toBe("playing");
-      const second = room.engine.getPublicState();
-      expect(second.turnPlayerId).toBe(bobId);
-      expect(second.playerMarks[bobId]).toBe("X");
     });
   });
 

@@ -18,7 +18,7 @@
 ├───────────────────────────┼────────────────────────────┤
 │ • RoomManager (In-Memory) │ • Zustand State Store      │
 │ • GameEngine Interface    │ • Dual-Layout Boards       │
-│ • Turn Timers & Rematch   │ • Sound & Haptic Manager   │
+│ • Turn Timers & Bots      │ • Sound & Haptic Manager   │
 │ • Cryptographic Seats     │ • DLS Design Tokens        │
 └───────────────────────────┴────────────────────────────┘
 ```

@@ -246,7 +246,7 @@ export interface RoomPublicState {
   /** Bingo's own round history — same "photo album" convention as UNO/Rummy
    *  above, kept separate since Bingo's recap shape (winners + pattern +
    *  called-count, no melds/cards) doesn't overlap either. No champion
-   *  concept — Bingo rounds are standalone rematches, not a race-to-target
+   *  concept — Bingo rounds are standalone, not a race-to-target
    *  multi-round match, so there's nothing to crown. Oldest first, Bingo
    *  only — empty elsewhere. */
   bingoHistory: BingoRoundRecap[];
@@ -288,8 +288,8 @@ export interface RoomPublicState {
    *
    * Set in the same synchronous step that clears `currentMatchId` (so it
    * is always present in the broadcast that announces a match finished or
-   * was abandoned), and reset to `null` the moment a NEW match (including
-   * a rematch) successfully commits — a stale id from a previous match
+   * was abandoned), and reset to `null` the moment a NEW match
+   * successfully commits — a stale id from a previous match
    * must never be readable once a new one is underway. Null until this
    * room's first match concludes.
    */
@@ -1217,8 +1217,7 @@ export interface RpsRoundResult {
   winnerId: string | null;
 }
 
-/** Race-to-target match state. Multiple matches can be played in a room — each
- *  reset bumps `matchNumber` and clears scores/history. */
+/** Race-to-target match state. One match is played per room. */
 export interface RpsState {
   kind: "rps";
   round: number;
@@ -1229,7 +1228,7 @@ export interface RpsState {
   history: RpsRoundResult[];
   winnerId: string | null;
   isOver: boolean;
-  /** 1-based counter; increments with each rematch in the same room. */
+  /** 1-based match counter. Always 1 now that a room hosts a single match; kept so the saved state and the board keep their shape. */
   matchNumber: number;
   /** Per-player current win streak (resets on loss/draw). */
   streak: Record<string, number>;
@@ -3133,35 +3132,6 @@ export interface WebRTCSignalRecvPayload {
   signal: WebRTCSignal;
 }
 
-/**
- * Rematch flow.
- *
- * When a game finishes, the host can request another round in the same room
- * with the same players. Every non-host (humans only — bots auto-accept) sees
- * an accept/decline prompt. The match starts the moment all responses are in,
- * or is cancelled if anyone declines / the timer expires.
- *
- * The status types:
- *   - "idle"        : no rematch in progress
- *   - "pending"     : host requested, waiting on responses
- *   - "accepted"    : everyone accepted; brief countdown before restart
- *   - "declined"    : someone said no (or timed out); rematch cancelled
- */
-export type RematchStatus = "idle" | "pending" | "accepted" | "declined";
-
-export interface RematchState {
-  status: RematchStatus;
-  requesterId: string | null;
-  /** Map of playerId -> response. Bots are auto-accepted on request. */
-  responses: Record<string, "pending" | "accept" | "decline">;
-  /** Wall-clock ms when the pending request expires if not all responses are in. */
-  expiresAt: number | null;
-  /** When status === "accepted", wall-clock ms when the new game auto-starts. */
-  startsAt: number | null;
-  /** When status === "declined", the playerId who declined (or null if timed out). */
-  declinedBy: string | null;
-}
-
 export interface ServerToClientEvents {
   "room:state": (state: RoomPublicState) => void;
   "room:joined": (payload: { playerId: string; state: RoomPublicState }) => void;
@@ -3180,8 +3150,6 @@ export interface ServerToClientEvents {
   "room:reaction": (payload: ReactionRecvPayload) => void;
   "room:sound": (payload: SoundboardRecvPayload) => void;
   "room:cursor": (payload: CursorRecvPayload) => void;
-  /** Broadcasted whenever rematch state changes for the room. */
-  "rematch:state": (state: RematchState) => void;
   /** Broadcasted to challenge required participants before match start. */
   "room:startPreflight": (payload: StartPreflightPayload) => void;
   /** Broadcasted when an in-flight start attempt is cancelled or times out. */
@@ -3192,7 +3160,7 @@ export interface ServerToClientEvents {
    * room used to be torn down (`closeConcludedRoom`) in complete silence —
    * the host leaving after the match ended, or the last opponent leaving a
    * 2-player table, deleted the room with no signal to whoever was still
-   * looking at the rematch screen. They only found out by refreshing,
+   * looking at the results screen. They only found out by refreshing,
    * which then failed to rejoin with a generic "Room not found." This is
    * sent BEFORE the room is deleted, while its socket room still has
    * everyone in it, specifically so a still-connected client can react
@@ -3304,10 +3272,6 @@ export interface ClientToServerEvents {
   "room:reaction": (payload: ReactionSendPayload) => void;
   "room:sound": (payload: SoundboardSendPayload) => void;
   "room:cursor": (payload: CursorSendPayload) => void;
-  /** Host-only. Initiates a rematch request to all other players in the room. */
-  "rematch:request": () => void;
-  /** Any non-host response to a pending rematch request. */
-  "rematch:respond": (response: "accept" | "decline") => void;
   /**
    * Rummy-specific. The client streams the player's drag-and-drop hand
    * arrangement so the server can score the player's actual groups on

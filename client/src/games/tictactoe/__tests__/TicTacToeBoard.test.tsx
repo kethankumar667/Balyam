@@ -117,7 +117,7 @@ describe("TicTacToeBoardMobile", () => {
     );
 
     expect(screen.getByText(/VICTORY ACHIEVED!/)).toBeTruthy();
-    expect(screen.getByText(/Request Instant Rematch/)).toBeTruthy();
+    expect(screen.queryByText(/Rematch/i)).toBeNull();
   });
 
   it("renders Quantum FIFO warning 'Dissolves Next' when a player has 3 pieces on board", () => {

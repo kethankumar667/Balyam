@@ -71,7 +71,7 @@ export class RpsEngine implements GameEngine {
 
   applyMove(move: MoveContext): MoveResult {
     if (this.state.isOver) {
-      return { ok: false, error: "Match over — request a rematch to keep playing" };
+      return { ok: false, error: "Match over" };
     }
     if (move.type !== "choose") {
       return { ok: false, error: `Unknown move type: ${move.type}` };

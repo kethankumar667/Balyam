@@ -39,6 +39,7 @@ import {
   MessageFeed,
   PeopleList,
   StartGameSheet,
+  WhosAroundStrip,
 } from "../../components/mandali/album";
 
 export interface MandaliHubMobileProps {
@@ -185,6 +186,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
                 </AlbumButton>
               </div>
             )}
+            <WhosAroundStrip members={members} messages={messages} selfId={selfId} />
             <MessageFeed
               variant="phone"
               messages={messages}

@@ -3,7 +3,6 @@ import { confetti } from "@tsparticles/confetti";
 import { Eye, LogOut } from "lucide-react";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
-import RematchPanel from "../../components/RematchPanel";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
@@ -405,9 +404,6 @@ export default function DotsBoxesScorecardModal({
             : "border-slate-800/80 bg-[#0C0F2D]/95"
         }`}
       >
-        {/* Rematch Panel */}
-        <RematchPanel players={players} selfId={selfId} className="w-full" />
-
         {/* Secondary Buttons */}
         <div className="flex items-center gap-2.5">
           <button

@@ -25,7 +25,7 @@ Every interaction in BHALYAM must feel satisfying. Slapping a card on the felt, 
 A user should be able to land on BHALYAM and enter their first game within **10 seconds**. Never place mandatory sign-up walls in front of basic gameplay. Guests can play, explore, and join friends freely.
 
 ### Tenet 3: Quality Over Quantity (Anti-Feature-Creep)
-We reject building 50 shallow games. Every game onboarded to BHALYAM must be a masterpiece: complete with intelligent bots, dual mobile/desktop layouts, server-authoritative netcode, haptic/audio themes, rematch negotiation, and tournament readiness.
+We reject building 50 shallow games. Every game onboarded to BHALYAM must be a masterpiece: complete with intelligent bots, dual mobile/desktop layouts, server-authoritative netcode, haptic/audio themes, and tournament readiness.
 
 ### Tenet 4: Universal Ergonomics & Accessibility
 Gaming is for everyone. BHALYAM must run smoothly on a $100 budget Android phone on a mobile browser just as gracefully as on an ultra-wide desktop monitor with mouse and keyboard.

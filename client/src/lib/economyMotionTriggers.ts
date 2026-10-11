@@ -18,8 +18,8 @@ type TerminalMatchRoomState = Pick<RoomPublicState, "phase" | "lastMatchId">;
  * The id to hand `SettlementView`/`BhalyamResultModal` once a match has
  * concluded — `lastMatchId`, never `currentMatchId` (already null by the
  * time `phase` reports "finished") and never the room code (stable across
- * an entire room's lifetime, including every rematch — using it here would
- * make every match in a room share one settlement lookup).
+ * an entire room's lifetime — using it here would tie the settlement lookup
+ * to the room instead of the match).
  */
 export function deriveTerminalMatchId(roomState: TerminalMatchRoomState | null | undefined): string | undefined {
   if (!roomState || roomState.phase !== "finished") return undefined;
@@ -28,14 +28,12 @@ export function deriveTerminalMatchId(roomState: TerminalMatchRoomState | null |
 
 /**
  * True exactly when a match is genuinely beginning: a fresh game
- * (lobby → playing) or a rematch (finished → playing — `startRematch` sets
- * `phase` directly from "finished", it never passes back through "lobby",
- * confirmed by reading `RoomManager.startRematch`). Both are real starts;
- * every other transition into "playing" (there are none today, but this
- * stays an explicit allow-list rather than "anything -> playing") is not.
+ * (lobby → playing). A room hosts one match, so that is the only start; every
+ * other transition into "playing" (there are none today, but this stays an
+ * explicit allow-list rather than "anything -> playing") is not.
  */
 export function isMatchStartTransition(prevPhase: string | undefined, nextPhase: string | undefined): boolean {
-  return nextPhase === "playing" && (prevPhase === "lobby" || prevPhase === "finished");
+  return nextPhase === "playing" && prevPhase === "lobby";
 }
 
 type CommitmentRoomState = Pick<

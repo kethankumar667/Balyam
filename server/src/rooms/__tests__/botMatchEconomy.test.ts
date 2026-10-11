@@ -167,50 +167,15 @@ describe("Free Bot Matches Economy Rule", () => {
     expect(errorEmits).toEqual([]);
   });
 
-  it("allows rematch against bots for free with 0 coin deductions", async () => {
-    const { repo, service } = freshEconomy();
-    seedMember(repo, HOST_MEMBER, "5000");
-
-    const { io } = makeIo();
-    const rooms = new RoomManager(io, service);
-
-    const host = createRoomAs(rooms, "s_host", "Alice", "rps", "member", HOST_MEMBER);
-    rooms.addBot("s_host", "Bot1");
-    rooms.setReady("s_host", true);
-
-    await rooms.requestGameStart("s_host");
-
-    const room = peek(rooms, host.code);
-    expect(room.phase).toBe("playing");
-
-    // Fast-forward to finished
-    room.phase = "finished";
-    room.rematch.status = "accepted";
-
-    // Request rematch
-    // @ts-expect-error private method call
-    await rooms.requestRematchStart(room);
-
-    expect(room.phase).toBe("playing");
-    expect(room.currentMatchId).toBeNull();
-
-    const hostWallet = await service.getWallet(HOST_MEMBER);
-    expect(hostWallet.balance).toBe("5000");
-  });
-
   /**
    * Product decision, 2026-09-09: a bot is scoped to the match it was
-   * added for, not a standing opponent. Before this, a bot added for one
-   * match stayed seated straight through a real match ending into the
-   * post-match rematch-negotiation view — visually indistinguishable from
-   * a real player still "Waiting" to ready up for a round it was never
-   * actually part of. This drives the real `finalizeMatch` path (unlike
-   * the test above, which forces `phase`/`rematch.status` directly and so
-   * never exercises the purge), and confirms the host has to re-add a bot
-   * — the ordinary Add Bot control, now also enabled in this window — to
-   * get one back for the next match.
+   * added for, not a standing opponent. A bot added for one match used to stay
+   * seated straight through a real match ending, indistinguishable from a real
+   * player still "Waiting" for a round it was never part of. This drives the real
+   * `finalizeMatch` path, so the purge actually runs, and confirms a finished
+   * room does not take new bots: another game is a new room.
    */
-  it("clears bot seats once a real match concludes, and lets the host re-add one for the next match", async () => {
+  it("clears bot seats once a real match concludes, and a finished room takes no new bots", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, HOST_MEMBER, "5000");
     const { io } = makeIo();
@@ -248,17 +213,9 @@ describe("Free Bot Matches Economy Rule", () => {
     expect(room.players.size).toBe(1);
     expect([...room.players.values()].some((p) => p.isBot)).toBe(false);
 
-    // Alone now, a bare rematch request is refused (below RPS's minimum) —
-    // re-adding a bot, now allowed during this "finished" window, is the
-    // intended path back to a free practice rematch.
-    rooms.requestRematch("s_host");
-    expect(room.rematch.status).toBe("idle");
-
+    // Another game is a new room: a finished one takes no bots.
     rooms.addBot("s_host", "Bot2");
-    expect(room.players.size).toBe(2);
-    rooms.requestRematch("s_host");
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(room.phase).toBe("playing");
+    expect(room.players.size).toBe(1);
   });
 
   it("returns zero-cost quote from quoteMatchCheckout for bot practice", async () => {

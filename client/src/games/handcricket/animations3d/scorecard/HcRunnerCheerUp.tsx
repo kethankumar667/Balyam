@@ -112,12 +112,12 @@ export function HcRunnerCheerUp({
         {/* Motivational cheer message */}
         <p className="text-sm sm:text-base font-bold opacity-95 leading-relaxed mb-4">
           {skin === "nostalgia"
-            ? `Tough luck ${runnerName}! You fought hard till the end. Every legend has off days — challenge them to a rematch right now! 🤝`
+            ? `Tough luck ${runnerName}! You fought hard till the end. Every legend has off days — challenge them to a new room right now! 🤝`
             : skin === "doordarshan"
             ? `${runnerName}, हार में भी हौसला है! अगली बार जीत आपकी ही होगी। दोबारा मुकाबला कीजिए!`
             : skin === "cricbuzz"
-            ? `Incredible rivalry from ${runnerName}! 100% fighting spirit displayed on the pitch. Take the learnings and bounce back in the rematch!`
-            : `Tough fight, ${runnerName}! Every true champion faces setbacks — that's how comebacks are written. Hit rematch and take the crown!`}
+            ? `Incredible rivalry from ${runnerName}! 100% fighting spirit displayed on the pitch. Take the learnings and bounce back in the next match!`
+            : `Tough fight, ${runnerName}! Every true champion faces setbacks — that's how comebacks are written. Start a new room and take the crown!`}
         </p>
 
         {/* Fighting Spirit Metric Badge */}

@@ -13,7 +13,6 @@ import {
   Volume2,
   VolumeX,
   Palette,
-  RotateCcw,
   BookOpen,
   AlertTriangle,
   Trophy,
@@ -65,7 +64,6 @@ export default function Connect4BoardMobile({
     secondsLeft,
     isTimerCritical,
     threat,
-    handleRematch,
   } = useConnect4Board({ state, players, selfId });
 
   return (
@@ -212,7 +210,7 @@ export default function Connect4BoardMobile({
         </div>
       </main>
 
-      {/* Outcome / Rematch Footer with Safe-Area Inset */}
+      {/* Outcome footer with Safe-Area Inset */}
       <footer className="px-4 py-3 border-t border-white/10 bg-black/60 backdrop-blur-xl z-20 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
         {isOver ? (
           <div className="flex flex-col items-center gap-2.5 max-w-[420px] mx-auto">
@@ -223,14 +221,6 @@ export default function Connect4BoardMobile({
               </span>
             </div>
             <div className="flex items-center gap-2 w-full">
-              <button
-                type="button"
-                onClick={handleRematch}
-                className="flex-1 min-h-[46px] py-2.5 px-4 rounded-xl bg-white hover:bg-white/90 text-slate-950 font-bold text-xs tracking-wide shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Rematch
-              </button>
               <button
                 type="button"
                 onClick={onLeave}

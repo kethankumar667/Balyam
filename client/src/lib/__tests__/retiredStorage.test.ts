@@ -17,12 +17,21 @@ describe("purgeRetiredStorage", () => {
     window.sessionStorage.clear();
   });
 
-  it("names the three keys the voucher feature used", () => {
+  it("names the keys the removed voucher and rematch features used", () => {
     expect([...RETIRED_STORAGE_KEYS].sort()).toEqual([
+      "bhalyam.auto_start",
       "bhalyam.pending_voucher_amount",
       "bhalyam.pending_voucher_code",
       "bhalyam.pending_vouchers",
     ]);
+  });
+
+  it("clears the retired rematch auto-start switch", () => {
+    window.localStorage.setItem("bhalyam.auto_start", "true");
+
+    purgeRetiredStorage();
+
+    expect(window.localStorage.getItem("bhalyam.auto_start")).toBeNull();
   });
 
   it("removes a leftover voucher from localStorage and from sessionStorage", () => {

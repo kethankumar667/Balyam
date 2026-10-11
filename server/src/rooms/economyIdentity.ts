@@ -31,7 +31,7 @@ import { logger } from "../lib/logger.js";
  * ── What resolving a guest identity does NOT change ────────────────────
  * Guests still cannot HOST an economy-gated match — that is a standing
  * product rule (2026-08-27 decision), enforced independently by
- * `RoomManager.requestGameStart`/`requestRematchStart` checking
+ * `RoomManager.requestGameStart` checking
  * `player.isGuest` directly, NOT by the absence of an `identityId`. Making
  * guest identities resolvable here must not silently reopen guest hosting
  * as a side effect — it does not, because that check does not rely on this

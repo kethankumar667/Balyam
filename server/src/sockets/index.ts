@@ -151,7 +151,7 @@ export function registerSocketHandlers(
       ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken, state: result.state });
     } catch (err) {
       // Without this, a thrown error here (e.g. a stale engine reference on
-      // a room left mid-rematch-failure) never calls `ack` — the client has
+      // a room left mid-start-failure) never calls `ack` — the client has
       // no timeout of its own on this call, so it spins on "Connecting to
       // room" forever with no error and no escape. `room:create` already
       // guards the same way; this brings `room:join` in line with it.
@@ -385,14 +385,6 @@ export function registerSocketHandlers(
 
   socket.on("room:cursor", ({ x, y }) => {
     rooms.relayCursor(socket.id, x, y);
-  });
-
-  socket.on("rematch:request", () => {
-    rooms.requestRematch(socket.id);
-  });
-
-  socket.on("rematch:respond", (response) => {
-    rooms.respondRematch(socket.id, response);
   });
 
   // Rummy-specific: client streams the player's drag-and-drop arrangement

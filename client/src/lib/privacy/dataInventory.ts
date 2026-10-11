@@ -261,13 +261,6 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
-    key: "bhalyam.auto_start",
-    label: "Auto-start next round",
-    description: "Whether rematch countdowns are accepted automatically once every player is ready.",
-    purpose: "preference",
-    isPersonalData: false,
-  },
-  {
     key: "bhalyam.turn_warning",
     label: "Turn time warning",
     description: "Whether the screen border pulses when your turn timer drops below 10 seconds.",

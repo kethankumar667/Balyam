@@ -59,8 +59,8 @@ describe("isMatchStartTransition", () => {
     expect(isMatchStartTransition("lobby", "playing")).toBe(true);
   });
 
-  it("true for a rematch: finished -> playing (RoomManager.startRematch sets phase directly, never back through lobby)", () => {
-    expect(isMatchStartTransition("finished", "playing")).toBe(true);
+  it("false for finished -> playing: a room hosts one match, so there is no second start", () => {
+    expect(isMatchStartTransition("finished", "playing")).toBe(false);
   });
 
   it("false for any other transition into playing", () => {
@@ -105,7 +105,7 @@ describe("buildCommitmentPayload", () => {
       players,
     });
     const second = buildCommitmentPayload({
-      currentMatchId: "m_second_after_rematch",
+      currentMatchId: "m_second_match",
       committedCostPerSeat: "100",
       committedTotalPot: "200",
       players,

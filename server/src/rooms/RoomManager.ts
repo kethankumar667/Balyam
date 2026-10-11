@@ -86,7 +86,7 @@ import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
 import { NO_ECONOMY_GAMES } from "@shared/catalog.js";
-import type { RematchState, CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
+import type { CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
 import { SEALED_ROOM_ERROR, capabilitiesFor } from "@shared/permissions.js";
 import { ALLOWED_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
@@ -139,7 +139,6 @@ import { SpaceWarEngine } from "../games/spacewar/SpaceWarEngine.js";
 import {
   TicTacToeEngine,
   scoreTicTacToeWin,
-  orderForAlternatingFirstMove,
 } from "../games/tictactoe/TicTacToeEngine.js";
 import { Connect4Engine, scoreConnect4Win } from "../games/connect4/Connect4Engine.js";
 import type { EconomyService, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
@@ -241,10 +240,6 @@ const AUTO_PLAY_TURN_CAP = 5;
  * turn-count-only with no time floor.
  */
 const DISCONNECT_FORFEIT_TURN_CAP = 5;
-/** How long the host's rematch request stays open before auto-cancelling. */
-const REMATCH_REQUEST_WINDOW_MS = 30_000;
-/** Countdown shown to everyone after all responses are in before the new game auto-starts. */
-const REMATCH_COUNTDOWN_MS = 3_000;
 /** Last N finished rounds kept per room (docs/rummy/roadmap.md B.1). */
 const MAX_RUMMY_HISTORY = 20;
 /** Last N finished rounds kept per room, UNO's own history. */
@@ -549,12 +544,6 @@ export interface Room {
   spaceWarOptions: SpaceWarOptions;
   ticTacToeOptions: TicTacToeOptions;
   connect4Options: Connect4Options;
-  /** Active rematch negotiation (or idle). Refer to the RematchState type. */
-  rematch: RematchState;
-  /** Timer that auto-cancels a pending rematch when the window expires. */
-  rematchTimer: NodeJS.Timeout | null;
-  /** Timer that auto-starts the new game once everyone accepts. */
-  rematchStartTimer: NodeJS.Timeout | null;
   /** Idempotency action registry: actionKey -> timestamp */
   processedActionIds: Map<string, number>;
   /**
@@ -589,8 +578,8 @@ export interface Room {
    * The most recently concluded match's id — see RoomPublicState.lastMatchId
    * for the full contract. Set (from `currentMatchId`) in the same
    * synchronous step that clears it, in `attemptSettlementPersistence`/
-   * `attemptAbandonmentPersistence`; reset to `null` when a new match (or
-   * rematch) commits.
+   * `attemptAbandonmentPersistence`; reset to `null` when a new match
+   * commits.
    */
   lastMatchId: string | null;
   /**
@@ -606,7 +595,7 @@ export interface Room {
    * stake" flow. Unlike `committedCostPerSeat` (which only exists while a
    * match is actively funded), this persists for the room's entire
    * lifetime and is what `buildParticipantDebits` reads as `costPerSeat`
-   * for every match/rematch this room ever starts. A guest host is always
+   * for every match this room ever starts. A guest host is always
    * exactly `GUEST_HOST_ENTRY_STAKE_COINS` — enforced both at creation
    * (rejecting a guest's non-100 request outright) and, authoritatively,
    * in `checkHostEconomyEligibility` (a guest can inherit an existing
@@ -624,7 +613,7 @@ export interface Room {
   economyCommitPending: boolean;
   /**
    * Explicit operation token identifying the specific in-flight commit request
-   * (initial match or rematch). Set immediately before `commitMatchEntry` and
+   * (the match start). Set immediately before `commitMatchEntry` and
    * cleared in `finally`. Used after `await commitMatchEntry` to deterministically
    * verify that the completed commit belongs to THIS exact start attempt and has
    * not been superseded by another operation on the room.
@@ -691,17 +680,6 @@ function newPlayerId(): string {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function emptyRematchState(): RematchState {
-  return {
-    status: "idle",
-    requesterId: null,
-    responses: {},
-    expiresAt: null,
-    startsAt: null,
-    declinedBy: null,
-  };
-}
-
 interface HostEconomyEligibility {
   eligible: boolean;
   error?: string;
@@ -720,8 +698,8 @@ interface HostEconomyEligibility {
  *    independent of `hasOtherHumanPlayers` (2026-09-08, custom entry stakes). This is the
  *    AUTHORITATIVE check for that rule: `RoomManager.createRoom` also rejects a guest's
  *    non-100 request at creation time, but that alone cannot cover a room that migrated
- *    to a guest host later (see `reassignHost`) — this check re-runs on every match/
- *    rematch start regardless of how the room got here.
+ *    to a guest host later (see `reassignHost`) — this check re-runs on every match
+ *    start regardless of how the room got here.
  *  - A registered member may host bot-only, mixed, or all-human matches at any valid stake.
  */
 function checkHostEconomyEligibility(
@@ -729,14 +707,11 @@ function checkHostEconomyEligibility(
   playersList: Player[],
   entryStakeCoins: number,
   game: GameKind,
-  isRematch = false,
 ): HostEconomyEligibility {
   if (!host.identityId || host.identityId.trim().length === 0) {
     return {
       eligible: false,
-      error: isRematch
-        ? "Host identity not resolved. Please sign in or refresh."
-        : "Player identity not resolved. Please refresh or sign in.",
+      error: "Player identity not resolved. Please refresh or sign in.",
     };
   }
 
@@ -744,9 +719,7 @@ function checkHostEconomyEligibility(
   if (host.isGuest && entryStakeCoins !== guestStake) {
     return {
       eligible: false,
-      error: isRematch
-        ? "This room's entry stake requires a signed-in host. Sign in to start, or ask a member to host instead."
-        : `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher stake, or ask a member to host instead.`,
+      error: `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher stake, or ask a member to host instead.`,
     };
   }
 
@@ -763,9 +736,7 @@ function checkHostEconomyEligibility(
   if (host.isGuest && hasOtherHumanPlayers) {
     return {
       eligible: false,
-      error: isRematch
-        ? "Only a signed-in account can host rematches with other players. Sign in to host, or ask a member to host instead."
-        : "Only a signed-in account can host matches with other players. Sign in to host, or ask a member to host instead.",
+      error: "Only a signed-in account can host matches with other players. Sign in to host, or ask a member to host instead.",
     };
   }
 
@@ -807,7 +778,7 @@ export class RoomManager {
   private champions = new Map<string, RummyChampion>();
   /** UNO's own "House Champion" per room table name — separate map, same rationale as `unoHistory`. */
   private unoChampions = new Map<string, UnoChampion>();
-  /** Last round number recorded into room.history per engine instance, so a fresh rematch's round 1 isn't mistaken for an already-seen round 1. */
+  /** Last round number recorded into room.history per engine instance, so a fresh engine's round 1 isn't mistaken for an already-seen round 1. */
   private lastRecordedRound = new WeakMap<RummyEngine, number>();
   /** Same idempotency guard as `lastRecordedRound`, scoped to UNO's own engine instances. */
   private lastRecordedUnoRound = new WeakMap<UnoEngine, number>();
@@ -821,7 +792,7 @@ export class RoomManager {
    * Screens watching a room, socket id -> room code.
    *
    * Deliberately NOT folded into `socketToRoom`. Every seat-related path in
-   * this file (disconnect takeover, turn timers, rematch, host migration)
+   * this file (disconnect takeover, turn timers, host migration)
    * keys off that map, and a TV appearing there would be treated as a player
    * who never moves — taking a seat, stalling turns, and inheriting the host
    * role when the host leaves.
@@ -917,7 +888,6 @@ export class RoomManager {
       gameOptions,
       players: Array.from(room.players.values()).map((p) => ({ ...p })),
       departedThisMatch: Array.from(room.departedThisMatch.values()).map((p) => ({ ...p })),
-      rematch: JSON.parse(JSON.stringify(room.rematch)),
       history: [...room.history],
       unoHistory: [...room.unoHistory],
       bingoHistory: [...room.bingoHistory],
@@ -1010,9 +980,6 @@ export class RoomManager {
       spaceWarOptions: typeof opts.spaceWarOptions === "object" && opts.spaceWarOptions !== null ? { ...DEFAULT_SPACEWAR_OPTIONS, ...opts.spaceWarOptions } : { ...DEFAULT_SPACEWAR_OPTIONS },
       ticTacToeOptions: sanitizeTicTacToeOptions(typeof opts.ticTacToeOptions === "object" && opts.ticTacToeOptions !== null ? opts.ticTacToeOptions as Partial<TicTacToeOptions> : {}),
       connect4Options: sanitizeConnect4Options(typeof opts.connect4Options === "object" && opts.connect4Options !== null ? opts.connect4Options as Partial<Connect4Options> : {}),
-      rematch: snapshot.rematch || emptyRematchState(),
-      rematchTimer: null,
-      rematchStartTimer: null,
       processedActionIds: new Map<string, number>(),
       currentMatchId: snapshot.currentMatchId,
       departedThisMatch: departedMap,
@@ -1936,9 +1903,6 @@ export class RoomManager {
       // Client-controlled payload: sanitised, never spread (see the helper's doc).
       ticTacToeOptions: sanitizeTicTacToeOptions(ticTacToeOptions),
       connect4Options: sanitizeConnect4Options(connect4Options),
-      rematch: emptyRematchState(),
-      rematchTimer: null,
-      rematchStartTimer: null,
       processedActionIds: new Map(),
       currentMatchId: null,
       departedThisMatch: new Map(),
@@ -2086,9 +2050,6 @@ export class RoomManager {
         const state = room.engine.getStateFor(existingPlayerId);
         this.io.sockets.sockets.get(socketId)?.emit("game:state", state);
       }
-      // Catch the rejoiner up on any rematch vote in progress so they don't
-      // see a stale "Game Over" with no prompt.
-      this.io.sockets.sockets.get(socketId)?.emit("rematch:state", room.rematch);
       performanceMonitor.recordDuration("room_join", performance.now() - joinStart);
       return {
         ok: true,
@@ -2188,7 +2149,7 @@ export class RoomManager {
     const departingPlayer = room.players.get(playerId);
     this.noteDepartureForSettlement(room, departingPlayer);
     // Captured before any mutation below — a departure from the LOBBY or
-    // from a post-match rematch-negotiation window (`phase: "finished"`)
+    // from a finished table (`phase: "finished"`)
     // is ordinary roster churn and already visible from the participant
     // list disappearing; announcing it in chat too would just be noise.
     // Only a mid-MATCH departure gets the real-time notice below.
@@ -2209,8 +2170,8 @@ export class RoomManager {
     // "finished" — a live match's own forfeit/succession rules below are
     // untouched, this only fires once there's nothing left to settle) used
     // to auto-promote a new host and stay open no matter who left, or shrink
-    // silently to a lone player with nobody to rematch against — either way
-    // leaving someone stuck on the rematch screen with no path forward.
+    // silently to a lone player with nobody left to play — either way
+    // leaving someone stuck on the results screen with no path forward.
     // Close it outright instead, for two distinct reasons a departure can
     // make it unable to continue:
     if (room.phase === "finished") {
@@ -2258,26 +2219,14 @@ export class RoomManager {
       // on the remaining player's screen until they refreshed the page.
       this.broadcastGameState(room);
     }
-    // If the leaver was part of a pending rematch vote, cancel it —
-    // proceeding would either deadlock (waiting on someone who's gone) or
-    // start a game with a smaller table than the host requested.
-    if (
-      room.rematch.status === "pending" &&
-      playerId in room.rematch.responses
-    ) {
-      this.cancelRematch(room, playerId);
-    } else if (room.rematch.status === "accepted" && room.hostId !== playerId) {
-      // Already counted-down; if a non-host leaves at the last second, the
-      // start will still go through with current players.
-    }
     if (room.phase === "playing" && room.engine?.isOver()) {
       // The departure itself just ended the match — a 1v1 forfeit-to-
       // opponent (Chess/Carrom/RPS/Hand Cricket's removePlayer) or a
       // multiplayer walkover down to the last seat (Ludo/UNO/SNL/...).
       // Without this, room.phase stayed "playing" forever: the engine
       // knew it was over but nothing ever told the room, so no match
-      // history/XP/achievements were recorded and rematch stayed
-      // unreachable (it's gated on phase === "finished"). Finalize it the
+      // history/XP/achievements were recorded and the room stayed
+      // in "playing" forever. Finalize it the
       // same way every other completion path does (see
       // MULTIPLAYER-RELIABILITY-BASELINE.md gap G14).
       if (wasPlaying) {
@@ -2321,11 +2270,9 @@ export class RoomManager {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can add bots");
       return;
     }
-    // Allowed in the lobby AND in the "finished, preparing a rematch" window
-    // (matches `isLobbyLike` on the client) — bots are scoped to one match
-    // (see `purgeMatchBots`), so re-adding them here is the ONLY way to get
-    // bots back for the next one. Still refused mid-round.
-    if (room.phase !== "lobby" && room.phase !== "finished") {
+    // Lobby only: bots are scoped to one match (see `purgeMatchBots`), and a
+    // finished room does not start another.
+    if (room.phase !== "lobby") {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot add bots mid-game");
       return;
     }
@@ -2365,9 +2312,8 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) return;
-    // Same window as `addBot` — a bot re-added for a rematch can still be
-    // removed before that next match actually starts.
-    if (room.phase !== "lobby" && room.phase !== "finished") return;
+    // Same window as `addBot`.
+    if (room.phase !== "lobby") return;
     const target = room.players.get(botId);
     if (!target?.isBot) return;
     room.players.delete(botId);
@@ -2378,7 +2324,7 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     if (player.id !== room.hostId) return;
-    if (room.phase !== "lobby" && room.phase !== "finished") return;
+    if (room.phase !== "lobby") return;
     const target = room.players.get(botId);
     if (!target?.isBot) return;
     const cleaned = newName?.trim().slice(0, 20);
@@ -2853,8 +2799,8 @@ export class RoomManager {
    * approved: `startGame` below stays fully synchronous and unchanged;
    * this is a new, narrow, ASYNC pre-commit step that runs before it, and
    * is the ONLY path `sockets/index.ts`'s `room:startGame` handler calls
-   * in production. `startRematch` (line ~3260) has its own analogous
-   * gate for the same reason — a rematch is a new match under the
+   * in production. A second match in the same room does not exist;
+   * players who want another game create a new room, which funds its own
    * existing economy design (no "free replay" concept exists anywhere in
    * Economy V1's schema or rules).
    *
@@ -2955,7 +2901,7 @@ export class RoomManager {
     }
 
     if (this.economyService) {
-      const eligibility = checkHostEconomyEligibility(player, playersList, room.entryStakeCoins, room.game, false);
+      const eligibility = checkHostEconomyEligibility(player, playersList, room.entryStakeCoins, room.game);
       if (!eligibility.eligible) {
         this.io.sockets.sockets.get(socketId)?.emit("room:error", eligibility.error!);
         return;
@@ -3632,8 +3578,7 @@ export class RoomManager {
     if (!room || !player || !room.engine) return;
 
     // Backstop against a late-arriving or replayed move reaching a room
-    // that is not currently mid-match (lobby, finished, or between a
-    // rematch settling) — Core Principle #5 ("completed matches cannot be
+    // that is not currently mid-match (lobby or finished) — Core Principle #5 ("completed matches cannot be
     // reopened by stale events") / Edge Case 20. Before this, the only
     // thing standing between a stale move and a "finished" room's engine
     // state was each of the 17 engines individually remembering its own
@@ -3774,14 +3719,12 @@ export class RoomManager {
    * Root-caused 2026-09-09 from a live report + explicit product decision:
    * a bot is a "fill the table for THIS match" convenience, not a
    * standing opponent. Before this, a bot added for one match stayed
-   * seated straight through into the post-match rematch-negotiation view
+   * seated straight through into the finished results view
    * — the host would see it sitting there marked "Waiting" alongside real
    * humans, as if it were a real participant who still needed to ready up
    * for a NEXT round it was never actually committed to. If the host wants
    * bots again, they add them again — the same one extra tap it always
-   * took the first time, via the ordinary Add Bot control (now also
-   * enabled during this "finished, preparing rematch" window — see
-   * `addBot`'s own updated phase check).
+   * took the first time, via the ordinary Add Bot control.
    */
   private purgeMatchBots(room: Room): void {
     for (const [id, p] of room.players) {
@@ -4021,11 +3964,10 @@ export class RoomManager {
           secondaryMetrics,
         };
       });
-      // When THIS match began, not when the room was created. A rematch reuses
-      // the room, so keying on `createdAt` gave every match after the first the
-      // same id as the first — and the store, which treats a repeated id as a
+      // When THIS match began, not when the room was created. Keying on
+      // `createdAt` once gave a room's later matches the same id as its first — and the store, which treats a repeated id as a
       // replay, dropped its history and its XP. It also made `durationMs` count
-      // the lobby, and for a rematch everything since the room opened.
+      // the lobby, and for a late start everything since the room opened.
       const startedAt = room.matchStartedAt ?? room.createdAt;
       const finishedAt = Date.now();
       profileService.recordMatchFinished({
@@ -4617,7 +4559,7 @@ export class RoomManager {
    * becomes interactive instead of when the server happened to finish init.
    *
    * Only the initial lobby -> playing transition (startGame) needs this: a
-   * rematch/next round never re-arms the client's `justStarted` flag
+   * next round never re-arms the client's `justStarted` flag
    * (Room.tsx only sets it when the previous phase was "lobby"), so it never
    * replays the gate and can keep calling scheduleTurnTimer directly.
    */
@@ -4894,7 +4836,6 @@ export class RoomManager {
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
     this.stopSimulation(room);
-    this.clearRematchTimers(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
@@ -5153,8 +5094,8 @@ export class RoomManager {
    * abandoned.
    */
   /**
-   * Closes an already-finished room (a post-match rematch-negotiation
-   * table, never a live match) for every remaining client at once, and
+   * Closes an already-finished room (a post-match results table,
+   * never a live match) for every remaining client at once, and
    * tells them BEFORE it disappears — see `room:closed`'s own doc comment
    * in shared/types.ts for the silent-teardown bug this replaces.
    *
@@ -5163,7 +5104,7 @@ export class RoomManager {
    * (no auto-promoted successor keeps a post-match table open — the room
    * belongs to whoever was hosting it), or a departure that leaves fewer
    * players than the game needs to ever field another match (the ordinary
-   * 2-player case: the only opponent left, nobody to rematch against).
+   * 2-player case: the only opponent left, nobody to play against).
    */
   /**
    * Returns whether the room actually closed — false means the caller must
@@ -5221,7 +5162,6 @@ export class RoomManager {
     this.clearTurnTimer(room);
     this.clearDealGateTimers(room);
     this.stopSimulation(room);
-    this.clearRematchTimers(room);
     for (const t of room.cleanupTimers.values()) clearTimeout(t);
     room.cleanupTimers.clear();
     for (const t of room.takeoverTimers.values()) clearTimeout(t);
@@ -5239,14 +5179,14 @@ export class RoomManager {
    * the exact request the commit was for — the one gap neither
    * `finalizeMatch` nor `abandonRoom` can close on their own, because both
    * operate on a live `room` object and take their guard from IT.
-   * A commit's own continuation (`requestGameStart`/`requestRematchStart`,
-   * after their `await commitMatchEntry(...)`) is the ONLY code that still holds
+   * A commit's own continuation (`requestGameStart`,
+   * after its `await commitMatchEntry(...)`) is the ONLY code that still holds
    * the matchId a moment like this needs.
    */
   private async queueCompensatingRefundForOrphanedCommit(
     matchId: string,
     roomCode: string,
-    operation: "requestGameStart" | "requestRematchStart",
+    operation: "requestGameStart",
     reason: string,
   ): Promise<void> {
     logger.warn({
@@ -6736,7 +6676,7 @@ export class RoomManager {
 
   /**
    * Emits each seated bot's static "tell" to room chat, once per match
-   * start (fresh game or rematch). Rummy only; no-op for every other game
+   * start. Rummy only; no-op for every other game
    * and for rooms with no bots. See RUMMY_BOT_TELLS above.
    */
   private emitRummyBotTells(room: Room): void {
@@ -6931,416 +6871,5 @@ export class RoomManager {
       ts: Date.now(),
     });
     if (room.bingoHistory.length > MAX_BINGO_HISTORY) room.bingoHistory.shift();
-  }
-
-  /* ───────────────────────────── Rematch flow ───────────────────────────── */
-
-  /**
-   * Host requests a rematch with the same players. Anyone connected (humans
-   * only — bots auto-accept) gets a prompt to accept/decline. If everyone
-   * accepts the new round starts after a short countdown; any decline (or
-   * timeout) cancels.
-   *
-   * Idempotent for the host: requesting again while pending just keeps the
-   * existing state and broadcasts. Quietly refused for non-hosts.
-   */
-  requestRematch(socketId: string): void {
-    const { room, player } = this.lookup(socketId);
-    if (!room || !player) return;
-    if (player.id !== room.hostId) {
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only host can request rematch");
-      return;
-    }
-    if (room.phase !== "finished") {
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Can only rematch after a game ends");
-      return;
-    }
-    // Root-caused 2026-09-09 from a live report: A hosts a 1v1, B wins and
-    // leaves, and A — now alone in the room — could still click Play Again.
-    // Nothing here ever checked the game's own minimum seat count for a
-    // rematch the way `requestGameStart` already does for a fresh match.
-    // Without this, `maybeSettleRematch` sees a 1-entry "everyone accepted"
-    // response map (there's no one else to wait on) and proceeds straight
-    // to `requestRematchStart`, which — for a real-money room — commits an
-    // entry debit for a match no engine can actually play. See the matching
-    // guard in `requestRematchStart` for the authoritative, unbypassable
-    // half of this fix; this one exists to fail fast with a clear reason
-    // instead of only after the rematch countdown runs out.
-    const { min } = getGameLimits(room.game);
-    if (room.players.size < min) {
-      this.io.sockets.sockets.get(socketId)?.emit(
-        "room:error",
-        `Need at least ${min} player${min > 1 ? "s" : ""} for a rematch`,
-      );
-      return;
-    }
-    if (room.rematch.status === "pending" || room.rematch.status === "accepted") {
-      // Already pending — re-broadcast so the host's UI catches up if needed.
-      this.broadcastRematch(room);
-      return;
-    }
-    const responses: Record<string, "pending" | "accept" | "decline"> = {};
-    for (const p of room.players.values()) {
-      if (p.id === player.id) {
-        // The requester implicitly accepts their own request.
-        responses[p.id] = "accept";
-      } else if (p.isBot) {
-        // Bots are always willing to play another round.
-        responses[p.id] = "accept";
-      } else {
-        responses[p.id] = "pending";
-      }
-    }
-    room.rematch = {
-      status: "pending",
-      requesterId: player.id,
-      responses,
-      expiresAt: Date.now() + REMATCH_REQUEST_WINDOW_MS,
-      startsAt: null,
-      declinedBy: null,
-    };
-
-    this.clearRematchTimers(room);
-    room.rematchTimer = setTimeout(() => {
-      // Timeout = treat as a decline by "no one in particular".
-      this.cancelRematch(room, null);
-    }, REMATCH_REQUEST_WINDOW_MS);
-
-    this.broadcastRematch(room);
-    // Edge case: if everyone except host is a bot, all responses are already
-    // "accept" — settle immediately so the host doesn't see a no-op pending
-    // state.
-    this.maybeSettleRematch(room);
-  }
-
-  respondRematch(socketId: string, response: "accept" | "decline"): void {
-    const { room, player } = this.lookup(socketId);
-    if (!room || !player) return;
-    if (room.rematch.status !== "pending") return;
-    if (!(player.id in room.rematch.responses)) return;
-    if (room.rematch.responses[player.id] !== "pending") return;
-
-    room.rematch.responses[player.id] = response;
-    if (response === "decline") {
-      this.cancelRematch(room, player.id);
-      return;
-    }
-    this.broadcastRematch(room);
-    this.maybeSettleRematch(room);
-  }
-
-  /** Called after each acceptance — promotes to "accepted" once all are in. */
-  private maybeSettleRematch(room: Room): void {
-    if (room.rematch.status !== "pending") return;
-    const allAccepted = Object.values(room.rematch.responses).every(
-      (r) => r === "accept"
-    );
-    if (!allAccepted) return;
-
-    // Flip to "accepted" with a brief countdown so players get visual
-    // confirmation before the screen swaps to the next game's setup.
-    room.rematch = {
-      ...room.rematch,
-      status: "accepted",
-      expiresAt: null,
-      startsAt: Date.now() + REMATCH_COUNTDOWN_MS,
-    };
-    this.clearRematchTimers(room);
-    room.rematchStartTimer = setTimeout(() => {
-      // A `setTimeout` callback, not an awaited call site — nothing is
-      // relying on this completing synchronously, so (unlike `startGame`)
-      // making the gate async here required no caller-impact analysis at
-      // all. See `requestRematchStart`'s own doc comment for why a rematch
-      // needs its own commitment in the first place. `.catch()` isolates
-      // this room's rematch-commit failure from every other room's socket
-      // handlers — a bare `void` here would not catch a rejection, only
-      // silence the linter about the discarded value.
-      void this.requestRematchStart(room).catch((err) => {
-        logger.error({
-          message: `requestRematchStart failed for room ${room.code}: ${err instanceof Error ? err.message : String(err)}`,
-          module: "ECONOMY_ROOM",
-          roomCode: room.code,
-        });
-      });
-    }, REMATCH_COUNTDOWN_MS);
-    this.broadcastRematch(room);
-  }
-
-  private cancelRematch(room: Room, declinedBy: string | null): void {
-    if (room.rematch.status === "idle") return;
-    room.rematch = {
-      ...emptyRematchState(),
-      status: "declined",
-      declinedBy,
-    };
-    this.clearRematchTimers(room);
-    this.broadcastRematch(room);
-    // Short delay then return to idle so the UI has time to show the
-    // "declined" badge before clearing.
-    setTimeout(() => {
-      if (room.rematch.status === "declined") {
-        room.rematch = emptyRematchState();
-        this.broadcastRematch(room);
-      }
-    }, 2_500);
-  }
-
-  /**
-   * The economy-gated entry point for a rematch — same reasoning and shape
-   * as `requestGameStart`, for the same reason: a rematch plays a full new
-   * round for the SAME prize schedule and stakes as the original match, and
-   * nothing in Economy V1's schema or rules treats a rematch as exempt or
-   * "already paid for." Skipping this gate would be exactly the kind of
-   * alternate-emit bypass Phase 2's "no bypasses, no alternate emits" rules
-   * out.
-   *
-   * `room.hostId` funds the rematch (same host who funded the original
-   * entry, or whoever `reassignHost` elected since — see that method's own
-   * doc comment on why the CURRENT host, not the original one, is
-   * authoritative going forward).
-   */
-  private async requestRematchStart(room: Room): Promise<void> {
-    if (room.rematch.status !== "accepted") return;
-
-    // The authoritative half of the fix in `requestRematch` — this one
-    // cannot be bypassed by anything, including the case that check can't
-    // see: a non-host leaving DURING the accepted countdown. (A departing
-    // HOST already cancels the rematch outright via `leaveRoom`, but a
-    // non-host's departure while `status === "accepted"` was, by explicit
-    // prior design, allowed to let the start proceed with "current
-    // players" — which is exactly how a two-seat game could end up
-    // starting, or committing a real debit for, a single remaining player.)
-    // Placed before every branch below — free, bot-practice, and paid all
-    // funnel through `startRematch`, and none of them get to attempt one
-    // for an unplayable seat count.
-    const { min } = getGameLimits(room.game);
-    if (room.players.size < min) {
-      this.io.to(room.code).emit(
-        "room:error",
-        `Need at least ${min} player${min > 1 ? "s" : ""} for a rematch`,
-      );
-      this.cancelRematch(room, null);
-      return;
-    }
-
-    if (!this.economyService) {
-      this.startRematch(room);
-      return;
-    }
-
-    const host = room.players.get(room.hostId);
-    if (!host) {
-      this.cancelRematch(room, null);
-      return;
-    }
-
-    const playersList = Array.from(room.players.values());
-    const humanSeatCount = playersList.filter((p) => !p.isBot).length;
-    const botSeatCount = playersList.length - humanSeatCount;
-    const isBotPractice = botSeatCount > 0 && humanSeatCount <= 1;
-    const isFreeEconomyGame = NO_ECONOMY_GAMES.has(room.game);
-
-    if (isBotPractice || isFreeEconomyGame) {
-      // Free practice rematch against AI bots, or a game that never charges
-      // (see NO_ECONOMY_GAMES's doc comment): no coins charged.
-      room.currentMatchId = null;
-      room.committedCostPerSeat = null;
-      room.committedTotalPot = null;
-      this.startRematch(room);
-      return;
-    }
-
-    const eligibility = checkHostEconomyEligibility(host, playersList, room.entryStakeCoins, room.game, true);
-    if (!eligibility.eligible) {
-      this.io.to(room.code).emit("room:error", eligibility.error!);
-      this.cancelRematch(room, null);
-      return;
-    }
-    // Reentrancy gate — same reasoning as `requestGameStart`'s own check
-    // just before it sets `pendingCommitOperationId`. Without this, two
-    // overlapping calls (only reachable today via the `rematchStartTimer`
-    // path being re-armed while a prior commit is still in flight) would
-    // each generate their own operation id and both reach
-    // `commitMatchEntry` — two real wallet debits for one rematch, with
-    // the token check only catching the collision AFTER both debits have
-    // already happened. Checked BEFORE the token is minted so the second
-    // caller never touches `pendingCommitOperationId` or the economy
-    // service at all.
-    if (room.economyCommitPending) return;
-    const matchId = `m_${room.code}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const operationId = `op_rematch_${matchId}`;
-    room.pendingCommitOperationId = operationId;
-    room.economyCommitPending = true;
-    const participantDebits = this.buildParticipantDebits(host, playersList, String(room.entryStakeCoins));
-
-    try {
-      const result = await this.economyService.commitMatchEntry({
-        matchId,
-        roomCode: room.code,
-        hostIdentityId: host.identityId!,
-        seatCount: playersList.length,
-        humanSeatCount,
-        botSeatCount,
-        isSolo: playersList.length === 1,
-        participantDebits,
-        gameKind: room.game,
-      });
-      // Same comprehensive re-validation as `requestGameStart`, adapted to the rematch
-      // flow: verifies room instance, active operation token, host presence and role,
-      // rematch state (`accepted`), phase (`finished`), and roster identity (not just count).
-      const freshRoom = this.rooms.get(room.code);
-      const isSameInstance = freshRoom === room;
-      const isOperationCurrent = freshRoom?.pendingCommitOperationId === operationId;
-      const isHostValid = freshRoom?.hostId === host.id && freshRoom?.players.has(host.id);
-      const isRematchValid = freshRoom?.rematch.status === "accepted" && freshRoom?.phase === "finished";
-      // Same "count plus one-way containment proves set equality" reasoning
-      // as `requestGameStart` — a same-size swap during the await (a
-      // committed participant leaves, someone else fills the seat) must
-      // not read as an unchanged roster.
-      const committedPlayerIds = new Set(playersList.map((p) => p.id));
-      const isRosterValid =
-        freshRoom !== undefined &&
-        freshRoom.players.size === committedPlayerIds.size &&
-        Array.from(freshRoom.players.keys()).every((id) => committedPlayerIds.has(id));
-
-      const stillValid = isSameInstance && isOperationCurrent && isHostValid && isRematchValid && isRosterValid;
-      if (!stillValid) {
-        let reason = "invalidated";
-        if (!freshRoom) reason = "room_deleted";
-        else if (!isSameInstance) reason = "room_replaced";
-        else if (!isOperationCurrent) reason = "operation_superseded";
-        else if (!isHostValid) reason = "host_changed";
-        else if (!isRematchValid) reason = `rematch_${freshRoom.rematch.status}_phase_${freshRoom.phase}`;
-        else if (!isRosterValid) reason = "roster_changed";
-
-        await this.queueCompensatingRefundForOrphanedCommit(result.settlement.matchId, room.code, "requestRematchStart", reason);
-        return;
-      }
-      room.currentMatchId = result.settlement.matchId;
-      // Same clean slate as the first-start commit path above.
-      room.departedThisMatch.clear();
-      // A fresh commit means any previous match's terminal id is now stale
-      // — the results modal for THAT match should already be closed, and a
-      // reconnect from here on should recover THIS match once it concludes,
-      // not the old one. Real amounts for the commitment motion sequence,
-      // straight from the authoritative commit result — never guessed.
-      room.lastMatchId = null;
-      room.committedCostPerSeat = result.settlement.costPerSeat;
-      room.committedTotalPot = result.settlement.totalCollected;
-      room.terminalStatus = "IDLE";
-      room.terminalOutcome = null;
-      room.terminalPromise = null;
-      room.terminalError = null;
-      room.terminalPayload = null;
-      this.startRematch(room);
-    } catch (err) {
-      this.io.to(room.code).emit("room:error", this.economyErrorMessage(err, room));
-      logger.warn({
-        message: `commitMatchEntry failed for rematch in room ${room.code}: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
-        module: "ECONOMY_ROOM",
-        roomCode: room.code,
-      });
-      this.cancelRematch(room, null);
-    } finally {
-      if (room.pendingCommitOperationId === operationId) {
-        room.pendingCommitOperationId = null;
-      }
-      room.economyCommitPending = false;
-    }
-  }
-
-  /** Actually start a new round — wraps the same flow as startGame() but skips
-   *  the ready-check (everyone has already opted in via the rematch vote).
-   *  Post-commit step (see `requestRematchStart` above) when economy is
-   *  configured; the direct, unchanged entry point when it isn't. */
-  private startRematch(room: Room): void {
-    if (room.rematch.status !== "accepted") return;
-    const playersList = Array.from(room.players.values());
-    const botSeats = playersList.filter((p) => p.isBot).length;
-    const humanSeats = playersList.filter((p) => !p.isBot).length;
-    const isBotPractice = botSeats > 0 && humanSeats <= 1;
-
-    // Same bypass check as `startGame`'s own, for the same reason: a direct
-    // call here (skipping `requestRematchStart`) must not be able to start
-    // a paid rematch for free. Inert when `economyService` isn't configured.
-    if (this.economyService && !room.currentMatchId && !isBotPractice) {
-      this.io.to(room.code).emit(
-        "room:error",
-        "This rematch has not been paid for yet. Use requestRematchStart, not startRematch, when Economy V1 is enabled.",
-      );
-      this.cancelRematch(room, null);
-      return;
-    }
-    try {
-      const engine = createEngine(room.game);
-      if (engine instanceof LudoEngine) engine.setOptions(room.ludoOptions);
-      if (engine instanceof SnlEngine) engine.setOptions(room.snlOptions);
-      if (engine instanceof RummyEngine) engine.setOptions(room.rummyOptions);
-      if (engine instanceof HandCricketEngine) engine.setOptions(room.hcOptions);
-      if (engine instanceof WordBuildingEngine) engine.setOptions(room.wordBuildingOptions);
-      if (engine instanceof DotsBoxesEngine) engine.setOptions(room.dotsBoxesOptions);
-      if (engine instanceof StarGameEngine) engine.setOptions(room.starGameOptions);
-      if (engine instanceof UnoEngine) engine.setOptions(room.unoOptions);
-      if (engine instanceof BingoEngine) engine.setOptions(room.bingoOptions);
-      if (engine instanceof TambolaEngine) engine.setOptions(room.tambolaOptions);
-      if (engine instanceof NamePlaceAnimalEngine) engine.setOptions(room.namesplaceanimalOptions);
-      if (engine instanceof CarromEngine) engine.setOptions(room.carromOptions);
-      if (engine instanceof ChessEngine) engine.setOptions(room.chessOptions);
-      if (engine instanceof SnakeEngine) engine.setOptions(room.snakeOptions);
-      if (engine instanceof BlockBlastEngine) engine.setOptions(room.blockBlastOptions);
-      if (engine instanceof SpaceWarEngine) engine.setOptions(room.spaceWarOptions);
-      if (engine instanceof TicTacToeEngine) engine.setOptions(room.ticTacToeOptions);
-      if (engine instanceof Connect4Engine) engine.setOptions(room.connect4Options);
-      // The first mover is a real edge (X in Tic Tac Toe, red in Connect 4). Seat order is join
-      // order, which would give the host the opening move in every rematch — swap it.
-      const seating =
-        (engine instanceof TicTacToeEngine && room.engine instanceof TicTacToeEngine) ||
-        (engine instanceof Connect4Engine && room.engine instanceof Connect4Engine)
-          ? orderForAlternatingFirstMove((room.engine.getPublicState() as { playerOrder: string[] }).playerOrder, playersList)
-          : playersList;
-      engine.init(seating);
-      room.engine = engine;
-      room.phase = "playing";
-      room.lastMatchPlayers = null;
-      room.matchStartedAt = Date.now();
-      this.transitionLifecycle(room, "IN_PROGRESS", "Rematch started");
-      this.emitRummyBotTells(room);
-      // Mark everyone "ready" so any UI that checks readiness behaves
-      // correctly post-restart.
-      for (const p of room.players.values()) p.isReady = true;
-      room.rematch = emptyRematchState();
-      room.terminalStatus = "IDLE";
-      room.terminalOutcome = null;
-      room.terminalPromise = null;
-      room.terminalError = null;
-      room.terminalPayload = null;
-      this.clearRematchTimers(room);
-      this.broadcastRoomState(room);
-      this.broadcastGameState(room);
-      this.broadcastRematch(room);
-      this.armTakeoversForAbsentSeats(room);
-      this.scheduleTurnTimer(room);
-      this.startSimulation(room);
-      this.scheduleBotMoveIfNeeded(room);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to start rematch";
-      this.io.to(room.code).emit("room:error", msg);
-      this.cancelRematch(room, null);
-    }
-  }
-
-  private clearRematchTimers(room: Room): void {
-    if (room.rematchTimer) {
-      clearTimeout(room.rematchTimer);
-      room.rematchTimer = null;
-    }
-    if (room.rematchStartTimer) {
-      clearTimeout(room.rematchStartTimer);
-      room.rematchStartTimer = null;
-    }
-  }
-
-  private broadcastRematch(room: Room): void {
-    this.io.to(room.code).emit("rematch:state", room.rematch);
   }
 }

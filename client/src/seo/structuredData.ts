@@ -82,7 +82,7 @@ export const STRUCTURED_DATA_GAMES = [
   {
     slug: "rps",
     name: "Rock Paper Scissors",
-    description: "Best-of-three speed duels with nostalgic sound effects and instant rematch rounds.",
+    description: "Best-of-three speed duels with nostalgic sound effects and instant rounds.",
     image: `${BASE_URL}/RPSTile.png`,
     minPlayers: 2,
     maxPlayers: 2,

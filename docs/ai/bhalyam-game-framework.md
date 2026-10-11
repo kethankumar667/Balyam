@@ -19,7 +19,7 @@ Every game added to BHALYAM **MUST** fulfill all 12 core framework capabilities:
 | 6 | **Intelligent Bots** | Multi-difficulty heuristic bot automation (`pendingActors` / `applyAutoMove`). |
 | 7 | **Pass & Play Local Mode** | Seamless local turn handovers protected by `<PassPhoneGate>` privacy shields. |
 | 8 | **Network Recovery** | Reconnection via cryptographic `seatToken` within 90-second grace period without forfeit. |
-| 9 | **Rematch Loop** | Support post-match rematch negotiation state machine (`RematchPanel`). |
+| 9 | **One Match Per Room** | A finished room takes no new players; playing again means a new room and a shared link. There is no rematch. |
 | 10| **Audio & Haptic Sync** | Sound effects dispatched via `AudioManager`; tactile pulses dispatched via `HapticsManager`. |
 | 11| **Event Timeline Logging**| Moves recorded into `EventStore` for replay timeline playback and analytics projections. |
 | 12| **Vitest Coverage** | Comprehensive unit tests in `server/src/games/<game>/__tests__/` covering legality, scoring, and edge cases. |

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import type { Player, UnoPlayerState } from "@shared/types";
 import Modal from "../../components/Modal";
-import RematchPanel from "../../components/RematchPanel";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
 import { findAvatar } from "../../lib/avatars";
 import BotResultNote from "../../components/room/BotResultNote";
@@ -285,12 +284,7 @@ export default function UnoResultModal({
 
         {/* Action dock (fixed at bottom, never scrolls out of reach) */}
         <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pb-4 sm:pb-6 pt-2 sm:pt-3 relative z-10 space-y-2 sm:space-y-2.5">
-            {/* Rematch — the shared panel every game uses, instead of a
-                UNO-specific reimplementation of the same pending/accepted/
-                declined states. Same protocol, same look everywhere now. */}
-            <RematchPanel players={players} selfId={selfId} />
-
-            {/* Secondary Action Row: Continue & Leave Table */}
+            {/* Action Row: Continue & Leave Table */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 pt-0.5">
               {/* Continue: Tan Stitched Kraft Button */}
               <button

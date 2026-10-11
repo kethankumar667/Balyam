@@ -19,7 +19,7 @@ import {
 /**
  * Room-level behaviour of Connect 4: everything the engine tests cannot see because it lives in
  * RoomManager — profile/XP and scorecard recording, option handling on the create-room path, the
- * turn timer and its timeout fallback, rematch seating, Pass & Play and bot seats.
+ * turn timer and its timeout fallback, Pass & Play and bot seats.
  */
 
 function makeIo() {
@@ -237,39 +237,6 @@ describe("Connect 4 through RoomManager", () => {
       expect(rm.joinRoom("sB2", "Bob", code, bobId, bobToken).ok).toBe(true);
       await vi.advanceTimersByTimeAsync(60_000);
       expect(state(room).moveCount).toBeGreaterThan(0); // an idle player is eventually auto-played
-    });
-  });
-
-  describe("rematch", () => {
-    it("swaps who moves first (and gets red) and keeps the room's options", async () => {
-      const rm = new RoomManager(makeIo());
-      const { aliceId, bobId, room } = startTwoPlayer(rm, { turnTimerSeconds: 30 });
-      expect(state(room).turnPlayerId).toBe(aliceId);
-      await play(rm, ALICE_WINS_IN_4);
-
-      rm.requestRematch("sA");
-      rm.respondRematch("sB", "accept");
-      await vi.advanceTimersByTimeAsync(10_000);
-
-      expect(room.phase).toBe("playing");
-      const second = state(room);
-      expect(second.turnPlayerId).toBe(bobId);
-      expect(second.playerDiscs[bobId]).toBe("R");
-      expect(second.options.turnTimerSeconds).toBe(30); // options survive the rematch
-      expect(second.moveCount).toBe(0);
-      expect(second.grid.flat().every((cell) => cell === null)).toBe(true);
-    });
-
-    it("re-arms a fresh turn clock for the new match", async () => {
-      const rm = new RoomManager(makeIo());
-      const { room } = startTwoPlayer(rm, { turnTimerSeconds: 30 });
-      await play(rm, ALICE_WINS_IN_4);
-      rm.requestRematch("sA");
-      rm.respondRematch("sB", "accept");
-      await vi.advanceTimersByTimeAsync(10_000);
-      const remaining = (state(room).turnDeadline as number) - Date.now();
-      expect(remaining).toBeGreaterThan(0);
-      expect(remaining).toBeLessThanOrEqual(30_000 + CONNECT4_FIRST_TURN_GRACE_MS);
     });
   });
 

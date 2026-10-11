@@ -52,7 +52,6 @@ const MOCK_ROOM_STATE: RoomPublicState = {
   ],
   timer: null,
   voiceEnabled: false,
-  rematchVotes: {},
   createdAt: Date.now(),
   lastActivity: Date.now(),
   sealed: false,

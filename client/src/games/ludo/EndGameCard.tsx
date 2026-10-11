@@ -18,7 +18,6 @@ export default function EndGameCard({
   stats,
   finishedCount,
   onClose,
-  onRematch,
   selfId,
 }: {
   winnerId: string | null;
@@ -31,7 +30,6 @@ export default function EndGameCard({
   stats: LudoStats;
   finishedCount: Record<string, number>;
   onClose: () => void;
-  onRematch: () => void;
   selfId?: string | null;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -285,12 +283,6 @@ export default function EndGameCard({
             className="bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 text-sm font-semibold"
           >
             💾 Download PNG
-          </button>
-          <button
-            onClick={onRematch}
-            className="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-sm font-semibold"
-          >
-            🔁 Rematch
           </button>
           <button
             onClick={onClose}

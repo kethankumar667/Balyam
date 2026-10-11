@@ -247,7 +247,7 @@ export default function SafetyCenterPage() {
                 </span>
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white">Persistent &amp; Discreet</h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                  The player is not alerted. Your choice persists across rematches in the same room.
+                  The player is not alerted. Your choice lasts for as long as you stay in the room.
                 </p>
               </div>
             </div>

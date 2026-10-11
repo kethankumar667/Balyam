@@ -18,7 +18,6 @@ import {
   HandshakeIcon,
   LockIcon,
   QuestionIcon,
-  RefreshIcon,
   TargetIcon,
   TrophyIcon,
   XIcon,
@@ -641,67 +640,6 @@ export function HistoryStrip({ state, myId }: { state: ClientRpsState; myId: str
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/* ───────────────────────────── End panel ───────────────────────────── */
-
-export function EndPanel({
-  winner,
-  youWon,
-  finalScores,
-  ties,
-  onRematch,
-}: {
-  winner: string | null;
-  youWon: boolean;
-  finalScores: { me: number; opp: number };
-  ties: number;
-  onRematch: () => void;
-}) {
-  return (
-    <div
-      className="rounded-2xl p-6 text-center space-y-3 border border-[var(--rim-soft)]"
-      style={{
-        background: youWon
-          ? "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(4,120,87,0.6))"
-          : "linear-gradient(135deg, rgba(30,41,59,0.65), rgba(2,6,23,0.85))",
-        boxShadow: youWon ? "0 0 40px rgba(16,185,129,0.4)" : undefined,
-      }}
-    >
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-pill
-                      bg-gold-500/15 ring-2 ring-gold-500/60">
-        {youWon ? (
-          <TrophyIcon className="w-9 h-9 text-gold-400" />
-        ) : (
-          <HandshakeIcon className="w-9 h-9 text-ink-mid" />
-        )}
-      </div>
-      <div className="font-display font-black text-h1 text-ink-hi">
-        {winner ? `${winner} wins the match` : "Match over"}
-      </div>
-      <div className="text-meta text-ink-mid font-semibold">
-        Final{" "}
-        <span className="font-mono font-bold text-ink-hi tabular-nums">{finalScores.me}</span>
-        <span className="text-ink-lo"> – </span>
-        <span className="font-mono font-bold text-ink-hi tabular-nums">{finalScores.opp}</span>
-        {ties > 0 && (
-          <span className="text-ink-lo">
-            {" "}· {ties} tie{ties === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
-      <button
-        onClick={onRematch}
-        className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-400
-                   active:translate-y-px text-surface-0 rounded-md px-6 py-2.5
-                   font-display font-bold text-meta shadow-glow-brand
-                   transition-all duration-180"
-      >
-        <RefreshIcon className="w-4 h-4" />
-        Rematch
-      </button>
     </div>
   );
 }

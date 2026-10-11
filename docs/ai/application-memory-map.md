@@ -54,7 +54,7 @@ Important client folders:
 - `client/src/features/` contains product feature islands: onboarding, profile, rankings, social, tournaments, and standalone brick games.
 - `client/src/components/` contains shared UI and domain components, including room, auth, economy, cosmetics, privacy, admin, bhalyam chrome, settings, loading, reactions, and streaks.
 - `client/src/design-system/` contains DLS primitives, premium components, and icon sets. Prefer these over ad-hoc styling.
-- `client/src/store/roomStore.ts` owns room/game client state, persisted player identity, seat tokens, chat, rematch, and errors.
+- `client/src/store/roomStore.ts` owns room/game client state, persisted player identity, seat tokens, chat, and errors.
 - `client/src/store/authStore.ts` owns account identity, access token, member/admin checks, and capability helpers.
 - `client/src/lib/socket.ts` owns the singleton Socket.IO client. Do not create extra socket instances.
 - `client/src/core/recovery/` handles reconnect/rejoin UX.
@@ -74,7 +74,7 @@ Important client folders:
 Important server folders:
 
 - `server/src/sockets/index.ts` registers realtime events and delegates behavior to `RoomManager`.
-- `server/src/rooms/RoomManager.ts` owns in-memory rooms, socket-to-room indexes, spectators, timers, bots, ready/start preflight, disconnect grace, rematch, reactions, soundboard, chat, cosmetics validation, settlement queueing, recovery, and broadcasts.
+- `server/src/rooms/RoomManager.ts` owns in-memory rooms, socket-to-room indexes, spectators, timers, bots, ready/start preflight, disconnect grace, reactions, soundboard, chat, cosmetics validation, settlement queueing, recovery, and broadcasts.
 - `server/src/games/<game>/` contains server-authoritative game engines.
 - `server/src/games/GameEngine.ts` is the engine interface.
 - `server/src/games/registry.ts` maps `GameKind` to engine constructors and re-exports catalog limits/orientation.
@@ -90,10 +90,10 @@ Server handlers in `server/src/sockets/index.ts` include:
 - Seats and bots: `room:addBot`, `room:removeBot`, `room:renameBot`, `room:addLocalPlayer`, `room:removeLocalPlayer`
 - Player presentation: `room:chooseColor`, `room:chooseCoinColor`, `room:choosePenColor`, `room:setTokenNicknames`, `room:setCosmetics`
 - Play/chat/social table events: `game:move`, `chat:send`, reactions, cursors, soundboard
-- Recovery and rematch: rematch request/response events, room close/start-cancel broadcasts
+- Recovery: room close/start-cancel broadcasts
 - Voice/spectator: WebRTC signalling and spectator events
 
-Client `client/src/pages/Room.tsx` listens for the core server broadcasts: `room:state`, `game:state`, `chat:message`, `room:error`, `game:error`, `rematch:state`, `room:startCancelled`, `economy:voucherIssued`, and `room:closed`.
+Client `client/src/pages/Room.tsx` listens for the core server broadcasts: `room:state`, `game:state`, `chat:message`, `room:error`, `game:error`, `room:startCancelled`, `economy:voucherIssued`, and `room:closed`.
 
 Typed event interfaces live at the bottom of `shared/types.ts` as `ServerToClientEvents` and `ClientToServerEvents`.
 

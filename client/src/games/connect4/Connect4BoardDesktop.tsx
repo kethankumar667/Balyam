@@ -11,7 +11,6 @@ import {
   Volume2,
   VolumeX,
   Palette,
-  RotateCcw,
   Shield,
   BookOpen,
   AlertTriangle,
@@ -53,7 +52,6 @@ export default function Connect4BoardDesktop({
     secondsLeft,
     isTimerCritical,
     threat,
-    handleRematch,
   } = useConnect4Board({ state, players, selfId });
 
   return (
@@ -188,7 +186,7 @@ export default function Connect4BoardDesktop({
               </div>
             )}
 
-            {/* In-Table Rematch Action Banner when Game Over */}
+            {/* Outcome banner when the game is over */}
             {isOver && (
               <div className="w-full flex items-center justify-between gap-3 mb-2 px-4 py-2 rounded-xl border border-white/15 bg-black/70 backdrop-blur-xl shadow-lg">
                 <div className="flex items-center gap-2 text-white min-w-0">
@@ -198,14 +196,6 @@ export default function Connect4BoardDesktop({
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleRematch}
-                    className="min-h-[36px] py-1.5 px-4 rounded-lg bg-white hover:bg-white/90 text-slate-950 font-bold text-xs tracking-wide shadow-md flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Rematch
-                  </button>
                   <button
                     type="button"
                     onClick={onLeave}

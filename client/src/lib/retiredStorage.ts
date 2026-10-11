@@ -1,7 +1,7 @@
 /**
  * Browser storage keys that a feature once wrote and nothing writes any more.
  *
- * Removing a feature does not remove what it left on players' devices. These three held a
+ * Removing a feature does not remove what it left on players' devices. The first three held a
  * guest's unredeemed voucher code between winning it and signing up to claim it; vouchers are
  * gone (a guest's prize is paid straight into their wallet), so a code left behind can never be
  * redeemed and is only a stranded credential. They were never declared in the privacy inventory
@@ -15,6 +15,8 @@ export const RETIRED_STORAGE_KEYS: readonly string[] = [
   "bhalyam.pending_vouchers",
   "bhalyam.pending_voucher_code",
   "bhalyam.pending_voucher_amount",
+  // The "auto-start next round" switch: it only ever armed rematch countdowns, and rematch is gone.
+  "bhalyam.auto_start",
 ];
 
 /** Remove every retired key from both kinds of storage. Safe to call on every start; never throws. */

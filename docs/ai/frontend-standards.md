@@ -30,7 +30,7 @@
      export type RoomPhase =
        | { status: "LOBBY"; players: Player[] }
        | { status: "IN_PLAY"; gameState: LudoState; turnPlayerId: string }
-       | { status: "GAME_OVER"; standings: Standing[]; rematchState: RematchState };
+       | { status: "GAME_OVER"; standings: Standing[] };
      ```
 3. **Type-Only Imports**:
    - Use explicit `import type { ... }` when importing interfaces, type aliases, or signatures to enable clean tree-shaking and avoid ESM runtime cycle issues.

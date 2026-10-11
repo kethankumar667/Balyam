@@ -846,7 +846,7 @@ process.on("SIGHUP", () => shutdown("SIGHUP"));
  * room and every connected player, not just the one that hit it. The
  * connectivity audit this responds to found several call sites exactly this
  * fragile (`handleDisconnect`'s own invocation, `acknowledgeStart`,
- * `requestGameStart`, the rematch-start timer) and hardened those directly
+ * `requestGameStart`) and hardened those directly
  * with their own try/catch — see each site's own comment — but a boundary
  * this cheap and this final is worth having regardless of how thoroughly the
  * known call sites are covered today: it is the difference between an

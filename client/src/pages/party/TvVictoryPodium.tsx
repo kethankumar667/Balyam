@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Crown, Trophy, Medal, Award, Flame, RotateCcw } from "lucide-react";
+import { Crown, Trophy, Medal, Award, Flame } from "lucide-react";
 import type { Player } from "@shared/types";
 import { findAvatar } from "../../lib/avatars";
 import type { TvPodiumEntry } from "./types";
@@ -254,13 +254,10 @@ export function TvVictoryPodium({
         </div>
       )}
 
-      {/* Rematch Status Footer Card */}
-      <div className="w-full max-w-2xl py-3 px-6 rounded-2xl bg-black/60 border border-amber-900/50 flex items-center justify-between gap-4 text-xs sm:text-sm">
+      {/* Match finished footer card */}
+      <div className="w-full max-w-2xl py-3 px-6 rounded-2xl bg-black/60 border border-amber-900/50 flex items-center justify-between gap-4 text-xs sm:text-sm font-bold">
         <div className="flex items-center gap-2.5 text-amber-200">
-          <RotateCcw className="w-4 h-4 text-amber-400 animate-spin" />
-          <span>
-            Waiting for host <strong className="text-amber-100 font-bold">{hostPlayer?.name || "Host"}</strong> to launch rematch...
-          </span>
+          <span>Thanks for watching. Start a new room to play again.</span>
         </div>
         <span className="text-stone-400 font-mono text-xs">
           Match Finished

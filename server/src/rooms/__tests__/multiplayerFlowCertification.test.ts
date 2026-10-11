@@ -412,8 +412,8 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
     });
   });
 
-  describe("6. Rematch Flow & Match Completion Safety", () => {
-    it("executes rematch lifecycle cleanly when all players vote accept", async () => {
+  describe("6. Match Completion Safety", () => {
+    it("completes a match cleanly and leaves the room finished", () => {
       harness.registerSocket("s_host");
       harness.registerSocket("s_p2");
 
@@ -434,28 +434,15 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
       const stateFinished = harness.rooms.getRoomStateByCode(code);
       expect(stateFinished?.phase).toBe("finished");
       expect(stateFinished?.lifecycleState).toBe("COMPLETED");
-
-      // Host requests rematch, opponent accepts
-      harness.rooms.requestRematch("s_host");
-      harness.rooms.respondRematch("s_p2", "accept");
-
-      // Advance rematch countdown timer (3s)
-      await vi.advanceTimersByTimeAsync(4000);
-
-      const stateRematch = harness.rooms.getRoomStateByCode(code);
-      expect(stateRematch?.phase).toBe("playing");
-      expect(stateRematch?.lifecycleState).toBe("IN_PROGRESS");
     });
 
     /**
-     * Updated 2026-09-09 on an explicit product decision: RPS needs 2
-     * players, so Bob leaving mid-vote doesn't just cancel the pending
-     * rematch (the old `rematch:state declined` path this test used to
-     * check) — the whole POST-match table closes outright, since Alice
-     * alone has no one left to vote with in the first place. The closure
-     * notice replaces the separate "declined" signal as the explanation.
+     * Product decision, 2026-09-09: RPS needs 2 players, so once the match is over
+     * and the only opponent leaves, the whole post-match table closes outright and
+     * everyone still on it is told why, rather than leaving Alice on a results
+     * screen with no one left to play.
      */
-    it("closes the room outright if the only other player leaves during a pending rematch vote", () => {
+    it("closes the room outright if the only other player leaves after the match", () => {
       harness.registerSocket("s_host");
       harness.registerSocket("s_p2");
 
@@ -474,10 +461,7 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
 
       expect(harness.rooms.getRoomStateByCode(code)?.phase).toBe("finished");
 
-      // Host initiates rematch
-      harness.rooms.requestRematch("s_host");
-
-      // Bob leaves during vote
+      // Bob leaves
       harness.rooms.leaveRoom("s_p2");
 
       expect(harness.getInternalRoom(code)).toBeUndefined(); // torn down, not left open for Alice alone
@@ -635,34 +619,6 @@ describe("BHALYAM — Multiplayer Game Flow & Recovery Certification Suite", () 
       harness.rooms.applyMove("s_p2", "choose", { choice: "scissors" });
       const room = harness.getInternalRoom(code);
       expect(room?.phase).toBe("finished");
-    });
-
-    it("Scenario 6: rematch after prior settlement assigns fresh game and resets state", async () => {
-      harness.registerSocket("s_host");
-      harness.registerSocket("s_p2");
-
-      const { code } = harness.rooms.createRoom("s_host", "Alice", "rps");
-      harness.rooms.joinRoom("s_p2", "Bob", code);
-      harness.rooms.setReady("s_host", true);
-      harness.rooms.setReady("s_p2", true);
-      harness.rooms.startGame("s_host");
-
-      for (let i = 0; i < 10; i++) {
-        harness.rooms.applyMove("s_host", "choose", { choice: "rock" });
-        harness.rooms.applyMove("s_p2", "choose", { choice: "scissors" });
-      }
-
-      const room = harness.getInternalRoom(code)!;
-      expect(room.phase).toBe("finished");
-
-      // Rematch agreed
-      harness.rooms.requestRematch("s_host");
-      harness.rooms.respondRematch("s_p2", "accept");
-
-      await vi.advanceTimersByTimeAsync(4000);
-
-      expect(room.phase).toBe("playing");
-      expect(room.lifecycleState).toBe("IN_PROGRESS");
     });
 
     it("Scenario 7: abandonment of completed room cleans up resources without double settlement", () => {

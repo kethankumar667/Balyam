@@ -7,8 +7,6 @@ export type TimerKind =
   | "takeover"
   | "turn"
   | "simulation"
-  | "rematch"
-  | "rematch_start"
   | "bot_delay";
 
 interface RoomResourceBundle {

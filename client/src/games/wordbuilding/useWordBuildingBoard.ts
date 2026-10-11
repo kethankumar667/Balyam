@@ -105,7 +105,7 @@ export function useWordBuildingBoard({
   const setTutorialOpen = tut.setOpen;
 
   // End-of-round scorecard dismissed flag — re-opens automatically when
-  // the phase flips back to "playing" (a future pool-style rematch).
+  // the phase flips back to "playing" (a future pool-style next round).
   const [reportDismissed, setReportDismissed] = useState(false);
   useEffect(() => {
     if (state.phase === "playing") setReportDismissed(false);

@@ -582,35 +582,20 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // debited once, never refunded
       expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // 1000 - 100 commitment + 160 forfeit win
 
-      // Bob is alone in the room at this point (Alice was dropped, and
-      // `addBot` refuses once `room.phase` is "finished" — bots can only
-      // be added in the lobby). Requesting a rematch for a 2-player game
-      // with no opponent left is refused outright — root-caused
-      // 2026-09-09 from a live report of exactly this: a solo player was
-      // able to click Play Again after their opponent left, which used to
-      // charge them for a "rematch" no engine could ever actually play.
-      // See `requestRematch`'s own min-seat-count guard.
-      rooms.requestRematch("s_b");
+      // Bob is alone in the room now (Alice was dropped), and `addBot` refuses once
+      // `room.phase` is "finished": there is no second match to be charged for.
       await vi.advanceTimersByTimeAsync(3_000);
       expect(commitSpy).toHaveBeenCalledTimes(1); // still just the original match — no solo commit
-      expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // unchanged — never charged for a solo rematch
+      expect((await service.getWallet(MEMBER_B)).balance).toBe("1060"); // unchanged
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched
     }, 30_000);
 
     /**
-     * The exact live report, at the socket layer: "A and B play, B wins and
-     * leaves the room, A clicks Play Again — that shouldn't be allowed."
-     *
-     * Updated 2026-09-09 on a follow-up product decision: A is no longer
-     * even LEFT on the rematch screen to make that click. The room closes
-     * the instant B leaves a post-match 2-player table — see
-     * `RoomManager.leaveRoom`'s own doc comment. `requestRematch`'s own
-     * min-seat-count refusal (still exercised directly in the test above,
-     * "chain: two departures...") remains the guard for cases that don't
-     * drop the room below its minimum, so it isn't deleted, just no longer
-     * the mechanism THIS particular scenario reaches.
+     * The live report, at the socket layer: A and B play, B wins and leaves. The room
+     * closes the instant B leaves a post-match 2-player table (see
+     * `RoomManager.leaveRoom`), so A is never left on a results screen with no opponent.
      */
-    it("live repro — B wins and leaves: the room closes outright, A is never left on a rematch screen with no opponent", async () => {
+    it("live repro — B wins and leaves: the room closes outright, A is never left on the results screen with no opponent", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
       seedMember(repo, MEMBER_B, "1000");
@@ -635,15 +620,9 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(room.lifecycleState).toBe("CLOSED"); // closed immediately — not left open for A alone
       expect(roomEmits.some((e) => e.event === "room:closed")).toBe(true);
 
-      // A's own client would react to room:closed by navigating home; at
-      // the server, A's socket is already detached, so a stray rematch
-      // click reaches no room at all rather than a live refusal.
-      rooms.requestRematch("s_a");
-      await drainRoomEconomy(rooms);
+      // A's own client would react to room:closed by navigating home.
       expect(commitSpy).toHaveBeenCalledTimes(1); // never a second commit
       expect((await service.getWallet(MEMBER_A)).balance).toBe("4900"); // untouched
-      const errorToA = socketEmits.find((e) => e.socketId === "s_a" && e.event === "room:error");
-      expect(errorToA).toBeUndefined(); // lookup(socketId) finds no room — silent no-op, not a live refusal
     });
   });
 
@@ -1024,7 +1003,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
      * Updated 2026-09-09 on an explicit product decision: a post-match
      * table for a 2-player game now closes the INSTANT the non-host
      * opponent leaves — not only once the LAST human is gone. Before this,
-     * Alice (still sitting alone) would have been left on a rematch screen
+     * Alice (still sitting alone) would have been left on a results screen
      * with no one to play against and no signal anything had changed; now
      * she gets `room:closed` and the room tears down immediately. See
      * `RoomManager.leaveRoom`'s own doc comment on this branch.
@@ -1050,7 +1029,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
       const roomRef = peek(rooms, host.code);
 
-      rooms.leaveRoom("s_b"); // Bob (non-host) leaves — RPS needs 2, Alice alone can't rematch
+      rooms.leaveRoom("s_b"); // Bob (non-host) leaves — RPS needs 2, Alice alone has no one to play
       await drainRoomEconomy(rooms);
 
       expect(refundSpy).not.toHaveBeenCalled();
@@ -1099,7 +1078,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
      * is an explicit click or a connection that never came back. Alice
      * (the host) disconnecting and staying gone through the full grace
      * window is, from the room's perspective, indistinguishable from her
-     * clicking Leave — Bob is left with no one to rematch and the room
+     * clicking Leave — Bob is left with no one to play and the room
      * closes for him too, rather than quietly promoting him to host of a
      * table Alice already walked away from.
      */
@@ -1478,68 +1457,6 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(wallet.balance).toBe("2000"); // 0 coins deducted — free practice against bots
     });
 
-    it("allows a guest host to start a free rematch against bots with 0 coins deducted", async () => {
-      const { repo, service } = freshEconomy();
-      repo.testFixture.seedIdentity("guest_rematch_host", "guest");
-      repo.testFixture.seedWallet({
-        identityId: "guest_rematch_host",
-        identityKind: "guest",
-        balance: "2000",
-        lifetimeGranted: "2000",
-        starterGranted: true,
-      });
-      const { io } = makeIo();
-      const rooms = new RoomManager(io, service);
-
-      const host = createRoomAs(rooms, "s_g", "GuestHost", "rps", "guest", "guest_rematch_host");
-      rooms.addBot("s_g", "Botty");
-      rooms.setReady("s_g", true);
-
-      await rooms.requestGameStart("s_g");
-      expect(peek(rooms, host.code).phase).toBe("playing");
-
-      // Play match to completion: Guest "rock" beats bot "scissors"
-      pinBotThrow(rooms, "s_g", "scissors");
-      const originalRandom = Math.random;
-      Math.random = () => 0.8; // bot auto-throw is scissors
-      try {
-        for (let round = 0; round < 10; round++) {
-          rooms.applyMove("s_g", "choose", { choice: "rock" });
-          // Comfortably past genericBotThinkDelayMs's true ceiling (~5.8s) —
-          // see playToNaturalCompletion's comment above for why 2100ms (and
-          // the pinned Math.random=0.8 this pacing formula also reads) is no
-          // longer enough on its own.
-          vi.advanceTimersByTime(6000);
-        }
-      } finally {
-        Math.random = originalRandom;
-      }
-      await drainRoomEconomy(rooms);
-      const finishedRoom = peek(rooms, host.code);
-      expect(finishedRoom.phase).toBe("finished");
-
-      // Bots are scoped to the match they were added for (2026-09-09
-      // product decision — see `purgeMatchBots`), so Botty is gone the
-      // instant the match concludes. Alone, the guest is below RPS's
-      // 2-player minimum and a bare rematch request is correctly refused.
-      expect([...finishedRoom.players.values()].some((p) => p.isBot)).toBe(false);
-      rooms.requestRematch("s_g");
-      expect(finishedRoom.rematch.status).toBe("idle"); // refused, never entered "pending"
-
-      // Re-adding a bot is the intended path back to a free practice
-      // rematch — exactly the one extra tap it took the first time.
-      rooms.addBot("s_g", "Botty2");
-      rooms.requestRematch("s_g");
-      await vi.advanceTimersByTimeAsync(3000);
-
-      const room = peek(rooms, host.code);
-      expect(room.phase).toBe("playing");
-      expect(room.currentMatchId).toBeNull();
-
-      const wallet = await service.getWallet("guest_rematch_host");
-      expect(wallet.balance).toBe("2000"); // 0 coins deducted across matches
-    });
-
     it("rejects a guest attempting to host a match when another real human player is present", async () => {
       const { repo, service } = freshEconomy();
       repo.testFixture.seedIdentity("guest_human_host", "guest");
@@ -1728,86 +1645,6 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.totalRefunded).toBe("0");
     });
 
-    it("rematch: commits a NEW matchId and resets lastMatchId — a stale terminal id from the previous match never leaks into the new one's broadcasts", async () => {
-      const { repo, service } = freshEconomy();
-      seedMember(repo, MEMBER_A);
-      seedMember(repo, MEMBER_B);
-      const { io, roomEmits } = makeIo();
-      const rooms = new RoomManager(io, service);
-
-      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-      rooms.setReady("s_a", true);
-      rooms.setReady("s_b", true);
-      await rooms.requestGameStart("s_a");
-      const firstMatchId = peek(rooms, host.code).currentMatchId!;
-
-      rooms.leaveRoom("s_a");
-      rooms.leaveRoom("s_b");
-      await drainRoomEconomy(rooms);
-
-      // A fresh room for the "second match in the same room" case, since
-      // the solo-forfeit path above destroys the room. Re-seat the same
-      // identity to prove the SEQUENCE of matches, not just one commit.
-      seedMember(repo, MEMBER_C, "5000");
-      const { io: io2, roomEmits: roomEmits2 } = makeIo();
-      const rooms2 = new RoomManager(io2, service);
-      const host2 = createRoomAs(rooms2, "s_c", "Carol", "rps", "member", MEMBER_B);
-      joinRoomAs(rooms2, "s_d", "Dan", host2.code, "member", MEMBER_C);
-      rooms2.setReady("s_c", true);
-      rooms2.setReady("s_d", true);
-      await rooms2.requestGameStart("s_c");
-      const secondMatchId = peek(rooms2, host2.code).currentMatchId!;
-
-      expect(secondMatchId).not.toBe(firstMatchId);
-
-      const broadcast = roomEmits2.filter((e) => e.event === "room:state").pop()!.data as {
-        currentMatchId: string | null;
-        lastMatchId: string | null;
-      };
-      expect(broadcast.currentMatchId).toBe(secondMatchId);
-      expect(broadcast.lastMatchId).toBeNull(); // no stale terminal id from an unrelated room/match
-
-      void roomEmits; // unused in this test beyond the first room's setup
-    });
-
-    it("a genuine same-room rematch resets lastMatchId back to null the moment the new match commits, even though the previous match's terminal id was just populated", async () => {
-      const { repo, service } = freshEconomy();
-      seedMember(repo, MEMBER_A);
-      seedMember(repo, MEMBER_B);
-      const { io, roomEmits } = makeIo();
-      const rooms = new RoomManager(io, service);
-
-      const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-      joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-      rooms.setReady("s_a", true);
-      rooms.setReady("s_b", true);
-      await rooms.requestGameStart("s_a");
-      const firstMatchId = peek(rooms, host.code).currentMatchId!;
-
-      playRpsToCompletion(rooms, "s_a", "s_b");
-      await drainRoomEconomy(rooms);
-      expect(peek(rooms, host.code).lastMatchId).toBe(firstMatchId);
-
-      // Both accept a rematch — same room, same code, real "finished -> playing".
-      rooms.requestRematch("s_a");
-      rooms.respondRematch("s_b", "accept");
-      await vi.advanceTimersByTimeAsync(3000);
-
-      const room = peek(rooms, host.code);
-      expect(room.phase).toBe("playing");
-      expect(room.currentMatchId).not.toBeNull();
-      expect(room.currentMatchId).not.toBe(firstMatchId); // a genuinely new commit
-      expect(room.lastMatchId).toBeNull(); // the old terminal id is now stale and must not leak forward
-
-      const lastBroadcast = roomEmits.filter((e) => e.event === "room:state").pop()!.data as {
-        currentMatchId: string | null;
-        lastMatchId: string | null;
-      };
-      expect(lastBroadcast.currentMatchId).toBe(room.currentMatchId);
-      expect(lastBroadcast.lastMatchId).toBeNull();
-    });
-
     it("reconnect during the terminal (finished) state recovers the same match id — a seat reclaim never touches lastMatchId", async () => {
       const { repo, service } = freshEconomy();
       seedMember(repo, MEMBER_A);
@@ -1924,50 +1761,6 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     expect(settlement?.totalRefunded).toBe("200");
     const ledger = await service.getLedger(MEMBER_A);
     expect(ledger.filter((e) => e.entryType === "MATCH_REFUND")).toHaveLength(1); // exactly one refund ledger row, not zero, not two
-  });
-
-  it("rematch commit: final human leaves while a rematch's commitMatchEntry is pending -> room torn down, commit resolves after -> exactly one compensating refund", async () => {
-    const { repo, service } = freshEconomy();
-    seedMember(repo, MEMBER_A);
-    seedMember(repo, MEMBER_B);
-    const { io } = makeIo();
-    const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-    rooms.setReady("s_a", true);
-    rooms.setReady("s_b", true);
-    await rooms.requestGameStart("s_a");
-    playRpsToCompletion(rooms, "s_a", "s_b");
-    await drainRoomEconomy(rooms);
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // first match settled normally
-
-    rooms.requestRematch("s_a");
-    rooms.respondRematch("s_b", "accept");
-
-    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
-    const refundSpy = vi.spyOn(service, "refundMatchEntry");
-    const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
-
-    vi.advanceTimersByTime(3000); // fires the countdown -> requestRematchStart -> gated commitMatchEntry begins
-    await committed; // the REAL rematch debit has genuinely happened now
-
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // 5060 - 100 (rematch entry)
-    expect((rooms as unknown as { rooms: Map<string, Room> }).rooms.has(host.code)).toBe(true);
-
-    rooms.leaveRoom("s_a");
-    rooms.leaveRoom("s_b"); // all humans leave WHILE the rematch commit is pending
-    expect((rooms as unknown as { rooms: Map<string, Room> }).rooms.has(host.code)).toBe(false);
-
-    gate.resolve();
-    await drainRoomEconomy(rooms); // drains AFTER the gate — the queued refund lands once the continuation runs
-
-    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
-    expect(refundSpy).toHaveBeenCalledTimes(1);
-    expect(refundSpy).toHaveBeenCalledWith(matchId, expect.any(String));
-    expect(forfeitSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060"); // rematch debit fully reversed, first match's prize untouched
-    const settlement = await service.getSettlement(matchId);
-    expect(settlement?.status).toBe("REFUNDED");
   });
 
   it("disconnect-grace expiry occurs while the initial commit is pending -> same compensating refund, no orphaned debit", async () => {
@@ -2144,32 +1937,6 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     expect((await service.getWallet(MEMBER_B)).balance).toBe("4900");
   });
 
-  it("successful, unaffected rematch still enters active play normally (no false-positive rejection)", async () => {
-    const { repo, service } = freshEconomy();
-    seedMember(repo, MEMBER_A);
-    seedMember(repo, MEMBER_B);
-    const { io } = makeIo();
-    const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-    rooms.setReady("s_a", true);
-    rooms.setReady("s_b", true);
-    await rooms.requestGameStart("s_a");
-    playRpsToCompletion(rooms, "s_a", "s_b");
-    await drainRoomEconomy(rooms);
-
-    const refundSpy = vi.spyOn(service, "refundMatchEntry");
-    rooms.requestRematch("s_a");
-    rooms.respondRematch("s_b", "accept");
-    await vi.advanceTimersByTimeAsync(3000);
-
-    const room = peek(rooms, host.code);
-    expect(room.phase).toBe("playing");
-    expect(room.currentMatchId).not.toBeNull();
-    expect(refundSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960"); // 5050 - 100 rematch entry
-  });
-
   it("refund-versus-teardown race cannot produce duplicate terminal operations: exactly one terminal settlement status survives", async () => {
     const { repo, service } = freshEconomy();
     seedMember(repo, MEMBER_A);
@@ -2233,48 +2000,6 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     vi.advanceTimersByTime(5_000);
     const stale = await repo.listStaleCommittedSettlements(0);
     expect(stale).toHaveLength(0);
-  });
-
-  it("rematch commit: disconnect-grace expiry occurs while a rematch's commitMatchEntry is pending -> exactly one compensating refund", async () => {
-    const { repo, service } = freshEconomy();
-    seedMember(repo, MEMBER_A);
-    seedMember(repo, MEMBER_B);
-    const { io } = makeIo();
-    const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-    rooms.setReady("s_a", true);
-    rooms.setReady("s_b", true);
-    await rooms.requestGameStart("s_a");
-    playRpsToCompletion(rooms, "s_a", "s_b");
-    await drainRoomEconomy(rooms);
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
-
-    rooms.requestRematch("s_a");
-    rooms.respondRematch("s_b", "accept");
-
-    const { gate, committed, spy: commitSpy } = gateCommitMatchEntry(service);
-    const refundSpy = vi.spyOn(service, "refundMatchEntry");
-    const forfeitSpy = vi.spyOn(service, "forfeitMatchEntry");
-
-    vi.advanceTimersByTime(3000); // fires the countdown -> requestRematchStart
-    await committed;
-
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("4960");
-
-    rooms.handleDisconnect("s_a");
-    rooms.handleDisconnect("s_b");
-    vi.advanceTimersByTime(11 * 60_000); // disconnect grace expires -> room abandoned
-    expect((rooms as unknown as { rooms: Map<string, Room> }).rooms.has(host.code)).toBe(false);
-
-    gate.resolve();
-    await drainRoomEconomy(rooms);
-
-    const matchId = (commitSpy.mock.calls[0][0] as { matchId: string }).matchId;
-    expect(refundSpy).toHaveBeenCalledTimes(1);
-    expect(forfeitSpy).not.toHaveBeenCalled();
-    expect((await service.getWallet(MEMBER_A)).balance).toBe("5060");
-    expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
   });
 
   it("host departure with remaining human successor while commit is pending -> host changed, commit refunded, game not started with mismatched host", async () => {
@@ -2418,39 +2143,6 @@ describe("orphaned commit-after-teardown race (P0 economy-integrity fix)", () =>
     expect((await service.getSettlement(matchId))?.status).toBe("REFUNDED");
   });
 
-  it("requestRematchStart reentrancy: two overlapping triggers on the same accepted rematch reach commitMatchEntry at most once", async () => {
-    const { repo, service } = freshEconomy();
-    seedMember(repo, MEMBER_A);
-    seedMember(repo, MEMBER_B);
-    const { io } = makeIo();
-    const rooms = new RoomManager(io, service);
-    const host = createRoomAs(rooms, "s_a", "Alice", "rps", "member", MEMBER_A);
-    joinRoomAs(rooms, "s_b", "Bob", host.code, "member", MEMBER_B);
-    rooms.setReady("s_a", true);
-    rooms.setReady("s_b", true);
-    await rooms.requestGameStart("s_a");
-    playRpsToCompletion(rooms, "s_a", "s_b");
-    await drainRoomEconomy(rooms);
-
-    const liveRoom = peek(rooms, host.code);
-    rooms.requestRematch("s_a");
-    rooms.respondRematch("s_b", "accept");
-    expect(liveRoom.rematch.status).toBe("accepted");
-
-    const commitSpy = vi.spyOn(service, "commitMatchEntry");
-    const rm = rooms as unknown as { requestRematchStart(room: Room): Promise<void> };
-
-    // Two overlapping triggers on the SAME accepted rematch, neither
-    // awaited before the second fires — exactly the window the reentrancy
-    // guard exists to close. Before the fix, both reached
-    // `commitMatchEntry` (two real wallet debits for one rematch).
-    const p1 = rm.requestRematchStart(liveRoom);
-    const p2 = rm.requestRematchStart(liveRoom);
-    await Promise.all([p1, p2]);
-    await drainRoomEconomy(rooms);
-
-    expect(commitSpy).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe("P0 seat-capacity contract (2026-08-28 production incident regression)", () => {

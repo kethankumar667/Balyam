@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { Player } from "@shared/types";
-import RematchPanel from "./RematchPanel";
 import BotResultNote from "./room/BotResultNote";
 import { fireFireworksBurst } from "../animations/particles/comicBursts";
 
@@ -210,23 +209,6 @@ export default function GameOverScreen({
 
       {/* Primary CTA — Leave Room */}
       <LeaveButton onLeave={onLeave} urgent={secondsLeft <= 15} />
-
-      {/* Rematch / play-again panel — amber-tinted surface */}
-      <div
-        className="rounded-2xl px-5 py-4 w-full max-w-sm z-10"
-        style={{
-          background: "rgba(255,143,0,0.10)",
-          border: "1px solid rgba(255,143,0,0.22)",
-        }}
-      >
-        <div
-          className="text-center text-xs uppercase tracking-[0.2em] font-bold mb-3"
-          style={{ color: "rgba(255,247,194,0.55)" }}
-        >
-          Or play again
-        </div>
-        <RematchPanel players={players} selfId={selfId} />
-      </div>
 
     </div>
   );

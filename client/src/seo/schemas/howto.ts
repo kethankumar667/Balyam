@@ -93,7 +93,7 @@ export function buildPlatformHowToPlaySchema() {
       },
       {
         name: "Play & Relive Memories",
-        text: "Enjoy real-time turns, send nostalgic sound reactions, talk over WebRTC voice, and play instant rematches.",
+        text: "Enjoy real-time turns, send nostalgic sound reactions, talk over WebRTC voice, and start a new room whenever you want another round.",
         url: `${BASE_URL}/how-to-play`,
       },
     ],

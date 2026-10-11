@@ -8,7 +8,6 @@ import type {
   TicTacToePublicState,
 } from "@shared/types.js";
 import { DEFAULT_TICTACTOE_OPTIONS, sanitizeTicTacToeOptions } from "@shared/types.js";
-import { orderForAlternatingFirstMove } from "../seating.js";
 import { chooseTicTacToeCell } from "./tictactoeSearch.js";
 
 /**
@@ -32,12 +31,6 @@ export function scoreTicTacToeWin(totalMoves: number, mark: TicTacToeMark): numb
   const ownMoves = mark === "X" ? Math.ceil(totalMoves / 2) : Math.floor(totalMoves / 2);
   return Math.min(WIN_SCORE_MAX, Math.max(WIN_SCORE_MIN, WIN_SCORE_BASE - ownMoves));
 }
-
-/**
- * Rematch seating (whoever sat second last game moves first) is shared with other two-seat
- * games; it lives in `../seating.ts` and is re-exported here so existing imports keep working.
- */
-export { orderForAlternatingFirstMove };
 
 const WINNING_COMBINATIONS: readonly [number, number, number][] = [
   // Rows
@@ -121,7 +114,7 @@ export class TicTacToeEngine implements GameEngine {
 
   applyMove(move: MoveContext): MoveResult {
     if (this.phase === "finished") {
-      return { ok: false, error: "Match over — request a rematch to keep playing" };
+      return { ok: false, error: "Match over" };
     }
 
     if (move.playerId !== this.turnPlayerId) {

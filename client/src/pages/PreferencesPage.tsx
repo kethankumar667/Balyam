@@ -45,14 +45,6 @@ export default function PreferencesPage() {
     }
   });
 
-  const [autoStart, setAutoStart] = useState(() => {
-    try {
-      return localStorage.getItem("bhalyam.auto_start") === "true";
-    } catch {
-      return false;
-    }
-  });
-
   const [turnWarning, setTurnWarning] = useState(() => {
     try {
       return localStorage.getItem("bhalyam.turn_warning") !== "false";
@@ -81,16 +73,6 @@ export default function PreferencesPage() {
       }
     } catch {
       // Ignore storage errors
-    }
-  };
-
-  const handleToggleAutoStart = () => {
-    const next = !autoStart;
-    setAutoStart(next);
-    try {
-      localStorage.setItem("bhalyam.auto_start", String(next));
-    } catch {
-      // Ignore
     }
   };
 
@@ -471,10 +453,10 @@ export default function PreferencesPage() {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-stone-900 dark:text-white">
-                  Gameplay Alerts &amp; Automation
+                  Gameplay Alerts
                 </h2>
                 <p className="text-[11px] text-stone-400 dark:text-slate-400 font-medium">
-                  Rematch automation and time warning signals
+                  Time warning signals
                 </p>
               </div>
             </div>
@@ -504,35 +486,6 @@ export default function PreferencesPage() {
                   <div
                     className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
                       turnWarning ? "translate-x-6" : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Auto Start Next Round */}
-              <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-stone-50/70 dark:bg-[#151c2e]/70 border border-stone-200/60 dark:border-white/5">
-                <div>
-                  <span className="text-xs font-bold text-stone-900 dark:text-white block">
-                    Auto-Start Next Round
-                  </span>
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-medium">
-                    Automatically accept rematch countdowns when all players are ready
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleAutoStart}
-                  className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${
-                    autoStart ? "bg-amber-500" : "bg-stone-300 dark:bg-stone-700"
-                  }`}
-                  role="switch"
-                  aria-checked={autoStart}
-                  aria-label="Auto-start next round"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-sm ${
-                      autoStart ? "translate-x-6" : "translate-x-0.5"
                     }`}
                   />
                 </button>

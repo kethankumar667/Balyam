@@ -1330,7 +1330,7 @@ export const GAME_SOCIAL_METADATA: Record<string, GameSocialShareData> = {
     game: "rps",
     name: "Rock Paper Scissors",
     shareTitle: "Rock Paper Scissors | Speed Duels & Quick Rounds — BHALYAM",
-    shareDescription: "Best-of-three speed duels with retro sounds, quick rematches, and childhood glory.",
+    shareDescription: "Best-of-three speed duels with retro sounds, quick games, and childhood glory.",
     imageUrl: `${BASE_URL}/og/rps.jpg`,
     imageWidth: "800",
     imageHeight: "533",

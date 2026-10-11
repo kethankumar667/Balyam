@@ -98,7 +98,6 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     useRoomStore.setState({
       gameState: baseGameState,
       messages: [],
-      rematch: { status: "none", requestedBy: null, responses: {} } as any,
     });
   });
 
@@ -228,8 +227,8 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     // Modal is closed
     expect(screen.queryByRole("dialog")).toBeNull();
 
-    // Table view with rematch controls is reached and visible
-    expect(await screen.findByRole("button", { name: /Play (Rematch|Again)/i }, { timeout: 10000 })).toBeDefined();
+    // The finished table is reached and visible
+    expect(await screen.findByRole("region", { name: /Match finished/i }, { timeout: 10000 })).toBeDefined();
 
     // FINALIZATION_FAILED banner remains visible after dismissal
     expect(screen.getByText(/Settlement synchronization is pending/i)).toBeDefined();
@@ -257,21 +256,17 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     expect(screen.queryByText(/Settlement synchronization is pending/i)).toBeNull();
     expect(screen.queryByRole("button", { name: /Retry Settlement Sync/i })).toBeNull();
 
-    // Play Again button remains available for rematch
-    expect(screen.getByRole("button", { name: /Play (Rematch|Again)/i })).toBeDefined();
+    // The finished table stays, with no way to start another match from it
+    expect(screen.getByRole("region", { name: /Match finished/i })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Play (Rematch|Again)/i })).toBeNull();
   }, 15000);
 
   /**
-   * Root-caused 2026-09-09 from a live screenshot: a host left alone in this
-   * exact rematch-prep view (their opponent departed) saw the Prize Pool
-   * card's stake badge report "Locked — Match is already active" — flatly
-   * false, since nothing is running. `canChangeStake`/`stakeLockedReason`
-   * used to check `phase === "lobby"` alone, which this reused post-match
-   * view never satisfies (`phase` stays "finished" here); they needed the
-   * same "is this functionally a lobby right now" condition Room.tsx
-   * already used to decide whether to show this panel at all.
+   * A host left alone at a finished table (their opponent departed) must not be offered the
+   * lobby's stake controls, nor see a "Locked — Match is already active" badge: nothing is
+   * running and nothing can start. The finished table says the match is over and offers Leave.
    */
-  it("Rematch-prep lobby (alone after opponent left): stake is NOT reported as locked by an active match", async () => {
+  it("Finished table (alone after opponent left): no lobby stake controls, no false 'match is active' badge", async () => {
     useRoomStore.setState({
       roomState: {
         ...baseRoomState,
@@ -298,8 +293,8 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
 
     // The wrong, misleading tooltip must never appear here.
     expect(screen.queryByTitle(/Match is already active/i)).toBeNull();
-    // With nobody else at the table, the host should be free to adjust the
-    // stake, not see a static "Locked" badge.
-    expect(screen.getByRole("button", { name: /Change/i })).toBeDefined();
+    // No lobby stake control at a finished table; just the way out.
+    expect(screen.queryByRole("button", { name: /Change/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /Leave table/i })).toBeDefined();
   }, 15000);
 });

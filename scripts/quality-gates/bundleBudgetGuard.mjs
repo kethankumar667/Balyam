@@ -56,7 +56,7 @@ const BUNDLE_BUDGETS = {
 
   // Interactive Hub & Pages
   // Room is the core real-time multiplayer hub orchestrating WebSockets, WebRTC mesh signaling,
-  // ConnectionStateManager, soundboard reactions, chat, turn timers, and scorecard/rematch lifecycle.
+  // ConnectionStateManager, soundboard reactions, chat, turn timers, and scorecard lifecycle.
   "Room-*.js": 360,
   // The Mandali hub is a whole community screen on one lazily loaded route: chat,
   // coin transfers and requests, room-invite cards, parties, digests and moderation.

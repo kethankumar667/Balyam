@@ -1253,7 +1253,7 @@ export function HcNotebookHeader({
                 Hand Cricket
               </span>
               <span className={`text-[11px] font-hand font-bold text-stone-500 mt-1 truncate ${isLiveMatch ? "hidden" : ""}`}>
-                Sunday-scorebook energy, classroom-paper detail, instant rematch pull.
+                Sunday-scorebook energy, classroom-paper detail, an instant pull to play one more.
               </span>
             </div>
           </div>

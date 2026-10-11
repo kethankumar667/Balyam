@@ -15,7 +15,6 @@ import {
 } from "@shared/types.js";
 import { chooseBotColumn, chooseFallbackColumn } from "./connect4Ai.js";
 import { createGrid, findWinningCells, isFull, isValidColumn, landingRow, withDisc, type Grid } from "./connect4Board.js";
-import { orderForAlternatingFirstMove } from "../seating.js";
 
 /**
  * The client plays a start ceremony (countdown + reveal) before the board is usable, and it runs
@@ -31,9 +30,6 @@ export function scoreConnect4Win(discsPlaced: number): number {
   if (!Number.isFinite(discsPlaced)) return CONNECT4_SCORE_MIN;
   return Math.min(CONNECT4_SCORE_MAX, Math.max(CONNECT4_SCORE_MIN, SCORE_BASE - Math.round(discsPlaced)));
 }
-
-/** Rematch seating is shared with other two-seat games; re-exported for the room layer. */
-export { orderForAlternatingFirstMove };
 
 export interface Connect4EngineDeps {
   /** Injectable clock, so turn deadlines are testable without fake global timers. */
@@ -128,7 +124,7 @@ export class Connect4Engine implements GameEngine {
 
   applyMove(move: MoveContext): MoveResult {
     // Order matters and mirrors the checklist: state, identity, turn, then the untrusted payload.
-    if (this.phase === "finished") return fail("Match over — request a rematch to keep playing");
+    if (this.phase === "finished") return fail("Match over");
     if (!this.playerOrder.includes(move.playerId)) return fail("You are not in this match");
     if (move.playerId !== this.turnPlayerId) return fail("Not your turn");
     if (move.type !== "drop") return fail("Invalid move type");

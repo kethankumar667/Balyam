@@ -37,7 +37,7 @@ export default function SocialHubPage() {
         features={[
           "Friend Lists & Real-Time Presence",
           "Private Squads & Party Rooms",
-          "Direct Match Invites & Rematch Logs",
+          "Direct Match Invites & Match Logs",
           "Shared Head-to-Head Match History",
         ]}
       />

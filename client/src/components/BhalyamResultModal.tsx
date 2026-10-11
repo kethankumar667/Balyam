@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Crown, RotateCcw, Zap } from "lucide-react";
+import { Crown, Zap } from "lucide-react";
 import type { Player } from "@shared/types";
-import { getSocket } from "../lib/socket";
 import { useRoomStore } from "../store/roomStore";
 import { useScorecardStore } from "../store/scorecardStore";
 import { findAvatar } from "../lib/avatars";
 import BotResultNote from "./room/BotResultNote";
-import { getGameLimits } from "@shared/catalog";
 import CountUp from "./CountUp";
 import Modal from "./Modal";
 import { SettlementView } from "./economy/SettlementView";
@@ -60,10 +58,7 @@ export default function BhalyamResultModal({
     }
   }, [reduceMotion, isSelfWinner]);
 
-  const rematch = useRoomStore((s) => s.rematch);
   const roomState = useRoomStore((s) => s.roomState);
-  const isHost = roomState?.hostId === selfId;
-  const myResponse = selfId ? rematch.responses[selfId] : undefined;
 
   // Real-money prize per placement, for a paid match only — re-derived via
   // the same authoritative math EconomyService itself used (see the hook's
@@ -71,27 +66,11 @@ export default function BhalyamResultModal({
   const { settlement } = useMatchSettlement(matchId);
   const winnerPrizes = winnerPrizesFor(settlement);
 
-  // Root-caused 2026-09-09: the fallback "Play Again" button below had no
-  // idea whether an opponent was even still in the room — see
-  // `RematchPanel.tsx`'s matching fix (the game-agnostic sibling of this
-  // modal) for the full report and the server-side guard this backs up.
-  const notEnoughPlayers = !!roomState && players.length < getGameLimits(roomState.game).min;
-
   const scorecardArchive = useScorecardStore((s) => s.archive);
   const lastNewPB = useScorecardStore((s) => s.lastNewPB);
   const currentGame = roomState?.game;
   const myGameCard = currentGame ? scorecardArchive?.games[currentGame] : undefined;
   const myPBScore = myGameCard ? Object.values(myGameCard.modes)[0]?.bestScore : undefined;
-
-  function requestRematch() {
-    getSocket().emit("rematch:request");
-  }
-  function acceptRematch() {
-    getSocket().emit("rematch:respond", "accept");
-  }
-  function declineRematch() {
-    getSocket().emit("rematch:respond", "decline");
-  }
 
   return (
     <Modal
@@ -347,67 +326,6 @@ export default function BhalyamResultModal({
 
         {/* BOTTOM ACTION BUTTONS (fixed at bottom, never scrolls out of reach) */}
         <div className="flex-shrink-0 relative z-10 px-5 sm:px-7 md:px-8 pb-5 sm:pb-7 md:pb-8 pt-3 space-y-2.5">
-          {rematch.status === "accepted" && rematch.startsAt ? (
-            <CountdownBox startsAt={rematch.startsAt} />
-          ) : rematch.status === "declined" ? (
-            <div className="rounded-xl border-2 border-rose-300 bg-rose-50 text-rose-800 px-4 py-2.5 text-xs sm:text-sm font-bold text-center">
-              {players.find((p) => p.id === rematch.declinedBy)?.name ?? "Player"} declined the rematch.
-            </div>
-          ) : rematch.status === "pending" ? (
-            isHost || myResponse === "accept" ? (
-              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 px-4 py-2.5 text-center space-y-2">
-                <div className="text-amber-900 font-bold text-xs sm:text-sm">
-                  Waiting for players… ({Object.values(rematch.responses).filter((r) => r === "accept").length} / {Object.values(rematch.responses).length})
-                </div>
-                <button
-                  type="button"
-                  onClick={declineRematch}
-                  className="text-xs font-bold text-rose-700 hover:underline cursor-pointer"
-                >
-                  Cancel Rematch
-                </button>
-              </div>
-            ) : (
-              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-2.5 space-y-2">
-                <div className="text-amber-900 font-bold text-xs sm:text-sm text-center">
-                  Host wants a rematch. Are you in?
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={acceptRematch}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm cursor-pointer shadow"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={declineRematch}
-                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm cursor-pointer shadow"
-                  >
-                    Decline
-                  </button>
-                </div>
-              </div>
-            )
-          ) : notEnoughPlayers ? (
-            <div
-              role="status"
-              className="rounded-2xl border border-dashed border-[#DFCDB5] bg-[#F7F0E2] px-4 py-3 text-center text-sm font-semibold text-[#8A6D4B]"
-            >
-              Not enough players left for a rematch — need at least {getGameLimits(roomState!.game).min}.
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={requestRematch}
-              className="w-full py-3.5 px-6 rounded-2xl font-black text-base text-white bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] active:scale-[0.98] shadow-[0_4px_16px_rgba(234,88,12,0.4)] flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <RotateCcw className="w-5 h-5" aria-hidden />
-              <span>Play Again</span>
-            </button>
-          )}
-
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               type="button"
@@ -539,24 +457,3 @@ function CelebrationIllustration() {
   );
 }
 
-function CountdownBox({ startsAt }: { startsAt: number }) {
-  const [remainingMs, setRemainingMs] = useState(() => Math.max(0, startsAt - Date.now()));
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setRemainingMs(Math.max(0, startsAt - Date.now()));
-    }, 100);
-    return () => window.clearInterval(id);
-  }, [startsAt]);
-  const seconds = Math.ceil(remainingMs / 1000);
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900 font-bold text-center text-sm shadow-xs"
-    >
-      Next game starting in{" "}
-      <span className="text-emerald-700 font-mono tabular-nums text-base">{seconds}s</span>…
-    </div>
-  );
-}

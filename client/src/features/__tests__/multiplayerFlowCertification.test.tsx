@@ -9,17 +9,8 @@ import {
   getRoomSession,
 } from "../../core/recovery/recoveryStorage";
 import { useRoomStore } from "../../store/roomStore";
-import type { RoomPublicState, RematchState } from "@shared/types";
+import type { RoomPublicState } from "@shared/types";
 import { act } from "@testing-library/react";
-
-const idleRematch: RematchState = {
-  status: "idle",
-  requesterId: null,
-  responses: {},
-  expiresAt: null,
-  startsAt: null,
-  declinedBy: null,
-};
 
 // Mock socket
 const mockSocketEmit = vi.fn();
@@ -50,7 +41,6 @@ describe("BHALYAM — Client Multiplayer Game Flow & Recovery Certification Suit
       playerName: "Alice",
       avatarId: "A1",
       roomState: null,
-      rematch: idleRematch,
     });
     recoveryManager.destroy();
   });
@@ -208,32 +198,4 @@ describe("BHALYAM — Client Multiplayer Game Flow & Recovery Certification Suit
     });
   });
 
-  describe("5. Rematch State Synchronization", () => {
-    it("stores and clears rematch state in Zustand room store", () => {
-      const initialRematch: RematchState = {
-        status: "pending",
-        requesterId: "p_alice_1",
-        responses: { p_alice_1: "accept", p_bob_2: "pending" },
-        expiresAt: Date.now() + 15_000,
-        startsAt: null,
-        declinedBy: null,
-      };
-
-      useRoomStore.getState().setRematch(initialRematch);
-      expect(useRoomStore.getState().rematch?.status).toBe("pending");
-
-      const acceptedRematch: RematchState = {
-        ...initialRematch,
-        status: "accepted",
-        responses: { p_alice_1: "accept", p_bob_2: "accept" },
-        startsAt: Date.now() + 3000,
-      };
-
-      useRoomStore.getState().setRematch(acceptedRematch);
-      expect(useRoomStore.getState().rematch?.status).toBe("accepted");
-
-      useRoomStore.getState().setRematch(idleRematch);
-      expect(useRoomStore.getState().rematch.status).toBe("idle");
-    });
-  });
 });

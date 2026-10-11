@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { getSocket } from "../../lib/socket";
 import { HapticsManager } from "../../services/HapticsManager";
 import { connect4Audio } from "./connect4Audio";
 import { getConnect4Theme, type Connect4ThemeId } from "./connect4Themes";
@@ -15,7 +14,7 @@ type BoardHookProps = Pick<Connect4BoardProps, "state" | "players" | "selfId">;
 /**
  * State, derived values, sound/haptic effects, and handlers shared by
  * Connect4BoardMobile and Connect4BoardDesktop. The two board components
- * were byte-for-byte identical from theme state through handleRematch,
+ * were byte-for-byte identical from theme state through the audio handlers,
  * diverging only in JSX/layout (and mobile's extra chat-sheet state) —
  * this hook is the single source of truth for that shared block so the
  * two layouts can never drift out of sync on game logic.
@@ -108,10 +107,6 @@ export function useConnect4Board({ state, players, selfId }: BoardHookProps) {
     setIsMuted(next);
   };
 
-  const handleRematch = () => {
-    getSocket().emit("rematch:request");
-  };
-
   return {
     themeId,
     theme,
@@ -140,6 +135,5 @@ export function useConnect4Board({ state, players, selfId }: BoardHookProps) {
     secondsLeft,
     isTimerCritical,
     threat,
-    handleRematch,
   };
 }

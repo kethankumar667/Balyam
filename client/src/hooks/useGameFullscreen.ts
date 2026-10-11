@@ -92,7 +92,7 @@ export function useGameFullscreen({
    * Release the screen when the player navigates away from the game entirely.
    *
    * Unmount only — deliberately NOT when `wantsFullscreen` goes false, because
-   * that flips on every finished → rematch cycle, and dropping the player out
+   * that flips between a finished match and the next round, and dropping the player out
    * of fullscreen between rounds is worse than leaving them in it.
    */
   const hasEnteredRef = useRef(false);

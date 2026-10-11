@@ -36,6 +36,7 @@ import RoomHeader from "../components/room/RoomHeader";
 import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
+import FinishedTableCard from "../components/room/FinishedTableCard";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
@@ -86,7 +87,6 @@ const ChangeStakeModal = lazy(() => import("../components/room/ChangeStakeModal"
 const RoomNameEntryChamber = lazy(() => import("../components/room/RoomNameEntryChamber"));
 const PreflightRotatePrompt = lazy(() => import("../components/room/PreflightRotatePrompt"));
 const FullscreenGatePrompt = lazy(() => import("../components/room/FullscreenGatePrompt"));
-const RematchPanel = lazy(() => import("../components/RematchPanel"));
 const SoundboardLayer = lazy(() => import("../components/SoundboardLayer"));
 const SignInWall = lazy(() => import("../components/auth/SignInWall"));
 const RoomShareCard = lazy(() => import("../components/room/RoomShareCard"));
@@ -301,8 +301,8 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "chess",
   "rps",
   // Its board sizes itself to the viewport (`h-dvh-safe`); without this it sat
-  // inside the padded page wrapper and its footer — the rematch button and the
-  // mode rules — was clipped ~48px below the fold on a 390x844 phone.
+  // inside the padded page wrapper and its footer — the result actions and the
+  // mode rules — were clipped ~48px below the fold on a 390x844 phone.
   "tictactoe",
   "connect4",
 ]);
@@ -622,7 +622,6 @@ export default function Room() {
     gameState,
     messages,
     lastError,
-    rematch,
     knownPlayers,
     setPlayerId,
     setPlayerName,
@@ -632,7 +631,6 @@ export default function Room() {
     setGameState,
     addMessage,
     setError,
-    setRematch,
     recordLastGang,
     reset,
   } = useRoomStore();
@@ -865,7 +863,6 @@ export default function Room() {
     socket.on("chat:message", addMessage);
     socket.on("room:error", setError);
     socket.on("game:error", setError);
-    socket.on("rematch:state", setRematch);
     const onStartCancelled = (payload: { startAttemptId: string; reason: string }) => {
       setError(startCancelledMessage(payload.reason));
     };
@@ -874,7 +871,7 @@ export default function Room() {
      * Root-caused 2026-09-09 from a live report: a post-match table used to
      * close in complete silence (host leaves after the match ends, or a
      * 2-player table's last opponent leaves) — whoever was still looking
-     * at the rematch screen had no idea the room was gone until they
+     * at the results screen had no idea the room was gone until they
      * refreshed and got a generic "Room not found." This reacts to the
      * live broadcast instead, the same way the reconnect-failure path
      * below already does for a room discovered gone on rejoin — same
@@ -898,7 +895,6 @@ export default function Room() {
       socket.off("chat:message", addMessage);
       socket.off("room:error", setError);
       socket.off("game:error", setError);
-      socket.off("rematch:state", setRematch);
       socket.off("room:startCancelled", onStartCancelled);
       socket.off("room:closed", onRoomClosed);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
@@ -1172,9 +1168,7 @@ export default function Room() {
   useEffect(() => {
     const prev = prevRoomPhaseRef.current;
     const next = roomState?.phase;
-    // A rematch goes "finished" -> "playing" directly (RoomManager.
-    // startRematch sets `phase` straight to "playing", it never passes
-    // back through "lobby") — both are real match starts.
+    // The only real match start is "lobby" -> "playing".
     if (isMatchStartTransition(prev, next)) {
       // Real amounts, straight off the authoritative broadcast — never a
       // client-side guess, never fired ahead of the server's own commit.
@@ -1182,9 +1176,8 @@ export default function Room() {
       // or the match bypassed requestGameStart's commit step — either
       // way, nothing authoritative to animate. A room-code-based fallback
       // id is deliberately NOT used here: the code is stable across a
-      // room's entire lifetime including every rematch, which would
-      // silently suppress the ceremony on the second and every later
-      // match in the room.
+      // room's entire lifetime, which could suppress the ceremony if a
+      // start were ever replayed.
       const commitment = roomState ? buildCommitmentPayload(roomState, playerId, hostWalletAnchor) : null;
       if (commitment) {
         // Economy-gated match: the coin-flight + "MATCH COMMENCED" +
@@ -1382,8 +1375,7 @@ export default function Room() {
    * Flow for ALL games after phase → "finished":
    *   1. Scorecard/Result modal shows (BhalyamResultModal for games without
    *      their own, or the board's own modal for rummy/ludo/rps/hc/etc.).
-   *   2. On dismiss (user tap or 90 s auto-fire) → returns cleanly to table/lobby.
-   * A rematch (phase → "playing") resets state and closes open scorecards.
+   *   2. On dismiss (user tap or 90 s auto-fire) → returns to the finished table.
    * ─────────────────────────────────────────────────────────────────────── */
   const [showScorecard, setShowScorecard] = useState(false);
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
@@ -1391,21 +1383,13 @@ export default function Room() {
   const scorecardTimerRef = useRef<number | null>(null);
 
   /**
-   * True whenever the room is showing the lobby-shaped panel — real
-   * `phase === "lobby"`, or the same panel reused for post-match rematch
-   * negotiation (`phase === "finished"` once the scorecard has been
-   * dismissed, matching the render gate a few hundred lines down at the
-   * `{isLobbyLike ? (...) : ...}` branch). Shared by that render gate AND
-   * `canChangeStake`/`stakeLockedReason` below — those two used to check
-   * `phase === "lobby"` alone, which is correct for the render gate's own
-   * OTHER branches but wrong here: it meant a host alone in a rematch-prep
-   * lobby (their opponent just left) saw the stake reported as
-   * unconditionally "Locked — Match is already active," when nothing was
-   * actually active. Root-caused 2026-09-09 from a live screenshot of
-   * exactly that contradictory state.
+   * True whenever the room is showing the table panel: the lobby, or a finished match once
+   * its scorecard has been dismissed (the settlement banners and the Leave button live there).
+   * `isPreMatchLobby` is the real lobby only: the one place a stake can change and a game can start.
    */
   const isLobbyLike =
     roomState?.phase === "lobby" || (roomState?.phase === "finished" && scorecardDismissed);
+  const isPreMatchLobby = roomState?.phase === "lobby";
 
   // For the generic fallback header below — the games with no chrome of
   // their own (Bingo, SNL, Chess mobile, Snake, SpaceWar, Tambola,
@@ -1413,16 +1397,16 @@ export default function Room() {
   // in the one place they all already get their Leave button.
   const { isFullscreen: roomIsFullscreen, toggleFullscreen: toggleRoomFullscreen } = useFullscreenToggle();
 
-  const canChangeStake = selfIsHost && isLobbyLike && !otherHumansReady;
+  const canChangeStake = selfIsHost && isPreMatchLobby && !otherHumansReady;
 
   const stakeLockedReason = useMemo(() => {
     if (!selfIsHost) return null;
-    if (!isLobbyLike) return "Match is already active";
+    if (!isPreMatchLobby) return "Match is already active";
     if (otherHumansReady) return "Locked: Another player is already marked ready";
     return null;
-  }, [selfIsHost, isLobbyLike, otherHumansReady]);
+  }, [selfIsHost, isPreMatchLobby, otherHumansReady]);
 
-  /** Dismiss the scorecard and return user cleanly to table/lobby. */
+  /** Dismiss the scorecard and return to the finished table. */
   function handleScorecardClose() {
     if (scorecardTimerRef.current != null) {
       window.clearTimeout(scorecardTimerRef.current);
@@ -1439,7 +1423,7 @@ export default function Room() {
     prevPhaseForScorecardRef.current = next;
 
     if (next === "playing") {
-      // Rematch / next round — reset scorecard.
+      // A round is under way — nothing to show yet.
       setShowScorecard(false);
       setScorecardDismissed(false);
       if (scorecardTimerRef.current != null) {
@@ -1450,7 +1434,7 @@ export default function Room() {
     }
     if (next === "finished" && prev !== "finished") {
       // Start 90 s scorecard window for all games.
-      // Dismissing the scorecard returns player cleanly to the lobby/table.
+      // Dismissing the scorecard returns the player to the finished table.
       const deadline = Date.now() + SCORECARD_WINDOW_MS;
       setScorecardDeadlineMs(deadline);
       setShowScorecard(true);
@@ -1586,7 +1570,7 @@ export default function Room() {
   const { settlement: terminalSettlement } = useMatchSettlement(terminalMatchId);
 
   // Tell the player, in words, what landed in their wallet — for every game, whether or
-  // not its own scorecard is open. Keyed by match id so a rematch announces its own payout.
+  // not its own scorecard is open. Keyed by match id so each match announces its own payout.
   const matchPayout = useMatchPayout(terminalMatchId, terminalSettlement);
   const [dismissedPayoutMatchId, setDismissedPayoutMatchId] = useState<string | null>(null);
   const dismissMatchPayout = useCallback(() => {
@@ -1713,11 +1697,10 @@ export default function Room() {
           // this wrapper (RoomHeader/lobby content vs. the live board),
           // which is reused verbatim here. Root-caused 2026-09-09: for a
           // FULL_BLEED game (UNO's own case in the live report), the
-          // post-match rematch-negotiation view (phase "finished", scorecard
-          // dismissed) was still getting the board's `overflow-hidden h-full
-          // p-0` treatment meant only for active gameplay — clipping the
-          // RoomHeader (and its Leave button) and the rematch/room-share
-          // content that ternary put inside it.
+          // post-match view (phase "finished") was still getting the board's
+          // `overflow-hidden h-full p-0` treatment meant only for active
+          // gameplay — clipping the RoomHeader (and its Leave button) and the
+          // room-share content that ternary put inside it.
           FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike
             ? "bhalyam-font bhalyam-paper h-full overflow-hidden p-0"
             : ludoInPlay
@@ -1838,10 +1821,11 @@ export default function Room() {
               </div>
             )}
 
+            {roomState.phase === "finished" ? (
+              <FinishedTableCard onLeave={leaveRoom} />
+            ) : (
+              <>
             <Suspense fallback={null}>
-              {roomState.phase === "finished" && (
-                <RematchPanel players={roomState.players} selfId={playerId} className="w-full" />
-              )}
               {roomState.sealed ? (
                 <SignInWall
                   from="room"
@@ -1909,19 +1893,19 @@ export default function Room() {
             )}
 
             {/* Sticky bottom action dock across all screen sizes */}
-            {rematch.status === "idle" && (
-              <LobbyActionBar
-                isHost={selfIsHost}
-                isReady={viewModel.selfIsReady}
-                canStart={viewModel.canStartGame}
-                startGameDisabledReason={viewModel.startGameDisabledReason}
-                readyCount={viewModel.readyPlayersCount}
-                totalCount={viewModel.totalPlayersCount}
-                commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
-                onToggleReady={toggleReady}
-                onStartGame={startGame}
-                variant="sticky-mobile"
-              />
+            <LobbyActionBar
+              isHost={selfIsHost}
+              isReady={viewModel.selfIsReady}
+              canStart={viewModel.canStartGame}
+              startGameDisabledReason={viewModel.startGameDisabledReason}
+              readyCount={viewModel.readyPlayersCount}
+              totalCount={viewModel.totalPlayersCount}
+              commitmentCoins={isPlayingWithBots ? "0" : (lobbyQuote?.totalCommitment ?? null)}
+              onToggleReady={toggleReady}
+              onStartGame={startGame}
+              variant="sticky-mobile"
+            />
+              </>
             )}
           </div>
         ) : (

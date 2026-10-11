@@ -156,7 +156,7 @@ export function useUnoBoard({
   const drewThisTurn = state.drewLastTurn;
   const [scorecardDismissed, setScorecardDismissed] = useState(false);
 
-  // A rematch starts a fresh round (`phase` flips back to "playing") — reset
+  // A new round starts (`phase` flips back to "playing") — reset
   // so UnoResultModal is ready to show again next time the round ends.
   useEffect(() => {
     if (state.phase === "playing") setScorecardDismissed(false);

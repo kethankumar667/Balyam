@@ -1,7 +1,6 @@
 import type {
   GameKind,
   Player,
-  RematchState,
   RummyRoundRecap,
   UnoRoundRecap,
   BingoRoundRecap,
@@ -13,7 +12,7 @@ import type { RoomTerminalStatus, TerminalRetryPayload } from "../RoomManager.js
 /**
  * Authoritative, serializable snapshot of a room's state at a point in time.
  * Captures room metadata, economy bounds, all seated players, game options,
- * completed round histories, active rematch negotiations, and the game engine's
+ * completed round histories, and the game engine's
  * serializable state.
  */
 export interface RoomSnapshot {
@@ -35,7 +34,6 @@ export interface RoomSnapshot {
   gameOptions: Record<string, unknown>;
   players: Player[];
   departedThisMatch: Player[];
-  rematch: RematchState;
   history: RummyRoundRecap[];
   unoHistory: UnoRoundRecap[];
   bingoHistory: BingoRoundRecap[];

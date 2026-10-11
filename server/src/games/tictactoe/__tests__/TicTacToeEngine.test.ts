@@ -3,7 +3,6 @@ import {
   TicTacToeEngine,
   TICTACTOE_FIRST_TURN_GRACE_MS,
   scoreTicTacToeWin,
-  orderForAlternatingFirstMove,
 } from "../TicTacToeEngine.js";
 import {
   DEFAULT_TICTACTOE_OPTIONS,
@@ -374,15 +373,3 @@ describe("scoreTicTacToeWin — win efficiency", () => {
   });
 });
 
-describe("orderForAlternatingFirstMove", () => {
-  const p = (id: string) => ({ id }) as Player;
-
-  it("puts the previous second player first", () => {
-    expect(orderForAlternatingFirstMove(["a", "b"], [p("a"), p("b")]).map((x) => x.id)).toEqual(["b", "a"]);
-    expect(orderForAlternatingFirstMove(["b", "a"], [p("a"), p("b")]).map((x) => x.id)).toEqual(["a", "b"]);
-  });
-
-  it("ignores players who left and keeps newcomers at the end", () => {
-    expect(orderForAlternatingFirstMove(["a", "b"], [p("b"), p("c")]).map((x) => x.id)).toEqual(["b", "c"]);
-  });
-});

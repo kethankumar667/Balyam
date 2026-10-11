@@ -174,7 +174,7 @@ export function generateReleaseReadinessReport() {
   if (fs.existsSync(MULTIPLAYER_REPORT)) {
     const multiContent = fs.readFileSync(MULTIPLAYER_REPORT, "utf8");
     if (multiContent.includes("STATUS: ALL 8 SCENARIOS PASSED") || !multiContent.includes("FAILED")) {
-      results.domains.multiplayer = { status: "PASS", message: "All 8 Scenarios verified (Sync, Reconnect, Rematch, Viewports)" };
+      results.domains.multiplayer = { status: "PASS", message: "All 8 Scenarios verified (Sync, Reconnect, Lifecycle, Viewports)" };
       console.log("   ✅ Multiplayer Resilience: PASS");
     } else {
       results.domains.multiplayer = { status: "FAIL", message: "Multiplayer resilience scenarios failed" };

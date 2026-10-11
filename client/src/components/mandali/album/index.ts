@@ -18,6 +18,7 @@ export { MessageFeed } from "./MessageFeed";
 export { PeopleList } from "./PeopleList";
 export { usePanelCollapse, type PanelSide, type PanelState } from "./usePanelCollapse";
 export { StartGameSheet } from "./StartGameSheet";
+export { WhosAroundStrip } from "./WhosAroundStrip";
 export { roleLabelKey } from "./roleLabel";
 export { COVER_CLOTHS, coverClothClass, coverClothFor } from "./coverCloth";
 export { groupMessagesByDay, type DayGroup } from "./groupByDay";

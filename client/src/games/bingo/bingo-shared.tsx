@@ -1,5 +1,4 @@
 import type { BingoBoard, BingoLetter, BingoPlayerPublic, BingoWinner } from "@shared/types";
-import RematchPanel from "../../components/RematchPanel";
 import type { Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
@@ -472,8 +471,6 @@ export function BingoResultOverlay({
             <PrizeWonChip amount={winnerPrize} size="md" />
           </div>
         )}
-
-        <RematchPanel players={players} selfId={selfId} className="mb-4" />
 
         <div className="flex gap-2">
           <button

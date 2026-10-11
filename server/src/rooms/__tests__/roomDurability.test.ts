@@ -242,7 +242,6 @@ describe("FileRoomSnapshotRepository", () => {
         },
       ],
       departedThisMatch: [],
-      rematch: { status: "idle", requesterId: null, responses: {}, expiresAt: null, startsAt: null, declinedBy: null },
       history: [],
       unoHistory: [],
       bingoHistory: [],

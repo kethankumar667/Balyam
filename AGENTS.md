@@ -35,12 +35,12 @@ Before executing any engineering task in BHALYAM, AI agents must read and intern
 
 ## 1. Project Overview
 
-**BHALYAM** is a web-based multiplayer game lounge. Players land on the home page, pick a tile (Hand Cricket, Ludo, Snakes & Ladders, Rummy, RPS, UNO, Word Building, Dots & Boxes, Star Game, Bingo), and either create a 6-character room code or join an existing one. Once in a room they can chat, voice-chat (mesh WebRTC), invite bots, run "pass & play" local seats, and play a server-authoritative round of the chosen game with a rematch loop.
+**BHALYAM** is a web-based multiplayer game lounge. Players land on the home page, pick a tile (Hand Cricket, Ludo, Snakes & Ladders, Rummy, RPS, UNO, Word Building, Dots & Boxes, Star Game, Bingo), and either create a 6-character room code or join an existing one. Once in a room they can chat, voice-chat (mesh WebRTC), invite bots, run "pass & play" local seats, and play a server-authoritative round of the chosen game. A room hosts one match: to play again, someone creates a new room and shares its link (in a Mandali, on WhatsApp, anywhere).
 
 **High-level architecture**
 
 - **Client** — Vite + React 18 SPA with React Router. Renders the lobby, room shell, and a per-game `<Board>` component. State held in a single Zustand store and in component-local React state. Talks to the server over one persistent Socket.IO connection.
-- **Server** — Node 20+ Express server hosting a Socket.IO endpoint plus a `/health` route. Game logic lives behind a `GameEngine` interface; the `RoomManager` owns all room state, turn timers, bot scheduling, and rematch negotiation. Server is the source of truth — clients never compute valid moves locally.
+- **Server** — Node 20+ Express server hosting a Socket.IO endpoint plus a `/health` route. Game logic lives behind a `GameEngine` interface; the `RoomManager` owns all room state, turn timers, bot scheduling, and match settlement. Server is the source of truth — clients never compute valid moves locally.
 - **Shared** — A single TypeScript module (`shared/types.ts`) exporting every game state shape, socket payload, default-options constant, and the `ClientToServerEvents` / `ServerToClientEvents` socket contract. Imported by both client and server via the `@shared/*` path alias.
 - **Voice** — Optional. Peer-to-peer WebRTC mesh with signalling relayed by the server (`webrtc:signal` events). STUN-only by default; TURN is documented as an opt-in if needed.
 
@@ -117,7 +117,6 @@ MultiplayerGames/
 │       │   ├── InlineRoomRail.tsx
 │       │   ├── PassPhoneGate.tsx          # Pass & Play "hand the phone over" intermission
 │       │   ├── PlayerList.tsx
-│       │   ├── RematchPanel.tsx
 │       │   ├── RevealOnScroll.tsx
 │       │   ├── RoomCode.tsx               # compact code chip for header
 │       │   ├── RoomCodeShare.tsx          # hero share card (copy + Web Share + WhatsApp)
@@ -334,7 +333,7 @@ A game implementation is **not complete** until both layouts exist, both have be
 - **Bots** are first-class players (`isBot: true`). If the engine implements optional `pendingActors()` + `applyAutoMove()`, the RoomManager loops the autoMove for each bot until the bot is no longer pending — allowing engines that need multiple sub-moves per turn (e.g. Ludo: roll, then move).
 - **Pass & Play** seats are `isLocal: true` players, owned by the host's socket. The server accepts moves on their behalf only when the host's socket is the caller and the target seat is local to the same room. This is explicitly **not allowed** for games that leak hidden information on a shared device (Rummy, UNO, RPS, Hand Cricket).
 - **Disconnect grace** — `GRACE_PERIOD_MS = 90_000`. A disconnected player keeps their seat for 90 seconds; the room emits an `awayUntil` timestamp so the UI can show the countdown.
-- **Rematch** is a state machine: `idle → pending → accepted → (countdown) → restart` or `idle → pending → declined → idle`. Host requests, others (humans only — bots auto-accept) respond. Two timers (`rematchTimer`, `rematchStartTimer`) drive expiry and the post-acceptance countdown.
+- **One match per room. There is no rematch.** When a match ends the room is `finished` and takes no new players (`joinRoom` requires the lobby). Anyone who wants another game creates a new room and shares its link. Removed on 2026-10-11 together with the `rematch:*` socket events, `RematchState`, the `rematchTimer`/`rematchStartTimer` and the economy re-commit path (`requestRematchStart`); `bhalyam.auto_start` is retired in `lib/retiredStorage.ts`. Closing a scorecard returns a player to the finished table, which says the match is over and offers Leave (settlement banners stay there).
 - **Graceful shutdown** — `SIGINT` / `SIGTERM` / `SIGHUP` all call a `shutdown()` that closes Socket.IO and the http server, with a 3-second hard-exit fallback.
 
 ---
@@ -363,7 +362,6 @@ A game implementation is **not complete** until both layouts exist, both have be
   - `roomState` — last `RoomPublicState` from the server.
   - `gameState` — last per-player game state (typed `unknown`; components narrow with `as`).
   - `messages` — chat log, capped to the last 200 entries.
-  - `rematch` — last `RematchState`.
   - `lastError` — string for the floating toast.
 - **Local state** stays inside components (`useState`, `useRef`). Per-game ephemeral UI state (selected card, hovered cell, animation flags) is *not* lifted into the store.
 - **Audio + Haptics settings** persist independently:
@@ -383,8 +381,8 @@ A game implementation is **not complete** until both layouts exist, both have be
 ## 11. Socket.IO Conventions
 
 ### Event naming
-- Namespaced with `area:action`, lowercase, e.g. `room:create`, `room:join`, `game:move`, `game:state`, `chat:send`, `chat:message`, `webrtc:signal`, `rematch:request`, `rematch:respond`, `rematch:state`, `rummy:arrangement`.
-- Areas observed: `room`, `chat`, `game`, `webrtc`, `rematch`, and one game-specific area (`rummy`).
+- Namespaced with `area:action`, lowercase, e.g. `room:create`, `room:join`, `game:move`, `game:state`, `chat:send`, `chat:message`, `webrtc:signal`, `rummy:arrangement`.
+- Areas observed: `room`, `chat`, `game`, `webrtc`, and one game-specific area (`rummy`).
 
 ### Client → Server
 - Mutations and intents. Many use Socket.IO **acknowledgement callbacks** with the shape `{ ok: boolean; …; error?: string }` (`room:create`, `room:join`). Others are fire-and-forget (`room:setReady`, `game:move`, `chat:send`).

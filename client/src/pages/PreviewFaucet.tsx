@@ -8,6 +8,7 @@ import { useMandaliJoyStore } from "../store/mandaliJoyStore";
 import { CoinFountain } from "../components/faucet/CoinCelebrations";
 import { useLevelUpStore } from "../store/levelUpStore";
 import SeatAvatar from "../components/profile/SeatAvatar";
+import FinishedTableCard from "../components/room/FinishedTableCard";
 import { AVATARS } from "../lib/avatars";
 
 /**
@@ -15,7 +16,7 @@ import { AVATARS } from "../lib/avatars";
  * can be looked at at real phone and desktop sizes without a signed-in account. Not registered in
  * production builds.
  *
- *   /preview/faucet?theme=light|dark&view=faucet|payout|carryover|avatars|fountain|joy|joysent|levelup
+ *   /preview/faucet?theme=light|dark&view=faucet|payout|carryover|avatars|fountain|joy|joysent|levelup|finished
  */
 export default function PreviewFaucet() {
   const view = new URLSearchParams(window.location.search).get("view") ?? "faucet";
@@ -40,6 +41,10 @@ export default function PreviewFaucet() {
       // ?from=13&to=14&xp=1340 (defaults shown). The real app gets these from the player's profile.
       useLevelUpStore.getState().show(Number(q.get("from") ?? 13), Number(q.get("to") ?? 14), Number(q.get("xp") ?? 1340));
       return () => useLevelUpStore.getState().clear();
+    }
+    if (view === "finished") {
+      document.documentElement.setAttribute("data-theme", new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
+      return undefined;
     }
     if (view === "fountain") {
       document.documentElement.setAttribute("data-theme", new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
@@ -79,6 +84,15 @@ export default function PreviewFaucet() {
     });
     return () => useFaucetStore.getState().reset();
   }, [view, started]);
+
+  if (view === "finished") {
+    // The finished-table card as a room shows it once the scorecard is closed.
+    return (
+      <div className="mx-auto max-w-lg p-4 pt-10">
+        <FinishedTableCard onLeave={() => undefined} />
+      </div>
+    );
+  }
 
   if (view === "avatars") {
     // Every avatar, sized the way the lobby seat card sizes it (`w-full h-full` inside a fixed box).

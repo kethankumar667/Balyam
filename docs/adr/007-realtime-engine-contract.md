@@ -56,7 +56,7 @@ Three consequences follow deliberately:
 ## Alternatives considered
 
 **A separate `RealtimeGameEngine` contract with its own room type.**
-Rejected: rooms, chat, voice, reactions, rematch, disconnect-takeover and bots
+Rejected: rooms, chat, voice, reactions, disconnect-takeover and bots
 are all shared machinery. A second room type would fork every one of them, and
 the two would drift.
 

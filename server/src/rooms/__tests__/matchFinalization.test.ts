@@ -184,7 +184,7 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     expect(stateAfter?.phase).toBe("finished"); // unchanged — the stale move was rejected, not applied
   });
 
-  it("clears pending rematch timers when the room is abandoned, instead of leaving them to fire against a deleted room (G8)", () => {
+  it("clears its timers when the room is abandoned, instead of leaving them to fire against a deleted room (G8)", () => {
     const { io } = makeIo();
     const rm = new RoomManager(io);
     const created = rm.createRoom("h_alice", "Alice", "handcricket");
@@ -195,16 +195,15 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     rm.startGame("h_alice");
 
     rm.leaveRoom("h_alice"); // Bob wins by forfeit (G14) — room now "finished"
-    rm.requestRematch("h_bob"); // arms room.rematchTimer (30s)
 
     // Bob leaves too — last human gone, abandonRoom must tear down every
-    // timer it owns, including the rematch ones (previously it did not).
+    // timer it owns.
     rm.leaveRoom("h_bob");
 
     const roomsMap = (rm as unknown as { rooms: Map<string, unknown> }).rooms;
     expect(roomsMap.has(created.code)).toBe(false);
 
-    // If rematchTimer/rematchStartTimer had leaked, this would either throw
+    // If a timer had leaked, this would either throw
     // (mutating a detached, already-torn-down Room) or silently resurrect
     // room state nobody holds a reference to. Neither happens.
     expect(() => vi.advanceTimersByTime(31_000)).not.toThrow();

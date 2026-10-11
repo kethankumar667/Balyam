@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type {
   ChatMessage,
-  RematchState,
   RoomPublicState,
   Player,
   GameKind,
@@ -24,15 +23,6 @@ import type {
   TicTacToePublicState,
   Connect4PublicState,
 } from "@shared/types";
-
-const idleRematch: RematchState = {
-  status: "idle",
-  requesterId: null,
-  responses: {},
-  expiresAt: null,
-  startsAt: null,
-  declinedBy: null,
-};
 
 /**
  * Type-safe mapping of all game states by GameKind.
@@ -89,7 +79,6 @@ interface RoomStore {
   gameState: unknown;
   messages: ChatMessage[];
   lastError: string | null;
-  rematch: RematchState;
   /** Preserved registry of all players/bots seen in the room/match so scorecards never lose bot names */
   knownPlayers: Record<string, Player>;
   /** Last 3 distinct named Rummy rosters the player joined */
@@ -114,7 +103,6 @@ interface RoomStore {
   setGameState: (state: unknown) => void;
   addMessage: (msg: ChatMessage) => void;
   setError: (err: string | null) => void;
-  setRematch: (state: RematchState) => void;
   recordLastGang: (roomName: string, playerNames: string[]) => void;
   reset: () => void;
   /**
@@ -226,7 +214,6 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   gameState: null,
   messages: [],
   lastError: null,
-  rematch: idleRematch,
   knownPlayers: {},
   lastGangs: loadLastGangs(),
 
@@ -322,7 +309,6 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   setGameState: (state) => set({ gameState: state }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages.slice(-199), msg] })),
   setError: (err) => set({ lastError: err }),
-  setRematch: (state) => set({ rematch: state }),
   recordLastGang: (roomName, playerNames) =>
     set((s) => {
       const next = [
@@ -338,7 +324,6 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       gameState: null,
       messages: [],
       lastError: null,
-      rematch: idleRematch,
       knownPlayers: {},
     }),
 
@@ -385,9 +370,6 @@ export const useRoomCode = (): string | null =>
 
 export const useRoomMessages = (): ChatMessage[] =>
   useRoomStore((s) => s.messages ?? EMPTY_MESSAGES);
-
-export const useRoomRematch = (): RematchState =>
-  useRoomStore((s) => s.rematch);
 
 export const useRoomPlayerId = (): string | null =>
   useRoomStore((s) => s.playerId);

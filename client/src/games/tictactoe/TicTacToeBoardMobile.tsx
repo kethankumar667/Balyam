@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getSocket } from "../../lib/socket";
 import { HapticsManager } from "../../services/HapticsManager";
 import { tictactoeAudio } from "./tictactoeAudio";
 import { getTicTacToeTheme, type TicTacToeThemeId } from "./tictactoeThemes";
@@ -15,7 +14,6 @@ import {
   VolumeX,
   HelpCircle,
   Palette,
-  RotateCcw,
   Timer,
   Zap,
   Crown,
@@ -82,13 +80,6 @@ export default function TicTacToeBoardMobile({
     if (!placeMark(cellIndex)) return;
     tictactoeAudio.playLaserPlace(selfMark ?? "X", state.moveCount);
     HapticsManager.trigger("subtle");
-  };
-
-  const handleRematchRequest = () => {
-    tictactoeAudio.playTap();
-    HapticsManager.trigger("turn");
-    const socket = getSocket();
-    socket.emit("rematch:request");
   };
 
   const toggleMute = () => {
@@ -361,16 +352,7 @@ export default function TicTacToeBoardMobile({
 
       {/* Bottom Action Deck */}
       <footer className="w-full max-w-sm sm:max-w-md mx-auto z-10 pb-safe shrink-0 pt-1">
-        {isOver && isSpectator ? null : isOver ? (
-          <button
-            type="button"
-            onClick={handleRematchRequest}
-            className="min-h-[48px] w-full py-3 px-4 rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-95 transition cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Request Instant Rematch</span>
-          </button>
-        ) : (
+        {isOver ? null : (
           <div className="flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase tracking-wider py-1">
             <span>
               {state.options.mode === "quantum"

@@ -132,7 +132,6 @@ export interface LudoBoardModel {
   setShowEndCard: (v: boolean) => void;
   /** Dismissing the results card hands off to the platform game-over flow. */
   closeScorecard: () => void;
-  rematch: () => void;
   captureFaces: LudoCaptureFace[];
   homeBursts: LudoHomeBurst[];
   celebratingIds: Set<string>;
@@ -660,11 +659,6 @@ export function useLudoBoard({
   function closeScorecard() {
     setShowEndCard(false);
     onScorecardClose?.();
-  }
-
-  function rematch() {
-    getSocket().emit("room:setReady", false);
-    setShowEndCard(false);
   }
 
   // ---- Capture sad-face + per-home confetti + token celebration ----
@@ -1298,7 +1292,6 @@ export function useLudoBoard({
     showEndCard,
     setShowEndCard,
     closeScorecard,
-    rematch,
     captureFaces,
     homeBursts,
     celebratingIds,

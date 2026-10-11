@@ -18,14 +18,13 @@
  * - Zero usage of Sparkles from lucide-react.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { ArrowRight, Clock, DoorClosed, Gamepad2, Lock, Users } from "lucide-react";
 import type { MandaliMessage } from "@shared/mandali/types.js";
 import type { RoomInviteState } from "@shared/mandali/notifications.js";
-import { joinRoomByCode, joinFailureMessage, type RoomJoinFailure } from "../../lib/roomJoin";
 import { useRoomInviteStatusStore } from "../../store/roomInviteStatusStore";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useJoinSharedRoom } from "../../hooks/useJoinSharedRoom";
 import { AlbumAvatar } from "./album/AlbumAvatar";
 import { AlbumButton } from "./album/AlbumButton";
 import { gameLabel, plainGameName } from "./album/games";
@@ -44,16 +43,11 @@ const STATE_KEYS: Record<RoomInviteState, { label: string; hint: string | null }
 
 export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const code = message.roomCode ?? "";
   const meta = message.roomInvite;
   const status = useRoomInviteStatusStore((s) => s.statuses[code]);
-  const refresh = useRoomInviteStatusStore((s) => s.refresh);
   const subscribe = useRoomInviteStatusStore((s) => s.subscribe);
-
-  const [joining, setJoining] = useState(false);
-  const [failure, setFailure] = useState<{ reason: RoomJoinFailure; error: string } | null>(null);
-  const joiningRef = useRef(false);
+  const { joining, failureText, join } = useJoinSharedRoom(code);
 
   useEffect(() => {
     if (!code) return;
@@ -78,32 +72,9 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
   const title = meta?.roomName ? `${meta.roomName}` : t("mandali.invite.roomOf", { game: gameName });
   const host = meta?.hostName ?? message.senderName;
 
-  const handleJoin = async () => {
-    if (joiningRef.current) return;
-    if (youAreIn) {
-      navigate(`/room/${code}`);
-      return;
-    }
-    joiningRef.current = true;
-    setJoining(true);
-    setFailure(null);
-    try {
-      const result = await joinRoomByCode(code);
-      if (result.ok) {
-        navigate(`/room/${code}`);
-        return;
-      }
-      setFailure({ reason: result.reason, error: result.error });
-      // The card should now tell the truth about the room, not the stale "open".
-      void refresh([code]);
-    } finally {
-      joiningRef.current = false;
-      setJoining(false);
-    }
-  };
+  const handleJoin = () => void join(youAreIn);
 
   const muted = !canJoin;
-  const failureText = failure ? joinFailureMessage(failure) : "";
   const seatSummary = players !== null && maxPlayers > 0 ? t("mandali.invite.seats", { players, max: maxPlayers }) : null;
   const seatsTaken = players !== null && maxPlayers > 0 ? t("mandali.invite.seatsTaken", { players, max: maxPlayers }) : "";
   const stateLabel = state ? t(STATE_KEYS[state].label) : "";

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getSocket } from "../../lib/socket";
 import { HapticsManager } from "../../services/HapticsManager";
 import { tictactoeAudio } from "./tictactoeAudio";
 import { getTicTacToeTheme, type TicTacToeThemeId } from "./tictactoeThemes";
@@ -10,7 +9,7 @@ import { useTicTacToeMove } from "./useTicTacToeMove";
 import { describeTicTacToeOutcome } from "./tictactoeOutcome";
 import Chat from "../../components/Chat";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
-import { ArrowLeft, Volume2, VolumeX, HelpCircle, Palette, RotateCcw, Orbit, Zap, Timer } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, HelpCircle, Palette, Orbit, Zap, Timer } from "lucide-react";
 
 export default function TicTacToeBoardDesktop({
   state,
@@ -74,13 +73,6 @@ export default function TicTacToeBoardDesktop({
     if (!placeMark(cellIndex)) return;
     tictactoeAudio.playLaserPlace(selfMark ?? "X", state.moveCount);
     HapticsManager.trigger("subtle");
-  };
-
-  const handleRematchRequest = () => {
-    tictactoeAudio.playTap();
-    HapticsManager.trigger("turn");
-    const socket = getSocket();
-    socket.emit("rematch:request");
   };
 
   const toggleMute = () => {
@@ -385,19 +377,6 @@ export default function TicTacToeBoardDesktop({
             onCellClick={handleCellClick}
           />
 
-          {/* Post-Match Rematch Button (players only — a spectator has no seat to rematch with) */}
-          {isOver && !isSpectator && (
-            <div className="mt-6 w-full max-w-sm">
-              <button
-                type="button"
-                onClick={handleRematchRequest}
-                className="w-full py-3.5 px-6 rounded-2xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-95 transition cursor-pointer"
-              >
-                <RotateCcw className="w-5 h-5" />
-                <span>Request Instant Rematch</span>
-              </button>
-            </div>
-          )}
         </main>
 
         {/* Right Rail: Chat & Themes (3 cols) */}

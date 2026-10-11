@@ -296,7 +296,7 @@ describe("Launch Remediation — P1-01: Results Flow", () => {
                   <button type="button">Retry Settlement Sync</button>
                 </div>
               )}
-              <div data-testid="rematch-controls">Table Ready for Next Match</div>
+              <div data-testid="finished-table">Match finished</div>
             </div>
           )}
         </div>
@@ -310,7 +310,7 @@ describe("Launch Remediation — P1-01: Results Flow", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByTestId("table-container")).toBeDefined();
     expect(screen.getByRole("status").textContent).toContain("finalizing prize settlement");
-    expect(screen.getByTestId("rematch-controls")).toBeDefined();
+    expect(screen.getByTestId("finished-table")).toBeDefined();
     unmount();
 
     // Case 2: FINALIZATION_FAILED
@@ -318,7 +318,7 @@ describe("Launch Remediation — P1-01: Results Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     expect(screen.getByRole("alert").textContent).toContain("Settlement synchronization is pending");
     expect(screen.getByRole("button", { name: /Retry Settlement Sync/i })).toBeDefined();
-    expect(screen.getByTestId("rematch-controls")).toBeDefined();
+    expect(screen.getByTestId("finished-table")).toBeDefined();
   });
 });
 

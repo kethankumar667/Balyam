@@ -9,7 +9,6 @@ import {
   DEFAULT_CONNECT4_OPTIONS,
 } from "@shared/types.js";
 import { Connect4Engine, CONNECT4_FIRST_TURN_GRACE_MS, scoreConnect4Win } from "../Connect4Engine.js";
-import { orderForAlternatingFirstMove } from "../../seating.js";
 import {
   TOTAL_CELLS,
   drop,
@@ -577,15 +576,3 @@ describe("scoreConnect4Win", () => {
   });
 });
 
-describe("rematch seating", () => {
-  it("swaps who moves first, so the host does not open every rematch", () => {
-    const [p1, p2] = makePlayers();
-    const next = orderForAlternatingFirstMove(["p1", "p2"], [p1, p2]);
-    expect(next.map((p) => p.id)).toEqual(["p2", "p1"]);
-
-    const engine = new Connect4Engine();
-    engine.init(next);
-    expect(engine.getPublicState().turnPlayerId).toBe("p2");
-    expect(engine.getPublicState().playerDiscs).toEqual({ p2: "R", p1: "Y" });
-  });
-});

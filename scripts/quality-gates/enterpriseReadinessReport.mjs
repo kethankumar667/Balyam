@@ -204,7 +204,7 @@ export function generateEnterpriseReadinessReport() {
     blockers.push(`Multiplayer resilience failure: ${resilience.failedScenarios.join(", ")}`);
     console.error(`   ❌ Multiplayer Resilience: FAIL`);
   } else {
-    console.log(`   ✅ Multiplayer Resilience: PASS (All 8 scenarios verified: Sync, Reconnect, Rematch, Load, Viewports)`);
+    console.log(`   ✅ Multiplayer Resilience: PASS (All 8 scenarios verified: Sync, Reconnect, Lifecycle, Load, Viewports)`);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

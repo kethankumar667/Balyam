@@ -242,7 +242,7 @@ and Connect4:
   catalog, mobile chat sheet brought to parity with desktop, audio mute now
   respected inside the SFX engine, Runner-Up/3rd-place badge clipping fixed
   on mobile, and the ~90%-duplicated Mobile/Desktop board logic (theme,
-  timer, threat detection, sound/haptic effects, rematch handling) extracted
+  timer, threat detection, sound/haptic effects) extracted
   into a shared `useConnect4Board` hook so the two layouts can't drift out of
   sync.
 

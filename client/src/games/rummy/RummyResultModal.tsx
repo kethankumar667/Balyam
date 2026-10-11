@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { PlayingCard, SUIT_GLYPHS } from "./Card";
 import { classifyMeld, sumCardPoints } from "./meldCheck";
 import { suggestArrangement } from "./autoArrange";
-import RematchPanel from "../../components/RematchPanel";
 import { svgToPngBlob } from "../../lib/svgExport";
 import BoardPreviewPill from "../../components/BoardPreviewPill";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
@@ -502,10 +501,6 @@ export default function RummyResultModal({
           </div>
         </div>
 
-        {/* ── Footer Bar & Rematch Negotiation ── */}
-        <div className="flex-shrink-0 border-t border-white/10 bg-black/70 backdrop-blur-md p-2.5 sm:p-3.5 space-y-2.5">
-          <RematchPanel players={players} selfId={selfId} className="max-w-md mx-auto" />
-        </div>
       </div>
     </div>
   );

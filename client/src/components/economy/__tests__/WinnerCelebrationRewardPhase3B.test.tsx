@@ -18,7 +18,6 @@ vi.mock("../../../lib/socket", () => ({
 vi.mock("../../../store/roomStore", () => ({
   useRoomStore: vi.fn((selector) =>
     selector({
-      rematch: { status: "idle", responses: {} },
       roomState: { hostId: "p_1", game: "rummy" },
     }),
   ),

@@ -14,8 +14,8 @@ export interface TicTacToeOutcome {
  * What the board should say about a finished match, to whoever is looking at it.
  *
  * A spectator (or anyone not seated in the match) used to fall through to the
- * "you lost" branch: they saw DEFEAT, heard the defeat sound and were offered a
- * rematch. They are told who won instead.
+ * "you lost" branch: they saw DEFEAT and heard the defeat sound. They are told
+ * who won instead.
  */
 export function describeTicTacToeOutcome(
   state: TicTacToePublicState,

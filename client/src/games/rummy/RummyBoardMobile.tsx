@@ -29,7 +29,6 @@ import QrCodeModal from "../../components/QrCodeModal";
 import VoicePanel from "../../components/VoicePanel";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
-import RematchPanel from "../../components/RematchPanel";
 import Avatar from "./Avatar";
 import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
@@ -1477,7 +1476,7 @@ export default function RummyBoardMobile({
       )}
 
       {/* Pool mode — between rounds (game continues). Do NOT fire the
-          GameOverScreen callback here; the room stays alive for the rematch. */}
+          GameOverScreen callback here; the match is still going. */}
       {!resultDismissed && state.phase === "finished" && state.matchMode !== "single" && !state.matchOver && (
         <ResultOverlay onClose={() => setResultDismissed(true)}>
           <PoolBetweenRounds state={state} nameOf={nameOf} selfId={selfId} />
@@ -1494,9 +1493,6 @@ export default function RummyBoardMobile({
         >
           <div className="space-y-3">
             <MatchOverCard state={state} nameOf={nameOf} />
-            <div className="bg-amber-950/60 border border-amber-700/40 rounded-xl p-3">
-              <RematchPanel players={players} selfId={selfId} />
-            </div>
           </div>
         </ResultOverlay>
       )}

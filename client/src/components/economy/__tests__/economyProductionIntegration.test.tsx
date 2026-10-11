@@ -126,7 +126,7 @@ describe("Economy Motion Production Integration Suite", () => {
 
   // ── 2. Idempotency & Duplicate Suppression ────────────────────────────────
 
-  describe("Idempotency, Reconnect & Rematch Isolation", () => {
+  describe("Idempotency, Reconnect & Match Isolation", () => {
     function LifecycleHarness({ onHookReady }: { onHookReady: (h: ReturnType<typeof useEconomyMotion>) => void }) {
       const motion = useEconomyMotion();
       onHookReady(motion);
@@ -162,7 +162,7 @@ describe("Economy Motion Production Integration Suite", () => {
       expect(motion.phase).toBe("complete"); // Suppressed!
     });
 
-    it("allows a subsequent match or rematch with a distinct sequenceId", () => {
+    it("allows a subsequent match with a distinct sequenceId", () => {
       let motion!: ReturnType<typeof useEconomyMotion>;
       render(<LifecycleHarness onHookReady={(h) => { motion = h; }} />);
 
@@ -181,7 +181,7 @@ describe("Economy Motion Production Integration Suite", () => {
       });
       expect(motion.phase).toBe("complete");
 
-      // Rematch round 2 arrives with new sequenceId
+      // A later match arrives with a new sequenceId
       act(() => {
         motion.triggerCommitmentSequence({
           sequenceId: "match-round-2",
@@ -535,37 +535,6 @@ describe("Economy Motion — real Room-state-transition sequence (the contract-m
     rerender(<DriverHarness states={[lobby, playing]} selfId="p1" />);
 
     expect(h.motion.activeCommitment).toBe(firstCommitment); // same object, not re-set
-  });
-
-  it("a rematch (finished -> playing) commits a NEW matchId and produces a genuinely different sequence id — never suppressed by a stale idempotency entry", async () => {
-    const playing1 = roomState({
-      phase: "playing",
-      currentMatchId: "m_first_match",
-      committedCostPerSeat: "100",
-      committedTotalPot: "200",
-    });
-    const finished = roomState({ phase: "finished", currentMatchId: null, lastMatchId: "m_first_match" });
-    const playing2 = roomState({
-      phase: "playing",
-      currentMatchId: "m_second_match_after_rematch",
-      committedCostPerSeat: "100",
-      committedTotalPot: "200",
-      lastMatchId: null,
-    });
-
-    const { rerender } = render(<DriverHarness states={[playing1, finished, playing2]} selfId="p1" />);
-    const h = DriverHarness as unknown as { motion: ReturnType<typeof useEconomyMotion>; advance: () => void };
-
-    // Start already at playing1 conceptually — advance through finished, then the rematch.
-    act(() => h.advance()); // -> finished: resets motion
-    rerender(<DriverHarness states={[playing1, finished, playing2]} selfId="p1" />);
-    expect(h.motion.phase).toBe("idle");
-
-    act(() => h.advance()); // -> playing2 (finished -> playing IS a match-start transition)
-    rerender(<DriverHarness states={[playing1, finished, playing2]} selfId="p1" />);
-
-    expect(h.motion.activeCommitment?.matchId).toBe("m_second_match_after_rematch");
-    expect(h.motion.activeCommitment?.sequenceId).not.toBe("commit-m_first_match");
   });
 
   it("derives the terminal match id for the settlement view exactly at 'finished', from lastMatchId — never currentMatchId, never the room code", () => {
