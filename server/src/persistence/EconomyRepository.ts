@@ -178,6 +178,13 @@ export interface EconomyConfigurationRecord {
   id: string;
   version: number;
   guestStarterCoins: string;
+  /**
+   * What a brand-new guest wallet is made with while the "first game on us" rule is on; the rest
+   * (`guestStarterCoins`) follows through `grantGuestWelcome`. Absent / null = the rule is off and a
+   * guest gets `guestStarterCoins` at once. Not read from the `_safe` view, so the Supabase adapter
+   * leaves it out — the database function applies the rule itself.
+   */
+  guestFirstGameCoins?: string | null;
   memberStarterCoins: string;
   seatCostCoins: string;
   isActive: boolean;
@@ -554,6 +561,14 @@ export class WalletFrozenError extends WalletError {
 export class TransferCapExceededError extends WalletError {
   readonly code = "TRANSFER_CAP_EXCEEDED";
 }
+/** `grantGuestWelcome` before the guest has spent a coin on a match — the welcome follows a game actually played. */
+export class WelcomeNeedsGameError extends WalletError {
+  readonly code = "WELCOME_NEEDS_GAME";
+}
+/** `grantGuestWelcome` against a wallet that is not a guest's. */
+export class NotAGuestError extends WalletError {
+  readonly code = "NOT_A_GUEST";
+}
 /** `commitMatchEntry`'s host balance is below the required commitment, checked AFTER the frozen check. */
 export class InsufficientFundsError extends WalletError {
   readonly code = "INSUFFICIENT_FUNDS";
@@ -708,6 +723,14 @@ export interface EconomyRepository {
 
   /** Keyed by `identityId`; guarded by the wallet's own `starter_granted` flag, not the key alone. */
   grantStarterCoins(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /**
+   * Adds the guest welcome (`guestStarterCoins`) once, after the guest's first game. `applied: false`
+   * when there is nothing pending (already welcomed, or a wallet made before the rule existed).
+   * Throws `WelcomeNeedsGameError` before any coin has been spent, `WalletNotFoundError` without a
+   * wallet, `NotAGuestError` for a member, `WalletFrozenError` when frozen.
+   */
+  grantGuestWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>>;
 
   /** Keyed by `matchId`. */
   commitMatchEntry(

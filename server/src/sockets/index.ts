@@ -160,6 +160,13 @@ export function registerSocketHandlers(
     }
   });
 
+  // Read-only and identity-free by design: the whole point is to answer BEFORE a first-time visitor has
+  // one. It is rate-limited by the global packet middleware above like every other non-machine event.
+  socket.on("room:probe", (code, ack) => {
+    if (typeof ack !== "function") return;
+    ack({ status: typeof code === "string" ? rooms.probeRoom(code) : "not_found" });
+  });
+
   socket.on("room:leave", (ack) => {
     rooms
       .leaveRoom(socket.id)

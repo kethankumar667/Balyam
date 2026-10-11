@@ -139,6 +139,13 @@ function originAllowed(origin: string | undefined, cb: (err: Error | null, ok?: 
 const startTime = Date.now();
 
 const app = express();
+// Behind a reverse proxy (Render) every request arrives from the proxy's address unless Express is told
+// how many proxies to trust. Without this the per-IP rate limiters and the per-network guest limit would
+// put every visitor in one bucket. Set TRUST_PROXY_HOPS to the number of proxies in front of the server
+// (Render: 1). Left unset, nothing is trusted — correct for local development — and in production the
+// guest-network limit stays off rather than lock everyone out (see auth/guestNetworkLimiter.ts).
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
+if (Number.isInteger(trustProxyHops) && trustProxyHops >= 1) app.set("trust proxy", trustProxyHops);
 app.use(securityHeaders);
 app.use(cors({ origin: originAllowed }));
 app.use(express.json());
@@ -481,7 +488,7 @@ app.use("/api/faucet", createFaucetRouter(new HourlyFaucetService({ gateway: rew
 /** A guest who signs up brings their coins; both payments go through the gateway, so both are held. */
 app.use(
   "/api/carryover",
-  createCarryOverRouter(new GuestCarryOverService({ store: carryOverStore, gateway: rewardGateway, trust: trustService })),
+  createCarryOverRouter(new GuestCarryOverService({ store: carryOverStore, gateway: rewardGateway })),
 );
 
 

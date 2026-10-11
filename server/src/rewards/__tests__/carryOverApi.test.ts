@@ -43,7 +43,7 @@ describe("carry-over API", () => {
     economy = new EconomyService(new InMemoryEconomyRepository());
     const trust = new TrustService();
     const gateway = new RewardGateway({ economy, repository: new InMemoryRewardRepository(), risk: new RiskService(), trust });
-    const service = new GuestCarryOverService({ store: new InMemoryGuestCarryOverStore({ economy }), gateway, trust });
+    const service = new GuestCarryOverService({ store: new InMemoryGuestCarryOverStore({ economy }), gateway });
     await economy.ensureIdentityRegistered(guest.playerId, "guest");
     await economy.ensureIdentityRegistered("api_member", "member");
     server = await startTestServer((app) => {
@@ -98,20 +98,19 @@ describe("carry-over API", () => {
     expect(res.body).toMatchObject({ carriedAmount: null, bonusPending: false, bonusPaid: false });
   });
 
-  it("shows the carried amount and a locked bonus after a claim", async () => {
+  it("shows nothing extra to top up after a claim by a guest who held only the welcome grant", async () => {
     await call("/claim", "POST", "api_member", "member", { guestToken: guest.token });
 
     const res = await call("", "GET", "api_member");
 
-    expect(res.body).toMatchObject({ bonusPending: true, bonusUnlocked: false, bonusPaid: false });
-    expect((res.body as { carriedAmount: number }).carriedAmount).toBeGreaterThan(0);
+    expect(res.body).toMatchObject({ carriedAmount: 0, carriedPaid: true, bonusPending: false, bonusPaid: false });
   });
 
-  it("keeps the bonus locked until a real match has been played", async () => {
+  it("has no separate bonus left to claim — it is part of the carry-over payment", async () => {
     await call("/claim", "POST", "api_member", "member", { guestToken: guest.token });
 
     const res = await call("/bonus", "POST", "api_member");
 
-    expect(res.body).toMatchObject({ ok: false, code: "NEEDS_MATCH" });
+    expect(res.body).toMatchObject({ ok: false, code: "NOTHING_TO_CLAIM" });
   });
 });

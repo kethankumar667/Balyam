@@ -376,7 +376,7 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "data-retention" && (
                   <p>
-                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until an explicit account deletion request is submitted. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier.
+                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until an explicit account deletion request is submitted. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest account that has not been used for 7 days is deleted. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
                   </p>
                 )}
 

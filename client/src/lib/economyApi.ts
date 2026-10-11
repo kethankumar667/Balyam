@@ -290,6 +290,24 @@ export async function getEconomyWallet(): Promise<{ wallet: CoinWalletRecord }> 
   return { wallet: body.wallet };
 }
 
+/** A guest who has played is still owed the welcome; `amount` is what it adds (bigint-as-string). */
+export interface GuestWelcomeStatus {
+  pending: boolean;
+  amount: string;
+}
+
+/** GET /api/economy/guest/welcome — does this guest still have a welcome coming after their first game? */
+export async function getGuestWelcomeStatus(): Promise<GuestWelcomeStatus> {
+  const res = await apiFetch("/api/economy/guest/welcome");
+  return handleResponse<GuestWelcomeStatus>(res);
+}
+
+/** POST /api/economy/guest/welcome — "stay as a guest": adds the welcome once. */
+export async function claimGuestWelcome(): Promise<{ applied: boolean; wallet: CoinWalletRecord }> {
+  const res = await apiFetch("/api/economy/guest/welcome", { method: "POST", body: JSON.stringify({}) });
+  return handleResponse<{ applied: boolean; wallet: CoinWalletRecord }>(res);
+}
+
 /**
  * GET /api/economy/wallet/ledger — retrieves caller's own ledger history.
  */

@@ -526,13 +526,13 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
 
         expect(results).toHaveLength(8);
         for (const r of results) {
-          expect(r.balance).toBe("3000");
+          expect(r.balance).toBe("2000");
           expect(r.starterGranted).toBe(true);
           expect(r.version).toBe(1);
         }
 
         const wallet = await backend.getWallet(guestId);
-        expect(wallet?.balance).toBe("3000");
+        expect(wallet?.balance).toBe("2000");
       },
     );
 
@@ -556,7 +556,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(guestId);
-        expect(wallet?.balance).toBe("3000");
+        expect(wallet?.balance).toBe("2000");
       },
     );
 
@@ -586,7 +586,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(hostId);
-        expect(wallet?.balance).toBe("2800");
+        expect(wallet?.balance).toBe("1800");
       },
     );
 
@@ -633,7 +633,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((applied) => applied).length).toBe(1);
         // Paid once, into the guest's wallet: the 3,000 welcome grant plus the 160 prize.
         const winner = await backend.getWallet(guestWinner);
-        expect(winner?.balance).toBe("3160");
+        expect(winner?.balance).toBe("2160");
       },
     );
 
@@ -663,7 +663,7 @@ describe("Real PostgREST — activated execution suite (Phase 4 Step 8 inventory
         expect(results.filter((r) => !r.applied).length).toBe(7);
 
         const wallet = await backend.getWallet(hostId);
-        expect(wallet?.balance).toBe("3000");
+        expect(wallet?.balance).toBe("2000");
       },
     );
 

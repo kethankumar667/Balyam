@@ -58,6 +58,35 @@ describe("RoomNameEntryChamber", () => {
     expect(onSubmitMock).toHaveBeenCalledWith("Kethan");
   });
 
+  it("shows why a name was refused, and ties the message to the box so a screen reader reads it", () => {
+    render(
+      <BrowserRouter>
+        <RoomNameEntryChamber
+          code="QQXSZA"
+          onSubmit={vi.fn()}
+          initialName="Ravi"
+          error="That name is already taken at this table. Pick another."
+        />
+      </BrowserRouter>
+    );
+
+    const input = screen.getByRole("textbox", { name: /Your Player Name/i });
+    expect(screen.getByRole("alert").textContent).toMatch(/already taken at this table/i);
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(input.getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
+  });
+
+  it("shows no error and no invalid state when the name has not been refused", () => {
+    render(
+      <BrowserRouter>
+        <RoomNameEntryChamber code="QQXSZA" onSubmit={vi.fn()} initialName="Ravi" />
+      </BrowserRouter>
+    );
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("textbox", { name: /Your Player Name/i }).getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("rolls a random nostalgic nickname when clicking the 3D dice button", () => {
     vi.useFakeTimers();
     const onSubmitMock = vi.fn();

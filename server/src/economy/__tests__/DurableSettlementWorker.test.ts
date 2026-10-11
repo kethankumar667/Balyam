@@ -102,6 +102,7 @@ class ScriptedFailureRepository implements EconomyRepository {
   }
   ensureWallet(id: string) { return this.inner.ensureWallet(id); }
   grantStarterCoins(id: string) { return this.inner.grantStarterCoins(id); }
+  grantGuestWelcome(id: string) { return this.inner.grantGuestWelcome(id); }
   commitMatchEntry(i: Parameters<EconomyRepository["commitMatchEntry"]>[0]) { return this.inner.commitMatchEntry(i); }
   async settleMatchEconomy(i: Parameters<EconomyRepository["settleMatchEconomy"]>[0]) {
     this.maybeFail("settleMatchEconomy");
@@ -572,10 +573,10 @@ describe("Blocker 06 — DurableSettlementWorker", () => {
     const worker = new DurableSettlementWorker(service);
     await worker.enqueueSettlement(request);
     await worker.drain();
-    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
+    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("2160"); // the 3,000 welcome grant plus the 160 prize
 
     await worker.enqueueSettlement(request);
     await worker.drain();
-    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("3160"); // paid once
+    expect((await repo.getWallet(GUEST_WINNER))?.balance).toBe("2160"); // paid once
   });
 });

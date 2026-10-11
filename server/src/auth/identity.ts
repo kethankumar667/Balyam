@@ -159,6 +159,32 @@ export async function ensureGuestIdentityProvisioned(guestId: string): Promise<v
 }
 
 /**
+ * Record that this guest is still around, so the idle purge agrees with the guest's token.
+ *
+ * `ensureGuestIdentityProvisioned` writes `last_seen_at` only the FIRST time a process sees a guest and
+ * then remembers it, so an active guest's row looked untouched forever — and `purge_idle_guests` (which
+ * removes wallet-less guests idle for N days) could delete someone whose token was still valid. The
+ * client now trades a guest token for a fresh one at least every few days while the guest is active
+ * (`POST /api/auth/guest/renew`); that moment is when the row is touched. Token lifetime and purge
+ * window are both `GUEST_IDLE_EXPIRY_DAYS`, so a guest holding a valid token is never purged.
+ *
+ * A guest whose row does not exist yet goes through the normal provisioning path (and its throttle)
+ * rather than being created here, so renewal can never be used to mint rows the gate would refuse.
+ */
+export async function touchGuestIdentity(guestId: string): Promise<void> {
+  if (!provisionedGuestIds.has(guestId)) {
+    await ensureGuestIdentityProvisioned(guestId);
+    return;
+  }
+  await progressionRepository().upsertIdentity({
+    playerId: guestId,
+    kind: "guest",
+    authUserId: null,
+    lastSeenAt: Date.now(),
+  });
+}
+
+/**
  * The member counterpart of `ensureGuestIdentityProvisioned`, closing the same
  * gap for real accounts.
  *

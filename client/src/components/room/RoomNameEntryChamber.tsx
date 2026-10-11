@@ -15,6 +15,8 @@ export interface RoomNameEntryChamberProps {
   onSubmit: (name: string) => void;
   initialName?: string;
   guest?: boolean;
+  /** Why the last name was refused (taken, reserved) — shown under the box so the player can pick another. */
+  error?: string | null;
 }
 
 const NOSTALGIC_NICKNAMES = [
@@ -151,6 +153,7 @@ export default function RoomNameEntryChamber({
   onSubmit,
   initialName = "",
   guest = false,
+  error = null,
 }: RoomNameEntryChamberProps) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(initialName);
@@ -342,6 +345,8 @@ export default function RoomNameEntryChamber({
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="e.g. MasterBlaster"
                   maxLength={20}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "room-player-name-error" : undefined}
                   className="w-full pl-4 pr-11 py-3 rounded-xl bg-white dark:bg-[#0A0E18] text-slate-900 dark:text-white border-2 border-amber-300/80 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-400 outline-none font-bold text-base shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] transition focus:ring-4 focus:ring-amber-400/20"
                 />
                 {/* 3D Dice Roll Nickname Shortcut */}
@@ -354,6 +359,11 @@ export default function RoomNameEntryChamber({
                   <Dices className={`w-5 h-5 ${isRolling ? "animate-spin" : ""}`} />
                 </button>
               </div>
+              {error && (
+                <p id="room-player-name-error" role="alert" className="text-xs font-bold text-red-700 dark:text-red-300">
+                  {error}
+                </p>
+              )}
             </div>
 
             {/* 3D Physical Extruded Submit CTA Button */}

@@ -34,6 +34,8 @@ Run each file in the SQL editor, one at a time, and stop at the first error. The
 | 4 | `20261024000000_remove_vouchers.sql` | Removes the voucher tables and functions |
 | 5 | `20261025000000_guest_carryover.sql` | Carry-over claim table and function |
 | 6 | `20261026000000_purge_idle_guests.sql` | Retention for idle guests |
+| 7 | `20261027000000_guest_welcome_2000.sql` | Guest welcome grant 3,000 to 2,000 (existing wallets keep what they were given) |
+| 8 | `20261028000000_guest_first_game_welcome.sql` | Guest first game (100 coins), welcome after it, erasure of idle guests; apply AFTER 7 |
 
 Then run these checks. Each should return what is written beside it.
 
@@ -59,7 +61,7 @@ select pg_get_constraintdef(oid)
 select relrowsecurity from pg_class where oid = 'public.guest_wallet_claims'::regclass;
 select count(*) from public.guest_wallet_claims;
 
--- 5. Welcome grants are 3,000 for guests and 5,000 for members (expect: 3000 | 5000)
+-- 5. Welcome grants are 2,000 for guests and 5,000 for members (expect: 2000 | 5000)
 select guest_starter_coins, member_starter_coins from public.economy_configurations;
 
 -- 6. Vouchers are gone (expect: null)
@@ -67,6 +69,12 @@ select to_regclass('public.reward_vouchers');
 
 -- 7. The email guard is attached to sign-ups (expect: at least one non-internal trigger on auth.users)
 select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal;
+
+-- 8. The first-game rule is on, and the welcome function is closed to browsers
+--    (expect: 100 | false | true)
+select (select guest_first_game_coins from public.economy_configurations where is_active) as first_game_coins,
+       has_function_privilege('anon', 'public.grant_guest_welcome(text)', 'execute')         as anon_can_run,
+       has_function_privilege('service_role', 'public.grant_guest_welcome(text)', 'execute') as service_can_run;
 ```
 
 If any of these differ, stop and send me the output. Do not deploy the server yet.
@@ -79,7 +87,7 @@ If any of these differ, stop and send me the output. Do not deploy the server ye
   - no line saying a table or function is missing. If one is, it names the migration to run.
 - [ ] `GET <staging server>/health` shows an `auth` mode of `jwt-secret` or `auth-api` (not `off`). In `off` mode the
       carry-over cannot be tested, because no member exists.
-- [ ] Optional settings (defaults are fine): `GUEST_PROVISION_PER_MINUTE=600`, `IDLE_GUEST_DAYS=45`.
+- [ ] Optional settings (defaults are fine): `GUEST_PROVISION_PER_MINUTE=600`, `IDLE_GUEST_DAYS=8`.
 - [ ] Deploy the client.
 
 ## 3. A visitor who only looks around creates nothing
@@ -98,12 +106,12 @@ select count(*) as guests_before from public.player_identities where kind = 'gue
 Now do one deliberate thing: create a solo or bot room.
 
 - [ ] Now one `/api/auth/guest` request appears, and `bhalyam.guest.id` and `.token` are set.
-- [ ] A new guest row exists and the wallet chip shows 3,000.
+- [ ] A new guest row exists and the wallet chip shows 2,000.
 
 ## 4. The sign-up to carry-over journey
 
 Keep the browser from section 3 (it now holds a guest with coins). Play something that costs or wins coins so the
-guest balance is not simply the starting 3,000. Note the guest balance: `____`.
+guest balance is not simply the starting 2,000. Note the guest balance: `____`.
 
 1. [ ] Sign up as **Account A** with a real email. **Do not confirm it yet.** Sign in if the app lets you.
 2. [ ] Expect: no "your coins came with you" dialog, and the guest keeps its coins. Check in SQL that nothing moved:

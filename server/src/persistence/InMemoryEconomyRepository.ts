@@ -49,6 +49,8 @@ import {
   TransferCapExceededError,
   WalletFrozenError,
   WalletNotFoundError,
+  WelcomeNeedsGameError,
+  NotAGuestError,
 } from "./EconomyRepository.js";
 import { isStructurallyValidSeatConfiguration } from "../economy/economyCapacityContract.js";
 
@@ -271,7 +273,7 @@ class KeyedMutex {
 const DEFAULT_CONFIG: EconomyConfigurationRecord = {
   id: "active",
   version: 1,
-  guestStarterCoins: "3000",
+  guestStarterCoins: "2000",
   memberStarterCoins: "5000",
   seatCostCoins: "100",
   isActive: true,
@@ -335,6 +337,9 @@ export class InMemoryEconomyRepository implements EconomyRepository {
   private terminalIntents = new Map<string, TerminalIntentRecord>();
   private terminalIntentIdByMatchId = new Map<string, string>();
   private nextTerminalIntentSeq = 1;
+
+  /** Guests whose wallet was made with only the first-game amount and who are still owed the welcome. */
+  private welcomePending = new Set<string>();
 
   private readonly mutex = new KeyedMutex();
 
@@ -405,6 +410,7 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.identities = new Map();
     this.configuration = clone(DEFAULT_CONFIG);
     this.prizeSchedules = new Map(DEFAULT_SCHEDULES.map((s) => [s.seatCount, clone(s)]));
+    this.welcomePending = new Set();
     this.wallets = new Map();
     this.walletLedger = [];
     this.nextWalletLedgerId = 1;
@@ -594,6 +600,12 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     );
   }
 
+  async grantGuestWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${identityId}`, () =>
+      this.withRollback(() => this.grantGuestWelcomeLocked(identityId)),
+    );
+  }
+
   async commitMatchEntry(
     input: CommitMatchEntryInput,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
@@ -734,9 +746,16 @@ export class InMemoryEconomyRepository implements EconomyRepository {
       return { applied: false, operation: "grant_starter_coins", idempotencyKey, result: clone(wallet) };
     }
 
+    const firstGameCoins = this.configuration.guestFirstGameCoins ?? null;
+    const isFirstGameGuest = wallet.identityKind === "guest" && firstGameCoins !== null;
     const grantAmount = toBig(
-      wallet.identityKind === "guest" ? this.configuration.guestStarterCoins : this.configuration.memberStarterCoins,
+      isFirstGameGuest
+        ? firstGameCoins
+        : wallet.identityKind === "guest"
+          ? this.configuration.guestStarterCoins
+          : this.configuration.memberStarterCoins,
     );
+    if (isFirstGameGuest) this.welcomePending.add(identityId);
     const updated = this.applyWalletCredit(wallet, grantAmount, {
       entryType: "STARTER_GRANT",
       sourceKind: "starter_grant",
@@ -749,6 +768,40 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.wallets.set(identityId, updated);
     this.logIdempotency(idempotencyKey, "grant_starter_coins");
     return { applied: true, operation: "grant_starter_coins", idempotencyKey, result: clone(updated) };
+  }
+
+  private grantGuestWelcomeLocked(identityId: string): EconomyOperationResult<CoinWalletRecord> {
+    const idempotencyKey = `guest-welcome:${identityId}`;
+    const wallet = this.wallets.get(identityId);
+    if (!wallet) {
+      throw new WalletNotFoundError(`Wallet for ${identityId} does not exist`);
+    }
+    if (wallet.identityKind !== "guest") {
+      throw new NotAGuestError(`${identityId} is not a guest wallet`);
+    }
+    if (!this.welcomePending.has(identityId)) {
+      this.logIdempotency(idempotencyKey, "grant_guest_welcome");
+      return { applied: false, operation: "grant_guest_welcome", idempotencyKey, result: clone(wallet) };
+    }
+    if (wallet.isFrozen) {
+      throw new WalletFrozenError(`Guest wallet ${identityId} is frozen`);
+    }
+    if (toBig(wallet.lifetimeSpent) <= 0n) {
+      throw new WelcomeNeedsGameError("Play your first game before the welcome is added");
+    }
+
+    const updated = this.applyWalletCredit(wallet, toBig(this.configuration.guestStarterCoins), {
+      entryType: "STARTER_GRANT",
+      sourceKind: "starter_grant",
+      sourceId: identityId,
+      idempotencyKey,
+      description: "Guest welcome after the first game",
+      lifetimeField: "lifetimeGranted",
+    });
+    this.wallets.set(identityId, updated);
+    this.welcomePending.delete(identityId);
+    this.logIdempotency(idempotencyKey, "grant_guest_welcome");
+    return { applied: true, operation: "grant_guest_welcome", idempotencyKey, result: clone(updated) };
   }
 
   private commitMatchEntryLocked(

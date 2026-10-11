@@ -90,7 +90,7 @@ export function CarryOverArrivalDialog() {
             {when}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-300">
-            Finish one match with friends and a {GUEST_UPGRADE_BONUS_COINS.toLocaleString()}-coin welcome bonus is yours too.
+            That tops your account up to your guest coins plus a {GUEST_UPGRADE_BONUS_COINS.toLocaleString()}-coin sign-up bonus.
           </p>
         </div>
 

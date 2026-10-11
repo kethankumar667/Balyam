@@ -147,6 +147,9 @@ class ScriptedFailureRepository implements EconomyRepository {
   grantStarterCoins(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
     return this.invoke("grantStarterCoins", () => this.inner.grantStarterCoins(identityId));
   }
+  grantGuestWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.invoke("grantGuestWelcome", () => this.inner.grantGuestWelcome(identityId));
+  }
   commitMatchEntry(input: CommitMatchEntryInput): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
     return this.invoke("commitMatchEntry", () => this.inner.commitMatchEntry(input));
   }
@@ -205,7 +208,7 @@ describe("EconomyService — wallet & ledger", () => {
     const service = freshService(repo);
     const wallet = await service.getWallet("guest_a");
     expect(wallet.identityId).toBe("guest_a");
-    expect(wallet.balance).toBe("3000"); // starter grant, per DEFAULT_CONFIG
+    expect(wallet.balance).toBe("2000"); // starter grant, per DEFAULT_CONFIG
     expect(wallet.starterGranted).toBe(true);
   });
 
@@ -223,7 +226,7 @@ describe("EconomyService — wallet & ledger", () => {
     const entries = await service.getLedger("guest_b");
     expect(entries.length).toBe(1);
     expect(entries[0].entryType).toBe("STARTER_GRANT");
-    expect(entries[0].amount).toBe("3000");
+    expect(entries[0].amount).toBe("2000");
   });
 });
 
@@ -590,7 +593,7 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     expect("issuedVouchers" in result).toBe(false); // nothing is issued any more
 
     const guestWallet = await repo.getWallet("guest_winner");
-    expect(guestWallet?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
+    expect(guestWallet?.balance).toBe("2160"); // the 3,000 welcome grant plus the 160 prize
     const ledger = await repo.listLedger("guest_winner");
     expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
   });
@@ -612,7 +615,7 @@ describe("EconomyService — settleMatchEconomy outcomes", () => {
     const second = await service.settleMatchEconomy(request);
     expect(second.applied).toBe(false);
     expect(second.settlement).toEqual(first.settlement);
-    expect((await repo.getWallet("guest_replay"))?.balance).toBe("3160"); // paid once
+    expect((await repo.getWallet("guest_replay"))?.balance).toBe("2160"); // paid once
   });
 
 });

@@ -19,8 +19,10 @@ import {
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
   TransferCapExceededError,
+  NotAGuestError,
   WalletFrozenError,
   WalletNotFoundError,
+  WelcomeNeedsGameError,
   type AdminAdjustWalletInput,
   type TransferWalletCoinsInput,
   type ClaimTerminalIntentResult,
@@ -465,6 +467,8 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bINVALID_IDENTITY_ID:/, InvalidIdentityIdError],
   [/\bWALLET_NOT_FOUND:/, WalletNotFoundError],
   [/\bWALLET_FROZEN:/, WalletFrozenError],
+  [/\bWELCOME_NEEDS_GAME:/, WelcomeNeedsGameError],
+  [/\bNOT_A_GUEST:/, NotAGuestError],
   [/\bINSUFFICIENT_FUNDS:/, InsufficientFundsError],
   [/\bTRANSFER_CAP_EXCEEDED:/, TransferCapExceededError],
   [/\bINVALID_SEAT_CONFIGURATION:/, InvalidSeatConfigurationError],
@@ -656,6 +660,13 @@ export class SupabaseEconomyRepository implements EconomyRepository {
 
   async grantStarterCoins(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
     const envelope = await this.rpc<RawEnvelope<WalletRow>>("grant_starter_coins", {
+      p_identity_id: identityId,
+    });
+    return { ...envelope, result: toWallet(envelope.result) };
+  }
+
+  async grantGuestWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const envelope = await this.rpc<RawEnvelope<WalletRow>>("grant_guest_welcome", {
       p_identity_id: identityId,
     });
     return { ...envelope, result: toWallet(envelope.result) };

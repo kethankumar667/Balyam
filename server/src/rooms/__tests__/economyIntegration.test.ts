@@ -420,7 +420,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.totalWorldBankCut).toBe("40");
       expect(settlement?.totalWalletRewarded).toBe("160");
       expect(settlement?.totalGuestEscrow).toBe("0");
-      expect((await service.getWallet(guestB)).balance).toBe("3060"); // 3,000 welcome - 100 stake + 160 prize
+      expect((await service.getWallet(guestB)).balance).toBe("2060"); // 3,000 welcome - 100 stake + 160 prize
 
       const worldBank = await service.getWorldBankSnapshot();
       expect(worldBank.abandonmentForfeitureRevenue).toBe("0");
@@ -749,7 +749,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.totalWalletRewarded).toBe("160");
       expect(settlement?.totalGuestEscrow).toBe("0");
       expect(settlement?.totalForfeited).toBe("0");
-      expect((await service.getWallet(guestB)).balance).toBe("3060");
+      expect((await service.getWallet(guestB)).balance).toBe("2060");
       expect((await service.getWorldBankSnapshot()).guestEscrowLiability).toBe("0");
 
       // 2. The guest's client is told, over BOTH channels — `game:state`
@@ -1266,7 +1266,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       playRpsToCompletion(rooms, "s_guest", "s_a");
       await drainRoomEconomy(rooms);
 
-      expect((await service.getWallet(guestIdentityId)).balance).toBe("3060"); // 3,000 welcome - 100 stake + 160 prize
+      expect((await service.getWallet(guestIdentityId)).balance).toBe("2060"); // 3,000 welcome - 100 stake + 160 prize
       const prize = (await repo.listLedger(guestIdentityId)).find((e) => e.entryType === "MATCH_PRIZE_CREDIT");
       expect(prize?.amount).toBe("160");
 
@@ -1400,7 +1400,7 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
       expect(settlement?.status).toBe("SETTLED"); // not REFUNDED — a resolved guest identity let this settle for real
       expect(settlement?.totalGuestEscrow).toBe("0"); // nothing is escrowed any more
       expect(settlement?.totalWalletRewarded).toBe("160"); // 1st-place prize, paid into the guest's own wallet
-      expect((await service.getWallet("guest_phase4_g1")).balance).toBe("3060");
+      expect((await service.getWallet("guest_phase4_g1")).balance).toBe("2060");
     });
 
     it("allows a guest host with 1 bot to start a free practice match with 0 coins deducted", async () => {
@@ -2290,7 +2290,7 @@ describe("a winning guest is paid whether or not they are still connected", () =
     playRpsToCompletion(rooms, "s_b", "s_a"); // the guest (s_b) wins
     await drainRoomEconomy(rooms);
 
-    expect((await service.getWallet(guestWinner)).balance).toBe("3060");
+    expect((await service.getWallet(guestWinner)).balance).toBe("2060");
     expect(socketEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
     expect(roomEmits.some((e) => e.event === "economy:voucherIssued")).toBe(false);
   });
@@ -2314,7 +2314,7 @@ describe("a winning guest is paid whether or not they are still connected", () =
     await drainRoomEconomy(rooms);
 
     // Under vouchers this win was unclaimable. Now the coins are simply in the wallet.
-    expect((await service.getWallet(guestWinner)).balance).toBe("3060");
+    expect((await service.getWallet(guestWinner)).balance).toBe("2060");
   });
 });
 

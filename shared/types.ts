@@ -2938,6 +2938,12 @@ export interface SetTokenNicknamesPayload {
   nicknames: Record<string, string>;
 }
 
+/**
+ * Whether a table could take a NEW player right now, in the order `joinRoom` checks it. Asked before
+ * anything is created for a first-time visitor, so a dead link costs them nothing.
+ */
+export type RoomProbeStatus = "open" | "not_found" | "sealed" | "full" | "started";
+
 export interface JoinRoomPayload {
   name: string;
   code: string;
@@ -3197,6 +3203,11 @@ export interface ClientToServerEvents {
       error?: string;
     }) => void
   ) => void;
+  /**
+   * Read-only: could a new player take a seat at this code? Creates nothing and needs no identity.
+   * Answers only the coarse status — never who is inside or what is being played.
+   */
+  "room:probe": (code: string, ack: (response: { status: RoomProbeStatus }) => void) => void;
   /**
    * `ack` fires only after the server has fully PROCESSED the leave (not
    * merely received the packet) — the client waits on it (with a bounded

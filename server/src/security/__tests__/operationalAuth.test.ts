@@ -537,7 +537,7 @@ describe("P0-1 — the real server refuses to boot misconfigured", () => {
         NODE_ENV: "production",
         PORT: "4933",
         OPERATIONAL_SECRET: OPS_KEY,
-        SESSION_SECRET: "a-stable-test-session-secret",
+        SESSION_SECRET: "a-stable-test-session-secret-of-sufficient-length-0123456789",
         ALLOW_EPHEMERAL_PROGRESSION: "",
         SUPABASE_SERVICE_ROLE_KEY: "",
       });
@@ -555,7 +555,7 @@ ${output}`).toBe(1);
         NODE_ENV: "production",
         PORT: "4932",
         OPERATIONAL_SECRET: OPS_KEY,
-        SESSION_SECRET: "a-stable-test-session-secret",
+        SESSION_SECRET: "a-stable-test-session-secret-of-sufficient-length-0123456789",
       });
       // null == we killed a running server, which is the pass condition here.
       expect(code, `server should have stayed up. Output:\n${output}`).toBe(null);

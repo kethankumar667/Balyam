@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { GUEST_UPGRADE_BONUS_COINS } from "@shared/carryover.js";
+import {
+  GUEST_UPGRADE_BONUS_COINS,
+  MEMBER_WELCOME_COINS,
+  carryOverPayment,
+} from "@shared/carryover.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { GuestCarryOverService } from "../GuestCarryOverService.js";
@@ -10,71 +14,124 @@ import { RiskService } from "../RiskService.js";
 import { TrustService } from "../TrustService.js";
 
 const START = 1_800_000_000_000;
+/** A guest who holds only the welcome grant. */
 const GUEST = "guest_aaa";
+/** A guest who played well and holds 3,800 coins: the product owner's own example. */
+const EARNER = "guest_earner";
 const MEMBER = "member-1";
 
+describe("carryOverPayment — where the account should land", () => {
+  it("tops a 3,800-coin guest up to 5,800: balance + the sign-up bonus", () => {
+    expect(MEMBER_WELCOME_COINS + carryOverPayment(3_800)).toBe(3_800 + GUEST_UPGRADE_BONUS_COINS);
+    expect(carryOverPayment(3_800)).toBe(800);
+  });
+
+  it("pays nothing extra when the member welcome already covers balance + bonus", () => {
+    expect(carryOverPayment(0)).toBe(0);
+    expect(carryOverPayment(2_000)).toBe(0);
+    expect(carryOverPayment(3_000)).toBe(0);
+  });
+
+  it("is the whole difference for a guest who did very well", () => {
+    expect(carryOverPayment(8_000)).toBe(5_000);
+  });
+
+  it("never lands an account below the plain member welcome", () => {
+    for (const balance of [0, 500, 2_000, 2_999, 3_000, 3_001, 9_000]) {
+      expect(MEMBER_WELCOME_COINS + carryOverPayment(balance)).toBe(
+        Math.max(MEMBER_WELCOME_COINS, balance + GUEST_UPGRADE_BONUS_COINS),
+      );
+    }
+  });
+});
+
 describe("guest carry-over", () => {
+  let repo: InMemoryEconomyRepository;
   let economy: EconomyService;
   let gateway: RewardGateway;
-  let trust: TrustService;
   let confirmed: Set<string>;
   let service: GuestCarryOverService;
   const clock = { now: START };
   const risk = new RiskService();
-  let realMatches = 0;
 
   const balanceOf = async (id: string): Promise<number> => Number((await economy.getWallet(id)).balance);
 
+  /** A guest wallet holding exactly `balance` coins, as if earned or lost down to that. */
+  const seedGuest = (id: string, balance: number): void => {
+    repo.testFixture.seedWallet({
+      identityId: id,
+      identityKind: "guest",
+      balance: String(balance),
+      lifetimeGranted: String(balance),
+      starterGranted: true,
+    });
+  };
+
+  const release = async (): Promise<void> => {
+    clock.now += VESTING_MS + 1_000;
+    await gateway.releaseDue();
+  };
+
   beforeEach(async () => {
     clock.now = START;
-    realMatches = 0;
     confirmed = new Set([MEMBER, "member-2"]);
-    economy = new EconomyService(new InMemoryEconomyRepository());
-    trust = new TrustService();
-    trust.setProviders({
-      accountAgeDays: () => 0,
-      opponentStats: () => ({ realPeopleMatches: realMatches, distinctOpponents: realMatches }),
-      activeMandalis: async () => 0,
-    });
+    repo = new InMemoryEconomyRepository();
+    economy = new EconomyService(repo);
+    const trust = new TrustService();
     gateway = new RewardGateway({ economy, repository: new InMemoryRewardRepository(), risk, trust, now: () => clock.now });
     const store = new InMemoryGuestCarryOverStore({ economy, isEmailConfirmed: (id) => confirmed.has(id), now: () => clock.now });
-    service = new GuestCarryOverService({ store, gateway, trust, now: () => clock.now });
+    service = new GuestCarryOverService({ store, gateway, now: () => clock.now });
     await economy.ensureIdentityRegistered(GUEST, "guest");
     await economy.ensureIdentityRegistered(MEMBER, "member");
+    seedGuest(EARNER, 3_800);
   });
 
-  it("takes the whole guest wallet and holds it for the member", async () => {
-    const before = await balanceOf(GUEST);
-    const memberBefore = await balanceOf(MEMBER);
+  it("lands a 3,800-coin guest's account on 5,800 once the hold has passed", async () => {
+    const before = await balanceOf(MEMBER);
+    expect(before).toBe(MEMBER_WELCOME_COINS);
+
+    const res = await service.carryOver(MEMBER, EARNER);
+    expect(res).toMatchObject({ ok: true, amount: 800, replay: false, vestingUntil: START + VESTING_MS });
+    expect(await balanceOf(EARNER)).toBe(0);
+    // Held, not paid: the member's wallet has not moved yet.
+    expect(await balanceOf(MEMBER)).toBe(before);
+
+    await release();
+
+    expect(await balanceOf(MEMBER)).toBe(5_800);
+    expect(await service.status(MEMBER)).toMatchObject({ carriedAmount: 800, carriedPaid: true });
+  });
+
+  it("empties a welcome-grant-only guest and pays nothing extra: the member keeps the plain welcome", async () => {
+    const before = await balanceOf(MEMBER);
 
     const res = await service.carryOver(MEMBER, GUEST);
 
-    expect(res).toMatchObject({ ok: true, amount: before, replay: false, vestingUntil: START + VESTING_MS });
+    expect(res).toMatchObject({ ok: true, amount: 0, replay: false, vestingUntil: null });
     expect(await balanceOf(GUEST)).toBe(0);
-    // Held, not paid: the member's wallet has not moved yet.
-    expect(await balanceOf(MEMBER)).toBe(memberBefore);
+    expect(await balanceOf(MEMBER)).toBe(before);
+    expect((await gateway.listForPlayer(MEMBER)).filter((r) => r.rewardType === "GUEST_CARRYOVER")).toHaveLength(0);
+    expect(await service.status(MEMBER)).toMatchObject({ carriedAmount: 0, carriedPaid: true });
   });
 
-  it("pays the member once the hold has passed", async () => {
-    const before = await balanceOf(GUEST);
-    const memberBefore = await balanceOf(MEMBER);
-    await service.carryOver(MEMBER, GUEST);
+  it("never pays the old separate bonus: it is part of the one payment", async () => {
+    await service.carryOver(MEMBER, EARNER);
 
-    clock.now += VESTING_MS + 1_000;
-    await gateway.releaseDue();
-
-    expect(await balanceOf(MEMBER)).toBe(memberBefore + before);
-    expect((await service.status(MEMBER)).carriedPaid).toBe(true);
+    expect(await service.claimBonus(MEMBER)).toMatchObject({ ok: false, code: "NOTHING_TO_CLAIM" });
+    expect(await service.status(MEMBER)).toMatchObject({ bonusPending: false, bonusUnlocked: false, bonusPaid: false });
+    expect((await gateway.listForPlayer(MEMBER)).filter((r) => r.rewardType === "GUEST_UPGRADE_BONUS")).toHaveLength(0);
   });
 
   it("treats the same pair again as a replay without moving anything twice", async () => {
-    const first = await service.carryOver(MEMBER, GUEST);
-    const second = await service.carryOver(MEMBER, GUEST);
+    const first = await service.carryOver(MEMBER, EARNER);
+    const second = await service.carryOver(MEMBER, EARNER);
+    await release();
 
     expect(first).toMatchObject({ ok: true, replay: false });
     expect(second).toMatchObject({ ok: true, replay: true });
     const rewards = await gateway.listForPlayer(MEMBER);
     expect(rewards.filter((r) => r.rewardType === "GUEST_CARRYOVER")).toHaveLength(1);
+    expect(await balanceOf(MEMBER)).toBe(5_800);
   });
 
   it("refuses a second account for the same guest", async () => {
@@ -118,33 +175,7 @@ describe("guest carry-over", () => {
     expect(await service.carryOver(MEMBER, null)).toMatchObject({ ok: false, code: "NO_GUEST" });
   });
 
-  describe("upgrade bonus", () => {
-    it("is not on offer to someone who brought no guest", async () => {
-      expect(await service.claimBonus(MEMBER)).toMatchObject({ ok: false, code: "NOTHING_TO_CLAIM" });
-      expect(await service.status(MEMBER)).toMatchObject({ carriedAmount: null, bonusPending: false });
-    });
-
-    it("stays locked until the member has finished a match with real people", async () => {
-      await service.carryOver(MEMBER, GUEST);
-
-      expect(await service.claimBonus(MEMBER)).toMatchObject({ ok: false, code: "NEEDS_MATCH" });
-      expect(await service.status(MEMBER)).toMatchObject({ bonusPending: true, bonusUnlocked: false, bonusPaid: false });
-    });
-
-    it("is held, then paid once, after a real match", async () => {
-      await service.carryOver(MEMBER, GUEST);
-      realMatches = 1;
-
-      const first = await service.claimBonus(MEMBER);
-      const second = await service.claimBonus(MEMBER);
-      clock.now += VESTING_MS + 1_000;
-      await gateway.releaseDue();
-
-      expect(first).toMatchObject({ ok: true, amount: GUEST_UPGRADE_BONUS_COINS });
-      expect(second).toMatchObject({ ok: true });
-      const bonuses = (await gateway.listForPlayer(MEMBER)).filter((r) => r.rewardType === "GUEST_UPGRADE_BONUS");
-      expect(bonuses).toHaveLength(1);
-      expect(await service.status(MEMBER)).toMatchObject({ bonusPaid: true, bonusPending: false });
-    });
+  it("reports nothing carried for an account that brought no guest", async () => {
+    expect(await service.status(MEMBER)).toMatchObject({ carriedAmount: null, bonusPending: false });
   });
 });

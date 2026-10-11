@@ -104,17 +104,32 @@ migration and its rollback on a real PostgreSQL.
 
 ## Guest to account carry-over
 
-A guest who signs up brings their coins with them, and earns a 5,000-coin welcome bonus after their first match with real people. `shared/carryover.ts`, `server/src/rewards/GuestCarryOverService.ts`, migration `20261025000000_guest_carryover.sql`.
+A guest who signs up ends with `max(5,000, guest balance + 2,000)`: 3,800 becomes 5,800, 100 becomes the ordinary 5,000. This is the owner's explicit rule (2026-10-11). `shared/carryover.ts`, `server/src/rewards/GuestCarryOverService.ts`, migration `20261025000000_guest_carryover.sql`.
+
+- **What is paid is the top-up above the member welcome.** `carryOverPayment(balance) = max(0, balance + 2,000 − 5,000)`. The claim still empties the guest wallet (`claim_guest_wallet` records the full balance); the account already has its own 5,000 member welcome, so only the part above it is granted, as one `GUEST_CARRYOVER` reward. A payment of 0 writes no row. There is no ceiling and no separate bonus any more. The earlier earned-only cap and the tier-2 bonus gate were removed on the owner's instruction; the farming bound moved to the first-game wallet and the per-network limit (next section).
 
 - **One guest per account, one account per guest** is a database fact: `guest_wallet_claims` has `guest_id` as its primary key and a unique `member_id`. `claim_guest_wallet()` does the whole step atomically: it checks the account, debits the guest wallet to zero (`GUEST_CARRYOVER_DEBIT` ledger row), and writes the claim. It never credits the member.
 - **The email must be confirmed.** The function reads `auth.users.email_confirmed_at` and refuses an unconfirmed or unknown account (`EMAIL_NOT_CONFIRMED`, `MEMBER_NOT_FOUND`). This is the only place the server learns that an email is real, so it only holds if Supabase's "Confirm email" is ON in production. Google sign-in arrives confirmed.
-- **Both payments go through the gateway** as `GUEST_CARRYOVER` and `GUEST_UPGRADE_BONUS` rows keyed `guest:<guest id>`, so each is granted once, waits the standard 24 h hold (72 h if RESTRICTED), and is refused while the account is UNDER_REVIEW. Neither is in the instant-pay list in `vestingFor`.
+- **The payment goes through the gateway** as a `GUEST_CARRYOVER` row keyed `guest:<guest id>`, so it is granted once, waits the standard 24 h hold (72 h if RESTRICTED), and is refused while the account is UNDER_REVIEW. It is not in the instant-pay list in `vestingFor`.
 - **If the credit fails after the debit,** the amount is on the claim and the next `POST /api/carryover/claim` grants it. The guest wallet cannot be claimed twice, so coins are late, never lost.
-- **The bonus is gated on play:** `POST /api/carryover/bonus` is refused (`NEEDS_MATCH`) until the trust service counts one finished match against another signed-in person. A sign-up alone, or a match against bots, earns nothing.
+- **`POST /api/carryover/bonus` is retired:** it answers `NOTHING_TO_CLAIM` and `GUEST_UPGRADE_BONUS` rows are no longer written.
 - **The guest is proved by its own signed token** in the request body; a guest id in a body or URL moves nothing. The client (`client/src/lib/guestCarryOver.ts`) sends the stored guest token once per signed-in session and drops it when the server says it is finished with it.
 - **Verify it:** `npm run verify:carryover` applies every migration to a real PostgreSQL and checks the refusals, the race between two claims, the rollback and the reward types. Prints `GUEST_CARRYOVER_VERIFIED`.
 
-Known limits: a throwaway guest with a wallet can still be turned into an account and a bonus by anyone with many real mailboxes; what bounds it is the hold, the tier-1 transfer cap (500 a day) and the first-real-match gate. Yahoo `-` aliases, iCloud Hide My Email and custom-domain catch-alls are not folded by the one-mailbox guard.
+Known limits: a new guest holds only 100 coins until they play (see the next section), so a throwaway guest is worth little; what remains is play-farming through real matches, bounded by the hold and the per-network guest limit, which is friction rather than a guarantee (shared networks, VPNs). Yahoo `-` aliases, iCloud Hide My Email and custom-domain catch-alls are not folded by the one-mailbox guard.
+
+## Guest first game and welcome
+
+A new guest wallet is made with only the first-game amount (`economy_configurations.guest_first_game_coins`, 100: one seat). The rest of the welcome (`guest_starter_coins`, 2,000) is added once, after the guest has spent coins on a match, when they choose **Stay as a guest** (`GuestWelcomeCard`, `POST /api/economy/guest/welcome`, `grant_guest_welcome`). Signing in instead takes the carry-over path above. Migration `20261028000000_guest_first_game_welcome.sql`; rollback in `supabase/rollbacks/`.
+
+- **One switch.** `guest_first_game_coins` is nullable; NULL means a guest is born with the full welcome, exactly as before. Setting it back to NULL turns the feature off.
+- **Both grants are `STARTER_GRANT` rows** with different idempotency keys (`starter-grant:<id>`, `guest-welcome:<id>`); `coin_wallets.welcome_pending` marks a guest still owed the welcome. Wallets that existed before the migration are untouched.
+- **The welcome needs a game played:** `WELCOME_NEEDS_GAME` (HTTP 409) until `lifetime_spent > 0`, so creating a guest and asking at once pays nothing. A repeat is a no-op (`applied: false`).
+- **Stakes:** a guest at 100 coins can only sit at a 100-per-seat table until the welcome is taken.
+- **Erasure:** `purge_idle_guests` deletes a wallet-less idle guest outright and, for one with a wallet, erases everything that cascades from the identity (catalogue-driven, so a later table is covered) and stamps `player_identities.erased_at`; the identity row, wallet and the anonymous coin ledger stay (the ledger is immutable and holds a random id, no personal data). Returns `{purged, erased, skipped}`.
+- **Per network:** `POST /api/auth/guest` refuses a sixth new guest from one address in 7 days (`GUEST_PER_NETWORK_LIMIT`, `guestNetworkLimiter.ts`). The address is hashed with a per-process salt and held in memory only; it fails open; in production it needs `TRUST_PROXY_HOPS` or it stays off. Friction, not a guarantee.
+- **Verify it:** `npm run verify:guestfirstgame` applies every migration to a real PostgreSQL and checks the first-game wallet, the welcome (once, race, needs-a-game, members refused), the erasure and the rollback. Prints `GUEST_FIRST_GAME_VERIFIED`.
+
 
 ## Guest identity: created just in time, bounded, and purged
 
@@ -132,7 +147,7 @@ shows nothing rather than a zero. Client: `peekPlayerCredential` (never creates)
   needs a privacy-notice decision first. A throttled new guest still plays as themself for that request;
   only the database write waits for the next minute. An existing guest is unaffected.
 - **Retention.** `purge_idle_guests` (migration `20261026000000`) runs daily from the server and removes
-  guest identities idle for `IDLE_GUEST_DAYS` (default 45, minimum 7) that never got a wallet and were
+  guest identities idle for `IDLE_GUEST_DAYS` (default 8 — one day past the 7-day guest token, minimum 7) that never got a wallet and were
   never absorbed into an account. The wallet ledger is immutable, so a guest who has a wallet is never
   purged; that, plus the welcome grant being a permanent audit row, is why the grant belongs at the first
   real action and not at arrival. Each deletion is isolated: anything that still references a guest makes

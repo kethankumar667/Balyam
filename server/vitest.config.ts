@@ -17,6 +17,9 @@ export default defineConfig({
    * thresholds get set from it, slightly below, and ratcheted.
    */
   test: {
+    // Dozens of tests make guests over HTTP from one address, so the per-network guest limit
+    // (auth/guestNetworkLimiter.ts) is off by default here; its own tests switch it on explicitly.
+    env: { GUEST_PER_NETWORK_LIMIT: "0" },
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "json-summary", "lcov"],

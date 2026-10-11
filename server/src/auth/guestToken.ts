@@ -103,16 +103,49 @@ function isProduction(): boolean {
  */
 export function assertGuestTokenDurabilityConfigured(): void {
   const { durable, reason } = guestTokenDurability();
-  if (durable) return;
+  const failure = durable ? signingKeyWeakness() : reason;
+  if (failure === null) return;
 
   if (!isProduction()) {
-    logger.warn({ message: reason, module: "AUTH" });
+    logger.warn({ message: failure, module: "AUTH" });
     return;
   }
 
-  logger.error({ message: `Refusing to start in production: ${reason}`, module: "AUTH" });
-  throw new Error(`Refusing to start in production: ${reason}`);
+  logger.error({ message: `Refusing to start in production: ${failure}`, module: "AUTH" });
+  throw new Error(`Refusing to start in production: ${failure}`);
 }
+
+/** The shortest signing secret accepted in production: 32 characters, i.e. a 256-bit key as text. */
+export const MIN_SIGNING_SECRET_LENGTH = 32;
+
+/**
+ * Why the configured signing secret is too weak to protect wallets, or `null` if it is fine.
+ *
+ * ── Why this exists ───────────────────────────────────────────────────
+ * Every guest id and seat is proved by an HMAC over this one secret. Anyone who can guess it can mint a
+ * valid token for ANY guest id — including someone else's, and so their wallet. "Is it set?" (above) says
+ * nothing about whether it can be guessed; a one-word value passes it. Reports only the reason, never the
+ * value, a hash of it, or any part of it.
+ */
+export function signingKeyWeakness(): string | null {
+  const key = process.env.SESSION_SECRET?.trim();
+  if (!key) return null; // "not set" is `guestTokenDurability`'s finding, not this one's
+  if (key.length < MIN_SIGNING_SECRET_LENGTH) {
+    return (
+      `SESSION_SECRET is shorter than ${MIN_SIGNING_SECRET_LENGTH} characters, so guest and seat tokens could be guessed. ` +
+      "Generate a long random value (for example `openssl rand -base64 48`)."
+    );
+  }
+  // Long enough, but copied from the sample environment file: `.env.example` ships
+  // "replace-with-a-stable-random-session-secret" (43 characters), a value the whole repository knows.
+  if (PLACEHOLDER_SECRET.test(key)) {
+    return "SESSION_SECRET is a placeholder copied from an example file. Generate a long random value (for example `openssl rand -base64 48`).";
+  }
+  return null;
+}
+
+/** Wording that only ever appears in instructions ("replace-with…", "change-me", "your secret here"), never in a random key. */
+const PLACEHOLDER_SECRET = /replace[-_ ]?with|change[-_ ]?me|your[-_ ]?(secret|key)|placeholder|example/i;
 
 export interface GuestClaims {
   /** The server-minted player id this token speaks for. */

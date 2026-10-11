@@ -52,7 +52,7 @@ describe("InMemoryEconomyRepository", () => {
       wallet.isFrozen = true;
 
       const reread = await repo.getWallet("guest_clone_read");
-      expect(reread?.balance).toBe("3000");
+      expect(reread?.balance).toBe("2000");
       expect(reread?.isFrozen).toBe(false);
     });
 
@@ -197,7 +197,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(second.result.roomCode).toBe("R"); // the ORIGINAL value, not the replay's differing input
 
       const wallet = await repo.getWallet("host_replay");
-      expect(wallet?.balance).toBe("2900"); // debited exactly once (3000 - 100)
+      expect(wallet?.balance).toBe("1900"); // debited exactly once (2000 - 100)
     });
   });
 
@@ -212,7 +212,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("guest_race_grant");
-      expect(wallet?.balance).toBe("3000");
+      expect(wallet?.balance).toBe("2000");
     });
   });
 
@@ -237,7 +237,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("host_race_commit");
-      expect(wallet?.balance).toBe("2800"); // 3000 - 200, once
+      expect(wallet?.balance).toBe("1800"); // 2000 - 200, once
     });
   });
 
@@ -275,7 +275,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r === true).length).toBe(1);
 
       // Paid once, into the guest's wallet: the 3,000 welcome grant plus the 160 prize.
-      expect((await repo.getWallet(raceGuest))?.balance).toBe("3160");
+      expect((await repo.getWallet(raceGuest))?.balance).toBe("2160");
       const credits = (await repo.listLedger(raceGuest)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT");
       expect(credits).toHaveLength(1);
     });
@@ -301,7 +301,7 @@ describe("InMemoryEconomyRepository", () => {
       expect(results.filter((r) => r.applied).length).toBe(1);
 
       const wallet = await repo.getWallet("host_race_refund");
-      expect(wallet?.balance).toBe("3000"); // fully restored, once
+      expect(wallet?.balance).toBe("2000"); // fully restored, once
     });
   });
 
@@ -403,7 +403,7 @@ describe("InMemoryEconomyRepository", () => {
 
       // The guest is paid into their own wallet: the 3,000 welcome grant plus the 120 prize.
       const guestWallet = await repo.getWallet(wbGuest);
-      expect(guestWallet?.balance).toBe("3120");
+      expect(guestWallet?.balance).toBe("2120");
     });
   });
 

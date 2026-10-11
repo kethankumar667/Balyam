@@ -6,13 +6,20 @@ import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
 import { guestDisplayName } from "@shared/guestIdentity";
+import { isNameRefusal } from "@shared/playerName";
+import type { RoomProbeStatus } from "@shared/types";
 import {
   ensureGuestToken,
   getPlayerCredential,
+  guestCreationRefusal,
   peekPlayerCredential,
   resolveRoomCredential,
 } from "../lib/playerIdentity";
 import GuestInviteNotice from "../components/room/GuestInviteNotice";
+import TableUnavailable, { type UnavailableStatus } from "../components/room/TableUnavailable";
+
+/** How long the pre-join probe may take before the join is left to decide on its own. */
+const PROBE_TIMEOUT_MS = 4000;
 import { exitFullscreen, isFullscreenActive, isFullscreenSupported, isPhoneClass } from "../lib/fullscreen";
 import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
@@ -37,6 +44,7 @@ import ParticipantPanel from "../components/room/ParticipantPanel";
 import CompactColorSelector from "../components/room/CompactColorSelector";
 import LobbyActionBar from "../components/room/LobbyActionBar";
 import FinishedTableCard from "../components/room/FinishedTableCard";
+import GuestWelcomeCard from "../components/room/GuestWelcomeCard";
 import { useRoomViewModel } from "../hooks/useRoomViewModel";
 import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
@@ -697,6 +705,38 @@ export default function Room() {
     return existing?.kind === "guest" ? existing.playerId : null;
   });
 
+  /** Why the server refused the name last tried, shown on the name step so they can pick another. */
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  /**
+   * Could this table take a NEW guest? Asked before anything is created for them, so a dead, full,
+   * started or sealed link costs a first-time visitor nothing — no guest account, no name to set up.
+   * `null` means the answer is still on its way. If it never arrives the join itself stays authoritative,
+   * so the probe fails open rather than ever blocking someone behind a slow connection.
+   */
+  const [probe, setProbe] = useState<RoomProbeStatus | null>(null);
+  useEffect(() => {
+    setProbe(null);
+    if (!code || !mustDeclare) return;
+    const socket = getSocket();
+    let settled = false;
+    const settle = (status: RoomProbeStatus) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      setProbe(status);
+    };
+    const timer = setTimeout(() => settle("open"), PROBE_TIMEOUT_MS);
+    const ask = () => socket.emit("room:probe", code, (res) => settle(res.status));
+    if (socket.connected) ask();
+    else socket.once("connect", ask);
+    return () => {
+      settled = true;
+      clearTimeout(timer);
+      socket.off("connect", ask);
+    };
+  }, [code, mustDeclare]);
+
   // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
   // Rummy table, remember who was at it so the home screen can offer a
   // one-tap WhatsApp re-invite next time. Keyed on the name itself so
@@ -792,6 +832,14 @@ export default function Room() {
           `${reason} ok=${res.ok}${res.ok ? "" : ` error=${res.error ?? "?"}`}`,
         );
         if (!res.ok) {
+          // A refused NAME is not a failed room: nothing is wrong with the table, and no seat was granted.
+          // Send the guest back to the name step with the reason, instead of a dead-end error card.
+          if (!isMember && isNameRefusal(res.error)) {
+            setNameError(res.error ?? null);
+            setPlayerName("");
+            setDeclaredHere(false);
+            return;
+          }
           const msg =
             res.error === "Room not found"
               ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
@@ -1608,16 +1656,23 @@ export default function Room() {
   if (!roomPlayerName || mustDeclare) {
     // A guest with no identity yet is told what is about to be created BEFORE it is created.
     const needsGuestNotice = mustDeclare && !guestId;
-    // A guest's suggested name is their automatic one; a stored legacy name only wins if they have one.
-    const suggestedName = mustDeclare && guestId ? playerName || guestDisplayName(guestId) : playerName;
+    // A guest is always offered their OWN automatic name. A name left over from another table is never
+    // carried into this one — the name belongs to the room it was chosen in.
+    const suggestedName = mustDeclare && guestId ? guestDisplayName(guestId) : playerName;
+    // Told the table cannot take them BEFORE a guest account or a name is set up.
+    const unavailable: UnavailableStatus | null = mustDeclare && probe && probe !== "open" ? probe : null;
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
-        {needsGuestNotice ? (
+        {unavailable ? (
+          <TableUnavailable status={unavailable} onBack={() => navigate("/")} />
+        ) : mustDeclare && probe === null ? (
+          <NameEntryChamberFallback />
+        ) : needsGuestNotice ? (
           <GuestInviteNotice
             onCancel={() => navigate("/")}
             onContinue={async () => {
               const created = await getPlayerCredential();
-              if (created?.kind !== "guest") return false;
+              if (created?.kind !== "guest") return guestCreationRefusal() ?? false;
               setGuestId(created.playerId);
               return true;
             }}
@@ -1627,7 +1682,9 @@ export default function Room() {
             code={code ?? ""}
             initialName={suggestedName}
             guest={mustDeclare}
+            error={nameError}
             onSubmit={(n) => {
+              setNameError(null);
               setPlayerName(n);
               setDeclaredHere(true);
             }}
@@ -1832,7 +1889,10 @@ export default function Room() {
             )}
 
             {roomState.phase === "finished" ? (
-              <FinishedTableCard game={roomState.game} onNewRoom={leaveAndCreateRoom} onLeave={leaveRoom} />
+              <>
+                <GuestWelcomeCard />
+                <FinishedTableCard game={roomState.game} onNewRoom={leaveAndCreateRoom} onLeave={leaveRoom} />
+              </>
             ) : (
               <>
             <Suspense fallback={null}>
@@ -2359,9 +2419,12 @@ function NameEntryForRoom({
   onSubmit,
   initialName = "",
   guest = false,
+  error = null,
 }: {
   code: string;
   onSubmit: (name: string) => void;
+  /** Why the last name was refused, shown under the box. */
+  error?: string | null;
   /** Prefill, so a guest with a stored name confirms rather than retypes. */
   initialName?: string;
   /** True when this is a guest announcing themselves at someone else's table
@@ -2376,6 +2439,7 @@ function NameEntryForRoom({
         onSubmit={onSubmit}
         initialName={initialName}
         guest={guest}
+        error={error}
       />
     </Suspense>
   );

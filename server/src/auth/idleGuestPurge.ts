@@ -14,8 +14,12 @@ import { PostgrestClient, readPostgrestConfig } from "../persistence/postgrest.j
  */
 
 const MIN_IDLE_DAYS = GUEST_IDLE_EXPIRY_DAYS;
-/** Matches the guest token lifetime: past this, nobody can sign in as the guest, so the row is dead weight. */
-const DEFAULT_IDLE_DAYS = GUEST_IDLE_EXPIRY_DAYS;
+/**
+ * One day PAST the guest token lifetime. A guest's row is touched when their token is renewed, so by
+ * the time a row has been quiet for the token's whole life the token is dead and nobody can come back
+ * as that guest; the extra day absorbs clock and ordering slack so a still-valid token is never purged.
+ */
+const DEFAULT_IDLE_DAYS = GUEST_IDLE_EXPIRY_DAYS + 1;
 const DAY_MS = 86_400_000;
 const FIRST_RUN_DELAY_MS = 5 * 60_000;
 const BATCH = 500;
@@ -26,7 +30,10 @@ export function idleGuestDays(): number {
 }
 
 export interface PurgeOutcome {
+  /** Idle guests with no wallet, deleted outright. */
   purged: number;
+  /** Idle guests who had a wallet: personal data erased, the anonymous coin ledger kept. Absent before migration 20261028000000. */
+  erased?: number;
   skipped: number;
 }
 
@@ -38,9 +45,10 @@ const isMissingFunction = (message: string): boolean => /PGRST202|Could not find
 export async function runIdleGuestPurge(rpc: PurgeRpc, days: number = idleGuestDays()): Promise<PurgeOutcome | null> {
   try {
     const outcome = await rpc(days, BATCH);
-    if (outcome.purged > 0 || outcome.skipped > 0) {
+    const erased = outcome.erased ?? 0;
+    if (outcome.purged > 0 || erased > 0 || outcome.skipped > 0) {
       logger.info({
-        message: `Idle guest purge: removed ${outcome.purged}, kept ${outcome.skipped} that something still references.`,
+        message: `Idle guest purge: removed ${outcome.purged}, erased ${erased} with a wallet, kept ${outcome.skipped} that something still references.`,
         module: "AUTH",
       });
     }

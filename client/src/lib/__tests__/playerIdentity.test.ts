@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { resolveRoomCredential, ensureGuestToken } from "../playerIdentity";
+import { resolveRoomCredential, ensureGuestToken, guestCreationRefusal } from "../playerIdentity";
 import { useAuthStore, setAccessToken } from "../../store/authStore";
 
 function fakeStorage() {
@@ -107,6 +107,37 @@ describe("resolveRoomCredential", () => {
     if (!res.ok) {
       expect(res.error).toBe("We could not prepare your guest session. Check your connection and try again.");
     }
+  });
+
+  it("tells the person plainly when their network has made too many guests, instead of a generic failure", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({
+        error: "TOO_MANY_GUESTS_FROM_NETWORK",
+        message: "Too many guest accounts have been made from this network recently. Sign in to keep playing, or try again later.",
+      }),
+    } as Response);
+
+    const res = await resolveRoomCredential();
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/too many guest accounts.*sign in/i);
+    expect(guestCreationRefusal()).toMatch(/too many guest accounts/i);
+  });
+
+  it("forgets a refusal once a later attempt succeeds", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({ message: "Too many." }) } as Response);
+    await resolveRoomCredential();
+    expect(guestCreationRefusal()).toBe("Too many.");
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ playerId: "guest_ok", token: "bg1.ok.token", expiresAt: Date.now() + 3_600_000 }),
+    } as Response);
+    await resolveRoomCredential();
+
+    expect(guestCreationRefusal()).toBeNull();
   });
 
   it("fails closed with user-facing error when guest minting throws a network error", async () => {

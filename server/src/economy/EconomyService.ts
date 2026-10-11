@@ -199,6 +199,12 @@ export function computePrizePool(
 
 /* ═══════════════════════════ Public DTOs ══════════════════════════════════ */
 
+/** `pending` = a guest who has played and is still owed the welcome; `amount` = what it adds (bigint-as-string). */
+export interface GuestWelcomeStatus {
+  pending: boolean;
+  amount: string;
+}
+
 export interface MatchCheckoutQuoteInput {
   hostIdentityId: string;
   seatCount: number;
@@ -491,6 +497,37 @@ export class EconomyService {
     const entries = await this.withRetry("getLedger", null, () => this.repository.listLedger(identityId, opts));
     this.logOutcome("getLedger", null, startedAt, "read");
     return entries;
+  }
+
+  /**
+   * Whether this guest is still owed the welcome that follows their first game. Read-only: it never
+   * creates a wallet. A pending guest was made with only the first-game amount, so they have been
+   * granted less than the full welcome; one who has been welcomed (or was made before the rule) has
+   * been granted at least that much. Only a hint for the client — `claimGuestWelcome` is the authority.
+   */
+  async getGuestWelcomeStatus(identityId: string): Promise<GuestWelcomeStatus> {
+    const startedAt = this.now();
+    const [wallet, config] = await Promise.all([
+      this.withRetry("guestWelcomeStatus:wallet", null, () => this.repository.getWallet(identityId)),
+      this.withRetry("guestWelcomeStatus:config", null, () => this.repository.getActiveConfiguration()),
+    ]);
+    const amount = config.guestStarterCoins;
+    const pending =
+      wallet !== null &&
+      wallet.identityKind === "guest" &&
+      !wallet.isFrozen &&
+      BigInt(wallet.lifetimeSpent) > 0n &&
+      BigInt(wallet.lifetimeGranted) < BigInt(amount);
+    this.logOutcome("guestWelcomeStatus", null, startedAt, "read");
+    return { pending, amount };
+  }
+
+  /** Adds the guest welcome once, after the first game (see `EconomyRepository.grantGuestWelcome`). */
+  async claimGuestWelcome(identityId: string): Promise<{ applied: boolean; wallet: CoinWalletRecord }> {
+    const startedAt = this.now();
+    const outcome = await this.withRetry("claimGuestWelcome", null, () => this.repository.grantGuestWelcome(identityId));
+    this.logOutcome("claimGuestWelcome", null, startedAt, outcome.applied);
+    return { applied: outcome.applied, wallet: outcome.result };
   }
 
   /* ═══════════════════════ checkout quotation (Phase 4) ══════════════════

@@ -48,6 +48,16 @@ describe("GuestInviteNotice", () => {
     expect(screen.getByRole("button", { name: /try again/i })).toBeTruthy();
   });
 
+  it("shows the server's own sentence when the guest was refused on purpose, not a generic failure", async () => {
+    const onContinue = vi.fn().mockResolvedValue("Too many guest accounts have been made from this network recently. Sign in to keep playing.");
+    render(<GuestInviteNotice onContinue={onContinue} onCancel={vi.fn()} />);
+
+    click(screen.getByRole("button", { name: /continue as guest/i }));
+
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/too many guest accounts.*sign in/i));
+    expect(screen.getByRole("alert").textContent).not.toMatch(/check your connection/i);
+  });
+
   it("leaves without creating anything when the guest says Not now", () => {
     const onContinue = vi.fn();
     const onCancel = vi.fn();

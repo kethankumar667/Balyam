@@ -100,7 +100,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         await ctx.repo.ensureWallet(id);
         const wallet = await ctx.repo.getWallet(id);
         expect(wallet?.identityId).toBe(id);
-        expect(wallet?.balance).toBe("3000");
+        expect(wallet?.balance).toBe("2000");
         expect(typeof wallet?.balance).toBe("string");
       });
 
@@ -190,7 +190,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const config = await ctx.repo.getActiveConfiguration();
         expect(config.isActive).toBe(true);
         expect(config.seatCostCoins).toBe("100");
-        expect(config.guestStarterCoins).toBe("3000");
+        expect(config.guestStarterCoins).toBe("2000");
         expect(config.memberStarterCoins).toBe("5000");
       });
     });
@@ -270,7 +270,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const id = freshId("guest");
         ctx.seedIdentity(id, "guest");
         const wallet = await ctx.repo.ensureWallet(id);
-        expect(wallet.balance).toBe("3000");
+        expect(wallet.balance).toBe("2000");
         expect(wallet.starterGranted).toBe(true);
       });
 
@@ -293,12 +293,12 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
 
     /* ── grantStarterCoins ── */
     describe("grantStarterCoins", () => {
-      it("grants 3000 to a guest and 5000 to a member, returning applied:true, when called on a wallet that has not yet been granted", async () => {
+      it("grants 2000 to a guest and 5000 to a member, returning applied:true, when called on a wallet that has not yet been granted", async () => {
         const guest = freshId("guest");
         ctx.seedUngrantedWallet(guest, "guest");
         const guestResult = await ctx.repo.grantStarterCoins(guest);
         expect(guestResult.applied).toBe(true);
-        expect(guestResult.result.balance).toBe("3000");
+        expect(guestResult.result.balance).toBe("2000");
 
         const member = freshMemberId();
         ctx.seedUngrantedWallet(member, "member");
@@ -319,7 +319,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         await ctx.repo.ensureWallet(id); // grants once
         const replay = await ctx.repo.grantStarterCoins(id);
         expect(replay.applied).toBe(false);
-        expect(replay.result.balance).toBe("3000");
+        expect(replay.result.balance).toBe("2000");
       });
     });
 
@@ -338,7 +338,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         expect(result.result.status).toBe("COMMITTED");
         expect(result.result.totalCollected).toBe("300");
         const wallet = await ctx.repo.getWallet(host);
-        expect(wallet?.balance).toBe("2700"); // 3000 - 300
+        expect(wallet?.balance).toBe("1700"); // 2000 - 300
       });
 
       it("rejects with WalletFrozenError for a frozen host wallet, checked before balance", async () => {
@@ -357,11 +357,11 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
       it("rejects with InsufficientFundsError once committed spend exceeds the remaining balance", async () => {
         const host = freshId("guest");
         ctx.seedIdentity(host, "guest");
-        await ctx.repo.ensureWallet(host); // 3000
-        for (let i = 0; i < 6; i++) {
+        await ctx.repo.ensureWallet(host); // 2000
+        for (let i = 0; i < 4; i++) {
           await ctx.repo.commitMatchEntry({
             matchId: freshId("m"), roomCode: null, hostIdentityId: host,
-            seatCount: 5, humanSeatCount: 5, botSeatCount: 0, isSolo: false, // 500 each, 6x = 3000
+            seatCount: 5, humanSeatCount: 5, botSeatCount: 0, isSolo: false, // 500 each, 4x = 2000
           });
         }
         await expect(
@@ -474,7 +474,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         expect(settled.result.totalWalletRewarded).toBe("160");
         expect(settled.result.totalGuestEscrow).toBe("0");
         const wallet = await ctx.repo.getWallet(guest);
-        expect(wallet?.balance).toBe("3160"); // the 3,000 welcome grant plus the 160 prize
+        expect(wallet?.balance).toBe("2160"); // the 3,000 welcome grant plus the 160 prize
         const ledger = await ctx.repo.listLedger(guest);
         expect(ledger.some((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.amount === "160")).toBe(true);
       });
@@ -495,7 +495,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
           participants: [{ identityId: guest, identityKind: "guest", placement: 1, voucherCodeHash: fakeHash() } as never],
         });
         expect(settled.result.totalGuestEscrow).toBe("0");
-        expect((await ctx.repo.getWallet(guest))?.balance).toBe("3160");
+        expect((await ctx.repo.getWallet(guest))?.balance).toBe("2160");
       });
 
       it("routes a bot participant's prize to bot_prize_revenue, never to a wallet", async () => {
@@ -801,7 +801,7 @@ function economyRepositoryContractSuite(name: string, make: () => SuiteContext):
         const wallet = await ctx.repo.ensureWallet(id);
         (wallet as { balance: string }).balance = "999999999";
         const reread = await ctx.repo.getWallet(id);
-        expect(reread?.balance).toBe("3000");
+        expect(reread?.balance).toBe("2000");
       });
     });
   });

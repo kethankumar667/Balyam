@@ -97,7 +97,7 @@ describe("GET /api/economy/wallet", () => {
     repo.testFixture.seedIdentity(playerId, "guest");
     const res = await server.request("/api/economy/wallet", { token });
     expect(res.status).toBe(200);
-    expect((res.body as { wallet: { balance: string } }).wallet.balance).toBe("3000"); // guest starter grant
+    expect((res.body as { wallet: { balance: string } }).wallet.balance).toBe("2000"); // guest starter grant
   });
 
   it("service-layer failure propagation: IdentityNotFoundError maps to a structured 404, never a raw throw", async () => {

@@ -189,10 +189,35 @@ async function renewStoredGuest(): Promise<PlayerCredential | null> {
   }
 }
 
+/** Why the last attempt to create a guest was turned away on purpose (too many from this network), or `null`. */
+let lastGuestRefusal: string | null = null;
+
+/**
+ * The server's plain-words reason the last guest could not be created, when it was a deliberate refusal
+ * rather than a failure — so a person on a crowded network is told to sign in, not that "something went wrong".
+ */
+export function guestCreationRefusal(): string | null {
+  return lastGuestRefusal;
+}
+
+async function readRefusalMessage(res: Response): Promise<string> {
+  const fallback = "Too many guest accounts have been made from this network. Sign in to keep playing, or try again later.";
+  try {
+    const body = (await res.json()) as { message?: unknown };
+    return typeof body.message === "string" && body.message ? body.message : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 async function createGuest(): Promise<PlayerCredential | null> {
+  lastGuestRefusal = null;
   try {
     const res = await fetch(`${getApiBaseUrl()}/api/auth/guest`, { method: "POST" });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 429) lastGuestRefusal = await readRefusalMessage(res);
+      return null;
+    }
     return storeGuest((await res.json()) as MintedGuestBody);
   } catch {
     // Offline, or the server is down. The caller renders its own empty
@@ -309,7 +334,7 @@ export async function resolveRoomCredential(): Promise<RoomCredentialResult> {
   if (!credential?.token) {
     return {
       ok: false,
-      error: "We could not prepare your guest session. Check your connection and try again.",
+      error: lastGuestRefusal ?? "We could not prepare your guest session. Check your connection and try again.",
     };
   }
 

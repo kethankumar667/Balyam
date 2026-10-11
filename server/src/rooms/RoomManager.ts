@@ -86,8 +86,16 @@ import { generateRoomCode } from "./codeGenerator.js";
 import { mintSeatToken, verifySeatToken } from "../lib/seatToken.js";
 import { createEngine, getGameLimits, getGameOrientationRequirement } from "../games/registry.js";
 import { NO_ECONOMY_GAMES } from "@shared/catalog.js";
-import type { CoachableEngine, CoachHintResponse, AccountKind } from "@shared/types.js";
+import type { CoachableEngine, CoachHintResponse, AccountKind, RoomProbeStatus } from "@shared/types.js";
 import { SEALED_ROOM_ERROR, capabilitiesFor } from "@shared/permissions.js";
+import { guestDisplayName } from "@shared/guestIdentity.js";
+import {
+  NAME_NOT_ALLOWED_ERROR,
+  NAME_TAKEN_ERROR,
+  isReservedGuestName,
+  playerNameKey,
+  sanitizePlayerName,
+} from "@shared/playerName.js";
 import { ALLOWED_REACTIONS, QUICK_REACTIONS } from "@shared/reactions.js";
 import { genericBotThinkDelayMs } from "./botPacing.js";
 import { maybeAmbientBotReactionEmoji } from "./botReactions.js";
@@ -1861,7 +1869,7 @@ export class RoomManager {
     const userProfile = identityId ? profileService.getProfile(identityId) : undefined;
     const player: Player = {
       id: playerId,
-      name: name.trim().slice(0, 20) || "Player",
+      name: sanitizePlayerName(name) || "Player",
       isHost: true,
       isReady: false,
       isConnected: true,
@@ -2116,11 +2124,25 @@ export class RoomManager {
     if (room.players.size >= max) return { ok: false, error: "Room is full" };
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
 
+    // The name is the server's to vet — the form's own limits prove nothing about a hand-sent packet.
+    // A guest additionally may not borrow someone's number or a title of authority, nor wear a name
+    // already worn at this table. An account's name is its own; it is cleaned but never refused.
+    const cleanedName = sanitizePlayerName(name);
+    let joinName = cleanedName || "Player";
+    if (accountKind === "guest") {
+      const ownAutomaticName = identityId ? guestDisplayName(identityId) : undefined;
+      joinName = cleanedName || ownAutomaticName || "Guest";
+      if (isReservedGuestName(joinName, ownAutomaticName)) {
+        return { ok: false, error: NAME_NOT_ALLOWED_ERROR };
+      }
+      if (this.isNameWornAtTable(room, joinName)) return { ok: false, error: NAME_TAKEN_ERROR };
+    }
+
     const playerId = newPlayerId();
     const userProfile = identityId ? profileService.getProfile(identityId) : undefined;
     const player: Player = {
       id: playerId,
-      name: name.trim().slice(0, 20) || "Player",
+      name: joinName,
       isHost: false,
       isReady: false,
       isConnected: true,
@@ -2151,6 +2173,32 @@ export class RoomManager {
       seatToken: mintSeatToken(room.code, playerId),
       state: this.toPublicState(room),
     };
+  }
+
+  /** True when any seat at the table (human or bot) already carries this name, ignoring case and look-alikes. */
+  private isNameWornAtTable(room: Room, name: string): boolean {
+    const wanted = playerNameKey(name);
+    for (const seat of room.players.values()) {
+      if (playerNameKey(seat.name) === wanted) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Could a NEW player take a seat at this code right now? Mirrors the order `joinRoom` refuses in, so
+   * what the probe says is what a join would say — but creates nothing and needs no identity. A first-
+   * time visitor on an invite link is asked this BEFORE a guest account is made for them, so a dead,
+   * full, started or sealed table costs them nothing.
+   *
+   * Reveals no more than `joinRoom`'s own errors already do, and nothing about who is inside.
+   */
+  probeRoom(code: string): RoomProbeStatus {
+    const room = this.rooms.get(code.trim().toUpperCase());
+    if (!room) return "not_found";
+    if (room.sealed) return "sealed";
+    if (room.players.size >= getGameLimits(room.game).max) return "full";
+    if (room.phase !== "lobby") return "started";
+    return "open";
   }
 
   async leaveRoom(socketId: string): Promise<void> {

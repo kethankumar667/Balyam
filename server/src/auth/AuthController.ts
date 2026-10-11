@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { mintGuestToken, verifyGuestToken } from "./guestToken.js";
-import { requireIdentity } from "./identity.js";
+import { requireIdentity, touchGuestIdentity } from "./identity.js";
+import { logger } from "../lib/logger.js";
+import { guestNetworkLimiter, networkLimitIsTrustworthy } from "./guestNetworkLimiter.js";
 
 /**
  * Where a guest gets an identity, and where any caller can ask who they are.
@@ -24,7 +26,23 @@ export const authRouter = Router();
  * stored. That changes when guest identities become rows (P0-3), and the note
  * is here so it is not rediscovered then.
  */
-authRouter.post("/guest", (_req: Request, res: Response) => {
+authRouter.post("/guest", (req: Request, res: Response) => {
+  // A guest account is the unit of free coins, so remaking it is rate-limited per NETWORK (a salted
+  // hash held in memory, never the address). Skipped when the address cannot be trusted, so a
+  // misconfigured proxy cannot lock everyone out. See guestNetworkLimiter.ts for the whole argument.
+  if (networkLimitIsTrustworthy()) {
+    const verdict = guestNetworkLimiter.consume(req.ip);
+    if (!verdict.allowed) {
+      const retryAfterSeconds = Math.ceil(verdict.retryAfterMs / 1000);
+      res.setHeader("Retry-After", String(retryAfterSeconds));
+      res.status(429).json({
+        error: "TOO_MANY_GUESTS_FROM_NETWORK",
+        message: "Too many guest accounts have been made from this network recently. Sign in to keep playing, or try again later.",
+        retryAfterSeconds,
+      });
+      return;
+    }
+  }
   const minted = mintGuestToken();
   res.status(201).json({
     playerId: minted.playerId,
@@ -45,13 +63,20 @@ authRouter.post("/guest", (_req: Request, res: Response) => {
  * forged, signed with a different key (e.g. after a restart with no `SESSION_SECRET`) or already
  * expired gets a 401, and the client then falls back to minting a new guest.
  */
-authRouter.post("/guest/renew", (req: Request, res: Response) => {
+authRouter.post("/guest/renew", async (req: Request, res: Response) => {
   const header = req.header("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
   const playerId = verifyGuestToken(token);
   if (!playerId) {
     res.status(401).json({ error: "This guest identity can no longer be renewed." });
     return;
+  }
+  // Keep the idle purge in step with the token: a guest who renews is, by definition, not idle. A
+  // failure here must not log the guest out, so it is reported and the renewal still succeeds.
+  try {
+    await touchGuestIdentity(playerId);
+  } catch (err) {
+    logger.warn({ message: `Guest last-seen update failed during renewal: ${String(err)}`, module: "AUTH" });
   }
   const minted = mintGuestToken(playerId);
   res.status(200).json({

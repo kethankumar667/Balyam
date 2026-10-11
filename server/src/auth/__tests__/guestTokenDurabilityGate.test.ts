@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { guestTokenDurability, assertGuestTokenDurabilityConfigured } from "../guestToken.js";
+import {
+  guestTokenDurability,
+  assertGuestTokenDurabilityConfigured,
+  signingKeyWeakness,
+  MIN_SIGNING_SECRET_LENGTH,
+} from "../guestToken.js";
 import { logger } from "../../lib/logger.js";
 
 /**
@@ -68,14 +73,72 @@ describe("assertGuestTokenDurabilityConfigured — production startup guard", ()
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("production with a non-empty secret: passes", () => {
+  it("production with a long random secret: passes", () => {
     process.env.NODE_ENV = "production";
-    process.env.SESSION_SECRET = "a-stable-production-secret";
+    process.env.SESSION_SECRET = "a-stable-production-secret-of-sufficient-length-0123456789";
     const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
     expect(() => assertGuestTokenDurabilityConfigured()).not.toThrow();
     expect(warnSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("production with a short secret: fails closed, because a guessable key mints tokens for any guest", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SESSION_SECRET = "short-but-set";
+    vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    expect(() => assertGuestTokenDurabilityConfigured()).toThrow(/Refusing to start in production.*shorter than 32/);
+  });
+
+  it("production with the sample value copied from .env.example: fails closed even though it is long enough", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SESSION_SECRET = "replace-with-a-stable-random-session-secret";
+    vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    expect(process.env.SESSION_SECRET.length).toBeGreaterThanOrEqual(MIN_SIGNING_SECRET_LENGTH);
+    expect(signingKeyWeakness()).toMatch(/placeholder copied from an example file/);
+    expect(() => assertGuestTokenDurabilityConfigured()).toThrow(/Refusing to start in production/);
+  });
+
+  it("the minimum is exact: 31 characters is refused, 32 is accepted", () => {
+    process.env.NODE_ENV = "production";
+    vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    process.env.SESSION_SECRET = "x".repeat(MIN_SIGNING_SECRET_LENGTH - 1);
+    expect(signingKeyWeakness()).toMatch(/shorter than 32/);
+    expect(() => assertGuestTokenDurabilityConfigured()).toThrow(/Refusing to start in production/);
+
+    process.env.SESSION_SECRET = "x".repeat(MIN_SIGNING_SECRET_LENGTH);
+    expect(signingKeyWeakness()).toBeNull();
+    expect(() => assertGuestTokenDurabilityConfigured()).not.toThrow();
+  });
+
+  it("development with a short secret: allowed, with one warning that names the fix", () => {
+    process.env.NODE_ENV = "development";
+    process.env.SESSION_SECRET = "dev-secret";
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
+
+    expect(() => assertGuestTokenDurabilityConfigured()).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(warnSpy.mock.calls)).toContain("openssl rand");
+  });
+
+  it("never echoes a weak secret back in the log or the error", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SESSION_SECRET = "weakvalue-must-not-leak";
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    let thrown = "";
+    try {
+      assertGuestTokenDurabilityConfigured();
+    } catch (err) {
+      thrown = String(err);
+    }
+
+    expect(thrown).toMatch(/Refusing to start in production/);
+    expect(thrown).not.toContain("weakvalue-must-not-leak");
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("weakvalue-must-not-leak");
   });
 
   it("whitespace-only secret in production is treated as missing and fails closed", () => {

@@ -1,11 +1,14 @@
 import { useRef, useState } from "react";
-import { Clock, Save, UserRound } from "lucide-react";
+import { Clock, Gift, Save, UserRound } from "lucide-react";
 import { GUEST_IDLE_EXPIRY_DAYS } from "@shared/guestIdentity";
 import Modal from "../Modal";
 
 interface GuestInviteNoticeProps {
-  /** Resolves true once the guest identity exists, false when it could not be created. */
-  onContinue: () => Promise<boolean>;
+  /**
+   * Resolves true once the guest identity exists. Otherwise false (a plain failure) or a sentence
+   * explaining why (a deliberate refusal, such as too many guests from this network), shown as is.
+   */
+  onContinue: () => Promise<boolean | string>;
   /** Leave without a guest ever being created. */
   onCancel: () => void;
 }
@@ -27,9 +30,9 @@ export default function GuestInviteNotice({ onContinue, onCancel }: GuestInviteN
   const handleContinue = async () => {
     setIsCreating(true);
     setError(null);
-    const created = await onContinue();
-    if (!created) {
-      setError("We could not set up your guest account. Check your connection and try again.");
+    const result = await onContinue();
+    if (result !== true) {
+      setError(typeof result === "string" ? result : "We could not set up your guest account. Check your connection and try again.");
       setIsCreating(false);
     }
   };
@@ -60,6 +63,12 @@ export default function GuestInviteNotice({ onContinue, onCancel }: GuestInviteN
 
         <ul className="space-y-3 text-sm">
           <li className="flex gap-3">
+            <Gift className="w-5 h-5 shrink-0 mt-0.5 text-bhalyam-gold-dark" aria-hidden />
+            <span>
+              <strong>Your first game is on us.</strong> We cover your entry, and you can add more coins after it.
+            </span>
+          </li>
+          <li className="flex gap-3">
             <Clock className="w-5 h-5 shrink-0 mt-0.5 text-bhalyam-gold-dark" aria-hidden />
             <span>
               It expires after <strong>{GUEST_IDLE_EXPIRY_DAYS} days</strong> of not using it.
@@ -75,7 +84,7 @@ export default function GuestInviteNotice({ onContinue, onCancel }: GuestInviteN
           <li className="flex gap-3">
             <Save className="w-5 h-5 shrink-0 mt-0.5 text-bhalyam-gold-dark" aria-hidden />
             <span>
-              After the game, <strong>sign in to save your progress</strong> and keep your name.
+              After the game, <strong>sign in to save your progress and coins</strong>, and keep your name.
             </span>
           </li>
         </ul>

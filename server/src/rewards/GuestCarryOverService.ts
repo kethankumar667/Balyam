@@ -1,5 +1,6 @@
 import {
   GUEST_UPGRADE_BONUS_COINS,
+  carryOverPayment,
   type BonusResult,
   type CarryOverResult,
   type CarryOverStatus,
@@ -11,25 +12,27 @@ import {
   type GuestClaimRecord,
 } from "./GuestCarryOverStore.js";
 import type { RewardGateway } from "./RewardGateway.js";
-import type { TrustService } from "./TrustService.js";
 import { REASON, type RewardRecord } from "./types.js";
 
 /**
- * A guest who signs up brings their coins, and earns an upgrade bonus after a first real match.
+ * A guest who signs up keeps what they hold and gets a sign-up bonus on top.
  *
- * ── Two payments, both through the gateway ────────────────────────────
- * The carried coins and the bonus are ordinary reward rows (`GUEST_CARRYOVER`,
- * `GUEST_UPGRADE_BONUS`), keyed on the guest's id, so each can be granted once and a retry
- * is a no-op. They wait out the gateway's hold and are refused for an account under review.
+ * ── One payment, through the gateway ──────────────────────────────────
+ * The account's final balance is `guest balance + GUEST_UPGRADE_BONUS_COINS` — but a new account is
+ * already born with the member welcome, so what is paid is only the top-up from there
+ * (`carryOverPayment`, see `shared/carryover.ts`). It is an ordinary reward row (`GUEST_CARRYOVER`)
+ * keyed on the guest's id, so it is granted once and a retry is a no-op. It waits out the gateway's
+ * hold and is refused for an account under review.
  *
  * ── Why the debit is not undone when the credit fails ─────────────────
  * The guest's coins leave the guest wallet inside the claim. If the reward row then cannot
  * be written, the amount sits on the claim and the next call grants it: the member sees
  * "still arriving", never a loss, and the guest wallet cannot be claimed twice.
  *
- * ── The bonus is gated on play, not on sign-up ────────────────────────
- * It unlocks once the member has finished one match with real people (the same count the
- * trust tiers use), so a sign-up alone, and a match against bots alone, earn nothing.
+ * ── There is no separate bonus step any more ──────────────────────────
+ * The upgrade bonus used to be a second payment unlocked by play. It is folded into the one
+ * payment above, so `claimBonus` has nothing left to claim. It is kept (answering "nothing to
+ * claim") so a client that still calls it gets a plain answer.
  */
 
 const MESSAGES = {
@@ -43,29 +46,23 @@ const MESSAGES = {
 } as const;
 
 const BONUS_MESSAGES = {
-  NOTHING_TO_CLAIM: "There is no upgrade bonus to claim.",
-  NEEDS_MATCH: "Finish a match with other players to unlock your bonus.",
-  UNDER_REVIEW: "Rewards are paused while your account is being reviewed.",
-  UNAVAILABLE: "Your bonus is temporarily unavailable. Try again in a moment.",
+  NOTHING_TO_CLAIM: "Your sign-up bonus is already part of the coins brought over from your guest account.",
 } as const;
 
 export interface GuestCarryOverDeps {
   store: GuestCarryOverStore;
   gateway: RewardGateway;
-  trust: TrustService;
   now?: () => number;
 }
 
 export class GuestCarryOverService {
   private readonly store: GuestCarryOverStore;
   private readonly gateway: RewardGateway;
-  private readonly trust: TrustService;
   private readonly now: () => number;
 
   constructor(deps: GuestCarryOverDeps) {
     this.store = deps.store;
     this.gateway = deps.gateway;
-    this.trust = deps.trust;
     this.now = deps.now ?? Date.now;
   }
 
@@ -88,21 +85,23 @@ export class GuestCarryOverService {
       return refuse("UNAVAILABLE");
     }
 
-    if (outcome.amount === 0) return { ok: true, amount: 0, replay: outcome.status === "REPLAY", vestingUntil: null };
+    const payment = carryOverPayment(outcome.amount);
+    // The account's member welcome already covers it: nothing to top up.
+    if (payment === 0) return { ok: true, amount: 0, replay: outcome.status === "REPLAY", vestingUntil: null };
 
     const grant = await this.gateway.grantCoins({
       playerId: memberId,
       identityKind: "member",
       rewardType: "GUEST_CARRYOVER",
       reasonCode: REASON.GUEST_CARRYOVER,
-      amount: outcome.amount,
+      amount: payment,
       sourceId: `guest:${guestId}`,
-      description: "Coins brought over from your guest account",
+      description: "Topped up to match your guest coins plus the sign-up bonus",
     });
     // The coins are safe on the claim; the next call grants them. Say so, don't say "lost".
     if (!grant.ok) return refuse(grant.code === REASON.RISK_UNDER_REVIEW ? "UNDER_REVIEW" : "UNAVAILABLE");
 
-    return { ok: true, amount: outcome.amount, replay: outcome.status === "REPLAY", vestingUntil: this.heldUntil(grant.record) };
+    return { ok: true, amount: payment, replay: outcome.status === "REPLAY", vestingUntil: this.heldUntil(grant.record) };
   }
 
   async status(memberId: string): Promise<CarryOverStatus> {
@@ -110,55 +109,25 @@ export class GuestCarryOverService {
     if (!claim) {
       return { carriedAmount: null, carriedPaid: false, bonusPending: false, bonusAmount: GUEST_UPGRADE_BONUS_COINS, bonusUnlocked: false, bonusPaid: false };
     }
-    const [carried, bonus, unlocked] = await Promise.all([
-      claim.amount > 0 ? this.rewardFor(memberId, "GUEST_CARRYOVER", claim) : Promise.resolve(null),
-      this.rewardFor(memberId, "GUEST_UPGRADE_BONUS", claim),
-      this.hasFinishedRealMatch(memberId),
-    ]);
-    const bonusPaid = bonus?.status === "RELEASED";
+    const payment = carryOverPayment(claim.amount);
+    const carried = payment > 0 ? await this.rewardFor(memberId, claim) : null;
     return {
-      carriedAmount: claim.amount,
-      carriedPaid: claim.amount === 0 || carried?.status === "RELEASED",
-      bonusPending: bonus?.status === "VOIDED" ? false : !bonusPaid,
+      carriedAmount: payment,
+      carriedPaid: payment === 0 || carried?.status === "RELEASED",
+      bonusPending: false,
       bonusAmount: GUEST_UPGRADE_BONUS_COINS,
-      bonusUnlocked: unlocked,
-      bonusPaid,
+      bonusUnlocked: false,
+      bonusPaid: false,
     };
   }
 
-  async claimBonus(memberId: string): Promise<BonusResult> {
-    const refuse = (code: keyof typeof BONUS_MESSAGES): BonusResult => ({ ok: false, code, message: BONUS_MESSAGES[code] });
-
-    const claim = await this.store.findByMember(memberId);
-    if (!claim) return refuse("NOTHING_TO_CLAIM");
-    if (!(await this.hasFinishedRealMatch(memberId))) return refuse("NEEDS_MATCH");
-
-    const grant = await this.gateway.grantCoins({
-      playerId: memberId,
-      identityKind: "member",
-      rewardType: "GUEST_UPGRADE_BONUS",
-      reasonCode: REASON.GUEST_UPGRADE_BONUS,
-      amount: GUEST_UPGRADE_BONUS_COINS,
-      sourceId: `guest:${claim.guestId}`,
-      description: "Welcome bonus for creating an account",
-    });
-    if (!grant.ok) return refuse(grant.code === REASON.RISK_UNDER_REVIEW ? "UNDER_REVIEW" : "UNAVAILABLE");
-    if (grant.record.status === "VOIDED") return refuse("UNAVAILABLE");
-
-    return { ok: true, amount: grant.record.amount, vestingUntil: this.heldUntil(grant.record) };
+  /** The sign-up bonus is part of the carry-over payment; there is nothing separate to claim. */
+  async claimBonus(_memberId: string): Promise<BonusResult> {
+    return { ok: false, code: "NOTHING_TO_CLAIM", message: BONUS_MESSAGES.NOTHING_TO_CLAIM };
   }
 
-  private async hasFinishedRealMatch(memberId: string): Promise<boolean> {
-    const { metrics } = await this.trust.assess(memberId);
-    return metrics.completedMatches >= 1;
-  }
-
-  private async rewardFor(
-    memberId: string,
-    type: "GUEST_CARRYOVER" | "GUEST_UPGRADE_BONUS",
-    claim: GuestClaimRecord,
-  ): Promise<RewardRecord | null> {
-    const latest = await this.gateway.latestOfType(memberId, type);
+  private async rewardFor(memberId: string, claim: GuestClaimRecord): Promise<RewardRecord | null> {
+    const latest = await this.gateway.latestOfType(memberId, "GUEST_CARRYOVER");
     return latest && latest.sourceId === `guest:${claim.guestId}` ? latest : null;
   }
 

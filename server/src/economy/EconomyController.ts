@@ -32,11 +32,13 @@ import {
   MatchAlreadySettledError,
   MatchNotCommittedError,
   MatchNotFoundError,
+  NotAGuestError,
   SettlementConservationViolationError,
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
   WalletFrozenError,
   WalletNotFoundError,
+  WelcomeNeedsGameError,
   type TerminalIntentStatus,
 } from "../persistence/EconomyRepository.js";
 
@@ -187,6 +189,12 @@ function mapEconomyError(err: unknown): ApiError {
   }
   if (err instanceof WalletFrozenError) {
     return { status: 403, error: "WalletFrozen", message: "This wallet is currently frozen." };
+  }
+  if (err instanceof WelcomeNeedsGameError) {
+    return { status: 409, error: "WelcomeNeedsGame", message: "Play your first game before the welcome coins are added." };
+  }
+  if (err instanceof NotAGuestError) {
+    return { status: 403, error: "NotAGuest", message: "The welcome is only for guest accounts." };
   }
   if (err instanceof InsufficientFundsError) {
     return { status: 422, error: "InsufficientFunds", message: "This wallet does not have enough balance for this commitment." };
@@ -370,6 +378,32 @@ export function createEconomyRouter(service: EconomyService): Router {
     } catch (err) {
       const mapped = sendError(req, res, err);
       logOutcome(req, res, "GET /wallet/ledger", "getLedger", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** GET /guest/welcome — is the caller a guest still owed the welcome that follows their first game? Never creates a wallet. */
+  router.get("/guest/welcome", requireIdentity, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    try {
+      const status = await service.getGuestWelcomeStatus(callerId(req));
+      res.json(status);
+      logOutcome(req, res, "GET /guest/welcome", "getGuestWelcomeStatus", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /guest/welcome", "getGuestWelcomeStatus", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** POST /guest/welcome — "stay as a guest": adds the welcome once. A repeat answers `applied: false` with the current wallet. */
+  router.post("/guest/welcome", requireIdentity, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    try {
+      const { applied, wallet } = await service.claimGuestWelcome(callerId(req));
+      res.json({ applied, wallet });
+      logOutcome(req, res, "POST /guest/welcome", "claimGuestWelcome", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /guest/welcome", "claimGuestWelcome", null, startedAt, "error", mapped.error);
     }
   });
 

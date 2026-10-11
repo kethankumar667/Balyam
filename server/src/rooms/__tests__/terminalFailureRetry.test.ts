@@ -169,6 +169,7 @@ class FailNTimesRepository implements EconomyRepository {
   }
   ensureWallet(id: string) { return this.inner.ensureWallet(id); }
   grantStarterCoins(id: string) { return this.inner.grantStarterCoins(id); }
+  grantGuestWelcome(id: string) { return this.inner.grantGuestWelcome(id); }
   commitMatchEntry(i: Parameters<EconomyRepository["commitMatchEntry"]>[0]) { return this.inner.commitMatchEntry(i); }
   settleMatchEconomy(i: Parameters<EconomyRepository["settleMatchEconomy"]>[0]) { return this.inner.settleMatchEconomy(i); }
   refundMatchEntry(id: string, r: string) { return this.inner.refundMatchEntry(id, r); }
@@ -610,7 +611,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     const matchId = intents[0].matchId;
 
     // 3,000 welcome grant - 100 entry + 160 prize
-    expect((await service.getWallet(guestId)).balance).toBe("3060");
+    expect((await service.getWallet(guestId)).balance).toBe("2060");
     const prizeRows = (await repo.listLedger(guestId)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.sourceId === matchId);
     expect(prizeRows).toHaveLength(1);
     expect(prizeRows[0].amount).toBe("160");
@@ -620,7 +621,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
 
     // Duplicate worker processing does not pay a second time
     await rooms.drainEconomySettlementQueue();
-    expect((await service.getWallet(guestId)).balance).toBe("3060");
+    expect((await service.getWallet(guestId)).balance).toBe("2060");
     expect((await repo.listLedger(guestId)).filter((e) => e.entryType === "MATCH_PRIZE_CREDIT" && e.sourceId === matchId)).toHaveLength(1);
   });
 
@@ -690,7 +691,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     expect(settlement?.totalWalletRewarded).toBe("160");
 
     // The guest who joined via a socket event is paid into their wallet, once
-    expect((await service.getWallet(guestId)).balance).toBe("3060"); // 3,000 welcome - 100 entry + 160 prize
+    expect((await service.getWallet(guestId)).balance).toBe("2060"); // 3,000 welcome - 100 entry + 160 prize
   });
 
   describe("Phase 8: Concurrent Cleanup Regression Scenarios", () => {
