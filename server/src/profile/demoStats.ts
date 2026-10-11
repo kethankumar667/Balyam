@@ -20,7 +20,9 @@ import type { GameKind } from "@shared/types.js";
  */
 const DEMO_GAMES: readonly GameKind[] = ["ludo", "uno", "rummy", "handcricket", "snl"];
 
-export const isDemoStatsEnabled = (): boolean => process.env.DEMO_PROFILE_STATS === "on";
+/** Hosting dashboards capitalise values ("On"), so accept the usual spellings of yes. */
+export const isDemoStatsEnabled = (): boolean =>
+  ["on", "true", "1", "yes"].includes((process.env.DEMO_PROFILE_STATS ?? "").trim().toLowerCase());
 
 /** Small stable hash (FNV-1a) so each id maps to the same numbers every time. */
 function seedOf(playerId: string): number {

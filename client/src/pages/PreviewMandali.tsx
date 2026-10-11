@@ -249,7 +249,7 @@ export default function PreviewMandali() {
       onSelectChannel: setActiveChannelId,
       onSendMessage: noop,
       onReactMessage: noop,
-      onCreateParty: async () => ({ success: true }),
+      onStartGame: async () => ({ success: true }),
       onJoinParty: noop,
       onLeaveParty: noop,
       onLaunchParty: noop,

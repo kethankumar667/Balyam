@@ -37,7 +37,7 @@ const commonProps = () => ({
   onSelectChannel: vi.fn(),
   onSendMessage: vi.fn(),
   onReactMessage: vi.fn(),
-  onCreateParty: vi.fn(),
+  onStartGame: vi.fn(),
   onJoinParty: vi.fn(),
   onLeaveParty: vi.fn(),
   onLaunchParty: vi.fn(),

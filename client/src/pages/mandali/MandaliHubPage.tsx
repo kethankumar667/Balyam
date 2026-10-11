@@ -296,8 +296,11 @@ export default function MandaliHubPage(): JSX.Element {
     onSelectChannel: setActiveChannel,
     onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
     onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
-    onCreateParty: (game: GameKind, modeId: string, title: string, slots: number) =>
-      createParty(game, modeId, title, slots, playerId || undefined),
+    // A real room is made by the normal create flow (AppLayout opens it for `state.newRoom`).
+    onStartGame: async (game: GameKind) => {
+      navigate("/", { state: { newRoom: game } });
+      return { success: true };
+    },
     onJoinParty: (partyId: string) => joinParty(partyId, playerId || undefined),
     onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),
     onLaunchParty: (partyId: string) => launchParty(partyId, playerId || undefined),

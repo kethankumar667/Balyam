@@ -54,7 +54,7 @@ export interface MandaliHubMobileProps {
   onSelectChannel: (channelId: string) => void;
   onSendMessage: (content: string) => void;
   onReactMessage: (messageId: string, emoji: string) => void;
-  onCreateParty: (game: GameKind, modeId: string, title: string, slots: number) => Promise<{ success: boolean; error?: string }>;
+  onStartGame: (game: GameKind) => Promise<{ success: boolean; error?: string }>;
   onJoinParty: (partyId: string) => void;
   onLeaveParty: (partyId: string) => void;
   onLaunchParty: (partyId: string) => void;
@@ -103,7 +103,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   onSelectChannel,
   onSendMessage,
   onReactMessage,
-  onCreateParty,
+  onStartGame,
   onJoinParty,
   onLeaveParty,
   onLaunchParty,
@@ -347,7 +347,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
         </ul>
       </AlbumSheet>
 
-      <StartGameSheet open={startOpen} onClose={() => setStartOpen(false)} onStart={(game, title, seats) => onCreateParty(game, "casual", title, seats)} />
+      <StartGameSheet open={startOpen} onClose={() => setStartOpen(false)} onStart={onStartGame} />
     </div>
   );
 };

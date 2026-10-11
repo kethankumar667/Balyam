@@ -11,14 +11,15 @@ const open = (onStart: Parameters<typeof StartGameSheet>[0]["onStart"], onClose 
 describe("StartGameSheet", () => {
   afterEach(cleanup);
 
-  it("asks only for the game and the seats: no name field", () => {
+  it("asks only for the game: no name and no seat count", () => {
     open(vi.fn());
 
     expect(screen.getByLabelText("Game")).toBeInTheDocument();
     expect(screen.queryByLabelText(/Name/)).toBeNull();
+    expect(screen.queryByLabelText(/Seats/)).toBeNull();
   });
 
-  it("starts the chosen game under an automatic title and closes once the server says yes", async () => {
+  it("starts the chosen game and closes once it is under way", async () => {
     const onStart = vi.fn().mockResolvedValue({ success: true });
     const onClose = open(onStart);
 
@@ -26,17 +27,16 @@ describe("StartGameSheet", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(onStart).toHaveBeenCalledTimes(1);
-    expect(onStart.mock.calls[0][0]).toBe("ludo");
-    expect(onStart.mock.calls[0][1]).toMatch(/together/);
+    expect(onStart).toHaveBeenCalledWith("ludo");
   });
 
   it("stays open and says why when the server refuses, instead of doing nothing", async () => {
-    const onStart = vi.fn().mockResolvedValue({ success: false, error: "Must be an active member to create parties." });
+    const onStart = vi.fn().mockResolvedValue({ success: false, error: "Could not open the room." });
     const onClose = open(onStart);
 
     fireEvent.click(screen.getByRole("button", { name: "Start game" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Must be an active member to create parties.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not open the room.");
     expect(onClose).not.toHaveBeenCalled();
   });
 

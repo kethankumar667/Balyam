@@ -17,6 +17,17 @@ describe("demo profile stats (temporary)", () => {
     expect(demoProgressionFor("p1", prog)).toBe(prog);
   });
 
+  it("accepts the flag however the hosting dashboard capitalises it", () => {
+    for (const value of ["On", "ON", " true ", "1"]) {
+      process.env.DEMO_PROFILE_STATS = value;
+      expect(demoStatsFor(real("p1")).demo).toBe(true);
+    }
+    for (const value of ["off", "", "no"]) {
+      process.env.DEMO_PROFILE_STATS = value;
+      expect(demoStatsFor(real("p1")).demo).toBeUndefined();
+    }
+  });
+
   it("fills an empty profile, marked as demo, with coherent numbers", () => {
     process.env.DEMO_PROFILE_STATS = "on";
     const s = demoStatsFor(real("p1"));
