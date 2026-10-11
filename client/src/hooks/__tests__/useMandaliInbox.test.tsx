@@ -25,7 +25,7 @@ const join = vi.hoisted(() => vi.fn());
 const deleted = vi.hoisted(() => ({ apply: vi.fn() }));
 
 /** Who this device is, and who is in the group, for the coin-request celebration. */
-const who = vi.hoisted(() => ({ me: "me_1" as string | null, members: [{ playerId: "friend_1", displayName: "Bala" }, { playerId: "me_1", displayName: "Kethan" }] }));
+const who = vi.hoisted(() => ({ me: "me_1" as string | null, members: [{ playerId: "friend_1", displayName: "Bala", avatar: "bala.png" }, { playerId: "me_1", displayName: "Kethan", avatar: "kethan.png" }] }));
 
 /** Stands in for the wallet reload that follows a coin request being paid. */
 const wallet = vi.hoisted(() => ({ refresh: vi.fn(async () => undefined) }));
@@ -518,7 +518,25 @@ describe("useMandaliInbox", () => {
         act(() => io.fire("mandali:wallet_changed", funded()));
 
         expect(useMandaliJoyStore.getState().moment?.otherName).toBeNull();
-        who.members = [{ playerId: "friend_1", displayName: "Bala" }, { playerId: "me_1", displayName: "Kethan" }];
+        who.members = [{ playerId: "friend_1", displayName: "Bala", avatar: "bala.png" }, { playerId: "me_1", displayName: "Kethan", avatar: "kethan.png" }];
+      });
+
+      it("hands the stage both faces: this player's and the friend's, whichever side they are on", async () => {
+        await mount([digest("m1", "Ludo Lounge")]);
+        act(() => io.fire("mandali:wallet_changed", funded()));
+        expect(useMandaliJoyStore.getState().moment).toMatchObject({
+          kind: "received",
+          self: { name: "Kethan", avatar: "kethan.png" },
+          other: { name: "Bala", avatar: "bala.png" },
+        });
+
+        who.me = "friend_1";
+        act(() => io.fire("mandali:wallet_changed", funded()));
+        expect(useMandaliJoyStore.getState().moment).toMatchObject({
+          kind: "sent",
+          self: { name: "Bala", avatar: "bala.png" },
+          other: { name: "Kethan", avatar: "kethan.png" },
+        });
       });
     });
 
