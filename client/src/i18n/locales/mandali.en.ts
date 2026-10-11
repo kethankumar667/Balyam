@@ -116,7 +116,7 @@ export const mandaliEn = {
   "mandali.profile.levelProgress": "Progress to Level {{level}}",
   "mandali.profile.xpOfNext": "{{current}} / {{next}} XP",
   "mandali.profile.xpToNext": "{{count}} XP to go",
-  "mandali.profile.xpShort": "{{count}} XP",
+  "mandali.profile.xpTotalShort": "{{count}} XP in all",
   "mandali.profile.record": "Game record",
   "mandali.profile.played": "Games played",
   "mandali.profile.won": "Games won",
@@ -152,17 +152,6 @@ export const mandaliEn = {
   "mandali.start.failed": "Could not start the game. Please try again.",
 
   /* ── A game the group is gathering for ── */
-  "mandali.party.status.forming": "Gathering players",
-  "mandali.party.status.inGame": "Playing now",
-  "mandali.party.status.done": "Finished",
-  "mandali.party.seats": "{{filled}} of {{total}} seats filled",
-  "mandali.party.openSeat": "Open",
-  "mandali.party.start": "Start the game",
-  "mandali.party.waiting": "You're in. Waiting for the host to start.",
-  "mandali.party.leave": "Leave",
-  "mandali.party.join": "Join",
-  "mandali.party.full": "Seats are full",
-  "mandali.party.host": "Started it",
 
   /* ── A game room shared into the chat ── */
   "mandali.invite.removed": "This invitation was removed.",
@@ -265,11 +254,6 @@ export const mandaliEn = {
   "mandali.visit.signIn": "Sign in to join",
   "mandali.visit.joinFailed": "We couldn't add you just now. Please try again.",
   "mandali.visit.inviteBad": "This invite link is no longer valid. Ask the person who sent it for a new one.",
-  "mandali.launch.title": "Your {{game}} game is ready",
-  "mandali.launch.body": "The room is open and the group is gathering.",
-  "mandali.launch.code": "Room code",
-  "mandali.launch.join": "Join the room",
-  "mandali.launch.dismiss": "Not now",
   "mandali.create.title": "Start a Mandali",
   "mandali.create.subtitle": "A private place for the people you keep close.",
   "mandali.create.name": "Name",

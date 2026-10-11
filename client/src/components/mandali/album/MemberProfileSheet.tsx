@@ -5,6 +5,7 @@ import type { MandaliMember } from "@shared/mandali/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { useMemberGameRecord } from "../../../hooks/useMemberGameRecord";
 import { LOCALE_BY_ID } from "../../../i18n/types";
+import { MiniclipLevelBadge } from "../../progression/MiniclipLevelBadge";
 import { AlbumAvatar } from "./AlbumAvatar";
 import { AlbumButton } from "./AlbumButton";
 import { AlbumSheet } from "./AlbumSheet";
@@ -109,11 +110,10 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
               <AlbumAvatar avatar={member.avatar} name="" size="lg" presence={member.presence} />
             </span>
             {record.progression && (
-              <span
-                className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 bg-album-raised px-1.5 text-[11px] font-bold tabular-nums leading-tight text-album-ink shadow-sm"
-                style={{ borderColor: record.progression.tier.themeColor }}
-              >
-                {t("mandali.profile.level", { level: record.progression.currentLevel })}
+              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+                {/* The same medal the rest of the app wears, so a level looks the same everywhere. */}
+                <MiniclipLevelBadge level={record.progression.currentLevel} size="sm" showTooltip={false} />
+                <span className="sr-only">{t("mandali.profile.level", { level: record.progression.currentLevel })}</span>
               </span>
             )}
           </span>
@@ -138,7 +138,7 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
                 {activity}
               </p>
             </div>
-            <p className="m-0 mt-1.5 truncate text-xs text-album-ink3">
+            <p className="m-0 mt-1.5 text-xs text-album-ink3">
               {t("mandali.profile.joined")} <span className="text-album-ink2">{joined}</span>
             </p>
           </div>

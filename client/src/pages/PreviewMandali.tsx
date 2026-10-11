@@ -5,7 +5,6 @@ import type {
   MandaliMember,
   MandaliMemory,
   MandaliMessage,
-  MandaliParty,
 } from "@shared/mandali/types.js";
 import { MandaliHubDesktop } from "./mandali/MandaliHubDesktop";
 import { MandaliHubMobile } from "./mandali/MandaliHubMobile";
@@ -128,23 +127,6 @@ const messages: MandaliMessage[] = [
   } as Partial<MandaliMessage>),
 ];
 
-const parties: MandaliParty[] = [
-  {
-    partyId: "party_1", mandaliId: mandali.id, leaderId: "asha", leaderName: "Asha", game: "ludo", modeId: "casual",
-    title: "Sunday night Ludo", slots: 4, status: "FORMING", createdAt: at(30),
-    members: [
-      { playerId: "asha", displayName: "Asha", avatar: "file_0000000084c48208b1f893419d784cf2_3.jpg", isReady: true },
-      { playerId: "bala", displayName: "Bala", avatar: "file_0000000084c48208b1f893419d784cf2_5.jpg", isReady: true },
-    ],
-  },
-  {
-    partyId: "party_2", mandaliId: mandali.id, leaderId: "me", leaderName: "Kethan", game: "rummy", modeId: "casual",
-    title: "Rummy after dinner", slots: 6, status: "FORMING", createdAt: at(12),
-    members: [
-      { playerId: "me", displayName: "Kethan", avatar: "file_0000000084c48208b1f893419d784cf2_1.jpg", isReady: true },
-    ],
-  },
-];
 const memories: MandaliMemory[] = [
   {
     memoryId: "mem_1", mandaliId: mandali.id, type: "GAME_VICTORY", title: "Bala finally wins a Ludo night",
@@ -237,7 +219,6 @@ export default function PreviewMandali() {
       channels,
       activeChannelId,
       messages,
-      parties,
       memories,
       currentUserId: "me",
       selfId: "me",
@@ -250,9 +231,6 @@ export default function PreviewMandali() {
       onSendMessage: noop,
       onReactMessage: noop,
       onStartGame: async () => ({ success: true }),
-      onJoinParty: noop,
-      onLeaveParty: noop,
-      onLaunchParty: noop,
       onOpenCoinTransfer: noop,
       onRequestCoins: noop,
       onPayCoinRequest: noopAsync,

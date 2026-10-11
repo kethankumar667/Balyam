@@ -7,10 +7,6 @@ import type {
   MandaliLeaveRoomPayload,
   MandaliSendMessagePayload,
   MandaliReactMessagePayload,
-  MandaliPartyCreatePayload,
-  MandaliPartyJoinPayload,
-  MandaliPartyLeavePayload,
-  MandaliPartyLaunchPayload,
 } from "@shared/mandali/socketContract.js";
 import type { GameKind } from "@shared/types.js";
 import { resolvePlayerIdentity, type PlayerIdentity } from "../auth/identity.js";
@@ -184,109 +180,6 @@ export function registerMandaliSocketHandlers(
         module: "MANDALI_SOCKET",
       });
       ack?.({ success: false, error: "Internal error updating reaction" });
-    }
-  });
-
-  // Create a game party
-  socket.on("mandali:party:create", async (payload: MandaliPartyCreatePayload, ack?: (res: unknown) => void) => {
-    try {
-      const actorId = requireAuthenticatedActor(socket, ack);
-      if (!actorId) return;
-      if (!payload?.mandaliId || !payload?.game) {
-        ack?.({ success: false, error: "Invalid party creation payload" });
-        return;
-      }
-      const result = await mandaliService.createParty(
-        payload.mandaliId,
-        actorId,
-        "Leader",
-        "avatar_1",
-        payload.game as GameKind,
-        payload.modeId || "casual",
-        payload.title || "Squad",
-        payload.slots || 4
-      );
-      ack?.(result);
-    } catch (err) {
-      logger.error({
-        message: `Failed to create mandali party: ${err instanceof Error ? err.message : String(err)}`,
-        module: "MANDALI_SOCKET",
-      });
-      ack?.({ success: false, error: "Internal error creating party" });
-    }
-  });
-
-  // Join a game party
-  socket.on("mandali:party:join", (payload: MandaliPartyJoinPayload, ack?: (res: unknown) => void) => {
-    try {
-      const actorId = requireAuthenticatedActor(socket, ack);
-      if (!actorId) return;
-      if (!payload?.mandaliId || !payload?.partyId) {
-        ack?.({ success: false, error: "Invalid party join payload" });
-        return;
-      }
-      const member = mandaliService.getRepository().getMember(payload.mandaliId, actorId);
-      const displayName = member?.displayName || "Player";
-      const avatar = member?.avatar || "avatar_1";
-
-      const result = mandaliService.joinParty(
-        payload.mandaliId,
-        payload.partyId,
-        actorId,
-        displayName,
-        avatar
-      );
-      ack?.(result);
-    } catch (err) {
-      logger.error({
-        message: `Failed to join mandali party: ${err instanceof Error ? err.message : String(err)}`,
-        module: "MANDALI_SOCKET",
-      });
-      ack?.({ success: false, error: "Internal error joining party" });
-    }
-  });
-
-  // Leave a game party
-  socket.on("mandali:party:leave", (payload: MandaliPartyLeavePayload, ack?: (res: unknown) => void) => {
-    try {
-      const actorId = requireAuthenticatedActor(socket, ack);
-      if (!actorId) return;
-      if (!payload?.mandaliId || !payload?.partyId) {
-        ack?.({ success: false, error: "Invalid party leave payload" });
-        return;
-      }
-      const result = mandaliService.leaveParty(payload.mandaliId, payload.partyId, actorId);
-      ack?.(result);
-    } catch (err) {
-      logger.error({
-        message: `Failed to leave mandali party: ${err instanceof Error ? err.message : String(err)}`,
-        module: "MANDALI_SOCKET",
-      });
-      ack?.({ success: false, error: "Internal error leaving party" });
-    }
-  });
-
-  // Launch a game party (M-10 Handoff)
-  socket.on("mandali:party:launch", (payload: MandaliPartyLaunchPayload, ack?: (res: unknown) => void) => {
-    try {
-      const actorId = requireAuthenticatedActor(socket, ack);
-      if (!actorId) return;
-      if (!payload?.mandaliId || !payload?.partyId) {
-        ack?.({ success: false, error: "Invalid party launch payload" });
-        return;
-      }
-      const result = mandaliService.launchPartyToGame(
-        payload.mandaliId,
-        payload.partyId,
-        actorId
-      );
-      ack?.(result);
-    } catch (err) {
-      logger.error({
-        message: `Failed to launch mandali party: ${err instanceof Error ? err.message : String(err)}`,
-        module: "MANDALI_SOCKET",
-      });
-      ack?.({ success: false, error: "Internal error launching party" });
     }
   });
 }

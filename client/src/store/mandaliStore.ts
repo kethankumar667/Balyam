@@ -2,7 +2,7 @@
  * BHALYAM — Mandali (మండలి) Store (Zustand)
  *
  * Client state management for persistent communities, channels, real-time lounge chat,
- * party squads with game launch handoffs, and Gnapakalu memories.
+ * and Gnapakalu memories.
  *
  * Rules:
  * - Zero `any` in TypeScript.
@@ -18,7 +18,6 @@ import type {
   MandaliMember,
   MandaliChannel,
   MandaliMessage,
-  MandaliParty,
   MandaliMemory,
   MandaliEvent,
   CreateMandaliPayload,
@@ -29,7 +28,6 @@ import type {
   MandaliCoinRequest,
 } from "@shared/mandali/types.js";
 import type {
-  MandaliPartyLaunchedBroadcast,
   MandaliReactionUpdatedBroadcast,
   MandaliPresenceChangedBroadcast,
   MandaliMemoryCreatedBroadcast,
@@ -50,7 +48,6 @@ export interface MandaliStore {
   channels: MandaliChannel[];
   activeChannelId: string | null;
   messages: Record<string, MandaliMessage[]>; // channelId -> messages
-  parties: MandaliParty[];
   memories: MandaliMemory[];
   events: MandaliEvent[];
   coinTransfers: MandaliCoinTransfer[];
@@ -62,7 +59,6 @@ export interface MandaliStore {
   coinRequestCooldownEndsAt: number | null;
 
   // Launch Handoff tracking
-  activeGameLaunch: MandaliPartyLaunchedBroadcast | null;
 
   isLoading: boolean;
   isSubmitting: boolean;
@@ -125,11 +121,6 @@ export interface MandaliStore {
   cleanupMandaliSocket: (mandaliId: string, playerId: string) => void;
   sendMessage: (content: string, playerId?: string, replyToId?: string) => Promise<{ success: boolean; message?: MandaliMessage; error?: string }>;
   reactToMessage: (messageId: string, emoji: string, playerId?: string) => Promise<void>;
-  createParty: (game: GameKind, modeId: string, title: string, slots: number, playerId?: string) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
-  joinParty: (partyId: string, playerId?: string) => Promise<{ success: boolean; party?: MandaliParty; error?: string }>;
-  leaveParty: (partyId: string, playerId?: string) => Promise<{ success: boolean; error?: string }>;
-  launchParty: (partyId: string, leaderId?: string) => Promise<{ success: boolean; roomCode?: string; game?: string; error?: string }>;
-  clearActiveLaunch: () => void;
 }
 
 export const DEFAULT_PREVIEW_MANDALIS: Mandali[] = [
@@ -237,11 +228,9 @@ const NO_OPEN_MANDALI: Partial<MandaliStore> = {
   channels: [],
   activeChannelId: null,
   messages: {},
-  parties: [],
   memories: [],
   events: [],
   coinTransfers: [],
-  activeGameLaunch: null,
   pendingJoinRequests: [],
   coinRequests: {},
   coinRequestCooldownEndsAt: null,
@@ -305,11 +294,9 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
   channels: [],
   activeChannelId: null,
   messages: {},
-  parties: [],
   memories: [],
   events: [],
   coinTransfers: [],
-  activeGameLaunch: null,
   pendingJoinRequests: [],
   coinRequests: {},
   coinRequestCooldownEndsAt: null,
@@ -376,8 +363,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
         mandali: Mandali;
         members: MandaliMember[];
         channels: MandaliChannel[];
-        parties: MandaliParty[];
-        memories: MandaliMemory[];
+              memories: MandaliMemory[];
         events: MandaliEvent[];
       }>(`/api/mandali/${encodeURIComponent(handleOrId)}`);
 
@@ -387,7 +373,6 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
           activeMandali: res.mandali,
           members: res.members,
           channels: res.channels,
-          parties: res.parties,
           memories: res.memories,
           events: res.events,
           activeChannelId: defaultChannel ? defaultChannel.channelId : null,
@@ -829,8 +814,7 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       mandali: Mandali;
       members: MandaliMember[];
       channels: MandaliChannel[];
-      parties: MandaliParty[];
-      memories: MandaliMemory[];
+          memories: MandaliMemory[];
       events: MandaliEvent[];
     }>(`/api/mandali/${encodeURIComponent(activeMandali.id)}`);
     if (!res?.success) return;
@@ -840,7 +824,6 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       activeMandali: res.mandali,
       members: res.members,
       channels: res.channels,
-      parties: res.parties,
       memories: res.memories,
       events: res.events,
       activeChannelId: keepChannel ? activeChannelId : res.channels[0]?.channelId ?? null,
@@ -951,27 +934,6 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
             },
           };
         });
-      });
-
-      socket.on("mandali:party:updated" as any, (payload: { mandaliId: string; party: MandaliParty }) => {
-        const { activeMandali } = get();
-        if (!activeMandali || activeMandali.id !== payload.mandaliId) return;
-
-        set((state) => {
-          const exists = state.parties.some((p) => p.partyId === payload.party.partyId);
-          return {
-            parties: exists
-              ? state.parties.map((p) => (p.partyId === payload.party.partyId ? payload.party : p))
-              : [payload.party, ...state.parties],
-          };
-        });
-      });
-
-      socket.on("mandali:party:launched" as any, (payload: MandaliPartyLaunchedBroadcast) => {
-        const { activeMandali } = get();
-        if (!activeMandali || activeMandali.id !== payload.mandaliId) return;
-
-        set({ activeGameLaunch: payload });
       });
 
       socket.on("mandali:memory:created" as any, (payload: MandaliMemoryCreatedBroadcast) => {
@@ -1109,101 +1071,6 @@ export const useMandaliStore = create<MandaliStore>((set, get) => ({
       emoji,
     });
   },
-
-  createParty: async (game: GameKind, modeId: string, title: string, slots: number, playerId?: string) => {
-    const { activeMandali } = get();
-    if (!activeMandali) return { success: false, error: "No active Mandali" };
-
-    const effectivePlayerId = resolveCurrentPlayerId(playerId);
-    return new Promise((resolve) => {
-      const socket = getSocket();
-      socket.emit(
-        "mandali:party:create" as any,
-        {
-          mandaliId: activeMandali.id,
-          playerId: effectivePlayerId,
-          game,
-          modeId,
-          title,
-          slots,
-        },
-        (res: unknown) => {
-          const outcome = res as { success: boolean; party?: MandaliParty; error?: string };
-          resolve(outcome);
-        }
-      );
-    });
-  },
-
-  joinParty: async (partyId: string, playerId?: string) => {
-    const { activeMandali } = get();
-    if (!activeMandali) return { success: false, error: "No active Mandali" };
-
-    const effectivePlayerId = resolveCurrentPlayerId(playerId);
-    return new Promise((resolve) => {
-      const socket = getSocket();
-      socket.emit(
-        "mandali:party:join" as any,
-        {
-          mandaliId: activeMandali.id,
-          partyId,
-          playerId: effectivePlayerId,
-        },
-        (res: unknown) => {
-          const outcome = res as { success: boolean; party?: MandaliParty; error?: string };
-          resolve(outcome);
-        }
-      );
-    });
-  },
-
-  leaveParty: async (partyId: string, playerId?: string) => {
-    const { activeMandali } = get();
-    if (!activeMandali) return { success: false, error: "No active Mandali" };
-
-    const effectivePlayerId = resolveCurrentPlayerId(playerId);
-    return new Promise((resolve) => {
-      const socket = getSocket();
-      socket.emit(
-        "mandali:party:leave" as any,
-        {
-          mandaliId: activeMandali.id,
-          partyId,
-          playerId: effectivePlayerId,
-        },
-        (res: unknown) => {
-          const outcome = res as { success: boolean; error?: string };
-          resolve(outcome);
-        }
-      );
-    });
-  },
-
-  launchParty: async (partyId: string, leaderId?: string) => {
-    const { activeMandali } = get();
-    if (!activeMandali) return { success: false, error: "No active Mandali" };
-
-    const effectiveLeaderId = resolveCurrentPlayerId(leaderId);
-    return new Promise((resolve) => {
-      const socket = getSocket();
-      socket.emit(
-        "mandali:party:launch" as any,
-        {
-          mandaliId: activeMandali.id,
-          partyId,
-          leaderId: effectiveLeaderId,
-        },
-        (res: unknown) => {
-          const outcome = res as { success: boolean; roomCode?: string; game?: string; error?: string };
-          resolve(outcome);
-        }
-      );
-    });
-  },
-
-  clearActiveLaunch: () => {
-    set({ activeGameLaunch: null });
-  },
 }));
 
 /**
@@ -1234,12 +1101,10 @@ export function resetMandaliSession(): void {
     channels: [],
     activeChannelId: null,
     messages: {},
-    parties: [],
-    memories: [],
+      memories: [],
     events: [],
     coinTransfers: [],
-    activeGameLaunch: null,
-    pendingJoinRequests: [],
+      pendingJoinRequests: [],
     coinRequests: {},
     coinRequestCooldownEndsAt: null,
     isLoading: false,

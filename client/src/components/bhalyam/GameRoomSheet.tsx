@@ -37,6 +37,8 @@ import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { getPublicPresentationLoadout } from "../../lib/cosmeticsResolver";
 import SignInWall from "../auth/SignInWall";
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
+import { useMandaliStore } from "../../store/mandaliStore";
+import { toast } from "../../hooks/useToast";
 import {
   BHALYAM_GAMES,
   getGameAccent,
@@ -90,10 +92,25 @@ import {
 
 const JOIN_TIMEOUT_MS = 20_000;
 
+/**
+ * Post a just-created room into a Mandali. The room already exists and the host is already on their
+ * way into it, so a refusal here must not undo anything: say it, and the host can still use the
+ * room's own "Share to Mandali" button.
+ */
+async function postInviteToMandali(mandaliId: string, roomCode: string): Promise<void> {
+  const result = await useMandaliStore.getState().shareRoomToMandali(mandaliId, roomCode);
+  if (!result.success) toast.error(result.error || "Your room is ready, but it could not be posted to the group.");
+}
+
 export interface GameRoomSheetProps {
   /** Which game the user tapped. `null` means closed. */
   game: BhalyamGameSlug | null;
   onClose: () => void;
+  /**
+   * When set, the new room is also posted into this Mandali as an invite card the moment it exists,
+   * so "start a game with the group" is one step: choose, create, and the friends see where to join.
+   */
+  shareToMandaliId?: string | null;
 }
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
@@ -440,7 +457,7 @@ const CONNECT4_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string;
   { id: "pro",    label: "Master",   blurb: "Looks 4 plies ahead, traps and wins." },
 ];
 
-export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
+export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
     useRoomStore();
@@ -895,6 +912,7 @@ export default function GameRoomSheet({ game, onClose }: GameRoomSheetProps) {
             socket.emit("room:startGame");
           }
           if (game) RecentlyPlayedManager.recordRecentlyPlayed(game);
+          if (shareToMandaliId) void postInviteToMandali(shareToMandaliId, res.code);
           navigate(`/room/${res.code}`);
         },
       );

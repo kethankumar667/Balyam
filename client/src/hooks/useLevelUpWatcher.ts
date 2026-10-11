@@ -4,6 +4,7 @@ import { apiJson, peekPlayerCredential } from "../lib/playerIdentity";
 import { useAuthStore } from "../store/authStore";
 import { useLevelUpStore } from "../store/levelUpStore";
 import { useXpGainStore } from "../store/xpGainStore";
+import { useProgressionVersion } from "../store/progressionVersionStore";
 import { useRoomStore } from "../store/roomStore";
 
 /**
@@ -61,6 +62,9 @@ export async function checkForLevelUp(afterMatch = false): Promise<void> {
     if (xp !== undefined) xpBaselines.set(credential.playerId, xp);
 
     const leveledUp = previous !== undefined && profile.level > previous;
+    // Anything on screen that shows this player's own level or XP is told to read it again.
+    const xpRose = previousXp !== undefined && xp !== undefined && xp > previousXp;
+    if (leveledUp || xpRose) useProgressionVersion.getState().bump();
     if (leveledUp) {
       useLevelUpStore.getState().show(previous, profile.level, profile.experiencePoints ?? 0);
     } else if (afterMatch && previousXp !== undefined && xp !== undefined && xp > previousXp) {

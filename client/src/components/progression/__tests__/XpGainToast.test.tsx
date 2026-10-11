@@ -13,6 +13,7 @@ import { XpGainToast } from "../XpGainToast";
 import { checkForLevelUp, resetLevelUpBaselines } from "../../../hooks/useLevelUpWatcher";
 import { useXpGainStore } from "../../../store/xpGainStore";
 import { useLevelUpStore } from "../../../store/levelUpStore";
+import { useProgressionVersion } from "../../../store/progressionVersionStore";
 
 const profile = (level: number, xp: number) => ({ profile: { playerId: "me_1", displayName: "K", joinedAt: 0, lastSeenAt: 0, level, experiencePoints: xp } });
 
@@ -90,5 +91,44 @@ describe("XpGainToast", () => {
     expect(screen.getByRole("status")).toHaveTextContent("+35 XP EARNED");
     fireEvent.click(screen.getByRole("button", { name: /dismiss xp earned/i }));
     expect(useXpGainStore.getState().moment).toBeNull();
+  });
+});
+
+describe("the level and XP shown elsewhere stay current", () => {
+  beforeEach(() => {
+    api.apiJson.mockReset();
+    api.who.id = "me_1";
+    resetLevelUpBaselines();
+    useXpGainStore.getState().clear();
+    useLevelUpStore.getState().clear();
+    useProgressionVersion.setState({ version: 0 });
+  });
+
+  it("tells the header, home page and drawer to read again when a match paid XP", async () => {
+    api.apiJson.mockResolvedValueOnce(profile(2, 120)).mockResolvedValueOnce(profile(2, 155));
+
+    await checkForLevelUp();
+    expect(useProgressionVersion.getState().version).toBe(0);
+    await checkForLevelUp(true);
+
+    expect(useProgressionVersion.getState().version).toBe(1);
+  });
+
+  it("also does so for a level-up", async () => {
+    api.apiJson.mockResolvedValueOnce(profile(2, 180)).mockResolvedValueOnce(profile(3, 215));
+
+    await checkForLevelUp();
+    await checkForLevelUp(true);
+
+    expect(useProgressionVersion.getState().version).toBe(1);
+  });
+
+  it("stays quiet when nothing changed", async () => {
+    api.apiJson.mockResolvedValue(profile(2, 120));
+
+    await checkForLevelUp();
+    await checkForLevelUp(true);
+
+    expect(useProgressionVersion.getState().version).toBe(0);
   });
 });

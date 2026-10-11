@@ -50,7 +50,6 @@ afterAll(async () => {
 const privateRoutes = (): string[] => [
   `/${MANDALI}/members`,
   `/${MANDALI}/channels`,
-  `/${MANDALI}/parties`,
   `/${MANDALI}/events`,
   `/${MANDALI}/memories`,
   `/${MANDALI}/coins/transfers`,
@@ -87,7 +86,6 @@ describe("Mandali read access", () => {
       expect(body.mandali.name).toBeTruthy();
       expect(body.members).toEqual([]);
       expect(body.channels).toEqual([]);
-      expect(body.parties).toEqual([]);
       expect(body.memories).toEqual([]);
       expect(body.events).toEqual([]);
     });

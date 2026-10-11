@@ -1,6 +1,5 @@
 import type {
   MandaliMessage,
-  MandaliParty,
   MandaliMember,
   MandaliMemory,
 } from "./types.js";
@@ -48,41 +47,6 @@ export interface MandaliReactMessagePayload {
   messageId: string;
   playerId: string;
   emoji: string;
-}
-
-export interface MandaliPartyCreatePayload {
-  mandaliId: string;
-  playerId: string;
-  game: string;
-  modeId: string;
-  title: string;
-  slots: number;
-}
-
-export interface MandaliPartyJoinPayload {
-  mandaliId: string;
-  partyId: string;
-  playerId: string;
-}
-
-export interface MandaliPartyLeavePayload {
-  mandaliId: string;
-  partyId: string;
-  playerId: string;
-}
-
-export interface MandaliPartyLaunchPayload {
-  mandaliId: string;
-  partyId: string;
-  leaderId: string;
-}
-
-export interface MandaliPartyLaunchedBroadcast {
-  mandaliId: string;
-  partyId: string;
-  roomCode: string;
-  game: string;
-  members: { playerId: string; name: string }[];
 }
 
 export interface MandaliReactionUpdatedBroadcast {

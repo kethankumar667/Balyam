@@ -17,7 +17,12 @@ vi.mock("../../streak/DailyStreakModal", () => ({ DailyStreakModal: () => null }
 vi.mock("../../cosmetics/CosmeticsStoreModal", () => ({ CosmeticsStoreModal: () => null }));
 vi.mock("../../../animations/app/FallingPetals", () => ({ default: () => null }));
 vi.mock("../../bhalyam/GameRoomSheet", () => ({
-  default: ({ game }: { game: string | null }) => (game ? <div data-testid="create-sheet">{game}</div> : null),
+  default: ({ game, shareToMandaliId }: { game: string | null; shareToMandaliId?: string | null }) =>
+    game ? (
+      <div data-testid="create-sheet" data-share={shareToMandaliId ?? ""}>
+        {game}
+      </div>
+    ) : null,
 }));
 
 import AppLayout from "../AppLayout";
@@ -47,6 +52,18 @@ describe("AppLayout: arriving from a finished table's 'Create a new room'", () =
     renderAt({ newRoom: "ludo" });
 
     expect(await screen.findByTestId("create-sheet")).toHaveTextContent("ludo");
+  });
+
+  it("carries the Mandali to post the new room into, when it came from a group's Start game", async () => {
+    renderAt({ newRoom: "ludo", shareToMandali: "mandali_1" });
+
+    expect(await screen.findByTestId("create-sheet")).toHaveAttribute("data-share", "mandali_1");
+  });
+
+  it("posts nowhere when the hand-off names no group", async () => {
+    renderAt({ newRoom: "ludo" });
+
+    expect(await screen.findByTestId("create-sheet")).toHaveAttribute("data-share", "");
   });
 
   it("clears the hand-off so a refresh or Back does not reopen it", async () => {

@@ -226,19 +226,18 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     const viewer = extractPlayerFromReq(req);
     const viewerIsMember = viewer ? await mandaliService.isActiveMember(mandali.id, viewer.playerId) : false;
     if (!viewerIsMember) {
-      res.json({ success: true, mandali, members: [], channels: [], parties: [], memories: [], events: [] });
+      res.json({ success: true, mandali, members: [], channels: [], memories: [], events: [] });
       return;
     }
 
-    const [members, channels, parties, memories, events] = await Promise.all([
+    const [members, channels, memories, events] = await Promise.all([
       mandaliService.getMembers(mandali.id),
       mandaliService.getChannels(mandali.id),
-      Promise.resolve(mandaliService.getParties(mandali.id)),
       Promise.resolve(mandaliService.getMemories(mandali.id)),
       Promise.resolve(mandaliService.getEvents(mandali.id)),
     ]);
 
-    res.json({ success: true, mandali, members, channels, parties, memories, events });
+    res.json({ success: true, mandali, members, channels, memories, events });
   });
 
   // Get Members
@@ -622,105 +621,6 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     }
 
     res.json({ reactions: result.reactions });
-  });
-
-  // Get Parties
-  router.get("/:id/parties", async (req, res) => {
-    if (!(await requireActiveMember(req, res, req.params.id))) return;
-    const parties = mandaliService.getParties(req.params.id);
-    res.json({ parties });
-  });
-
-  // Create Party
-  router.post("/:id/parties", async (req, res) => {
-    const playerInfo = extractPlayerFromReq(req);
-    const { leaderName, leaderAvatar, game, modeId, title, slots } = req.body;
-    if (!playerInfo || !game) {
-      res.status(400).json({ error: "Missing sender identity or game." });
-      return;
-    }
-
-    const result = await mandaliService.createParty(
-      req.params.id,
-      playerInfo.playerId,
-      leaderName || "Leader",
-      leaderAvatar || "avatar_1",
-      game,
-      modeId || "standard",
-      title || `${game.toUpperCase()} Squad`,
-      slots || 4
-    );
-
-    if (!result.success) {
-      res.status(400).json({ error: result.error });
-      return;
-    }
-
-    res.status(201).json({ party: result.party });
-  });
-
-  // Join Party
-  router.post("/:id/parties/:partyId/join", (req, res) => {
-    const playerInfo = extractPlayerFromReq(req);
-    const { displayName, avatar } = req.body;
-    if (!playerInfo) {
-      res.status(401).json({ error: "Sign in to join a party." });
-      return;
-    }
-
-    const result = mandaliService.joinParty(
-      req.params.id,
-      req.params.partyId,
-      playerInfo.playerId,
-      displayName || "Player",
-      avatar || "avatar_1"
-    );
-
-    if (!result.success) {
-      res.status(400).json({ error: result.error });
-      return;
-    }
-
-    res.json({ party: result.party });
-  });
-
-  // Leave Party
-  router.post("/:id/parties/:partyId/leave", (req, res) => {
-    const playerInfo = extractPlayerFromReq(req);
-    if (!playerInfo) {
-      res.status(401).json({ error: "Sign in to leave a party." });
-      return;
-    }
-
-    const result = mandaliService.leaveParty(req.params.id, req.params.partyId, playerInfo.playerId);
-    if (!result.success) {
-      res.status(400).json({ error: result.error });
-      return;
-    }
-
-    res.json({ success: true });
-  });
-
-  // Launch Party to Game Handoff (M-10)
-  router.post("/:id/parties/:partyId/launch", (req, res) => {
-    const playerInfo = extractPlayerFromReq(req);
-    if (!playerInfo) {
-      res.status(401).json({ error: "Sign in to launch a party." });
-      return;
-    }
-
-    const result = mandaliService.launchPartyToGame(
-      req.params.id,
-      req.params.partyId,
-      playerInfo.playerId
-    );
-
-    if (!result.success) {
-      res.status(400).json({ error: result.error });
-      return;
-    }
-
-    res.json({ success: true, roomCode: result.roomCode, game: result.game });
   });
 
   // Get Events

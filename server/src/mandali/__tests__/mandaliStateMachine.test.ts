@@ -166,48 +166,4 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     expect(dup.success).toBe(false);
     expect(dup.error).toContain("already taken");
   });
-
-  it("coordinates party formation and M-10 game launch handoff", async () => {
-    const mandaliRes = await service.createMandali("host_1", "Host", "av1", {
-      handle: "ludo-squad-zone",
-      name: "Ludo Squad Zone",
-      description: "Ludo match lovers",
-    });
-    const mandaliId = mandaliRes.mandali!.id;
-
-    // Join another member
-    await service.applyToMandali(mandaliId, "player_2", "Player Two", "av2");
-
-    // Host creates party
-    const partyRes = await service.createParty(
-      mandaliId,
-      "host_1",
-      "Host",
-      "av1",
-      "ludo",
-      "classic",
-      "Friday Ludo Showdown",
-      4
-    );
-    expect(partyRes.success).toBe(true);
-    const partyId = partyRes.party!.partyId;
-
-    // Player 2 joins party
-    const joinRes = service.joinParty(mandaliId, partyId, "player_2", "Player Two", "av2");
-    expect(joinRes.success).toBe(true);
-    expect(joinRes.party?.members.length).toBe(2);
-
-    // Host launches party into game (M-10 Handoff)
-    const launchRes = service.launchPartyToGame(mandaliId, partyId, "host_1");
-    expect(launchRes.success).toBe(true);
-    expect(launchRes.roomCode).toBeDefined();
-    expect(launchRes.roomCode?.length).toBe(6);
-    expect(launchRes.game).toBe("ludo");
-
-    // Verify party status updated to IN_GAME
-    const updatedParties = service.getParties(mandaliId);
-    const inGameParty = updatedParties.find((p) => p.partyId === partyId);
-    expect(inGameParty?.status).toBe("IN_GAME");
-    expect(inGameParty?.roomCode).toBe(launchRes.roomCode);
-  });
 });

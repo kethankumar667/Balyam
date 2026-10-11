@@ -24,11 +24,10 @@ import type {
   MandaliMember,
   MandaliMemory,
   MandaliMessage,
-  MandaliParty,
 } from "@shared/mandali/types.js";
 import type { GameKind } from "@shared/types.js";
 import { useTranslation } from "../../hooks/useTranslation";
-import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
+import { PlayTables, recentTables } from "../../components/mandali/PlayTables";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import {
   AlbumButton,
@@ -48,16 +47,12 @@ export interface MandaliHubMobileProps {
   channels: MandaliChannel[];
   activeChannelId: string | null;
   messages: MandaliMessage[];
-  parties: MandaliParty[];
   memories: MandaliMemory[];
   currentUserId: string | null;
   onSelectChannel: (channelId: string) => void;
   onSendMessage: (content: string) => void;
   onReactMessage: (messageId: string, emoji: string) => void;
   onStartGame: (game: GameKind) => Promise<{ success: boolean; error?: string }>;
-  onJoinParty: (partyId: string) => void;
-  onLeaveParty: (partyId: string) => void;
-  onLaunchParty: (partyId: string) => void;
   onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
   onLeaveMandali: () => void;
   selfId: string | null;
@@ -97,16 +92,12 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   channels,
   activeChannelId,
   messages,
-  parties,
   memories,
   currentUserId,
   onSelectChannel,
   onSendMessage,
   onReactMessage,
   onStartGame,
-  onJoinParty,
-  onLeaveParty,
-  onLaunchParty,
   onOpenCoinTransfer,
   onLeaveMandali,
   selfId,
@@ -130,6 +121,7 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(false);
+  const hasTables = recentTables(messages, Date.now()).length > 0;
 
   const activeChannel = channels.find((c) => c.channelId === activeChannelId) ?? channels[0];
   const onlineCount = members.filter((m) => m.presence === "online" || m.presence === "in-game").length;
@@ -216,36 +208,13 @@ export const MandaliHubMobile: React.FC<MandaliHubMobileProps> = ({
           <div className="album-scroll flex-1 overflow-y-auto px-4 py-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="m-0 text-xl font-semibold text-album-ink">{t("mandali.play.title")}</h2>
-              {parties.length > 0 && (
+              {hasTables && (
                 <AlbumButton variant="primary" onClick={() => setStartOpen(true)} icon={<Plus className="h-4 w-4" aria-hidden="true" />}>
                   {t("mandali.play.start")}
                 </AlbumButton>
               )}
             </div>
-            {parties.length === 0 ? (
-              <div className="flex min-h-[55dvh] flex-col items-center justify-center px-4 py-8 text-center">
-                <p className="album-hand m-0 text-4xl leading-none text-album-foil">{t("mandali.play.empty.title")}</p>
-                <p className="mx-auto mb-5 mt-3 max-w-xs text-[15px] leading-relaxed text-album-ink2">
-                  {t("mandali.play.empty.body", { name: mandali.name })}
-                </p>
-                <AlbumButton variant="primary" size="lg" onClick={() => setStartOpen(true)}>
-                  {t("mandali.play.empty.action")}
-                </AlbumButton>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {parties.map((party) => (
-                  <PartyLoungeCard
-                    key={party.partyId}
-                    party={party}
-                    currentUserId={currentUserId}
-                    onJoin={onJoinParty}
-                    onLeave={onLeaveParty}
-                    onLaunch={onLaunchParty}
-                  />
-                ))}
-              </div>
-            )}
+            <PlayTables messages={messages} groupName={mandali.name} selfId={selfId} onStart={() => setStartOpen(true)} variant="phone" />
           </div>
         )}
 

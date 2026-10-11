@@ -37,11 +37,9 @@ import NotificationLevelSheet from "../../components/mandali/NotificationLevelSh
 import { useMandaliReadTracking } from "../../hooks/useMandaliReadTracking";
 import { useMandaliInboxStore } from "../../store/mandaliInboxStore";
 import { insertUnreadDivider } from "../../lib/mandaliUnreadDivider";
-import { Play } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import { useTranslation } from "../../hooks/useTranslation";
-import { AlbumButton, AlbumCover, AlbumSheet } from "../../components/mandali/album";
-import { gameLabel } from "../../components/mandali/album/games";
+import { AlbumButton, AlbumCover } from "../../components/mandali/album";
 
 export default function MandaliHubPage(): JSX.Element {
   const { handle } = useParams<{ handle: string }>();
@@ -76,26 +74,19 @@ export default function MandaliHubPage(): JSX.Element {
     channels,
     activeChannelId,
     messages,
-    parties,
     memories,
     coinRequests,
     pendingJoinRequests,
-    activeGameLaunch,
     isLoading,
     errorMessage,
     fetchMandaliByHandleOrId,
     setActiveChannel,
     sendMessage,
     reactToMessage,
-    createParty,
-    joinParty,
-    leaveParty,
-    launchParty,
     joinMandali,
     leaveMandali,
     initMandaliSocket,
     cleanupMandaliSocket,
-    clearActiveLaunch,
     promoteMember,
     demoteMember,
     kickMember,
@@ -239,13 +230,6 @@ export default function MandaliHubPage(): JSX.Element {
     .filter((r) => r.payerIdentityId === playerId && r.status === "OPEN" && r.expiresAt > now)
     .sort((a, b) => a.createdAt - b.createdAt);
 
-  const handleLaunchToRoom = () => {
-    if (!activeGameLaunch) return;
-    const targetRoom = activeGameLaunch.roomCode;
-    clearActiveLaunch();
-    navigate(`/room/${targetRoom}`);
-  };
-
   // Joins as this device's identity. A refusal is said in the page, not in an alert box.
   const handleJoin = async () => {
     setJoinFailed(false);
@@ -283,7 +267,6 @@ export default function MandaliHubPage(): JSX.Element {
     messages: insertUnreadDivider(activeChannelMessages, unreadSince, playerId) as typeof activeChannelMessages,
     notificationLevel,
     onOpenNotificationSettings: () => setShowNotificationSettings(true),
-    parties,
     memories,
     currentUserId: playerId,
     selfId: playerId ?? "",
@@ -296,14 +279,12 @@ export default function MandaliHubPage(): JSX.Element {
     onSelectChannel: setActiveChannel,
     onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
     onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
-    // A real room is made by the normal create flow (AppLayout opens it for `state.newRoom`).
+    // A real room is made by the normal create flow (AppLayout opens it for `state.newRoom`), and
+    // `shareToMandali` makes the sheet post the finished room into this group.
     onStartGame: async (game: GameKind) => {
-      navigate("/", { state: { newRoom: game } });
+      navigate("/", { state: { newRoom: game, shareToMandali: activeMandali.id } });
       return { success: true };
     },
-    onJoinParty: (partyId: string) => joinParty(partyId, playerId || undefined),
-    onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),
-    onLaunchParty: (partyId: string) => launchParty(partyId, playerId || undefined),
     onOpenCoinTransfer: handleOpenCoinTransfer,
     onRequestCoins: () => void coinRequest.requestCoins(),
     onPayCoinRequest: fundCoinRequest,
@@ -371,27 +352,6 @@ export default function MandaliHubPage(): JSX.Element {
             <MandaliHubMobile {...sharedProps} />
           )}
         </div>
-
-      {/* The game the group just opened: one calm prompt, one way in */}
-      <AlbumSheet
-        open={Boolean(activeGameLaunch)}
-        onClose={clearActiveLaunch}
-        title={activeGameLaunch ? t("mandali.launch.title", { game: gameLabel(activeGameLaunch.game) }) : ""}
-        description={t("mandali.launch.body")}
-        footer={
-          <div className="flex gap-3">
-            <AlbumButton variant="quiet" className="flex-1" onClick={clearActiveLaunch}>
-              {t("mandali.launch.dismiss")}
-            </AlbumButton>
-            <AlbumButton variant="primary" className="flex-1" onClick={handleLaunchToRoom} icon={<Play className="h-4 w-4 fill-current" aria-hidden="true" />}>
-              {t("mandali.launch.join")}
-            </AlbumButton>
-          </div>
-        }
-      >
-        <p className="m-0 text-sm text-album-ink3">{t("mandali.launch.code")}</p>
-        <p className="mb-1 mt-1 text-3xl font-semibold tabular-nums tracking-[0.2em] text-album-ink">{activeGameLaunch?.roomCode}</p>
-      </AlbumSheet>
 
       {/* Coin Transfer Modal (For sending coins) */}
       {showCoinTransfer && activeMandali && (

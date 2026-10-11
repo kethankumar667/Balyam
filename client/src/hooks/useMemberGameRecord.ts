@@ -22,7 +22,7 @@ export interface MemberGameRecord {
 
 const LOADING: MemberGameRecord = { status: "loading", stats: null, progression: null };
 
-export function useMemberGameRecord(playerId: string | null): MemberGameRecord {
+export function useMemberGameRecord(playerId: string | null, refreshKey = 0): MemberGameRecord {
   const [record, setRecord] = useState<{ forId: string | null; value: MemberGameRecord }>({ forId: null, value: LOADING });
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function useMemberGameRecord(playerId: string | null): MemberGameRecord {
     return () => {
       cancelled = true;
     };
-  }, [playerId]);
+  }, [playerId, refreshKey]);
 
   // A different member's numbers must never flash under this member's name while their own load.
   return record.forId === playerId && playerId !== null ? record.value : LOADING;

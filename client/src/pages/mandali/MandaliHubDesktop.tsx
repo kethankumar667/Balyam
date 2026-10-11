@@ -24,11 +24,10 @@ import type {
   MandaliMember,
   MandaliMemory,
   MandaliMessage,
-  MandaliParty,
 } from "@shared/mandali/types.js";
 import type { GameKind } from "@shared/types.js";
 import { useTranslation } from "../../hooks/useTranslation";
-import { PartyLoungeCard } from "../../components/mandali/PartyLoungeCard";
+import { PlayTables } from "../../components/mandali/PlayTables";
 import { GnapakaluTimeline } from "../../components/mandali/GnapakaluTimeline";
 import {
   AlbumAvatar,
@@ -49,7 +48,6 @@ export interface MandaliHubDesktopProps {
   channels: MandaliChannel[];
   activeChannelId: string | null;
   messages: MandaliMessage[];
-  parties: MandaliParty[];
   memories: MandaliMemory[];
   currentUserId: string | null;
   selfId: string;
@@ -62,9 +60,6 @@ export interface MandaliHubDesktopProps {
   onSendMessage: (content: string) => void;
   onReactMessage: (messageId: string, emoji: string) => void;
   onStartGame: (game: GameKind) => Promise<{ success: boolean; error?: string }>;
-  onJoinParty: (partyId: string) => void;
-  onLeaveParty: (partyId: string) => void;
-  onLaunchParty: (partyId: string) => void;
   onOpenCoinTransfer?: (preselectedMemberId?: string) => void;
   onRequestCoins: () => void;
   isCoinRequestCoolingDown?: boolean;
@@ -92,7 +87,6 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   channels,
   activeChannelId,
   messages,
-  parties,
   memories,
   currentUserId,
   selfId,
@@ -103,9 +97,6 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
   onSendMessage,
   onReactMessage,
   onStartGame,
-  onJoinParty,
-  onLeaveParty,
-  onLaunchParty,
   onOpenCoinTransfer,
   onRequestCoins,
   isCoinRequestCoolingDown,
@@ -321,30 +312,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
 
         {isPlayRoom ? (
           <div className="album-scroll flex-1 overflow-y-auto p-6">
-            {parties.length === 0 ? (
-              <div className="mx-auto max-w-md px-4 py-20 text-center">
-                <p className="album-hand m-0 text-5xl leading-none text-album-foil">{t("mandali.play.empty.title")}</p>
-                <p className="mb-6 mt-4 text-base leading-relaxed text-album-ink2">
-                  {t("mandali.play.empty.body", { name: mandali.name })}
-                </p>
-                <AlbumButton variant="primary" size="lg" onClick={() => setStartOpen(true)}>
-                  {t("mandali.play.empty.action")}
-                </AlbumButton>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {parties.map((party) => (
-                  <PartyLoungeCard
-                    key={party.partyId}
-                    party={party}
-                    currentUserId={currentUserId}
-                    onJoin={onJoinParty}
-                    onLeave={onLeaveParty}
-                    onLaunch={onLaunchParty}
-                  />
-                ))}
-              </div>
-            )}
+            <PlayTables messages={messages} groupName={mandali.name} selfId={selfId} onStart={() => setStartOpen(true)} variant="desktop" />
           </div>
         ) : (
           <>

@@ -4,6 +4,7 @@ import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
 import type { MatchHistoryItem } from "@shared/profile/MatchHistory";
 import type { Achievement } from "@shared/profile/Achievements";
+import { useProgressionVersion } from "../store/progressionVersionStore";
 
 /**
  * The real numbers behind the lounge's "welcome back" surfaces.
@@ -38,6 +39,8 @@ export interface PlayerSnapshot {
 
 export function usePlayerSnapshot(enabled: boolean): PlayerSnapshot {
   const { playerId, ready: identityReady } = usePlayerId();
+  // Reads again when the player's XP or level has just changed (a match paid out).
+  const progressionVersion = useProgressionVersion((state) => state.version);
   const [snapshot, setSnapshot] = useState<PlayerSnapshot>({
     ready: false,
     profile: null,
@@ -70,7 +73,7 @@ export function usePlayerSnapshot(enabled: boolean): PlayerSnapshot {
     return () => {
       cancelled = true;
     };
-  }, [enabled, identityReady, playerId]);
+  }, [enabled, identityReady, playerId, progressionVersion]);
 
   return snapshot;
 }

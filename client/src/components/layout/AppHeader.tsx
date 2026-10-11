@@ -270,11 +270,8 @@ export default function AppHeader({
                   )}
                 </AnimatePresence>
                 {/* Phone: the name and badge are hidden, so the level rides on the avatar itself. */}
-                <span
-                  aria-hidden="true"
-                  className="md:hidden absolute -bottom-1 -right-1 min-w-[18px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-black leading-none flex items-center justify-center tabular-nums shadow-sm ring-2 ring-[var(--chrome-panel)]"
-                >
-                  {playerLevel}
+                <span aria-hidden="true" className="md:hidden absolute -bottom-1.5 -right-1.5">
+                  <MiniclipLevelBadge level={playerLevel} size="xs" showTooltip={false} />
                 </span>
                 <div className="hidden md:flex items-center gap-1.5 min-w-0">
                   <span className="text-[13px] font-bold tracking-tight max-w-[130px] truncate">

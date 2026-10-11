@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { usePlayerId } from "../../lib/playerIdentity";
 import { useMemberGameRecord } from "../../hooks/useMemberGameRecord";
+import { useProgressionVersion } from "../../store/progressionVersionStore";
 import { LevelPanel } from "../mandali/album/MemberRecordPanels";
 // The strip is drawn with the album's colour tokens; they live in this stylesheet, which is otherwise
 // only loaded with the Mandali.
@@ -16,7 +17,8 @@ import "../mandali/album/album.css";
  */
 export function OwnLevelStrip({ onNavigate }: { onNavigate?: () => void }) {
   const { playerId } = usePlayerId();
-  const record = useMemberGameRecord(playerId ?? null);
+  const progressionVersion = useProgressionVersion((state) => state.version);
+  const record = useMemberGameRecord(playerId ?? null, progressionVersion);
 
   if (!record.progression) return null;
 

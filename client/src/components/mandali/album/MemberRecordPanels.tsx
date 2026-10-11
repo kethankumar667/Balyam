@@ -35,7 +35,7 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
         <p className="m-0 flex min-w-0 items-center gap-1.5 text-sm text-album-ink3">
           <span aria-hidden="true" className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: tier.themeColor }} />
           <span className="truncate">
-            <span className="font-semibold text-album-ink">{levelTitle}</span> · {tier.name} · {t("mandali.profile.xpShort", { count: totalLifetimeXP.toLocaleString() })}
+            <span className="font-semibold text-album-ink">{levelTitle}</span> · {tier.name}
           </span>
         </p>
         <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-album-ink2">
@@ -59,7 +59,10 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
           }}
         />
       </div>
-      <p className="m-0 mt-1 text-right text-xs tabular-nums text-album-ink3">{t("mandali.profile.xpToNext", { count: toGo })}</p>
+      <p className="m-0 mt-1 flex items-center justify-between gap-2 text-xs tabular-nums text-album-ink3">
+        <span>{t("mandali.profile.xpTotalShort", { count: totalLifetimeXP.toLocaleString() })}</span>
+        <span>{t("mandali.profile.xpToNext", { count: toGo })}</span>
+      </p>
     </section>
   );
 }
@@ -140,9 +143,9 @@ export function RecordPanel({ stats, name }: { stats: PlayerStats; name: string 
           {rows.map((row) => (
             <div key={row.label} className="min-w-0 rounded-lg bg-album-field px-1.5 py-1 text-center">
               <dd className="m-0 text-base font-bold leading-tight tabular-nums text-album-ink">{row.value.toLocaleString()}</dd>
-              <dt className="flex items-center justify-center gap-1 text-[10px] leading-tight text-album-ink3">
-                <span aria-hidden="true" className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${row.swatch}`} />
-                <span className="truncate">{row.label}</span>
+              <dt className="text-[10px] leading-tight text-album-ink3">
+                <span aria-hidden="true" className={`mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle ${row.swatch}`} />
+                {row.label}
               </dt>
             </div>
           ))}
@@ -155,7 +158,7 @@ export function RecordPanel({ stats, name }: { stats: PlayerStats; name: string 
         {stats.losses > 0 && <span className="bg-album-danger" style={{ flexGrow: stats.losses }} />}
       </div>
 
-      <div className="mt-2.5 grid grid-cols-2 gap-2">
+      <div className="mt-2.5 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <Tile
           icon={<Flame className="h-4 w-4 flex-shrink-0 text-album-foil" aria-hidden="true" />}
           label={t("mandali.profile.bestStreak")}
