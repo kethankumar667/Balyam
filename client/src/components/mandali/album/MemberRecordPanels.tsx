@@ -35,7 +35,7 @@ export function LevelPanel({ progression }: { progression: MiniclipXPProgression
         <p className="m-0 flex min-w-0 items-center gap-1.5 text-sm text-album-ink3">
           <span aria-hidden="true" className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: tier.themeColor }} />
           <span className="truncate">
-            <span className="font-semibold text-album-ink">{levelTitle}</span> · {tier.name} · {t("mandali.profile.xpTotal", { count: totalLifetimeXP.toLocaleString() })}
+            <span className="font-semibold text-album-ink">{levelTitle}</span> · {tier.name} · {t("mandali.profile.xpShort", { count: totalLifetimeXP.toLocaleString() })}
           </span>
         </p>
         <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-album-ink2">

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { GameKind } from "@shared/types.js";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { AlbumButton } from "./AlbumButton";
@@ -11,7 +11,8 @@ const FIELD =
 export interface StartGameSheetProps {
   open: boolean;
   onClose: () => void;
-  onStart: (game: GameKind, title: string, seats: number) => void;
+  /** Resolves with the server's answer; the sheet stays open and shows the error when it is not a success. */
+  onStart: (game: GameKind, title: string, seats: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 /**
@@ -22,10 +23,13 @@ export interface StartGameSheetProps {
  */
 export function StartGameSheet({ open, onClose, onStart }: StartGameSheetProps) {
   const { t } = useTranslation();
-  const ids = { name: useId(), game: useId(), seats: useId() };
+  const ids = { game: useId(), seats: useId() };
   const [game, setGame] = useState<GameKind>("ludo");
-  const [name, setName] = useState("");
   const [seats, setSeats] = useState(4);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // A ref, not state: two quick taps in the same tick must not start two games.
+  const inFlight = useRef(false);
 
   const option = GAMES.find((g) => g.kind === game) ?? GAMES[0];
   const seatsAreFixed = option.min === option.max;
@@ -35,13 +39,25 @@ export function StartGameSheet({ open, onClose, onStart }: StartGameSheetProps) 
   }, [option.min, option.max, seatsAreFixed]);
 
   useEffect(() => {
-    if (!open) setName("");
+    if (!open) setError(null);
   }, [open]);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    onStart(game, name.trim() || t("mandali.start.defaultName", { game: option.name }), seats);
-    onClose();
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPending(true);
+    setError(null);
+    try {
+      const result = await onStart(game, t("mandali.start.defaultName", { game: option.name }), seats);
+      if (result.success) onClose();
+      else setError(result.error || t("mandali.start.failed"));
+    } catch {
+      setError(t("mandali.start.failed"));
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
   };
 
   return (
@@ -50,26 +66,12 @@ export function StartGameSheet({ open, onClose, onStart }: StartGameSheetProps) 
       onClose={onClose}
       title={t("mandali.start.title")}
       footer={
-        <AlbumButton type="submit" form="mandali-start-game" variant="primary" size="lg" className="w-full">
-          {t("mandali.start.submit")}
+        <AlbumButton type="submit" form="mandali-start-game" variant="primary" size="lg" className="w-full" disabled={pending}>
+          {pending ? t("mandali.start.starting") : t("mandali.start.submit")}
         </AlbumButton>
       }
     >
       <form id="mandali-start-game" onSubmit={submit} className="space-y-4">
-        <div>
-          <label htmlFor={ids.name} className="mb-1.5 block text-sm font-semibold text-album-ink2">
-            {t("mandali.start.name")}
-          </label>
-          <input
-            id={ids.name}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={40}
-            placeholder={t("mandali.start.namePlaceholder")}
-            className={FIELD}
-          />
-        </div>
-
         <div>
           <label htmlFor={ids.game} className="mb-1.5 block text-sm font-semibold text-album-ink2">
             {t("mandali.start.game")}
@@ -104,6 +106,11 @@ export function StartGameSheet({ open, onClose, onStart }: StartGameSheetProps) 
             />
           )}
         </div>
+        {error && (
+          <p role="alert" className="m-0 rounded-xl bg-album-danger/10 px-3 py-2 text-sm text-album-danger">
+            {error}
+          </p>
+        )}
       </form>
     </AlbumSheet>
   );

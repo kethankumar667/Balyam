@@ -116,7 +116,7 @@ export const mandaliEn = {
   "mandali.profile.levelProgress": "Progress to Level {{level}}",
   "mandali.profile.xpOfNext": "{{current}} / {{next}} XP",
   "mandali.profile.xpToNext": "{{count}} XP to go",
-  "mandali.profile.xpTotal": "{{count}} XP earned in all",
+  "mandali.profile.xpShort": "{{count}} XP",
   "mandali.profile.record": "Game record",
   "mandali.profile.played": "Games played",
   "mandali.profile.won": "Games won",
@@ -145,12 +145,12 @@ export const mandaliEn = {
   "mandali.play.empty.body": "Pick a game and everyone in {{name}} can join with one tap.",
   "mandali.play.empty.action": "Start the first game",
   "mandali.start.title": "Start a game",
-  "mandali.start.name": "Name (optional)",
-  "mandali.start.namePlaceholder": "e.g. Sunday night Ludo",
   "mandali.start.game": "Game",
   "mandali.start.seats": "Seats",
   "mandali.start.seatsFixed": "This game is for {{count}} players.",
   "mandali.start.submit": "Start game",
+  "mandali.start.starting": "Starting…",
+  "mandali.start.failed": "Could not start the game. Please try again.",
   "mandali.start.defaultName": "{{game}} together",
 
   /* ── A game the group is gathering for ── */

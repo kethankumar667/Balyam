@@ -1375,7 +1375,7 @@ export class MandaliService {
     return this.repository.getParties(mandaliId);
   }
 
-  public createParty(
+  public async createParty(
     mandaliId: string,
     leaderId: string,
     leaderName: string,
@@ -1384,11 +1384,18 @@ export class MandaliService {
     modeId: string,
     title: string,
     slots: number
-  ): { success: boolean; party?: MandaliParty; error?: string } {
-    const member = this.repository.getMember(mandaliId, leaderId);
+  ): Promise<{ success: boolean; party?: MandaliParty; error?: string }> {
+    // Durable groups keep their members in the database, not in the in-memory map: reading the map
+    // here refused every real member with "must be an active member".
+    const member = this.repository.isDurable()
+      ? await this.repository.getMemberDurable(mandaliId, leaderId)
+      : this.repository.getMember(mandaliId, leaderId);
     if (!member || member.state !== "ACTIVE") {
       return { success: false, error: "Must be an active member to create parties." };
     }
+    // The seat shows who this member is in the group, whatever the caller sent along.
+    leaderName = member.displayName || leaderName;
+    leaderAvatar = member.avatar || leaderAvatar;
 
     const partyId = `party_${nanoid(8)}`;
     const party: MandaliParty = {

@@ -61,7 +61,7 @@ export interface MandaliHubDesktopProps {
   onSelectChannel: (channelId: string) => void;
   onSendMessage: (content: string) => void;
   onReactMessage: (messageId: string, emoji: string) => void;
-  onCreateParty: (game: GameKind, modeId: string, title: string, slots: number) => void;
+  onCreateParty: (game: GameKind, modeId: string, title: string, slots: number) => Promise<{ success: boolean; error?: string }>;
   onJoinParty: (partyId: string) => void;
   onLeaveParty: (partyId: string) => void;
   onLaunchParty: (partyId: string) => void;
@@ -362,6 +362,7 @@ export const MandaliHubDesktop: React.FC<MandaliHubDesktopProps> = ({
               onPin={onPinMessage}
               onDelete={onDeleteMessage}
               onPayCoinRequest={onPayCoinRequest}
+              onCoinsWith={onOpenCoinTransfer ? (id) => onOpenCoinTransfer(id) : undefined}
             />
             <Composer
               variant="desktop"

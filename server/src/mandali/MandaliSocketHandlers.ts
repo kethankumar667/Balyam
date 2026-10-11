@@ -188,7 +188,7 @@ export function registerMandaliSocketHandlers(
   });
 
   // Create a game party
-  socket.on("mandali:party:create", (payload: MandaliPartyCreatePayload, ack?: (res: unknown) => void) => {
+  socket.on("mandali:party:create", async (payload: MandaliPartyCreatePayload, ack?: (res: unknown) => void) => {
     try {
       const actorId = requireAuthenticatedActor(socket, ack);
       if (!actorId) return;
@@ -196,15 +196,11 @@ export function registerMandaliSocketHandlers(
         ack?.({ success: false, error: "Invalid party creation payload" });
         return;
       }
-      const member = mandaliService.getRepository().getMember(payload.mandaliId, actorId);
-      const leaderName = member?.displayName || "Leader";
-      const leaderAvatar = member?.avatar || "avatar_1";
-
-      const result = mandaliService.createParty(
+      const result = await mandaliService.createParty(
         payload.mandaliId,
         actorId,
-        leaderName,
-        leaderAvatar,
+        "Leader",
+        "avatar_1",
         payload.game as GameKind,
         payload.modeId || "casual",
         payload.title || "Squad",

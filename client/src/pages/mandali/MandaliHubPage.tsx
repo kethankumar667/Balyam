@@ -13,6 +13,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import type { GameKind } from "@shared/types.js";
 import { useViewport } from "../../lib/useViewport";
 import { useMandaliStore } from "../../store/mandaliStore";
 import { toastStore } from "../../lib/toastStore";
@@ -295,7 +296,7 @@ export default function MandaliHubPage(): JSX.Element {
     onSelectChannel: setActiveChannel,
     onSendMessage: (content: string) => sendMessage(content, playerId || undefined),
     onReactMessage: (messageId: string, emoji: string) => reactToMessage(messageId, emoji, playerId || undefined),
-    onCreateParty: (game: any, modeId: string, title: string, slots: number) =>
+    onCreateParty: (game: GameKind, modeId: string, title: string, slots: number) =>
       createParty(game, modeId, title, slots, playerId || undefined),
     onJoinParty: (partyId: string) => joinParty(partyId, playerId || undefined),
     onLeaveParty: (partyId: string) => leaveParty(partyId, playerId || undefined),

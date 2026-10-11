@@ -632,7 +632,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   // Create Party
-  router.post("/:id/parties", (req, res) => {
+  router.post("/:id/parties", async (req, res) => {
     const playerInfo = extractPlayerFromReq(req);
     const { leaderName, leaderAvatar, game, modeId, title, slots } = req.body;
     if (!playerInfo || !game) {
@@ -640,7 +640,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
       return;
     }
 
-    const result = mandaliService.createParty(
+    const result = await mandaliService.createParty(
       req.params.id,
       playerInfo.playerId,
       leaderName || "Leader",

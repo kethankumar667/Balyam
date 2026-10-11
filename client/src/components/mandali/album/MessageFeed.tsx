@@ -8,6 +8,7 @@ import CoinRequestCard from "../CoinRequestCard";
 import { AlbumAvatar } from "./AlbumAvatar";
 import { AlbumButton } from "./AlbumButton";
 import { DayCaption } from "./DayCaption";
+import { MemberProfileSheet } from "./MemberProfileSheet";
 import { groupMessagesByDay } from "./groupByDay";
 
 /** Warm, family-sized reactions. Anything else people have already sent still shows. */
@@ -33,6 +34,8 @@ export interface MessageFeedProps {
   onPin: (channelId: string, messageId: string, pinned: boolean) => unknown;
   onDelete: (channelId: string, messageId: string) => unknown;
   onPayCoinRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  /** Opens the coin sheet aimed at a member, from their profile card. Omit to hide that button. */
+  onCoinsWith?: (memberId: string) => void;
 }
 
 /**
@@ -55,6 +58,7 @@ export function MessageFeed({
   onPin,
   onDelete,
   onPayCoinRequest,
+  onCoinsWith,
 }: MessageFeedProps) {
   const { t, locale } = useTranslation();
   const localeTag = LOCALE_BY_ID[locale]?.tag ?? "en";
@@ -62,6 +66,11 @@ export function MessageFeed({
   const stickRef = useRef(true);
   const [showJump, setShowJump] = useState(false);
   const [openOptionsId, setOpenOptionsId] = useState<string | null>(null);
+  const [profileOf, setProfileOf] = useState<MandaliMember | null>(null);
+  const openProfile = (playerId: string) => {
+    const member = members.find((m) => m.playerId === playerId);
+    if (member) setProfileOf(member);
+  };
 
   const days = useMemo(
     () =>
@@ -156,6 +165,7 @@ export function MessageFeed({
                   onPin={onPin}
                   onDelete={onDelete}
                   onPayCoinRequest={onPayCoinRequest}
+                  onOpenProfile={openProfile}
                 />
               );
             })}
@@ -173,7 +183,47 @@ export function MessageFeed({
           {t("mandali.feed.latest")}
         </AlbumButton>
       )}
+
+      <MemberProfileSheet
+        member={profileOf}
+        isSelf={profileOf?.playerId === currentUserId}
+        onClose={() => setProfileOf(null)}
+        onCoinsWith={onCoinsWith}
+      />
     </div>
+  );
+}
+
+/**
+ * A sender's face (or name) as a tap target that opens their profile card, the way a chat app does.
+ * A sender who is no longer in the group has no card to open, so that face stays plain.
+ */
+function ProfileTap({
+  senderId,
+  name,
+  members,
+  onOpenProfile,
+  className = "",
+  children,
+}: {
+  senderId: string;
+  name: string;
+  members: MandaliMember[];
+  onOpenProfile: (playerId: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  if (!members.some((m) => m.playerId === senderId)) return <span className={className}>{children}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenProfile(senderId)}
+      aria-label={t("mandali.people.viewProfile", { name })}
+      className={`cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-foil ${className}`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -196,6 +246,7 @@ interface RowProps {
   onPin: MessageFeedProps["onPin"];
   onDelete: MessageFeedProps["onDelete"];
   onPayCoinRequest: MessageFeedProps["onPayCoinRequest"];
+  onOpenProfile: (playerId: string) => void;
 }
 
 function Row({
@@ -216,6 +267,7 @@ function Row({
   onPin,
   onDelete,
   onPayCoinRequest,
+  onOpenProfile,
 }: RowProps) {
   const { t } = useTranslation();
 
@@ -229,7 +281,9 @@ function Row({
 
   const withFace = (card: ReactNode) => (
     <div className={`mt-3 flex gap-2.5 ${isMine ? "flex-row-reverse" : ""}`}>
-      <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" className="mt-1" />
+      <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="mt-1 flex-shrink-0 self-start">
+        <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" />
+      </ProfileTap>
       {card}
     </div>
   );
@@ -260,12 +314,16 @@ function Row({
 
   return (
     <div className={`group flex gap-2.5 ${isRun ? "mt-0.5" : "mt-4"} ${isMine ? "flex-row-reverse" : ""}`}>
-      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" className="mt-0.5" />)}
+      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="mt-0.5 flex-shrink-0 self-start"><AlbumAvatar avatar={message.senderAvatar} name="" size="sm" /></ProfileTap>)}
 
       <div className={`flex min-w-0 ${bubbleWidth} flex-col ${isMine ? "items-end" : "items-start"}`}>
         {!isRun && (
           <p className="m-0 mb-1 flex items-center gap-2 px-1 text-sm leading-none text-album-ink3">
-            {!isMine && <span className="font-semibold text-album-ink2">{message.senderName}</span>}
+            {!isMine && (
+              <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="rounded-md">
+                <span className="font-semibold text-album-ink2">{message.senderName}</span>
+              </ProfileTap>
+            )}
             {message.senderRole === "OWNER" && !isMine && (
               <span className="rounded-md bg-album-foilfill/20 px-1.5 py-0.5 text-xs font-semibold text-album-foil">{t("mandali.role.host")}</span>
             )}

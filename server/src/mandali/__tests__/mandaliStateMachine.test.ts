@@ -179,7 +179,7 @@ describe("Mandali Service & M-10 Game Launch Handoff", () => {
     await service.applyToMandali(mandaliId, "player_2", "Player Two", "av2");
 
     // Host creates party
-    const partyRes = service.createParty(
+    const partyRes = await service.createParty(
       mandaliId,
       "host_1",
       "Host",
