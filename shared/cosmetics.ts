@@ -8,6 +8,8 @@
  *   - Server Authority: Prices and inventory entitlements verified strictly on server.
  */
 
+import { AVATAR_FRAME_CATALOG, CARROM_COIN_SET_CATALOG, AVATAR_FRAME_DEFAULT_ID, CARROM_COIN_SET_DEFAULT_ID } from "./cosmeticsFramesAndCoins.js";
+
 export const COSMETIC_CATEGORIES = [
   "TABLE_THEME",
   "DICE_SKIN",
@@ -15,10 +17,12 @@ export const COSMETIC_CATEGORIES = [
   "CARD_BACK",
   "AVATAR_AURA",
   "PODIUM_TITLE",
+  "AVATAR_FRAME",
+  "CARROM_COIN_SET",
 ] as const;
 export type CosmeticCategory = (typeof COSMETIC_CATEGORIES)[number];
 
-export type CosmeticGameScope = "GLOBAL" | "uno" | "rummy" | "ludo" | "snl";
+export type CosmeticGameScope = "GLOBAL" | "uno" | "rummy" | "ludo" | "snl" | "carrom";
 export type CosmeticRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
 export type UnlockMethod = "COIN_PURCHASE" | "STREAK_MILESTONE" | "DEFAULT";
 
@@ -589,6 +593,28 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     bundledAssetKey: "title-grandmaster",
     isDefault: false,
   },
+  // ── Avatar Frames and Carrom Coin Sets ──
+  // Generated from the catalog tables in cosmeticsFramesAndCoins.ts so identity and commerce
+  // cannot drift. Each frame is global (it follows the player into every game); each coin set
+  // is Carrom-only.
+  ...AVATAR_FRAME_CATALOG.map(
+    (entry): RegistryCosmeticDef => ({
+      id: entry.id,
+      category: "AVATAR_FRAME",
+      supportedScopes: ["GLOBAL"],
+      bundledAssetKey: entry.id.replace(/_/g, "-"),
+      isDefault: entry.id === AVATAR_FRAME_DEFAULT_ID,
+    }),
+  ),
+  ...CARROM_COIN_SET_CATALOG.map(
+    (entry): RegistryCosmeticDef => ({
+      id: entry.id,
+      category: "CARROM_COIN_SET",
+      supportedScopes: ["carrom"],
+      bundledAssetKey: entry.id.replace(/_/g, "-"),
+      isDefault: entry.id === CARROM_COIN_SET_DEFAULT_ID,
+    }),
+  ),
 ] as const;
 
 const REGISTRY_BY_ID = new Map<string, RegistryCosmeticDef>(
@@ -622,6 +648,9 @@ export interface EquippedCosmeticsLoadout {
   cardBacks: Partial<Record<"uno" | "rummy", string>>;
   avatarAura?: string;
   podiumTitle?: string;
+  avatarFrame?: string;
+  /** Carrom only. One coin set for the whole board, as the owner sees it. */
+  carromCoinSet?: string;
 }
 
 /**
@@ -631,6 +660,8 @@ export interface EquippedCosmeticsLoadout {
 export interface PublicPresentationLoadout {
   avatarAura?: string;
   podiumTitle?: string;
+  /** Visible to everyone at the table, like an aura, so it is the one new slot that is broadcast. */
+  avatarFrame?: string;
   tokenSkin?: string;
   diceSkin?: string;
 }
@@ -645,6 +676,8 @@ export interface ResolvedCosmeticsLoadout {
   cardBacks: Record<"uno" | "rummy", string>;
   avatarAura: string;
   podiumTitle: string;
+  avatarFrame: string;
+  carromCoinSet: string;
 }
 
 // ── Validation & Sanitization Helpers ──
@@ -770,6 +803,16 @@ export function sanitizeEquippedLoadout(raw: unknown): EquippedCosmeticsLoadout 
     if (title) loadout.podiumTitle = title;
   }
 
+  if (obj.avatarFrame) {
+    const frame = sanitizeCosmeticId(obj.avatarFrame, "AVATAR_FRAME", "GLOBAL");
+    if (frame) loadout.avatarFrame = frame;
+  }
+
+  if (obj.carromCoinSet) {
+    const coinSet = sanitizeCosmeticId(obj.carromCoinSet, "CARROM_COIN_SET", "carrom");
+    if (coinSet) loadout.carromCoinSet = coinSet;
+  }
+
   return loadout;
 }
 
@@ -785,6 +828,10 @@ export function sanitizePublicPresentation(raw: unknown): PublicPresentationLoad
   if (obj.podiumTitle) {
     const title = sanitizeCosmeticId(obj.podiumTitle, "PODIUM_TITLE", "GLOBAL");
     if (title) publicPresentation.podiumTitle = title;
+  }
+  if (obj.avatarFrame) {
+    const frame = sanitizeCosmeticId(obj.avatarFrame, "AVATAR_FRAME", "GLOBAL");
+    if (frame) publicPresentation.avatarFrame = frame;
   }
   if (obj.tokenSkin) {
     const token = sanitizeCosmeticId(obj.tokenSkin, "TOKEN_SKIN", "ludo");
@@ -833,6 +880,8 @@ export function resolveEffectiveLoadout(
   const defaultUnoCardBack = getDefaultCosmetic("CARD_BACK", "uno").id;
   const defaultAura = getDefaultCosmetic("AVATAR_AURA").id;
   const defaultTitle = getDefaultCosmetic("PODIUM_TITLE").id;
+  const defaultFrame = getDefaultCosmetic("AVATAR_FRAME").id;
+  const defaultCoinSet = getDefaultCosmetic("CARROM_COIN_SET", "carrom").id;
 
   const tableGlobal = sanitizedOrDefault(equipped?.tableThemes?.GLOBAL, "TABLE_THEME", "GLOBAL", defaultTable);
 
@@ -843,6 +892,7 @@ export function resolveEffectiveLoadout(
       rummy: sanitizedOrDefault(equipped?.tableThemes?.rummy, "TABLE_THEME", "rummy", tableGlobal),
       ludo: sanitizedOrDefault(equipped?.tableThemes?.ludo, "TABLE_THEME", "ludo", tableGlobal),
       snl: sanitizedOrDefault(equipped?.tableThemes?.snl, "TABLE_THEME", "snl", tableGlobal),
+      carrom: tableGlobal,
     },
     diceSkins: {
       GLOBAL: sanitizedOrDefault(equipped?.diceSkins?.GLOBAL, "DICE_SKIN", "GLOBAL", defaultDice),
@@ -860,6 +910,7 @@ export function resolveEffectiveLoadout(
       ),
       uno: defaultDice,
       rummy: defaultDice,
+      carrom: defaultDice,
     },
     tokenSkins: {
       GLOBAL: sanitizedOrDefault(equipped?.tokenSkins?.GLOBAL, "TOKEN_SKIN", "GLOBAL", defaultToken),
@@ -867,6 +918,7 @@ export function resolveEffectiveLoadout(
       snl: defaultToken,
       uno: defaultToken,
       rummy: defaultToken,
+      carrom: defaultToken,
     },
     cardBacks: {
       uno: sanitizedOrDefault(equipped?.cardBacks?.uno, "CARD_BACK", "uno", defaultUnoCardBack),
@@ -874,6 +926,8 @@ export function resolveEffectiveLoadout(
     },
     avatarAura: sanitizedOrDefault(equipped?.avatarAura, "AVATAR_AURA", "GLOBAL", defaultAura),
     podiumTitle: sanitizedOrDefault(equipped?.podiumTitle, "PODIUM_TITLE", "GLOBAL", defaultTitle),
+    avatarFrame: sanitizedOrDefault(equipped?.avatarFrame, "AVATAR_FRAME", "GLOBAL", defaultFrame),
+    carromCoinSet: sanitizedOrDefault(equipped?.carromCoinSet, "CARROM_COIN_SET", "carrom", defaultCoinSet),
   };
 }
 

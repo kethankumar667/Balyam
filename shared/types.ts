@@ -12,6 +12,8 @@ export type AccountKind = "guest" | "member" | "admin" | "super_admin";
 export interface PublicPresentationLoadout {
   avatarAura?: string;
   podiumTitle?: string;
+  /** Mirrors the field of the same name in shared/cosmetics.ts; keep the two in step. */
+  avatarFrame?: string;
   tokenSkin?: string;
   diceSkin?: string;
 }

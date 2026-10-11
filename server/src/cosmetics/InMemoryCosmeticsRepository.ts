@@ -14,6 +14,10 @@ import {
   getDefaultCosmetic,
 } from "@shared/cosmetics.js";
 import {
+  AVATAR_FRAME_CATALOG,
+  CARROM_COIN_SET_CATALOG,
+} from "@shared/cosmeticsFramesAndCoins.js";
+import {
   type CosmeticsRepository,
   type PurchaseCosmeticInput,
   type PurchaseCosmeticResult,
@@ -197,6 +201,24 @@ const SEED_CATALOG: CosmeticCatalogItem[] = [
   { id: "title_early_bird", category: "PODIUM_TITLE", name: "Early Bird", description: "Earned by completing a 7-day daily login streak.", priceCoins: 0, rarity: "RARE", unlockMethod: "STREAK_MILESTONE", isActive: false, displayOrder: 20 },
   { id: "title_table_master", category: "PODIUM_TITLE", name: "Table Master", description: "Recognized veteran of the BHALYAM lounge tables.", priceCoins: 2500, rarity: "RARE", unlockMethod: "COIN_PURCHASE", isActive: false, displayOrder: 30 },
   { id: "title_grandmaster", category: "PODIUM_TITLE", name: "Grandmaster", description: "Elite lounge title displayed on victory podiums and player lists.", priceCoins: 10000, rarity: "LEGENDARY", unlockMethod: "COIN_PURCHASE", isActive: false, displayOrder: 40 },
+  // Avatar Frames and Carrom Coin Sets — written once in shared/cosmeticsFramesAndCoins.ts, the
+  // same table the registry and the 20261027 migration are checked against.
+  ...AVATAR_FRAME_CATALOG.map(
+    (entry): CosmeticCatalogItem => ({
+      ...entry,
+      category: "AVATAR_FRAME",
+      unlockMethod: entry.priceCoins === 0 ? "DEFAULT" : "COIN_PURCHASE",
+      isActive: true,
+    }),
+  ),
+  ...CARROM_COIN_SET_CATALOG.map(
+    (entry): CosmeticCatalogItem => ({
+      ...entry,
+      category: "CARROM_COIN_SET",
+      unlockMethod: entry.priceCoins === 0 ? "DEFAULT" : "COIN_PURCHASE",
+      isActive: true,
+    }),
+  ),
 ];
 
 export class InMemoryCosmeticsRepository implements CosmeticsRepository {
@@ -263,6 +285,10 @@ export class InMemoryCosmeticsRepository implements CosmeticsRepository {
         loadout.avatarAura = cosmeticId;
       } else if (category === "PODIUM_TITLE") {
         loadout.podiumTitle = cosmeticId;
+      } else if (category === "AVATAR_FRAME") {
+        loadout.avatarFrame = cosmeticId;
+      } else if (category === "CARROM_COIN_SET") {
+        loadout.carromCoinSet = cosmeticId;
       }
     }
 

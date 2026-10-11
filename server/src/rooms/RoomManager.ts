@@ -2756,6 +2756,7 @@ export class RoomManager {
     const filtered: PublicPresentationLoadout = {};
     if (isAllowed(loadout.avatarAura, "AVATAR_AURA", "GLOBAL")) filtered.avatarAura = loadout.avatarAura;
     if (isAllowed(loadout.podiumTitle, "PODIUM_TITLE", "GLOBAL")) filtered.podiumTitle = loadout.podiumTitle;
+    if (isAllowed(loadout.avatarFrame, "AVATAR_FRAME", "GLOBAL")) filtered.avatarFrame = loadout.avatarFrame;
     if (isAllowed(loadout.tokenSkin, "TOKEN_SKIN", "ludo")) filtered.tokenSkin = loadout.tokenSkin;
     if (isAllowed(loadout.diceSkin, "DICE_SKIN", "GLOBAL")) filtered.diceSkin = loadout.diceSkin;
     return filtered;

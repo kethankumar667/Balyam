@@ -36,6 +36,8 @@ work. Never ship one without the other in the same PR/deploy.**
 - `theme_<name>` — table themes
 - `dice_<name>` — dice skins
 - `token_<name>` — token/pawn skins
+- `frame_<name>` — avatar frames
+- `carromcoin_<name>` — Carrom coin sets
 - `cardback_<style>_<game>` — card backs (game suffix required since the
   same visual style id must not collide across Rummy/UNO)
 

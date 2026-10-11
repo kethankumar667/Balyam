@@ -10,6 +10,18 @@ Source of truth: `shared/cosmetics.ts` — `COSMETIC_CATEGORIES` / `CosmeticCate
 | `DICE_SKIN` | Dice face material (Ludo/SNL) | `dice_*` |
 | `TOKEN_SKIN` | Ludo pawn accessory/material | `token_*` |
 | `CARD_BACK` | Rummy/UNO card back art | `cardback_*` |
+| `AVATAR_FRAME` | Ring around a player's round portrait; global, **broadcast to the table** (ownership-checked in `RoomManager.filterToOwnedCosmetics`) | `frame_*` |
+| `CARROM_COIN_SET` | Carrom coin and queen paint, scope `carrom`; a **viewer-local** preference, never broadcast | `carromcoin_*` |
+
+`AVATAR_FRAME` and `CARROM_COIN_SET` (16 items each: one free default, fifteen
+for sale) are written once, in `shared/cosmeticsFramesAndCoins.ts`. The
+registry is generated from that file, the in-memory seed catalog is generated
+from it, and `framesAndCoinsCatalog.test.ts` checks the SQL migration
+`20261027000000_cosmetics_avatar_frames_carrom_coins.sql` against it row for
+row. How each one looks lives on the client in `avatarFrameStyles.ts` and
+`carromCoinSetStyles.ts`, keyed by the same ids. A frame is a decoration around
+a face and so resembles the removed `AVATAR_AURA`; it is a separate category
+shipped on an explicit product request, and the earlier removal still stands.
 
 Two categories the roadmap assumes exist (`AVATAR_AURA`, `PODIUM_TITLE`) were
 **removed** from this codebase in migration
@@ -20,7 +32,7 @@ without an explicit product decision, since they were pulled once already.
 
 ## Scopes
 
-Source of truth: `CosmeticGameScope` = `"GLOBAL" | "uno" | "rummy" | "ludo" | "snl"`.
+Source of truth: `CosmeticGameScope` = `"GLOBAL" | "uno" | "rummy" | "ludo" | "snl" | "carrom"`.
 
 `GLOBAL` items are valid across every game that supports the category (used
 by `TABLE_THEME` and some `DICE_SKIN`/`TOKEN_SKIN` entries via

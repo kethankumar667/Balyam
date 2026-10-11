@@ -172,3 +172,40 @@ describe("cosmetics broadcast to the room only when actually owned", () => {
     expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.avatarAura).toBeUndefined();
   });
 });
+
+describe("avatar frames reach the table only when owned", () => {
+  it("drops a frame the player never bought, so nobody sees a frame that was not paid for", async () => {
+    const { rooms, economyService } = makeHarness();
+    const identityId = "player_frame_unowned";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { avatarFrame: "frame_ember_dragon" });
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.avatarFrame).toBeUndefined();
+  });
+
+  it("broadcasts a frame once it has been bought", async () => {
+    const { rooms, economyService, cosmeticsService } = makeHarness();
+    const identityId = "player_frame_owner";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    await cosmeticsService.purchaseCosmetic(identityId, "frame_saffron_edge", "idem_frame_1");
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { avatarFrame: "frame_saffron_edge" });
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.avatarFrame).toBe("frame_saffron_edge");
+  });
+
+  it("never carries a coin set to other players, even one the sender owns", async () => {
+    const { rooms, economyService, cosmeticsService } = makeHarness();
+    const identityId = "player_coin_owner";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    await cosmeticsService.purchaseCosmetic(identityId, "carromcoin_sand_slate", "idem_coin_1");
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { carromCoinSet: "carromcoin_sand_slate" } as never);
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics).not.toHaveProperty("carromCoinSet");
+  });
+});

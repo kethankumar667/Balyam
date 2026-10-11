@@ -98,6 +98,10 @@ export class SupabaseCosmeticsRepository implements CosmeticsRepository {
         loadout.avatarAura = row.cosmetic_id;
       } else if (row.category === "PODIUM_TITLE") {
         loadout.podiumTitle = row.cosmetic_id;
+      } else if (row.category === "AVATAR_FRAME") {
+        loadout.avatarFrame = row.cosmetic_id;
+      } else if (row.category === "CARROM_COIN_SET") {
+        loadout.carromCoinSet = row.cosmetic_id;
       }
     }
 
