@@ -32,6 +32,7 @@ import type { NotificationItem } from "../../../lib/profileNotifications";
 import { SheetShell } from "./SheetShell";
 import { GuestProfileModal } from "./GuestProfileModal";
 import DeleteAccountModal from "../../../components/auth/DeleteAccountModal";
+import { OwnLevelStrip } from "../../../components/profile/OwnLevelStrip";
 
 /**
  * Profile sheet — the one right-side panel for everything about "you":
@@ -197,14 +198,17 @@ export function ProfileSheet({
             </span>
           </div>
 
-          <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">
-            {signedIn ? "Signed in" : "Playing as a guest"}
-          </p>
+          {!signedIn && (
+            <p className="mt-1 text-[13px] font-semibold text-[var(--auth-accent)]">Playing as a guest</p>
+          )}
 
           <p className="bhalyam-script text-[var(--auth-accent)] text-[17px] leading-[1.15] mt-2.5">
             {isGuestSession ? "Tap to choose your avatar" : "Tap to customize your name & avatar"}
           </p>
         </button>
+
+        {/* Level and XP: members only. A guest has no XP history, and a bar stuck at zero would only mislead. */}
+        {signedIn && <OwnLevelStrip onNavigate={onClose} />}
 
         {/* Edit Profile Modal (matches JoinRoomModal design) */}
         <GuestProfileModal
