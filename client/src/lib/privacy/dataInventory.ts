@@ -117,7 +117,7 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     key: "mpg.seats",
     label: "Seat keys",
     description:
-      "Per-room proof that a seat is yours, so refreshing the page does not lose your place. Meaningless once the room ends.",
+      "Per-room proof that a seat is yours, so refreshing the page does not lose your place. For a guest it also holds the name they chose for that one room, and is removed when they leave it. Meaningless once the room ends.",
     purpose: "credential",
     isPersonalData: true,
   },

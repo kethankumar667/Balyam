@@ -63,7 +63,7 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
     it("restores existing valid guest credentials from storage without hitting the network", async () => {
       localStorage.setItem("bhalyam.guest.id", "guest_persisted_999");
       localStorage.setItem("bhalyam.guest.token", "token_persisted_999");
-      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 3600000));
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
 
       const fetchSpy = vi.fn();
       global.fetch = fetchSpy;
@@ -171,7 +171,7 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
     it("the SAME guest id and token come back on every call as long as storage is untouched — simulating a page refresh, which never itself clears anything", async () => {
       localStorage.setItem("bhalyam.guest.id", "guest_senthil");
       localStorage.setItem("bhalyam.guest.token", "token_senthil");
-      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 3600000));
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
 
       const fetchSpy = vi.fn();
       global.fetch = fetchSpy;
@@ -207,7 +207,7 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
     it("returns the already-stored token without minting a duplicate identity", async () => {
       localStorage.setItem("bhalyam.guest.id", "guest_existing");
       localStorage.setItem("bhalyam.guest.token", "token_existing");
-      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 3600000));
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
       const fetchSpy = vi.fn();
       global.fetch = fetchSpy;
 
@@ -234,7 +234,7 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
     it("apiFetch drops an invalid guest token on 401 and retries once with a freshly minted replacement", async () => {
       localStorage.setItem("bhalyam.guest.id", "guest_stale");
       localStorage.setItem("bhalyam.guest.token", "token_stale");
-      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 3600000));
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
 
       const mockFresh = {
         playerId: "guest_replacement",
@@ -261,7 +261,7 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
     it("notifies subscribeGuestId listeners once the replacement guest id lands — the signal useWallet() needs to refetch instead of showing the old guest's stale balance", async () => {
       localStorage.setItem("bhalyam.guest.id", "guest_stale2");
       localStorage.setItem("bhalyam.guest.token", "token_stale2");
-      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 3600000));
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
 
       const listener = vi.fn();
       const unsubscribe = subscribeGuestId(listener);
@@ -285,6 +285,100 @@ describe("Priority 1: Identity & Session Management User Journey", () => {
       expect(listener).toHaveBeenCalled();
       expect(getGuestIdSnapshot()).toBe("guest_replacement2");
       unsubscribe();
+    });
+  });
+
+  describe("7. Guest renewal keeps the same player (expiry must not orphan a wallet)", () => {
+    const renewedBody = (playerId: string) => ({
+      playerId,
+      token: `renewed_token_for_${playerId}`,
+      expiresAt: Date.now() + 86400000,
+    });
+
+    const DAY = 24 * 60 * 60 * 1000;
+
+    it("starts a NEW guest once the stored token has expired — 7 days idle ends the identity", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_idle_too_long");
+      localStorage.setItem("bhalyam.guest.token", "token_expired");
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() - 1000));
+
+      const fetchSpy = vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => renewedBody("guest_brand_new") });
+      global.fetch = fetchSpy;
+
+      const cred = await getPlayerCredential();
+
+      expect(cred?.playerId).toBe("guest_brand_new");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).toMatch(/\/api\/auth\/guest$/);
+    });
+
+    it("leaves a guest with plenty of time left alone — no request at all", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_fresh");
+      localStorage.setItem("bhalyam.guest.token", "token_fresh");
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * DAY));
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy;
+
+      const cred = await getPlayerCredential();
+
+      expect(cred?.token).toBe("token_fresh");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("restarts the clock for the SAME id once half the window is gone, without announcing a change", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_quiet");
+      localStorage.setItem("bhalyam.guest.token", "token_aging");
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 2 * DAY));
+      const listener = vi.fn();
+      const unsubscribe = subscribeGuestId(listener);
+      const fetchSpy = vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => renewedBody("guest_quiet") });
+      global.fetch = fetchSpy;
+
+      const cred = await getPlayerCredential();
+
+      expect(String(fetchSpy.mock.calls[0][0])).toMatch(/\/api\/auth\/guest\/renew$/);
+      expect(fetchSpy.mock.calls[0][1].headers.Authorization).toBe("Bearer token_aging");
+      expect(cred?.playerId).toBe("guest_quiet");
+      expect(cred?.token).toBe("renewed_token_for_guest_quiet");
+      expect(listener).not.toHaveBeenCalled();
+      unsubscribe();
+    });
+
+    it("keeps using the current token when a renewal attempt fails, rather than discarding the guest", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_offline");
+      localStorage.setItem("bhalyam.guest.token", "token_still_valid");
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 1 * DAY));
+      global.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+
+      const cred = await getPlayerCredential();
+
+      expect(cred).toEqual({ playerId: "guest_offline", token: "token_still_valid", kind: "guest" });
+    });
+
+    it("a 401 on apiFetch renews the same id and retries once, minting nobody", async () => {
+      localStorage.setItem("bhalyam.guest.id", "guest_kept");
+      localStorage.setItem("bhalyam.guest.token", "token_rejected");
+      localStorage.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86400000));
+
+      const calls: string[] = [];
+      global.fetch = vi.fn().mockImplementation((url: unknown, init?: RequestInit) => {
+        calls.push(String(url));
+        if (String(url).endsWith("/api/auth/guest/renew")) {
+          return Promise.resolve({ ok: true, json: async () => renewedBody("guest_kept") });
+        }
+        const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
+        return Promise.resolve({ ok: auth !== "Bearer token_rejected", status: 401 });
+      });
+
+      const res = await apiFetch("/api/economy/wallet");
+
+      expect(res.ok).toBe(true);
+      expect(getGuestIdSnapshot()).toBe("guest_kept");
+      expect(calls.some((c) => c.endsWith("/api/auth/guest"))).toBe(false);
     });
   });
 

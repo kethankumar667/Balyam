@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { User as UserIcon, X, ArrowRight } from "lucide-react";
 import { useRoomStore } from "../../../store/roomStore";
 import { useAuthStore } from "../../../store/authStore";
+import { capabilitiesFor } from "@shared/permissions";
+import { peekGuestDisplayName } from "../../../lib/playerIdentity";
 import AvatarPicker from "../../../components/profile/AvatarPicker";
 import Modal from "../../../components/Modal";
 
@@ -18,6 +20,7 @@ export function GuestProfileModal({
 }) {
   const { playerName, avatarId, setPlayerName, setAvatarId } = useRoomStore();
   const isMember = useAuthStore((s) => s.isMember);
+  const canEditName = capabilitiesFor(useAuthStore((s) => s.kind)).editProfileName;
   const [draftName, setDraftName] = useState(playerName);
   const [draftAvatarId, setDraftAvatarId] = useState<string | null>(avatarId);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -34,8 +37,8 @@ export function GuestProfileModal({
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    const clean = draftName.trim().slice(0, 20);
-    setPlayerName(clean);
+    // A guest has no name to save here — they pick one per game room (see shared/guestIdentity.ts).
+    if (canEditName) setPlayerName(draftName.trim().slice(0, 20));
     setAvatarId(draftAvatarId);
     onClose();
   };
@@ -115,11 +118,13 @@ export function GuestProfileModal({
           <input
             id="guest-profile-name"
             type="text"
-            value={draftName}
+            value={canEditName ? draftName : (peekGuestDisplayName() ?? "Guest")}
             onChange={(e) => {
               setDraftName(e.target.value);
               if (nameError) setNameError(null);
             }}
+            readOnly={!canEditName}
+            aria-describedby={canEditName ? undefined : "guest-profile-name-hint"}
             placeholder="e.g. Sri Krishna"
             maxLength={20}
             autoComplete="given-name"
@@ -129,8 +134,13 @@ export function GuestProfileModal({
                        text-bhalyam-wood-dark dark:text-slate-100 placeholder:text-bhalyam-wood-dark/40 dark:placeholder:text-slate-500
                        font-bold text-sm
                        focus:outline-none focus:ring-2 focus:border-bhalyam-gold-dark dark:focus:border-amber-400 focus:ring-bhalyam-gold/40
-                       transition-all duration-200 shadow-xs"
+                       transition-all duration-200 shadow-xs read-only:opacity-70"
           />
+          {!canEditName && (
+            <p id="guest-profile-name-hint" className="text-[11px] text-bhalyam-wood-dark/70 dark:text-slate-400">
+              Guests pick a name for each game room. Sign in to keep a name of your own.
+            </p>
+          )}
         </div>
 
         {/* Avatar Picker section */}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GUEST_IDLE_EXPIRY_DAYS, guestDisplayName } from "@shared/guestIdentity";
 import { getApiBaseUrl } from "./socket";
 import { useAuthStore, currentAccessToken } from "../store/authStore";
 
@@ -38,6 +39,9 @@ import { useAuthStore, currentAccessToken } from "../store/authStore";
 const GUEST_ID_KEY = "bhalyam.guest.id";
 const GUEST_TOKEN_KEY = "bhalyam.guest.token";
 const GUEST_EXP_KEY = "bhalyam.guest.expires";
+
+/** Restart the guest's clock once less than this is left — i.e. after half the idle window. */
+const SLIDE_WHEN_REMAINING_BELOW_MS = (GUEST_IDLE_EXPIRY_DAYS * 24 * 60 * 60 * 1000) / 2;
 
 export interface PlayerCredential {
   playerId: string;
@@ -144,26 +148,82 @@ export function currentGuestToken(): string | undefined {
  */
 let pending: Promise<PlayerCredential | null> | null = null;
 
+const MINT_LOCK_NAME = "bhalyam.guest.mint";
+
+interface MintedGuestBody {
+  playerId: string;
+  token: string;
+  expiresAt: number;
+}
+
+/** Persist a server-issued guest credential and tell subscribers if the id itself changed. */
+function storeGuest(body: MintedGuestBody): PlayerCredential {
+  const idChanged = read(GUEST_ID_KEY) !== body.playerId;
+  write(GUEST_ID_KEY, body.playerId);
+  write(GUEST_TOKEN_KEY, body.token);
+  write(GUEST_EXP_KEY, String(body.expiresAt));
+  if (idChanged) notifyGuestIdChange();
+  return { playerId: body.playerId, token: body.token, kind: "guest" };
+}
+
+/**
+ * Trade the stored guest token for a fresh one that keeps the SAME id and restarts the 7-day clock.
+ *
+ * This is what turns "expires after 7 days" into "expires after 7 days of INACTIVITY": a guest who
+ * keeps playing keeps their identity (and wallet), one who stops does not. The server refuses
+ * (401) a forged token, one signed with a key it no longer has, or one that has already expired —
+ * then the caller starts a new guest.
+ */
+async function renewStoredGuest(): Promise<PlayerCredential | null> {
+  const token = read(GUEST_TOKEN_KEY);
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/guest/renew`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return storeGuest((await res.json()) as MintedGuestBody);
+  } catch {
+    return null;
+  }
+}
+
+async function createGuest(): Promise<PlayerCredential | null> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/guest`, { method: "POST" });
+    if (!res.ok) return null;
+    return storeGuest((await res.json()) as MintedGuestBody);
+  } catch {
+    // Offline, or the server is down. The caller renders its own empty
+    // state; inventing a local id here is what produced `guest_player_1`.
+    return null;
+  }
+}
+
+/**
+ * Serialise minting across browser tabs. `pending` only de-duplicates inside one page, so two tabs
+ * opened on a fresh device would each create a guest and the loser would hold a token for an id
+ * nobody stores. Where Web Locks is missing the work simply runs unlocked, as before.
+ */
+function withMintLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  if (!locks?.request) return task();
+  // The DOM typings nest the callback's promise inside request()'s; at runtime it resolves to T.
+  return locks.request(MINT_LOCK_NAME, task) as unknown as Promise<T>;
+}
+
 async function mintGuest(): Promise<PlayerCredential | null> {
   if (pending) return pending;
-  pending = (async () => {
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/auth/guest`, { method: "POST" });
-      if (!res.ok) return null;
-      const body = (await res.json()) as { playerId: string; token: string; expiresAt: number };
-      write(GUEST_ID_KEY, body.playerId);
-      write(GUEST_TOKEN_KEY, body.token);
-      write(GUEST_EXP_KEY, String(body.expiresAt));
-      notifyGuestIdChange();
-      return { playerId: body.playerId, token: body.token, kind: "guest" as const };
-    } catch {
-      // Offline, or the server is down. The caller renders its own empty
-      // state; inventing a local id here is what produced `guest_player_1`.
-      return null;
-    } finally {
-      pending = null;
-    }
-  })();
+  pending = withMintLock(async () => {
+    // Another tab may have finished while this one waited for the lock.
+    const already = storedGuest();
+    if (already) return already;
+    // No usable token here means none was stored or it has expired — and an expired guest is gone.
+    return createGuest();
+  }).finally(() => {
+    pending = null;
+  });
   return pending;
 }
 
@@ -179,16 +239,6 @@ async function mintGuest(): Promise<PlayerCredential | null> {
  * nothing. Reads use this; only a deliberate action (see `apiFetch` and `resolveRoomCredential`)
  * mints, through `getPlayerCredential` below.
  */
-
-/**
- * Who this browser is, minting a guest identity if it has none. Call this only for a deliberate action.
- *
- * A signed-in session always wins, and note what that means in practice: sign
- * in and your guest identity is simply not consulted any more. Carrying guest
- * progress into a new account is a migration this codebase cannot do yet —
- * there is nowhere durable to carry it FROM (see P0-3) — and pretending
- * otherwise by merging ids client-side would be worse than being explicit.
- */
 export function peekPlayerCredential(): PlayerCredential | null {
   const { userId } = useAuthStore.getState();
   const token = currentAccessToken();
@@ -196,12 +246,43 @@ export function peekPlayerCredential(): PlayerCredential | null {
   return storedGuest();
 }
 
+/**
+ * Who this browser is, minting a guest identity if it has none. Call this only for a deliberate action.
+ *
+ * A signed-in session always wins: sign in and your guest identity is not consulted any more. The
+ * guest's wallet is not lost by that — `lib/guestCarryOver.ts` hands it to the account.
+ */
 export async function getPlayerCredential(): Promise<PlayerCredential | null> {
   const { userId } = useAuthStore.getState();
   const token = currentAccessToken();
   if (userId && token) return { playerId: userId, token, kind: "member" };
 
-  return storedGuest() ?? (await mintGuest());
+  return (await slidStoredGuest()) ?? (await mintGuest());
+}
+
+/**
+ * The stored guest, with its 7-day clock restarted if more than half the window has gone.
+ *
+ * Only deliberate actions reach here (a read never mints, see above), which is the right meaning
+ * of "activity": opening the site to look around does not keep a guest alive, playing does. A
+ * failed renewal falls back to the token we have — still valid, just not extended.
+ */
+async function slidStoredGuest(): Promise<PlayerCredential | null> {
+  const stored = storedGuest();
+  if (!stored) return null;
+  const expires = Number(read(GUEST_EXP_KEY) ?? 0);
+  if (!expires || expires - Date.now() > SLIDE_WHEN_REMAINING_BELOW_MS) return stored;
+  return (await renewStoredGuest()) ?? stored;
+}
+
+/**
+ * The automatic name of this device's guest ("Guest 12345678"), or `null` when there is no guest
+ * identity yet. Creates nothing. This is what a guest is called everywhere except inside a game
+ * room, where they may pick a name for that room alone.
+ */
+export function peekGuestDisplayName(): string | null {
+  const guest = storedGuest();
+  return guest ? guestDisplayName(guest.playerId) : null;
 }
 
 export type RoomCredentialResult =
@@ -224,7 +305,7 @@ export async function resolveRoomCredential(): Promise<RoomCredentialResult> {
     return { ok: true, kind: "member", accessToken: token, guestToken: undefined };
   }
 
-  const credential = storedGuest() ?? (await mintGuest());
+  const credential = (await slidStoredGuest()) ?? (await mintGuest());
   if (!credential?.token) {
     return {
       ok: false,
@@ -305,9 +386,27 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   const res = await send(credential);
   if (res.status !== 401 || credential?.kind !== "guest") return res;
 
-  clearGuestIdentity();
-  const fresh = await getPlayerCredential();
+  const fresh = await replaceRejectedGuest(credential.token);
   return fresh ? send(fresh) : res;
+}
+
+/**
+ * A new credential for a guest whose token the server just refused, keeping the player's id
+ * wherever the server will still vouch for it.
+ *
+ * In order: another tab already replaced it → use that; the server renews the same id → use that;
+ * only then drop the identity and start a new guest (forged token, a restart without
+ * `SESSION_SECRET`, or an identity abandoned past the renewal window).
+ */
+async function replaceRejectedGuest(rejectedToken: string): Promise<PlayerCredential | null> {
+  const current = storedGuest();
+  if (current && current.token !== rejectedToken) return current;
+
+  const renewed = await renewStoredGuest();
+  if (renewed) return renewed;
+
+  clearGuestIdentity();
+  return getPlayerCredential();
 }
 
 /** `apiFetch`, parsed, returning `null` for any non-2xx rather than throwing. */

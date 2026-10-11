@@ -10,13 +10,13 @@ describe("idle guest purge job", () => {
     vi.restoreAllMocks();
   });
 
-  it("defaults to 45 days and refuses a setting shorter than a week", () => {
+  it("defaults to the 7-day guest lifetime and refuses a setting shorter than that", () => {
     delete process.env.IDLE_GUEST_DAYS;
-    expect(idleGuestDays()).toBe(45);
+    expect(idleGuestDays()).toBe(7);
     process.env.IDLE_GUEST_DAYS = "3";
-    expect(idleGuestDays()).toBe(45);
+    expect(idleGuestDays()).toBe(7);
     process.env.IDLE_GUEST_DAYS = "banana";
-    expect(idleGuestDays()).toBe(45);
+    expect(idleGuestDays()).toBe(7);
     process.env.IDLE_GUEST_DAYS = "90";
     expect(idleGuestDays()).toBe(90);
   });

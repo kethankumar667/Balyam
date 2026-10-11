@@ -5,7 +5,14 @@ import { generateActionId, getSocket } from "../lib/socket";
 import { logConn } from "../lib/connectionLog";
 import { useRoomStore } from "../store/roomStore";
 import { currentAccessToken, currentAccountKind, useAuthStore } from "../store/authStore";
-import { ensureGuestToken, resolveRoomCredential } from "../lib/playerIdentity";
+import { guestDisplayName } from "@shared/guestIdentity";
+import {
+  ensureGuestToken,
+  getPlayerCredential,
+  peekPlayerCredential,
+  resolveRoomCredential,
+} from "../lib/playerIdentity";
+import GuestInviteNotice from "../components/room/GuestInviteNotice";
 import { exitFullscreen, isFullscreenActive, isFullscreenSupported, isPhoneClass } from "../lib/fullscreen";
 import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
@@ -671,6 +678,27 @@ export default function Room() {
   // `isMember`.
   const mustDeclare = authReady && !isMember && !declaredHere;
 
+  /**
+   * The name this player sits at THIS table under.
+   *
+   * An account's name is the device-wide `playerName`. A guest's is not: it was chosen for this room
+   * and is kept on the room's seat (`SeatCredential.name`), so a refresh keeps it and leaving the room
+   * ends it — they are "Guest 12345678" again outside. Read from the seat here, not from the store,
+   * because on a refresh the store's name has already been cleared for guests (`useGuestNameHygiene`).
+   */
+  const roomPlayerName = isMember
+    ? playerName
+    : playerName || (code ? useRoomStore.getState().seatFor(code)?.name ?? "" : "");
+
+  /**
+   * A guest identity does not exist yet for someone opening a room link cold. Tracked in state so the
+   * notice below can flip it the moment the guest has been created, without waiting on a store.
+   */
+  const [guestId, setGuestId] = useState<string | null>(() => {
+    const existing = peekPlayerCredential();
+    return existing?.kind === "guest" ? existing.playerId : null;
+  });
+
   // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
   // Rummy table, remember who was at it so the home screen can offer a
   // one-tap WhatsApp re-invite next time. Keyed on the name itself so
@@ -725,14 +753,14 @@ export default function Room() {
     // firing in the same window as a fresh tab's session hydration could
     // still race `resolveRoomCredential()` ahead of the restored access
     // token and rejoin on a guest credential.
-    if (!code || !playerName || mustDeclare || !authReady) return;
+    if (!code || !roomPlayerName || mustDeclare || !authReady) return;
     if (joinInFlightRef.current) return;
     joinInFlightRef.current = true;
     const socket = getSocket();
     if (!socket.connected) {
       socket.connect();
     }
-    const joinName = playerName;
+    const joinName = roomPlayerName;
     const joinCode = code;
     const seat = seatFor(joinCode);
     // Fail-closed credential resolution: verified members proceed with their
@@ -791,11 +819,12 @@ export default function Room() {
           recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
         }
         if (res.playerId && res.seatToken) {
-          rememberSeat(joinCode, res.playerId, res.seatToken);
+          // A guest's name rides on the seat so it outlives a refresh but not the room.
+          rememberSeat(joinCode, res.playerId, res.seatToken, isMember ? undefined : joinName);
         }
       }
     );
-  }, [code, playerName, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
+  }, [code, roomPlayerName, isMember, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
 
   const handleRetryConnection = useCallback(() => {
     joinInFlightRef.current = false;
@@ -807,7 +836,7 @@ export default function Room() {
       navigate("/");
       return;
     }
-    if (!playerName) return;
+    if (!roomPlayerName) return;
     if (mustDeclare) return;
     // See the `authReady` comment above `mustDeclare`: hold off subscribing
     // and joining until the real session state is in, then let the
@@ -887,7 +916,7 @@ export default function Room() {
     // with it `false` for a moment, so the effect must re-run once it flips
     // to `true` rather than being stuck on the early return above forever.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, playerName, authReady]);
+  }, [code, roomPlayerName, authReady]);
 
   /**
    * One stable `game:move` sender.
@@ -1490,6 +1519,12 @@ export default function Room() {
     getSocket()
       .timeout(1500)
       .emit("room:leave", () => {
+        // A guest's name belonged to this room: drop it with the seat so they are "Guest 12345678"
+        // again, and a later visit to the same code asks who they are afresh.
+        if (!useAuthStore.getState().isMember) {
+          if (code) useRoomStore.getState().forgetSeat(code);
+          setPlayerName("");
+        }
         reset();
         navigate("/");
       });
@@ -1576,18 +1611,34 @@ export default function Room() {
   //      themselves once per room even if a name is already stored.
   // Either way, submitting persists the name and the join effect above picks
   // it up on the next render.
-  if (!playerName || mustDeclare) {
+  if (!roomPlayerName || mustDeclare) {
+    // A guest with no identity yet is told what is about to be created BEFORE it is created.
+    const needsGuestNotice = mustDeclare && !guestId;
+    // A guest's suggested name is their automatic one; a stored legacy name only wins if they have one.
+    const suggestedName = mustDeclare && guestId ? playerName || guestDisplayName(guestId) : playerName;
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
-        <NameEntryForRoom
-          code={code ?? ""}
-          initialName={playerName}
-          guest={mustDeclare}
-          onSubmit={(n) => {
-            setPlayerName(n);
-            setDeclaredHere(true);
-          }}
-        />
+        {needsGuestNotice ? (
+          <GuestInviteNotice
+            onCancel={() => navigate("/")}
+            onContinue={async () => {
+              const created = await getPlayerCredential();
+              if (created?.kind !== "guest") return false;
+              setGuestId(created.playerId);
+              return true;
+            }}
+          />
+        ) : (
+          <NameEntryForRoom
+            code={code ?? ""}
+            initialName={suggestedName}
+            guest={mustDeclare}
+            onSubmit={(n) => {
+              setPlayerName(n);
+              setDeclaredHere(true);
+            }}
+          />
+        )}
       </AppLayout>
     );
   }

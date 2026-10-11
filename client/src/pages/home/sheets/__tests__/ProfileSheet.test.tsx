@@ -67,7 +67,9 @@ describe("ProfileSheet — Notifications visibility (guest vs member)", () => {
     // The notifications feed's back-button title is unique to that panel;
     // its absence confirms we fell through to the profile card instead.
     expect(screen.queryByTitle("Back to profile")).toBeNull();
-    expect(screen.getByText("Add your name")).toBeDefined();
+    // A guest has no name of their own to add — they are "Guest …" outside a game room.
+    expect(screen.queryByText("Add your name")).toBeNull();
+    expect(screen.getAllByText(/^Guest/).length).toBeGreaterThan(0);
   });
 
   it("a signed-in member does see the Notifications row with its unread count", () => {

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { GUEST_IDLE_EXPIRY_DAYS } from "@shared/guestIdentity.js";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -39,10 +40,18 @@ import { logger } from "../lib/logger.js";
  * end it. Thirty days: long enough that a returning player keeps their
  * progress, short enough that a token copied off a shared machine stops
  * working.
+ *
+ * ── Why it is seven days, and why it slides ───────────────────────────
+ * The invite popup promises a new guest that the account "expires after 7 days of inactivity"
+ * (`GUEST_IDLE_EXPIRY_DAYS`). A token that simply lived seven days from creation would log out an
+ * active player mid-week, so the client trades a still-valid token for a fresh one on use
+ * (`POST /api/auth/guest/renew`): activity moves the deadline, idleness does not. An EXPIRED token
+ * is final — there is no grace window — and the next visit starts a new guest. Whatever the old
+ * guest earned stays in the ledger; it is just no longer reachable from this browser.
  */
 
 const VERSION = "bg1";
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TTL_MS = GUEST_IDLE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Fallback key for a process with no `SESSION_SECRET`.
@@ -151,9 +160,16 @@ export function mintGuestToken(playerId = newGuestPlayerId(), now = Date.now()):
  *
  * `null` for anything that is not a well-formed, unexpired token signed with
  * this process's key — a wrong signature, a tampered payload, a different
- * version prefix, or a token whose thirty days are up.
+ * version prefix, or a token whose idle window has run out.
  */
 export function verifyGuestToken(token: string | null | undefined, now = Date.now()): string | null {
+  const claims = decodeSignedClaims(token);
+  if (!claims || claims.exp <= now) return null;
+  return claims.pid;
+}
+
+/** Well-formed, correctly signed claims for a guest id — with NO expiry check. */
+function decodeSignedClaims(token: string | null | undefined): GuestClaims | null {
   if (typeof token !== "string" || token.length === 0) return null;
 
   const parts = token.split(".");
@@ -175,7 +191,7 @@ export function verifyGuestToken(token: string | null | undefined, now = Date.no
   }
 
   if (typeof claims.pid !== "string" || !claims.pid.startsWith("guest_")) return null;
-  if (typeof claims.exp !== "number" || claims.exp <= now) return null;
+  if (typeof claims.exp !== "number") return null;
 
-  return claims.pid;
+  return claims;
 }

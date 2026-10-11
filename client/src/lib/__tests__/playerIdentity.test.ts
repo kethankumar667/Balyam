@@ -63,7 +63,7 @@ describe("resolveRoomCredential", () => {
   it("returns stored guest token when guest credentials already exist in storage", async () => {
     localMock.setItem("bhalyam.guest.id", "guest_existing");
     localMock.setItem("bhalyam.guest.token", "bg1.existing.token");
-    localMock.setItem("bhalyam.guest.expires", String(Date.now() + 3_600_000));
+    localMock.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86_400_000));
 
     const res = await resolveRoomCredential();
     expect(res.ok).toBe(true);
@@ -124,7 +124,7 @@ describe("resolveRoomCredential", () => {
 
     localMock.setItem("bhalyam.guest.id", "guest_fallback");
     localMock.setItem("bhalyam.guest.token", "bg1.fallback.token");
-    localMock.setItem("bhalyam.guest.expires", String(Date.now() + 3_600_000));
+    localMock.setItem("bhalyam.guest.expires", String(Date.now() + 6 * 86_400_000));
 
     const res = await resolveRoomCredential();
     expect(res.ok).toBe(true);

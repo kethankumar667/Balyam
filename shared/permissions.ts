@@ -65,9 +65,12 @@ export interface Capabilities {
   soloVsBots: boolean;
   /** Several humans, one device, no code involved. Open to everyone. */
   passAndPlay: boolean;
-  /** Change display name and avatar. Open to everyone — it is how a guest
-   *  becomes a person at the table rather than "Player 3". */
+  /** Change avatar and other profile details. Open to everyone. */
   editProfile: boolean;
+  /** Keep a display name on the profile. Members only. A guest is "Guest 12345678"
+   *  everywhere except inside a game room, where they choose a name that lasts only
+   *  until they leave it (see `shared/guestIdentity.ts`). */
+  editProfileName: boolean;
   /** Voice chat while in a room. Open to everyone; being in the room at all
    *  already required an invite. */
   voiceChat: boolean;
@@ -102,6 +105,7 @@ const GUEST: Capabilities = {
   soloVsBots: true,
   passAndPlay: true,
   editProfile: true,
+  editProfileName: false,
   voiceChat: true,
   spectate: false,
   viewTournaments: false,
@@ -123,6 +127,7 @@ const MEMBER: Capabilities = {
   soloVsBots: true,
   passAndPlay: true,
   editProfile: true,
+  editProfileName: true,
   voiceChat: true,
   spectate: true,
   viewTournaments: true,
@@ -144,6 +149,7 @@ const SUPER_ADMIN: Capabilities = {
   soloVsBots: true,
   passAndPlay: true,
   editProfile: true,
+  editProfileName: true,
   voiceChat: true,
   spectate: true,
   viewTournaments: true,

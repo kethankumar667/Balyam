@@ -16,6 +16,7 @@ import SelfAvatar from "../profile/SelfAvatar";
 import SeatAvatar from "../profile/SeatAvatar";
 import { useTheme } from "../../lib/useTheme";
 import { useRoomStore } from "../../store/roomStore";
+import { peekGuestDisplayName } from "../../lib/playerIdentity";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { Button, Tooltip } from "../../design-system/dls";
@@ -74,7 +75,8 @@ export default function AppHeader({
       : walletLoading && walletStatus !== "loading"
         ? "syncing"
         : "synced";
-  const displayName = playerName.trim() || identity.label;
+  const displayName =
+    playerName.trim() || (identity.mode === "guest" ? peekGuestDisplayName() : null) || identity.label;
   const { profile } = usePlayerSnapshot(true);
   const playerLevel = profile?.level ?? 1;
 

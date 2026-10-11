@@ -66,6 +66,12 @@ export interface GameStateMap {
 export interface SeatCredential {
   playerId: string;
   seatToken: string;
+  /**
+   * The name a GUEST chose for this one room. Lives and dies with the seat: `forgetSeat` (leaving
+   * the room, a failed join) removes it, so the guest is "Guest 12345678" again afterwards. Never
+   * set for an account, whose name belongs to `playerName`.
+   */
+  name?: string;
 }
 
 interface RoomStore {
@@ -94,8 +100,12 @@ interface RoomStore {
   setAvatarId: (id: string | null) => void;
   setBio: (bio: string) => void;
   setRegion: (region: string) => void;
-  /** Store the credential from a `room:create` / `room:join` ack. */
-  rememberSeat: (code: string, playerId: string, seatToken: string) => void;
+  /**
+   * Store the credential from a `room:create` / `room:join` ack. A guest passes the name they
+   * chose for this room; leaving it out keeps whatever name the seat already had, so a rejoin
+   * that re-stores the seat does not lose it.
+   */
+  rememberSeat: (code: string, playerId: string, seatToken: string, name?: string) => void;
   /** Discard a stored seat credential when a room concludes or join fails. */
   forgetSeat: (code: string) => void;
   /** The credential for a room, if this browser holds one. */
@@ -153,7 +163,11 @@ function loadSeats(): Record<string, SeatCredential> {
     for (const [code, cred] of Object.entries(parsed as Record<string, unknown>)) {
       const c = cred as Partial<SeatCredential>;
       if (typeof c?.playerId === "string" && typeof c?.seatToken === "string") {
-        out[code] = { playerId: c.playerId, seatToken: c.seatToken };
+        out[code] = {
+          playerId: c.playerId,
+          seatToken: c.seatToken,
+          ...(typeof c.name === "string" && c.name ? { name: c.name } : {}),
+        };
       }
     }
     return out;
@@ -265,10 +279,14 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
     }
     set({ region });
   },
-  rememberSeat: (code, playerId, seatToken) =>
+  rememberSeat: (code, playerId, seatToken, name) =>
     set((s) => {
       const key = code.trim().toUpperCase();
-      const next = { ...s.seats, [key]: { playerId, seatToken } };
+      const keptName = name || s.seats[key]?.name;
+      const next = {
+        ...s.seats,
+        [key]: { playerId, seatToken, ...(keptName ? { name: keptName } : {}) },
+      };
       const codes = Object.keys(next);
       for (const stale of codes.slice(0, Math.max(0, codes.length - MAX_REMEMBERED_SEATS))) {
         delete next[stale];

@@ -4,6 +4,7 @@ import { ChevronLeft, X, Sun, Moon, Lock } from "lucide-react";
 import { useNavigation } from "../../navigation/useNavigation";
 import type { NavBadge, ResolvedNavigationItem } from "../../navigation/types";
 import { useRoomStore } from "../../store/roomStore";
+import { peekGuestDisplayName } from "../../lib/playerIdentity";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import SeatAvatar from "../profile/SeatAvatar";
 import { Tooltip } from "../../design-system/dls";
@@ -66,7 +67,8 @@ export default function AppSidebar({
   const { recentItems } = useRecentlyPlayed();
   const { playerName, avatarId } = useRoomStore();
   const identity = useIdentityPresentation();
-  const currentDisplayName = playerName.trim() || identity.label;
+  const currentDisplayName =
+    playerName.trim() || (identity.mode === "guest" ? peekGuestDisplayName() : null) || identity.label;
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
 

@@ -58,7 +58,10 @@ profileRouter.get("/:playerId", (req, res) => {
  * address a stranger's row.
  */
 profileRouter.put("/:playerId", requireSelfParam(), (req, res) => {
-  const { displayName, avatar } = req.body ?? {};
+  const { displayName: requestedName, avatar } = req.body ?? {};
+  // A guest has no profile name: they are "Guest 12345678" outside a room (shared/guestIdentity.ts).
+  // Ignore the field rather than erroring, so an old client that still sends it keeps working.
+  const displayName = req.player?.kind === "guest" ? undefined : requestedName;
   const updated = profileService.updateProfile(callerId(req), { displayName, avatar });
   res.json({ profile: updated });
 });

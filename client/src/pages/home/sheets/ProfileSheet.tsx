@@ -25,6 +25,7 @@ import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
 import { useRoomStore } from "../../../store/roomStore";
 import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
+import { peekGuestDisplayName } from "../../../lib/playerIdentity";
 import { useTheme } from "../../../lib/useTheme";
 import { bhalyamSpring } from "../../../lib/motion";
 import type { NotificationItem } from "../../../lib/profileNotifications";
@@ -58,7 +59,11 @@ export function ProfileSheet({
 }) {
   const { playerName, avatarId } = useRoomStore();
   const avatar = findAvatar(avatarId);
-  const named = playerName.trim().length > 0;
+  const isGuestSession = useAuthStore((s) => !s.isMember);
+  // A guest has no name of their own: outside a room they are "Guest 12345678".
+  const guestName = isGuestSession ? peekGuestDisplayName() : null;
+  const shownName = playerName.trim() || guestName || "";
+  const named = shownName.length > 0;
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
   const signOutAndLeave = useSignOut();
@@ -169,7 +174,7 @@ export function ProfileSheet({
             >
               <SeatAvatar
                 avatar={avatarId ?? undefined}
-                name={playerName.trim() || identity.label}
+                name={shownName || identity.label}
                 className="w-full h-full"
                 textClassName="text-2xl font-black"
               />
@@ -188,7 +193,7 @@ export function ProfileSheet({
           {/* Name Display */}
           <div className="flex items-center justify-center gap-1.5">
             <span className="bhalyam-display text-[var(--auth-ink)] text-[22px] leading-tight break-words group-hover:text-[#8C531B] transition-colors">
-              {named ? playerName : "Add your name"}
+              {named ? shownName : isGuestSession ? "Guest" : "Add your name"}
             </span>
           </div>
 
@@ -197,7 +202,7 @@ export function ProfileSheet({
           </p>
 
           <p className="bhalyam-script text-[var(--auth-accent)] text-[17px] leading-[1.15] mt-2.5">
-            Tap to customize your name &amp; avatar
+            {isGuestSession ? "Tap to choose your avatar" : "Tap to customize your name & avatar"}
           </p>
         </button>
 

@@ -1,3 +1,4 @@
+import { GUEST_IDLE_EXPIRY_DAYS } from "@shared/guestIdentity.js";
 import { logger } from "../lib/logger.js";
 import { persistenceStatus } from "../persistence/index.js";
 import { PostgrestClient, readPostgrestConfig } from "../persistence/postgrest.js";
@@ -12,8 +13,9 @@ import { PostgrestClient, readPostgrestConfig } from "../persistence/postgrest.j
  * is a quiet no-op rather than a crash.
  */
 
-const MIN_IDLE_DAYS = 7;
-const DEFAULT_IDLE_DAYS = 45;
+const MIN_IDLE_DAYS = GUEST_IDLE_EXPIRY_DAYS;
+/** Matches the guest token lifetime: past this, nobody can sign in as the guest, so the row is dead weight. */
+const DEFAULT_IDLE_DAYS = GUEST_IDLE_EXPIRY_DAYS;
 const DAY_MS = 86_400_000;
 const FIRST_RUN_DELAY_MS = 5 * 60_000;
 const BATCH = 500;
