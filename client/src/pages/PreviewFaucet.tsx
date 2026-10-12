@@ -9,6 +9,7 @@ import { CoinFountain } from "../components/faucet/CoinCelebrations";
 import { useLevelUpStore } from "../store/levelUpStore";
 import SeatAvatar from "../components/profile/SeatAvatar";
 import FinishedTableCard from "../components/room/FinishedTableCard";
+import GuestWelcomeCard from "../components/room/GuestWelcomeCard";
 import { AudienceBar } from "./party/AudienceBar";
 import { AVATARS } from "../lib/avatars";
 
@@ -98,7 +99,8 @@ export default function PreviewFaucet() {
   if (view === "finished") {
     // The finished-table card as a room shows it once the scorecard is closed.
     return (
-      <div className="mx-auto max-w-lg p-4 pt-10">
+      <div className="mx-auto max-w-lg space-y-3 p-4 pt-10">
+        <GuestWelcomeCard />
         <FinishedTableCard game="ludo" onNewRoom={() => undefined} onLeave={() => undefined} />
       </div>
     );

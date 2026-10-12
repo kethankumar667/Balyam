@@ -63,8 +63,6 @@ describe("Mandali translation keys", () => {
       "mandali.message.react": "emoji",
       "mandali.play.empty.body": "name",
       "mandali.people.coinsWith": "name",
-      "mandali.start.defaultName": "game",
-      "mandali.start.seatsFixed": "count",
       "mandali.header.hereNow": "count",
       "mandali.people.online": "count",
     };

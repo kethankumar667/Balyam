@@ -347,6 +347,12 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     for (const schedule of DEFAULT_SCHEDULES) {
       this.prizeSchedules.set(schedule.seatCount, clone(schedule));
     }
+    // Opt-in only, so a developer can walk the "first game on us" flow without Supabase; production
+    // gets the same rule from the database (`economy_configurations.guest_first_game_coins`).
+    const firstGame = Number(process.env.GUEST_FIRST_GAME_COINS);
+    if (Number.isInteger(firstGame) && firstGame > 0) {
+      this.configuration = { ...this.configuration, guestFirstGameCoins: String(firstGame) };
+    }
   }
 
   /* ── the test fixture — never reachable via a plain EconomyRepository-typed reference ── */
