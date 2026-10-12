@@ -4,6 +4,8 @@ import {
   type FaucetClaimResult,
   type FaucetStatus,
 } from "@shared/faucet.js";
+import { firstFaucetClaimAt } from "@shared/newMember.js";
+import type { RegisteredAtLookup } from "../auth/registration.js";
 import type { RewardGateway } from "./RewardGateway.js";
 import { REASON, type RewardRecord } from "./types.js";
 
@@ -26,6 +28,11 @@ import { REASON, type RewardRecord } from "./types.js";
  * ── The server's clock decides ────────────────────────────────────────
  * Nothing from the client is read: not a time, not an amount. The answer carries
  * `serverNow` so the countdown on screen does not depend on the device clock.
+ *
+ * ── A new member waits an hour for the first claim ────────────────────
+ * With no claim yet, the first one opens an hour after registration (`shared/newMember.ts`).
+ * It is reported exactly like any other wait — `nextClaimAt` — so the countdown on screen needs
+ * no special case. After that first claim the ordinary wait between claims applies.
  */
 
 const MESSAGES = {
@@ -38,14 +45,18 @@ const MESSAGES = {
 export interface HourlyFaucetDeps {
   gateway: RewardGateway;
   now?: () => number;
+  /** When a member registered. Absent = nobody is held back by the new-member hour. */
+  registeredAt?: RegisteredAtLookup | null;
 }
 
 export class HourlyFaucetService {
   private readonly gateway: RewardGateway;
+  private readonly registeredAt: RegisteredAtLookup | null;
   private readonly now: () => number;
 
   constructor(deps: HourlyFaucetDeps) {
     this.gateway = deps.gateway;
+    this.registeredAt = deps.registeredAt ?? null;
     this.now = deps.now ?? Date.now;
   }
 
@@ -55,7 +66,7 @@ export class HourlyFaucetService {
     if (kind !== "member") return { ...base, eligible: false, nextClaimAt: null, canClaim: false };
 
     const last = await this.lastClaim(playerId);
-    const nextClaimAt = last ? last.earnedAt + FAUCET_COOLDOWN_MS : null;
+    const nextClaimAt = await this.opensAt(playerId, last);
     const canClaim = nextClaimAt === null || serverNow >= nextClaimAt;
     return { ...base, eligible: true, nextClaimAt: canClaim ? null : nextClaimAt, canClaim };
   }
@@ -73,9 +84,8 @@ export class HourlyFaucetService {
     if (kind !== "member") return refuse("NOT_MEMBER");
 
     const last = await this.lastClaim(playerId);
-    if (last && serverNow < last.earnedAt + FAUCET_COOLDOWN_MS) {
-      return refuse("COOLDOWN", last.earnedAt + FAUCET_COOLDOWN_MS);
-    }
+    const opensAt = await this.opensAt(playerId, last);
+    if (opensAt !== null && serverNow < opensAt) return refuse("COOLDOWN", opensAt);
 
     const grant = await this.gateway.grantCoins({
       playerId,
@@ -104,6 +114,17 @@ export class HourlyFaucetService {
       vestingUntil: isHeld ? grant.record.vestingUntil : null,
       serverNow,
     };
+  }
+
+  /**
+   * When the next claim opens, or `null` when it is open now: the wait after the last claim, or —
+   * for a member who has never claimed — the hour after they registered.
+   */
+  private async opensAt(playerId: string, last: RewardRecord | null): Promise<number | null> {
+    if (last) return last.earnedAt + FAUCET_COOLDOWN_MS;
+    if (!this.registeredAt) return null;
+    const registered = await this.registeredAt(playerId);
+    return registered === null ? null : firstFaucetClaimAt(registered);
   }
 
   /** The player's newest faucet row, whatever its payment state: a held claim still starts the wait. */

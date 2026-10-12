@@ -21,7 +21,7 @@ export function createStreakRouter(streakService: StreakService): Router {
   router.get("/", requireIdentity, async (req: Request, res: Response) => {
     try {
       const playerId = callerId(req);
-      const state = await streakService.getStreak(playerId);
+      const state = await streakService.getStreak(playerId, req.player!.kind);
       res.json(state);
     } catch (err) {
       logger.error({

@@ -18,9 +18,12 @@ export function DailyStreakEntryChip() {
   const currentStreak = state?.currentStreak ?? 0;
   const isClaimable = state?.isClaimableToday ?? false;
 
+  // A member who registered today has nothing to claim yet: the streak starts tomorrow.
   const tooltipLabel = isClaimable
     ? `Daily Login Streak: ${currentStreak} days — Reward Ready to Claim!`
-    : `Daily Login Streak: ${currentStreak} days`;
+    : state?.firstClaimAt
+      ? "Daily Login Streak: starts tomorrow"
+      : `Daily Login Streak: ${currentStreak} days`;
 
   const handleClick = () => {
     HapticsManager.trigger("subtle");

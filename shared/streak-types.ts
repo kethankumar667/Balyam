@@ -116,11 +116,19 @@ export interface DailyStreakState {
   shieldsRemaining: number;
   history: string[]; // Recent claimed UTC dates
   schedule: StreakScheduledDay[];
+  /**
+   * Set only for a member who registered today and has never claimed: the moment the first claim
+   * opens (00:00 UTC tomorrow). While it is set `isClaimableToday` is false and every day is locked.
+   * Absent for everyone else.
+   */
+  firstClaimAt?: number | null;
 }
 
 export type StreakClaimStatusCode =
   | "SUCCESS"
   | "ALREADY_CLAIMED"
+  /** A member who registered today: the streak starts tomorrow. */
+  | "NOT_YET"
   | "TIME_TRAVEL_DETECTED"
   | "STREAK_RESET"
   | "CYCLE_COMPLETED"

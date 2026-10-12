@@ -186,6 +186,13 @@ export interface EconomyConfigurationRecord {
    */
   guestFirstGameCoins?: string | null;
   memberStarterCoins: string;
+  /**
+   * When true a brand-new MEMBER wallet is made empty and the welcome (`memberStarterCoins`) is paid
+   * once, when the member accepts the welcome popup (`grantMemberWelcome`). Absent / false = the
+   * welcome is paid when the wallet is made. Like `guestFirstGameCoins`, not read from the `_safe`
+   * view: the database function applies the rule itself.
+   */
+  memberWelcomeOnClaim?: boolean;
   seatCostCoins: string;
   isActive: boolean;
 }
@@ -569,6 +576,10 @@ export class WelcomeNeedsGameError extends WalletError {
 export class NotAGuestError extends WalletError {
   readonly code = "NOT_A_GUEST";
 }
+/** `grantMemberWelcome` against a wallet that is not a member's. */
+export class NotAMemberError extends WalletError {
+  readonly code = "NOT_A_MEMBER";
+}
 /** `commitMatchEntry`'s host balance is below the required commitment, checked AFTER the frozen check. */
 export class InsufficientFundsError extends WalletError {
   readonly code = "INSUFFICIENT_FUNDS";
@@ -731,6 +742,20 @@ export interface EconomyRepository {
    * wallet, `NotAGuestError` for a member, `WalletFrozenError` when frozen.
    */
   grantGuestWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /**
+   * Pays a new member's welcome (`memberStarterCoins`) once, when they accept the welcome popup.
+   * `applied: false` when nothing is pending (already welcomed, or a wallet made before the rule
+   * existed). Throws `WalletNotFoundError` without a wallet, `NotAMemberError` for a guest,
+   * `WalletFrozenError` when frozen.
+   *
+   * Optional so a decorating repository that predates the rule keeps compiling; the service
+   * refuses cleanly when it is absent.
+   */
+  grantMemberWelcome?(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>>;
+
+  /** Whether this member's welcome is still waiting for the popup. Read-only; never creates a wallet. */
+  isMemberWelcomePending?(identityId: string): Promise<boolean>;
 
   /** Keyed by `matchId`. */
   commitMatchEntry(

@@ -205,6 +205,12 @@ export interface GuestWelcomeStatus {
   amount: string;
 }
 
+/** `pending` = a new member whose welcome is waiting for the welcome popup; `amount` = what it adds (bigint-as-string). */
+export interface MemberWelcomeStatus {
+  pending: boolean;
+  amount: string;
+}
+
 export interface MatchCheckoutQuoteInput {
   hostIdentityId: string;
   seatCount: number;
@@ -527,6 +533,40 @@ export class EconomyService {
     const startedAt = this.now();
     const outcome = await this.withRetry("claimGuestWelcome", null, () => this.repository.grantGuestWelcome(identityId));
     this.logOutcome("claimGuestWelcome", null, startedAt, outcome.applied);
+    return { applied: outcome.applied, wallet: outcome.result };
+  }
+
+  /**
+   * Whether this member's welcome is still waiting for the welcome popup. A verified member always
+   * has a wallet to ask about, so it is made here if the header has not already made it — otherwise a
+   * member who reaches the popup before their first wallet read would be told there is nothing owed.
+   * Only a hint for the client: `claimMemberWelcome` is the authority.
+   */
+  async getMemberWelcomeStatus(identityId: string): Promise<MemberWelcomeStatus> {
+    const startedAt = this.now();
+    const config = await this.withRetry("memberWelcomeStatus:config", null, () => this.repository.getActiveConfiguration());
+    const isPending = this.repository.isMemberWelcomePending?.bind(this.repository);
+    if (!isPending) return { pending: false, amount: config.memberStarterCoins };
+
+    await this.withRetry("memberWelcomeStatus:ensureWallet", null, () => this.repository.ensureWallet(identityId));
+    const pending = await this.withRetry("memberWelcomeStatus:pending", null, () => isPending(identityId));
+    this.logOutcome("memberWelcomeStatus", null, startedAt, "read");
+    return { pending, amount: config.memberStarterCoins };
+  }
+
+  /**
+   * Pays a new member's welcome once, when they accept the welcome popup (see
+   * `EconomyRepository.grantMemberWelcome`). A repeat is `applied: false` with the current wallet, never
+   * a second grant.
+   */
+  async claimMemberWelcome(identityId: string): Promise<{ applied: boolean; wallet: CoinWalletRecord }> {
+    const startedAt = this.now();
+    const grant = this.repository.grantMemberWelcome?.bind(this.repository);
+    if (!grant) throw new InvalidRequestError("The member welcome is not available.");
+
+    await this.withRetry("claimMemberWelcome:ensureWallet", null, () => this.repository.ensureWallet(identityId));
+    const outcome = await this.withRetry("claimMemberWelcome", null, () => grant(identityId));
+    this.logOutcome("claimMemberWelcome", null, startedAt, outcome.applied);
     return { applied: outcome.applied, wallet: outcome.result };
   }
 

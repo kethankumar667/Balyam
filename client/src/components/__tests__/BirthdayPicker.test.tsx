@@ -36,8 +36,14 @@ function Harness({
 
 const trigger = () => screen.getByRole("button", { name: /date of birth/i });
 const open = () => fireEvent.click(trigger());
-const yearSelect = () => screen.getByLabelText("Choose the Year") as HTMLSelectElement;
-const monthSelect = () => screen.getByLabelText("Choose the Month") as HTMLSelectElement;
+// The month and year lists are `ThemedSelect` comboboxes, not the browser's own selects.
+const yearSelect = () => screen.getByRole("combobox", { name: "Choose the Year" });
+const monthSelect = () => screen.getByRole("combobox", { name: "Choose the Month" });
+/** Opens a month or year list and taps one entry — the way a person does it. */
+const choose = (select: HTMLElement, option: string) => {
+  fireEvent.click(select);
+  fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: option }));
+};
 const day = (n: number) => {
   const found = within(screen.getByRole("grid"))
     .getAllByRole("button")
@@ -96,8 +102,8 @@ describe("BirthdayPicker", () => {
 
       open();
 
-      expect(yearSelect()).toHaveValue("2001");
-      expect(monthSelect()).toHaveValue("0");
+      expect(yearSelect()).toHaveTextContent("2001");
+      expect(monthSelect()).toHaveTextContent("January");
     });
 
     it("starts on the month of a birthday already chosen", () => {
@@ -105,8 +111,8 @@ describe("BirthdayPicker", () => {
 
       open();
 
-      expect(yearSelect()).toHaveValue("1995");
-      expect(monthSelect()).toHaveValue("3");
+      expect(yearSelect()).toHaveTextContent("1995");
+      expect(monthSelect()).toHaveTextContent("April");
     });
 
     it("puts the keyboard inside the calendar", () => {
@@ -124,8 +130,8 @@ describe("BirthdayPicker", () => {
       render(<Harness onPick={onPick} />);
 
       open();
-      fireEvent.change(yearSelect(), { target: { value: "1995" } });
-      fireEvent.change(monthSelect(), { target: { value: "3" } });
+      choose(yearSelect(), "1995");
+      choose(monthSelect(), "April");
       fireEvent.click(day(12));
 
       expect(onPick).toHaveBeenCalledWith("1995-04-12");
@@ -137,8 +143,8 @@ describe("BirthdayPicker", () => {
       render(<Harness onPick={onPick} />);
 
       open();
-      fireEvent.change(yearSelect(), { target: { value: "2000" } });
-      fireEvent.change(monthSelect(), { target: { value: "11" } });
+      choose(yearSelect(), "2000");
+      choose(monthSelect(), "December");
       fireEvent.click(day(31));
 
       expect(onPick).toHaveBeenCalledWith("2000-12-31");
@@ -155,12 +161,50 @@ describe("BirthdayPicker", () => {
     });
   });
 
+  describe("the month and year lists", () => {
+    it("lists all twelve months in words, with the current one marked", () => {
+      render(<Harness initial="1995-04-12" />);
+      open();
+
+      fireEvent.click(monthSelect());
+      const months = within(screen.getByRole("listbox")).getAllByRole("option");
+
+      expect(months).toHaveLength(12);
+      expect(months[0]).toHaveTextContent("January");
+      expect(months[11]).toHaveTextContent("December");
+      expect(screen.getByRole("option", { name: "April" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("closes the list, not the calendar, on Escape", () => {
+      render(<Harness />);
+      open();
+
+      fireEvent.click(yearSelect());
+      fireEvent.keyDown(yearSelect(), { key: "Escape" });
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(screen.getByRole("grid")).toBeInTheDocument();
+    });
+
+    it("can be driven from the keyboard", () => {
+      render(<Harness initial="1995-04-12" />);
+      open();
+
+      fireEvent.keyDown(yearSelect(), { key: "ArrowDown" });
+      fireEvent.keyDown(yearSelect(), { key: "ArrowDown" });
+      fireEvent.keyDown(yearSelect(), { key: "Enter" });
+
+      expect(yearSelect()).toHaveTextContent("1996");
+    });
+  });
+
   describe("limits", () => {
     it("offers years from 1920 up to this year, and no further", () => {
       render(<Harness />);
       open();
 
-      const years = within(yearSelect())
+      fireEvent.click(yearSelect());
+      const years = within(screen.getByRole("listbox"))
         .getAllByRole("option")
         .map((option) => option.textContent);
 
@@ -173,8 +217,8 @@ describe("BirthdayPicker", () => {
     it("will not let a birthday be in the future", () => {
       render(<Harness />);
       open();
-      fireEvent.change(yearSelect(), { target: { value: "2026" } });
-      fireEvent.change(monthSelect(), { target: { value: "9" } });
+      choose(yearSelect(), "2026");
+      choose(monthSelect(), "October");
 
       expect(day(12)).toBeEnabled();
       expect(day(13)).toBeDisabled();

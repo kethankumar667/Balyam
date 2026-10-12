@@ -15,12 +15,15 @@ import {
   type DailyStreakClaimResult,
   type DailyStreakState,
 } from "@shared/streak-types.js";
+import { firstStreakClaimAt } from "@shared/newMember.js";
 import {
   evaluateStreakClaim,
   buildStreakState,
   getUtcDateString,
+  holdFirstClaim,
   type StoredStreakRecord,
 } from "./StreakEngine.js";
+import { type RegisteredAtLookup } from "../auth/registration.js";
 import { PostgrestClient, readPostgrestConfig, type PostgrestConfig } from "../persistence/postgrest.js";
 
 interface LoginStreakRow {
@@ -49,6 +52,12 @@ export interface StreakServiceOptions {
   rewardGateway?: RewardGateway | null;
   postgrestConfig?: PostgrestConfig | null;
   now?: () => number;
+  /**
+   * When a member registered. With it, a member's streak starts the day AFTER they sign up
+   * (`shared/newMember.ts`). Without it nobody is held, which is what the tests that predate the
+   * rule rely on.
+   */
+  registeredAt?: RegisteredAtLookup | null;
 }
 
 export class StreakService {
@@ -57,12 +66,14 @@ export class StreakService {
   private readonly economyService: EconomyService | null;
   private readonly cosmeticsService: CosmeticsService | null;
   private readonly rewardGateway: RewardGateway | null;
+  private readonly registeredAt: RegisteredAtLookup | null;
   private readonly now: () => number;
 
   constructor(options: StreakServiceOptions = {}) {
     this.economyService = options.economyService ?? null;
     this.cosmeticsService = options.cosmeticsService ?? null;
     this.rewardGateway = options.rewardGateway ?? null;
+    this.registeredAt = options.registeredAt ?? null;
     this.now = options.now ?? Date.now;
 
     const config = options.postgrestConfig !== undefined
@@ -160,14 +171,34 @@ export class StreakService {
   /**
    * Returns authoritative daily streak state for a player.
    */
-  async getStreak(playerId: string): Promise<DailyStreakState> {
+  async getStreak(
+    playerId: string,
+    identityKind: PlayerIdentityKind = "guest",
+  ): Promise<DailyStreakState> {
     const timestamp = this.now();
     const record = await this.loadRecord(playerId);
-    const state = buildStreakState(record, timestamp);
-    return {
-      ...state,
-      playerId,
-    };
+    const state: DailyStreakState = { ...buildStreakState(record, timestamp), playerId };
+    const firstClaimAt = await this.firstClaimHold(playerId, identityKind, record, timestamp);
+    return firstClaimAt === null ? state : holdFirstClaim(state, firstClaimAt);
+  }
+
+  /**
+   * When a member who registered today may first claim, or `null` when nothing holds them back.
+   * Only a member who has never claimed is ever held: once a streak has started it runs on its
+   * own days, and a guest has no registration to wait from.
+   */
+  private async firstClaimHold(
+    playerId: string,
+    identityKind: PlayerIdentityKind,
+    record: StoredStreakRecord | null,
+    now: number,
+  ): Promise<number | null> {
+    if (identityKind !== "member" || !this.registeredAt) return null;
+    if (record?.lastClaimedDate) return null;
+    const registered = await this.registeredAt(playerId);
+    if (registered === null) return null;
+    const opensAt = firstStreakClaimAt(registered);
+    return now < opensAt ? opensAt : null;
   }
 
   /**
@@ -210,6 +241,30 @@ export class StreakService {
     }
 
     const existingRecord = await this.loadRecord(playerId);
+
+    // Registered today: the streak starts tomorrow, so there is nothing to claim yet and nothing is spent.
+    const firstClaimAt = await this.firstClaimHold(playerId, identityKind, existingRecord, serverTimestamp);
+    if (firstClaimAt !== null) {
+      const held = holdFirstClaim(
+        { ...buildStreakState(existingRecord, serverTimestamp), playerId },
+        firstClaimAt,
+      );
+      return {
+        success: false,
+        code: "NOT_YET",
+        message: "Your streak starts tomorrow. Come back after 00:00 UTC for your Day 1 reward!",
+        claimedDay: 1,
+        reward: null,
+        coinsAwarded: 0,
+        newStreak: 0,
+        cycleCompleted: false,
+        cycleCount: 0,
+        shieldUsed: false,
+        walletBalance: await this.getWalletBalance(playerId),
+        updatedState: held,
+      };
+    }
+
     const evalResult = evaluateStreakClaim(existingRecord, serverTimestamp);
 
     // If claim cannot proceed (e.g. already claimed today or clock issue)

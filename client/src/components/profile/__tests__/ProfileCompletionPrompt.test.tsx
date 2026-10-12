@@ -196,10 +196,29 @@ describe("ProfileCompletionPrompt", () => {
       await screen.findByRole("dialog");
 
       fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: "1995-04-12" } });
-      fireEvent.change(screen.getByLabelText(/gender/i), { target: { value: "Female" } });
+      fireEvent.click(screen.getByRole("combobox", { name: /gender/i }));
+      fireEvent.click(screen.getByRole("option", { name: "Female" }));
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
       await waitFor(() => expect(mockSave).toHaveBeenCalledWith("u1", { dob: "1995-04-12", gender: "Female" }));
+    });
+
+    it("offers gender as a themed list with every choice and 'Prefer not to say' first", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NO_BIRTHDAY);
+      render(<ProfileCompletionPrompt />);
+      await screen.findByRole("dialog");
+
+      expect(screen.getByRole("combobox", { name: /gender/i })).toHaveTextContent("Prefer not to say");
+      fireEvent.click(screen.getByRole("combobox", { name: /gender/i }));
+
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "Prefer not to say",
+        "Male",
+        "Female",
+        "Other",
+      ]);
+      expect(document.querySelector("select")).toBeNull();
     });
 
     it("uses the birthday picker, not the browser's own date field", async () => {
@@ -318,6 +337,89 @@ describe("ProfileCompletionPrompt", () => {
       render(<ProfileCompletionPrompt />);
       await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  // The welcome popup waits for this signal: the order is privacy, then these questions, then the welcome.
+  describe("telling the welcome it is done", () => {
+    it("reports done at once when there is nothing to ask", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(HAS_BOTH);
+      const onFinished = vi.fn();
+
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+
+      await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(1));
+    });
+
+    it("does not hold the welcome back when the profile could not be read", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(null);
+      const onFinished = vi.fn();
+
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+
+      await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("stays quiet while the member is still being asked", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NEITHER);
+      const onFinished = vi.fn();
+
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+      await screen.findByRole("dialog");
+
+      expect(onFinished).not.toHaveBeenCalled();
+    });
+
+    it("reports done once the last step is saved, and only once", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NO_AVATAR);
+      const onFinished = vi.fn();
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+      await screen.findByRole("dialog");
+
+      pickAvatar();
+      fireEvent.click(screen.getByRole("button", { name: /continue|save/i }));
+
+      await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("reports done when the member chooses Not now", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NEITHER);
+      const onFinished = vi.fn();
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+      await screen.findByRole("dialog");
+
+      fireEvent.click(screen.getByRole("button", { name: /not now/i }));
+
+      expect(onFinished).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports done straight away to a member who already chose Not now this visit", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NEITHER);
+      const first = render(<ProfileCompletionPrompt />);
+      await screen.findByRole("dialog");
+      fireEvent.click(screen.getByRole("button", { name: /not now/i }));
+      first.unmount();
+
+      const onFinished = vi.fn();
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+
+      await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(1));
+    });
+
+    it("says nothing for a guest", () => {
+      const onFinished = vi.fn();
+
+      render(<ProfileCompletionPrompt onFinished={onFinished} />);
+
+      expect(onFinished).not.toHaveBeenCalled();
     });
   });
 });

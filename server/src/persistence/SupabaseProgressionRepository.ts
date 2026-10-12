@@ -91,6 +91,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       kind: "member" | "guest";
       auth_user_id: string | null;
       last_seen_at: string;
+      created_at?: string;
     }>("player_identities", `player_id=eq.${encodeURIComponent(playerId)}&limit=1`);
     if (!row) return null;
     return {
@@ -98,6 +99,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       kind: row.kind,
       authUserId: row.auth_user_id,
       lastSeenAt: ms(row.last_seen_at),
+      ...(row.created_at ? { createdAt: ms(row.created_at) } : {}),
     };
   }
 

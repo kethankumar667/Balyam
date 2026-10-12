@@ -46,6 +46,8 @@ export interface StreakExpeditionModel {
   longestStreak: number;
   shieldsRemaining: number;
   isClaimable: boolean;
+  /** A member who registered today: nothing to claim until the streak starts tomorrow (UTC). */
+  isHeldForFirstDay: boolean;
   isClaiming: boolean;
   claimError: string | null;
   todayReward: StreakScheduledDay;
@@ -88,10 +90,12 @@ export function useStreakExpedition(): StreakExpeditionModel {
   const schedule = state?.schedule ?? [];
   const activeDay = Math.min(30, Math.max(1, state?.activeDayInCycle ?? 1));
   const isClaimable = state?.isClaimableToday ?? false;
-  const completedDays = isClaimable ? Math.max(0, activeDay - 1) : activeDay;
+  // Registered today: nothing has been claimed, and nothing is "today's" yet — Day 1 is tomorrow's.
+  const isHeldForFirstDay = Boolean(state?.firstClaimAt);
+  const completedDays = isClaimable ? Math.max(0, activeDay - 1) : isHeldForFirstDay ? 0 : activeDay;
   const todayReward = scheduledReward(activeDay, schedule);
   const nextDay = activeDay === 30 ? 1 : activeDay + 1;
-  const nextReward = scheduledReward(nextDay, schedule);
+  const nextReward = isHeldForFirstDay ? todayReward : scheduledReward(nextDay, schedule);
   const nextMilestone =
     EXPEDITION_MILESTONES.find((milestone) => milestone.day > completedDays) ??
     EXPEDITION_MILESTONES[EXPEDITION_MILESTONES.length - 1];
@@ -100,11 +104,11 @@ export function useStreakExpedition(): StreakExpeditionModel {
 
   const upcomingRewards = useMemo(() => {
     const rewards: StreakScheduledDay[] = [];
-    for (let day = activeDay + 1; day <= 30 && rewards.length < 5; day += 1) {
+    for (let day = isHeldForFirstDay ? activeDay : activeDay + 1; day <= 30 && rewards.length < 5; day += 1) {
       rewards.push(scheduledReward(day, schedule));
     }
     return rewards;
-  }, [activeDay, schedule]);
+  }, [activeDay, isHeldForFirstDay, schedule]);
 
   const totalCoins = useMemo(
     () => STREAK_REWARDS_SCHEDULE.reduce((sum, reward) => sum + reward.coins, 0),
@@ -130,6 +134,7 @@ export function useStreakExpedition(): StreakExpeditionModel {
     longestStreak: state?.longestStreak ?? 0,
     shieldsRemaining: state?.shieldsRemaining ?? 0,
     isClaimable,
+    isHeldForFirstDay,
     isClaiming,
     claimError,
     todayReward,
@@ -174,15 +179,15 @@ export function TodayRewardCard({ model, compact = false }: TodayRewardCardProps
             <div className="min-w-0">
               <p className="font-hand text-xs font-bold text-[#365eaa]">Your daily expedition</p>
               <h3 className={`${compact ? "text-2xl" : "text-3xl"} font-hand font-black leading-none text-[#10254b]`}>
-                {Math.max(1, streakCount)} Day Streak!
+                {model.isHeldForFirstDay ? "Starts tomorrow!" : `${Math.max(1, streakCount)} Day Streak!`}
               </h3>
             </div>
           </div>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-black ${model.isClaimable ? "border-orange-300 bg-orange-100 text-orange-900" : "border-emerald-300 bg-emerald-100 text-emerald-800"}`}>
-              {model.isClaimable ? <Flame className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5 stroke-[3]" />}
-              {model.isClaimable ? `Day ${model.activeDay} Ready` : "Claimed today"}
+            <span className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-black ${model.isClaimable ? "border-orange-300 bg-orange-100 text-orange-900" : model.isHeldForFirstDay ? "border-amber-300 bg-amber-100 text-amber-900" : "border-emerald-300 bg-emerald-100 text-emerald-800"}`}>
+              {model.isClaimable ? <Flame className="h-3.5 w-3.5" /> : model.isHeldForFirstDay ? <Clock3 className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5 stroke-[3]" />}
+              {model.isClaimable ? `Day ${model.activeDay} Ready` : model.isHeldForFirstDay ? "You joined today" : "Claimed today"}
             </span>
             {model.shieldsRemaining > 0 && (
               <span className="inline-flex min-h-[28px] items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] font-black text-sky-800">
@@ -195,7 +200,7 @@ export function TodayRewardCard({ model, compact = false }: TodayRewardCardProps
           <div className="mt-2.5 flex items-baseline justify-between gap-2">
             <div>
               <p className="font-hand text-xs font-bold text-[#5f4a37]">
-                {model.isClaimable ? "Today's grant" : "Next grant"}
+                {model.isClaimable ? "Today's grant" : model.isHeldForFirstDay ? "Your first grant" : "Next grant"}
               </p>
               <div className="mt-0.5 flex items-center gap-1.5 text-[#8b3513]">
                 <Coins className={`${compact ? "h-5 w-5" : "h-6 w-6"} fill-amber-300 text-amber-600`} />
@@ -218,6 +223,11 @@ export function TodayRewardCard({ model, compact = false }: TodayRewardCardProps
             >
               {model.isClaiming ? "Claiming…" : `Claim +${model.todayReward.coins.toLocaleString()} coins`}
             </button>
+          ) : model.isHeldForFirstDay ? (
+            <div className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100 px-3 text-xs font-black text-amber-900">
+              <Clock3 className="h-4 w-4" />
+              Opens tomorrow — see you then
+            </div>
           ) : (
             <div className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-100 px-3 text-xs font-black text-emerald-800">
               <Check className="h-4 w-4 stroke-[3]" />
@@ -545,7 +555,7 @@ export function CountdownPill({ model, compact = false }: { model: StreakExpedit
       <Clock3 className={`${compact ? "h-4 w-4" : "h-6 w-6"} text-amber-600 dark:text-amber-300`} />
       <div>
         <p className="text-[9px] font-black uppercase tracking-wider text-[var(--streak-muted)] leading-none">
-          {model.isClaimable ? "Reset in" : "Next reward"}
+          {model.isClaimable ? "Reset in" : model.isHeldForFirstDay ? "Opens in" : "Next reward"}
         </p>
         <p className={`font-mono ${compact ? "text-xs" : "text-base"} font-black tracking-wide text-[var(--streak-ink)] leading-tight`}>
           {model.timeUntilReset}

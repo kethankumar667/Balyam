@@ -62,6 +62,7 @@ import { rewardStore, initialiseRewardStore, orderedRiskPersistence } from "./re
 import { ABNORMAL_WINDOW_MS } from "./rewards/SessionRules.js";
 import { matchHistoryService } from "./profile/MatchHistoryService.js";
 import { createStreakRouter } from "./streak/StreakController.js";
+import { memberRegisteredAt } from "./auth/registration.js";
 import { Game2048StatsService } from "./games2048/Game2048StatsService.js";
 import { createGame2048StatsRouter } from "./games2048/Game2048StatsController.js";
 import { CosmeticsService } from "./cosmetics/CosmeticsService.js";
@@ -410,7 +411,7 @@ const rewardGateway = new RewardGateway({
 });
 profileService.setRewardGateway(rewardGateway);
 
-const streakService = new StreakService({ economyService, cosmeticsService, rewardGateway });
+const streakService = new StreakService({ economyService, cosmeticsService, rewardGateway, registeredAt: memberRegisteredAt });
 app.use("/api/streak", createStreakRouter(streakService));
 
 /**
@@ -483,7 +484,7 @@ app.use(
 );
 
 /** Free coins for signed-in players every four hours; a claim is an ordinary reward-ledger row. */
-app.use("/api/faucet", createFaucetRouter(new HourlyFaucetService({ gateway: rewardGateway })));
+app.use("/api/faucet", createFaucetRouter(new HourlyFaucetService({ gateway: rewardGateway, registeredAt: memberRegisteredAt })));
 
 /** A guest who signs up brings their coins; both payments go through the gateway, so both are held. */
 app.use(

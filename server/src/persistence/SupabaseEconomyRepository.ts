@@ -20,6 +20,7 @@ import {
   UnsupportedSeatCountError,
   TransferCapExceededError,
   NotAGuestError,
+  NotAMemberError,
   WalletFrozenError,
   WalletNotFoundError,
   WelcomeNeedsGameError,
@@ -469,6 +470,7 @@ const ERROR_TOKEN_MAP: ReadonlyArray<[RegExp, new (message: string) => Error]> =
   [/\bWALLET_FROZEN:/, WalletFrozenError],
   [/\bWELCOME_NEEDS_GAME:/, WelcomeNeedsGameError],
   [/\bNOT_A_GUEST:/, NotAGuestError],
+  [/\bNOT_A_MEMBER:/, NotAMemberError],
   [/\bINSUFFICIENT_FUNDS:/, InsufficientFundsError],
   [/\bTRANSFER_CAP_EXCEEDED:/, TransferCapExceededError],
   [/\bINVALID_SEAT_CONFIGURATION:/, InvalidSeatConfigurationError],
@@ -670,6 +672,17 @@ export class SupabaseEconomyRepository implements EconomyRepository {
       p_identity_id: identityId,
     });
     return { ...envelope, result: toWallet(envelope.result) };
+  }
+
+  async grantMemberWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    const envelope = await this.rpc<RawEnvelope<WalletRow>>("grant_member_welcome", {
+      p_identity_id: identityId,
+    });
+    return { ...envelope, result: toWallet(envelope.result) };
+  }
+
+  async isMemberWelcomePending(identityId: string): Promise<boolean> {
+    return (await this.rpc<boolean>("member_welcome_pending", { p_identity_id: identityId })) === true;
   }
 
   /**

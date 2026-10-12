@@ -18,7 +18,7 @@ const ProfileSheet = lazy(() => import("../../pages/home/sheets/ProfileSheet").t
 const WalletDrawer = lazy(() => import("../economy/WalletDrawer").then((m) => ({ default: m.WalletDrawer })));
 const DailyStreakModal = lazy(() => import("../streak/DailyStreakModal").then((m) => ({ default: m.DailyStreakModal })));
 const CosmeticsStoreModal = lazy(() => import("../cosmetics/CosmeticsStoreModal").then((m) => ({ default: m.CosmeticsStoreModal })));
-const ProfileCompletionPrompt = lazy(() => import("../profile/ProfileCompletionPrompt"));
+const MemberOnboarding = lazy(() => import("../onboarding/MemberOnboarding"));
 const SignInInvitation = lazy(() => import("../auth/SignInInvitation"));
 
 interface AppLayoutContextType {
@@ -93,8 +93,9 @@ export default function AppLayout({
   const [theme] = useTheme();
   const isDark = theme === "dark";
   // Two dialogs, one audience each. Mounting only the one that can be shown also keeps the other's
-  // code (the profile prompt carries a calendar library) from being downloaded at all.
+  // code (the first-run profile questions carry a calendar library) from being downloaded at all.
   const isMember = useAuthStore((s) => s.isMember);
+  const memberId = useAuthStore((s) => s.userId);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -356,7 +357,8 @@ export default function AppLayout({
           <DailyStreakModal />
           <CosmeticsStoreModal />
           {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
-          {chrome && isMember && <ProfileCompletionPrompt />}
+          {/* Privacy choice, then the profile questions, then the welcome: see MemberOnboarding. */}
+          {chrome && isMember && <MemberOnboarding key={memberId ?? "member"} />}
           {chrome && !isMember && <SignInInvitation />}
         </Suspense>
       </div>

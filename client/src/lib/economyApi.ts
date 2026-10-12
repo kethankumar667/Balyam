@@ -308,6 +308,24 @@ export async function claimGuestWelcome(): Promise<{ applied: boolean; wallet: C
   return handleResponse<{ applied: boolean; wallet: CoinWalletRecord }>(res);
 }
 
+/** A new member whose welcome is waiting for the welcome popup; `amount` is what it adds (bigint-as-string). */
+export interface MemberWelcomeStatus {
+  pending: boolean;
+  amount: string;
+}
+
+/** GET /api/economy/member/welcome — is this member owed the welcome popup (and its coins)? */
+export async function getMemberWelcomeStatus(): Promise<MemberWelcomeStatus> {
+  const res = await apiFetch("/api/economy/member/welcome");
+  return handleResponse<MemberWelcomeStatus>(res);
+}
+
+/** POST /api/economy/member/welcome — the welcome popup's button: pays the welcome once. */
+export async function claimMemberWelcome(): Promise<{ applied: boolean; wallet: CoinWalletRecord }> {
+  const res = await apiFetch("/api/economy/member/welcome", { method: "POST", body: JSON.stringify({}) });
+  return handleResponse<{ applied: boolean; wallet: CoinWalletRecord }>(res);
+}
+
 /**
  * GET /api/economy/wallet/ledger — retrieves caller's own ledger history.
  */

@@ -38,6 +38,7 @@
     "verify:emailguard": "node scripts/persistence/verifyEmailGuard.mjs",
     "verify:carryover": "node scripts/economy/verifyGuestCarryOver.mjs",
     "verify:guestfirstgame": "node scripts/economy/verifyGuestFirstGame.mjs",
+    "verify:memberwelcome": "node scripts/economy/verifyMemberWelcome.mjs",
     "verify:guestpurge": "node scripts/persistence/verifyIdleGuestPurge.mjs",
     "check:a11y-rendered": "node client/scripts/accessibility/runner.mjs",
     "design:colors": "node scripts/design-audit/colors.mjs",

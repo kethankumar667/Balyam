@@ -44,6 +44,12 @@ export interface IdentityRecord {
   /** The Supabase user id for a member; `null` for a guest. */
   authUserId: string | null;
   lastSeenAt: number;
+  /**
+   * When this identity was first seen — for a member, effectively when they registered. Set by the
+   * store on the first write and never moved by a later one, so a caller does not need to send it.
+   * Absent on a row written before the store reported it.
+   */
+  createdAt?: number;
 }
 
 export interface ProfileRecord {

@@ -51,6 +51,7 @@ import {
   WalletNotFoundError,
   WelcomeNeedsGameError,
   NotAGuestError,
+  NotAMemberError,
 } from "./EconomyRepository.js";
 import { isStructurallyValidSeatConfiguration } from "../economy/economyCapacityContract.js";
 
@@ -353,6 +354,10 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     if (Number.isInteger(firstGame) && firstGame > 0) {
       this.configuration = { ...this.configuration, guestFirstGameCoins: String(firstGame) };
     }
+    // Same opt-in for the member welcome: held until the welcome popup is accepted.
+    if (process.env.MEMBER_WELCOME_ON_CLAIM === "true") {
+      this.configuration = { ...this.configuration, memberWelcomeOnClaim: true };
+    }
   }
 
   /* ── the test fixture — never reachable via a plain EconomyRepository-typed reference ── */
@@ -612,6 +617,19 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     );
   }
 
+  async grantMemberWelcome(identityId: string): Promise<EconomyOperationResult<CoinWalletRecord>> {
+    return this.mutex.runExclusive(`wallet:${identityId}`, () =>
+      this.withRollback(() => this.grantMemberWelcomeLocked(identityId)),
+    );
+  }
+
+  async isMemberWelcomePending(identityId: string): Promise<boolean> {
+    return this.mutex.runExclusive(`wallet:${identityId}`, () => {
+      const wallet = this.wallets.get(identityId);
+      return wallet?.identityKind === "member" && this.welcomePending.has(identityId);
+    });
+  }
+
   async commitMatchEntry(
     input: CommitMatchEntryInput,
   ): Promise<EconomyOperationResult<MatchEconomySettlementRecord>> {
@@ -754,22 +772,30 @@ export class InMemoryEconomyRepository implements EconomyRepository {
 
     const firstGameCoins = this.configuration.guestFirstGameCoins ?? null;
     const isFirstGameGuest = wallet.identityKind === "guest" && firstGameCoins !== null;
+    // A new member's welcome waits for the welcome popup: the wallet is made empty and flagged.
+    const isDeferredMember = wallet.identityKind === "member" && this.configuration.memberWelcomeOnClaim === true;
     const grantAmount = toBig(
       isFirstGameGuest
         ? firstGameCoins
-        : wallet.identityKind === "guest"
-          ? this.configuration.guestStarterCoins
-          : this.configuration.memberStarterCoins,
+        : isDeferredMember
+          ? "0"
+          : wallet.identityKind === "guest"
+            ? this.configuration.guestStarterCoins
+            : this.configuration.memberStarterCoins,
     );
-    if (isFirstGameGuest) this.welcomePending.add(identityId);
-    const updated = this.applyWalletCredit(wallet, grantAmount, {
-      entryType: "STARTER_GRANT",
-      sourceKind: "starter_grant",
-      sourceId: identityId,
-      idempotencyKey,
-      description: `Authoritative starter grant (${wallet.identityKind})`,
-      lifetimeField: "lifetimeGranted",
-    });
+    if (isFirstGameGuest || isDeferredMember) this.welcomePending.add(identityId);
+    // The ledger never records a zero-coin credit (the database function does the same).
+    const updated =
+      grantAmount > 0n
+        ? this.applyWalletCredit(wallet, grantAmount, {
+            entryType: "STARTER_GRANT",
+            sourceKind: "starter_grant",
+            sourceId: identityId,
+            idempotencyKey,
+            description: `Authoritative starter grant (${wallet.identityKind})`,
+            lifetimeField: "lifetimeGranted",
+          })
+        : { ...wallet, version: wallet.version + 1, updatedAt: Date.now() };
     updated.starterGranted = true;
     this.wallets.set(identityId, updated);
     this.logIdempotency(idempotencyKey, "grant_starter_coins");
@@ -808,6 +834,41 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     this.welcomePending.delete(identityId);
     this.logIdempotency(idempotencyKey, "grant_guest_welcome");
     return { applied: true, operation: "grant_guest_welcome", idempotencyKey, result: clone(updated) };
+  }
+
+  private grantMemberWelcomeLocked(identityId: string): EconomyOperationResult<CoinWalletRecord> {
+    const idempotencyKey = `member-welcome:${identityId}`;
+    const wallet = this.wallets.get(identityId);
+    if (!wallet) {
+      throw new WalletNotFoundError(`Wallet for ${identityId} does not exist`);
+    }
+    if (wallet.identityKind !== "member") {
+      throw new NotAMemberError(`${identityId} is not a member wallet`);
+    }
+    if (!this.welcomePending.has(identityId)) {
+      this.logIdempotency(idempotencyKey, "grant_member_welcome");
+      return { applied: false, operation: "grant_member_welcome", idempotencyKey, result: clone(wallet) };
+    }
+    if (wallet.isFrozen) {
+      throw new WalletFrozenError(`Member wallet ${identityId} is frozen`);
+    }
+
+    const amount = toBig(this.configuration.memberStarterCoins);
+    const updated =
+      amount > 0n
+        ? this.applyWalletCredit(wallet, amount, {
+            entryType: "STARTER_GRANT",
+            sourceKind: "starter_grant",
+            sourceId: identityId,
+            idempotencyKey,
+            description: "Member welcome",
+            lifetimeField: "lifetimeGranted",
+          })
+        : clone(wallet);
+    this.wallets.set(identityId, updated);
+    this.welcomePending.delete(identityId);
+    this.logIdempotency(idempotencyKey, "grant_member_welcome");
+    return { applied: true, operation: "grant_member_welcome", idempotencyKey, result: clone(updated) };
   }
 
   private commitMatchEntryLocked(

@@ -336,9 +336,14 @@ export function ProfileSheet({
             <span>Sign out / Log out</span>
           </button>
 
+          {/* The drawer closes as the dialog opens. The dialog is a standard-height modal (z-50) and this
+              drawer sits above it (z-70), so left open it would cover the very question it asked. */}
           <button
             type="button"
-            onClick={() => setShowDeleteModal(true)}
+            onClick={() => {
+              onClose();
+              setShowDeleteModal(true);
+            }}
             className="w-full py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:underline transition cursor-pointer text-center inline-flex items-center justify-center gap-1.5 min-h-[44px]"
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />

@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Cake, UserRound } from "lucide-react";
 import Modal from "../Modal";
 import AvatarPicker from "./AvatarPicker";
 import BirthdayPicker from "../BirthdayPicker";
+import ThemedSelect from "../ThemedSelect";
 import { toIsoDate } from "../../lib/isoDate";
 import { useAuthStore } from "../../store/authStore";
 import { useRoomStore } from "../../store/roomStore";
@@ -15,7 +16,12 @@ import { validateDob } from "../../lib/authValidation";
 type Step = "avatar" | "birthday";
 
 const MODAL_Z = 60;
-const GENDER_OPTIONS = ["Male", "Female", "Other"] as const;
+const GENDER_OPTIONS = [
+  { value: "", label: "Prefer not to say" },
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
+] as const;
 const SAVE_FAILED = "We couldn't save that. Please try again.";
 
 /**
@@ -36,9 +42,6 @@ export function resetProfilePromptDismissals(): void {
 function todayIso(): string {
   return toIsoDate(new Date());
 }
-
-const FIELD_CLASS =
-  "mt-1 min-h-[48px] w-full rounded-xl border border-[#EEDBCA] bg-white px-3 text-base text-[#2B3550] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
 
 const PRIMARY_CLASS =
   "min-h-[52px] w-full cursor-pointer rounded-2xl bg-amber-500 px-6 text-base font-black text-amber-950 shadow-lg shadow-amber-900/25 transition-colors hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
@@ -69,8 +72,14 @@ const PRIMARY_CLASS =
  * profile, to this device (so rooms use it), and to the server's copy that
  * leaderboards read. That last write is best-effort — the member's own profile
  * is the source of truth, so a server hiccup must not undo their choice.
+ *
+ * ── Where it sits in the first-run order ──────────────────────────────
+ * It is the middle step: privacy choice, then these questions, then the welcome. It does not wait
+ * for the privacy answer itself — `MemberOnboarding` decides when to mount it — but it reports
+ * through `onFinished` when it is done with the member for this visit (saved, skipped with "Not
+ * now", or nothing to ask), which is the signal the welcome waits for. It fires once.
  */
-export default function ProfileCompletionPrompt() {
+export default function ProfileCompletionPrompt({ onFinished }: { onFinished?: () => void } = {}) {
   const isMember = useAuthStore((s) => s.isMember);
   const userId = useAuthStore((s) => s.userId);
   const { playerId } = usePlayerId();
@@ -87,21 +96,38 @@ export default function ProfileCompletionPrompt() {
   const dobRef = useRef<HTMLButtonElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
 
+  // The latest callback, read through a ref: the parent passes an inline arrow, and a dependency on it
+  // would re-run the profile read on every render.
+  const onFinishedRef = useRef(onFinished);
+  onFinishedRef.current = onFinished;
+  const hasFinished = useRef(false);
+  const finish = useCallback(() => {
+    if (hasFinished.current) return;
+    hasFinished.current = true;
+    onFinishedRef.current?.();
+  }, []);
+
   useEffect(() => {
-    if (!isMember || !userId || dismissedFor.has(userId)) return;
+    if (!isMember || !userId) return;
+    if (dismissedFor.has(userId)) {
+      finish();
+      return;
+    }
     let cancelled = false;
     void fetchProfile(userId).then((profile) => {
-      if (cancelled || !profile) return;
-      // Birthday and gender first, then the avatar.
+      if (cancelled) return;
+      // Birthday and gender first, then the avatar. A profile that could not be read asks nothing
+      // (asking someone who already answered is worse than not asking) and does not hold the welcome back.
       const needed: Step[] = [];
-      if (needsBirthday(profile)) needed.push("birthday");
-      if (needsAvatar(profile)) needed.push("avatar");
+      if (profile && needsBirthday(profile)) needed.push("birthday");
+      if (profile && needsAvatar(profile)) needed.push("avatar");
       if (needed.length > 0) setSteps(needed);
+      else finish();
     });
     return () => {
       cancelled = true;
     };
-  }, [isMember, userId]);
+  }, [isMember, userId, finish]);
 
   const step = steps[index];
   if (!step || !userId) return null;
@@ -111,6 +137,7 @@ export default function ProfileCompletionPrompt() {
   const close = () => {
     dismissedFor.add(userId);
     setSteps([]);
+    finish();
   };
 
   const advance = () => {
@@ -216,14 +243,8 @@ export default function ProfileCompletionPrompt() {
               <label htmlFor={genderId} className="text-sm font-bold text-[#2B3550] dark:text-slate-100">
                 Gender <span className="font-normal text-stone-500 dark:text-slate-400">(optional)</span>
               </label>
-              <select id={genderId} value={gender} onChange={(e) => setGender(e.target.value)} className={FIELD_CLASS}>
-                <option value="">Prefer not to say</option>
-                {GENDER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <ThemedSelect id={genderId} value={gender} options={GENDER_OPTIONS} onChange={setGender} />
+
             </div>
           </>
         )}

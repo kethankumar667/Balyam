@@ -88,11 +88,37 @@ export function readConsent(): ConsentRecord | null {
   }
 }
 
+/**
+ * Set when the browser refused to store an answer (private browsing). The choice then holds for this
+ * session only, so "still unanswered" must not be reported from storage: nothing would ever clear it,
+ * and everything waiting on the answer (the first-run profile and welcome steps) would wait forever.
+ */
+let storageRefusedAnswer = false;
+
 /** True when we must ask — never asked, or the notice has changed since. */
 export function needsConsent(): boolean {
   if (typeof window === "undefined") return false;
+  if (storageRefusedAnswer) return false;
   const rec = readConsent();
   return rec === null || rec.noticeVersion < NOTICE_VERSION;
+}
+
+/**
+ * Fired on `window` the moment a choice is recorded, so anything that has to wait for the privacy
+ * answer hears it without polling. The choice itself is not in the event: whoever needs it reads
+ * `readConsent()`.
+ */
+export const CONSENT_CHANGED_EVENT = "bhalyam:consent-changed";
+
+/** Subscribe to consent being answered or withdrawn, in this tab or another. Returns the unsubscribe. */
+export function subscribeConsent(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(CONSENT_CHANGED_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(CONSENT_CHANGED_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }
 
 export function recordConsent(choice: ConsentChoice, now: Date = new Date()): ConsentRecord {
@@ -104,10 +130,13 @@ export function recordConsent(choice: ConsentChoice, now: Date = new Date()): Co
   if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
     try {
       window.localStorage.setItem(CONSENT_KEY, JSON.stringify(rec));
+      storageRefusedAnswer = false;
     } catch {
       /* private browsing — the choice holds for this session only */
+      storageRefusedAnswer = true;
     }
     if (choice === "essential-only") purgeOptional();
+    window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));
   }
   return rec;
 }

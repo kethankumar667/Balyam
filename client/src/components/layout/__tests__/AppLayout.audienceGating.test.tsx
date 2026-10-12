@@ -17,7 +17,7 @@ vi.mock("../../streak/DailyStreakModal", () => ({ DailyStreakModal: () => null }
 vi.mock("../../cosmetics/CosmeticsStoreModal", () => ({ CosmeticsStoreModal: () => null }));
 vi.mock("../../../animations/app/FallingPetals", () => ({ default: () => null }));
 // Markers for the two audience-specific dialogs, so the test sees which one the shell mounts.
-vi.mock("../../profile/ProfileCompletionPrompt", () => ({ default: () => <div data-testid="profile-prompt" /> }));
+vi.mock("../../onboarding/MemberOnboarding", () => ({ default: () => <div data-testid="profile-prompt" /> }));
 vi.mock("../../auth/SignInInvitation", () => ({ default: () => <div data-testid="sign-in-invitation" /> }));
 
 import AppLayout from "../AppLayout";

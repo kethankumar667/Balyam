@@ -5,7 +5,10 @@ services:
     runtime: node
     plan: starter
     rootDir: server
-    buildCommand: npm install && npm run build
+    # `--include=dev` is required: NODE_ENV=production (set below, and needed at runtime) also applies
+    # during the build, and then a plain `npm install` skips devDependencies — typescript's
+    # @types/express and @types/node, vitest, tsc-alias — so `tsc` fails to compile the server.
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:

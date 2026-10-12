@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { Router, type Request, type Response } from "express";
-import { callerId, requireIdentity } from "../auth/identity.js";
+import { callerId, requireIdentity, requireMember } from "../auth/identity.js";
 import { requireOperationalAuth } from "../security/operationalAuth.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 import { logger } from "../lib/logger.js";
@@ -33,6 +33,7 @@ import {
   MatchNotCommittedError,
   MatchNotFoundError,
   NotAGuestError,
+  NotAMemberError,
   SettlementConservationViolationError,
   TerminalIntentNotFoundError,
   UnsupportedSeatCountError,
@@ -195,6 +196,9 @@ function mapEconomyError(err: unknown): ApiError {
   }
   if (err instanceof NotAGuestError) {
     return { status: 403, error: "NotAGuest", message: "The welcome is only for guest accounts." };
+  }
+  if (err instanceof NotAMemberError) {
+    return { status: 403, error: "NotAMember", message: "The welcome bonus is only for accounts." };
   }
   if (err instanceof InsufficientFundsError) {
     return { status: 422, error: "InsufficientFunds", message: "This wallet does not have enough balance for this commitment." };
@@ -404,6 +408,32 @@ export function createEconomyRouter(service: EconomyService): Router {
     } catch (err) {
       const mapped = sendError(req, res, err);
       logOutcome(req, res, "POST /guest/welcome", "claimGuestWelcome", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** GET /member/welcome — is the caller a new member whose welcome is waiting for the welcome popup? */
+  router.get("/member/welcome", requireMember, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    try {
+      const status = await service.getMemberWelcomeStatus(callerId(req));
+      res.json(status);
+      logOutcome(req, res, "GET /member/welcome", "getMemberWelcomeStatus", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /member/welcome", "getMemberWelcomeStatus", null, startedAt, "error", mapped.error);
+    }
+  });
+
+  /** POST /member/welcome — the welcome popup's one button: pays the welcome once. A repeat answers `applied: false` with the current wallet. */
+  router.post("/member/welcome", requireMember, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    try {
+      const { applied, wallet } = await service.claimMemberWelcome(callerId(req));
+      res.json({ applied, wallet });
+      logOutcome(req, res, "POST /member/welcome", "claimMemberWelcome", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "POST /member/welcome", "claimMemberWelcome", null, startedAt, "error", mapped.error);
     }
   });
 

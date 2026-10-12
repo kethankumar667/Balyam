@@ -315,6 +315,22 @@ export function evaluateStreakClaim(
 }
 
 /**
+ * A member who registered today does not start their streak today: the first claim opens at
+ * `firstClaimAt` (00:00 UTC tomorrow). Returns the state as the client should see it until then —
+ * nothing claimable, every day locked — and leaves a state for anyone else untouched.
+ */
+export function holdFirstClaim(state: DailyStreakState, firstClaimAt: number): DailyStreakState {
+  return {
+    ...state,
+    isClaimableToday: false,
+    activeDayInCycle: 1,
+    nextResetAt: firstClaimAt,
+    firstClaimAt,
+    schedule: state.schedule.map((day) => ({ ...day, status: "LOCKED" as const })),
+  };
+}
+
+/**
  * Builds the complete 30-day scheduled view with individual status per day
  * for rendering on client mobile/desktop modal surfaces.
  */

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { ProfileSheet } from "../ProfileSheet";
 import type { NotificationItem } from "../../../../lib/profileNotifications";
@@ -129,6 +129,27 @@ describe("ProfileSheet — identity-mode presentation (Offline Demo Mode consume
     expect(screen.getByText("Active Member")).toBeDefined();
     expect(screen.queryByText("Offline Demo Mode")).toBeNull();
     expect(screen.getByText("Sign out / Log out")).toBeDefined();
+  });
+
+  it("Delete Account closes the drawer as it opens the confirmation, so the drawer cannot cover it", () => {
+    asVerifiedMember();
+    const onClose = vi.fn();
+    render(
+      <BrowserRouter>
+        <ProfileSheet
+          open
+          onClose={onClose}
+          notifications={NOTIFICATIONS}
+          onUpdateNotifications={() => {}}
+          onOpenJoin={() => {}}
+        />
+      </BrowserRouter>,
+    );
+
+    fireEvent.click(screen.getByText("Delete Account"));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog", { name: /delete your account/i })).toBeDefined();
   });
 
   it("local fallback's sign-out button calls the store's signOut() action", () => {
