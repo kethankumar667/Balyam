@@ -6,7 +6,8 @@ import { useRoomStore } from "./roomStore";
 import { useStreakStore } from "./streakStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
 import { fetchProfile, saveProfile } from "../lib/supabase/profile";
-import { saveAccountDetails, clearAccountDetails } from "../lib/accountGenerator";
+import { saveAccountDetails, clearAccountDetails, generateAccountId } from "../lib/accountGenerator";
+import { namesFromMetadata, missingProfileFields } from "../lib/googleProfile";
 import { clearGuestIdentity } from "../lib/playerIdentity";
 import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../services/FavouritesManager";
@@ -574,9 +575,10 @@ function applySession(session: Session | null): void {
   const createdAt = Date.parse(session.user.created_at ?? "");
   const meta = session.user.user_metadata;
   if (meta) {
+    const names = namesFromMetadata(meta);
     saveAccountDetails({
-      firstName: meta.first_name || "",
-      lastName: meta.last_name || "",
+      firstName: names.firstName,
+      lastName: names.lastName,
       displayName: metadataDisplayName(meta) || session.user.email?.split("@")[0] || "Player",
       email: session.user.email || "",
       dob: meta.dob || "",
@@ -663,7 +665,14 @@ async function startProfileSync(
     bio: room.bio.trim() || null,
     region: room.region.trim() || null,
   };
-  const remote = await fetchProfile(userId);
+  const fetched = await fetchProfile(userId);
+  // A Google sign-in arrives with no first/last name or Bhalyam ID on the row;
+  // fill only what is empty, and write just those columns (see `saveProfile`).
+  const fill = fetched
+    ? missingProfileFields(fetched, meta, (dob) => generateAccountId(dob ?? undefined))
+    : {};
+  const remote = fetched ? { ...fetched, ...fill } : null;
+  if (Object.keys(fill).length > 0) void saveProfile(userId, fill);
 
   let lastSynced = {
     displayName: remote?.displayName ?? null,

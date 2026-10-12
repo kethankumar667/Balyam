@@ -17,6 +17,7 @@ const ProfileSheet = lazy(() => import("../../pages/home/sheets/ProfileSheet").t
 const WalletDrawer = lazy(() => import("../economy/WalletDrawer").then((m) => ({ default: m.WalletDrawer })));
 const DailyStreakModal = lazy(() => import("../streak/DailyStreakModal").then((m) => ({ default: m.DailyStreakModal })));
 const CosmeticsStoreModal = lazy(() => import("../cosmetics/CosmeticsStoreModal").then((m) => ({ default: m.CosmeticsStoreModal })));
+const ProfileCompletionPrompt = lazy(() => import("../profile/ProfileCompletionPrompt"));
 
 interface AppLayoutContextType {
   openJoin: () => void;
@@ -349,6 +350,8 @@ export default function AppLayout({
           />
           <DailyStreakModal />
           <CosmeticsStoreModal />
+          {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
+          {chrome && <ProfileCompletionPrompt />}
         </Suspense>
       </div>
     </AppLayoutContext.Provider>
