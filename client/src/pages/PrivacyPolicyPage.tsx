@@ -29,6 +29,13 @@ import {
   GRIEVANCE_RESOLVE_DAYS,
 } from "../lib/privacy/contact";
 import { HapticsManager } from "../services/HapticsManager";
+import { THIRD_PARTIES } from "../lib/privacy/dataInventory";
+import { downloadMyData } from "../lib/privacy/exportData";
+
+/** Change this whenever the policy's wording changes — the policy promises as much (section 13). */
+const POLICY_EFFECTIVE_DATE = "October 12, 2026";
+/** Where the app lives today. Update it, and the Google consent screen's links, when the custom domain arrives. */
+const SITE_ADDRESS = "bhalyam.onrender.com";
 
 const SECTIONS = [
   { id: "who-we-are", title: "1. Who We Are", tldr: "BHALYAM is a web-based multiplayer retro gaming lounge made for friends and families." },
@@ -41,8 +48,8 @@ const SECTIONS = [
   { id: "data-security", title: "8. Data Security & Seat Authentication", tldr: "All room connections use TLS encryption and server-signed HMAC seat tokens." },
   { id: "children-privacy", title: "9. Children's Privacy & Age Policy", tldr: "BHALYAM is a safe, family-friendly veranda with no real-money wagering or adult content." },
   { id: "privacy-rights", title: "10. Your Privacy Rights", tldr: "You have full rights to access, rectify, export, or delete any data associated with you." },
-  { id: "data-deletion", title: "11. Data Deletion & Account Purge", tldr: "You can purge your entire account and match history at any time with one click." },
-  { id: "international-transfers", title: "12. International Data Transfers", tldr: "Multiplayer nodes are securely hosted with SOC-2 compliant server infrastructure." },
+  { id: "data-deletion", title: "11. Data Deletion & Account Purge", tldr: "You can delete your account whenever you like. Your profile and progress go; anonymous coin records stay, with no link to you." },
+  { id: "international-transfers", title: "12. International Data Transfers", tldr: "Our servers run on cloud providers that encrypt data in transit and at rest." },
   { id: "policy-changes", title: "13. Changes to This Policy", tldr: "Any material changes will be announced with updated effective dates at the top of this document." },
   { id: "contact-us", title: "14. Contact Us", tldr: "Direct contact options for our data protection officer and privacy grievances." },
 ];
@@ -98,32 +105,17 @@ export default function PrivacyPolicyPage() {
   const handleExportData = () => {
     try {
       HapticsManager.getInstance().subtle();
-      const exportPayload = {
-        platform: "BHALYAM Veranda Lounge",
-        exportedAt: new Date().toISOString(),
-        playerId: localStorage.getItem("mpg.player.id") || "guest_player",
-        displayName: localStorage.getItem("bhalyam.profile.displayName") || "Veranda Guest",
-        avatar: localStorage.getItem("bhalyam.profile.avatar") || "avatar_1",
-        accountTier: localStorage.getItem("bhalyam.session") ? "Member" : "Guest",
-        dataSovereignty: "Compliant with DPDP Act & GDPR",
-      };
-      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `bhalyam-data-dossier-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
     } catch {
-      // ignore
+      // haptics are a nicety; the download below must not depend on them
     }
+    downloadMyData();
   };
 
   return (
     <HelpLayout
       title="Privacy Policy"
       subtitle="Your data belongs to you. How we protect your identity, gameplay telemetry, and privacy."
-      badgeText="Data Sovereignity"
+      badgeText="Data Sovereignty"
     >
       <div className="space-y-8 text-stone-800 dark:text-slate-100">
         {/* ── Section 1: Header Metadata & TL;DR Toggle (Audience Power) ── */}
@@ -132,9 +124,7 @@ export default function PrivacyPolicyPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
                 <Clock className="w-3.5 h-3.5" />
-                <span>6 MIN READ • 2,400 WORDS</span>
-                <span>•</span>
-                <span>EFFECTIVE: AUGUST 22, 2026</span>
+                <span>EFFECTIVE: {POLICY_EFFECTIVE_DATE.toUpperCase()}</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
                 Privacy at <span className="text-[#EA580C]">BHALYAM</span>
@@ -170,11 +160,12 @@ export default function PrivacyPolicyPage() {
               <button
                 type="button"
                 onClick={handleExportData}
-                title="Download JSON dossier"
+                title="Download the data held about you"
+                aria-label="Download my data (JSON)"
                 className="px-3.5 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-slate-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer min-h-[44px] focus-visible:outline-2 focus-visible:outline-amber-500"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Export Dossier (JSON)</span>
+                <span className="hidden sm:inline">Download my data (JSON)</span>
               </button>
             </div>
           </div>
@@ -247,11 +238,11 @@ export default function PrivacyPolicyPage() {
                 <ul className="text-xs text-stone-600 dark:text-slate-300 space-y-1.5">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>One-click complete profile data export (JSON).</span>
+                    <span>Download the data held about you (JSON).</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Instant account purge option in Security Settings.</span>
+                    <span>Delete your account any time from Security Settings.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
@@ -329,7 +320,7 @@ export default function PrivacyPolicyPage() {
                 {/* Section Specific Content */}
                 {sec.id === "who-we-are" && (
                   <p>
-                    BHALYAM ("we", "us", or "our") operates the web-based multiplayer lounge located at bhalyam.app. We are dedicated to reviving classic 90s Indian board, paper, and retro games with zero monetary wagering and zero intrusive advertising.
+                    BHALYAM ("we", "us", or "our") operates the web-based multiplayer lounge at {SITE_ADDRESS}. We are dedicated to reviving classic 90s Indian board, paper, and retro games with zero monetary wagering and zero intrusive advertising.
                   </p>
                 )}
 
@@ -340,6 +331,9 @@ export default function PrivacyPolicyPage() {
                       <li><strong>Guest Players:</strong> No email or credentials required. We assign a device-local temporary seat token stored in your browser's Local Storage.</li>
                       <li><strong>Registered Members:</strong> Your verified email address, hashed credentials, custom avatar identifier, and display name.</li>
                       <li><strong>One account per mailbox:</strong> To stop one inbox being used to open several accounts, we also keep a simplified form of your email (lower-case, with any "+tag" removed and, for Gmail, the dots removed). It is visible only to our server, used for nothing else, and deleted with your account.</li>
+                      <li><strong>Signing in with Google:</strong> If you choose Continue with Google, Google shares your name and email address with us. We use them only to create and run your account and to contact you about it. Google's response may also include a link to your profile photo; it is kept with your account record, but we do not display or use it. We never sell this information or use it for advertising. You can remove it by deleting your account (section 11).</li>
+                      <li><strong>Date of birth and gender:</strong> If you give us your date of birth, we use it only so the Bhalyam group can send you a birthday greeting. Gender is optional and is not used for anything else.</li>
+                      <li><strong>Groups and messages:</strong> The Mandali groups you own or belong to, and the messages you send in them, are stored so the group can read them.</li>
                       <li><strong>Match Telemetry:</strong> Moves made, round timers, outcome state, and player disconnect timestamps to ensure fair play and seat recovery.</li>
                     </ul>
                   </div>
@@ -348,7 +342,7 @@ export default function PrivacyPolicyPage() {
                 {sec.id === "how-we-use" && (
                   <>
                   <p>
-                    We process information strictly to: (a) establish and broadcast real-time Socket.IO game rooms, (b) hold disconnected seats for up to 10 minutes so games are not lost, (c) manage seasonal leaderboards and achievement awards, and (d) detect fraudulent move automation or harassment.
+                    We process information strictly to: (a) establish and broadcast real-time Socket.IO game rooms, (b) hold disconnected seats for up to 10 minutes so games are not lost, (c) manage seasonal leaderboards and achievement awards, (d) detect fraudulent move automation or harassment, and (e) if you gave us a date of birth, send you a birthday greeting from the Bhalyam group.
                   </p>
                   <p>
                     To keep rewards fair we also check how an account plays: how long matches last, how fast they follow one another, and how many different people an account has played with. From this we set a trust tier, which decides how many coins an account can send in a day, and how long earned coins wait before arriving (normally 24 hours). We do not use your device, browser, network address or location for this, and an account is never banned automatically: a person reviews any restriction, and you can contact us to ask for it to be looked at again.
@@ -364,19 +358,33 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "cookies-storage" && (
                   <p>
-                    We do not deploy cross-site tracking cookies. We utilize browser LocalStorage solely for operational session management: your cryptographic seatToken (`mpg.seats`), your theme choice (`bhalyam.theme`), and your sound volume sliders.
+                    We do not deploy cross-site tracking cookies. We use your browser's local storage to run the app: a player id and seat tokens so your seat stays yours, your sign-in session if you have an account, and settings such as theme and sound. The complete list, with what each item is for, is in{" "}
+                    <Link to="/settings/security" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">Security &amp; Data → Your data</Link>
+                    , where you can also download or erase it.
                   </p>
                 )}
 
                 {sec.id === "how-we-share" && (
-                  <p>
-                    We do not sell, rent, or monetize your personal information with data brokers or advertising networks. Telemetry is stored in SOC-2 certified cloud infrastructure (Supabase & Render) governed by strict Data Processing Agreements.
-                  </p>
+                  <div className="space-y-3">
+                    <p>
+                      We do not sell, rent, or monetize your personal information with data brokers or advertising networks. We do rely on the services below, and this is exactly what reaches each of them:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2">
+                      {THIRD_PARTIES.map((party) => (
+                        <li key={party.name}>
+                          <strong>{party.name}</strong> {party.receives} <em>{party.when}</em>
+                        </li>
+                      ))}
+                    </ul>
+                    <p>
+                      Our hosting providers (Supabase and Render) publish their own security certifications and handle data under their own data processing terms.
+                    </p>
+                  </div>
                 )}
 
                 {sec.id === "data-retention" && (
                   <p>
-                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until an explicit account deletion request is submitted. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest account that has not been used for 7 days is deleted. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
+                    In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until you delete your account. Mandali chat messages are removed after one year. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest who has not returned for about a week is deleted or, if they have a coin wallet, has their personal data erased while the anonymous coin record is kept. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
                   </p>
                 )}
 
@@ -394,14 +402,19 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "privacy-rights" && (
                   <p>
-                    Under applicable data protection frameworks (including India's Digital Personal Data Protection Act 2023 and GDPR), you hold rights to: access your records, correct discrepancies, object to processing, and request irrevocable erasure.
+                    Under applicable data protection frameworks (including India's Digital Personal Data Protection Act 2023 and GDPR), you hold rights to: access your records, correct discrepancies, object to processing, and request irrevocable erasure. You can also withdraw the consent you gave for optional storage at any time from Security &amp; Data → Your data.
                   </p>
                 )}
 
                 {sec.id === "data-deletion" && (
-                  <p>
-                    You can purge your entire game record, email, and achievements at any time by navigating to <Link to="/settings/security" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">Security &amp; Data Settings</Link> or contacting our grievance officer.
-                  </p>
+                  <div className="space-y-2">
+                    <p>
+                      You can delete your account at any time from <Link to="/settings/security" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">Security &amp; Data Settings</Link>, or by contacting our grievance officer. Deleting it removes your profile (name, email, birthday and avatar) and your progress, and your coin balance can no longer be recovered, even if you sign up again.
+                    </p>
+                    <p>
+                      Anonymous coin records are kept for the game's audit trail. They hold only a random identifier and are no longer linked to you.
+                    </p>
+                  </div>
                 )}
 
                 {sec.id === "international-transfers" && (

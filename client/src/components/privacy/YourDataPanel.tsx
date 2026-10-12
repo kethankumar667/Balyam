@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  DATA_INVENTORY,
-  THIRD_PARTIES,
-  buildDataExport,
-  eraseLocalData,
-  exportFilename,
-} from "../../lib/privacy/dataInventory";
+import { DATA_INVENTORY, THIRD_PARTIES, eraseLocalData } from "../../lib/privacy/dataInventory";
 import { Link } from "react-router-dom";
 import { readConsent, withdrawConsent } from "../../lib/privacy/consent";
 import {
@@ -13,6 +7,7 @@ import {
   GRIEVANCE_RESOLVE_DAYS,
   PRIVACY_CONTACT_EMAIL,
 } from "../../lib/privacy/contact";
+import { downloadMyData } from "../../lib/privacy/exportData";
 import { useAuthStore } from "../../store/authStore";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { deleteAccount } from "../../lib/supabase/profile";
@@ -65,19 +60,7 @@ export default function YourDataPanel({
   const hasAccount = useAuthStore((s) => s.isMember) && isSupabaseConfigured;
 
   function handleExport() {
-    const payload = buildDataExport();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = exportFilename();
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    // Revoking immediately can cancel the download in some browsers.
-    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    downloadMyData();
   }
 
   async function handleErase() {

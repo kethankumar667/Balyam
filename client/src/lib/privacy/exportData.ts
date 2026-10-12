@@ -6,6 +6,7 @@
 import type { PlayerProfile } from "@shared/profile/PlayerProfile";
 import type { PlayerStats } from "@shared/profile/PlayerStats";
 import type { UserAccountDetails } from "../accountGenerator";
+import { buildDataExport, exportFilename } from "./dataInventory";
 
 export interface PlayerExportPayload {
   exportDate: string;
@@ -21,6 +22,27 @@ export interface PlayerExportPayload {
   statistics?: PlayerStats;
   accountDetails?: UserAccountDetails | Record<string, unknown>;
   preferences?: Record<string, unknown>;
+}
+
+/**
+ * Downloads everything this device holds about the player — the same export the
+ * "Your data" panel offers, from anywhere that promises one.
+ *
+ * It exists so a privacy page cannot offer a different, thinner file than the
+ * one the player is entitled to. (The page once built its own six-field stub
+ * with made-up defaults and a wrong storage key.)
+ */
+export function downloadMyData(now: Date = new Date()): void {
+  const blob = new Blob([JSON.stringify(buildDataExport(now), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = exportFilename(now);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // Revoking immediately can cancel the download in some browsers.
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 export function downloadPlayerExport(

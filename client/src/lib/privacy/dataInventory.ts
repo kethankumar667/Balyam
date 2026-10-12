@@ -473,6 +473,12 @@ export const THIRD_PARTIES: readonly ThirdParty[] = [
       "Only if you create an account. Guests never reach them. Configured by the VITE_SUPABASE_* keys — a build without those has no account service at all.",
   },
   {
+    name: "Google (Sign in with Google)",
+    receives:
+      "That you are signing in to BHALYAM, along with your IP address and browser details, as with any Google sign-in. Google sends us your name and email address in return, and a link to your profile photo that we keep with your account record but never display or use.",
+    when: "Only if you choose Continue with Google.",
+  },
+  {
     name: "The BHALYAM game server",
     receives:
       "Your display name, your player id, and the moves you make. Chat messages pass through it to reach the table.",
