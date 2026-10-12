@@ -155,6 +155,9 @@ export async function saveProfile(
  * The profile row goes with it: the table's foreign key is `on delete
  * cascade`, so there is no second call to forget.
  */
+const DELETE_FAILED_MESSAGE =
+  "We couldn't delete your account just now. Please try again in a moment, and contact support if it keeps happening.";
+
 export async function deleteAccount(): Promise<{
   ok: boolean;
   error?: string;
@@ -163,7 +166,9 @@ export async function deleteAccount(): Promise<{
   if (!supabase) return { ok: true };
 
   const { error } = await supabase.rpc("delete_account");
-  if (error) return { ok: false, error: error.message };
+  // The database's own wording names tables and constraints. That is for the
+  // logs and the network tab, not for a person in a dialog.
+  if (error) return { ok: false, error: DELETE_FAILED_MESSAGE };
 
   // The session now points at a user that no longer exists. Clearing it
   // locally is enough — every token minted for that user is already dead.

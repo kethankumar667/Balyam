@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchProfile } from "../profile";
+import { deleteAccount, fetchProfile } from "../profile";
 import { getSupabase } from "../client";
 
 vi.mock("../client", () => ({
@@ -93,5 +93,52 @@ describe("fetchProfile", () => {
   it("returns null when Supabase is unconfigured", async () => {
     vi.mocked(getSupabase).mockReturnValue(null);
     expect(await fetchProfile("user-1")).toBeNull();
+  });
+});
+
+describe("deleteAccount", () => {
+  const signOut = vi.fn().mockResolvedValue({});
+
+  function fakeRpc(result: { error: { message: string } | null }) {
+    const rpc = vi.fn().mockResolvedValue(result);
+    vi.mocked(getSupabase).mockReturnValue({ rpc, auth: { signOut } } as never);
+    return rpc;
+  }
+
+  beforeEach(() => {
+    vi.mocked(getSupabase).mockReset();
+    signOut.mockClear();
+  });
+
+  it("deletes through the delete_account function and signs this device out", async () => {
+    const rpc = fakeRpc({ error: null });
+
+    const result = await deleteAccount();
+
+    expect(rpc).toHaveBeenCalledWith("delete_account");
+    expect(result).toEqual({ ok: true });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("never shows database internals to the person, and stays signed in", async () => {
+    fakeRpc({
+      error: {
+        message:
+          'update or delete on table "player_identities" violates foreign key constraint "coin_wallets_identity_id_fkey" on table "coin_wallets"',
+      },
+    });
+
+    const result = await deleteAccount();
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeTruthy();
+    expect(result.error).not.toMatch(/player_identities|coin_wallets|foreign key|constraint/i);
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op success when accounts are not connected", async () => {
+    vi.mocked(getSupabase).mockReturnValue(null);
+
+    expect(await deleteAccount()).toEqual({ ok: true });
   });
 });

@@ -43,7 +43,7 @@ const PRIMARY_CLASS =
 
 /**
  * Finishes the profile of a signed-in member, one short step at a time, and
- * only the steps they still need: an avatar, then a birthday.
+ * only the steps they still need: birthday and gender, then an avatar.
  *
  * ── Why these, and where the avatar comes from ────────────────────────
  * Email sign-up already has an avatar step and a birthday field. Google
@@ -90,9 +90,10 @@ export default function ProfileCompletionPrompt() {
     let cancelled = false;
     void fetchProfile(userId).then((profile) => {
       if (cancelled || !profile) return;
+      // Birthday and gender first, then the avatar.
       const needed: Step[] = [];
-      if (needsAvatar(profile)) needed.push("avatar");
       if (needsBirthday(profile)) needed.push("birthday");
+      if (needsAvatar(profile)) needed.push("avatar");
       if (needed.length > 0) setSteps(needed);
     });
     return () => {
@@ -248,7 +249,7 @@ export default function ProfileCompletionPrompt() {
             disabled={saving || (step === "avatar" && !avatar)}
             className={PRIMARY_CLASS}
           >
-            {saving ? "Saving…" : step === "avatar" && !isLast ? "Continue" : "Save"}
+            {saving ? "Saving…" : isLast ? "Save" : "Continue"}
           </button>
           <button
             type="button"

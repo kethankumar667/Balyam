@@ -211,23 +211,40 @@ describe("ProfileCompletionPrompt", () => {
   });
 
   describe("both missing", () => {
-    it("goes from the avatar to the birthday, and each save is its own write", async () => {
+    it("asks the birthday and gender first, then the avatar, and each save is its own write", async () => {
       signIn();
       mockFetch.mockResolvedValue(NEITHER);
       render(<ProfileCompletionPrompt />);
-      expect(await screen.findByRole("dialog", { name: /choose your avatar/i })).toBeInTheDocument();
-
-      pickAvatar();
-      fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
       expect(await screen.findByRole("dialog", { name: /when's your birthday/i })).toBeInTheDocument();
-      expect(mockSave).toHaveBeenCalledWith("u1", { avatarId: AVATAR });
+      expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
 
       fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: "1995-04-12" } });
+      fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+      expect(await screen.findByRole("dialog", { name: /choose your avatar/i })).toBeInTheDocument();
+      expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument();
+      expect(mockSave).toHaveBeenCalledWith("u1", { dob: "1995-04-12" });
+
+      pickAvatar();
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
-      await waitFor(() => expect(mockSave).toHaveBeenCalledWith("u1", { dob: "1995-04-12" }));
+      await waitFor(() => expect(mockSave).toHaveBeenCalledWith("u1", { avatarId: AVATAR }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+
+    it("stays on the birthday step, with an error, when it could not be saved", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NEITHER);
+      mockSave.mockResolvedValueOnce(false);
+      render(<ProfileCompletionPrompt />);
+      await screen.findByRole("dialog", { name: /when's your birthday/i });
+
+      fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: "1995-04-12" } });
+      fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't save/i);
+      expect(screen.getByRole("dialog", { name: /when's your birthday/i })).toBeInTheDocument();
+      expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
     });
   });
 
