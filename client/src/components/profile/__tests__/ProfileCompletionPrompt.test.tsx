@@ -17,6 +17,25 @@ vi.mock("../../../lib/playerIdentity", async (importOriginal) => ({
   usePlayerId: () => ({ playerId: "p1", ready: true, kind: "member" as const }),
 }));
 
+// The picker has its own tests; here it is a plain field so these tests stay about the flow.
+vi.mock("../../BirthdayPicker", async () => {
+  const React = await import("react");
+  return {
+    default: React.forwardRef<HTMLInputElement, { id?: string; value: string; onChange: (v: string) => void }>(
+      function BirthdayPickerStub({ id, value, onChange }, ref) {
+        return React.createElement("input", {
+          ref,
+          id,
+          value,
+          "aria-label": "Date of birth",
+          "data-testid": "birthday-picker",
+          onChange: (event: { target: { value: string } }) => onChange(event.target.value),
+        });
+      },
+    ),
+  };
+});
+
 const mockFetch = vi.mocked(fetchProfile);
 const mockSave = vi.mocked(saveProfile);
 const mockApi = vi.mocked(apiFetch);
@@ -181,6 +200,40 @@ describe("ProfileCompletionPrompt", () => {
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
       await waitFor(() => expect(mockSave).toHaveBeenCalledWith("u1", { dob: "1995-04-12", gender: "Female" }));
+    });
+
+    it("uses the birthday picker, not the browser's own date field", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NO_BIRTHDAY);
+
+      render(<ProfileCompletionPrompt />);
+      await screen.findByRole("dialog");
+
+      expect(screen.getByTestId("birthday-picker")).toBeInTheDocument();
+      expect(document.querySelector('input[type="date"]')).toBeNull();
+    });
+
+    it("accepts today's date in the early hours, when UTC still says yesterday", async () => {
+      // Half past midnight on 12 October in India: the local calendar says the 12th while
+      // UTC (what `toISOString` reports) is still the 11th. Comparing against the UTC date
+      // wrongly rejected a birthday picked today as "in the future".
+      vi.setSystemTime(new Date(2026, 9, 12, 0, 30));
+      const utcSaysYesterday = vi.spyOn(Date.prototype, "toISOString").mockReturnValue("2026-10-11T19:00:00.000Z");
+      try {
+        signIn();
+        mockFetch.mockResolvedValue(NO_BIRTHDAY);
+        render(<ProfileCompletionPrompt />);
+        await screen.findByRole("dialog");
+
+        fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: "2026-10-12" } });
+        fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+        await waitFor(() => expect(mockSave).toHaveBeenCalledWith("u1", { dob: "2026-10-12" }));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      } finally {
+        utcSaysYesterday.mockRestore();
+        vi.useRealTimers();
+      }
     });
 
     it("refuses a missing date and does not save", async () => {

@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Cake, UserRound } from "lucide-react";
 import Modal from "../Modal";
 import AvatarPicker from "./AvatarPicker";
+import BirthdayPicker from "../BirthdayPicker";
+import { toIsoDate } from "../../lib/isoDate";
 import { useAuthStore } from "../../store/authStore";
 import { useRoomStore } from "../../store/roomStore";
 import { fetchProfile, saveProfile } from "../../lib/supabase/profile";
@@ -13,7 +15,6 @@ import { validateDob } from "../../lib/authValidation";
 type Step = "avatar" | "birthday";
 
 const MODAL_Z = 60;
-const OLDEST_BIRTH_DATE = "1920-01-01";
 const GENDER_OPTIONS = ["Male", "Female", "Other"] as const;
 const SAVE_FAILED = "We couldn't save that. Please try again.";
 
@@ -31,8 +32,9 @@ export function resetProfilePromptDismissals(): void {
   dismissedFor.clear();
 }
 
+/** Today in the person's own calendar — `toISOString()` is UTC and is a day behind in India after midnight. */
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
 }
 
 const FIELD_CLASS =
@@ -82,7 +84,7 @@ export default function ProfileCompletionPrompt() {
   const titleId = useId();
   const dobId = useId();
   const genderId = useId();
-  const dobRef = useRef<HTMLInputElement>(null);
+  const dobRef = useRef<HTMLButtonElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -208,17 +210,7 @@ export default function ProfileCompletionPrompt() {
               <label htmlFor={dobId} className="text-sm font-bold text-[#2B3550] dark:text-slate-100">
                 Date of birth
               </label>
-              <input
-                ref={dobRef}
-                id={dobId}
-                type="date"
-                value={dob}
-                min={OLDEST_BIRTH_DATE}
-                max={todayIso()}
-                onChange={(e) => setDob(e.target.value)}
-                aria-invalid={error ? true : undefined}
-                className={FIELD_CLASS}
-              />
+              <BirthdayPicker ref={dobRef} id={dobId} value={dob} onChange={setDob} invalid={Boolean(error)} />
             </div>
             <div className="mt-4">
               <label htmlFor={genderId} className="text-sm font-bold text-[#2B3550] dark:text-slate-100">

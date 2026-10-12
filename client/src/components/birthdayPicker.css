@@ -1,0 +1,77 @@
+/*
+ * The birthday calendar's look. react-day-picker ships plain styles driven by CSS
+ * variables; this only sets those variables to BHALYAM's amber and adds a dark theme
+ * (the app switches theme with `[data-theme="dark"]`, not a media query).
+ *
+ * Touch targets: a day is 44px wide where the screen allows it, which is the app's
+ * floor. On a 320px phone seven 44px columns do not fit inside the padded sheet, so
+ * the width shrinks to share the space — never below 36px.
+ */
+.bhalyam-dob {
+  --rdp-accent-color: #d97706;
+  --rdp-accent-background-color: #fef3c7;
+  --rdp-day-width: clamp(36px, calc((100vw - 4rem) / 7), 44px);
+  --rdp-day-height: var(--rdp-day-width);
+  --rdp-day_button-width: calc(var(--rdp-day-width) - 2px);
+  --rdp-day_button-height: calc(var(--rdp-day-height) - 2px);
+  --rdp-nav_button-width: 2.75rem;
+  --rdp-nav_button-height: 2.75rem;
+  --rdp-nav-height: 2.75rem;
+
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 0.5rem;
+  color: #2b3550;
+  background: #ffffff;
+  border: 1px solid #eedbca;
+  border-radius: 1rem;
+}
+
+[data-theme="dark"] .bhalyam-dob {
+  --rdp-accent-color: #fbbf24;
+  --rdp-accent-background-color: rgba(251, 191, 36, 0.18);
+
+  color: #e2e8f0;
+  background: #1e293b;
+  border-color: #334155;
+}
+
+/* A chosen day is filled, not just outlined, and its text stays readable on amber. */
+.bhalyam-dob .rdp-selected .rdp-day_button {
+  color: #1c1917;
+  background: var(--rdp-accent-color);
+}
+
+.bhalyam-dob .rdp-day_button:hover:not(:disabled) {
+  background: var(--rdp-accent-background-color);
+}
+
+.bhalyam-dob .rdp-selected .rdp-day_button:hover:not(:disabled) {
+  background: var(--rdp-accent-color);
+}
+
+/* 16px stops iOS zooming the page when the month or year picker opens. */
+.bhalyam-dob .rdp-caption_label,
+.bhalyam-dob .rdp-dropdown {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.bhalyam-dob .rdp-dropdowns {
+  align-items: center;
+}
+
+.bhalyam-dob .rdp-day_button:focus-visible,
+.bhalyam-dob .rdp-button_previous:focus-visible,
+.bhalyam-dob .rdp-button_next:focus-visible {
+  outline: 2px solid var(--rdp-accent-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bhalyam-dob * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

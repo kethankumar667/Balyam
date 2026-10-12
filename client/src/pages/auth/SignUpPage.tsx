@@ -8,7 +8,6 @@ import {
   Check,
   ArrowRight,
   ArrowLeft,
-  Calendar,
   X,
   User,
   Mail,
@@ -29,6 +28,7 @@ import {
 import { useRoomStore } from "../../store/roomStore";
 import { AVATARS, findAvatar } from "../../lib/avatars";
 import { GoogleMark } from "../../components/auth/authIcons";
+import BirthdayPicker from "../../components/BirthdayPicker";
 import { getEraFromBirthYear } from "../../lib/accountGenerator";
 
 export default function SignUpPage() {
@@ -545,28 +545,20 @@ export default function SignUpPage() {
                         <label htmlFor="signup-dob" className="text-[10.5px] font-bold text-[#5C4A32] uppercase tracking-wider pl-1 block">
                           Date of Birth
                         </label>
-                        <div className="relative">
-                          <input
-                            id="signup-dob"
-                            type="date"
-                            value={dob}
-                            max={new Date().toISOString().split("T")[0]}
-                            min="1930-01-01"
-                            aria-label="Date of Birth"
-                            aria-invalid={Boolean(dobError)}
-                            aria-describedby={dobError ? "signup-dob-error" : undefined}
-                            onChange={(e) => {
-                              setDob(e.target.value);
-                              if (dobError) setDobError(null);
-                              clearNotices();
-                            }}
-                            className={`w-full bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-4 pr-10 py-2.5 text-sm font-medium text-[#1E293B] dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#881337]/20 focus:border-[#881337] transition-all shadow-2xs ${
-                              dobError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
-                            }`}
-                            required
-                          />
-                          <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] dark:text-slate-400 pointer-events-none" />
-                        </div>
+                        <BirthdayPicker
+                          id="signup-dob"
+                          value={dob}
+                          invalid={Boolean(dobError)}
+                          describedBy={dobError ? "signup-dob-error" : undefined}
+                          onChange={(next) => {
+                            setDob(next);
+                            if (dobError) setDobError(null);
+                            clearNotices();
+                          }}
+                          className={`w-full min-h-[44px] flex items-center justify-between gap-3 text-left bg-[#FAF6EE] dark:bg-slate-800/75 border rounded-full pl-4 pr-4 py-2.5 text-sm font-medium text-[#1E293B] dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#881337]/40 focus:border-[#881337] transition-all shadow-sm ${
+                            dobError ? "border-[#A82020]" : "border-[#CBD5E1] dark:border-slate-700"
+                          }`}
+                        />
                         {dobError && (
                           <span id="signup-dob-error" role="alert" className="text-[10.5px] font-bold text-[#A82020] block pl-3">
                             {dobError}

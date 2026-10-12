@@ -8,6 +8,7 @@ import { type BreadcrumbItem } from "../navigation/breadcrumbsConfig";
 import { useMandaliInbox } from "../../hooks/useMandaliInbox";
 import { type BhalyamGameSlug } from "../bhalyam/data";
 import { useTheme } from "../../lib/useTheme";
+import { useAuthStore } from "../../store/authStore";
 
 const FallingPetals = lazy(() => import("../../animations/app/FallingPetals"));
 const JoinRoomModal = lazy(() => import("../bhalyam/JoinRoomModal"));
@@ -91,6 +92,9 @@ export default function AppLayout({
   const navigate = useNavigate();
   const [theme] = useTheme();
   const isDark = theme === "dark";
+  // Two dialogs, one audience each. Mounting only the one that can be shown also keeps the other's
+  // code (the profile prompt carries a calendar library) from being downloaded at all.
+  const isMember = useAuthStore((s) => s.isMember);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -352,8 +356,8 @@ export default function AppLayout({
           <DailyStreakModal />
           <CosmeticsStoreModal />
           {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
-          {chrome && <ProfileCompletionPrompt />}
-          {chrome && <SignInInvitation />}
+          {chrome && isMember && <ProfileCompletionPrompt />}
+          {chrome && !isMember && <SignInInvitation />}
         </Suspense>
       </div>
     </AppLayoutContext.Provider>
