@@ -43,6 +43,20 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
   const containerRef = useRef<T>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
+  /*
+   * `onClose` is read through a ref, NOT listed as an effect dependency.
+   *
+   * Almost every dialog passes an inline arrow, which is a new function on every
+   * render. Listed as a dependency, each render re-ran this effect: the cleanup
+   * handed focus back to whatever opened the dialog (outside it), and the setup
+   * then moved focus to the first control inside. In a dialog with a text field
+   * that meant every keystroke re-rendered and threw the caret out of the field
+   * — the delete-account confirmation lost focus after each character typed.
+   * The effect should run when the dialog opens or closes, and only then.
+   */
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
@@ -54,9 +68,10 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (!onClose) return;
+        const close = onCloseRef.current;
+        if (!close) return;
         e.preventDefault();
-        onClose();
+        close();
         return;
       }
       if (e.key !== "Tab" || !containerRef.current) return;
@@ -83,7 +98,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>({
       const toRestore = previouslyFocusedRef.current;
       if (toRestore && document.contains(toRestore)) toRestore.focus();
     };
-  }, [open, onClose, initialFocusRef]);
+  }, [open, initialFocusRef]);
 
   return { containerRef };
 }

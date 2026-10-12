@@ -36,10 +36,10 @@ function todayIso(): string {
 }
 
 const FIELD_CLASS =
-  "mt-1 min-h-[48px] w-full rounded-xl border border-[#EEDBCA] bg-white px-3 text-base text-[#2B3550] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
+  "mt-1 min-h-[48px] w-full rounded-xl border border-[#EEDBCA] bg-white px-3 text-base text-[#2B3550] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
 
 const PRIMARY_CLASS =
-  "min-h-[52px] w-full cursor-pointer rounded-2xl bg-amber-500 px-6 text-base font-black text-amber-950 shadow-lg shadow-amber-900/25 transition-colors hover:bg-amber-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "min-h-[52px] w-full cursor-pointer rounded-2xl bg-amber-500 px-6 text-base font-black text-amber-950 shadow-lg shadow-amber-900/25 transition-colors hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * Finishes the profile of a signed-in member, one short step at a time, and
@@ -254,7 +254,7 @@ export default function ProfileCompletionPrompt() {
           <button
             type="button"
             onClick={close}
-            className="min-h-[48px] w-full cursor-pointer rounded-2xl px-6 text-sm font-bold text-stone-600 transition-colors hover:bg-black/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-slate-300 dark:hover:bg-white/10"
+            className="min-h-[48px] w-full cursor-pointer rounded-2xl px-6 text-sm font-bold text-stone-600 transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:text-slate-300 dark:hover:bg-white/10"
           >
             Not now
           </button>

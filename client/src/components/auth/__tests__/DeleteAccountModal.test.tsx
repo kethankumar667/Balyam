@@ -1,11 +1,10 @@
+import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DeleteAccountModal from "../DeleteAccountModal";
 import * as accountDeletion from "../../../lib/accountDeletion";
 
-// Mock accountDeletion module
 vi.mock("../../../lib/accountDeletion", () => ({
   executeAccountDeletion: vi.fn(),
 }));
@@ -19,108 +18,183 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-describe("DeleteAccountModal Component", () => {
+const mockDelete = vi.mocked(accountDeletion.executeAccountDeletion);
+
+function renderModal(props: Partial<React.ComponentProps<typeof DeleteAccountModal>> = {}) {
+  const onClose = props.onClose ?? vi.fn();
+  const view = render(
+    <MemoryRouter>
+      <DeleteAccountModal open onClose={onClose} {...props} />
+    </MemoryRouter>,
+  );
+  return { ...view, onClose };
+}
+
+const input = () => screen.getByPlaceholderText("DELETE") as HTMLInputElement;
+const deleteButton = () => screen.getByRole("button", { name: /delete my account/i }) as HTMLButtonElement;
+
+describe("DeleteAccountModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("does not render contents when open is false", () => {
-    render(
-      <MemoryRouter>
-        <DeleteAccountModal open={false} onClose={vi.fn()} />
-      </MemoryRouter>
-    );
+  describe("what it says", () => {
+    it("renders nothing while closed", () => {
+      renderModal({ open: false });
 
-    expect(screen.queryByText("Delete BHALYAM Account")).toBeNull();
-  });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
 
-  it("renders consequences, confirmation prompt, and disabled action button when open", () => {
-    render(
-      <MemoryRouter>
-        <DeleteAccountModal open={true} onClose={vi.fn()} />
-      </MemoryRouter>
-    );
+    it("asks plainly, and says it cannot be undone", () => {
+      renderModal();
 
-    expect(screen.getByText("Delete BHALYAM Account")).toBeDefined();
-    expect(screen.getByText("Permanent & Irreversible")).toBeDefined();
-    expect(screen.getByText(/Your username, email address, bio/i)).toBeDefined();
-    expect(screen.getByText(/Your permanent coin balance/i)).toBeDefined();
-    expect(screen.getByText(/Match histories, tournament trophies/i)).toBeDefined();
+      expect(screen.getByRole("dialog", { name: /delete your account\?/i })).toBeInTheDocument();
+      expect(screen.getByText(/this can't be undone/i)).toBeInTheDocument();
+    });
 
-    const deleteBtn = screen.getByRole("button", { name: /Delete My Account/i });
-    expect(deleteBtn).toBeDefined();
-    expect((deleteBtn as HTMLButtonElement).disabled).toBe(true);
-  });
+    it("lists what goes, in terms a player recognises", () => {
+      renderModal();
 
-  it("enables the delete button only when DELETE is typed", () => {
-    render(
-      <MemoryRouter>
-        <DeleteAccountModal open={true} onClose={vi.fn()} />
-      </MemoryRouter>
-    );
+      expect(screen.getByText("Your profile")).toBeInTheDocument();
+      expect(screen.getByText(/name, email, birthday and avatar/i)).toBeInTheDocument();
+      expect(screen.getByText("Your progress")).toBeInTheDocument();
+      expect(screen.getByText(/level, xp, achievements and match history/i)).toBeInTheDocument();
+      expect(screen.getByText("Your coins")).toBeInTheDocument();
+      expect(screen.getByText(/can't be recovered, even if you sign up again/i)).toBeInTheDocument();
+    });
 
-    const input = screen.getByPlaceholderText("DELETE");
-    const deleteBtn = screen.getByRole("button", { name: /Delete My Account/i });
+    it("is honest that anonymous coin records are kept", () => {
+      renderModal();
 
-    // Partial text
-    fireEvent.change(input, { target: { value: "DEL" } });
-    expect((deleteBtn as HTMLButtonElement).disabled).toBe(true);
-
-    // Case-insensitive / trimmed match
-    fireEvent.change(input, { target: { value: "delete " } });
-    expect((deleteBtn as HTMLButtonElement).disabled).toBe(false);
-
-    // Exact match
-    fireEvent.change(input, { target: { value: "DELETE" } });
-    expect((deleteBtn as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it("executes account deletion, invokes callbacks, and navigates to home on success", async () => {
-    const onClose = vi.fn();
-    const onSuccess = vi.fn();
-    vi.mocked(accountDeletion.executeAccountDeletion).mockResolvedValueOnce({ ok: true });
-
-    render(
-      <MemoryRouter>
-        <DeleteAccountModal open={true} onClose={onClose} onSuccess={onSuccess} />
-      </MemoryRouter>
-    );
-
-    const input = screen.getByPlaceholderText("DELETE");
-    fireEvent.change(input, { target: { value: "DELETE" } });
-
-    const deleteBtn = screen.getByRole("button", { name: /Delete My Account/i });
-    fireEvent.click(deleteBtn);
-
-    expect(accountDeletion.executeAccountDeletion).toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalled();
-      expect(onSuccess).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+      expect(screen.getByText(/anonymous coin records are kept/i)).toBeInTheDocument();
+      expect(screen.getByText(/no longer linked to you/i)).toBeInTheDocument();
     });
   });
 
-  it("displays an error alert message when deletion fails", async () => {
-    vi.mocked(accountDeletion.executeAccountDeletion).mockResolvedValueOnce({
-      ok: false,
-      error: "Network connection lost while deleting account.",
+  describe("confirming", () => {
+    it("starts with the field focused and the delete button disabled", () => {
+      renderModal();
+
+      expect(document.activeElement).toBe(input());
+      expect(deleteButton()).toBeDisabled();
     });
 
-    render(
-      <MemoryRouter>
-        <DeleteAccountModal open={true} onClose={vi.fn()} />
-      </MemoryRouter>
-    );
+    it("enables the delete button only once DELETE is typed, ignoring case and spaces", () => {
+      renderModal();
 
-    const input = screen.getByPlaceholderText("DELETE");
-    fireEvent.change(input, { target: { value: "DELETE" } });
+      fireEvent.change(input(), { target: { value: "DEL" } });
+      expect(deleteButton()).toBeDisabled();
 
-    const deleteBtn = screen.getByRole("button", { name: /Delete My Account/i });
-    fireEvent.click(deleteBtn);
+      fireEvent.change(input(), { target: { value: "delete " } });
+      expect(deleteButton()).toBeEnabled();
 
-    await waitFor(() => {
-      expect(screen.getByText("Network connection lost while deleting account.")).toBeDefined();
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+      expect(deleteButton()).toBeEnabled();
+    });
+
+    it("keeps the cursor in the field for every character typed", () => {
+      renderModal();
+      input().focus();
+
+      for (const typed of ["D", "DE", "DEL", "DELE", "DELET", "DELETE"]) {
+        fireEvent.change(input(), { target: { value: typed } });
+        expect(document.activeElement).toBe(input());
+      }
+    });
+
+    it("does nothing when submitted before DELETE is typed", () => {
+      renderModal();
+
+      fireEvent.submit(input().closest("form") as HTMLFormElement);
+
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("lets Enter confirm once DELETE is typed", async () => {
+      mockDelete.mockResolvedValueOnce({ ok: true });
+      renderModal();
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+
+      fireEvent.submit(input().closest("form") as HTMLFormElement);
+
+      await waitFor(() => expect(mockDelete).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  describe("deleting", () => {
+    it("deletes, calls back, closes and returns to the home page on success", async () => {
+      const onSuccess = vi.fn();
+      mockDelete.mockResolvedValueOnce({ ok: true });
+      const { onClose } = renderModal({ onSuccess });
+
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+      fireEvent.click(deleteButton());
+
+      expect(mockDelete).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled();
+        expect(onSuccess).toHaveBeenCalled();
+        expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+      });
+    });
+
+    it("locks the dialog while it works, so it cannot be dismissed or submitted twice", async () => {
+      let finish: (value: { ok: boolean }) => void = () => {};
+      mockDelete.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+      renderModal();
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+
+      fireEvent.click(deleteButton());
+
+      expect(await screen.findByRole("button", { name: /deleting/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /cancel/i })).toBeDisabled();
+      expect(input()).toBeDisabled();
+
+      finish({ ok: false });
+      await waitFor(() => expect(input()).toBeEnabled());
+    });
+
+    it("shows the reason in an alert and lets the person try again when it fails", async () => {
+      mockDelete.mockResolvedValueOnce({ ok: false, error: "Network connection lost while deleting account." });
+      renderModal();
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+
+      fireEvent.click(deleteButton());
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Network connection lost while deleting account.");
+      expect(deleteButton()).toBeEnabled();
+    });
+  });
+
+  describe("cancelling", () => {
+    it("closes from Cancel without deleting", () => {
+      const { onClose } = renderModal();
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("forgets what was typed, so a reopened dialog never starts armed", () => {
+      const onClose = vi.fn();
+      const view = renderModal({ onClose });
+      fireEvent.change(input(), { target: { value: "DELETE" } });
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+      view.rerender(
+        <MemoryRouter>
+          <DeleteAccountModal open={false} onClose={onClose} />
+        </MemoryRouter>,
+      );
+      view.rerender(
+        <MemoryRouter>
+          <DeleteAccountModal open onClose={onClose} />
+        </MemoryRouter>,
+      );
+
+      expect(input().value).toBe("");
+      expect(deleteButton()).toBeDisabled();
     });
   });
 });

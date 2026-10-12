@@ -1,17 +1,8 @@
-import React, { useState } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertTriangle,
-  Trash2,
-  X,
-  ShieldAlert,
-  Loader2,
-  Coins,
-  Trophy,
-  UserX,
-} from "lucide-react";
+import { AlertTriangle, Coins, Info, Loader2, Trash2, Trophy, UserRound, X, type LucideIcon } from "lucide-react";
 import Modal from "../Modal";
+import { Button } from "../../design-system/dls/Buttons";
 import { executeAccountDeletion } from "../../lib/accountDeletion";
 import { usePlayerId } from "../../lib/playerIdentity";
 
@@ -21,18 +12,56 @@ export interface DeleteAccountModalProps {
   onSuccess?: () => void;
 }
 
-export default function DeleteAccountModal({
-  open,
-  onClose,
-  onSuccess,
-}: DeleteAccountModalProps) {
+const CONFIRM_WORD = "DELETE";
+
+interface Loss {
+  Icon: LucideIcon;
+  title: string;
+  detail: string;
+}
+
+const LOSSES: readonly Loss[] = [
+  { Icon: UserRound, title: "Your profile", detail: "Name, email, birthday and avatar." },
+  { Icon: Trophy, title: "Your progress", detail: "Level, XP, achievements and match history." },
+  { Icon: Coins, title: "Your coins", detail: "The balance can't be recovered, even if you sign up again." },
+];
+
+/**
+ * The last question before an account goes.
+ *
+ * ── Why it looks the way it does ──────────────────────────────────────
+ * It uses the same warm card tokens as the sign-in screens, which carry both a
+ * light and a dark value, so it is readable in either theme. (It used Tailwind 4
+ * class names — `bg-linear-to-b`, `shadow-xs` — in a Tailwind 3 project, which
+ * compile to nothing: the panel had no background at all and floated, see-through,
+ * over the dark backdrop with dark text on it.)
+ *
+ * The tone is calm and plain. A destructive confirmation that shouts in capitals
+ * is harder to read, not safer; the friction that protects someone here is typing
+ * the word, not being startled by the heading.
+ *
+ * ── Behaviour worth keeping ───────────────────────────────────────────
+ * The field takes focus on open and keeps it while typing (the shared focus trap
+ * used to throw it out after every character), Enter confirms once the word is
+ * typed, and nothing can be dismissed or sent twice while the deletion runs.
+ * Typed text is dropped on close, so a reopened dialog never starts already armed.
+ *
+ * Honesty about what remains: coin records are kept, unlinked from the person,
+ * because the coin ledger is permanent by design. Saying "erased forever" about
+ * the balance would be untrue.
+ */
+export default function DeleteAccountModal({ open, onClose, onSuccess }: DeleteAccountModalProps) {
   const navigate = useNavigate();
   const { playerId: effectivePlayerId } = usePlayerId();
   const [confirmationInput, setConfirmationInput] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
+  const introId = useId();
+  const inputId = useId();
 
-  const isConfirmed = confirmationInput.trim().toUpperCase() === "DELETE";
+  const isConfirmed = confirmationInput.trim().toUpperCase() === CONFIRM_WORD;
 
   const handleClose = () => {
     if (isDeleting) return;
@@ -50,149 +79,144 @@ export default function DeleteAccountModal({
     try {
       const res = await executeAccountDeletion(effectivePlayerId);
       if (!res.ok) {
-        setErrorMessage(res.error ?? "Failed to delete account. Please try again.");
+        setErrorMessage(res.error ?? "We couldn't delete your account just now. Please try again.");
         setIsDeleting(false);
         return;
       }
 
+      setIsDeleting(false);
       handleClose();
       onSuccess?.();
       navigate("/", { replace: true });
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "An unexpected error occurred while deleting your account.",
+        err instanceof Error ? err.message : "Something went wrong while deleting your account. Please try again.",
       );
       setIsDeleting(false);
     }
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void handleDelete();
   };
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      ariaLabel="Delete BHALYAM Account"
-      className="p-4"
+      mobileSheet
+      ariaLabelledBy={titleId}
+      ariaDescribedBy={introId}
+      initialFocusRef={inputRef}
+      className="auth-shell"
+      panelClassName="w-full sm:max-w-[460px] overflow-y-auto overscroll-contain max-h-[92dvh]
+                      rounded-t-3xl sm:rounded-3xl border border-[var(--auth-card-edge)] bg-[var(--auth-card)]
+                      shadow-[0_-8px_40px_-12px_rgba(74,44,18,0.5)]"
     >
-      <div className="relative w-full max-w-md rounded-3xl bg-linear-to-b from-[#FFFDF9] to-[#F7EDE0] dark:from-[#1A1822] dark:to-[#0F0D14] border-2 border-rose-400 dark:border-rose-700/80 border-b-4 border-b-rose-600 dark:border-b-rose-950 shadow-[0_10px_0_rgba(15,23,42,0.9)] p-6 overflow-hidden space-y-5 text-slate-900 dark:text-slate-100 font-sans">
-        {/* Decorative Top Accent Glow */}
-        <div
-          className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-rose-500/15 blur-2xl pointer-events-none"
-          aria-hidden="true"
-        />
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-rose-200 dark:border-rose-900/40 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-rose-500 to-rose-600 text-white flex items-center justify-center shrink-0 shadow-[0_3px_0_rgba(159,18,57,0.9)] border-2 border-rose-300">
-              <Trash2 className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                Delete BHALYAM Account
-              </h2>
-              <p className="text-xs text-rose-600 dark:text-rose-400 font-black uppercase tracking-wider mt-0.5 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
-                Permanent &amp; Irreversible
-              </p>
-            </div>
+      <form onSubmit={submit} className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-6">
+        <div className="flex items-start gap-3.5">
+          <span
+            aria-hidden="true"
+            className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-[var(--auth-bad-edge)]
+                       bg-[var(--auth-bad-bg)] text-[var(--auth-bad-ink)]"
+          >
+            <Trash2 className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h2 id={titleId} className="text-[21px] font-extrabold leading-tight text-[var(--auth-ink)]">
+              Delete your account?
+            </h2>
+            <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-[var(--auth-bad-ink)]">
+              <AlertTriangle aria-hidden="true" className="h-4 w-4 flex-shrink-0" />
+              This can't be undone.
+            </p>
           </div>
-
           <button
             type="button"
             onClick={handleClose}
             disabled={isDeleting}
-            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center border-b-2 border-slate-300 dark:border-slate-900 active:border-b-0 active:translate-y-0.5 transition cursor-pointer disabled:opacity-50"
-            aria-label="Close delete account modal"
+            aria-label="Close"
+            className="-mr-1 -mt-1 inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[var(--auth-ink-soft)]
+                       transition-colors hover:bg-[var(--auth-rule)] hover:text-[var(--auth-ink)] disabled:opacity-40
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
           >
-            <X className="w-4 h-4 stroke-[2.5]" />
+            <X aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Consequences Warning Callout */}
-        <div className="p-4 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border-2 border-rose-300/80 dark:border-rose-900/60 space-y-2.5">
-          <p className="text-xs font-black text-rose-900 dark:text-rose-200 leading-relaxed uppercase tracking-wide">
-            Deleting your account completely removes your presence from BHALYAM. The following data will be erased forever:
-          </p>
+        <p id={introId} className="mt-5 text-[15px] leading-relaxed text-[var(--auth-ink-soft)]">
+          Deleting your account permanently removes:
+        </p>
 
-          <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
-            <li className="flex items-center gap-2">
-              <UserX className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[2.5]" aria-hidden="true" />
-              <span>Your username, email address, bio &amp; avatar</span>
+        <ul className="mt-3 divide-y divide-[var(--auth-rule)] overflow-hidden rounded-2xl border border-[var(--auth-field-edge)] bg-[var(--auth-field)]">
+          {LOSSES.map(({ Icon, title, detail }) => (
+            <li key={title} className="flex items-start gap-3 px-4 py-3">
+              <Icon aria-hidden="true" className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--auth-bad-ink)]" />
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold leading-snug text-[var(--auth-ink)]">{title}</span>
+                <span className="block text-[13.5px] leading-relaxed text-[var(--auth-ink-soft)]">{detail}</span>
+              </span>
             </li>
-            <li className="flex items-center gap-2">
-              <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0 stroke-[2.5]" aria-hidden="true" />
-              <span>Your permanent coin balance</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Trophy className="w-3.5 h-3.5 text-rose-500 shrink-0 stroke-[2.5]" aria-hidden="true" />
-              <span>Match histories, tournament trophies &amp; ranking stats</span>
-            </li>
-          </ul>
-        </div>
+          ))}
+        </ul>
 
-        {/* Verification Input Prompt */}
-        <div className="space-y-2">
-          <label
-            htmlFor="delete-confirm-input"
-            className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300"
-          >
-            Type <span className="font-mono font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/30">DELETE</span> to confirm:
+        <p className="mt-3 flex items-start gap-2 text-[12.5px] leading-relaxed text-[var(--auth-ink-mute)]">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>Anonymous coin records are kept for the game's audit trail. They are no longer linked to you.</span>
+        </p>
+
+        <div className="mt-5">
+          <label htmlFor={inputId} className="block text-sm font-bold text-[var(--auth-ink)]">
+            Type{" "}
+            <span className="rounded-md border border-[var(--auth-bad-edge)] bg-[var(--auth-bad-bg)] px-1.5 py-0.5 font-mono font-extrabold text-[var(--auth-bad-ink)]">
+              {CONFIRM_WORD}
+            </span>{" "}
+            to confirm
           </label>
           <input
-            id="delete-confirm-input"
+            ref={inputRef}
+            id={inputId}
             type="text"
             value={confirmationInput}
             onChange={(e) => setConfirmationInput(e.target.value)}
             disabled={isDeleting}
-            placeholder="DELETE"
+            placeholder={CONFIRM_WORD}
             autoComplete="off"
-            spellCheck="false"
-            className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono font-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/60 transition disabled:opacity-50"
+            autoCapitalize="characters"
+            spellCheck={false}
+            enterKeyHint="go"
+            className="mt-2 min-h-[50px] w-full rounded-xl border-2 border-[var(--auth-field-edge)] bg-[var(--auth-field)] px-3.5
+                       font-mono text-base font-bold tracking-wider text-[var(--auth-ink)] placeholder:text-[var(--auth-ink-mute)]/60
+                       transition-colors focus:outline-none focus:border-[var(--auth-field-error)] focus-visible:ring-2
+                       focus-visible:ring-[var(--auth-field-error)]/40 disabled:opacity-60"
           />
         </div>
 
-        {/* Error Banner */}
         {errorMessage && (
-          <div
+          <p
             role="alert"
-            className="p-3 rounded-xl bg-rose-100/90 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-800 text-xs font-bold text-rose-800 dark:text-rose-200 flex items-start gap-2"
+            className="mt-3 rounded-xl border border-[var(--auth-bad-edge)] bg-[var(--auth-bad-bg)] px-3.5 py-2.5 text-sm font-semibold text-[var(--auth-bad-ink)]"
           >
-            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 stroke-[2.5]" aria-hidden="true" />
-            <span>{errorMessage}</span>
-          </div>
+            {errorMessage}
+          </p>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col-reverse sm:flex-row items-center gap-2.5 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isDeleting}
-            className="w-full sm:w-auto flex-1 min-h-[44px] px-4 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border-b-4 border-slate-300 dark:border-slate-900 active:border-b-0 active:translate-y-1 transition cursor-pointer disabled:opacity-50 shadow-xs"
-          >
+        <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+          <Button type="button" variant="secondary" size="lg" onClick={handleClose} disabled={isDeleting}>
             Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDelete}
+          </Button>
+          <Button
+            type="submit"
+            variant="danger"
+            size="lg"
             disabled={!isConfirmed || isDeleting}
-            className="w-full sm:w-auto flex-1 min-h-[44px] px-4 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-linear-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 border-b-4 border-rose-800 active:border-b-0 active:translate-y-1 shadow-[0_4px_0_rgba(159,18,57,0.8)] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none inline-flex items-center justify-center gap-2"
+            leftIcon={isDeleting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Trash2 aria-hidden="true" className="h-4 w-4" />}
           >
-            {isDeleting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" aria-hidden="true" />
-                <span>Deleting Account…</span>
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-                <span>Delete My Account</span>
-              </>
-            )}
-          </button>
+            {isDeleting ? "Deleting…" : "Delete my account"}
+          </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }
