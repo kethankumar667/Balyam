@@ -33,6 +33,10 @@ const SAVE_FAILED = "We couldn't save that. Please try again.";
  */
 const dismissedFor = new Set<string>();
 
+useAuthStore.subscribe((state, previous) => {
+  if (state.userId !== previous.userId) dismissedFor.clear();
+});
+
 /** Test hook: forget every "Not now" so each test starts from a fresh visit. */
 export function resetProfilePromptDismissals(): void {
   dismissedFor.clear();

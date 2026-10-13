@@ -5,14 +5,15 @@ import { capabilitiesFor, type Capabilities } from "@shared/permissions";
 import { useRoomStore } from "./roomStore";
 import { useStreakStore } from "./streakStore";
 import { getSupabase, isSupabaseConfigured, SESSION_STORAGE_KEY } from "../lib/supabase/client";
-import { fetchProfile, saveProfile } from "../lib/supabase/profile";
+import { fetchProfileResult, saveProfile, type Profile } from "../lib/supabase/profile";
 import { saveAccountDetails, clearAccountDetails, generateAccountId } from "../lib/accountGenerator";
 import { namesFromMetadata, missingProfileFields } from "../lib/googleProfile";
 import { clearGuestIdentity } from "../lib/playerIdentity";
 import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../services/FavouritesManager";
 import { syncUserDataOnLogin, clearUserDataOnSignOut } from "../services/UserDataSyncService";
-import { CONSENT_KEY } from "../lib/privacy/consent";
+import { CONSENT_KEY, forgetMemberConsent } from "../lib/privacy/consent";
+import { toast } from "../hooks/useToast";
 
 /**
  * The name Supabase itself already knows for this person, if any.
@@ -70,6 +71,7 @@ interface StoredAccount {
 }
 
 interface AuthStore extends StoredAccount {
+  profileReady: boolean;
   /** What this identity is allowed to do. Recomputed on every kind change. */
   capabilities: Capabilities;
   /** True for a real account. Read this instead of comparing `kind` by hand. */
@@ -341,6 +343,7 @@ const initial = initialState();
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   ...initial,
+  profileReady: initial.userId === null,
   capabilities: computeCapabilities(initial.kind, initial.userId),
   isMember: initial.kind === "admin" || initial.kind === "super_admin" || (initial.kind === "member" && Boolean(initial.userId) && Boolean(accessToken)),
   isAdmin: initial.kind === "admin" || initial.kind === "super_admin",
@@ -436,6 +439,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signOut: async () => {
+    const exitingUserId = get().userId;
+    syncedUserId = null;
+    profileSyncRevision += 1;
+    stopProfileSync?.();
+    accessToken = null;
     const supabase = getSupabase();
     if (supabase) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
@@ -454,7 +462,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // guest IS the identity, and destroying it on "sign out" would delete
     // the only progress that ever existed while presenting itself as an
     // account transition rather than a guest wallet reset.
-    const exitingUserId = get().userId;
     if (exitingUserId === null) {
       saveLocalAccount(GUEST);
       clearAccountDetails();
@@ -462,6 +469,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({
         ...GUEST,
         userId: null,
+        profileReady: true,
         capabilities: capabilitiesFor("guest"),
         isMember: false,
         isAdmin: false,
@@ -524,6 +532,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({
       ...GUEST,
       userId: null,
+      profileReady: true,
       capabilities: capabilitiesFor("guest"),
       isMember: false,
       isAdmin: false,
@@ -541,6 +550,9 @@ if (typeof window !== "undefined") {
 
 /** Undoes the roomStore subscription when the player signs out. */
 let stopProfileSync: (() => void) | null = null;
+let profileSyncRevision = 0;
+let syncedUserId: string | null = null;
+const pendingProfileRecoveries = new Map<string, Promise<boolean>>();
 
 function applySession(session: Session | null): void {
   accessToken = session?.access_token ?? null;
@@ -632,6 +644,9 @@ function applyGuest(): void {
     userId: null,
     capabilities: capabilitiesFor("guest"),
     isMember: false,
+    isAdmin: false,
+    isSuperAdmin: false,
+    profileReady: true,
     ready: true,
   });
 }
@@ -645,11 +660,8 @@ function applyGuest(): void {
  * laptop and you should still be you, not "Player 3". Where the row is empty
  * — a brand-new account, or one made before this table did — a name Supabase
  * already knows for this person (signup's `display_name`, or Google's
- * `full_name`/`name`) goes up instead. Only once neither source has a name
- * does this device's current, possibly-unrelated guest nickname get pushed
- * up — otherwise the first sign-in on a browser that happened to have
- * "Jetpacker" typed in from local guest play would overwrite the real name
- * permanently, and every later sign-in would keep re-pulling it back down.
+ * `full_name`/`name`) goes up instead. Browser-cached profile fields never
+ * seed a missing account: this device may have belonged to someone else.
  *
  * ── Why the loop does not run away ────────────────────────────────────
  * Pulling the profile writes to `useRoomStore`, and writes to `useRoomStore`
@@ -659,24 +671,42 @@ function applyGuest(): void {
 async function startProfileSync(
   userId: string,
   meta: Record<string, unknown> | null | undefined,
+  email: string | null,
 ): Promise<void> {
   stopProfileSync?.();
-
-  const room = useRoomStore.getState();
-  const local = {
-    displayName: metadataDisplayName(meta) || room.playerName.trim() || null,
-    avatarId: room.avatarId,
-    bio: room.bio.trim() || null,
-    region: room.region.trim() || null,
+  const revision = ++profileSyncRevision;
+  const isCurrent = () => revision === profileSyncRevision && useAuthStore.getState().userId === userId;
+  const pendingRecovery = pendingProfileRecoveries.get(userId);
+  if (pendingRecovery) {
+    await pendingRecovery;
+    if (!isCurrent()) return;
+  }
+  const result = await fetchProfileResult(userId);
+  if (!isCurrent() || result.status === "unavailable") return;
+  const fetched = result.status === "found" ? result.profile : {
+    displayName: metadataDisplayName(meta) || email?.split("@")[0] || "Player",
+    avatarId: null, dob: null, gender: null, bio: null, region: null,
   };
-  const fetched = await fetchProfile(userId);
-  // A Google sign-in arrives with no first/last name or Bhalyam ID on the row;
-  // fill only what is empty, and write just those columns (see `saveProfile`).
-  const fill = fetched
-    ? missingProfileFields(fetched, meta, (dob) => generateAccountId(dob ?? undefined))
-    : {};
-  const remote = fetched ? { ...fetched, ...fill } : null;
-  if (Object.keys(fill).length > 0) void saveProfile(userId, fill);
+  const fill = {
+    ...missingProfileFields(fetched, meta, (dob) => generateAccountId(dob ?? undefined)),
+    ...(!fetched.email && email ? { email } : {}),
+  };
+  let remote: Profile = { ...fetched, ...fill };
+  if (result.status === "missing" || Object.keys(fill).length > 0) {
+    const write = saveProfile(userId, result.status === "missing" ? remote : fill);
+    const recovery = result.status === "missing" ? write.then((saved) => {
+      if (saved) forgetMemberConsent(userId);
+      return saved;
+    }).finally(() => { pendingProfileRecoveries.delete(userId); }) : write;
+    if (result.status === "missing") pendingProfileRecoveries.set(userId, recovery);
+    const saved = await recovery;
+    if (!isCurrent()) return;
+    if (!saved) {
+      toast.error("We couldn't restore your profile. Please try signing in again.");
+      if (result.status === "missing") return;
+      remote = fetched;
+    }
+  }
 
   let lastSynced = {
     displayName: remote?.displayName ?? null,
@@ -685,11 +715,11 @@ async function startProfileSync(
     region: remote?.region ?? null,
   };
 
-  if (remote?.displayName || remote?.avatarId || remote?.accountId) {
-    if (remote.displayName) useRoomStore.getState().setPlayerName(remote.displayName);
-    if (remote.avatarId) useRoomStore.getState().setAvatarId(remote.avatarId);
-    if (remote.bio) useRoomStore.getState().setBio(remote.bio);
-    if (remote.region) useRoomStore.getState().setRegion(remote.region);
+  if (remote.displayName || remote.avatarId || remote.accountId) {
+    useRoomStore.getState().setPlayerName(remote.displayName || "Player");
+    useRoomStore.getState().setAvatarId(remote.avatarId ?? null);
+    useRoomStore.getState().setBio(remote.bio || "");
+    useRoomStore.getState().setRegion(remote.region || "");
     saveAccountDetails({
       firstName: remote.firstName || "",
       lastName: remote.lastName || "",
@@ -700,26 +730,6 @@ async function startProfileSync(
       accountId: remote.accountId || "",
       createdAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
     });
-    // A field the row left empty is still worth carrying up from here.
-    const merged = {
-      ...remote,
-      displayName: remote.displayName ?? local.displayName,
-      avatarId: remote.avatarId ?? local.avatarId,
-      bio: remote.bio ?? local.bio,
-      region: remote.region ?? local.region,
-    };
-    if (
-      merged.displayName !== lastSynced.displayName ||
-      merged.avatarId !== lastSynced.avatarId ||
-      merged.bio !== lastSynced.bio ||
-      merged.region !== lastSynced.region
-    ) {
-      lastSynced = merged;
-      void saveProfile(userId, merged);
-    }
-  } else if (local.displayName || local.avatarId || local.bio || local.region) {
-    lastSynced = local;
-    void saveProfile(userId, local);
   }
 
   // Debounced, because the profile screen writes on every keystroke and each
@@ -744,7 +754,7 @@ async function startProfileSync(
     timer = window.setTimeout(() => {
       timer = null;
       // Signed out while the timer was pending — the row is not ours to write.
-      if (useAuthStore.getState().userId !== userId) return;
+      if (!isCurrent()) return;
       lastSynced = next;
       void saveProfile(userId, next);
     }, 800);
@@ -769,9 +779,21 @@ async function startProfileSync(
 if (isSupabaseConfigured) {
   const supabase = getSupabase();
   if (supabase) {
-    let syncedUserId: string | null = null;
+    let receivedAuthEvent = false;
 
     const onSession = (session: Session | null): void => {
+      const incomingId = session?.user?.id ?? null;
+      if (incomingId && incomingId !== syncedUserId) {
+        stopProfileSync?.();
+        useAuthStore.setState({ profileReady: false });
+        if (incomingId !== useAuthStore.getState().userId) {
+          const room = useRoomStore.getState();
+          room.setPlayerName(metadataDisplayName(session?.user?.user_metadata) || session?.user?.email?.split("@")[0] || "Player");
+          room.setAvatarId(null);
+          room.setBio("");
+          room.setRegion("");
+        }
+      }
       applySession(session);
       const userId = session?.user?.id ?? null;
       if (userId && userId !== syncedUserId) {
@@ -785,11 +807,19 @@ if (isSupabaseConfigured) {
           clearUserDataOnSignOut(syncedUserId);
         }
         syncedUserId = userId;
-        void startProfileSync(userId, session?.user?.user_metadata);
+        const revision = profileSyncRevision + 1;
+        void startProfileSync(userId, session?.user?.user_metadata, session?.user?.email ?? null)
+          .catch(() => {
+            if (revision === profileSyncRevision) toast.error("We couldn't load your profile. Please try signing in again.");
+          })
+          .finally(() => {
+            if (revision === profileSyncRevision && useAuthStore.getState().userId === userId) useAuthStore.setState({ profileReady: true });
+          });
         void syncUserDataOnLogin(userId);
       } else if (!userId && syncedUserId) {
         const exitingUserId = syncedUserId;
         syncedUserId = null;
+        profileSyncRevision += 1;
         stopProfileSync?.();
         clearUserDataOnSignOut(exitingUserId);
       }
@@ -799,10 +829,13 @@ if (isSupabaseConfigured) {
     // for one first if the page was reached from an emailed link.
     void supabase.auth
       .getSession()
-      .then(({ data }) => onSession(data.session))
-      .catch(() => applyGuest());
+      .then(({ data }) => { if (!receivedAuthEvent) onSession(data.session); })
+      .catch(() => { if (!receivedAuthEvent) applyGuest(); });
 
-    supabase.auth.onAuthStateChange((_event, session) => onSession(session));
+    supabase.auth.onAuthStateChange((_event, session) => {
+      receivedAuthEvent = true;
+      onSession(session);
+    });
   }
 }
 

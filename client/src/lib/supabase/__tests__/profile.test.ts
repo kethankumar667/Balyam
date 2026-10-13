@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { deleteAccount, fetchProfile } from "../profile";
+import { deleteAccount, fetchProfile, fetchProfileResult } from "../profile";
 import { getSupabase } from "../client";
 
 vi.mock("../client", () => ({
@@ -32,6 +32,20 @@ function fakeSupabase(responses: {
 describe("fetchProfile", () => {
   beforeEach(() => {
     vi.mocked(getSupabase).mockReset();
+  });
+
+  it("distinguishes a missing profile from an unavailable profile read", async () => {
+    vi.mocked(getSupabase).mockReturnValue(fakeSupabase({
+      core: { data: null, error: null },
+      extended: { data: null, error: null },
+    }) as never);
+    expect(await fetchProfileResult("user-1")).toEqual({ status: "missing" });
+
+    vi.mocked(getSupabase).mockReturnValue(fakeSupabase({
+      core: { data: null, error: { message: "offline" } },
+      extended: { data: null, error: null },
+    }) as never);
+    expect(await fetchProfileResult("user-1")).toEqual({ status: "unavailable" });
   });
 
   it("regression: returns display_name/avatar_id even when the extended-columns query fails (e.g. a later migration was never run)", async () => {

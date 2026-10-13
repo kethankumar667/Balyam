@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAuthStore } from "../../../store/authStore";
 import { useRoomStore } from "../../../store/roomStore";
 import { fetchProfile, saveProfile } from "../../../lib/supabase/profile";
@@ -63,6 +63,19 @@ describe("ProfileCompletionPrompt", () => {
   });
 
   describe("who sees it", () => {
+    it("asks again after signing out and returning to the same account in the same tab", async () => {
+      signIn();
+      mockFetch.mockResolvedValue(NO_BIRTHDAY);
+      const first = render(<ProfileCompletionPrompt />);
+      await screen.findByRole("dialog");
+      fireEvent.click(screen.getByRole("button", { name: /not now/i }));
+      first.unmount();
+      act(() => useAuthStore.setState({ isMember: false, userId: null }));
+      act(() => signIn());
+      render(<ProfileCompletionPrompt />);
+      expect(await screen.findByRole("dialog", { name: /when's your birthday/i })).toBeInTheDocument();
+    });
+
     it("shows nothing to a guest, and never reads a profile for one", () => {
       const { container } = render(<ProfileCompletionPrompt />);
 

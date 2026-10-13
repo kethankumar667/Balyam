@@ -2,6 +2,7 @@ import { useState } from "react";
 import ProfileCompletionPrompt from "../profile/ProfileCompletionPrompt";
 import WelcomeCelebration from "./WelcomeCelebration";
 import { useConsentPending } from "../../hooks/useConsentPending";
+import { useAuthStore } from "../../store/authStore";
 
 /**
  * The first-run order for a signed-in member, one dialog at a time:
@@ -20,8 +21,9 @@ import { useConsentPending } from "../../hooks/useConsentPending";
  */
 export default function MemberOnboarding() {
   const isConsentPending = useConsentPending();
+  const profileReady = useAuthStore((state) => state.profileReady);
   const [isProfileDone, setIsProfileDone] = useState(false);
 
-  if (isConsentPending) return null;
+  if (isConsentPending || profileReady === false) return null;
   return isProfileDone ? <WelcomeCelebration /> : <ProfileCompletionPrompt onFinished={() => setIsProfileDone(true)} />;
 }

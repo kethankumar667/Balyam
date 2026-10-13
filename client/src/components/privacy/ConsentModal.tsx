@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { recordConsent } from "../../lib/privacy/consent";
 import { useConsentPending } from "../../hooks/useConsentPending";
 import { useAuthStore } from "../../store/authStore";
@@ -26,9 +26,12 @@ import Modal from "../Modal";
  */
 export default function ConsentModal() {
   const [isReady, setIsReady] = useState(false);
+  const [noticeOpened, setNoticeOpened] = useState(false);
+  const { pathname } = useLocation();
   const isConsentPending = useConsentPending();
   const memberId = useAuthStore((state) => state.userId);
-  const open = isReady && isConsentPending;
+  const profileReady = useAuthStore((state) => state.profileReady);
+  const open = isReady && isConsentPending && profileReady !== false && pathname !== "/privacy";
   const acceptRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -99,14 +102,21 @@ export default function ConsentModal() {
               : "There are no accounts in this build at all."}
           </p>
           <p>
-            <Link
-              to="/privacy"
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setNoticeOpened(true)}
               className="inline-flex items-center min-h-[44px] font-bold text-[var(--auth-accent)]
                          underline decoration-[#D9BE7A] underline-offset-4 rounded-sm
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
             >
               Read the full privacy notice
-            </Link>
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+          <p role="status" className="text-[12px] text-[var(--auth-ink-soft)]">
+            {noticeOpened ? "Privacy notice opened in a new tab. Return here to make your choice." : ""}
           </p>
         </div>
 

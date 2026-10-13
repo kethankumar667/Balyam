@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { recordConsent } from "../../../lib/privacy/consent";
@@ -9,7 +9,7 @@ import MemberOnboarding from "../MemberOnboarding";
 
 vi.mock("../../../store/authStore", async () => {
   const { create } = await import("zustand");
-  return { useAuthStore: create(() => ({ userId: null as string | null })) };
+  return { useAuthStore: create(() => ({ userId: null as string | null, profileReady: true })) };
 });
 
 // The two steps have their own tests; here they are markers, so these tests stay about the ORDER.
@@ -29,10 +29,41 @@ const welcome = () => screen.queryByRole("dialog", { name: "welcome" });
 
 /** Privacy, then the profile questions, then the welcome: one dialog at a time, each after the one before. */
 describe("MemberOnboarding", () => {
+  afterEach(() => { vi.useRealTimers(); });
   beforeEach(() => {
     cleanup();
     localStorage.clear();
-    useAuthStore.setState({ userId: null });
+    useAuthStore.setState({ userId: null, profileReady: true });
+  });
+
+  it("waits for profile recovery before showing any onboarding dialog", () => {
+    recordConsent("granted", new Date(), "member-a");
+    useAuthStore.setState({ userId: "member-a", profileReady: false });
+    render(<MemberOnboarding />);
+    expect(profile()).not.toBeInTheDocument();
+    expect(welcome()).not.toBeInTheDocument();
+    act(() => useAuthStore.setState({ profileReady: true }));
+    expect(profile()).toBeInTheDocument();
+  });
+
+  it("opens the notice in a separate tab and announces it without answering consent", async () => {
+    render(<MemoryRouter><ConsentModal /></MemoryRouter>);
+    const link = await screen.findByRole("link", { name: /Read the full privacy notice/ });
+    expect(link).toHaveAttribute("href", "/privacy");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    link.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(link);
+    expect(screen.getByRole("status")).toHaveTextContent("Privacy notice opened in a new tab");
+    expect(screen.getByRole("dialog", { name: "What BHALYAM keeps" })).toBeInTheDocument();
+  });
+
+  it("does not cover the privacy notice tab with the unanswered consent dialog", async () => {
+    vi.useFakeTimers();
+    render(<MemoryRouter initialEntries={["/privacy"]}><ConsentModal /></MemoryRouter>);
+    await act(async () => { vi.advanceTimersByTime(600); });
+    expect(screen.queryByRole("dialog", { name: "What BHALYAM keeps" })).not.toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it.each(["Allow all", "Only what's essential"])(

@@ -58,6 +58,8 @@ export async function executeAccountDeletion(
     }
   }
 
+  await useAuthStore.getState().signOut();
+
   // 3. Client Storage & Inventory Wipe
   try {
     eraseLocalData();

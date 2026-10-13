@@ -65,16 +65,27 @@ interface ProfileRow {
  * run the later migrations still gets name/avatar sync; it only loses the
  * newer optional fields, instead of losing everything.
  */
+export type ProfileReadResult =
+  | { status: "found"; profile: Profile }
+  | { status: "missing" }
+  | { status: "unavailable" };
+
 export async function fetchProfile(userId: string): Promise<Profile | null> {
+  const result = await fetchProfileResult(userId);
+  return result.status === "found" ? result.profile : null;
+}
+
+export async function fetchProfileResult(userId: string): Promise<ProfileReadResult> {
   const supabase = getSupabase();
-  if (!supabase) return null;
+  if (!supabase) return { status: "unavailable" };
 
   const core = await supabase
     .from("profiles")
     .select("display_name, avatar_id")
     .eq("id", userId)
     .maybeSingle<Pick<ProfileRow, "display_name" | "avatar_id">>();
-  if (core.error || !core.data) return null;
+  if (core.error) return { status: "unavailable" };
+  if (!core.data) return { status: "missing" };
 
   const extended = await supabase
     .from("profiles")
@@ -83,7 +94,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     .maybeSingle<Omit<ProfileRow, "display_name" | "avatar_id">>();
   const extra = extended.error ? null : extended.data;
 
-  return {
+  return { status: "found", profile: {
     displayName: core.data.display_name,
     avatarId: core.data.avatar_id,
     firstName: extra?.first_name,
@@ -94,7 +105,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     accountId: extra?.account_id,
     bio: extra?.bio,
     region: extra?.region,
-  };
+  } };
 }
 
 /**

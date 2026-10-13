@@ -121,6 +121,18 @@ export function resetConsentSession(): void {
   if (typeof window !== "undefined") window.dispatchEvent?.(new Event(CONSENT_CHANGED_EVENT));
 }
 
+export function forgetMemberConsent(memberId: string): void {
+  const previous = storageRefusedAnswer ?? readConsent();
+  if (!previous) return;
+  const record = { ...previous, memberIds: previous.memberIds?.filter((id) => id !== memberId) ?? [] };
+  storageRefusedAnswer = record;
+  try {
+    window.localStorage.setItem(CONSENT_KEY, JSON.stringify(record));
+    storageRefusedAnswer = null;
+  } catch {}
+  window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));
+}
+
 /** Subscribe to consent being answered or withdrawn, in this tab or another. Returns the unsubscribe. */
 export function subscribeConsent(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};

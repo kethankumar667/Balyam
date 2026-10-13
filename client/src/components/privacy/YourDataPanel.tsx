@@ -81,6 +81,7 @@ export default function YourDataPanel({
         );
         return;
       }
+      await useAuthStore.getState().signOut();
     }
 
     const res = eraseLocalData();
