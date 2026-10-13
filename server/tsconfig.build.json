@@ -1,0 +1,17 @@
+{
+  // The configuration the DEPLOYED server is compiled with. `tsconfig.json` stays the one used by
+  // `npm run typecheck`, which still checks the tests.
+  //
+  // Tests are left out here because they are the only code that needs `vitest`, and `vitest` is a
+  // devDependency. When a host installs without devDependencies (NODE_ENV=production, or an npm
+  // `omit=dev` setting), compiling the tests fails the whole build with hundreds of
+  // "Cannot find module 'vitest'" errors — and the tests are not part of what runs in production.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/testing/**",
+    "../shared/**/__tests__/**",
+    "../shared/**/*.test.ts"
+  ]
+}

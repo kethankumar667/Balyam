@@ -141,6 +141,17 @@ export default defineConfig(({ mode, command }) => {
     // and would otherwise match Vitest's default *.spec.ts pattern and be
     // silently collected as an empty, failing file.
     exclude: [...configDefaults.exclude, "e2e/**"],
+    // The suite must not depend on whoever runs it having a `.env`. With real Supabase keys in
+    // `client/.env` the auth client is LIVE in tests, and `signOut()` awaits a real
+    // `supabase.auth.signOut()` whose "signed out" event resets `userId` BEFORE signOut reads it —
+    // so it takes the "no distinct account to leave" branch and the device is never wiped. Four
+    // authStore tests failed on any developer machine with keys and passed in CI without them.
+    // Tests start with accounts unconfigured; a test that needs them mocks the supabase client.
+    env: {
+      VITE_SUPABASE_URL: "",
+      VITE_SUPABASE_ANON_KEY: "",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "",
+    },
     // Worker count is capped rather than left at "every core". Uncapped, a 22-core
     // machine starts so many workers that the module-transform server starves, and
     // files fail to LOAD with "[vitest-worker]: Timeout calling fetch" — the suite

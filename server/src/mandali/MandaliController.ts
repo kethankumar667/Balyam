@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type { DeleteMandaliFailure, MandaliService } from "./MandaliService.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
+import { memberAvatar } from "./avatarInput.js";
 
 /** HTTP status for each way a delete can be refused. */
 const DELETE_FAILURE_STATUS: Record<DeleteMandaliFailure, number> = {
@@ -97,7 +98,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
     const creatorId = playerInfo.playerId;
     const creatorName: string = req.body.creatorName || "Mandali Founder";
-    const creatorAvatar: string = req.body.creatorAvatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
+    const creatorAvatar: string = memberAvatar(req.body.creatorAvatar);
 
     // Support both direct payload (req.body) and nested payload (req.body.payload)
     const payload = req.body.payload || (req.body.name ? req.body : null);
@@ -259,7 +260,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     }
 
     const displayName = req.body.displayName || "Member";
-    const avatar = req.body.avatar || "file_0000000084c48208b1f893419d784cf2_1.jpg";
+    const avatar = memberAvatar(req.body.avatar);
     const statement = req.body.statement;
     const invitationId = typeof req.body.invitationId === "string" ? req.body.invitationId : undefined;
 
@@ -556,7 +557,7 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
 
     const result = await mandaliService.sendMessage(
       req.params.id, req.params.channelId, playerInfo.playerId,
-      senderName || "Member", senderAvatar || "avatar_1", content, replyToId, clientRequestId
+      senderName || "Member", memberAvatar(senderAvatar), content, replyToId, clientRequestId
     );
 
     if (!result.success) {
