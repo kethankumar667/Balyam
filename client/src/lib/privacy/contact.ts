@@ -25,7 +25,7 @@ export const PRIVACY_CONTACT_EMAIL: string | null = configured && configured.inc
  * What the Act expects us to promise once the channel is live.
  * Stated in the UI so the timeline is a commitment, not an aspiration.
  */
-export const GRIEVANCE_ACK_HOURS = 48;
+export const GRIEVANCE_ACK_HOURS = 24;
 export const GRIEVANCE_RESOLVE_DAYS = 15;
 
 const readEnv = (value: unknown): string | null => {
