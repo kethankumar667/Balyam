@@ -2591,7 +2591,7 @@ export class RoomManager {
     }
     const guestStake = guestHostStakeFor(room.game);
     if (player.isGuest && stakeCoins !== guestStake) {
-      const msg = `Guest hosts can only host matches at the ${guestStake}-coin table. Sign in to host higher stakes.`;
+      const msg = `Guest hosts can only host matches at the ${guestStake}-coin table. Sign in to host higher room entries.`;
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }

@@ -242,7 +242,7 @@ const UNO_TURN_TIMERS: { id: "10" | "20" | "30" | "0"; label: string; blurb: str
 const UNO_MATCH_LENGTHS: { id: "single" | "300" | "500" | "1000"; label: string; blurb: string }[] = [
   { id: "single", label: "Single round",  blurb: "One deal, win or lose, done." },
   { id: "300",    label: "Race to 300",   blurb: "Quick multi-round match." },
-  { id: "500",    label: "Race to 500",   blurb: "Mattel's official match length." },
+  { id: "500",    label: "Race to 500",   blurb: "The classic long-match length." },
   { id: "1000",   label: "Race to 1000",  blurb: "Long, high-drama session." },
 ];
 
@@ -1437,7 +1437,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                           <span className={isSelected ? "text-white" : "text-sand-800 dark:text-slate-100"}>{tier}</span>
                         </span>
                         {isDisabled ? (
-                          <LockIcon className="w-3 h-3 text-sand-400" aria-label="Sign in to unlock higher stakes" />
+                          <LockIcon className="w-3 h-3 text-sand-400" aria-label="Sign in to unlock higher room entries" />
                         ) : isSelected ? (
                           <span className="w-2 h-2 rounded-full bg-white shadow-xs" />
                         ) : null}
@@ -1549,7 +1549,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
               {isGuestHost && (
                 <p className="flex items-start gap-1.5 text-[11px] text-sand-600 dark:text-slate-400 font-medium pt-0.5">
                   <InfoIcon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>Guest hosts can host at 100 coins/seat. Sign in to unlock higher stakes.</span>
+                  <span>Guest hosts can host at 100 coins/seat. Sign in to unlock higher room entries.</span>
                 </p>
               )}
               </>
@@ -2016,7 +2016,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                     <div className="flex items-center justify-between p-2.5 rounded-2xl bg-economy-pool-surface dark:bg-economy-pool-surface border border-chest-500/25 -mx-1 mt-1">
                       <span className="text-[11px] font-extrabold uppercase tracking-wider text-chest-700 dark:text-amber-200 flex items-center gap-1.5">
                         <TrophyIcon className="w-3.5 h-3.5" />
-                        <span>Projected Reward Pool</span>
+                        <span>Reward Pool</span>
                       </span>
                       <span className="font-black text-economy-coin text-sm flex items-center gap-1">
                         <CoinIcon className="w-4 h-4" />

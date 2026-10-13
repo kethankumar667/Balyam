@@ -91,7 +91,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
     }
 
     if (isGuestHost && targetStake > guestStake) {
-      setError(`Guest hosts can only host at the ${guestStake}-coin table. Sign in to host higher stakes.`);
+      setError(`Guest hosts can only host at the ${guestStake}-coin table. Sign in to host higher room entries.`);
       return;
     }
 
@@ -142,7 +142,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
                 Change Room Entry
               </h2>
               <p className="text-xs text-[#8A6D4B] dark:text-slate-400">
-                Adjust table stake before other players ready up
+                Adjust room entry before other players ready up
               </p>
             </div>
           </div>
@@ -316,7 +316,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
 
           {isGuestHost && !isRummy && (
             <p className="text-[11px] text-[#8A6D4B] dark:text-slate-400 font-medium">
-              ℹ️ Guest hosts can only host at the 100-coin starter table. Sign in to host higher stakes or custom bets.
+              ℹ️ Guest hosts can only host at the 100-coin starter table. Sign in to host higher room entries or custom amounts.
             </p>
           )}
 
@@ -333,7 +333,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
             </div>
             <div className="text-right">
               <span className="text-[#8A6D4B] dark:text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">
-                New Bet
+                New Entry
               </span>
               <span className="text-ink-hi dark:text-text-hi font-extrabold">
                 🪙 {targetStake} / seat

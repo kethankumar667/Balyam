@@ -201,7 +201,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
             ) : (
               <span
                 className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800/60 rounded-full px-2 py-0.5 shrink-0"
-                title={stakeLockedReason ?? "Bet cannot be changed right now"}
+                title={stakeLockedReason ?? "Room entry cannot be changed right now"}
               >
                 <Lock className="w-2.5 h-2.5" />
                 <span>Locked</span>

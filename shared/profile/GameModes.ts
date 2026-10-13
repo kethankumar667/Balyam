@@ -116,7 +116,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
     modes: [
       { modeId: "single", displayName: "Single Round", description: "One deal — first to empty hand wins", scoringDirection: "LOWER_IS_BETTER", unit: "card pts", isDefault: true },
       { modeId: "race_300", displayName: "Race to 300", description: "Quick multi-round match to 300 points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
-      { modeId: "race_500", displayName: "Official Race to 500", description: "Mattel championship rules: first to 500 cumulative points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
+      { modeId: "race_500", displayName: "Race to 500", description: "Championship rules: first to 500 cumulative points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
       { modeId: "race_1000", displayName: "Marathon 1000", description: "Extended high-drama session to 1000 points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
       { modeId: "classic", displayName: "Classic Uno", description: "Fewest rounds and lowest card penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "card pts" },
     ],
