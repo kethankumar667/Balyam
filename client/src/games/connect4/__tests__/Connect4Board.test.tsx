@@ -62,7 +62,7 @@ describe("Connect4Grid", () => {
 
     const grid = screen.getByRole("grid");
     expect(grid).toBeInTheDocument();
-    expect(grid).toHaveAttribute("aria-label", "Connect 4 board, 7 columns by 6 rows");
+    expect(grid).toHaveAttribute("aria-label", "Four in a Row board, 7 columns by 6 rows");
 
     const rows = screen.getAllByRole("row");
     expect(rows).toHaveLength(6);

@@ -45,7 +45,7 @@ const GAME_BREAKDOWNS: GameBreakdown[] = [
   { game: "uno", label: "Color Cards", icon: "🃏", tagline: "Reverse, draw four & shout ONE", specialStat: "WILD PLAYS" },
   { game: "snl", label: "Snakes & Ladders", icon: "🐍", tagline: "Climb ladders, dodge the snakes", specialStat: "LADDERS CLIMBED" },
   { game: "dotsboxes", label: "Dots & Boxes", icon: "⏹", tagline: "Corner the grid and own boxes", specialStat: "BOXES CAPTURED" },
-  { game: "connect4", label: "Connect 4", icon: "🟡", tagline: "Drop discs & connect four in a row", specialStat: "LINES CONNECTED" },
+  { game: "connect4", label: "Four in a Row", icon: "🟡", tagline: "Drop discs & connect four in a row", specialStat: "LINES CONNECTED" },
 ];
 
 /**

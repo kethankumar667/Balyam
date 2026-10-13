@@ -298,7 +298,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "connect4",
     tags: ["multiplayer", "board", "classroom"],
-    title: "Connect 4",
+    title: "Four in a Row",
     badge: "Classic",
     nostalgiaQuote: "Drop, block, connect four.",
     playerRange: "2 Players",

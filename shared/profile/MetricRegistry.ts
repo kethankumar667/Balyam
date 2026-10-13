@@ -434,7 +434,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
     game: "connect4",
     primaryRankMetric: {
       key: "bestScore",
-      label: "Fewest Discs to Connect Four",
+      label: "Fewest Discs to Four in a Row",
       shortLabel: "Min Discs",
       description: "Fewest of your own discs needed to complete a winning line of four",
       format: "discs",

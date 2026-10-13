@@ -234,7 +234,7 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
               <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/60 space-y-2">
                 <div className="flex items-center gap-2 font-bold text-cyan-300">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>The Fundamental Law of Connect 4</span>
+                  <span>The Fundamental Law of Four in a Row</span>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   Unlike Tic Tac Toe, you cannot place a disc into any arbitrary empty slot. Discs always drop straight down their chosen column and settle onto the bottom floor or on top of existing discs.
@@ -409,7 +409,7 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
               </div>
 
               <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-300 text-center font-medium">
-                You're ready to dominate the arena! Connect 4 discs to claim victory.
+                You're ready to dominate the arena! Four in a Row discs to claim victory.
               </div>
             </div>
           )}

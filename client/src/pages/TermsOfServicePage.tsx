@@ -38,16 +38,17 @@ const TERMS_SECTIONS = [
   { id: "gameplay", title: "5. Games & Server Authority", summary: "All turns, rolls, and cards are computed authoritatively on our secure server." },
   { id: "multiplayer", title: "6. Multiplayer Rooms, Hosts & Bots", summary: "Hosts manage room options; automated bots can fill empty seats on request." },
   { id: "progress", title: "7. Achievements, XP & Non-Monetary Honors", summary: "XP, trophies, and badges carry purely commemorative and social value." },
-  { id: "tournaments", title: "8. Tournaments & Rankings", summary: "Community knockout cups are skill-based and free to enter." },
-  { id: "prohibited", title: "9. Prohibited Conduct", summary: "Zero tolerance for automated move bots, hate speech, toxicity, and chat abuse." },
-  { id: "ip", title: "10. Intellectual Property", summary: "BHALYAM platform code, logos, and artwork are protected proprietary assets." },
-  { id: "third-party", title: "11. Third-Party Integrations", summary: "Optional Supabase auth and WebRTC signaling protocols." },
-  { id: "termination", title: "12. Suspension & Termination", summary: "We reserve the right to sanction or ban seats violating community standards." },
-  { id: "disclaimers", title: "13. Disclaimers", summary: "Platform provided on an 'as-is' and 'as-available' operational basis." },
-  { id: "liability", title: "14. Limitation of Liability", summary: "Standard limitations covering free recreation services." },
-  { id: "changes", title: "15. Changes to Terms", summary: "Revisions signaled via effective date updates at the top of this agreement." },
-  { id: "governing-law", title: "16. Governing Law", summary: "Governed by the applicable laws of India." },
-  { id: "contact", title: "17. Contact & Legal Notices", summary: "Official communication channels for legal and administrative inquiries." },
+  { id: "coins", title: "8. Virtual Coins, Room Entries & Rewards", summary: "Coins are free play-money with no cash value; they cannot be bought, sold or cashed out." },
+  { id: "tournaments", title: "9. Tournaments & Rankings", summary: "Community knockout cups are skill-based and free to enter." },
+  { id: "prohibited", title: "10. Prohibited Conduct", summary: "Zero tolerance for automated move bots, hate speech, toxicity, and chat abuse." },
+  { id: "ip", title: "11. Intellectual Property", summary: "BHALYAM platform code, logos, and artwork are protected proprietary assets." },
+  { id: "third-party", title: "12. Third-Party Integrations", summary: "Optional Supabase auth and WebRTC signaling protocols." },
+  { id: "termination", title: "13. Suspension & Termination", summary: "We reserve the right to sanction or ban seats violating community standards." },
+  { id: "disclaimers", title: "14. Disclaimers", summary: "Platform provided on an 'as-is' and 'as-available' operational basis." },
+  { id: "liability", title: "15. Limitation of Liability", summary: "Standard limitations covering free recreation services." },
+  { id: "changes", title: "16. Changes to Terms", summary: "Revisions signaled via effective date updates at the top of this agreement." },
+  { id: "governing-law", title: "17. Governing Law", summary: "Governed by the applicable laws of India." },
+  { id: "contact", title: "18. Contact & Legal Notices", summary: "Official communication channels for legal and administrative inquiries." },
 ];
 
 export default function TermsOfServicePage() {
@@ -160,7 +161,7 @@ export default function TermsOfServicePage() {
               <span className="text-2xl">🎮</span>
               <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white">100% Free Forever</h4>
               <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-relaxed">
-                Zero entry fees, zero microtransactions, and zero monetary wagering.
+                No real-money entry fees, no purchases, and no wagering. Coins are free play-money.
               </p>
             </div>
           </div>
@@ -295,7 +296,7 @@ export default function TermsOfServicePage() {
                   {/* Body Content */}
                   {sec.id === "about" && (
                     <p>
-                      BHALYAM provides real-time, browser-accessible multiplayer versions of nostalgic 90s Indian board games (including Ludo, Hand Cricket, Classic Rummy, Snakes & Ladders, Color Cards, Dots & Boxes, Word Building, and Bingo). All games operate for purely recreational enjoyment with zero financial stakes.
+                      BHALYAM provides real-time, browser-accessible multiplayer versions of nostalgic 90s Indian board games (including Ludo, Hand Cricket, Classic Rummy, Snakes & Ladders, Color Cards, Dots & Boxes, Word Building, and Bingo). All games operate for purely recreational enjoyment. BHALYAM does not offer real-money gaming: no money is ever staked, and some tables use free in-game coins as a "Room Entry" (see "Virtual Coins, Room Entries & Rewards" below).
                     </p>
                   )}
 
@@ -333,6 +334,23 @@ export default function TermsOfServicePage() {
                     <p>
                       Experience Points (XP), levels, match history, and unlocked achievements hold no real-world monetary value and cannot be exchanged, bartered, or redeemed for currency.
                     </p>
+                  )}
+
+                  {sec.id === "coins" && (
+                    <div className="space-y-3">
+                      <p>
+                        Coins are virtual play-money used inside BHALYAM for room entries, rewards and cosmetics. They are free: BHALYAM grants them, lets you claim them, and pays them as match rewards. BHALYAM does not sell coins, and there is no way to pay money to get them.
+                      </p>
+                      <p>
+                        Coins have no cash or monetary value. They cannot be withdrawn, redeemed or exchanged for money, goods or services outside BHALYAM, and they are not a deposit, wallet balance or financial product. Where a room has a Room Entry, each seat pays it in coins and the Reward Pool is paid to the winners in coins. On some tables BHALYAM keeps a small share of the pool in its own coin reserve; that share is never paid out as money.
+                      </p>
+                      <p>
+                        Members of a Mandali may send coins to one another as a gift, within daily limits. Coins may never be sent in exchange for money or anything of value. Buying, selling, trading, auctioning or lending coins, accounts or items for money or other value, on or off BHALYAM, is prohibited and may lead to removal of coins and suspension of the account.
+                      </p>
+                      <p>
+                        BHALYAM may correct, reverse, adjust or reset coin balances to fix errors, remove abuse or enforce these Terms, and may change or retire coin features at any time.
+                      </p>
+                    </div>
                   )}
 
                   {sec.id === "tournaments" && (

@@ -11,7 +11,7 @@ export const TILE_ART_BY_GAME: Record<BhalyamGameSlug, string> = {
   ludo: "/LudoTile.png",
   rummy: "/RummyTile.png",
   rps: "/RPSTile.png",
-  uno: "/UNOTile.png",
+  uno: "/ColorCardsTile.png",
   wordbuilding: "/words_building.png",
   dotsboxes: "/Dots&boxes.png",
   namesplaceanimal: "/Name-place-thing-animal.png",

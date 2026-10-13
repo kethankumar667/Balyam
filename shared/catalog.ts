@@ -542,7 +542,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
   },
   {
     id: "connect4",
-    name: "Connect 4",
+    name: "Four in a Row",
     tagline: "Drop, stack and connect four",
     shortDescription: "Take turns dropping discs into a seven-column grid. Be the first to line up four.",
     description:
@@ -567,7 +567,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     howToPlay: [
       { stepNumber: 1, title: "Pick a Column", instruction: "On your turn, choose one of the seven columns to drop a disc into." },
       { stepNumber: 2, title: "Gravity Decides", instruction: "Your disc falls to the lowest free spot in that column." },
-      { stepNumber: 3, title: "Connect Four", instruction: "Line up four of your discs in a row — across, up and down, or diagonally — to win." },
+      { stepNumber: 3, title: "Four in a Row", instruction: "Line up four of your discs in a row — across, up and down, or diagonally — to win." },
       { stepNumber: 4, title: "Block and Plan", instruction: "Stop your opponent's lines. If the board fills with no four in a row, it is a draw." },
     ],
   },
@@ -934,5 +934,5 @@ export const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
   blockblast: "Block Blast 🧱",
   spacewar: "Space War 🚀",
   tictactoe: "Tic Tac Toe ✔️",
-  connect4: "Connect 4",
+  connect4: "Four in a Row",
 };

@@ -32,9 +32,4 @@ describe("cosmetics card-back asset budget", () => {
     expect(oversized).toEqual([]);
   });
 
-  it("keeps every UNO card-back PNG within the documented size budget", () => {
-    const dir = join(clientRoot, "public", "uno-card-backs");
-    const oversized = pngSizes(dir).filter((f) => f.bytes > MAX_CARD_BACK_BYTES);
-    expect(oversized).toEqual([]);
-  });
 });

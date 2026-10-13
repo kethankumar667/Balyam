@@ -47,7 +47,7 @@ export const STRUCTURED_DATA_GAMES = [
     slug: "uno",
     name: "Color Cards",
     description: "Color-matching card game mayhem. Drop Draw-Fours, skip friends, and race to shout ONE.",
-    image: `${BASE_URL}/UNOTile.png`,
+    image: `${BASE_URL}/ColorCardsTile.png`,
     minPlayers: 2,
     maxPlayers: 8,
     genre: ["Card Game", "Party Game", "Multiplayer"],
@@ -108,7 +108,7 @@ export const STRUCTURED_DATA_GAMES = [
   },
   {
     slug: "connect4",
-    name: "Connect 4",
+    name: "Four in a Row",
     description: "Drop colored discs into the vertical 7x6 grid and connect four in a row horizontally, vertically, or diagonally.",
     image: `${BASE_URL}/Connect4Tile.png`,
     minPlayers: 2,

@@ -260,8 +260,8 @@ export function UnoCardBack({ className, skin }: { className?: string; skin?: st
     >
       <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
       <rect x={5} y={5} width={90} height={140} rx={10} fill={config.bodyColor} />
-      <ellipse cx={50} cy={75} rx={46} ry={29} fill={config.ovalColor} transform="rotate(-20 50 75)" />
-      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, config.textColor, "ONE", config.edgeColor)}</g>
+      <polygon points="50,38 98,75 50,112 2,75" fill={config.ovalColor} stroke={config.edgeColor} strokeWidth={2.5} strokeLinejoin="round" />
+      <g>{unoText(50, 75, 24, config.textColor, "ONE", config.edgeColor)}</g>
     </svg>
   );
 }

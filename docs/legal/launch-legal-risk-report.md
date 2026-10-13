@@ -6,6 +6,25 @@
 
 ---
 
+## 0. Remediation status (updated 2026-10-14)
+
+**Done in code (uncommitted until you commit):**
+- All 16 card backs carried the Mattel logo (not just `UNO9.png`). They are deleted and replaced by 16 generated, logo-free designs (`client/src/lib/unoCardBackArt.ts`, pinned by a test that forbids any text or embedded image).
+- The home-page tile (`UNOTile.*`) and two background images (`UNO Desktop BG`, `UNO Mobile BG`, unused) also carried the logo. The tile is replaced by an original `ColorCardsTile.*`; the backgrounds are deleted.
+- The remaining vector card back swaps the red oval for a diamond.
+- "Connect 4" is now "Four in a Row" everywhere users can see it.
+- Terms: new section 8 "Virtual Coins, Room Entries & Rewards" (free, no cash value, no purchase, no trading, may be adjusted); the "zero stakes / zero entry fees" claims are corrected; under-18 notice shared with the Privacy Policy.
+- Grievance acknowledgement is 24 hours (IT Rules), resolution 15 days.
+- Player-visible "stake / bet / pot" wording is now "room entry / reward pool", including server error messages.
+
+**Still open (needs you, art, a licence or a lawyer):** items 1, 2, 4, 5 (officer details), 7 and 8 to 11 in section 8, plus:
+- The Color Cards card face, wild card and pile still use a UNO-like layout (oval centre, Wild Draw 4, Skip, Reverse). Redesign or get a legal view.
+- Database rows and `shared/cosmetics.ts` keep the legacy cosmetic ids and asset keys (ending in `_uno`); renaming them would orphan items players already own.
+
+**Correction:** an earlier note said the Terms' 10-minute reconnect grace contradicted the code. It does not: a live match has a 10-minute grace and the lobby has 90 seconds, so the Terms are right.
+
+---
+
 ## 1. Bottom line
 
 | Question | Answer |
@@ -107,8 +126,7 @@ The state-law rows are from my background knowledge plus secondary summaries, no
 
 ## 7. Consumer and other
 
-- **Terms vs product mismatch (HIGH, easy fix).** The Terms say games have "zero financial stakes" yet the product has "Room Entry" and a prize pool, and the Terms never define what coins are. A regulator reads that as inconsistent. Add a Coins section: no cash value, not redeemable, not transferable for money, may be adjusted or reset, trading or selling prohibited. The Terms also quote a 10-minute reconnect grace; the code uses 90 seconds.
-- **Dark patterns.** The Consumer Protection (Dark Patterns) Guidelines 2023 reach false urgency and nagging; streak and faucet timers need a neutral review.
+- **Terms vs product mismatch (HIGH, easy fix).** The Terms say games have "zero financial stakes" yet the product has "Room Entry" and a prize pool, and the Terms never define what coins are. A regulator reads that as inconsistent. Add a Coins section: no cash value, not redeemable, not transferable for money, may be adjusted or reset, trading or selling prohibited.- **Dark patterns.** The Consumer Protection (Dark Patterns) Guidelines 2023 reach false urgency and nagging; streak and faucet timers need a neutral review.
 - **Advertising.** Calling a product "free to play" while staking coins can mislead; ASCI gaming guidelines will apply once you advertise. PROGA also bans promoting money games, so avoid betting-style words in marketing.
 - **App stores.** Google Play and Apple treat simulated gambling and real-money gaming separately; "stake" and "pot" language can trigger review. I replaced those words in the UI, but the underlying mechanics (entry + pool + cut) are unchanged.
 - **GST.** The high gaming rate applies to money gaming; free social games don't pay it. A future coin sale would bring GST.

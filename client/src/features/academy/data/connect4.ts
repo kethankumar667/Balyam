@@ -2,7 +2,7 @@ import type { GameAcademySpec } from "../types/academy";
 
 export const CONNECT4_ACADEMY: GameAcademySpec = {
   slug: "connect4",
-  title: "Connect 4",
+  title: "Four in a Row",
   tagline: "The vertical gravity four-in-a-row duel — drop discs, create double threats, and claim the matrix.",
   genre: "board",
   players: "2 Players",
@@ -25,7 +25,7 @@ export const CONNECT4_ACADEMY: GameAcademySpec = {
     {
       id: "winning_lines",
       badge: "MISSION 02",
-      title: "Connect Four in a Row",
+      title: "Four in a Row",
       summary: "Align 4 or more of your discs in an unbroken straight line to win immediately.",
       keyRule: "Winning lines can be horizontal, vertical, ascending diagonal, or descending diagonal. 5 or more in a row also counts as a win.",
       proTip: "Build double threats (forks) where two independent winning moves exist simultaneously, making it impossible for the opponent to block both.",
@@ -43,7 +43,7 @@ export const CONNECT4_ACADEMY: GameAcademySpec = {
   ],
   cheatsheet: [
     {
-      title: "Connect 4 Fundamentals",
+      title: "Four in a Row Fundamentals",
       iconName: "Zap",
       items: [
         { label: "Grid Size", detail: "7 columns × 6 rows (42 total slots).", tag: "Board" },

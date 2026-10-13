@@ -85,7 +85,7 @@ export class Connect4Engine implements GameEngine {
 
   init(players: Player[]): void {
     if (players.length !== 2) {
-      throw new Error(`Connect 4 requires exactly 2 players, got ${players.length}`);
+      throw new Error(`Four in a Row requires exactly 2 players, got ${players.length}`);
     }
     const [first, second] = players;
     this.playerOrder = [first.id, second.id];

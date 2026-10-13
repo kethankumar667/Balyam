@@ -103,10 +103,10 @@ export default function RecentlyPlayedSection({
 
             <div className="my-2 flex items-center justify-center h-16">
               <picture>
-                <source type="image/avif" srcSet={(game.tileImage || `/UNOTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
-                <source type="image/webp" srcSet={(game.tileImage || `/UNOTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
+                <source type="image/avif" srcSet={(game.tileImage || `/ColorCardsTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
+                <source type="image/webp" srcSet={(game.tileImage || `/ColorCardsTile.png`).replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
                 <img
-                  src={game.tileImage || `/UNOTile.png`}
+                  src={game.tileImage || `/ColorCardsTile.png`}
                   alt=""
                   width={56}
                   height={56}

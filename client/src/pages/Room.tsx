@@ -563,7 +563,7 @@ function TicTacToeBoardContainer({
 }
 
 /**
- * Connect 4 supports Pass & Play exactly like Tic Tac Toe: the host's socket plays the local
+ * Four in a Row supports Pass & Play exactly like Tic Tac Toe: the host's socket plays the local
  * seat's turn, so the board is told the ACTIVE seat as "self".
  */
 function Connect4BoardContainer({
@@ -1859,7 +1859,7 @@ export default function Room() {
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
     tictactoe: "Tic Tac Toe",
-    connect4: "Connect 4",
+    connect4: "Four in a Row",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)

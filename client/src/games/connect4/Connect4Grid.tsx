@@ -214,7 +214,7 @@ export function Connect4Grid({
         {/* Board Main Face */}
         <div
           role="grid"
-          aria-label="Connect 4 board, 7 columns by 6 rows"
+          aria-label="Four in a Row board, 7 columns by 6 rows"
           className={`relative z-10 w-full rounded-2xl sm:rounded-3xl border-2 sm:border-4 transition-all duration-300 p-2 sm:p-3.5 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.95),inset_0_2px_4px_rgba(255,255,255,0.2),inset_0_-6px_12px_rgba(0,0,0,0.85)] ${theme.gridBorder} ${theme.boardBg}`}
         >
           {/* Theme-Specific Corner Hardware (Antique Brass Screws / Optic Cyan Hex / 24K Gold Pyramids) */}

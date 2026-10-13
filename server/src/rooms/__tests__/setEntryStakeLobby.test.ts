@@ -105,7 +105,7 @@ describe("RoomManager — setEntryStake (lobby bet adjustment)", () => {
     // Host tries to change stake while Bob is ready
     const result = rooms.setEntryStake("s_host", 500);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/Cannot change the bet after another player has readied up/i);
+    expect(result.error).toMatch(/Cannot change the room entry after another player has readied up/i);
     expect(peek(rooms, host.code)!.entryStakeCoins).toBe(100);
 
     // When Bob unreadies, host can change stake again

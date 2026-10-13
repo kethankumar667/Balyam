@@ -286,7 +286,7 @@ export default function RecoverySentinel() {
             <option value="wordbuilding">Word Building</option>
             <option value="dotsboxes">Dots & Boxes</option>
             <option value="bingo">Bingo</option>
-            <option value="connect4">Connect 4</option>
+            <option value="connect4">Four in a Row</option>
             <option value="chess">Chess</option>
             <option value="stargame">Star Game</option>
           </select>

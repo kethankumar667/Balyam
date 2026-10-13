@@ -207,7 +207,7 @@ export default function Connect4BoardDesktop({
               </div>
             )}
 
-            {/* Main 3D Connect 4 Tournament Apparatus */}
+            {/* Main 3D Four in a Row Tournament Apparatus */}
             <div className="w-full flex items-center justify-center my-0.5">
               <Connect4Grid
                 grid={state.grid}

@@ -512,7 +512,8 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
   { id: "cardback_amethyst_mandala_spade_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY15.png", isDefault: false },
   { id: "cardback_emerald_mandala_heart_rummy", category: "CARD_BACK", supportedScopes: ["rummy"], bundledAssetKey: "/rummy-card-backs/RUMMY16.png", isDefault: false },
 
-  // ── Card Backs — UNO Artwork Collection (16, added 2026-09-14) ──
+  // ── Card Backs — Color Cards Artwork Collection (16, added 2026-09-14) ──
+  // Art is generated in client/src/lib/unoCardBackArt.ts; the paths below are legacy keys, no files behind them.
   { id: "cardback_pigment_blast_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO1.png", isDefault: false },
   { id: "cardback_golden_eclipse_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO2.png", isDefault: false },
   { id: "cardback_retro_blocks_uno", category: "CARD_BACK", supportedScopes: ["uno"], bundledAssetKey: "/uno-card-backs/UNO3.png", isDefault: false },

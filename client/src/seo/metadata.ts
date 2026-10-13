@@ -1295,14 +1295,14 @@ export const GAME_SOCIAL_METADATA: Record<string, GameSocialShareData> = {
   },
   connect4: {
     game: "connect4",
-    name: "Connect 4",
-    shareTitle: "Connect 4 | Strategic 4-in-a-Row Disc Duel — BHALYAM",
+    name: "Four in a Row",
+    shareTitle: "Four in a Row | Strategic 4-in-a-Row Disc Duel — BHALYAM",
     shareDescription: "Drop colored discs into the vertical grid and be the first to line up four in a row horizontally, vertically, or diagonally.",
     imageUrl: `${BASE_URL}/og/connect4.jpg`,
     imageWidth: "800",
     imageHeight: "533",
     imageType: "image/jpeg",
-    imageAlt: "Connect 4 Vertical Disc Grid",
+    imageAlt: "Four in a Row Vertical Disc Grid",
   },
   stargame: {
     game: "stargame",

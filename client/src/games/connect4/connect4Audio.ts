@@ -1,11 +1,11 @@
 /**
- * Procedural Web Audio Synthesizer for Connect 4.
+ * Procedural Web Audio Synthesizer for Four in a Row.
  * Generates dynamic futuristic sci-fi laser pulses, disc drop clacks,
  * and victory fanfares without external audio network dependencies.
  *
  * getContext() also gates on the global AudioManager mute, mirroring the
  * pattern in games/rummy/sound.ts and games/ludo/sound.ts, so a player who
- * muted sound everywhere doesn't keep hearing Connect 4 cues even though
+ * muted sound everywhere doesn't keep hearing Four in a Row cues even though
  * the per-Connect4 `muted` toggle (setMuted/toggleMute) is local, separate
  * UI state for this game's own sound switch.
  */

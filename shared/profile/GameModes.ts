@@ -323,7 +323,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   connect4: {
     game: "connect4",
-    displayName: "Connect 4",
+    displayName: "Four in a Row",
     category: "board",
     defaultModeId: "classic",
     // The server scores the match (only a genuine four-in-a-row win by a human against another

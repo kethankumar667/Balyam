@@ -22,6 +22,7 @@ import {
 } from "@shared/cosmetics";
 import type { TokenFinishId } from "../games/ludo/TokenFinishOverlay";
 import type { TokenThemeId } from "../games/ludo/TokenThemeOverlay";
+import { UNO_BACK_ART } from "./unoCardBackArt";
 
 // ── 1. Table Themes ──
 
@@ -564,22 +565,22 @@ export const UNO_CARD_BACKS: Record<string, UnoCardBackConfig> = {
     textColor: "#FED7AA",
     edgeColor: "#B91C1C",
   },
-  cardback_pigment_blast_uno: { id: "cardback_pigment_blast_uno", kind: "image", imageSrc: "/uno-card-backs/UNO1.png" },
-  cardback_golden_eclipse_uno: { id: "cardback_golden_eclipse_uno", kind: "image", imageSrc: "/uno-card-backs/UNO2.png" },
-  cardback_retro_blocks_uno: { id: "cardback_retro_blocks_uno", kind: "image", imageSrc: "/uno-card-backs/UNO3.png" },
-  cardback_rainbow_swirl_uno: { id: "cardback_rainbow_swirl_uno", kind: "image", imageSrc: "/uno-card-backs/UNO4.png" },
-  cardback_action_pack_uno: { id: "cardback_action_pack_uno", kind: "image", imageSrc: "/uno-card-backs/UNO5.png" },
-  cardback_neon_vortex_uno: { id: "cardback_neon_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO6.png" },
-  cardback_prism_shatter_uno: { id: "cardback_prism_shatter_uno", kind: "image", imageSrc: "/uno-card-backs/UNO7.png" },
-  cardback_brush_strokes_uno: { id: "cardback_brush_strokes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO8.png" },
-  cardback_hazard_stripes_uno: { id: "cardback_hazard_stripes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO9.png" },
-  cardback_emerald_leaf_uno: { id: "cardback_emerald_leaf_uno", kind: "image", imageSrc: "/uno-card-backs/UNO10.png" },
-  cardback_deep_blue_vortex_uno: { id: "cardback_deep_blue_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO11.png" },
-  cardback_crimson_vortex_uno: { id: "cardback_crimson_vortex_uno", kind: "image", imageSrc: "/uno-card-backs/UNO12.png" },
-  cardback_confetti_shapes_uno: { id: "cardback_confetti_shapes_uno", kind: "image", imageSrc: "/uno-card-backs/UNO13.png" },
-  cardback_gilded_swirl_uno: { id: "cardback_gilded_swirl_uno", kind: "image", imageSrc: "/uno-card-backs/UNO14.png" },
-  cardback_splash_burst_uno: { id: "cardback_splash_burst_uno", kind: "image", imageSrc: "/uno-card-backs/UNO15.png" },
-  cardback_neon_streak_uno: { id: "cardback_neon_streak_uno", kind: "image", imageSrc: "/uno-card-backs/UNO16.png" },
+  cardback_pigment_blast_uno: { id: "cardback_pigment_blast_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_pigment_blast_uno"] },
+  cardback_golden_eclipse_uno: { id: "cardback_golden_eclipse_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_golden_eclipse_uno"] },
+  cardback_retro_blocks_uno: { id: "cardback_retro_blocks_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_retro_blocks_uno"] },
+  cardback_rainbow_swirl_uno: { id: "cardback_rainbow_swirl_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_rainbow_swirl_uno"] },
+  cardback_action_pack_uno: { id: "cardback_action_pack_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_action_pack_uno"] },
+  cardback_neon_vortex_uno: { id: "cardback_neon_vortex_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_neon_vortex_uno"] },
+  cardback_prism_shatter_uno: { id: "cardback_prism_shatter_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_prism_shatter_uno"] },
+  cardback_brush_strokes_uno: { id: "cardback_brush_strokes_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_brush_strokes_uno"] },
+  cardback_hazard_stripes_uno: { id: "cardback_hazard_stripes_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_hazard_stripes_uno"] },
+  cardback_emerald_leaf_uno: { id: "cardback_emerald_leaf_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_emerald_leaf_uno"] },
+  cardback_deep_blue_vortex_uno: { id: "cardback_deep_blue_vortex_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_deep_blue_vortex_uno"] },
+  cardback_crimson_vortex_uno: { id: "cardback_crimson_vortex_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_crimson_vortex_uno"] },
+  cardback_confetti_shapes_uno: { id: "cardback_confetti_shapes_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_confetti_shapes_uno"] },
+  cardback_gilded_swirl_uno: { id: "cardback_gilded_swirl_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_gilded_swirl_uno"] },
+  cardback_splash_burst_uno: { id: "cardback_splash_burst_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_splash_burst_uno"] },
+  cardback_neon_streak_uno: { id: "cardback_neon_streak_uno", kind: "image", imageSrc: UNO_BACK_ART["cardback_neon_streak_uno"] },
 };
 
 export function getRummyCardBackConfig(skinId?: string): RummyCardBackConfig {

@@ -732,7 +732,7 @@ function checkHostEconomyEligibility(
   if (host.isGuest && entryStakeCoins !== guestStake) {
     return {
       eligible: false,
-      error: `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher stake, or ask a member to host instead.`,
+      error: `Guests can only host matches at the ${guestStake}-coin table. Sign in to host at a higher room entry, or ask a member to host instead.`,
     };
   }
 
@@ -2431,12 +2431,12 @@ export class RoomManager {
     ) {
       // Pass & Play is fair only for open-information games — everyone
       // looks at the same board state, no private hands. Word Building,
-      // Dots & Boxes, Tic Tac Toe and Connect 4 all qualify (every move is visible to
+      // Dots & Boxes, Tic Tac Toe and Four in a Row all qualify (every move is visible to
       // everyone). Rummy / UNO etc. would leak hidden information to
       // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, Tic Tac Toe, and Connect 4"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, Tic Tac Toe, and Four in a Row"
       );
       return;
     }
@@ -2577,15 +2577,15 @@ export class RoomManager {
       return { ok: false, error: "Only the host can change the room entry" };
     }
     if (room.phase !== "lobby") {
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change entry stake while a game is in progress");
-      return { ok: false, error: "Cannot change entry stake while a game is in progress" };
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change the room entry while a game is in progress");
+      return { ok: false, error: "Cannot change the room entry while a game is in progress" };
     }
     // Check if any other human player has readied up
     const otherHumanReady = Array.from(room.players.values()).some(
       (p) => !p.isBot && p.id !== room.hostId && p.isReady
     );
     if (otherHumanReady) {
-      const msg = "Cannot change the bet after another player has readied up. Ask them to unready first.";
+      const msg = "Cannot change the room entry after another player has readied up. Ask them to unready first.";
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }
@@ -3981,7 +3981,7 @@ export class RoomManager {
         };
       }
 
-      // Connect 4: only a genuine four-in-a-row by a HUMAN against another human is scored, by how
+      // Four in a Row: only a genuine four-in-a-row by a HUMAN against another human is scored, by how
       // few of the winner's own discs it took. A loss, a draw, a walkover (the opponent left), a
       // table with a bot seat (practice) and Pass & Play (one person on both sides) all return
       // nothing, so none of them can reach a scorecard — otherwise beating an easy bot in four
@@ -5972,7 +5972,7 @@ export class RoomManager {
       this.armTurnTimer(room, ms);
       return;
     }
-    // Tic Tac Toe and Connect 4 share the same clock contract: a public `turnDeadline`, and
+    // Tic Tac Toe and Four in a Row share the same clock contract: a public `turnDeadline`, and
     // `restartTurnClock()` to open a fresh window when a timeout was deliberately withheld.
     if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine) {
       const engine = room.engine;
