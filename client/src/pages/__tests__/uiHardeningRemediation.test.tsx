@@ -81,7 +81,7 @@ describe("UI Hardening Remediation Suite", () => {
       expect(filterGroup.getAttribute("role")).not.toBe("tablist");
 
       // 2. All game arena options are native buttons with no role="tab" or aria-selected
-      const games = ["Hand Cricket", "2048 Classic", "Snake 2D", "Ludo", "Uno"];
+      const games = ["Hand Cricket", "2048 Classic", "Snake 2D", "Ludo", "Color Cards"];
       for (const game of games) {
         const btn = screen.getByRole("button", {
           name: new RegExp(`Filter by ${game} game`, "i"),

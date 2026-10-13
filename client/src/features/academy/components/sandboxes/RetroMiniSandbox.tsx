@@ -76,7 +76,7 @@ export const RetroMiniSandbox: React.FC<SandboxProps> = ({ onComplete }) => {
 
       <div className="text-left w-full max-w-xs">
         <span className="text-xs font-mono text-lime-400 font-bold block">
-          Nokia 3310 Pixel Physics:
+          Monochrome Pixel Physics:
         </span>
         <p className="text-[11px] font-mono text-stone-400 leading-tight">
           Use the vintage directional pad to navigate your pixel segment towards the blinking food dot!

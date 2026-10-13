@@ -85,7 +85,7 @@ export const GAME_CATEGORIES: readonly GameCategory[] = [
   {
     id: "retro",
     label: "Retro Games",
-    blurb: "Nokia monochrome & 9999-in-1 Brick Game handheld arcade legends.",
+    blurb: "Monochrome pocket-phone and 9999-in-1 brick-game handheld arcade legends.",
     accent: { from: "#8BAC0F", to: "#306230" },
   },
   {
@@ -237,7 +237,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "uno",
     tags: ["multiplayer", "board"],
-    title: "UNO",
+    title: "Color Cards",
     badge: "⚡ Party Favourite",
     nostalgiaQuote: "Friendship ends at +4.",
     playerRange: "2–8 Players",
@@ -246,7 +246,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(168, 85, 247, 0.55)",
     btnGradient: { from: "#A855F7", to: "#7E22CE", shadow: "#581C87" },
     blurb:
-      "Color chaos with your gang. Match cards, drop action cards, and race to shout UNO first.",
+      "Color chaos with your gang. Match cards, drop action cards, and race to shout ONE first.",
     accent: { from: "#A855F7", to: "#7E22CE" },
   },
   {
@@ -432,7 +432,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(132, 204, 22, 0.55)",
     btnGradient: { from: "#84CC16", to: "#4D7C0F", shadow: "#365314" },
     blurb:
-      "Authentic Nokia 1100 monochrome 2D snake. 1-bit LCD graphics, classic & wrap-around modes, timed bonus insects, and pure square-wave buzzer nostalgia.",
+      "Classic monochrome 2D snake. 1-bit LCD graphics, classic & wrap-around modes, timed bonus insects, and pure square-wave buzzer nostalgia.",
     accent: { from: "#84CC16", to: "#65A30D" },
   },
   {
@@ -518,7 +518,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "spacewar",
     tags: ["solo"],
-    theme: "Nokia 3310 Retro 🚀",
+    theme: "Monochrome Retro 🚀",
     title: "Space War",
     badge: "🚀 Retro Space",
     nostalgiaQuote: "Blast invaders, save galaxy!",
@@ -528,7 +528,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(147, 51, 234, 0.55)",
     btnGradient: { from: "#9333EA", to: "#581C87", shadow: "#2E1065" },
     blurb:
-      "The legendary Nokia 3310 retro space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
+      "A legendary retro handheld space shooter! Pilot your starship, fire laser beams and homing missiles, collect power-ups, and defeat level bosses.",
     accent: { from: "#A855F7", to: "#4C1D95" },
   },
   {

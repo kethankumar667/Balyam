@@ -153,7 +153,7 @@ export const GAME2048_ACADEMY: GameAcademySpec = {
 export const SNAKE_ACADEMY: GameAcademySpec = {
   slug: "snake",
   title: "Snake Arena",
-  tagline: "Nokia monochrome nostalgia meets multiplayer battle — devour food, lengthen your tail, and trap rivals.",
+  tagline: "Monochrome nostalgia meets multiplayer battle — devour food, lengthen your tail, and trap rivals.",
   genre: "retro",
   players: "1–4 Players",
   duration: "3–8 min",
@@ -387,7 +387,7 @@ export const SPACEWAR_ACADEMY: GameAcademySpec = {
 
 export const NOKIACRICKET_ACADEMY: GameAcademySpec = {
   slug: "nokiacricket",
-  title: "Nokia Cricket 2D",
+  title: "Pocket Cricket 2D",
   tagline: "Vintage pixelated batting timing — time your shots, pick the right line, and chase big overs.",
   genre: "retro",
   players: "Solo Play",

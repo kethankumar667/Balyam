@@ -117,7 +117,7 @@ export const BOT_TAGLINES_BY_GAME: Record<GameKind, readonly string[]> = {
   ],
   uno: [
     "Reverse card, reverse luck",
-    "Shouts UNO a little too early",
+    "Shouts ONE a little too early",
     "Saves the +4 for the finale",
     "Skips you with a smile",
     "Colour-change specialist",

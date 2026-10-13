@@ -171,7 +171,7 @@ describe("UnoChallengeSandbox", () => {
       </React.StrictMode>,
     );
     fireEvent.click(screen.getByRole("button", { name: /Challenge: They Had Red/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Shout UNO/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Shout ONE/ }));
     fireEvent.click(screen.getByRole("button", { name: /Accept Draw 4/ }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
@@ -180,17 +180,17 @@ describe("UnoChallengeSandbox", () => {
     render(<UnoChallengeSandbox />);
     fireEvent.click(screen.getByRole("button", { name: /Challenge: They Had Red/ }));
     expect(screen.getByRole("status").textContent).toMatch(/CHALLENGE SUCCESSFUL/);
-    fireEvent.click(screen.getByRole("button", { name: /Shout UNO/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Shout ONE/ }));
     expect(screen.getByRole("status").textContent).toMatch(/CHALLENGE SUCCESSFUL/);
   });
 
   it("reflects the shouted state with aria-pressed", () => {
     render(<UnoChallengeSandbox />);
-    const shout = screen.getByRole("button", { name: /Shout UNO/ });
+    const shout = screen.getByRole("button", { name: /Shout ONE/ });
     expect(shout.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(shout);
     expect(
-      screen.getByRole("button", { name: /UNO! Shouted/ }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: /ONE! Shouted/ }).getAttribute("aria-pressed"),
     ).toBe("true");
   });
 });

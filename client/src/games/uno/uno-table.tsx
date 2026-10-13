@@ -348,7 +348,7 @@ export function UnoTableMat({ children }: { children: React.ReactNode }) {
           }}
           aria-hidden
         >
-          UNO
+          ONE
         </div>
       </div>
       {children}
@@ -946,7 +946,7 @@ export function UnoPlayerChip({
           // a real, meaningful tap action (catching an undeclared opponent).
           className="mt-0.5 min-h-[28px] rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white animate-pulse whitespace-nowrap"
           style={{ background: "#DC2626", boxShadow: "0 3px 8px rgba(220,38,38,0.5)" }}
-          aria-label={`Catch ${name} without UNO — they draw 2`}
+          aria-label={`Catch ${name} without ONE — they draw 2`}
         >
           Catch! +2
         </button>

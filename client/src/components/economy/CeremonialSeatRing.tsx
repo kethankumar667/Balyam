@@ -101,7 +101,7 @@ export const CeremonialSeatRing: React.FC<CeremonialSeatRingProps> = ({
         {/* Central Pot Hub */}
         <div className="relative z-10 flex flex-col items-center justify-center w-24 h-24 rounded-full bg-amber-100/90 dark:bg-[#1C2333]/95 border-2 border-amber-500/60 shadow-lg shadow-amber-950/20 text-center p-2">
           <span className="text-[9px] font-extrabold uppercase tracking-widest text-amber-800 dark:text-amber-400 mb-0.5">
-            Prize Pot
+            Reward Pool
           </span>
           <CoinAmount amount={totalPotAmount} size="sm" className="font-extrabold" />
           <span className="text-[9px] text-ink-lo dark:text-text-lo mt-0.5">

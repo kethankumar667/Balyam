@@ -20,11 +20,19 @@ import {
   Users,
 } from "lucide-react";
 import HelpLayout from "../components/layout/HelpLayout";
+import { MINORS_NOTICE } from "../lib/privacy/agePolicy";
+import {
+  PRIVACY_CONTACT_EMAIL,
+  GRIEVANCE_ACK_HOURS,
+  GRIEVANCE_RESOLVE_DAYS,
+  GRIEVANCE_OFFICER_NAME,
+  GRIEVANCE_OFFICER_ADDRESS,
+} from "../lib/privacy/contact";
 import { HapticsManager } from "../services/HapticsManager";
 
 const TERMS_SECTIONS = [
   { id: "about", title: "1. About BHALYAM", summary: "Web-based nostalgic multiplayer gaming lounge operating on zero real-money stakes." },
-  { id: "eligibility", title: "2. Eligibility & Age Requirements", summary: "Open to players of all ages; under-13 require guardian consent." },
+  { id: "eligibility", title: "2. Eligibility & Age Requirements", summary: "Minors under 18 may play only with a parent or guardian's consent and supervision." },
   { id: "account", title: "3. User Accounts & Responsibilities", summary: "Guests can play immediately; members receive persistent cloud profiles." },
   { id: "content", title: "4. User Content & Names", summary: "Player nicknames and avatars must remain wholesome and family-friendly." },
   { id: "gameplay", title: "5. Games & Server Authority", summary: "All turns, rolls, and cards are computed authoritatively on our secure server." },
@@ -287,13 +295,13 @@ export default function TermsOfServicePage() {
                   {/* Body Content */}
                   {sec.id === "about" && (
                     <p>
-                      BHALYAM provides real-time, browser-accessible multiplayer versions of nostalgic 90s Indian board games (including Ludo, Hand Cricket, Classic Rummy, Snakes & Ladders, UNO, Dots & Boxes, Word Building, and Bingo). All games operate for purely recreational enjoyment with zero financial stakes.
+                      BHALYAM provides real-time, browser-accessible multiplayer versions of nostalgic 90s Indian board games (including Ludo, Hand Cricket, Classic Rummy, Snakes & Ladders, Color Cards, Dots & Boxes, Word Building, and Bingo). All games operate for purely recreational enjoyment with zero financial stakes.
                     </p>
                   )}
 
                   {sec.id === "eligibility" && (
                     <p>
-                      You must be of legal age in your jurisdiction or possess parental/guardian consent to use BHALYAM. By accessing our services, you affirm that your participation complies with all applicable local laws.
+                      {MINORS_NOTICE} You must be of legal age in your jurisdiction or possess parental/guardian consent to use BHALYAM. By accessing our services, you affirm that your participation complies with all applicable local laws.
                     </p>
                   )}
 
@@ -389,6 +397,29 @@ export default function TermsOfServicePage() {
                           Support Desk
                         </Link>{" "}
                         or reach our administrators.
+                      </p>
+                      <p>
+                        <strong>Grievance Officer.</strong>{" "}
+                        {GRIEVANCE_OFFICER_NAME ? `${GRIEVANCE_OFFICER_NAME}. ` : ""}
+                        {GRIEVANCE_OFFICER_ADDRESS ? `${GRIEVANCE_OFFICER_ADDRESS}. ` : ""}
+                        {PRIVACY_CONTACT_EMAIL ? (
+                          <>
+                            Write to{" "}
+                            <a
+                              href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=BHALYAM%20grievance`}
+                              className="font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                            >
+                              {PRIVACY_CONTACT_EMAIL}
+                            </a>
+                            .{" "}
+                          </>
+                        ) : (
+                          <>
+                            Use the Support Desk above while a dedicated grievance email is being set up.{" "}
+                          </>
+                        )}
+                        We acknowledge complaints within {GRIEVANCE_ACK_HOURS} hours and resolve them within{" "}
+                        {GRIEVANCE_RESOLVE_DAYS} days.
                       </p>
                     </div>
                   )}

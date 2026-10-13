@@ -185,7 +185,7 @@ export function UnoDeclareCluster({
     <div className="flex flex-col items-center gap-1.5">
       <button
         onClick={onDeclare}
-        aria-label="Declare UNO — you have one card left"
+        aria-label="Declare ONE — you have one card left"
         className="relative flex items-center justify-center rounded-2xl font-black italic tracking-tight text-white animate-pulse"
         style={{
           width: "5.4rem",
@@ -198,7 +198,7 @@ export function UnoDeclareCluster({
           textShadow: "0 2px 2px rgba(0,0,0,0.35)",
         }}
       >
-        UNO!
+        ONE!
       </button>
       <span
         className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide whitespace-nowrap"

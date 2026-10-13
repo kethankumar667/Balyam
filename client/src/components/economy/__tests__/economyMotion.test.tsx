@@ -58,7 +58,7 @@ describe("Economy Motion System Suite", () => {
 
     it("displays committed badge when isCommitted is true", () => {
       render(<PrizePot amount="400" isCommitted={true} />);
-      expect(screen.getByText("Pot Committed")).toBeDefined();
+      expect(screen.getByText("Reward Pool Ready")).toBeDefined();
     });
   });
 
@@ -110,7 +110,7 @@ describe("Economy Motion System Suite", () => {
       );
 
       expect(screen.getByText("Hand Cricket")).toBeDefined();
-      expect(screen.getByText("Pot: 400 Coins")).toBeDefined();
+      expect(screen.getByText("Reward Pool: 400 Coins")).toBeDefined();
 
       // Fast forward through countdown (3 -> 2 -> 1 -> 0 -> complete)
       act(() => {
@@ -125,8 +125,8 @@ describe("Economy Motion System Suite", () => {
         <GameStartSequence game="uno" totalPotAmount="200" onComplete={vi.fn()} />,
       );
 
-      expect(screen.getByText("UNO 🎴")).toBeDefined();
-      expect(screen.getByText("UNO SHOWDOWN INCOMING")).toBeDefined();
+      expect(screen.getByText("Color Cards 🎴")).toBeDefined();
+      expect(screen.getByText("COLOR CARDS SHOWDOWN INCOMING")).toBeDefined();
       // A real per-beat slogan renders — never blank, never the old static "PLAY!" copy.
       expect(screen.getByTestId("countdown-slogan").textContent!.length).toBeGreaterThan(0);
     });

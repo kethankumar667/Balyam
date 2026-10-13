@@ -112,7 +112,7 @@ export function ForgotUnoCallout({ count, targetAnchor, config, onImpact, onComp
           animate={{ scale: [0.4, 1.1, 1], opacity: [0, 1, 1, 0] }}
           transition={{ duration: (T.hold + T.fadeOut) / 1000 / (config.speed || 1), times: [0, 0.3, 0.75, 1] }}
         >
-          <SpeechBubble text={`FORGOT UNO! +${count}`} />
+          <SpeechBubble text={`FORGOT ONE! +${count}`} />
         </motion.div>
       )}
 

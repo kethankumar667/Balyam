@@ -27,14 +27,14 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "snake", label: "Snake 2D", icon: "🐍" },
   { id: "ludo", label: "Ludo", icon: "🎲" },
   { id: "rummy", label: "Rummy", icon: "🎴" },
-  { id: "uno", label: "UNO", icon: "🃏" },
+  { id: "uno", label: "Color Cards", icon: "🃏" },
   { id: "snl", label: "Snakes & Ladders", icon: "🪜" },
   { id: "dotsboxes", label: "Dots & Boxes", icon: "📦" },
   { id: "wordbuilding", label: "Word Building", icon: "🔤" },
   { id: "tictactoe", label: "Tic Tac Toe", icon: "⚡" },
   { id: "connect4", label: "Connect 4", icon: "🟡" },
   { id: "carrom", label: "Carrom", icon: "⚪" },
-  { id: "nokiasnake", label: "Nokia Snake", icon: "📱" },
+  { id: "nokiasnake", label: "Monochrome Snake", icon: "📱" },
 ];
 
 export default function ModeScorecardsLeaderboard() {

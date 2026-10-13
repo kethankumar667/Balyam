@@ -54,7 +54,7 @@ export default function WhatAreWePlayingSection({
       accent: "from-emerald-400/20 to-lime-400/10",
       caption: "Long afternoons, endless fun.",
       games: [
-        { name: "UNO", slug: "uno" as BhalyamGameSlug },
+        { name: "Color Cards", slug: "uno" as BhalyamGameSlug },
         { name: "Brick Blocks", slug: "brickblocks" as BhalyamGameSlug },
         { name: "Name Place Animal", slug: "namesplaceanimal" as BhalyamGameSlug },
       ],

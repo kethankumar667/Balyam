@@ -19,8 +19,8 @@ export interface CountdownSlogans {
 const UNO_SLOGANS: CountdownSlogans = {
   three: ["Shuffle your grudges…", "Hands hovering over your cards…", "May your Wilds be ever in your favor…"],
   two: ["Someone's getting a Draw 4…", "Reverse card loading…", "Pick a color. Pick a fight."],
-  one: ["Say UNO like you mean it…", "Cards ready. Friendships optional.", "This is not a drill."],
-  go: ["UNO TIME!", "CHAOS UNLEASHED!", "GO GET 'EM!"],
+  one: ["Say ONE like you mean it…", "Cards ready. Friendships optional.", "This is not a drill."],
+  go: ["ONE TIME!", "CHAOS UNLEASHED!", "GO GET 'EM!"],
 };
 
 const RUMMY_SLOGANS: CountdownSlogans = {

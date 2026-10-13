@@ -25,9 +25,12 @@ import {
 import HelpLayout from "../components/layout/HelpLayout";
 import {
   PRIVACY_CONTACT_EMAIL,
-  GRIEVANCE_ACK_DAYS,
+  GRIEVANCE_ACK_HOURS,
   GRIEVANCE_RESOLVE_DAYS,
+  GRIEVANCE_OFFICER_NAME,
+  GRIEVANCE_OFFICER_ADDRESS,
 } from "../lib/privacy/contact";
+import { MINORS_NOTICE } from "../lib/privacy/agePolicy";
 import { HapticsManager } from "../services/HapticsManager";
 import { THIRD_PARTIES } from "../lib/privacy/dataInventory";
 import { downloadMyData } from "../lib/privacy/exportData";
@@ -46,7 +49,7 @@ const SECTIONS = [
   { id: "how-we-share", title: "6. How We Share Information", tldr: "We never sell your data to third-party advertisers or data brokers. Ever." },
   { id: "data-retention", title: "7. Data Retention", tldr: "Guest match rooms are dissolved after games finish; member profiles persist until deleted." },
   { id: "data-security", title: "8. Data Security & Seat Authentication", tldr: "All room connections use TLS encryption and server-signed HMAC seat tokens." },
-  { id: "children-privacy", title: "9. Children's Privacy & Age Policy", tldr: "BHALYAM is a safe, family-friendly veranda with no real-money wagering or adult content." },
+  { id: "children-privacy", title: "9. Children's Privacy & Age Policy", tldr: "No real-money gaming. Under-18s may play only with a parent or guardian's consent and supervision." },
   { id: "privacy-rights", title: "10. Your Privacy Rights", tldr: "You have full rights to access, rectify, export, or delete any data associated with you." },
   { id: "data-deletion", title: "11. Data Deletion & Account Purge", tldr: "You can delete your account whenever you like. Your profile and progress go; anonymous coin records stay, with no link to you." },
   { id: "international-transfers", title: "12. International Data Transfers", tldr: "Our servers run on cloud providers that encrypt data in transit and at rest." },
@@ -396,7 +399,7 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "children-privacy" && (
                   <p>
-                    BHALYAM is built as a wholesome family veranda. We do not knowingly collect personal information from children under 13 without parental consent. If you believe a child has created an unauthorized account, please contact our privacy desk.
+                    BHALYAM is built as a wholesome family veranda. We do not knowingly collect personal information from minors under 18 years of age without verifiable parental consent. {MINORS_NOTICE} If you believe a minor has created an unauthorized account, please contact our privacy desk.
                   </p>
                 )}
 
@@ -442,6 +445,16 @@ export default function PrivacyPolicyPage() {
                           <Mail className="w-4 h-4" />
                           <span>Dedicated Privacy Officer:</span>
                         </div>
+                        {GRIEVANCE_OFFICER_NAME && (
+                          <p className="text-xs text-stone-700 dark:text-slate-300">
+                            Grievance Officer: <strong>{GRIEVANCE_OFFICER_NAME}</strong>
+                          </p>
+                        )}
+                        {GRIEVANCE_OFFICER_ADDRESS && (
+                          <p className="text-xs text-stone-700 dark:text-slate-300">
+                            Address: {GRIEVANCE_OFFICER_ADDRESS}
+                          </p>
+                        )}
                         <p className="text-xs text-stone-700 dark:text-slate-300">
                           Email:{" "}
                           <a
@@ -452,7 +465,7 @@ export default function PrivacyPolicyPage() {
                           </a>
                         </p>
                         <p className="text-[11px] text-stone-500 dark:text-slate-400">
-                          Grievance SLA: Acknowledged within {GRIEVANCE_ACK_DAYS} days; resolved within {GRIEVANCE_RESOLVE_DAYS} days.
+                          Grievance SLA: Acknowledged within {GRIEVANCE_ACK_HOURS} hours; resolved within {GRIEVANCE_RESOLVE_DAYS} days.
                         </p>
                       </div>
                     ) : (

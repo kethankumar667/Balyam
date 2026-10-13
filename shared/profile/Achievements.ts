@@ -121,8 +121,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
   },
   {
     id: "uno_expert",
-    title: "UNO Wizard",
-    description: "Win 5 matches of UNO.",
+    title: "Color Cards Wizard",
+    description: "Win 5 matches of Color Cards.",
     icon: "🌈",
     category: "skill",
     targetValue: 5,

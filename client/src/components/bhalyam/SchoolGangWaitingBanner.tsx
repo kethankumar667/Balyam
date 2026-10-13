@@ -186,7 +186,7 @@ export default function SchoolGangWaitingBanner({
                     <div>
                       <div className="text-sm font-black">Pick a 90s Game</div>
                       <p className="text-[12px] opacity-85 mt-0.5">
-                        Choose UNO, Ludo, Hand Cricket, Rummy, or any nostalgic game.
+                        Choose Color Cards, Ludo, Hand Cricket, Rummy, or any nostalgic game.
                       </p>
                     </div>
                   </div>

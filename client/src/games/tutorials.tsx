@@ -49,8 +49,8 @@ export const UNO_TUTORIAL: TutorialDeck = {
     },
     {
       emoji: "❗",
-      title: "Down to one card? Say UNO!",
-      body: "The moment you have one card left, tap UNO! before anyone else notices. Miss it and another player can catch you — you'll draw two penalty cards.",
+      title: "Down to one card? Say ONE!",
+      body: "The moment you have one card left, tap ONE! before anyone else notices. Miss it and another player can catch you — you'll draw two penalty cards.",
     },
     {
       emoji: "🏆",

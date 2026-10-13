@@ -13,6 +13,10 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   /** DPDP Section 13 grievance contact email address. Unset by default. */
   readonly VITE_PRIVACY_CONTACT_EMAIL?: string;
+  /** Grievance Officer's full name (IT Rules 2021). Unset by default. */
+  readonly VITE_GRIEVANCE_OFFICER_NAME?: string;
+  /** Grievance Officer's postal address (IT Rules 2021). Unset by default. */
+  readonly VITE_GRIEVANCE_OFFICER_ADDRESS?: string;
 }
 
 interface ImportMeta {

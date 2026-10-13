@@ -181,7 +181,7 @@ export function UnoRotateDevicePrompt({
           Rotate your device
         </div>
         <div className="text-sm text-[#E9C892]/80">
-          UNO is best played in landscape mode on mobile. Turn your phone
+          Color Cards is best played in landscape mode on mobile. Turn your phone
           sideways to see the full table.
         </div>
         {readiness && readiness.totalCount > 1 && (

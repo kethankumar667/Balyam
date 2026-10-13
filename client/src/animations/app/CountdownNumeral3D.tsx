@@ -57,7 +57,7 @@ export interface CountdownChromeAccent {
 
 /** Exported so callers (the ceremony card wrapping this numeral) can theme their own chrome to match, without re-deriving UNO/Rummy/generic branching themselves. */
 export function chromeAccentFor(game: GameKind | undefined): CountdownChromeAccent {
-  if (game === "uno") return { border: "rgba(66,165,245,0.5)", glow: "rgba(66,165,245,0.2)", eyebrow: "UNO SHOWDOWN INCOMING" };
+  if (game === "uno") return { border: "rgba(66,165,245,0.5)", glow: "rgba(66,165,245,0.2)", eyebrow: "COLOR CARDS SHOWDOWN INCOMING" };
   if (game === "rummy") return { border: "rgba(212,175,55,0.5)", glow: "rgba(30,122,70,0.25)", eyebrow: "RUMMY TABLE IS LIVE" };
   return { border: "rgba(245,158,11,0.5)", glow: "rgba(245,158,11,0.2)", eyebrow: "MATCH COMMENCED" };
 }

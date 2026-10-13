@@ -296,7 +296,7 @@ describe("Economy V1 Presentational Components Suite", () => {
           costPerSeat="100"
         />
       );
-      expect(screen.getByText("Prize Pot")).toBeDefined();
+      expect(screen.getByText("Reward Pool")).toBeDefined();
       expect(screen.getByText("400")).toBeDefined();
       expect(screen.getByText("4 × 100")).toBeDefined();
       expect(screen.getByText("Host Funded (3 Humans)")).toBeDefined();

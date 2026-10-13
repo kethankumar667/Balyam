@@ -30,7 +30,7 @@ export const STARTER_QUESTS: StarterQuest[] = [
   {
     id: "FIRST_MATCH_PLAYED",
     title: "Battle in Your 1st Match",
-    description: "Jump into Ludo, Rummy, UNO, or any retro classic.",
+    description: "Jump into Ludo, Rummy, Color Cards, or any retro classic.",
     xpReward: 50,
     icon: "🎮",
     actionRoute: "/games",

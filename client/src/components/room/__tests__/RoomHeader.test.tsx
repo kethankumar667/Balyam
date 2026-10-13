@@ -32,7 +32,7 @@ vi.mock("../../layout/AppLayout", () => ({
 describe("RoomHeader Component", () => {
   const mockRoomState: RoomPublicState = {
     code: "J82TJK",
-    name: "UNO Lounge",
+    name: "Color Cards Lounge",
     game: "uno",
     phase: "lobby",
     hostId: "host-1",
@@ -59,7 +59,7 @@ describe("RoomHeader Component", () => {
     );
 
     // Verify game title and badges are present
-    expect(screen.getByText("UNO 🎴")).toBeDefined();
+    expect(screen.getByText("Color Cards 🎴")).toBeDefined();
     expect(screen.getByText("Board")).toBeDefined();
     expect(screen.getByText("2–10 Players")).toBeDefined();
     expect(screen.getByText("10–20 min")).toBeDefined();
@@ -70,7 +70,7 @@ describe("RoomHeader Component", () => {
     expect(screen.queryByText(/The family classic/i)).toBeNull();
 
     // Verify game tile image is rendered without circle styling
-    const img = screen.getByRole("img", { name: "UNO 🎴" });
+    const img = screen.getByRole("img", { name: "Color Cards 🎴" });
     expect(img).toBeDefined();
 
     // Verify leave room button exists

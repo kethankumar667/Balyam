@@ -78,7 +78,7 @@ export function FakeCelebration({ anchor, config, onComplete }: FakeCelebrationP
           className="rounded-2xl px-3 py-1 text-sm font-black text-white whitespace-nowrap"
           style={{ background: "#4A4A4A", border: "2px solid #FFF9F0" }}
         >
-          UNO...? 🎻
+          ONE...? 🎻
         </motion.div>
       </div>
     </div>

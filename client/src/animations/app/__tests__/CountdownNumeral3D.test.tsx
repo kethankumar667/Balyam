@@ -66,7 +66,7 @@ describe("chromeAccentFor", () => {
     const rummy = chromeAccentFor("rummy");
     const generic = chromeAccentFor(undefined);
 
-    expect(uno.eyebrow).toBe("UNO SHOWDOWN INCOMING");
+    expect(uno.eyebrow).toBe("COLOR CARDS SHOWDOWN INCOMING");
     expect(rummy.eyebrow).toBe("RUMMY TABLE IS LIVE");
     expect(generic.eyebrow).toBe("MATCH COMMENCED");
   });

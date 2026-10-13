@@ -150,7 +150,7 @@ export const GameStartSequence: React.FC<GameStartSequenceProps> = ({
 
         {/* Pot Summary */}
         <div className="relative px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs mb-5">
-          Pot: {totalPotAmount} Coins
+          Reward Pool: {totalPotAmount} Coins
         </div>
 
         {/* 3D flip numeral + funny per-game slogan — shared with BhalyamMatchCountdown */}

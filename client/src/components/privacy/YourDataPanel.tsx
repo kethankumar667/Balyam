@@ -3,7 +3,7 @@ import { DATA_INVENTORY, THIRD_PARTIES, eraseLocalData } from "../../lib/privacy
 import { Link } from "react-router-dom";
 import { readConsent, withdrawConsent } from "../../lib/privacy/consent";
 import {
-  GRIEVANCE_ACK_DAYS,
+  GRIEVANCE_ACK_HOURS,
   GRIEVANCE_RESOLVE_DAYS,
   PRIVACY_CONTACT_EMAIL,
 } from "../../lib/privacy/contact";
@@ -288,8 +288,8 @@ export default function YourDataPanel({
               >
                 {PRIVACY_CONTACT_EMAIL}
               </a>
-              . We reply within {GRIEVANCE_ACK_DAYS} days and aim to resolve within{" "}
-              {GRIEVANCE_RESOLVE_DAYS}.
+              . We reply within {GRIEVANCE_ACK_HOURS} hours and aim to resolve within{" "}
+              {GRIEVANCE_RESOLVE_DAYS} days.
             </>
           ) : (
             /* Honest rather than decorative — see lib/privacy/contact.ts. A

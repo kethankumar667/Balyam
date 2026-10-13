@@ -25,7 +25,7 @@ export interface CreateMandaliModalProps {
 }
 
 const LANGUAGES = ["English", "Telugu", "Hindi", "Tamil", "Kannada", "Malayalam", "Bengali", "Marathi"];
-const AVAILABLE_TAGS = ["Casual", "Ludo", "Hand Cricket", "Rummy", "UNO", "Weekend Play", "Voice Lounge"];
+const AVAILABLE_TAGS = ["Casual", "Ludo", "Hand Cricket", "Rummy", "Color Cards", "Weekend Play", "Voice Lounge"];
 const MAX_TAGS = 4;
 const MAX_HANDLE_LENGTH = 24;
 const MIN_HANDLE_LENGTH = 3;

@@ -37,7 +37,7 @@ const GAME_INFO: Record<string, { name: string; icon: string; mode: string }> = 
   ludo: { name: "Ludo", icon: "🎲", mode: "4 Player Match" },
   rummy: { name: "Rummy", icon: "🎴", mode: "2 Player Match" },
   snl: { name: "Snakes & Ladders", icon: "🐍", mode: "4 Player Match" },
-  uno: { name: "UNO Blast", icon: "🃏", mode: "2 Player Match" },
+  uno: { name: "Color Cards", icon: "🃏", mode: "2 Player Match" },
   dotsboxes: { name: "Dots & Boxes", icon: "⏹", mode: "2 Player Match" },
   stargame: { name: "Star Game", icon: "⭐", mode: "2 Player Match" },
   bingo: { name: "Bingo", icon: "🎟️", mode: "4 Player Match" },
@@ -247,7 +247,7 @@ export default function MatchHistoryList({
                 <option value="ludo" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Ludo</option>
                 <option value="rummy" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Rummy</option>
                 <option value="snl" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Snakes & Ladders</option>
-                <option value="uno" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">UNO Blast</option>
+                <option value="uno" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Color Cards</option>
                 <option value="dotsboxes" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Dots & Boxes</option>
                 <option value="connect4" className="bg-white dark:bg-[#0c1424] text-stone-900 dark:text-white">Connect 4</option>
               </select>

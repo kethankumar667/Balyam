@@ -1058,7 +1058,7 @@ function EnchantedCardBackPreview({
       default:
         return {
           bg: "bg-gradient-to-br from-rose-600 via-red-700 to-rose-900 border-white text-white shadow-2xl",
-          pattern: "UNO",
+          pattern: "ONE",
           badge: "bg-black/30 text-white border border-white/40",
         };
     }
@@ -1234,7 +1234,7 @@ function EnchantedTableThemePreview({
         >
           <div className="w-full flex items-center justify-between text-[10px] text-white/60 font-mono">
             <span>Opponent Seat</span>
-            <span>Pot: 500 Coins</span>
+            <span>Reward Pool: 500 Coins</span>
           </div>
           <div className="flex gap-2">
             <div className="w-8 h-11 rounded bg-black/40 border border-white/20" />

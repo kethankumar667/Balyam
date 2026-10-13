@@ -87,7 +87,7 @@ const ACADEMY_GAMES: ReadonlyArray<readonly [slug: string, name: string]> = [
   ["breakout", "Breakout"],
   ["roadrash", "Road Rash"],
   ["spacewar", "Space War"],
-  ["nokiacricket", "Nokia Cricket"],
+  ["nokiacricket", "Pocket Cricket"],
   ["brickblocks", "Brick Blocks"],
 ];
 

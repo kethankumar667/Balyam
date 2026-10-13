@@ -78,7 +78,7 @@ export function buildPlatformHowToPlaySchema() {
     steps: [
       {
         name: "Choose a Game",
-        text: "Browse our catalog of Indian childhood favorites — Hand Cricket, Ludo, Classic Rummy, UNO, Snakes & Ladders, and more.",
+        text: "Browse our catalog of Indian childhood favorites — Hand Cricket, Ludo, Classic Rummy, Color Cards, Snakes & Ladders, and more.",
         url: `${BASE_URL}/games`,
       },
       {

@@ -88,7 +88,7 @@ export const RUMMY_ACADEMY: GameAcademySpec = {
 
 export const UNO_ACADEMY: GameAcademySpec = {
   slug: "uno",
-  title: "UNO Blast",
+  title: "Color Cards",
   tagline: "High-octane card matching — unleash Skips, Reverse momentum, and challenge illegal Wild Draw 4s.",
   genre: "cards",
   players: "2–10 Players",
@@ -125,7 +125,7 @@ export const UNO_ACADEMY: GameAcademySpec = {
       title: "Challenge the Wild Draw Four",
       summary: "Wild Draw Four can only be played legally if you hold NO matching color cards. The targeted player can CHALLENGE the play!",
       keyRule: "If challenged and guilty, the offender draws 4 cards. If innocent, the challenger draws 6 cards!",
-      proTip: "Save Wild Draw 4 as your absolute last line of defense when an opponent is shouting UNO.",
+      proTip: "Save Wild Draw 4 as your absolute last line of defense when an opponent is shouting ONE.",
       iconName: "ShieldCheck",
       sandboxKind: "uno-challenge",
       sandboxConfig: { mode: "challenge" },
@@ -133,10 +133,10 @@ export const UNO_ACADEMY: GameAcademySpec = {
     {
       id: "say_uno",
       badge: "THE FINAL RULE",
-      title: "The 1-Card Shout: Tap UNO!",
-      summary: "The instant you place your second-to-last card and hold exactly 1 card, you MUST tap the flashing UNO! button.",
-      keyRule: "If another player catches you before you shout UNO!, you draw a 2-card penalty!",
-      proTip: "Keep your finger hovering near the UNO! button before playing your penultimate card.",
+      title: "The 1-Card Shout: Tap ONE!",
+      summary: "The instant you place your second-to-last card and hold exactly 1 card, you MUST tap the flashing ONE! button.",
+      keyRule: "If another player catches you before you shout ONE!, you draw a 2-card penalty!",
+      proTip: "Keep your finger hovering near the ONE! button before playing your penultimate card.",
       iconName: "Crown",
       sandboxKind: "uno-challenge",
       sandboxConfig: { mode: "shout" },
@@ -160,13 +160,13 @@ export const UNO_ACADEMY: GameAcademySpec = {
         { label: "Legal Play", detail: "Only permitted if you have ZERO cards of the active color in hand.", tag: "Rule" },
         { label: "Challenge Won", detail: "Offender held matching color → Offender draws 4 cards.", tag: "Justice" },
         { label: "Challenge Lost", detail: "Offender was honest → Challenger draws 6 cards (4 + 2 penalty).", tag: "Risk" },
-        { label: "UNO! Shout Penalty", detail: "Holding 1 card without calling UNO draws 2 cards when caught.", tag: "Penalty" },
+        { label: "ONE! Shout Penalty", detail: "Holding 1 card without calling ONE draws 2 cards when caught.", tag: "Penalty" },
       ],
     },
   ],
   keybindings: [
     { key: "D", description: "Draw a card from the pile" },
     { key: "P", description: "Pass your turn (when allowed)" },
-    { key: "U", description: "Shout UNO!" },
+    { key: "U", description: "Shout ONE!" },
   ],
 };

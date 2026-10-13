@@ -194,7 +194,7 @@ export const LobbyPrizePool: React.FC<LobbyPrizePoolProps> = ({
                 type="button"
                 onClick={onChangeStake}
                 className="inline-flex items-center gap-1 text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 border border-amber-300/70 dark:border-amber-700/60 rounded-full px-2.5 py-1 transition cursor-pointer active:scale-95 shrink-0"
-                title="Change table entry stake"
+                title="Change room entry"
               >
                 <span>✏️ Change</span>
               </button>

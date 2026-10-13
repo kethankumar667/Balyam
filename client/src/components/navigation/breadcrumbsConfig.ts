@@ -220,13 +220,13 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
   // 9. Retro Standalone Games
   if (cleanPath === "/nokiacricket" || cleanPath === "/cricket2d") {
     crumbs.push({ label: "Retro Classics", path: "/games?c=retro" });
-    crumbs.push({ label: "Nokia Cricket 2D" });
+    crumbs.push({ label: "Pocket Cricket 2D" });
     return crumbs;
   }
 
   if (cleanPath === "/snake" || cleanPath === "/nokiasnake" || cleanPath === "/snake2d") {
     crumbs.push({ label: "Retro Classics", path: "/games?c=retro" });
-    crumbs.push({ label: "Nokia Snake" });
+    crumbs.push({ label: "Monochrome Snake" });
     return crumbs;
   }
 

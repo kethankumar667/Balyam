@@ -101,7 +101,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
     getSocket().emit("room:setEntryStake", targetStake, (res) => {
       setBusy(false);
       if (res && !res.ok) {
-        setError(res.error || "Failed to update entry stake");
+        setError(res.error || "Failed to update room entry");
         try {
           HapticsManager.getInstance().subtle();
         } catch {
@@ -139,7 +139,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
                 id="change-stake-dialog-title"
                 className="text-base md:text-lg font-black tracking-tight"
               >
-                Change Entry Stake
+                Change Room Entry
               </h2>
               <p className="text-xs text-[#8A6D4B] dark:text-slate-400">
                 Adjust table stake before other players ready up
@@ -241,7 +241,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
               >
                 <span className="flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Custom Stake Slider</span>
+                  <span>Custom Room Entry Slider</span>
                 </span>
                 <span className="font-extrabold text-amber-600 dark:text-amber-400">
                   {selectedTier === "custom" ? `🪙 ${customStake}` : "Configure"}
@@ -265,7 +265,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
                       type="button"
                       onClick={() => setCustomStake((prev) => getPrevEntryStake(prev))}
                       disabled={customStake <= ENTRY_STAKE_MIN_COINS}
-                      aria-label="Decrease stake"
+                      aria-label="Decrease room entry"
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
                                  bg-[#FFF9EE] dark:bg-slate-800 border-2 border-[#EEDBCA] dark:border-slate-700
                                  text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
@@ -291,7 +291,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
                       type="button"
                       onClick={() => setCustomStake((prev) => getNextEntryStake(prev))}
                       disabled={customStake >= ENTRY_STAKE_MAX_COINS}
-                      aria-label="Increase stake"
+                      aria-label="Increase room entry"
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
                                  bg-[#FFF9EE] dark:bg-slate-800 border-2 border-[#EEDBCA] dark:border-slate-700
                                  text-[#8A6D4B] dark:text-slate-200 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/15
@@ -324,7 +324,7 @@ export const ChangeStakeModal: React.FC<ChangeStakeModalProps> = ({
           <div className="p-3 rounded-2xl bg-[#FFF4E0] dark:bg-[#1E2738] border border-[#EEDBCA] dark:border-slate-700/60 flex items-center justify-between text-xs font-bold">
             <div className="space-y-0.5">
               <span className="text-[#8A6D4B] dark:text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">
-                Projected Pot ({playerCount} seats)
+                Projected Reward Pool ({playerCount} seats)
               </span>
               <span className="text-amber-700 dark:text-amber-300 text-sm font-black flex items-center gap-1">
                 <span>🪙</span>

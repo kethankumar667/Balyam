@@ -242,7 +242,7 @@ export function UnoCardBack({ className, skin }: { className?: string; skin?: st
     return (
       <img
         src={config.imageSrc}
-        alt="UNO card back"
+        alt="Color Cards card back"
         draggable={false}
         className={className}
         style={{ objectFit: "contain" }}
@@ -255,13 +255,13 @@ export function UnoCardBack({ className, skin }: { className?: string; skin?: st
       viewBox="0 0 100 150"
       className={className}
       role="img"
-      aria-label="UNO card back"
+      aria-label="Color Cards card back"
       preserveAspectRatio="xMidYMid meet"
     >
       <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
       <rect x={5} y={5} width={90} height={140} rx={10} fill={config.bodyColor} />
       <ellipse cx={50} cy={75} rx={46} ry={29} fill={config.ovalColor} transform="rotate(-20 50 75)" />
-      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, config.textColor, "UNO", config.edgeColor)}</g>
+      <g transform="rotate(-20 50 75)">{unoText(50, 75, 30, config.textColor, "ONE", config.edgeColor)}</g>
     </svg>
   );
 }
@@ -454,7 +454,7 @@ export function UnoOpponentSeat({
           onClick={onCatch}
           className="mt-1.5 w-full rounded-md py-1 text-[10px] font-black uppercase tracking-wide text-white animate-pulse"
           style={{ background: "#DC2626" }}
-          aria-label={`Catch ${name} without UNO — they draw 2`}
+          aria-label={`Catch ${name} without ONE — they draw 2`}
         >
           Catch! +2
         </button>

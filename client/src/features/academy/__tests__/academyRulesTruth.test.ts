@@ -200,7 +200,7 @@ describe("rules match the engines", () => {
     const uno = specOf("uno");
     const byDescription = (pattern: RegExp) => (uno.keybindings ?? []).find((b) => pattern.test(b.description));
     expect(byDescription(/draw/i)?.key).toBe("D");
-    expect(byDescription(/uno/i)?.key).toBe("U");
+    expect(byDescription(/one/i)?.key).toBe("U");
     expect(keyLabels(uno)).not.toContain("Space");
   });
 

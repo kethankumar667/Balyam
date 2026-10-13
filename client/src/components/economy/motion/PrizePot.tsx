@@ -90,7 +90,7 @@ export const PrizePot: React.FC<PrizePotProps> = ({
       {/* Committed Stamp Pill */}
       {isCommitted && (
         <span className="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
-          Pot Committed
+          Reward Pool Ready
         </span>
       )}
     </motion.div>

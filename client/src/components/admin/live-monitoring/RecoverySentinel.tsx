@@ -279,7 +279,7 @@ export default function RecoverySentinel() {
             <option value="all">All Games</option>
             <option value="rummy">Rummy</option>
             <option value="ludo">Ludo</option>
-            <option value="uno">UNO</option>
+            <option value="uno">Color Cards</option>
             <option value="snl">Snakes & Ladders</option>
             <option value="handcricket">Hand Cricket</option>
             <option value="rps">RPS</option>

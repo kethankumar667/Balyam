@@ -63,7 +63,7 @@ export const TEST_ACCOUNTS: readonly TestAccount[] = [
     name: "Vikram Rocket",
     email: "tester6@bhalyam.com",
     password: TEST_ACCOUNTS_PASSWORD,
-    tagline: "UNO wildcard drop specialist 🚀",
+    tagline: "Color Cards wildcard drop specialist 🚀",
     avatarFile: AVATAR_FILES[5] ?? "file_0000000084c48208b1f893419d784cf2_8.jpg",
     role: "Card Shuffler",
   },

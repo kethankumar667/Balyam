@@ -42,7 +42,7 @@ const GAME_BREAKDOWNS: GameBreakdown[] = [
   { game: "ludo", label: "Ludo Lounge", icon: "🎲", tagline: "Roll, capture & race home", specialStat: "TOKENS HOME" },
   { game: "rummy", label: "Classic Rummy", icon: "🎴", tagline: "Pure sequences & neat melds", specialStat: "PURE RUNS" },
   { game: "handcricket", label: "Hand Cricket", icon: "🏏", tagline: "Childhood finger-cricket thrill", specialStat: "BEST RUNS" },
-  { game: "uno", label: "UNO Blast", icon: "🃏", tagline: "Reverse, draw four & shout UNO", specialStat: "WILD PLAYS" },
+  { game: "uno", label: "Color Cards", icon: "🃏", tagline: "Reverse, draw four & shout ONE", specialStat: "WILD PLAYS" },
   { game: "snl", label: "Snakes & Ladders", icon: "🐍", tagline: "Climb ladders, dodge the snakes", specialStat: "LADDERS CLIMBED" },
   { game: "dotsboxes", label: "Dots & Boxes", icon: "⏹", tagline: "Corner the grid and own boxes", specialStat: "BOXES CAPTURED" },
   { game: "connect4", label: "Connect 4", icon: "🟡", tagline: "Drop discs & connect four in a row", specialStat: "LINES CONNECTED" },

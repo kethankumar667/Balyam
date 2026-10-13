@@ -2573,8 +2573,8 @@ export class RoomManager {
       return { ok: false, error: "Room or player not found" };
     }
     if (player.id !== room.hostId) {
-      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only the host can change the entry stake");
-      return { ok: false, error: "Only the host can change the entry stake" };
+      this.io.sockets.sockets.get(socketId)?.emit("room:error", "Only the host can change the room entry");
+      return { ok: false, error: "Only the host can change the room entry" };
     }
     if (room.phase !== "lobby") {
       this.io.sockets.sockets.get(socketId)?.emit("room:error", "Cannot change entry stake while a game is in progress");
@@ -2598,8 +2598,8 @@ export class RoomManager {
     if (!isValidEntryStakeFor(room.game, stakeCoins)) {
       const msg =
         room.game === "rummy"
-          ? "Invalid entry stake: pick one of the Rummy point rates (1, 2, 4, 8 or 16 coins per point)."
-          : `Invalid entry stake: must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins (steps of 50 below 1000, 100 above 1000).`;
+          ? "Invalid room entry: pick one of the Rummy point rates (1, 2, 4, 8 or 16 coins per point)."
+          : `Invalid room entry: must be between ${ENTRY_STAKE_MIN_COINS} and ${ENTRY_STAKE_MAX_COINS} coins (steps of 50 below 1000, 100 above 1000).`;
       this.io.sockets.sockets.get(socketId)?.emit("room:error", msg);
       return { ok: false, error: msg };
     }

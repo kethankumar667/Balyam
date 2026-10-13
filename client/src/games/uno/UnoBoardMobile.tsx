@@ -342,7 +342,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           <div className="flex items-center justify-between gap-1 w-full">
             <StadiumRoomCodePlate code={roomCode} />
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-200/90 whitespace-nowrap">
-              GAME: <span className="text-yellow-400 font-extrabold">UNO</span> &nbsp;·&nbsp; <span className="text-amber-300 font-extrabold">{state.phase.toUpperCase()}</span>
+              GAME: <span className="text-yellow-400 font-extrabold">Color Cards</span> &nbsp;·&nbsp; <span className="text-amber-300 font-extrabold">{state.phase.toUpperCase()}</span>
             </span>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <StadiumIconButton

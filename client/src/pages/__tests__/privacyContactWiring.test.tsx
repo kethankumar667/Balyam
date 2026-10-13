@@ -68,7 +68,7 @@ describe("PrivacyPolicyPage / Privacy Contact Wiring", () => {
 
     // Verify SLA text
     expect(
-      screen.getByText(new RegExp(`within ${contactModule.GRIEVANCE_ACK_DAYS} days`, "i"))
+      screen.getByText(new RegExp(`within ${contactModule.GRIEVANCE_ACK_HOURS} hours`, "i"))
     ).toBeDefined();
     expect(
       screen.getByText(new RegExp(`within ${contactModule.GRIEVANCE_RESOLVE_DAYS} days`, "i"))

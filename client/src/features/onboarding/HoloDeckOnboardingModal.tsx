@@ -39,7 +39,7 @@ const ONBOARDING_STAGES: OnboardingStage[] = [
     title: "The Ultimate Multiplayer Lounge",
     subtitle: "Two dozen classic and strategy games",
     description:
-      "Play Ludo, Rummy, UNO, Hand Cricket, Chess, Carrom and retro handheld arcade classics instantly in your browser, with nothing to install.",
+      "Play Ludo, Rummy, Color Cards, Hand Cricket, Chess, Carrom and retro handheld arcade classics instantly in your browser, with nothing to install.",
     features: [
       "The server checks every move, so every player sees the same game",
       "Dedicated mobile (touch-first) and desktop layouts",
@@ -59,7 +59,7 @@ const ONBOARDING_STAGES: OnboardingStage[] = [
       "Create a 6-character room code, send an invite link, or play locally on one couch with our Pass & Play privacy shields.",
     features: [
       "Instant 6-character codes with 1-click shareable links",
-      "Pass & Play Phone Gate protects hidden hands (Rummy/UNO)",
+      "Pass & Play Phone Gate protects hidden hands (Rummy/Color Cards)",
       "AI bots can fill empty seats so a game never waits",
     ],
     icon: <Users className="w-8 h-8 text-emerald-400" />,

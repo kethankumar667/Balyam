@@ -142,7 +142,7 @@ describe("RoomManager — setEntryStake (lobby bet adjustment)", () => {
 
     const result = rooms.setEntryStake("s_joiner", 500);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/Only the host can change the entry stake/i);
+    expect(result.error).toMatch(/Only the host can change the room entry/i);
   });
 
   it("rejects guest host attempts to raise entry stake above 100", () => {

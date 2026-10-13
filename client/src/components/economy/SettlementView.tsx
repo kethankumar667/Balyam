@@ -144,7 +144,7 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
 
       <div className="grid grid-cols-3 gap-2 text-xs font-sans">
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
-          <span className="text-[10px] text-ink-lo dark:text-text-lo block">Total Pot</span>
+          <span className="text-[10px] text-ink-lo dark:text-text-lo block">Total Reward Pool</span>
           <CoinAmount amount={settlement.totalCollected} size="sm" className="font-bold" />
         </div>
         <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">

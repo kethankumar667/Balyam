@@ -23,7 +23,7 @@ describe("ChangeStakeModal — Rummy", () => {
   it("shows the point rates instead of the platform presets and slider", () => {
     render(<ChangeStakeModal open onClose={vi.fn()} game="rummy" currentStake={80} playerCount={3} />);
     expect(screen.getAllByRole("radio")).toHaveLength(5);
-    expect(screen.queryByText("Custom Stake Slider")).toBeNull();
+    expect(screen.queryByText("Custom Room Entry Slider")).toBeNull();
     expect(screen.queryByText("Starter")).toBeNull();
   });
 
@@ -62,6 +62,6 @@ describe("ChangeStakeModal — Rummy", () => {
   it("leaves every other game exactly as it was: presets and a slider, no point rates", () => {
     render(<ChangeStakeModal open onClose={vi.fn()} game="ludo" currentStake={100} playerCount={2} />);
     expect(screen.queryAllByRole("radio")).toHaveLength(0);
-    expect(screen.getByText("Custom Stake Slider")).toBeDefined();
+    expect(screen.getByText("Custom Room Entry Slider")).toBeDefined();
   });
 });

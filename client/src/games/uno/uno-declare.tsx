@@ -32,9 +32,9 @@ export function UnoCallButton({ visible, onDeclare }: UnoCallButtonProps) {
         border: "4px solid #FFF9F0",
         boxShadow: "0 10px 24px rgba(185,28,28,0.55), inset 0 2px 4px rgba(255,255,255,0.35)",
       }}
-      aria-label="Declare UNO — you have one card left"
+      aria-label="Declare ONE — you have one card left"
     >
-      UNO
+      ONE
     </button>
   );
 }
@@ -69,7 +69,7 @@ export function UnoDeclareBubble({ declared }: { declared: boolean }) {
         className="relative px-3 py-1 rounded-2xl text-sm font-black text-white whitespace-nowrap"
         style={{ background: "#B91C1C", border: "2px solid #FFF9F0" }}
       >
-        UNO!
+        ONE!
         <div
           className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0"
           style={{

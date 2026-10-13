@@ -138,7 +138,7 @@ export const UnoChallengeSandbox: React.FC<SandboxProps> = ({ onComplete }) => {
           ) : (
             <Megaphone className="w-3.5 h-3.5" aria-hidden="true" />
           )}
-          {unoShouted ? "UNO! Shouted" : "Shout UNO!"}
+          {unoShouted ? "ONE! Shouted" : "Shout ONE!"}
         </button>
       </div>
     </div>

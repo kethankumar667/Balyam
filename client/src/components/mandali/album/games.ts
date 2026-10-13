@@ -6,7 +6,7 @@ export const GAMES: ReadonlyArray<{ kind: GameKind; name: string; min: number; m
   { kind: "handcricket", name: "Hand Cricket", min: 2, max: 2 },
   { kind: "rummy", name: "Rummy", min: 2, max: 6 },
   { kind: "snl", name: "Snakes & Ladders", min: 2, max: 4 },
-  { kind: "uno", name: "UNO", min: 2, max: 4 },
+  { kind: "uno", name: "Color Cards", min: 2, max: 4 },
   { kind: "dotsboxes", name: "Dots & Boxes", min: 2, max: 2 },
 ];
 

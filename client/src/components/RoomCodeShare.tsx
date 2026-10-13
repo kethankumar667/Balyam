@@ -44,7 +44,7 @@ export default function RoomCodeShare({
     ludo: "Ludo",
     rummy: "Rummy",
     rps: "Rock Paper Scissors",
-    uno: "UNO",
+    uno: "Color Cards",
     wordbuilding: "Word Building",
     dotsboxes: "Dots & Boxes",
     stargame: "Star Game",

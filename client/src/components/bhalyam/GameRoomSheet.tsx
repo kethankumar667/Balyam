@@ -369,7 +369,7 @@ const SNAKE_WALL_MODES: { id: "solid" | "wrap"; label: string; blurb: string }[]
 ];
 
 const SNAKE_THEMES: { id: "monochrome" | "color" | "neon-modern"; label: string; blurb: string }[] = [
-  { id: "monochrome", label: "3310", blurb: "Green LCD dot matrix" },
+  { id: "monochrome", label: "Pocket", blurb: "Green LCD dot matrix" },
   { id: "color",      label: "6110", blurb: "Classic color screen" },
   { id: "neon-modern",      label: "Neon Glow",  blurb: "Modern vibrant dark mode" },
 ];
@@ -1389,7 +1389,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] uppercase tracking-widest font-extrabold text-sand-600 dark:text-slate-400">
-                  {game === "rummy" ? "Point rate" : "Entry stake per seat"}
+                  {game === "rummy" ? "Point rate" : "Room entry per seat"}
                 </label>
                 <span className="text-xs font-black text-economy-coin flex items-center gap-1">
                   <CoinIcon className="w-3.5 h-3.5" />
@@ -1464,7 +1464,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                   >
                     <span className="flex items-center gap-1.5">
                       <GearIcon className="w-3.5 h-3.5" />
-                      <span>Custom Table Stake</span>
+                      <span>Custom Room Entry</span>
                     </span>
                     <span className={`font-black text-xs flex items-center gap-1 ${entryStakeTier === "custom" ? "text-white" : "text-chest-700 dark:text-amber-400"}`}>
                       {entryStakeTier === "custom" ? (
@@ -1499,7 +1499,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                           type="button"
                           onClick={() => setCustomStake((prev) => getPrevEntryStake(prev))}
                           disabled={customStake <= ENTRY_STAKE_MIN_COINS}
-                          aria-label="Decrease stake"
+                          aria-label="Decrease room entry"
                           className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
                                      bg-sand-50 dark:bg-[#161D2B] border-2 border-sand-300 dark:border-slate-700
                                      text-sand-700 dark:text-slate-200 hover:border-chest-600 hover:bg-chest-50 dark:hover:bg-[#1C2536]
@@ -1525,7 +1525,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                           type="button"
                           onClick={() => setCustomStake((prev) => getNextEntryStake(prev))}
                           disabled={customStake >= ENTRY_STAKE_MAX_COINS}
-                          aria-label="Increase stake"
+                          aria-label="Increase room entry"
                           className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0
                                      bg-sand-50 dark:bg-[#161D2B] border-2 border-sand-300 dark:border-slate-700
                                      text-sand-700 dark:text-slate-200 hover:border-chest-600 hover:bg-chest-50 dark:hover:bg-[#1C2536]
@@ -2002,9 +2002,9 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
 
                 {!isFreeEconomyGame && (
                   <>
-                    {/* Entry Stake */}
+                    {/* Room Entry */}
                     <div className="flex items-center justify-between pt-1 border-t border-sand-300/50 dark:border-slate-800/60">
-                      <span className="text-sand-600 dark:text-slate-400 font-semibold">Entry Stake</span>
+                      <span className="text-sand-600 dark:text-slate-400 font-semibold">Room Entry</span>
                       <span className="font-black text-economy-coin flex items-center gap-1">
                         <CoinIcon className="w-3.5 h-3.5" />
                         <span>{entryStakeCoins.toLocaleString()}</span>
@@ -2016,7 +2016,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                     <div className="flex items-center justify-between p-2.5 rounded-2xl bg-economy-pool-surface dark:bg-economy-pool-surface border border-chest-500/25 -mx-1 mt-1">
                       <span className="text-[11px] font-extrabold uppercase tracking-wider text-chest-700 dark:text-amber-200 flex items-center gap-1.5">
                         <TrophyIcon className="w-3.5 h-3.5" />
-                        <span>Projected Pot</span>
+                        <span>Projected Reward Pool</span>
                       </span>
                       <span className="font-black text-economy-coin text-sm flex items-center gap-1">
                         <CoinIcon className="w-4 h-4" />

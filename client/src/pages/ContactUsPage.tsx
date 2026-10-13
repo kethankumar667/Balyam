@@ -124,7 +124,7 @@ const GAMES_OPTIONS = [
   { value: "ludo", label: "🎲 Ludo" },
   { value: "snl", label: "🐍 Snakes & Ladders" },
   { value: "rummy", label: "🃏 Indian Rummy" },
-  { value: "uno", label: "🎴 UNO" },
+  { value: "uno", label: "🎴 Color Cards" },
   { value: "rps", label: "✂️ Rock Paper Scissors" },
   { value: "wordbuilding", label: "🔤 Word Building" },
   { value: "dotsboxes", label: "📦 Dots & Boxes" },
@@ -134,7 +134,7 @@ const GAMES_OPTIONS = [
   { value: "carrom", label: "⚪ Carrom" },
   { value: "snake", label: "🕹️ Classic Snake" },
   { value: "spacewar", label: "🚀 Space War" },
-  { value: "nokiacricket", label: "📱 Nokia Cricket" },
+  { value: "nokiacricket", label: "📱 Pocket Cricket" },
   { value: "general", label: "🌐 General / Lounge Platform" },
 ];
 

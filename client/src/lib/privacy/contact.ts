@@ -25,7 +25,20 @@ export const PRIVACY_CONTACT_EMAIL: string | null = configured && configured.inc
  * What the Act expects us to promise once the channel is live.
  * Stated in the UI so the timeline is a commitment, not an aspiration.
  */
-export const GRIEVANCE_ACK_DAYS = 7;
-export const GRIEVANCE_RESOLVE_DAYS = 30;
+export const GRIEVANCE_ACK_HOURS = 48;
+export const GRIEVANCE_RESOLVE_DAYS = 15;
+
+const readEnv = (value: unknown): string | null => {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+/**
+ * The named Grievance Officer (IT Rules 2021, Rule 3(2)). Like the address,
+ * there is no default: a made-up name on a compliance page is worse than none.
+ * Set `VITE_GRIEVANCE_OFFICER_NAME` / `VITE_GRIEVANCE_OFFICER_ADDRESS`.
+ */
+export const GRIEVANCE_OFFICER_NAME: string | null = readEnv(import.meta.env?.VITE_GRIEVANCE_OFFICER_NAME);
+export const GRIEVANCE_OFFICER_ADDRESS: string | null = readEnv(import.meta.env?.VITE_GRIEVANCE_OFFICER_ADDRESS);
 
 export const PRIVACY_CONTACT_CONFIGURED = PRIVACY_CONTACT_EMAIL !== null;

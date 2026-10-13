@@ -1851,7 +1851,7 @@ export default function Room() {
     ludo:         "Ludo",
     snl:          "Snakes & Ladders",
     handcricket:  "Hand Cricket",
-    uno:          "UNO",
+    uno:          "Color Cards",
     wordbuilding: "Word Building",
     dotsboxes:    "Dots & Boxes",
     stargame:     "Star Game",

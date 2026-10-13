@@ -72,7 +72,7 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
           <Landmark className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
           <div>
             <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300 block">
-              Total Prize Pot
+              Total Reward Pool
             </span>
             <span className="text-lg font-extrabold text-ink-hi dark:text-text-hi tabular-nums">
               {formattedPot} Coins

@@ -18,7 +18,7 @@ export function buildWebSiteSchema(options: WebSiteSchemaOptions = {}) {
     name = "BHALYAM · బాల్యం — Relive Childhood Nostalgia",
     alternateName = ["Bhalyam", "Balyam", "BHALYAM Games", "Bhalyam 90s Lounge"],
     url = BASE_URL,
-    description = "The digital veranda for 90s Telugu & Indian kids. Play Hand Cricket, Ludo, Snakes & Ladders, Rummy, UNO, and nostalgic multiplayer games with friends.",
+    description = "The digital veranda for 90s Telugu & Indian kids. Play Hand Cricket, Ludo, Snakes & Ladders, Rummy, Color Cards, and nostalgic multiplayer games with friends.",
     inLanguage = ["en", "te", "hi"],
     searchTargetUrl = `${BASE_URL}/games?q={search_term_string}`,
   } = options;

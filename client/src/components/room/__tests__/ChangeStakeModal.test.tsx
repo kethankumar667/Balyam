@@ -25,7 +25,7 @@ describe("ChangeStakeModal Component", () => {
       />
     );
 
-    expect(screen.getByText("Change Entry Stake")).toBeDefined();
+    expect(screen.getByText("Change Room Entry")).toBeDefined();
     expect(screen.getByText(/600\s+coins/)).toBeDefined(); // 200 * 3
     expect(screen.getByText(/200\s+\/\s+seat/)).toBeDefined();
   });
@@ -80,7 +80,7 @@ describe("ChangeStakeModal Component", () => {
 
   it("displays server error when bet cannot be changed", () => {
     mockEmit.mockImplementation((event, stake, ack) => {
-      if (ack) ack({ ok: false, error: "Cannot change entry stake once another human player is ready" });
+      if (ack) ack({ ok: false, error: "Cannot change room entry once another human player is ready" });
     });
 
     render(
@@ -98,7 +98,7 @@ describe("ChangeStakeModal Component", () => {
     const confirmBtn = screen.getByText(/Confirm/i).closest("button")!;
     fireEvent.click(confirmBtn);
 
-    expect(screen.getByText("Cannot change entry stake once another human player is ready")).toBeDefined();
+    expect(screen.getByText("Cannot change room entry once another human player is ready")).toBeDefined();
   });
 
   it("supports - and + buttons with 50-step below 1000 and 100-step after 1000", () => {
@@ -114,8 +114,8 @@ describe("ChangeStakeModal Component", () => {
     // Initial stake is 950
     expect(screen.getAllByText(/950/).length).toBeGreaterThan(0);
 
-    const increaseBtn = screen.getByLabelText("Increase stake");
-    const decreaseBtn = screen.getByLabelText("Decrease stake");
+    const increaseBtn = screen.getByLabelText("Increase room entry");
+    const decreaseBtn = screen.getByLabelText("Decrease room entry");
     expect(increaseBtn).toBeDefined();
     expect(decreaseBtn).toBeDefined();
 

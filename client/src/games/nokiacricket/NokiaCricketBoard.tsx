@@ -12,7 +12,7 @@ function NokiaCricketBoard(props: NokiaCricketBoardProps) {
     <Suspense
       fallback={
         <div className="w-full h-screen flex items-center justify-center bg-[#0D1322] text-amber-400 font-mono text-xs">
-          Loading Nokia Cricket...
+          Loading Pocket Cricket...
         </div>
       }
     >

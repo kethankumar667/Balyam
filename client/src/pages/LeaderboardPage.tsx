@@ -255,7 +255,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "roadrash", label: "Brick Racer", icon: "🏎️" },
   { id: "brickblocks", label: "Brick Tetris", icon: "🧱" },
   { id: "ludo", label: "Ludo", icon: "🎲" },
-  { id: "uno", label: "UNO", icon: "🃏" },
+  { id: "uno", label: "Color Cards", icon: "🃏" },
   { id: "carrom", label: "Carrom", icon: "⚪" },
   { id: "chess", label: "Chess", icon: "♟️" },
   { id: "snake", label: "Snake 2D", icon: "🐍" },

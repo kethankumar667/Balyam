@@ -356,7 +356,7 @@ function StadiumWatermark() {
           <g opacity="0.05">
             <rect x="46" y="34" width="40" height="60" rx="7" fill="none" stroke="#fff" strokeWidth="2.5" />
             <ellipse cx="66" cy="64" rx="19" ry="11" fill="#fff" opacity="0.55" />
-            <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#ffffff" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">UNO</text>
+            <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#ffffff" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">ONE</text>
           </g>
         </pattern>
       </defs>
@@ -1409,16 +1409,16 @@ export function StadiumUnoButton({
   handSize?: number;
 }) {
   const label = enabled
-    ? "Declare UNO — you have one card left!"
+    ? "Declare ONE — you have one card left!"
     : isPrimed
-    ? "UNO button primed — tap before playing down to 1 card!"
-    : "Declare UNO";
+    ? "ONE button primed — tap before playing down to 1 card!"
+    : "Declare ONE";
 
   return (
     <div className="relative flex flex-col items-center">
       {isPrimed && !enabled && (
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-amber-400 text-[8px] font-black text-black uppercase tracking-wider whitespace-nowrap shadow-md pointer-events-none z-20">
-          PRIMED FOR UNO
+          PRIMED FOR ONE
         </div>
       )}
       <button
@@ -1451,7 +1451,7 @@ export function StadiumUnoButton({
           textShadow: "0 3px 0 #9E0000, 0 4px 8px rgba(0,0,0,0.8), 0 0 10px rgba(255,230,0,0.6)",
         }}
       >
-        UNO
+        ONE
       </button>
     </div>
   );
@@ -1572,7 +1572,7 @@ export function StadiumSpeechBubble({ text }: { text: string }) {
 export const QUICK_TAUNTS = [
   "Good luck! 🍀",
   "Don't you dare! 🛑",
-  "UNO is mine! 🏆",
+  "ONE is mine! 🏆",
   "Oops! 😅",
   "Nice try! 😉",
   "Hurry up! ⏰",

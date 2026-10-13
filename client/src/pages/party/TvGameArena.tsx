@@ -139,7 +139,7 @@ export function TvGameArena({ room, gameState, activeTurn, audience = false }: T
         return count === 1 || unoDeclared.includes(p.id);
       });
       if (unoPlayers.length > 0) {
-        return `🔥 UNO ALERT: ${unoPlayers.map((p) => p.name).join(", ")} is down to 1 card! Match Point!`;
+        return `🔥 ONE ALERT: ${unoPlayers.map((p) => p.name).join(", ")} is down to 1 card! Match Point!`;
       }
       return `${activeTurn.name}'s turn to play! Couch spectators: watch the discard pile!`;
     }
@@ -866,7 +866,7 @@ function UnoTvBoard({
               {hasUno && (
                 <div className="absolute -top-2.5 right-2 px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest flex items-center gap-0.5 shadow-lg animate-bounce">
                   <Flame className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
-                  <span>UNO!</span>
+                  <span>ONE!</span>
                 </div>
               )}
 

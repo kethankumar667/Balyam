@@ -110,7 +110,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   uno: {
     game: "uno",
-    displayName: "UNO Showdown",
+    displayName: "Color Cards Showdown",
     category: "card",
     defaultModeId: "single",
     modes: [

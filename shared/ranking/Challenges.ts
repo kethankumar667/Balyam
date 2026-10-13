@@ -72,7 +72,7 @@ export const DAILY_CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   {
     templateId: "daily_play_uno",
     title: "Color Matcher",
-    description: "Play 1 match of UNO",
+    description: "Play 1 match of Color Cards",
     target: 1,
     xpReward: 60,
     category: "matches",

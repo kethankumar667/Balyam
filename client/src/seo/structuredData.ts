@@ -45,8 +45,8 @@ export const STRUCTURED_DATA_GAMES = [
   },
   {
     slug: "uno",
-    name: "UNO Blast",
-    description: "Color-matching card game mayhem. Drop Draw-Fours, skip friends, and race to shout UNO.",
+    name: "Color Cards",
+    description: "Color-matching card game mayhem. Drop Draw-Fours, skip friends, and race to shout ONE.",
     image: `${BASE_URL}/UNOTile.png`,
     minPlayers: 2,
     maxPlayers: 8,
@@ -171,7 +171,7 @@ export const STRUCTURED_DATA_GAMES = [
   },
   {
     slug: "nokiacricket",
-    name: "Nokia Cricket 2D",
+    name: "Pocket Cricket 2D",
     description: "Hit sixes and time your batting in authentic 90s monochrome LCD mobile cricket.",
     image: `${BASE_URL}/og/nokiacricket.jpg`,
     minPlayers: 1,
@@ -181,7 +181,7 @@ export const STRUCTURED_DATA_GAMES = [
   {
     slug: "snake",
     name: "Classic Snake",
-    description: "Classic Nokia 3310 green-screen Snake arcade. Eat dots, grow your tail, and avoid walls.",
+    description: "Classic green-screen Snake arcade. Eat dots, grow your tail, and avoid walls.",
     image: `${BASE_URL}/og/snake.jpg`,
     minPlayers: 1,
     maxPlayers: 4,

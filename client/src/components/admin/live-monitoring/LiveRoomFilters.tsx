@@ -6,7 +6,7 @@ const AVAILABLE_GAMES: Array<{ key: GameKind | "all"; label: string }> = [
   { key: "all", label: "All Games" },
   { key: "ludo", label: "Ludo" },
   { key: "rummy", label: "Rummy" },
-  { key: "uno", label: "UNO" },
+  { key: "uno", label: "Color Cards" },
   { key: "snl", label: "Snakes & Ladders" },
   { key: "handcricket", label: "Hand Cricket" },
   { key: "dotsboxes", label: "Dots & Boxes" },
