@@ -129,7 +129,7 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
 
     // The only seeded user is role "member" — filtering to "admin" yields zero.
     fireEvent.click(roleSelect);
-    fireEvent.click(screen.getByRole("option", { name: "Admin", exact: true }));
+    fireEvent.click(screen.getByRole("option", { name: "Admin" }));
 
     await waitFor(() => {
       expect(screen.getByText("No users match selected filters")).toBeDefined();
