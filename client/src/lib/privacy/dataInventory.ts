@@ -1,3 +1,5 @@
+import { resetConsentSession } from "./consent";
+
 /**
  * Every piece of data BHALYAM keeps on this device, in one place.
  *
@@ -134,9 +136,9 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     key: "bhalyam.consent",
     label: "Your privacy choice",
     description:
-      "Whether you allowed the optional settings and scores below, and when you chose. Kept so we do not ask again, and so the choice is demonstrable.",
+      "Whether you allowed the optional settings and scores below, when you chose, and the account ids that answered this notice on this browser. Kept on this device after sign-out so we do not ask again; erasing your local data removes it.",
     purpose: "consent",
-    isPersonalData: false,
+    isPersonalData: true,
   },
   {
     key: "bhalyam.account",
@@ -608,6 +610,7 @@ export function eraseLocalData(): EraseResult {
       if (k) allKeys.push(k);
     }
   } catch {
+    resetConsentSession();
     return { removed, removedUndeclared };
   }
 
@@ -621,6 +624,7 @@ export function eraseLocalData(): EraseResult {
     }
   }
 
+  resetConsentSession();
   return { removed: removed.sort(), removedUndeclared: removedUndeclared.sort() };
 }
 

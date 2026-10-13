@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { needsConsent, subscribeConsent } from "../lib/privacy/consent";
+import { useAuthStore } from "../store/authStore";
 
 /**
  * Is the privacy choice still waiting to be answered?
@@ -9,7 +10,8 @@ import { needsConsent, subscribeConsent } from "../lib/privacy/consent";
  * moment the answer is recorded — no polling, and it works across tabs.
  */
 export function useConsentPending(): boolean {
-  return useSyncExternalStore(subscribeConsent, needsConsent, () => false);
+  const memberId = useAuthStore((state) => state.userId);
+  return useSyncExternalStore(subscribeConsent, () => needsConsent(memberId), () => false);
 }
 
 export default useConsentPending;

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { needsConsent, recordConsent, subscribeConsent } from "../consent";
+import { needsConsent, NOTICE_VERSION, readConsent, recordConsent, subscribeConsent, withdrawConsent } from "../consent";
+import { eraseLocalData } from "../dataInventory";
 
 /** The privacy answer is announced, so the steps that wait for it (profile, welcome) can start at once. */
 describe("consent signal", () => {
@@ -17,6 +18,89 @@ describe("consent signal", () => {
     recordConsent("granted");
 
     expect(needsConsent()).toBe(false);
+  });
+
+  it("does not treat a guest's answer as a member's acknowledgement", () => {
+    recordConsent("granted");
+
+    expect(needsConsent()).toBe(false);
+    expect(needsConsent("member-a")).toBe(true);
+  });
+
+  it.each(["granted", "essential-only"] as const)("remembers a member's %s answer without asking again", (choice) => {
+    recordConsent(choice, new Date(), "member-a");
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(needsConsent("member-b")).toBe(true);
+    expect(readConsent()?.choice).toBe(choice);
+  });
+
+  it("remembers both members when accounts switch on the same browser", () => {
+    recordConsent("granted", new Date(), "member-a");
+    recordConsent("essential-only", new Date(), "member-b");
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(needsConsent("member-b")).toBe(false);
+    expect(needsConsent("member-c")).toBe(true);
+  });
+
+  it("preserves member acknowledgements when consent is withdrawn", () => {
+    recordConsent("granted", new Date(), "member-a");
+
+    withdrawConsent();
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(readConsent()?.choice).toBe("essential-only");
+  });
+
+  it("requires each member to answer again after a notice update", () => {
+    localStorage.setItem("bhalyam.consent", JSON.stringify({
+      choice: "granted", noticeVersion: NOTICE_VERSION - 1, memberIds: ["member-a", "member-b"],
+    }));
+    expect(needsConsent("member-a")).toBe(true);
+
+    recordConsent("granted", new Date(), "member-a");
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(needsConsent("member-b")).toBe(true);
+  });
+
+  it("ignores malformed member acknowledgements in storage", () => {
+    localStorage.setItem("bhalyam.consent", JSON.stringify({
+      choice: "granted", noticeVersion: NOTICE_VERSION, memberIds: [123, null, "member-a"],
+    }));
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(needsConsent("member-b")).toBe(true);
+  });
+
+  it("keeps storage-refused answers scoped to the member who answered", () => {
+    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    recordConsent("granted");
+    expect(needsConsent("member-a")).toBe(true);
+
+    recordConsent("essential-only", new Date(), "member-a");
+
+    expect(needsConsent("member-a")).toBe(false);
+    expect(needsConsent("member-b")).toBe(true);
+  });
+
+  it("does not restore erased member acknowledgements from a storage-refused answer", () => {
+    const write = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    recordConsent("granted", new Date(), "member-a");
+    expect(write).toHaveBeenCalled();
+    expect(localStorage.getItem("bhalyam.consent")).toBeNull();
+
+    eraseLocalData();
+    write.mockRestore();
+    recordConsent("granted");
+
+    expect(needsConsent("member-a")).toBe(true);
+    expect(readConsent()?.memberIds).not.toContain("member-a");
   });
 
   it("tells a subscriber when the choice is recorded", () => {
@@ -39,7 +123,7 @@ describe("consent signal", () => {
   });
 
   it("treats the choice as answered for the session when the browser refuses to store it", () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError");
     });
     const onChange = vi.fn();

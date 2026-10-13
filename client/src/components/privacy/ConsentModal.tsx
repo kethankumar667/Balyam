@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { needsConsent, recordConsent } from "../../lib/privacy/consent";
+import { recordConsent } from "../../lib/privacy/consent";
+import { useConsentPending } from "../../hooks/useConsentPending";
+import { useAuthStore } from "../../store/authStore";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { KeyholeIcon } from "../auth/authIcons";
 import Modal from "../Modal";
@@ -23,12 +25,15 @@ import Modal from "../Modal";
  * rest, and stays until answered.
  */
 export default function ConsentModal() {
-  const [open, setOpen] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const isConsentPending = useConsentPending();
+  const memberId = useAuthStore((state) => state.userId);
+  const open = isReady && isConsentPending;
   const acceptRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     // Deferred a beat so it does not fight the page's first paint.
-    const id = window.setTimeout(() => setOpen(needsConsent()), 600);
+    const id = window.setTimeout(() => setIsReady(true), 600);
     return () => window.clearTimeout(id);
   }, []);
 
@@ -40,8 +45,7 @@ export default function ConsentModal() {
   if (!open) return null;
 
   function choose(choice: "granted" | "essential-only") {
-    recordConsent(choice);
-    setOpen(false);
+    recordConsent(choice, new Date(), memberId);
   }
 
   return (
@@ -84,6 +88,10 @@ export default function ConsentModal() {
             skins, best scores, which tutorials you have already seen, and a short connection log
             for debugging dropped games. All of it stays on this device. There is no tracking and
             no advertising.
+          </p>
+          <p>
+            We also keep your privacy choice and the account ids that answered this notice on this
+            device, including after sign-out. Erasing your local data removes that record.
           </p>
           <p>
             {isSupabaseConfigured

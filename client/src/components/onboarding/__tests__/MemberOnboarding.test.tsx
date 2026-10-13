@@ -1,8 +1,16 @@
 import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { recordConsent } from "../../../lib/privacy/consent";
+import { useAuthStore } from "../../../store/authStore";
+import ConsentModal from "../../privacy/ConsentModal";
 import MemberOnboarding from "../MemberOnboarding";
+
+vi.mock("../../../store/authStore", async () => {
+  const { create } = await import("zustand");
+  return { useAuthStore: create(() => ({ userId: null as string | null })) };
+});
 
 // The two steps have their own tests; here they are markers, so these tests stay about the ORDER.
 vi.mock("../../profile/ProfileCompletionPrompt", () => ({
@@ -24,7 +32,29 @@ describe("MemberOnboarding", () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
+    useAuthStore.setState({ userId: null });
   });
+
+  it.each(["Allow all", "Only what's essential"])(
+    "asks a newly signed-in member before profile questions after guest consent (%s)",
+    async (choice) => {
+      recordConsent("granted");
+      render(<MemoryRouter><ConsentModal /><MemberOnboarding /></MemoryRouter>);
+      expect(profile()).toBeInTheDocument();
+
+      act(() => useAuthStore.setState({ userId: "member-a" }));
+
+      expect(profile()).not.toBeInTheDocument();
+      expect(await screen.findByRole("dialog", { name: "What BHALYAM keeps" })).toBeInTheDocument();
+      expect(welcome()).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: choice }));
+
+      expect(screen.queryByRole("dialog", { name: "What BHALYAM keeps" })).not.toBeInTheDocument();
+      expect(profile()).toBeInTheDocument();
+      expect(welcome()).not.toBeInTheDocument();
+    },
+  );
 
   it("shows nothing while the privacy choice is unanswered", () => {
     render(<MemberOnboarding />);

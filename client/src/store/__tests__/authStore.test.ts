@@ -9,6 +9,7 @@ import {
 import { RecentlyPlayedManager } from "../../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../../services/FavouritesManager";
 import { useRoomStore } from "../roomStore";
+import { needsConsent, NOTICE_VERSION } from "../../lib/privacy/consent";
 
 function fakeStorage() {
   const map = new Map<string, string>();
@@ -137,6 +138,23 @@ describe("signOut", () => {
     await useAuthStore.getState().signOut();
     expect(localMock.size).toBe(0);
     expect(sessionMock.size).toBe(0);
+  });
+
+  it("preserves only the privacy answer so the same member is not asked again after sign-out", async () => {
+    const memberId = useAuthStore.getState().userId!;
+    const consent = JSON.stringify({
+      choice: "essential-only", noticeVersion: NOTICE_VERSION,
+      at: "2026-10-13T00:00:00.000Z", memberIds: [memberId],
+    });
+    localMock.setItem("bhalyam.consent", consent);
+
+    await useAuthStore.getState().signOut();
+
+    expect(localMock.getItem("bhalyam.consent")).toBe(consent);
+    expect(localMock.size).toBe(1);
+    expect(sessionMock.size).toBe(0);
+    expect(needsConsent(memberId)).toBe(false);
+    expect(needsConsent("another-member")).toBe(true);
   });
 
   it("regression: resets RecentlyPlayedManager and FavouritesManager, not just their storage keys — the previous account's activity must not survive into the next guest session", async () => {

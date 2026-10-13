@@ -67,6 +67,14 @@ describe("the inventory itself", () => {
     }
   });
 
+  it("discloses the account identifiers held with the privacy choice as personal data", () => {
+    const consent = DATA_INVENTORY.find((entry) => entry.key === "bhalyam.consent");
+
+    expect(consent?.isPersonalData).toBe(true);
+    expect(consent?.description).toMatch(/account ids/i);
+    expect(consent?.description).toMatch(/sign.out/i);
+  });
+
   it("names who receives data, not just that someone might", () => {
     expect(THIRD_PARTIES.length).toBeGreaterThan(0);
     for (const p of THIRD_PARTIES) {

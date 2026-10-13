@@ -26,6 +26,7 @@ export interface ConsentRecord {
   at: string;
   /** Which version of the notice they saw, so a material change can re-ask. */
   noticeVersion: number;
+  memberIds?: string[];
 }
 
 /**
@@ -37,10 +38,12 @@ export interface ConsentRecord {
  *     address and a password, and two new stored keys for the session. Every
  *     one of the three triggers above, so anyone who consented to version 2
  *     is asked again rather than assumed to have agreed to this.
+ * 4 — records the account ids that acknowledged the notice on this device,
+ *     including across sign-out, so guest consent cannot bypass member onboarding.
  */
-export const NOTICE_VERSION = 3;
+export const NOTICE_VERSION = 4;
 
-const CONSENT_KEY = "bhalyam.consent";
+export const CONSENT_KEY = "bhalyam.consent";
 
 /**
  * Keys a player cannot decline without giving up playing at all.
@@ -82,6 +85,9 @@ export function readConsent(): ConsentRecord | null {
       choice: parsed.choice,
       at: typeof parsed.at === "string" ? parsed.at : new Date().toISOString(),
       noticeVersion: parsed.noticeVersion,
+      memberIds: Array.isArray(parsed.memberIds)
+        ? parsed.memberIds.filter((memberId): memberId is string => typeof memberId === "string")
+        : [],
     };
   } catch {
     return null;
@@ -93,14 +99,14 @@ export function readConsent(): ConsentRecord | null {
  * session only, so "still unanswered" must not be reported from storage: nothing would ever clear it,
  * and everything waiting on the answer (the first-run profile and welcome steps) would wait forever.
  */
-let storageRefusedAnswer = false;
+let storageRefusedAnswer: ConsentRecord | null = null;
 
 /** True when we must ask — never asked, or the notice has changed since. */
-export function needsConsent(): boolean {
+export function needsConsent(memberId?: string | null): boolean {
   if (typeof window === "undefined") return false;
-  if (storageRefusedAnswer) return false;
-  const rec = readConsent();
-  return rec === null || rec.noticeVersion < NOTICE_VERSION;
+  const rec = storageRefusedAnswer ?? readConsent();
+  return rec === null || rec.noticeVersion < NOTICE_VERSION
+    || Boolean(memberId && !rec.memberIds?.includes(memberId));
 }
 
 /**
@@ -109,6 +115,11 @@ export function needsConsent(): boolean {
  * `readConsent()`.
  */
 export const CONSENT_CHANGED_EVENT = "bhalyam:consent-changed";
+
+export function resetConsentSession(): void {
+  storageRefusedAnswer = null;
+  if (typeof window !== "undefined") window.dispatchEvent?.(new Event(CONSENT_CHANGED_EVENT));
+}
 
 /** Subscribe to consent being answered or withdrawn, in this tab or another. Returns the unsubscribe. */
 export function subscribeConsent(onChange: () => void): () => void {
@@ -121,19 +132,22 @@ export function subscribeConsent(onChange: () => void): () => void {
   };
 }
 
-export function recordConsent(choice: ConsentChoice, now: Date = new Date()): ConsentRecord {
+export function recordConsent(choice: ConsentChoice, now: Date = new Date(), memberId?: string | null): ConsentRecord {
+  const previous = storageRefusedAnswer ?? readConsent();
+  const memberIds = previous?.noticeVersion === NOTICE_VERSION ? previous.memberIds ?? [] : [];
   const rec: ConsentRecord = {
     choice,
     at: now.toISOString(),
     noticeVersion: NOTICE_VERSION,
+    memberIds: memberId && !memberIds.includes(memberId) ? [...memberIds, memberId] : memberIds,
   };
   if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
     try {
       window.localStorage.setItem(CONSENT_KEY, JSON.stringify(rec));
-      storageRefusedAnswer = false;
+      storageRefusedAnswer = null;
     } catch {
       /* private browsing — the choice holds for this session only */
-      storageRefusedAnswer = true;
+      storageRefusedAnswer = rec;
     }
     if (choice === "essential-only") purgeOptional();
     window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));

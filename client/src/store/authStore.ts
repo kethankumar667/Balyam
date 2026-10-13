@@ -12,6 +12,7 @@ import { clearGuestIdentity } from "../lib/playerIdentity";
 import { RecentlyPlayedManager } from "../services/RecentlyPlayedManager";
 import { FavouritesManager } from "../services/FavouritesManager";
 import { syncUserDataOnLogin, clearUserDataOnSignOut } from "../services/UserDataSyncService";
+import { CONSENT_KEY } from "../lib/privacy/consent";
 
 /**
  * The name Supabase itself already knows for this person, if any.
@@ -483,9 +484,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // preferences (theme, audio volume, language) that have nothing to do
     // with the account. That trade was made deliberately, on request, in
     // favor of "sign out means a clean device" over "remember my dark mode
-    // across accounts."
+    // across accounts." The privacy record is the sole exception: a refusal
+    // and the notice acknowledgements must survive sign-out.
     try {
+      const consentRecord = localStorage.getItem(CONSENT_KEY);
       localStorage.clear();
+      if (consentRecord !== null) localStorage.setItem(CONSENT_KEY, consentRecord);
     } catch {
       /* private browsing, or storage otherwise unavailable — nothing to clear */
     }
