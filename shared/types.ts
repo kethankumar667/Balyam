@@ -3200,6 +3200,8 @@ export interface ClientToServerEvents {
       playerId?: string;
       seatToken?: string;
       state?: RoomPublicState;
+      /** Private snapshot for the accepted seat, ACK-only; null in a lobby or without an engine. Optional for older consumers. */
+      gameState?: unknown;
       error?: string;
     }) => void
   ) => void;

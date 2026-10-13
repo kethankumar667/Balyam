@@ -2,6 +2,7 @@ import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types";
 import { logConn } from "./connectionLog";
+import { connectionStateManager } from "../core/recovery/ConnectionStateManager";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
 
@@ -20,7 +21,8 @@ export type ConnectionState =
   | "FAILED";
 
 let socket: AppSocket | null = null;
-let recoveryInstalled = false;
+let cleanupNetworkRecovery: (() => void) | null = null;
+let automaticReconnectBlocked = false;
 let currentState: ConnectionState = "DISCONNECTED";
 const stateListeners = new Set<(state: ConnectionState) => void>();
 
@@ -87,6 +89,7 @@ export function getSocket(): AppSocket {
     } as unknown as AppSocket;
   }
   if (!socket) {
+    automaticReconnectBlocked = false;
     setConnectionState("CONNECTING");
     socket = io(SERVER_URL, {
       autoConnect: true,
@@ -102,14 +105,42 @@ export function getSocket(): AppSocket {
       randomizationFactor: 0.5,
       timeout: 10_000,
     });
+    installMoveSafety(socket);
     installTelemetry(socket);
     installNetworkRecovery(socket);
   }
-  if (!socket.connected) {
+  if (!socket.connected && !automaticReconnectBlocked) {
     setConnectionState("CONNECTING");
     socket.connect();
   }
   return socket;
+}
+
+function installMoveSafety(s: AppSocket): void {
+  const originalEmit = s.emit;
+  s.emit = function <Event extends keyof ClientToServerEvents>(
+    event: Event,
+    ...args: Parameters<ClientToServerEvents[Event]>
+  ): AppSocket {
+    if (event === "game:move") {
+      if (
+        socket !== s ||
+        !s.connected ||
+        (typeof navigator !== "undefined" && navigator.onLine === false) ||
+        !connectionStateManager.isOnline()
+      ) return s;
+
+      const payload = args[0];
+      if (typeof payload === "object" && payload !== null && !("actionId" in payload && payload.actionId !== undefined)) {
+        return Reflect.apply(originalEmit, s, [
+          event,
+          { ...payload, actionId: generateActionId() },
+          ...args.slice(1),
+        ]);
+      }
+    }
+    return Reflect.apply(originalEmit, s, [event, ...args]);
+  };
 }
 
 /**
@@ -119,13 +150,15 @@ function installTelemetry(s: AppSocket): void {
   logConn("init", SERVER_URL);
 
   s.on("connect", () => {
+    if (socket !== s) return;
+    automaticReconnectBlocked = false;
     const transport = s.io.engine?.transport?.name ?? "?";
     logConn("connect", `id=${s.id} transport=${transport}`);
     setConnectionState(currentState === "RECONNECTING" ? "RECOVERED" : "CONNECTED");
     if (currentState === "RECOVERED") {
       // Settle to CONNECTED after 1s
       setTimeout(() => {
-        if (s.connected) setConnectionState("CONNECTED");
+        if (socket === s && s.connected) setConnectionState("CONNECTED");
       }, 1000);
     }
   });
@@ -143,6 +176,8 @@ function installTelemetry(s: AppSocket): void {
   });
 
   s.on("disconnect", (reason) => {
+    if (socket !== s) return;
+    if (reason === "io server disconnect") automaticReconnectBlocked = true;
     logConn("disconnect", reason);
     setConnectionState("DISCONNECTED");
   });
@@ -171,7 +206,7 @@ function installTelemetry(s: AppSocket): void {
     logConn("reconnect_ok", `after #${n}`);
     setConnectionState("RECOVERED");
     setTimeout(() => {
-      if (s.connected) setConnectionState("CONNECTED");
+      if (socket === s && s.connected) setConnectionState("CONNECTED");
     }, 1000);
   });
 }
@@ -180,10 +215,11 @@ function installTelemetry(s: AppSocket): void {
  * Robust network lifecycle recovery covering Wi-Fi <-> 5G, app freeze, backgrounding, tab sleep.
  */
 function installNetworkRecovery(s: AppSocket): void {
-  if (recoveryInstalled || typeof window === "undefined") return;
-  recoveryInstalled = true;
+  if (cleanupNetworkRecovery || typeof window === "undefined") return;
+  const retryTimers = new Set<number>();
 
   const kick = () => {
+    if (socket !== s || automaticReconnectBlocked || navigator.onLine === false) return;
     if (!s.connected) {
       logConn("kick", "not connected, dialling");
       setConnectionState("CONNECTING");
@@ -192,6 +228,7 @@ function installNetworkRecovery(s: AppSocket): void {
     }
     // Probe with net:ping to verify half-open TCP connections
     s.timeout(3_000).emit("net:ping", (err: unknown) => {
+      if (socket !== s || automaticReconnectBlocked) return;
       if (!err) {
         logConn("kick", "probe ok, socket healthy");
         setConnectionState("CONNECTED");
@@ -204,36 +241,58 @@ function installNetworkRecovery(s: AppSocket): void {
     });
   };
 
-  window.addEventListener("online", () => {
+  const onOnline = () => {
     logConn("browser_online");
     kick();
-  });
+  };
 
-  window.addEventListener("offline", () => {
+  const onOffline = () => {
     logConn("browser_offline");
     setConnectionState("DISCONNECTED");
-  });
+  };
 
-  document.addEventListener("visibilitychange", () => {
+  const onVisibilityChange = () => {
     logConn("visibility", document.visibilityState);
     if (document.visibilityState === "visible") {
       kick();
     }
-  });
+  };
 
-  window.addEventListener("focus", () => {
+  const onFocus = () => {
     if (!s.connected) kick();
-  });
+  };
 
-  s.io.on("reconnect_failed", () => {
-    window.setTimeout(kick, 3_000);
-  });
+  const onReconnectFailed = () => {
+    if (socket !== s || automaticReconnectBlocked) return;
+    const timer = window.setTimeout(() => {
+      retryTimers.delete(timer);
+      kick();
+    }, 3_000);
+    retryTimers.add(timer);
+  };
+
+  window.addEventListener("online", onOnline);
+  window.addEventListener("offline", onOffline);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("focus", onFocus);
+  s.io.on("reconnect_failed", onReconnectFailed);
+  cleanupNetworkRecovery = () => {
+    window.removeEventListener("online", onOnline);
+    window.removeEventListener("offline", onOffline);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("focus", onFocus);
+    s.io.off("reconnect_failed", onReconnectFailed);
+    for (const timer of retryTimers) window.clearTimeout(timer);
+    cleanupNetworkRecovery = null;
+  };
 }
 
 export function disconnectSocket(): void {
   if (socket) {
-    socket.disconnect();
+    const previousSocket = socket;
     socket = null;
+    cleanupNetworkRecovery?.();
+    previousSocket.disconnect();
     setConnectionState("DISCONNECTED");
   }
 }

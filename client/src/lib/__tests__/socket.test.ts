@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AppSocket } from "../socket";
 
 /**
  * Socket reconnection behaviour.
@@ -20,13 +21,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 interface FakeSocket {
   connected: boolean;
+  emit: ReturnType<typeof vi.fn<unknown[], FakeSocket>>;
+  sendBuffer: unknown[][];
+  sent: unknown[][];
   // Loose signatures: these stand in for socket.io's own, and the tests only
   // assert on call counts.
   connect: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
   timeout: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
-  io: { on: ReturnType<typeof vi.fn>; engine?: { transport?: { name: string } } };
+  io: { on: ReturnType<typeof vi.fn>; off: ReturnType<typeof vi.fn>; engine?: { transport?: { name: string } } };
 }
 
 /** Whether the fake server answers the liveness probe. */
@@ -37,11 +41,12 @@ let ioOptions: Record<string, unknown> | undefined;
 let windowListeners: Map<string, Array<() => void>>;
 let documentListeners: Map<string, Array<() => void>>;
 let visibility: string;
+let socketOverride: AppSocket | undefined;
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn((_url: string, opts: Record<string, unknown>) => {
     ioOptions = opts;
-    return fakeSocket;
+    return socketOverride ?? fakeSocket;
   }),
 }));
 
@@ -50,8 +55,10 @@ function fire(map: Map<string, Array<() => void>>, event: string): void {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.resetModules();
   ioOptions = undefined;
+  socketOverride = undefined;
   visibility = "visible";
   windowListeners = new Map();
   documentListeners = new Map();
@@ -59,8 +66,16 @@ beforeEach(() => {
 
   fakeSocket = {
     connected: false,
+    sendBuffer: [],
+    sent: [],
+    emit: vi.fn(function (this: FakeSocket, ...args: unknown[]) {
+      if (this.connected) this.sent.push(args);
+      else this.sendBuffer.push(args);
+      return this;
+    }),
     connect: vi.fn(() => {
       fakeSocket.connected = true;
+      fakeSocket.sent.push(...fakeSocket.sendBuffer.splice(0));
       return fakeSocket;
     }) as unknown as ReturnType<typeof vi.fn>,
     disconnect: vi.fn(() => {
@@ -75,7 +90,7 @@ beforeEach(() => {
       },
     })) as unknown as ReturnType<typeof vi.fn>,
     on: vi.fn(),
-    io: { on: vi.fn(), engine: { transport: { name: "websocket" } } },
+    io: { on: vi.fn(), off: vi.fn(), engine: { transport: { name: "websocket" } } },
   };
 
   // connectionLog writes every socket event to localStorage. It is built to
@@ -88,17 +103,25 @@ beforeEach(() => {
     removeItem: (k: string) => store.delete(k),
   });
 
+  vi.stubGlobal("navigator", { onLine: true });
   vi.stubGlobal("window", {
     addEventListener: (event: string, fn: () => void) => {
       if (!windowListeners.has(event)) windowListeners.set(event, []);
       windowListeners.get(event)!.push(fn);
     },
+    removeEventListener: (event: string, fn: () => void) => {
+      windowListeners.set(event, (windowListeners.get(event) ?? []).filter((listener) => listener !== fn));
+    },
     setTimeout: (fn: () => void) => setTimeout(fn, 0),
+    clearTimeout: (timer: ReturnType<typeof setTimeout>) => clearTimeout(timer),
   });
   vi.stubGlobal("document", {
     addEventListener: (event: string, fn: () => void) => {
       if (!documentListeners.has(event)) documentListeners.set(event, []);
       documentListeners.get(event)!.push(fn);
+    },
+    removeEventListener: (event: string, fn: () => void) => {
+      documentListeners.set(event, (documentListeners.get(event) ?? []).filter((listener) => listener !== fn));
     },
     get visibilityState() {
       return visibility;
@@ -106,7 +129,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
+  (await import("../socket")).disconnectSocket();
+  (await import("../../core/recovery/ConnectionStateManager")).connectionStateManager.reset();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -220,5 +246,169 @@ describe("network-return triggers", () => {
     // Every component calls getSocket(); duplicated listeners would fire a
     // reconnect storm on a single `online` event.
     expect(windowListeners.get("online")?.length).toBe(1);
+  });
+});
+
+describe("outgoing move safety", () => {
+  it.each(["DISCONNECTED", "RECONNECTING", "RECOVERING", "FAILED"] as const)(
+    "drops moves before native emit while room readiness is %s",
+    async (state) => {
+      const originalEmit = fakeSocket.emit;
+      const socket = await loadSocket();
+      const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+      connectionStateManager.transition(state);
+
+      expect(socket.emit("game:move", { type: "roll" })).toBe(socket);
+
+      expect(originalEmit).not.toHaveBeenCalled();
+      expect(fakeSocket.sendBuffer).toEqual([]);
+      expect(fakeSocket.sent).toEqual([]);
+      connectionStateManager.transition("CONNECTED");
+      fakeSocket.connect();
+      expect(fakeSocket.sent).toEqual([]);
+    },
+  );
+
+  it.each(["disconnected", "offline"] as const)("drops %s moves without replay", async (condition) => {
+    const originalEmit = fakeSocket.emit;
+    const socket = await loadSocket();
+    const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+    connectionStateManager.transition("CONNECTED");
+    if (condition === "disconnected") fakeSocket.connected = false;
+    else vi.stubGlobal("navigator", { onLine: false });
+
+    expect(socket.emit("game:move", { type: "roll", actionId: "stale" })).toBe(socket);
+
+    expect(originalEmit).not.toHaveBeenCalled();
+    expect(fakeSocket.sendBuffer).toEqual([]);
+    vi.stubGlobal("navigator", { onLine: true });
+    fakeSocket.connect();
+    expect(fakeSocket.sent).toEqual([]);
+  });
+
+  it.each(["CONNECTED", "RECOVERED"] as const)("sends ready moves in %s with unchanged keys and payloads", async (state) => {
+    const originalEmit = fakeSocket.emit;
+    const socket = await loadSocket();
+    const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+    connectionStateManager.transition(state);
+    const payload = Object.freeze({ type: "roll", data: { value: 6 }, playerId: "local-seat", actionId: "existing", requestId: "request" });
+
+    expect(socket.emit("game:move", payload)).toBe(socket);
+
+    expect(originalEmit).toHaveBeenCalledOnce();
+    expect(originalEmit).toHaveBeenCalledWith("game:move", payload);
+    expect(fakeSocket.sent).toEqual([["game:move", payload]]);
+  });
+
+  it("adds distinct action IDs to unkeyed moves without mutating caller data", async () => {
+    const socket = await loadSocket();
+    const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+    connectionStateManager.transition("CONNECTED");
+    const payload = Object.freeze({ type: "roll", playerId: "local-seat" });
+
+    socket.emit("game:move", payload).emit("game:move", payload);
+
+    const first = fakeSocket.sent[0]?.[1];
+    const second = fakeSocket.sent[1]?.[1];
+    expect(first).toEqual({ ...payload, actionId: expect.any(String) });
+    expect(second).toEqual({ ...payload, actionId: expect.any(String) });
+    expect(first).not.toEqual(second);
+    expect(payload).not.toHaveProperty("actionId");
+  });
+
+  it("leaves room joins and pings untouched even while offline and recovering", async () => {
+    const originalEmit = fakeSocket.emit;
+    const socket = await loadSocket();
+    const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+    connectionStateManager.transition("RECOVERING");
+    fakeSocket.connected = false;
+    vi.stubGlobal("navigator", { onLine: false });
+    const join = { code: "ABCDEF", name: "Player" };
+    const ack = vi.fn();
+
+    expect(socket.emit("room:join", join, ack).emit("net:ping", ack)).toBe(socket);
+
+    expect(originalEmit.mock.calls).toEqual([["room:join", join, ack], ["net:ping", ack]]);
+    expect(fakeSocket.sendBuffer).toEqual([["room:join", join, ack], ["net:ping", ack]]);
+  });
+
+  it("never enters the real Socket.IO sendBuffer or replays dropped moves on connection", async () => {
+    const native = await vi.importActual<typeof import("socket.io-client")>("socket.io-client");
+    const realSocket: AppSocket = native.io("http://localhost:4000", { autoConnect: false, forceNew: true });
+    socketOverride = realSocket;
+    vi.spyOn(realSocket, "connect").mockReturnValue(realSocket);
+    const originalEmit = vi.spyOn(realSocket, "emit");
+    const write = vi.spyOn(realSocket.io, "_packet").mockImplementation(() => {});
+    const socket = await loadSocket();
+    const { connectionStateManager } = await import("../../core/recovery/ConnectionStateManager");
+    connectionStateManager.transition("CONNECTED");
+
+    socket.emit("game:move", { type: "roll" });
+    realSocket.connected = true;
+    connectionStateManager.transition("RECOVERING");
+    socket.emit("game:move", { type: "roll" });
+    connectionStateManager.transition("CONNECTED");
+    vi.stubGlobal("navigator", { onLine: false });
+    socket.emit("game:move", { type: "roll" });
+
+    expect(originalEmit).not.toHaveBeenCalled();
+    expect(realSocket.sendBuffer).toEqual([]);
+    vi.stubGlobal("navigator", { onLine: true });
+    Reflect.apply(Reflect.get(realSocket, "onconnect"), realSocket, ["reconnected-id"]);
+    expect(write).not.toHaveBeenCalled();
+    expect(realSocket.sendBuffer).toEqual([]);
+    socket.emit("game:move", { type: "roll", actionId: "fresh" });
+    expect(originalEmit).toHaveBeenCalledOnce();
+    expect(originalEmit).toHaveBeenCalledWith("game:move", { type: "roll", actionId: "fresh" });
+    expect(write).toHaveBeenCalledOnce();
+  });
+});
+
+describe("singleton teardown", () => {
+  it("removes browser callbacks and pending retries, then installs recovery for the replacement", async () => {
+    const { getSocket, disconnectSocket } = await import("../socket");
+    getSocket();
+    const oldSocket = fakeSocket;
+    for (const [event, listener] of oldSocket.io.on.mock.calls) {
+      if (event === "reconnect_failed") listener();
+    }
+
+    disconnectSocket();
+    oldSocket.connect.mockClear();
+    fire(windowListeners, "online");
+    fire(windowListeners, "focus");
+    fire(documentListeners, "visibilitychange");
+    vi.runAllTimers();
+    expect(oldSocket.connect).not.toHaveBeenCalled();
+
+    fakeSocket = {
+      ...oldSocket,
+      connected: false,
+      connect: vi.fn(() => fakeSocket) as unknown as ReturnType<typeof vi.fn>,
+    };
+    getSocket();
+    fakeSocket.connect.mockClear();
+    fire(windowListeners, "online");
+    expect(fakeSocket.connect).toHaveBeenCalledOnce();
+    expect(oldSocket.connect).not.toHaveBeenCalled();
+    expect(windowListeners.get("online")).toHaveLength(1);
+  });
+
+  it("does not auto-connect after an explicit server disconnect", async () => {
+    const { getSocket } = await import("../socket");
+    getSocket();
+    fakeSocket.connected = false;
+    for (const [event, listener] of fakeSocket.on.mock.calls) {
+      if (event === "disconnect") listener("io server disconnect");
+    }
+    fakeSocket.connect.mockClear();
+
+    fire(windowListeners, "online");
+    fire(windowListeners, "focus");
+    fire(documentListeners, "visibilitychange");
+    getSocket();
+    vi.runAllTimers();
+
+    expect(fakeSocket.connect).not.toHaveBeenCalled();
   });
 });

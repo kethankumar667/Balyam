@@ -3,13 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { recoveryManager } from "../../core/recovery/RecoveryManager";
 import { connectionStateManager } from "../../core/recovery/ConnectionStateManager";
 import {
-  saveActiveSession,
   getActiveSession,
   clearActiveSession,
   getRoomSession,
 } from "../../core/recovery/recoveryStorage";
 import { useRoomStore } from "../../store/roomStore";
-import type { RoomPublicState } from "@shared/types";
 import { act } from "@testing-library/react";
 
 // Mock socket
@@ -32,6 +30,7 @@ vi.mock("../../lib/socket", () => ({
 
 describe("BHALYAM — Client Multiplayer Game Flow & Recovery Certification Suite", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
     localStorage.clear();
     clearActiveSession();
@@ -80,75 +79,38 @@ describe("BHALYAM — Client Multiplayer Game Flow & Recovery Certification Suit
   });
 
   describe("2. Authoritative Recovery Handshake on Network Loss & Reconnect", () => {
-    it("triggers attemptRecovery and restores room state on successful socket ack", async () => {
+    it("delegates Retry to Room without emitting a join or declaring readiness", async () => {
       recoveryManager.init();
-      recoveryManager.attachRoom("ROOM99", "p_alice_1", "seat_token_secure_99", "Alice", "A1");
-
-      const mockAuthoritativeState: RoomPublicState = {
-        code: "ROOM99",
-        game: "ludo",
-        hostId: "p_alice_1",
-        phase: "playing",
-        players: [
-          { id: "p_alice_1", name: "Alice", isHost: true, isReady: true, isConnected: true },
-        ],
-        spectatorCount: 0,
-        sealed: false,
-        entryStakeCoins: 100,
-        lifecycleState: "IN_PROGRESS",
-        maxPlayers: 4,
-        name: "Ludo Room",
-        history: [],
-        champion: null,
-        unoHistory: [],
-        unoChampion: null,
-        bingoHistory: [],
-        ludoHistory: [],
-        currentMatchId: "m_99",
-        lastMatchId: null,
-        committedCostPerSeat: null,
-        committedTotalPot: null,
-      };
-
-      mockSocketEmit.mockImplementation((event, payload, ack) => {
-        if (event === "room:join") {
-          ack({
-            ok: true,
-            playerId: "p_alice_1",
-            seatToken: "seat_token_secure_99",
-            state: mockAuthoritativeState,
-          });
-        }
-      });
+      recoveryManager.attachRoom("ROOM99", "p_alice_1", "seat_token_secure_99", "Alice", "A1", false);
+      const retry = vi.fn().mockResolvedValue(true);
+      recoveryManager.registerRoomRecovery("ROOM99", retry);
 
       const recoveryPromise = recoveryManager.attemptRecovery("ROOM99");
 
       await expect(recoveryPromise).resolves.toBe(true);
-      expect(connectionStateManager.getState()).toBe("RECOVERED");
-
-      const store = useRoomStore.getState();
-      expect(store.playerId).toBe("p_alice_1");
-      expect(store.roomState?.phase).toBe("playing");
-      expect(store.roomState?.lifecycleState).toBe("IN_PROGRESS");
+      expect(retry).toHaveBeenCalledOnce();
+      expect(mockSocketEmit).not.toHaveBeenCalled();
+      expect(connectionStateManager.getState()).toBe("RECOVERING");
+      expect(useRoomStore.getState().roomState).toBeNull();
+      expect(useRoomStore.getState().playerId).toBeNull();
     });
 
-    it("handles recovery handshake failure with exponential retry backoff", async () => {
+    it("returns the Room owner's failure without scheduling duplicate retries", async () => {
       recoveryManager.init();
       recoveryManager.attachRoom("ROOM99", "p_alice_1", "seat_token_secure_99");
-
-      mockSocketEmit.mockImplementation((event, payload, ack) => {
-        if (event === "room:join") {
-          ack({
-            ok: false,
-            error: "Room not found",
-          });
-        }
+      const retry = vi.fn(async () => {
+        connectionStateManager.transition("FAILED", "Room not found");
+        return false;
       });
+      recoveryManager.registerRoomRecovery("ROOM99", retry);
 
       const recoveryPromise = recoveryManager.attemptRecovery("ROOM99");
       await expect(recoveryPromise).resolves.toBe(false);
 
-      expect(connectionStateManager.getState()).toBe("RECONNECTING");
+      vi.advanceTimersByTime(20_000);
+      expect(connectionStateManager.getState()).toBe("FAILED");
+      expect(retry).toHaveBeenCalledOnce();
+      expect(mockSocketEmit).not.toHaveBeenCalled();
     });
   });
 

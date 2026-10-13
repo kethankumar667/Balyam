@@ -175,7 +175,7 @@ export function registerSocketHandlers(
           });
         });
       }
-      ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken, state: result.state });
+      ack({ ok: true, playerId: result.playerId, seatToken: result.seatToken, state: result.state, gameState: rooms.getGameStateForSocket(socket.id) });
     } catch (err) {
       // Without this, a thrown error here (e.g. a stale engine reference on
       // a room left mid-start-failure) never calls `ack` — the client has

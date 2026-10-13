@@ -20,6 +20,7 @@ import TableUnavailable, { type UnavailableStatus } from "../components/room/Tab
 
 /** How long the pre-join probe may take before the join is left to decide on its own. */
 const PROBE_TIMEOUT_MS = 4000;
+const ROOM_JOIN_TIMEOUT_MS = 20_000;
 import { exitFullscreen, isFullscreenActive, isFullscreenSupported, isPhoneClass } from "../lib/fullscreen";
 import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
@@ -50,6 +51,7 @@ import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import RoomConnectingLoader from "../components/loading/RoomConnectingLoader";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
+import { connectionStateManager } from "../core/recovery/ConnectionStateManager";
 import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
@@ -603,7 +605,8 @@ function Connect4BoardContainer({
 }
 
 export default function Room() {
-  const { code } = useParams<{ code: string }>();
+  const { code: routeCode } = useParams<{ code: string }>();
+  const code = routeCode?.toUpperCase();
   const navigate = useNavigate();
 
   // Pre-warm the socket the instant this page mounts — before the player has
@@ -770,7 +773,44 @@ export default function Room() {
   // Blocks overlapping room:join emits before the first ack returns. Both
   // StrictMode's double-invoked effect and the connect-event rejoin racing
   // the synchronous initial join would otherwise each mint a duplicate player.
-  const joinInFlightRef = useRef(false);
+  const activeJoinRoomRef = useRef<string | null>(null);
+  const roomReadyRef = useRef(false);
+  const [isRoomReady, setIsRoomReady] = useState(false);
+  const joinAttemptRef = useRef<{
+    timer: ReturnType<typeof setTimeout>;
+    resolve: (success: boolean) => void;
+    promise: Promise<boolean>;
+    emitted: boolean;
+  } | null>(null);
+
+  const cancelJoin = useCallback(() => {
+    const attempt = joinAttemptRef.current;
+    joinAttemptRef.current = null;
+    if (attempt) {
+      clearTimeout(attempt.timer);
+      attempt.resolve(false);
+    }
+    roomReadyRef.current = false;
+  }, []);
+
+  const completeJoin = useCallback((room: RoomPublicState, gameState: unknown) => {
+    const attempt = joinAttemptRef.current;
+    if (!attempt) return;
+    if (room.phase !== "lobby" && gameState == null) {
+      cancelJoin();
+      setError("The server could not restore your game. Retry or return to the lounge.");
+      connectionStateManager.transition("FAILED", "Missing private snapshot in room join acknowledgement");
+      return;
+    }
+    clearTimeout(attempt.timer);
+    joinAttemptRef.current = null;
+    if (room.phase !== "lobby") setGameState(gameState);
+    roomReadyRef.current = true;
+    setIsRoomReady(true);
+    setError(null);
+    connectionStateManager.transition("RECOVERED", "Room and private game state restored");
+    attempt.resolve(true);
+  }, [cancelJoin, setError, setGameState]);
 
   /**
    * Confirm-before-leave for every in-game "Leave" affordance that is NOT
@@ -785,33 +825,67 @@ export default function Room() {
   const [showInGameLeaveModal, setShowInGameLeaveModal] = useState(false);
   const requestLeaveConfirmation = useCallback(() => setShowInGameLeaveModal(true), []);
 
-  const attemptJoin = useCallback(async (reason: "initial" | "reconnect"): Promise<void> => {
+  const attemptJoin = useCallback((reason: "initial" | "reconnect"): Promise<boolean> => {
     // Wait for the real auth session before resolving a credential — see the
     // `authReady` comment above `mustDeclare`. Without this, a reconnect
     // firing in the same window as a fresh tab's session hydration could
     // still race `resolveRoomCredential()` ahead of the restored access
     // token and rejoin on a guest credential.
-    if (!code || !roomPlayerName || mustDeclare || !authReady) return;
-    if (joinInFlightRef.current) return;
-    joinInFlightRef.current = true;
+    if (!code || activeJoinRoomRef.current !== code || !roomPlayerName || mustDeclare || !authReady) return Promise.resolve(false);
+    if (joinAttemptRef.current) return joinAttemptRef.current.promise;
     const socket = getSocket();
-    if (!socket.connected) {
-      socket.connect();
-    }
     const joinName = roomPlayerName;
     const joinCode = code;
+    const connectionId = socket.id;
     const seat = seatFor(joinCode);
     // Fail-closed credential resolution: verified members proceed with their
     // session token, while guests mint or reuse a signed token. If guest minting
     // fails, abort without emitting room:join so no unauthenticated seat with
     // identityId: null is joined.
-    const cred = await resolveRoomCredential();
+    roomReadyRef.current = false;
+    setIsRoomReady(false);
+    setGameState(null);
+    if (useRoomStore.getState().roomState?.code !== joinCode) setRoomState(null);
+    setError(null);
+    let resolve!: (success: boolean) => void;
+    const promise = new Promise<boolean>((settle) => { resolve = settle; });
+    const attempt = {
+      timer: setTimeout(() => {
+        if (joinAttemptRef.current !== attempt) return;
+        cancelJoin();
+        setError("The room is taking a while to respond. Retry to restore your seat, or return to the lounge.");
+        connectionStateManager.transition("FAILED", "Room recovery timed out");
+      }, ROOM_JOIN_TIMEOUT_MS),
+      resolve, promise, emitted: false,
+    };
+    joinAttemptRef.current = attempt;
+    const isCurrent = () => activeJoinRoomRef.current === joinCode &&
+      joinAttemptRef.current === attempt && socket.connected && socket.id === connectionId && navigator.onLine;
+    connectionStateManager.transition(socket.connected && navigator.onLine ? "RECOVERING" : "RECONNECTING", "Restoring room session");
+    if (!socket.connected || !navigator.onLine) {
+      if (navigator.onLine) socket.connect();
+      return promise;
+    }
+    void (async () => {
+    let cred;
+    try {
+      cred = await resolveRoomCredential();
+    } catch {
+      if (!isCurrent()) return;
+      cancelJoin();
+      setError("We could not prepare your session. Check your connection and retry.");
+      connectionStateManager.transition("FAILED", "Room credential resolution failed");
+      return;
+    }
+    if (!isCurrent()) return;
     if (!cred.ok) {
-      joinInFlightRef.current = false;
+      cancelJoin();
       setError(cred.error);
+      connectionStateManager.transition("FAILED", "Room credential rejected");
       return;
     }
     logConn("rejoin_send", `${reason} code=${joinCode} hadSeat=${!!seat}`);
+    attempt.emitted = true;
     socket.emit(
       "room:join",
       {
@@ -826,12 +900,14 @@ export default function Room() {
         guestToken: cred.guestToken,
       },
       (res) => {
-        joinInFlightRef.current = false;
+        if (!isCurrent()) return;
         logConn(
           "rejoin_ack",
           `${reason} ok=${res.ok}${res.ok ? "" : ` error=${res.error ?? "?"}`}`,
         );
         if (!res.ok) {
+          cancelJoin();
+          connectionStateManager.transition("FAILED", "Room join rejected");
           // A refused NAME is not a failed room: nothing is wrong with the table, and no seat was granted.
           // Send the guest back to the name step with the reason, instead of a dead-end error card.
           if (!isMember && isNameRefusal(res.error)) {
@@ -857,24 +933,32 @@ export default function Room() {
           useRoomStore.getState().forgetSeat(joinCode);
           return;
         }
+        if (res.state?.code !== joinCode || !res.playerId) {
+          cancelJoin();
+          setError("The room could not be restored. Retry or return to the lounge.");
+          connectionStateManager.transition("FAILED", "Incomplete room join acknowledgement");
+          return;
+        }
         if (res.state) {
           setRoomState(res.state);
         }
         if (res.playerId) {
           setPlayerId(res.playerId);
-          recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined);
+          recoveryManager.attachRoom(joinCode, res.playerId, res.seatToken ?? seat?.seatToken, joinName, useRoomStore.getState().avatarId ?? undefined, false);
         }
         if (res.playerId && res.seatToken) {
           // A guest's name rides on the seat so it outlives a refresh but not the room.
           rememberSeat(joinCode, res.playerId, res.seatToken, isMember ? undefined : joinName);
         }
+        completeJoin(res.state, res.gameState);
       }
     );
-  }, [code, roomPlayerName, isMember, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, rememberSeat, setError, reset, navigate]);
+    })();
+    return promise;
+  }, [code, roomPlayerName, isMember, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, setGameState, rememberSeat, setError, reset, cancelJoin, completeJoin]);
 
   const handleRetryConnection = useCallback(() => {
-    joinInFlightRef.current = false;
-    attemptJoin("reconnect");
+    void attemptJoin("reconnect");
   }, [attemptJoin]);
 
   useEffect(() => {
@@ -891,27 +975,52 @@ export default function Room() {
     // instead of racing ahead on a guest one.
     if (!authReady) return;
     const socket = getSocket();
-
-    if (!roomState) attemptJoin("initial");
+    activeJoinRoomRef.current = code;
+    let isActive = true;
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+    const unregisterRecovery = recoveryManager.registerRoomRecovery(code, () => attemptJoin("reconnect"));
 
     const onConnect = () => {
+      if (!isActive) return;
       // Socket reconnect after a disconnect or server restart — re-attach to our room.
-      attemptJoin("reconnect");
+      cancelJoin();
+      void attemptJoin("reconnect");
     };
     const onDisconnect = () => {
+      if (!isActive) return;
       // A drop abandons any in-flight join ack (socket.io won't call it), so
       // clear the guard here — otherwise the reconnect rejoin above is blocked
       // forever and the player is stranded on a dead seat.
-      joinInFlightRef.current = false;
+      cancelJoin();
+      setIsRoomReady(false);
+      setGameState(null);
+      connectionStateManager.transition("RECONNECTING", "Room transport disconnected");
+    };
+    const onOnline = () => {
+      if (isActive && !roomReadyRef.current && !joinAttemptRef.current?.emitted && socket.connected && navigator.onLine) onConnect();
+    };
+    const onRoomState = (state: RoomPublicState) => {
+      if (!isActive || activeJoinRoomRef.current !== code || !socket.connected || !navigator.onLine || state.code !== code) return;
+      if (!roomReadyRef.current && !joinAttemptRef.current?.emitted) return;
+      setRoomState(state);
+    };
+    const onGameState = (state: unknown) => {
+      if (!isActive || activeJoinRoomRef.current !== code || !socket.connected || !navigator.onLine) return;
+      if (roomReadyRef.current) setGameState(state);
     };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    socket.on("room:state", setRoomState);
-    socket.on("game:state", setGameState);
-    socket.on("chat:message", addMessage);
-    socket.on("room:error", setError);
-    socket.on("game:error", setError);
+    socket.on("room:state", onRoomState);
+    socket.on("game:state", onGameState);
+    window.addEventListener("offline", onDisconnect);
+    window.addEventListener("online", onOnline);
+    const onMessage = (message: ChatMessage) => { if (isActive && socket.connected) addMessage(message); };
+    const onError = (error: string) => { if (isActive && socket.connected) setError(error); };
+    socket.on("chat:message", onMessage);
+    socket.on("room:error", onError);
+    socket.on("game:error", onError);
     const onStartCancelled = (payload: { startAttemptId: string; reason: string }) => {
+      if (!isActive) return;
       setError(startCancelledMessage(payload.reason));
     };
     socket.on("room:startCancelled", onStartCancelled);
@@ -926,23 +1035,36 @@ export default function Room() {
      * cleanup, just triggered proactively rather than after a failed retry.
      */
     const onRoomClosed = (payload: { reason: string }) => {
-      setError(payload.reason);
+      if (!isActive || !socket.connected) return;
+      cancelJoin();
+      setIsRoomReady(false);
       reset();
+      setError(payload.reason);
+      connectionStateManager.transition("FAILED", "Room closed");
       clearActiveSession();
       if (code) clearRoomSession(code);
       if (code) useRoomStore.getState().forgetSeat(code);
-      setTimeout(() => navigate("/"), 2000);
+      closeTimer = setTimeout(() => navigate("/"), 2000);
     };
     socket.on("room:closed", onRoomClosed);
+    void attemptJoin("initial");
 
     return () => {
+      isActive = false;
+      activeJoinRoomRef.current = null;
+      cancelJoin();
+      setGameState(null);
+      unregisterRecovery();
+      if (closeTimer) clearTimeout(closeTimer);
+      window.removeEventListener("offline", onDisconnect);
+      window.removeEventListener("online", onOnline);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off("room:state", setRoomState);
-      socket.off("game:state", setGameState);
-      socket.off("chat:message", addMessage);
-      socket.off("room:error", setError);
-      socket.off("game:error", setError);
+      socket.off("room:state", onRoomState);
+      socket.off("game:state", onGameState);
+      socket.off("chat:message", onMessage);
+      socket.off("room:error", onError);
+      socket.off("game:error", onError);
       socket.off("room:startCancelled", onStartCancelled);
       socket.off("room:closed", onRoomClosed);
       // Belt-and-suspenders fullscreen exit: leaveRoom() already calls this,
@@ -960,7 +1082,7 @@ export default function Room() {
     // with it `false` for a moment, so the effect must re-run once it flips
     // to `true` rather than being stuck on the early return above forever.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, roomPlayerName, authReady]);
+  }, [code, roomPlayerName, authReady, mustDeclare, attemptJoin, cancelJoin, completeJoin]);
 
   /**
    * One stable `game:move` sender.
@@ -970,8 +1092,10 @@ export default function Room() {
    * board would re-render on every broadcast anyway.
    */
   const sendMove = useCallback((type: string, data?: unknown) => {
-    getSocket().emit("game:move", { type, data, actionId: generateActionId() });
-  }, []);
+    const socket = getSocket();
+    if (activeJoinRoomRef.current !== code || !socket.connected || !navigator.onLine || !roomReadyRef.current || !connectionStateManager.isOnline()) return;
+    socket.emit("game:move", { type, data, actionId: generateActionId() });
+  }, [code]);
 
   // Snap to top once roomState lands — the page renders a slim "Connecting…"
   // shell first and then expands to the full lobby card, which can leave the
@@ -1542,6 +1666,8 @@ export default function Room() {
   }
 
   function leaveRoom() {
+    activeJoinRoomRef.current = null;
+    cancelJoin();
     economyMotion.resetMotion();
     if (isFullscreenActive()) void exitFullscreen();
     destroyVoiceSession();
@@ -1653,7 +1779,7 @@ export default function Room() {
   //      themselves once per room even if a name is already stored.
   // Either way, submitting persists the name and the join effect above picks
   // it up on the next render.
-  if (!roomPlayerName || mustDeclare) {
+  if (!lastError && (!roomPlayerName || mustDeclare)) {
     // A guest with no identity yet is told what is about to be created BEFORE it is created.
     const needsGuestNotice = mustDeclare && !guestId;
     // A guest is always offered their OWN automatic name. A name left over from another table is never
@@ -1694,7 +1820,7 @@ export default function Room() {
     );
   }
 
-  if (!roomState) {
+  if (!roomState || roomState.code !== code || !isRoomReady) {
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
         <ConnectingScreen code={code} onRetry={handleRetryConnection} error={lastError} />

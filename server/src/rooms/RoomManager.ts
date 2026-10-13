@@ -6648,6 +6648,12 @@ export class RoomManager {
     return room ? this.toPublicState(room) : null;
   }
 
+  getGameStateForSocket(socketId: string): unknown {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player || room.phase === "lobby" || !room.engine) return null;
+    return room.engine.getStateFor(player.id);
+  }
+
   getRoomStateByCode(code: string): RoomPublicState | null {
     const room = this.rooms.get(code.toUpperCase());
     return room ? this.toPublicState(room) : null;

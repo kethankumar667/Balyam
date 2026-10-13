@@ -1,7 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { Socket, Server } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
-import { RoomManager } from "../../rooms/RoomManager.js";
+import type { ClientToServerEvents, ServerToClientEvents, UnoPlayerState } from "@shared/types.js";
+import { RoomManager, type Room } from "../../rooms/RoomManager.js";
+import { UnoEngine, type InternalUnoState } from "../../games/uno/UnoEngine.js";
 import { registerSocketHandlers } from "../../sockets/index.js";
 import { InMemoryProgressionRepository, setProgressionRepository } from "../../persistence/index.js";
 import { AdminPlayerService, MemoryAdminPlayerStore, setAdminPlayerService } from "../AdminPlayerService.js";
@@ -39,11 +40,101 @@ describe("socket moderation enforcement", () => {
   });
   function roomHarness() {
     const harness = socketHarness("host-socket");
-    const io = { to: () => ({ emit: vi.fn() }), sockets: { sockets: new Map([[harness.socket.id, harness.socket]]) } } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
+    const roomEmit = vi.fn();
+    const sockets = new Map([[harness.socket.id, harness.socket]]);
+    const io = { to: () => ({ emit: roomEmit }), sockets: { sockets } } as unknown as Server<ClientToServerEvents, ServerToClientEvents>;
     const rooms = new RoomManager(io);
     registerSocketHandlers(io, harness.socket as unknown as Socket<ClientToServerEvents, ServerToClientEvents>, rooms);
-    return { ...harness, rooms };
+    return { ...harness, rooms, roomEmit, sockets };
   }
+
+  describe("join acknowledgement snapshots", () => {
+    it.each(["playing", "finished"] as const)("returns only the accepted caller's UNO hand for %s reclaim and never broadcasts it", async (phase) => {
+      const harness = roomHarness();
+      const opponent = socketHarness("opponent-socket");
+      const spectator = socketHarness("spectator-socket");
+      harness.sockets.set(opponent.socket.id, opponent.socket);
+      harness.sockets.set(spectator.socket.id, spectator.socket);
+      const seat = harness.rooms.createRoom("old-socket", "Host", "uno");
+      const otherSeat = harness.rooms.joinRoom(opponent.socket.id, "Opponent", seat.code);
+      if (!otherSeat.ok) throw new Error(otherSeat.error);
+      const room = (harness.rooms as unknown as { rooms: Map<string, Room> }).rooms.get(seat.code)!;
+      const engine = new UnoEngine();
+      engine.setRng(() => 0.5);
+      engine.init([...room.players.values()]);
+      if (phase === "finished") {
+        const internal = engine as unknown as { state: InternalUnoState };
+        internal.state.phase = "finished";
+        internal.state.winnerId = seat.playerId;
+      }
+      room.engine = engine;
+      room.phase = phase;
+      room.spectators.add(spectator.socket.id);
+      opponent.socket.emit.mockClear();
+      spectator.socket.emit.mockClear();
+      harness.roomEmit.mockClear();
+      const ack = vi.fn();
+      await harness.handlers.get("room:join")!({ name: "Host", code: seat.code.toLowerCase(), playerId: seat.playerId, seatToken: seat.seatToken }, ack);
+
+      const response = ack.mock.calls[0][0] as Parameters<Parameters<ClientToServerEvents["room:join"]>[1]>[0];
+      expect(response).toMatchObject({ ok: true, playerId: seat.playerId });
+      expect(response.gameState).toEqual(engine.getStateFor(seat.playerId));
+      expect(response.gameState).not.toEqual(engine.getStateFor(otherSeat.playerId));
+      for (const [event, state] of opponent.socket.emit.mock.calls) {
+        if (event === "game:state") expect((state as UnoPlayerState).myHand).toEqual(engine.getStateFor(otherSeat.playerId).myHand);
+      }
+      for (const [event, state] of spectator.socket.emit.mock.calls) {
+        if (event === "game:state") expect(state).not.toHaveProperty("myHand");
+      }
+      expect(harness.roomEmit.mock.calls.every(([event]) => event !== "game:state")).toBe(true);
+      expect(JSON.stringify(harness.roomEmit.mock.calls)).not.toContain('"myHand"');
+
+      ack.mockClear();
+      await harness.handlers.get("room:join")!({ name: "Host", code: seat.code, playerId: otherSeat.playerId }, ack);
+      expect(ack.mock.calls[0][0]).toMatchObject({ ok: true, playerId: seat.playerId, gameState: engine.getStateFor(seat.playerId) });
+    });
+
+    it("returns null for a lobby and never reads private state for a rejected join", async () => {
+      const harness = roomHarness();
+      const seat = harness.rooms.createRoom(harness.socket.id, "Host", "uno");
+      const ack = vi.fn();
+      await harness.handlers.get("room:join")!({ name: "Host", code: seat.code }, ack);
+      expect(ack.mock.calls[0][0]).toMatchObject({ ok: true, gameState: null });
+
+      ack.mockClear();
+      await harness.handlers.get("room:join")!({ name: "Host", code: "ABSENT" }, ack);
+      expect(ack).toHaveBeenCalledWith({ ok: false, error: "Room not found" });
+    });
+
+    it("returns null without an engine and refuses an unverified private-seat claim", async () => {
+      const harness = roomHarness();
+      const seat = harness.rooms.createRoom("old-socket", "Host", "uno");
+      const otherSeat = harness.rooms.joinRoom("other-socket", "Opponent", seat.code);
+      if (!otherSeat.ok) throw new Error(otherSeat.error);
+      const room = (harness.rooms as unknown as { rooms: Map<string, Room> }).rooms.get(seat.code)!;
+      room.phase = "playing";
+      const ack = vi.fn();
+      await harness.handlers.get("room:join")!({ name: "Host", code: seat.code, playerId: seat.playerId, seatToken: seat.seatToken }, ack);
+      expect(ack.mock.calls[0][0]).toMatchObject({ ok: true, gameState: null });
+
+      const engine = new UnoEngine();
+      engine.init([...room.players.values()]);
+      room.engine = engine;
+      const readPrivate = vi.spyOn(engine, "getStateFor");
+      const stranger = socketHarness("stranger-socket");
+      registerSocketHandlers(
+        { to: () => ({ emit: vi.fn() }), sockets: { sockets: harness.sockets } } as unknown as Server<ClientToServerEvents, ServerToClientEvents>,
+        stranger.socket as unknown as Socket<ClientToServerEvents, ServerToClientEvents>,
+        harness.rooms,
+      );
+      ack.mockClear();
+      await stranger.handlers.get("room:join")!({ name: "Stranger", code: seat.code, playerId: otherSeat.playerId, seatToken: "invalid" }, ack);
+      expect(ack.mock.calls[0][0]).toMatchObject({ ok: false });
+      expect(ack.mock.calls[0][0]).not.toHaveProperty("gameState");
+      expect(readPrivate).not.toHaveBeenCalled();
+      expect(harness.rooms.getGameStateForSocket(stranger.socket.id)).toBeNull();
+    });
+  });
   it("disconnects bound sockets and rejects packets without querying the store", async () => {
     const guest = mintGuestToken();
     const harness = roomHarness();

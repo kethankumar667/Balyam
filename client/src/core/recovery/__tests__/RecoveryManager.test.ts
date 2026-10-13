@@ -15,11 +15,13 @@ function createMockSocket() {
       handlers[evt].push(fn);
     },
     emit: vi.fn(),
+    off: vi.fn(),
     io: {
       on: (evt: string, fn: (...args: any[]) => void) => {
         ioHandlers[evt] = ioHandlers[evt] || [];
         ioHandlers[evt].push(fn);
       },
+      off: vi.fn(),
     },
     _trigger: (evt: string, ...args: any[]) => {
       handlers[evt]?.forEach((fn) => fn(...args));
@@ -85,58 +87,26 @@ describe("Realtime Recovery — RoomRecoveryManager", () => {
     expect(act1).not.toBe(act2);
   });
 
-  it("performs authoritative recovery handshake on reconnect", async () => {
+  it("delegates Retry to the mounted Room owner", async () => {
     recoveryManager.attachRoom("ROOM_1", "p1", "token1", "Player1");
-
-    const emittedEvents: string[] = [];
-    eventBus.subscribe("RECOVERY_STARTED", () => emittedEvents.push("STARTED"));
-    eventBus.subscribe("RECOVERY_SUCCEEDED", () => emittedEvents.push("SUCCEEDED"));
-
-    // Simulate mockSocket join response
-    mockSocket.emit = vi.fn().mockImplementation((event, payload, ack) => {
-      if (event === "room:join") {
-        ack({
-          ok: true,
-          playerId: payload.playerId,
-          seatToken: payload.seatToken,
-          state: {
-            code: "ROOM_1",
-            game: "ludo",
-            status: "playing",
-            players: [{ id: "p1", name: "Player1", isHost: true }],
-          },
-        });
-      }
-    });
+    const retry = vi.fn(async () => true);
+    recoveryManager.registerRoomRecovery("ROOM_1", retry);
 
     const success = await recoveryManager.attemptRecovery("ROOM_1");
 
     expect(success).toBe(true);
-    expect(connectionStateManager.getState()).toBe("RECOVERED");
-    expect(emittedEvents).toEqual(["STARTED", "SUCCEEDED"]);
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(mockSocket.emit).not.toHaveBeenCalled();
   });
 
-  it("handles recovery rejection gracefully and publishes failure event", async () => {
+  it("returns the owning Room rejection without a second join", async () => {
     recoveryManager.attachRoom("ROOM_DEAD", "p1", "token1", "Player1");
-
-    let failureError = "";
-    eventBus.subscribe("RECOVERY_FAILED", (payload) => {
-      failureError = payload.error;
-    });
-
-    mockSocket.emit = vi.fn().mockImplementation((event, _payload, ack) => {
-      if (event === "room:join") {
-        ack({
-          ok: false,
-          error: "Room not found",
-        });
-      }
-    });
+    recoveryManager.registerRoomRecovery("ROOM_DEAD", async () => false);
 
     const success = await recoveryManager.attemptRecovery("ROOM_DEAD");
 
     expect(success).toBe(false);
-    expect(failureError).toBe("Room not found");
+    expect(mockSocket.emit).not.toHaveBeenCalled();
   });
 
   it("clears recovery state on explicit room detachment", () => {
@@ -147,5 +117,37 @@ describe("Realtime Recovery — RoomRecoveryManager", () => {
 
     expect(getActiveSession()).toBeNull();
     expect(connectionStateManager.getState()).toBe("DISCONNECTED");
+  });
+
+  it("never emits a credentialless join when Retry has no mounted Room owner", () => {
+    recoveryManager.attachRoom("ROOM_1", "p1", "token1", "Player1");
+
+    void recoveryManager.attemptRecovery("ROOM_1");
+
+    expect(mockSocket.emit).not.toHaveBeenCalled();
+    expect(connectionStateManager.getState()).toBe("FAILED");
+  });
+
+  it("removes browser and socket lifecycle listeners on destroy", () => {
+    recoveryManager.destroy();
+
+    expect(window.removeEventListener).toHaveBeenCalledWith("online", expect.any(Function));
+    expect(window.removeEventListener).toHaveBeenCalledWith("offline", expect.any(Function));
+    expect(document.removeEventListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+    expect(mockSocket.off).toHaveBeenCalledWith("connect", expect.any(Function));
+    expect(mockSocket.off).toHaveBeenCalledWith("disconnect", expect.any(Function));
+    expect(mockSocket.io.off).toHaveBeenCalledWith("reconnect", expect.any(Function));
+  });
+
+  it("keeps a replacement owner registered when an obsolete owner cleans up", async () => {
+    const disposeOld = recoveryManager.registerRoomRecovery("OLD123", async () => false);
+    const retry = vi.fn(async () => true);
+    const disposeNew = recoveryManager.registerRoomRecovery("NEW123", retry);
+    disposeOld();
+    expect(await recoveryManager.attemptRecovery("OLD123")).toBe(false);
+    expect(retry).not.toHaveBeenCalled();
+    expect(await recoveryManager.attemptRecovery("NEW123")).toBe(true);
+    disposeNew();
+    expect(await recoveryManager.attemptRecovery("NEW123")).toBe(false);
   });
 });
