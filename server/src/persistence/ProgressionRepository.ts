@@ -183,6 +183,7 @@ export interface MatchSummaryRecord {
   finishedAt: number;
   durationMs: number;
   winnerId?: string | null;
+  winnerKind?: "human" | "bot" | "local" | "unverified" | "draw" | "unknown";
   participants: MatchParticipantRecord[];
 }
 
@@ -274,6 +275,7 @@ export interface ProgressionRepository {
   /* identities */
   upsertIdentity(record: IdentityRecord): Promise<void>;
   getIdentity(playerId: string): Promise<IdentityRecord | null>;
+  listIdentities(limit: number, offset: number): Promise<IdentityRecord[]>;
 
   /* profiles */
   upsertProfile(record: ProfileRecord): Promise<void>;

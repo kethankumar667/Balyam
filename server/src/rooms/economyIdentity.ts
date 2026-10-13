@@ -2,6 +2,7 @@ import { verifyAccessToken } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "../auth/guestToken.js";
 import { ensureGuestIdentityProvisioned, ensureMemberIdentityProvisioned } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
+import { adminPlayerService } from "../admin/AdminPlayerService.js";
 
 /**
  * The one thing RoomManager needed and never had: a durable, server-
@@ -87,15 +88,18 @@ export async function resolveIdentity(
 ): Promise<ResolvedIdentity> {
   const account = await verifyAccessToken(accessToken);
   if (account) {
+    adminPlayerService().assertAllowed(account.userId);
     try {
       await ensureMemberIdentityProvisioned(account.userId);
     } catch (err) {
+      adminPlayerService().assertAllowed(account.userId);
       logger.warn({
         message: `Member identity provisioning failed during socket identity resolution: ${String(err)}`,
         module: "ECONOMY_ROOM",
       });
       return { kind: "member", identityId: null };
     }
+    adminPlayerService().assertAllowed(account.userId);
     return { kind: "member", identityId: account.userId };
   }
 
@@ -103,10 +107,12 @@ export async function resolveIdentity(
   if (!guestId) {
     return { kind: "guest", identityId: null };
   }
+  adminPlayerService().assertAllowed(guestId);
 
   try {
     await ensureGuestIdentityProvisioned(guestId);
   } catch (err) {
+    adminPlayerService().assertAllowed(guestId);
     // Provisioning is not memoized on failure (see identity.ts), so the next
     // request retries it. Handing back `identityId: null` for THIS request
     // is the safe failure mode: it falls back to exactly today's behavior
@@ -119,5 +125,6 @@ export async function resolveIdentity(
     return { kind: "guest", identityId: null };
   }
 
+  adminPlayerService().assertAllowed(guestId);
   return { kind: "guest", identityId: guestId };
 }

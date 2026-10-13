@@ -186,7 +186,12 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("Users no longer claims to be a demonstration — it reads real accounts, and banning still reports a local preview (no real moderation endpoint exists)", async () => {
+  it("Users reads recorded identities and has no preview ban or mute actions", async () => {
+    const user = {
+      id: "usr-1", name: "Kethan Kumar", email: "kethan@bhalyam.io", role: "super_admin", accountKind: "member",
+      matchesPlayed: 0, winRate: "0%", rating: 400, joinedAt: null, lastActiveAt: null, favoriteGame: "",
+      suspension: { isSuspended: false, reason: null, updatedAt: null, revision: 0 },
+    };
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
@@ -195,23 +200,9 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
           return {
             status: 200,
             ok: true,
-            json: async () => ({
-              users: [
-                {
-                  id: "usr-1",
-                  name: "Kethan Kumar",
-                  email: "kethan@bhalyam.io",
-                  role: "super_admin",
-                  matchesPlayed: 0,
-                  winRate: "0%",
-                  rating: 400,
-                  joinedAt: Date.now(),
-                  lastActiveAt: null,
-                  favoriteGame: "—",
-                },
-              ],
-              total: 1,
-            }),
+            json: async () => url.includes("/api/admin/users/usr-1")
+              ? { user, sections: [], coverage: ["Retained records only"] }
+              : { users: [user], total: 1, page: 1, pageSize: 10 },
           };
         }
         return { status: 200, ok: true, json: async () => ({}) };
@@ -224,11 +215,9 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
     await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
     expect(screen.queryByText(/local demonstration only/i)).toBeNull();
 
-    await waitFor(() => expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0));
-    fireEvent.click(container.querySelectorAll("tbody tr")[0]);
-    fireEvent.click(await screen.findByRole("button", { name: /ban account/i }));
-
-    expect(await screen.findByText(/no changes were sent to the server/i)).toBeDefined();
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
+    expect(await screen.findByText("Retained records only")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /ban account|mute player/i })).toBeNull();
     expectNoBannedClaims(container);
     vi.unstubAllGlobals();
   });

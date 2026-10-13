@@ -11,6 +11,7 @@ import type {
 import type { GameKind } from "@shared/types.js";
 import { resolvePlayerIdentity, type PlayerIdentity } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
+import { adminPlayerService } from "../admin/AdminPlayerService.js";
 
 interface MandaliSocketData {
   mandaliPlayer?: PlayerIdentity;
@@ -46,6 +47,11 @@ function requireAuthenticatedActor(
 ): string | null {
   const data = socket.data as MandaliSocketData;
   const playerId = data.mandaliPlayer?.playerId;
+  if (adminPlayerService().isDenied(playerId)) {
+    ack?.({ success: false, error: "This identity is suspended." });
+    socket.disconnect(true);
+    return null;
+  }
   if (!playerId) {
     ack?.({ success: false, error: "Not authenticated. Emit mandali:authenticate first." });
     return null;
@@ -69,6 +75,8 @@ export function registerMandaliSocketHandlers(
           ack?.({ success: false, error: "Invalid or expired credential" });
           return;
         }
+        adminPlayerService().assertAllowed(identity.playerId);
+        if (socket.connected === false) return;
         // Re-authenticating as someone else must not keep the last person's
         // rooms: their personal feed and every Mandali chat they had joined.
         const previous = (socket.data as MandaliSocketData).mandaliPlayer;
@@ -106,6 +114,7 @@ export function registerMandaliSocketHandlers(
     } catch {
       return;
     }
+    if (adminPlayerService().isDenied(actorId) || socket.connected === false) return;
     const roomName = `mandali:${payload.mandaliId}`;
     socket.join(roomName);
     logger.info({

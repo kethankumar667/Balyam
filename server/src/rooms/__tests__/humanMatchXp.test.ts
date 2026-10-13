@@ -45,7 +45,8 @@ describe("which room matches earn real-people XP", () => {
     playRpsToCompletion(rooms, "sock-host", "sock-join");
     await progressionSync.drain();
 
-    const ledger = await progressionRepository().listXp(host.playerId, 50);
+    expect(await progressionRepository().listXp(host.playerId, 50)).toEqual([]);
+    const ledger = await progressionRepository().listXp("id-host", 50);
     return ledger.map((entry) => entry.sourceKind);
   }
 

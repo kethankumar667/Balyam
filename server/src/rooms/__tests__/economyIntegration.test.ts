@@ -294,6 +294,8 @@ describe("Economy V1 Phase 7 — RoomManager integration", () => {
         const listeners: Record<string, (...args: unknown[]) => unknown> = {};
         const socket = {
           id,
+          connected: true,
+          data: {},
           use: () => {},
           on: (ev: string, handler: (...args: unknown[]) => unknown) => { listeners[ev] = handler; },
           emit: vi.fn(),

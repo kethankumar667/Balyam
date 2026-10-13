@@ -1,0 +1,17 @@
+begin;
+drop policy if exists admin_active_profile_select on public.profiles;
+drop policy if exists admin_active_profile_insert on public.profiles;
+drop policy if exists admin_active_profile_update on public.profiles;
+drop function if exists public.admin_identity_active();
+drop trigger if exists register_canonical_admin_identity on auth.users;
+drop function if exists public.register_canonical_admin_identity();
+drop function if exists public.admin_player_directory(integer,integer,text,text,text,jsonb);
+drop function if exists public.admin_player_summary(text);
+drop function if exists public.admin_player_records(text,text,integer,integer);
+drop function if exists public.admin_suspended_players(integer,integer);
+drop function if exists public.admin_moderate_player(text,text,text,text,integer);
+drop view if exists public.admin_player_summary_rows;
+drop table if exists public.player_moderation_audit;
+drop table if exists public.player_moderation;
+alter table public.match_summaries drop column if exists winner_kind;
+commit;

@@ -1,3 +1,4 @@
+import { adminPlayerService } from "../admin/AdminPlayerService.js";
 import type { Server } from "socket.io";
 import type {
   ChatMessage,
@@ -1825,6 +1826,7 @@ export class RoomManager {
     entryStakeCoins?: number
   ): { code: string; playerId: string; seatToken: string; state: RoomPublicState } {
     const createStart = performance.now();
+    adminPlayerService().assertAllowed(identityId);
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
 
@@ -1991,6 +1993,7 @@ export class RoomManager {
     identityId?: string | null
   ): { ok: true; playerId: string; seatToken: string; state: RoomPublicState } | { ok: false; error: string } {
     const joinStart = performance.now();
+    if (adminPlayerService().isDenied(identityId)) return { ok: false, error: "This identity is suspended." };
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
 
@@ -2000,6 +2003,7 @@ export class RoomManager {
       verifySeatToken(room.code, existingPlayerId, seatToken)
     ) {
       const player = room.players.get(existingPlayerId)!;
+      if (adminPlayerService().isDenied(player.identityId)) return { ok: false, error: "This identity is suspended." };
       const awayForMs = player.awaySince ? Date.now() - player.awaySince : 0;
       metricsCollector.onSeatReclaim(true);
       metricsCollector.onRecoverySuccess(room.code, awayForMs);
@@ -2102,6 +2106,7 @@ export class RoomManager {
     // the previous record orphaned: a ghost seat that never disconnects.
     const seatedId = room.socketToPlayer.get(socketId);
     if (seatedId && room.players.has(seatedId)) {
+      if (adminPlayerService().isDenied(room.players.get(seatedId)?.identityId)) return { ok: false, error: "This identity is suspended." };
       this.broadcastRoomState(room);
       // Re-issuing here is safe and necessary: this socket already holds the
       // seat, and a duplicate join must not leave the client without the
@@ -2725,7 +2730,9 @@ export class RoomManager {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return;
     const sanitized = sanitizePublicPresentation(cosmetics);
-    player.cosmetics = await this.filterToOwnedCosmetics(player.identityId ?? null, sanitized);
+    const loadout = await this.filterToOwnedCosmetics(player.identityId ?? null, sanitized);
+    if (adminPlayerService().isDenied(player.identityId) || !player.isConnected || this.lookup(socketId).player !== player) return;
+    player.cosmetics = loadout;
     this.broadcastRoomState(room);
   }
 
@@ -3326,6 +3333,10 @@ export class RoomManager {
 
   private async proceedFromReadyAttempt(room: Room, attempt: StartAttempt): Promise<void> {
     if (room.activeStartAttempt?.id !== attempt.id || attempt.status !== "READY_TO_COMMIT") return;
+    if (Array.from(room.players.values()).some(player => adminPlayerService().isDenied(player.identityId))) {
+      this.cancelActiveStartAttempt(room, "identity_suspended");
+      return;
+    }
 
     if (!this.economyService) {
       attempt.status = "READY_TO_START";
@@ -3376,7 +3387,7 @@ export class RoomManager {
         freshRoom !== undefined &&
         freshRoom.players.size === committedPlayerIds.size &&
         Array.from(freshRoom.players.keys()).every((id) => committedPlayerIds.has(id)) &&
-        Array.from(freshRoom.players.values()).every((p) => p.isReady && (p.isBot || p.isLocal || p.isConnected));
+        Array.from(freshRoom.players.values()).every((p) => !adminPlayerService().isDenied(p.identityId) && p.isReady && (p.isBot || p.isLocal || p.isConnected));
 
       const stillValid =
         isSameInstance &&
@@ -4022,18 +4033,28 @@ export class RoomManager {
       // the lobby, and for a late start everything since the room opened.
       const startedAt = room.matchStartedAt ?? room.createdAt;
       const finishedAt = Date.now();
+      const winner = winnerId ? room.players.get(winnerId) : undefined;
+      const canonicalParticipants = new Map<string, (typeof participants)[number] & { identityId: string | null }>();
+      for (const participant of participants) {
+        const seat = room.players.get(participant.playerId);
+        const identityId = seat && !seat.isBot && !seat.isLocal ? seat.identityId ?? null : null;
+        const playerId = identityId ?? participant.playerId;
+        if (!canonicalParticipants.has(playerId) || participant.isWinner) {
+          canonicalParticipants.set(playerId, { ...participant, playerId, identityId });
+        }
+      }
       profileService.recordMatchFinished({
         roomCode: room.code,
         game: room.game,
         startedAt,
         finishedAt,
         durationMs: Math.max(1000, finishedAt - startedAt),
-        winnerId: winnerId ?? undefined,
+        winnerId: winner && !winner.isBot && !winner.isLocal ? winner.identityId ?? winnerId : winnerId,
         modeId: resolveModeId(
           room.game,
           room.game === "tictactoe" ? (room.ticTacToeOptions as unknown as Record<string, unknown>) : undefined
         ),
-        participants,
+        participants: [...canonicalParticipants.values()],
       });
       recentPlayersService.recordMatch({
         roomCode: room.code,
@@ -6706,6 +6727,10 @@ export class RoomManager {
     const playerId = room.socketToPlayer.get(socketId);
     if (!playerId) return { room, player: null };
     return { room, player: room.players.get(playerId) ?? null };
+  }
+
+  getSocketIdentity(socketId: string): string | null {
+    return this.lookup(socketId).player?.identityId ?? null;
   }
 
   private broadcastRoomState(room: Room): void {

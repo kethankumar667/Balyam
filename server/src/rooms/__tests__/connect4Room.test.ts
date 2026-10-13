@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { randomUUID } from "node:crypto";
 import type { Server } from "socket.io";
 import { RoomManager } from "../RoomManager.js";
 import { profileService } from "../../profile/ProfileService.js";
@@ -40,18 +41,22 @@ const peek = (rm: RoomManager, code: string): AnyRoom => (rm as unknown as { roo
 function createC4(rm: RoomManager, opts: unknown, socket = "sA", name = "Alice") {
   const args: unknown[] = [socket, name, "connect4", ...Array(OPTION_SLOTS_BEFORE_CONNECT4).fill(undefined), opts];
   expect(args[CONNECT4_OPTIONS_ARG_INDEX]).toBe(opts);
-  return rm.createRoom(...(args as Parameters<RoomManager["createRoom"]>));
+  const identityId = randomUUID();
+  args[rm.createRoom.length - 3] = "member";
+  args[rm.createRoom.length - 2] = identityId;
+  return { ...rm.createRoom(...(args as Parameters<RoomManager["createRoom"]>)), identityId };
 }
 
 function startTwoPlayer(rm: RoomManager, opts: Partial<Connect4Options> | unknown = {}) {
   const created = createC4(rm, opts);
-  const joined = rm.joinRoom("sB", "Bob", created.code);
+  const bobIdentityId = randomUUID();
+  const joined = rm.joinRoom("sB", "Bob", created.code, undefined, undefined, undefined, "member", bobIdentityId);
   expect(joined.ok).toBe(true);
   rm.setReady("sA", true);
   rm.setReady("sB", true);
   rm.startGame("sA");
   const room = peek(rm, created.code);
-  return { code: created.code, aliceId: created.playerId, bobId: (joined as { playerId: string }).playerId, room };
+  return { code: created.code, aliceId: created.playerId, bobId: (joined as { playerId: string }).playerId, aliceIdentityId: created.identityId, bobIdentityId, room };
 }
 
 const state = (room: AnyRoom) => room.engine.getPublicState();
@@ -79,10 +84,10 @@ describe("Connect 4 through RoomManager", () => {
   describe("results", () => {
     it("records a DRAW as a draw (not a loss) for both players", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId, bobId, room } = startTwoPlayer(rm);
+      const { aliceIdentityId, bobIdentityId, room } = startTwoPlayer(rm);
       await play(rm, findFullBoardSequence("draw")!);
       expect(room.phase).toBe("finished");
-      for (const id of [aliceId, bobId]) {
+      for (const id of [aliceIdentityId, bobIdentityId]) {
         const stats = profileService.getStats(id);
         expect(stats.draws).toBe(1);
         expect(stats.losses).toBe(0);
@@ -91,62 +96,64 @@ describe("Connect 4 through RoomManager", () => {
 
     it("records a win and a loss with the normal XP", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId, bobId } = startTwoPlayer(rm);
+      const { aliceId, bobId, aliceIdentityId, bobIdentityId } = startTwoPlayer(rm);
       await play(rm, ALICE_WINS_IN_4);
-      expect(profileService.getStats(aliceId).wins).toBe(1);
-      expect(profileService.getStats(bobId).losses).toBe(1);
-      expect(profileService.getProfile(aliceId)?.experiencePoints).toBe(50);
-      expect(profileService.getProfile(bobId)?.experiencePoints).toBe(15);
+      expect(profileService.getStats(aliceIdentityId).wins).toBe(1);
+      expect(profileService.getStats(bobIdentityId).losses).toBe(1);
+      expect(profileService.getProfile(aliceIdentityId)?.experiencePoints).toBe(50);
+      expect(profileService.getProfile(bobIdentityId)?.experiencePoints).toBe(15);
+      expect(profileService.getStats(aliceId).totalMatches).toBe(0);
+      expect(profileService.getStats(bobId).totalMatches).toBe(0);
     });
 
     it("scores a human-vs-human win by efficiency: four discs is the best possible score", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId } = startTwoPlayer(rm);
+      const { aliceIdentityId } = startTwoPlayer(rm);
       await play(rm, ALICE_WINS_IN_4);
-      const card = scorecardService.getScorecards(aliceId).games["connect4"]?.modes["classic"];
+      const card = scorecardService.getScorecards(aliceIdentityId).games["connect4"]?.modes["classic"];
       expect(card?.bestScore).toBe(scoreConnect4Win(4));
       expect(card?.bestScore).toBe(18);
     });
 
     it("scores the second seat's win from ITS OWN disc count", async () => {
       const rm = new RoomManager(makeIo());
-      const { bobId } = startTwoPlayer(rm);
+      const { bobIdentityId } = startTwoPlayer(rm);
       await play(rm, BOB_WINS);
-      const card = scorecardService.getScorecards(bobId).games["connect4"]?.modes["classic"];
+      const card = scorecardService.getScorecards(bobIdentityId).games["connect4"]?.modes["classic"];
       expect(card?.bestScore).toBe(scoreConnect4Win(4));
     });
 
     it("does not touch the scorecard for a loss, a draw or a walkover — no phantom 'personal best'", async () => {
       const rm = new RoomManager(makeIo());
-      const { bobId } = startTwoPlayer(rm);
+      const { bobIdentityId } = startTwoPlayer(rm);
       await play(rm, ALICE_WINS_IN_4);
-      expect(scorecardService.getScorecards(bobId).games["connect4"]).toBeUndefined();
+      expect(scorecardService.getScorecards(bobIdentityId).games["connect4"]).toBeUndefined();
 
       const rm2 = new RoomManager(makeIo());
       const drawn = startTwoPlayer(rm2);
       await play(rm2, findFullBoardSequence("draw")!);
-      expect(scorecardService.getScorecards(drawn.aliceId).games["connect4"]).toBeUndefined();
-      expect(scorecardService.getScorecards(drawn.bobId).games["connect4"]).toBeUndefined();
+      expect(scorecardService.getScorecards(drawn.aliceIdentityId).games["connect4"]).toBeUndefined();
+      expect(scorecardService.getScorecards(drawn.bobIdentityId).games["connect4"]).toBeUndefined();
     });
 
     it("gives the leaver's opponent the win when someone leaves mid-match, without minting a score", async () => {
       const rm = new RoomManager(makeIo());
-      const { bobId, room } = startTwoPlayer(rm);
+      const { bobIdentityId, room } = startTwoPlayer(rm);
       await rm.applyMove("sA", "drop", { column: 3 });
       await rm.leaveRoom("sA");
       expect(room.phase).toBe("finished");
       expect(state(room).endReason).toBe("forfeit");
-      expect(profileService.getStats(bobId).wins).toBe(1);
-      expect(scorecardService.getScorecards(bobId).games["connect4"]).toBeUndefined();
+      expect(profileService.getStats(bobIdentityId).wins).toBe(1);
+      expect(scorecardService.getScorecards(bobIdentityId).games["connect4"]).toBeUndefined();
     });
 
     it("mints no score when a BOT seat is at the table (bot games are practice)", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId, bobId, room } = startTwoPlayer(rm);
+      const { aliceIdentityId, bobId, room } = startTwoPlayer(rm);
       room.players.get(bobId)!.isBot = true; // Bob is now a bot seat; timers are faked, so it never auto-plays
       await play(rm, ALICE_WINS_IN_4);
       expect(room.phase).toBe("finished");
-      expect(scorecardService.getScorecards(aliceId).games["connect4"]).toBeUndefined();
+      expect(scorecardService.getScorecards(aliceIdentityId).games["connect4"]).toBeUndefined();
     });
   });
 
@@ -274,7 +281,7 @@ describe("Connect 4 through RoomManager", () => {
         await rm.applyMove("sA", "drop", { column }, i % 2 === 1 ? localId : undefined);
       }
       expect(room.phase).toBe("finished");
-      expect(scorecardService.getScorecards(created.playerId).games["connect4"]).toBeUndefined();
+      expect(scorecardService.getScorecards(created.identityId).games["connect4"]).toBeUndefined();
     });
   });
 

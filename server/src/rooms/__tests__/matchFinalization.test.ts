@@ -4,6 +4,10 @@ import { RoomManager } from "../RoomManager.js";
 import { profileService } from "../../profile/ProfileService.js";
 import { isValidLifecycleTransition } from "@shared/lifecycle.js";
 import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.js";
+import { createRoomAs, joinRoomAs } from "./roomTestKit.js";
+
+const ALICE_IDENTITY_ID = "aaaaaaaa-1111-2222-3333-444444444444";
+const BOB_IDENTITY_ID = "bbbbbbbb-1111-2222-3333-444444444444";
 
 /**
  * Regression suite for MULTIPLAYER-RELIABILITY-BASELINE.md gaps G1, G2, G4,
@@ -67,6 +71,7 @@ describe("shared/lifecycle.ts — RECOVERING and PAUSED can reach COMPLETED", ()
 
 describe("RoomManager — match finalization is a single, audited path", () => {
   beforeEach(() => {
+    profileService.reset();
     vi.useFakeTimers();
   });
 
@@ -77,12 +82,12 @@ describe("RoomManager — match finalization is a single, audited path", () => {
   it("records match history and advances lifecycleState to COMPLETED when a BOT's own auto-move finishes the match (G1/G2, bot-takeover path)", () => {
     const { io } = makeIo();
     const rm = new RoomManager(io);
-    const { code, playerId: aliceId } = rm.createRoom("s_alice", "Alice", "rps");
+    const { code } = createRoomAs(rm, "s_alice", "Alice", "rps", "member", ALICE_IDENTITY_ID);
     rm.addBot("s_alice", "Botty");
     rm.setReady("s_alice", true);
     rm.startGame("s_alice");
 
-    const matchesBefore = profileService.getStats(aliceId).totalMatches;
+    const matchesBefore = profileService.getStats(ALICE_IDENTITY_ID).totalMatches;
 
     // Force every bot throw to be "paper" (VALID_CHOICES[1]) so the bot
     // beats Alice's "rock" deterministically every round — this test needs
@@ -110,7 +115,7 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     expect(state?.phase).toBe("finished");
     expect(state?.lifecycleState).toBe("COMPLETED");
 
-    const stats = profileService.getStats(aliceId);
+    const stats = profileService.getStats(ALICE_IDENTITY_ID);
     expect(stats.totalMatches).toBe(matchesBefore + 1);
     void code;
   });
@@ -118,12 +123,12 @@ describe("RoomManager — match finalization is a single, audited path", () => {
   it("records match history and advances lifecycleState to COMPLETED when a turn-timeout auto-move finishes the match (G1/G2, afterAutoMove path)", () => {
     const { io } = makeIo();
     const rm = new RoomManager(io);
-    const { playerId: aliceId } = rm.createRoom("s_alice", "Alice", "blockblast");
+    createRoomAs(rm, "s_alice", "Alice", "blockblast", "member", ALICE_IDENTITY_ID);
     rm.addBot("s_alice", "Botty");
     rm.setReady("s_alice", true);
     rm.startGame("s_alice");
 
-    const matchesBefore = profileService.getStats(aliceId).totalMatches;
+    const matchesBefore = profileService.getStats(ALICE_IDENTITY_ID).totalMatches;
 
     // Block Blast's race has a single, deterministic 120s deadline
     // (DEFAULT_BLOCKBLAST_OPTIONS.raceSeconds) — no per-round RNG involved
@@ -136,22 +141,21 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     expect(state?.phase).toBe("finished");
     expect(state?.lifecycleState).toBe("COMPLETED");
 
-    const stats = profileService.getStats(aliceId);
+    const stats = profileService.getStats(ALICE_IDENTITY_ID);
     expect(stats.totalMatches).toBe(matchesBefore + 1);
   });
 
   it("finalizes a 1v1 match the instant an explicit leave forces a forfeit win, instead of leaving phase stuck at 'playing' forever (G14)", () => {
     const { io } = makeIo();
     const rm = new RoomManager(io);
-    const created = rm.createRoom("h_alice", "Alice", "handcricket");
-    const joined = rm.joinRoom("h_bob", "Bob", created.code);
+    const created = createRoomAs(rm, "h_alice", "Alice", "handcricket", "member", ALICE_IDENTITY_ID);
+    const joined = joinRoomAs(rm, "h_bob", "Bob", created.code, "member", BOB_IDENTITY_ID);
     expect(joined.ok).toBe(true);
-    const bobId = (joined as { playerId: string }).playerId;
     rm.setReady("h_alice", true);
     rm.setReady("h_bob", true);
     rm.startGame("h_alice");
 
-    const bobMatchesBefore = profileService.getStats(bobId).totalMatches;
+    const bobMatchesBefore = profileService.getStats(BOB_IDENTITY_ID).totalMatches;
 
     rm.leaveRoom("h_alice"); // Alice forfeits to Bob
 
@@ -159,7 +163,7 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     expect(state?.phase).toBe("finished");
     expect(state?.lifecycleState).toBe("COMPLETED");
 
-    const bobStats = profileService.getStats(bobId);
+    const bobStats = profileService.getStats(BOB_IDENTITY_ID);
     expect(bobStats.totalMatches).toBe(bobMatchesBefore + 1);
   });
 
@@ -214,12 +218,9 @@ describe("RoomManager — match finalization is a single, audited path", () => {
     it("correctly records WIN for winner and LOSS for loser in a decisive non-DotsBoxes 1v1 match (RPS)", () => {
       const { io } = makeIo();
       const rm = new RoomManager(io);
-      const created = rm.createRoom("s_alice", "Alice", "rps");
-      const joined = rm.joinRoom("s_bob", "Bob", created.code);
+      const created = createRoomAs(rm, "s_alice", "Alice", "rps", "member", ALICE_IDENTITY_ID);
+      const joined = joinRoomAs(rm, "s_bob", "Bob", created.code, "member", BOB_IDENTITY_ID);
       expect(joined.ok).toBe(true);
-
-      const aliceId = created.playerId;
-      const bobId = (joined as { playerId: string }).playerId;
 
       rm.setReady("s_alice", true);
       rm.setReady("s_bob", true);
@@ -239,37 +240,35 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       expect(state?.lifecycleState).toBe("COMPLETED");
 
       // Verify Alice (Winner)
-      const aliceStats = profileService.getStats(aliceId);
+      const aliceStats = profileService.getStats(ALICE_IDENTITY_ID);
       expect(aliceStats.totalMatches).toBe(1);
       expect(aliceStats.wins).toBe(1);
       expect(aliceStats.losses).toBe(0);
       expect(aliceStats.draws).toBe(0);
       expect(aliceStats.currentWinStreak).toBe(1);
 
-      const aliceProfile = profileService.getProfile(aliceId);
+      const aliceProfile = profileService.getProfile(ALICE_IDENTITY_ID);
       expect(aliceProfile?.experiencePoints).toBe(50); // 50 XP for WIN
+      expect(profileService.getStats(created.playerId).totalMatches).toBe(0);
 
       // Verify Bob (Loser)
-      const bobStats = profileService.getStats(bobId);
+      const bobStats = profileService.getStats(BOB_IDENTITY_ID);
       expect(bobStats.totalMatches).toBe(1);
       expect(bobStats.wins).toBe(0);
       expect(bobStats.losses).toBe(1);
       expect(bobStats.draws).toBe(0);
       expect(bobStats.currentWinStreak).toBe(0);
 
-      const bobProfile = profileService.getProfile(bobId);
+      const bobProfile = profileService.getProfile(BOB_IDENTITY_ID);
       expect(bobProfile?.experiencePoints).toBe(15); // 15 XP for LOSS
     });
 
     it("correctly records genuine DRAW for both players in a drawn match (Chess agreed draw)", () => {
       const { io } = makeIo();
       const rm = new RoomManager(io);
-      const created = rm.createRoom("c_alice", "Alice", "chess");
-      const joined = rm.joinRoom("c_bob", "Bob", created.code);
+      const created = createRoomAs(rm, "c_alice", "Alice", "chess", "member", ALICE_IDENTITY_ID);
+      const joined = joinRoomAs(rm, "c_bob", "Bob", created.code, "member", BOB_IDENTITY_ID);
       expect(joined.ok).toBe(true);
-
-      const aliceId = created.playerId;
-      const bobId = (joined as { playerId: string }).playerId;
 
       rm.setReady("c_alice", true);
       rm.setReady("c_bob", true);
@@ -287,32 +286,32 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       expect(state?.lifecycleState).toBe("COMPLETED");
 
       // Verify Alice (Draw)
-      const aliceStats = profileService.getStats(aliceId);
+      const aliceStats = profileService.getStats(ALICE_IDENTITY_ID);
       expect(aliceStats.totalMatches).toBe(1);
       expect(aliceStats.wins).toBe(0);
       expect(aliceStats.losses).toBe(0);
       expect(aliceStats.draws).toBe(1);
       expect(aliceStats.currentWinStreak).toBe(0);
 
-      const aliceProfile = profileService.getProfile(aliceId);
+      const aliceProfile = profileService.getProfile(ALICE_IDENTITY_ID);
       expect(aliceProfile?.experiencePoints).toBe(25); // 25 XP for DRAW
 
       // Verify Bob (Draw)
-      const bobStats = profileService.getStats(bobId);
+      const bobStats = profileService.getStats(BOB_IDENTITY_ID);
       expect(bobStats.totalMatches).toBe(1);
       expect(bobStats.wins).toBe(0);
       expect(bobStats.losses).toBe(0);
       expect(bobStats.draws).toBe(1);
       expect(bobStats.currentWinStreak).toBe(0);
 
-      const bobProfile = profileService.getProfile(bobId);
+      const bobProfile = profileService.getProfile(BOB_IDENTITY_ID);
       expect(bobProfile?.experiencePoints).toBe(25); // 25 XP for DRAW
     });
 
     it("preserves getWinner() derivation for DotsBoxes matches without regression", () => {
       const { io } = makeIo();
       const rm = new RoomManager(io);
-      const created = rm.createRoom(
+      const args: Parameters<RoomManager["createRoom"]> = [
         "d_alice",
         "Alice",
         "dotsboxes",
@@ -322,11 +321,12 @@ describe("RoomManager — match finalization is a single, audited path", () => {
         undefined,
         undefined,
         { boardSize: 5, turnTimerSeconds: 30 }
-      );
-      const joined = rm.joinRoom("d_bob", "Bob", created.code);
+      ];
+      args[rm.createRoom.length - 3] = "member";
+      args[rm.createRoom.length - 2] = ALICE_IDENTITY_ID;
+      const created = rm.createRoom(...args);
+      const joined = joinRoomAs(rm, "d_bob", "Bob", created.code, "member", BOB_IDENTITY_ID);
       expect(joined.ok).toBe(true);
-
-      const bobId = (joined as { playerId: string }).playerId;
 
       rm.setReady("d_alice", true);
       rm.setReady("d_bob", true);
@@ -342,25 +342,22 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       expect(state?.lifecycleState).toBe("COMPLETED");
 
       // Bob is winner via DotsBoxesEngine.getWinner()
-      const bobStats = profileService.getStats(bobId);
+      const bobStats = profileService.getStats(BOB_IDENTITY_ID);
       expect(bobStats.totalMatches).toBe(1);
       expect(bobStats.wins).toBe(1);
       expect(bobStats.losses).toBe(0);
       expect(bobStats.draws).toBe(0);
 
-      const bobProfile = profileService.getProfile(bobId);
+      const bobProfile = profileService.getProfile(BOB_IDENTITY_ID);
       expect(bobProfile?.experiencePoints).toBe(50); // 50 XP for WIN
     });
 
     it("correctly records WIN for winner and LOSS for loser in a decisive chess resignation match", () => {
       const { io } = makeIo();
       const rm = new RoomManager(io);
-      const created = rm.createRoom("c_alice", "Alice", "chess");
-      const joined = rm.joinRoom("c_bob", "Bob", created.code);
+      const created = createRoomAs(rm, "c_alice", "Alice", "chess", "member", ALICE_IDENTITY_ID);
+      const joined = joinRoomAs(rm, "c_bob", "Bob", created.code, "member", BOB_IDENTITY_ID);
       expect(joined.ok).toBe(true);
-
-      const aliceId = created.playerId;
-      const bobId = (joined as { playerId: string }).playerId;
 
       rm.setReady("c_alice", true);
       rm.setReady("c_bob", true);
@@ -376,25 +373,25 @@ describe("RoomManager — match finalization is a single, audited path", () => {
       expect(state?.lifecycleState).toBe("COMPLETED");
 
       // Verify Bob (Winner)
-      const bobStats = profileService.getStats(bobId);
+      const bobStats = profileService.getStats(BOB_IDENTITY_ID);
       expect(bobStats.totalMatches).toBe(1);
       expect(bobStats.wins).toBe(1);
       expect(bobStats.losses).toBe(0);
       expect(bobStats.draws).toBe(0);
       expect(bobStats.currentWinStreak).toBe(1);
 
-      const bobProfile = profileService.getProfile(bobId);
+      const bobProfile = profileService.getProfile(BOB_IDENTITY_ID);
       expect(bobProfile?.experiencePoints).toBe(50); // 50 XP for WIN
 
       // Verify Alice (Loser)
-      const aliceStats = profileService.getStats(aliceId);
+      const aliceStats = profileService.getStats(ALICE_IDENTITY_ID);
       expect(aliceStats.totalMatches).toBe(1);
       expect(aliceStats.wins).toBe(0);
       expect(aliceStats.losses).toBe(1);
       expect(aliceStats.draws).toBe(0);
       expect(aliceStats.currentWinStreak).toBe(0);
 
-      const aliceProfile = profileService.getProfile(aliceId);
+      const aliceProfile = profileService.getProfile(ALICE_IDENTITY_ID);
       expect(aliceProfile?.experiencePoints).toBe(15); // 15 XP for LOSS
     });
   });

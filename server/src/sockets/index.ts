@@ -9,6 +9,12 @@ import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { capabilitiesFor } from "@shared/permissions.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { sanitizeClientTelemetry } from "./telemetry.js";
+import { adminPlayerService } from "../admin/AdminPlayerService.js";
+
+interface ModeratedSocketData {
+  verifiedPlayerId?: string;
+  mandaliPlayer?: { playerId: string };
+}
 
 /**
  * Events that arrive WITHOUT a person doing anything — negotiation traffic and
@@ -37,8 +43,22 @@ export function registerSocketHandlers(
   socket: Socket<ClientToServerEvents, ServerToClientEvents>,
   rooms: RoomManager
 ): void {
+  const moderation = adminPlayerService();
+  const identities = (): Array<string | null | undefined> => {
+    const data = socket.data as ModeratedSocketData;
+    return [data.verifiedPlayerId, data.mandaliPlayer?.playerId, rooms.getSocketIdentity(socket.id)];
+  };
+  const unsubscribe = moderation.onSuspend(id => {
+    if (identities().includes(id)) socket.disconnect(true);
+  });
+  socket.on("disconnect", unsubscribe);
   // Socket.IO packet middleware to enforce authoritative rate limits before event dispatch
   socket.use(([event, ..._args], next) => {
+    if (identities().some(id => moderation.isDenied(id))) {
+      socket.emit("room:error", "This identity is suspended.");
+      socket.disconnect(true);
+      return;
+    }
     if (MACHINE_EVENTS.has(event)) {
       const { allowed } = machineRateLimiter.consume(socket.id);
       if (!allowed) {
@@ -76,6 +96,8 @@ export function registerSocketHandlers(
       // so a shared cache hit makes this effectively free when it isn't the
       // very first request for this token. See economyIdentity.ts.
       const { identityId } = await resolveIdentity(payload.accessToken, payload.guestToken);
+      moderation.assertAllowed(identityId);
+      if (!socket.connected) throw new Error("Socket disconnected.");
       const { code, playerId, seatToken, state } = rooms.createRoom(
         socket.id,
         payload.name,
@@ -103,6 +125,7 @@ export function registerSocketHandlers(
         identityId,
         payload.entryStakeCoins
       );
+      if (identityId) (socket.data as ModeratedSocketData).verifiedPlayerId = identityId;
       if (payload.cosmetics) {
         rooms.setCosmetics(socket.id, payload.cosmetics).catch((err) => {
           logger.error({
@@ -125,6 +148,8 @@ export function registerSocketHandlers(
       const accountKind = await resolveAccountKind(payload.accountKind, payload.accessToken);
       // See the matching comment in room:create above.
       const { identityId } = await resolveIdentity(payload.accessToken, payload.guestToken);
+      moderation.assertAllowed(identityId);
+      if (!socket.connected) throw new Error("Socket disconnected.");
       const result = rooms.joinRoom(
         socket.id,
         payload.name,
@@ -139,6 +164,8 @@ export function registerSocketHandlers(
         ack({ ok: false, error: result.error });
         return;
       }
+      const boundIdentity = rooms.getSocketIdentity(socket.id);
+      if (boundIdentity) (socket.data as ModeratedSocketData).verifiedPlayerId = boundIdentity;
       if (payload.cosmetics) {
         rooms.setCosmetics(socket.id, payload.cosmetics).catch((err) => {
           logger.error({
@@ -348,6 +375,9 @@ export function registerSocketHandlers(
       }
 
       const accountKind = await resolveAccountKind(claimedKind, accessToken);
+      const { identityId } = await resolveIdentity(accessToken, undefined);
+      moderation.assertAllowed(identityId);
+      if (socket.connected === false) return;
       const capabilities = capabilitiesFor(accountKind);
       if (!capabilities.spectate) {
         if (typeof ack === "function") {
@@ -357,6 +387,7 @@ export function registerSocketHandlers(
       }
 
       const res = rooms.spectateRoom(socket.id, code, accountKind);
+      if (res.ok && identityId) (socket.data as ModeratedSocketData).verifiedPlayerId = identityId;
       if (typeof ack === "function") ack(res);
     } catch (err) {
       const error = err instanceof Error ? err.message : "Failed to spectate room";

@@ -18,6 +18,21 @@ import AdminTopbar from "../../../components/admin/admin-topbar";
 import StatCard from "../../../components/admin/stat-card";
 import MetricCard from "../../../components/admin/metric-card";
 import ChartCard from "../../../components/admin/chart-card";
+import { useAuthStore } from "../../../store/authStore";
+
+function stubUsers() {
+  const user = {
+    id: "usr-1", name: "Kethan Kumar", email: "kethan@bhalyam.io", role: "member", accountKind: "member",
+    matchesPlayed: 0, winRate: "0%", rating: 400, joinedAt: null, lastActiveAt: null, favoriteGame: "",
+    suspension: { isSuspended: false, reason: null, updatedAt: null, revision: 0 },
+  };
+  vi.stubGlobal("fetch", vi.fn().mockImplementation(async (input: RequestInfo | URL) => ({
+    status: 200, ok: true,
+    json: async () => String(input).includes("/api/admin/users/usr-1")
+      ? { user, sections: [], coverage: ["Retained records only"] }
+      : { users: [user], total: 1, page: 1, pageSize: 10 },
+  })));
+}
 
 function renderRoute(ui: React.ReactElement) {
   return render(<BrowserRouter>{ui}</BrowserRouter>);
@@ -60,7 +75,7 @@ describe("Admin Console — Route Rendering (All 10 Admin Pages)", () => {
     // coverage) — StatCard titles render synchronously, ahead of any fetch;
     // the table itself is behind a loading state until that fetch settles.
     expect(screen.getByText("User Accounts & Moderation")).toBeDefined();
-    expect(screen.getByText("Total Registered Accounts")).toBeDefined();
+    expect(screen.getByText("Matching Identities")).toBeDefined();
   });
 
   it("renders /admin/matches with real room and match management UI", () => {
@@ -123,53 +138,21 @@ describe("Admin Console — Route Rendering (All 10 Admin Pages)", () => {
 });
 
 describe("Admin Console — Drawer Opening & Closing Lifecycle", () => {
-  it("Users: clicking a row opens detail drawer, clicking close button dismisses it", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/api/admin/users")) {
-          return {
-            status: 200,
-            ok: true,
-            json: async () => ({
-              users: [
-                {
-                  id: "usr-1",
-                  name: "Kethan Kumar",
-                  email: "kethan@bhalyam.io",
-                  role: "super_admin",
-                  matchesPlayed: 0,
-                  winRate: "0%",
-                  rating: 400,
-                  joinedAt: Date.now(),
-                  lastActiveAt: null,
-                  favoriteGame: "—",
-                },
-              ],
-              total: 1,
-            }),
-          };
-        }
-        return { status: 200, ok: true, json: async () => ({}) };
-      }),
-    );
-
-    const { container } = renderRoute(<AdminUsersPage />);
-    await waitFor(() => expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0));
-    const firstRow = container.querySelectorAll("tbody tr")[0];
-    fireEvent.click(firstRow);
+  it("Users: Inspect opens recorded details and Close drawer dismisses them", async () => {
+    stubUsers();
+    renderRoute(<AdminUsersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
 
     // Detail drawer opens
-    expect(await screen.findByText("Player Credentials & Account")).toBeDefined();
-    expect(await screen.findByText("Multiplayer Career Statistics")).toBeDefined();
+    expect(await screen.findByText("Recorded Identity")).toBeDefined();
+    expect(await screen.findByText("Recorded Statistics")).toBeDefined();
 
     // Close drawer via aria-label="Close drawer" button
     const closeBtn = screen.getByRole("button", { name: /close drawer/i });
     fireEvent.click(closeBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText("Player Credentials & Account")).toBeNull();
+      expect(screen.queryByText("Recorded Identity")).toBeNull();
     });
     vi.unstubAllGlobals();
   });
@@ -304,48 +287,18 @@ describe("Admin Console — Drawer Opening & Closing Lifecycle", () => {
 });
 
 describe("Admin Console — Toast / Alert Notification Feedback", () => {
-  it("Users: muting player triggers alert banner with demo disclosure", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("/api/admin/users")) {
-          return {
-            status: 200,
-            ok: true,
-            json: async () => ({
-              users: [
-                {
-                  id: "usr-1",
-                  name: "Kethan Kumar",
-                  email: "kethan@bhalyam.io",
-                  role: "super_admin",
-                  matchesPlayed: 0,
-                  winRate: "0%",
-                  rating: 400,
-                  joinedAt: Date.now(),
-                  lastActiveAt: null,
-                  favoriteGame: "—",
-                },
-              ],
-              total: 1,
-            }),
-          };
-        }
-        return { status: 200, ok: true, json: async () => ({}) };
-      }),
-    );
-
-    const { container } = renderRoute(<AdminUsersPage />);
-    await waitFor(() => expect(container.querySelectorAll("tbody tr").length).toBeGreaterThan(0));
-    const firstRow = container.querySelectorAll("tbody tr")[0];
-    fireEvent.click(firstRow);
-
-    const muteBtn = await screen.findByRole("button", { name: /mute player|unmute/i });
-    fireEvent.click(muteBtn);
-
-    expect(await screen.findByText(/preview updated locally/i)).toBeDefined();
-    expect(screen.getByText(/no changes were sent to the server/i)).toBeDefined();
+  it("Users: suspension asks for confirmation without claiming an unsent success", async () => {
+    const previousAuth = useAuthStore.getState();
+    useAuthStore.setState({ isSuperAdmin: true, userId: "operator", email: "operator@example.com" });
+    stubUsers();
+    const { unmount } = renderRoute(<AdminUsersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
+    expect(screen.getByRole("button", { name: "Confirm suspension" })).toBeDefined();
+    expect(screen.queryByText("Identity suspended.")).toBeNull();
+    expect(screen.queryByRole("button", { name: /mute player/i })).toBeNull();
+    unmount();
+    useAuthStore.setState(previousAuth);
     vi.unstubAllGlobals();
   });
 

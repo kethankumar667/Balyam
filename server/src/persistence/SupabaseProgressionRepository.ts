@@ -105,6 +105,15 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
 
   /* ── profiles ── */
 
+  async listIdentities(limit: number, offset: number): Promise<IdentityRecord[]> {
+    const rows = await this.db.select<{
+      player_id: string; kind: "member" | "guest"; auth_user_id: string | null;
+      last_seen_at: string; created_at: string;
+    }>("player_identities", `select=player_id,kind,auth_user_id,last_seen_at,created_at&order=player_id.asc&limit=${limit}&offset=${offset}`);
+    return rows.map(row => ({ playerId: row.player_id, kind: row.kind, authUserId: row.auth_user_id,
+      lastSeenAt: ms(row.last_seen_at), createdAt: ms(row.created_at) }));
+  }
+
   async upsertProfile(record: ProfileRecord): Promise<void> {
     await this.db.upsert(
       "player_profiles",
@@ -565,6 +574,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
           finished_at: iso(record.finishedAt),
           duration_ms: record.durationMs,
           winner_id: record.winnerId ?? null,
+          ...(record.winnerKind ? { winner_kind: record.winnerKind } : {}),
           participant_count: record.participants.length,
         },
       ],
@@ -650,6 +660,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
       duration_ms: number;
       winner_id: string | null;
       participant_count: number;
+      winner_kind?: MatchSummaryRecord["winnerKind"];
     };
     const summaries: SummaryRow[] = [];
     for (let start = 0; start < ids.length; start += 50) {
@@ -684,6 +695,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
           finishedAt: ms(m.finished_at),
           durationMs: Number(m.duration_ms),
           winnerId: m.winner_id,
+          winnerKind: m.winner_kind ?? "unknown",
           // The other participants are a read this screen does not need: the
           // profile list shows your own result, not the whole table.
           participants: [self],

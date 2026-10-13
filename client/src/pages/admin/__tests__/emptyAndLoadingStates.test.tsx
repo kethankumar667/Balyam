@@ -64,25 +64,33 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
       vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.includes("/api/admin/users")) {
+          const params = new URL(url, "http://localhost").searchParams;
+          const user = {
+            id: "usr-1",
+            name: "Kethan Kumar",
+            email: "kethan@bhalyam.io",
+            role: "member",
+            accountKind: "member",
+            suspension: { isSuspended: false, reason: null, updatedAt: null, revision: 0 },
+            matchesPlayed: 0,
+            winRate: "0%",
+            rating: 400,
+            joinedAt: Date.now(),
+            lastActiveAt: null,
+            favoriteGame: "Not recorded",
+          };
+          const search = (params.get("search") ?? "").toLowerCase();
+          const role = params.get("role") ?? "all";
+          const users = `${user.name} ${user.email}`.toLowerCase().includes(search)
+            && (role === "all" || role === user.role) ? [user] : [];
           return {
             status: 200,
             ok: true,
             json: async () => ({
-              users: [
-                {
-                  id: "usr-1",
-                  name: "Kethan Kumar",
-                  email: "kethan@bhalyam.io",
-                  role: "member",
-                  matchesPlayed: 0,
-                  winRate: "0%",
-                  rating: 400,
-                  joinedAt: Date.now(),
-                  lastActiveAt: null,
-                  favoriteGame: "—",
-                },
-              ],
-              total: 1,
+              users,
+              total: users.length,
+              page: Number(params.get("page") ?? 1),
+              pageSize: Number(params.get("pageSize") ?? 10),
             }),
           };
         }
@@ -108,6 +116,7 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("No search results found")).toBeNull();
+      expect(screen.getByText("Kethan Kumar")).toBeDefined();
     });
     vi.unstubAllGlobals();
   });
@@ -119,7 +128,8 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
     const roleSelect = screen.getByLabelText("Filter by Role");
 
     // The only seeded user is role "member" — filtering to "admin" yields zero.
-    fireEvent.change(roleSelect, { target: { value: "admin" } });
+    fireEvent.click(roleSelect);
+    fireEvent.click(screen.getByRole("option", { name: "Admin", exact: true }));
 
     await waitFor(() => {
       expect(screen.getByText("No users match selected filters")).toBeDefined();
@@ -130,6 +140,7 @@ describe("Admin Users Page — Search & Filter Empty States", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("No users match selected filters")).toBeNull();
+      expect(screen.getByText("Kethan Kumar")).toBeDefined();
     });
     vi.unstubAllGlobals();
   });

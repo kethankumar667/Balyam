@@ -282,11 +282,13 @@ class ProgressionSync {
       avatar?: string;
       isWinner: boolean;
       isBot?: boolean;
+      isLocal?: boolean;
+      identityId?: string | null;
     }>;
   }): void {
     // Bots have no identity row and no progression. Filtering here rather than
     // letting a foreign key reject the whole match write.
-    const humans = match.participants.filter((p) => !p.isBot);
+    const humans = match.participants.filter((p) => !p.isBot && !p.isLocal && p.identityId !== null);
     if (humans.length === 0) return;
 
     for (const p of humans) {
@@ -306,6 +308,9 @@ class ProgressionSync {
         finishedAt: match.finishedAt,
         durationMs: match.durationMs,
         winnerId: humans.some((p) => p.playerId === match.winnerId) ? match.winnerId : null,
+        winnerKind: !match.winnerId ? "draw" : match.participants.find(p => p.isWinner)?.isBot ? "bot"
+          : match.participants.find(p => p.isWinner)?.isLocal ? "local"
+          : humans.some(p => p.playerId === match.winnerId) ? "human" : "unverified",
         participants: humans.map((p, index) => ({
           playerId: p.playerId,
           displayName: p.name,

@@ -301,6 +301,7 @@ export class ProfileService {
       avatar?: string;
       isWinner: boolean;
       isBot?: boolean;
+      identityId?: string | null;
       /** A seat played from the host's own device (pass-and-play), not a separate person. */
       isLocal?: boolean;
       /** A signed-in account. Only members count as real people for XP and coin eligibility; absent = not a member. */
@@ -314,7 +315,7 @@ export class ProfileService {
     let tableClass: TableClass | null = null;
 
     for (const p of params.participants) {
-      if (p.isBot) continue; // Skip bot persistence
+      if (p.isBot || p.isLocal || p.identityId === null) continue;
 
       const result = params.winnerId
         ? p.playerId === params.winnerId

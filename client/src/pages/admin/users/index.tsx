@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
+import type { AdminUserSummary, AdminUsersResponse } from "@shared/adminUsers";
+import ThemedSelect from "../../../components/ThemedSelect";
+import UserInspection, { type ModerationOutcome } from "./UserInspection";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserCheck,
   ShieldAlert,
   Crown,
-  Ban,
-  VolumeX,
   Shield,
   Search,
   Filter,
@@ -21,28 +22,11 @@ import DataTable, { type Column } from "../../../components/admin/data-table";
 import SearchBar from "../../../components/admin/search-bar";
 import FilterBar, { type FilterOption } from "../../../components/admin/filter-bar";
 import DetailDrawer from "../../../components/admin/detail-drawer";
-import InfoCard from "../../../components/admin/info-card";
 import LoadingState from "../../../components/admin/loading-state";
 import { operationalFetch, operationalPost, OperationalAuthError } from "../../../lib/operationalApi";
 import { formatTimeAgo } from "../../../lib/formatTimeAgo";
 import { useAuthStore } from "../../../store/authStore";
 
-/**
- * Real registered accounts (`GET /api/admin/users`, merging Supabase
- * `profiles` with the progression store) plus real per-player gameplay
- * stats (`matchesPlayed`/`winRate`/`rating`/`favoriteGame`) from the same
- * `ProfileService` source the public Leaderboard reads — see
- * `server/src/admin/AdminUsersController.ts`'s own doc comment.
- *
- * Previously this page padded the real list with 25 hand-written mock rows
- * (indistinguishable from real ones — same columns, no marker) and showed
- * a "nothing is saved... sent to a server" banner that was already false
- * for the real user list AND the real role-change action. Both are gone.
- * Mute/Ban stay as clearly-disclosed local-preview toggles — there is no
- * real moderation endpoint behind either yet — and the fabricated "Recent
- * Player Activity Stream" (invented for every user, real or mock) is
- * dropped rather than kept.
- */
 export interface UserRow {
   id: string;
   name: string;
@@ -55,6 +39,8 @@ export interface UserRow {
   joinedAt: number | null;
   lastActiveAt: number | null;
   favoriteGame: string;
+  accountKind?: AdminUserSummary["accountKind"];
+  suspension?: AdminUserSummary["suspension"];
   isBanned?: boolean;
   isMuted?: boolean;
 }
@@ -65,15 +51,15 @@ function errorMessage(err: unknown): string {
   return "Request failed.";
 }
 
-function formatDate(ms: number | null): string {
-  if (ms === null) return "—";
-  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-}
-
 export default function AdminUsersPage() {
   const navigate = useNavigate();
+  const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [kindFilter, setKindFilter] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [directory, setDirectory] = useState<AdminUsersResponse | null>(null);
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [users, setUsers] = useState<UserRow[] | null>(null);
@@ -81,65 +67,43 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionAlert, setActionAlert] = useState<string | null>(null);
+  const [moderationOutcome, setModerationOutcome] = useState<ModerationOutcome | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [roleChangeReason, setRoleChangeReason] = useState("");
 
-  const loadUsers = async (isManualRefresh = false) => {
-    if (isManualRefresh) setIsRefreshing(true);
-    try {
-      const res = await operationalFetch<{ users: UserRow[]; total: number }>("/api/admin/users");
-      setUsers(res.users ?? []);
-      setError(null);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
-    void loadUsers();
-  }, []);
+    let active = true;
+    setIsLoading(true);
+    setError(null);
+    if (search.trim() !== debouncedSearch) return () => { active = false; };
+    const query = new URLSearchParams({ page: String(page), pageSize: "10", search: debouncedSearch, kind: kindFilter, role: roleFilter });
+    void operationalFetch<AdminUsersResponse>(`/api/admin/users?${query}`).then((response) => {
+      if (!Array.isArray(response.users) || !Number.isFinite(response.total) || !response.page || !response.pageSize) throw new Error("Invalid user directory response.");
+      if (active) {
+        setDirectory(response);
+        setUsers(response.users);
+      }
+    }).catch((err: unknown) => {
+      if (active) { setError(errorMessage(err)); setUsers(null); setDirectory(null); }
+    }).finally(() => {
+      if (active) { setIsLoading(false); setIsRefreshing(false); }
+    });
+    return () => { active = false; };
+  }, [page, debouncedSearch, kindFilter, roleFilter, refreshKey, search]);
 
   const usersList = users ?? [];
-  const pageSize = 10;
-
-  const filteredUsers = usersList.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.favoriteGame.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const totalPages = Math.ceil(filteredUsers.length / pageSize);
-  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
-
-  const handleToggleMute = (user: UserRow) => {
-    const updated = { ...user, isMuted: !user.isMuted };
-    setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? updated : u)));
-    setSelectedUser(updated);
-    setActionAlert(
-      `Preview updated locally — ${user.name} would be ${updated.isMuted ? "muted" : "unmuted"}. No changes were sent to the server.`,
-    );
-    setTimeout(() => setActionAlert(null), 3500);
-  };
-
-  const handleToggleBan = (user: UserRow) => {
-    const updated = { ...user, isBanned: !user.isBanned };
-    setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? updated : u)));
-    setSelectedUser(updated);
-    setActionAlert(
-      `Preview updated locally — ${user.name} would be ${updated.isBanned ? "banned" : "unbanned"}. No changes were sent to the server.`,
-    );
-    setTimeout(() => setActionAlert(null), 3500);
-  };
+  const pageSize = directory?.pageSize ?? 10;
+  const totalPages = Math.ceil((directory?.total ?? 0) / pageSize);
+  const paginatedUsers = usersList;
 
   // Super Admin feature: Promote/demote user roles from the UI — real, hits /api/admin/users/role.
   const handleUpdateUserRole = async (user: UserRow, newRole: "super_admin" | "admin" | "member") => {
-    if (user.role === newRole) return;
+    if (user.role === newRole || !isSuperAdmin || isUpdatingRole) return;
     setIsUpdatingRole(true);
     try {
       const reason = roleChangeReason.trim() || `Role updated to ${newRole} from Admin Console UI`;
@@ -151,7 +115,7 @@ export default function AdminUsersPage() {
 
       const updated = { ...user, role: newRole };
       setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? updated : u)));
-      setSelectedUser(updated);
+      setSelectedUser((current) => current?.id === user.id ? updated : current);
 
       // If modifying current logged-in user, immediately sync authStore in the browser
       const auth = useAuthStore.getState();
@@ -194,10 +158,10 @@ export default function AdminUsersPage() {
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-[var(--chrome-ink)] truncate">{row.name}</span>
-              {row.isBanned && <span className="text-[10px] bg-rose-500 text-white font-black px-1.5 py-0.2 rounded-full">BANNED</span>}
-              {row.isMuted && <span className="text-[10px] bg-amber-500 text-zinc-950 font-black px-1.5 py-0.2 rounded-full">MUTED</span>}
+              <span className="text-xs text-[var(--chrome-ink-soft)]">{row.accountKind === "guest" ? "Guest" : "Member"}</span>
+              {row.suspension?.isSuspended && <span className="text-xs text-rose-600 dark:text-rose-400">Suspended</span>}
             </div>
-            <span className="text-xs text-[var(--chrome-ink-soft)] font-mono truncate">{row.email}</span>
+            <span className="text-xs text-[var(--chrome-ink-soft)] font-mono truncate">{row.email || "Not recorded"}</span>
           </div>
         </div>
       ),
@@ -255,6 +219,10 @@ export default function AdminUsersPage() {
         </span>
       ),
     },
+    {
+      kind: "computed", key: "inspect", header: "Inspect",
+      render: (row) => <button type="button" aria-label={`Inspect ${row.name}`} onClick={() => setSelectedUser(row)} className="min-h-[44px] min-w-[44px] px-3 rounded-lg border border-[var(--chrome-border)] focus-visible:ring-2 focus-visible:ring-amber-500">Inspect</button>,
+    },
   ];
 
   const filters: FilterOption[] = [
@@ -268,33 +236,29 @@ export default function AdminUsersPage() {
         { label: "Admin", value: "admin" },
         { label: "Member", value: "member" },
       ],
-      onChange: setRoleFilter,
+      onChange: (value) => { setPage(1); setRoleFilter(value); },
     },
   ];
 
   const isSearchActive = search.trim() !== "";
-  const isFilterActive = roleFilter !== "all";
-  const resetFilters = () => setRoleFilter("all");
+  const isFilterActive = roleFilter !== "all" || kindFilter !== "all";
+  const resetFilters = () => { setRoleFilter("all"); setKindFilter("all"); setPage(1); };
 
   const emptyTitle = error
     ? "User data unavailable"
-    : usersList.length === 0
-      ? "No player accounts registered"
-      : isSearchActive
+    : isSearchActive
         ? "No search results found"
         : isFilterActive
           ? "No users match selected filters"
-          : "No records found";
+          : "No player identities found";
 
   const emptyDesc = error
     ? error
-    : usersList.length === 0
-      ? "There are currently no registered users in the database."
-      : isSearchActive
+    : isSearchActive
         ? `No users match "${search}". Try searching with a different name or email.`
         : isFilterActive
           ? "No players meet the active role filter criteria."
-          : "There are currently no items matching your criteria.";
+          : "No recorded identities match this directory request.";
 
   const emptyIcon = isSearchActive ? (
     <Search className="w-6 h-6" />
@@ -329,15 +293,15 @@ export default function AdminUsersPage() {
     <AdminLayout>
       <PageHeader
         title="User Accounts & Moderation"
-        description="Inspect registered player profiles, promote Super Admins & Admins, monitor activity, and manage platform members."
+        description="Members and created guests"
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Users" }]}
         actions={
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => void loadUsers(true)}
+              onClick={() => { setIsRefreshing(true); setRefreshKey((value) => value + 1); }}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-black text-xs shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 font-black text-xs shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
               <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
@@ -360,33 +324,39 @@ export default function AdminUsersPage() {
       </span>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+        <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
           User data unavailable: {error}
         </div>
       )}
 
       {actionAlert && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-between animate-in fade-in">
+        <div role="status" className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-between">
           <span>{actionAlert}</span>
+        </div>
+      )}
+
+      {moderationOutcome && (
+        <div role={moderationOutcome.isError ? "alert" : "status"} className="mb-4 p-3 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] text-xs font-bold">
+          {moderationOutcome.message}
         </div>
       )}
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatCard
-          title="Total Registered Accounts"
-          value={users ? String(usersList.length) : "—"}
+          title="Matching Identities"
+          value={directory ? String(directory.total) : "—"}
           icon={<Users className="w-5 h-5 text-amber-500" />}
-          subtitle="Supabase profiles + progression store"
+          subtitle="Members and created guests"
         />
         <StatCard
-          title="Played At Least One Match"
+          title="Played On This Page"
           value={users ? String(playedCohort) : "—"}
           icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
           subtitle="Real gameplay stats on record"
         />
         <StatCard
-          title="Administrative Accounts"
+          title="Administrators On This Page"
           value={users ? String(adminCohort) : "—"}
           icon={<ShieldAlert className="w-5 h-5 text-orange-500" />}
           subtitle="Super Admins & Admins with console access"
@@ -397,11 +367,14 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
         <SearchBar
           value={search}
-          onChange={setSearch}
+          onChange={(value) => { setSearch(value); setPage(1); }}
           placeholder="Search by name, email, or favorite game..."
           ariaLabel="Search users"
         />
-        <FilterBar filters={filters} onReset={resetFilters} />
+        <FilterBar onReset={resetFilters} activeCount={Number(roleFilter !== "all") + Number(kindFilter !== "all")}>
+          <ThemedSelect ariaLabel="Identity kind" variant="inline" value={kindFilter} options={[{ label: "All identities", value: "all" }, { label: "Members", value: "member" }, { label: "Guests", value: "guest" }]} onChange={(value) => { setKindFilter(value); setPage(1); }} />
+          <ThemedSelect ariaLabel="Filter by Role" variant="inline" value={roleFilter} options={filters[0].options} onChange={filters[0].onChange} />
+        </FilterBar>
       </div>
 
       {/* Users Data Table */}
@@ -411,17 +384,15 @@ export default function AdminUsersPage() {
         <DataTable
           columns={columns}
           data={paginatedUsers}
-          onRowClick={(row) => setSelectedUser(row)}
-          getRowAriaLabel={(row) => `Open details for user ${row.name}`}
           emptyMessage={emptyTitle}
           emptyDescription={emptyDesc}
           emptyIcon={emptyIcon}
           emptyAction={emptyAction}
           pagination={{
-            currentPage: page,
+            currentPage: directory?.page ?? page,
             totalPages: totalPages || 1,
             pageSize: pageSize,
-            totalItems: filteredUsers.length,
+            totalItems: directory?.total ?? 0,
             onPageChange: setPage,
           }}
         />
@@ -433,40 +404,15 @@ export default function AdminUsersPage() {
         onClose={() => setSelectedUser(null)}
         title={selectedUser?.name ?? "User Profile"}
         subtitle={selectedUser?.email}
-        footer={
-          selectedUser && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => handleToggleMute(selectedUser)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  selectedUser.isMuted
-                    ? "bg-amber-500 text-zinc-950 border-amber-600 font-black shadow-xs"
-                    : "bg-[var(--chrome-control)] text-[var(--chrome-ink)] border-[var(--chrome-border)] hover:bg-[var(--chrome-control-hi)]"
-                }`}
-              >
-                <VolumeX className="w-3.5 h-3.5" />
-                <span>{selectedUser.isMuted ? "Unmute Voice/Chat" : "Mute Player"}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleToggleBan(selectedUser)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold text-white transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  selectedUser.isBanned ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
-                }`}
-              >
-                <Ban className="w-3.5 h-3.5" />
-                <span>{selectedUser.isBanned ? "Lift Ban" : "Ban Account"}</span>
-              </button>
-            </div>
-          )
-        }
+        width="xl"
       >
         {selectedUser && (
-          <div className="space-y-6">
+          <UserInspection key={selectedUser.id} userId={selectedUser.id} role={selectedUser.role} onUpdate={(updated) => {
+            setSelectedUser((current) => current?.id === updated.id ? updated : current);
+            setUsers((current) => current?.map((user) => user.id === updated.id ? updated : user) ?? null);
+          }} onOutcome={setModerationOutcome}>
             {/* Super Admin Feature: Role Management from UI — real, hits /api/admin/users/role */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 space-y-3.5 shadow-sm">
+            {isSuperAdmin && <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
                   <Crown className="w-4 h-4 text-amber-500" />
@@ -537,30 +483,7 @@ export default function AdminUsersPage() {
                   className="w-full h-9 px-3 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 />
               </div>
-            </div>
-
-            <InfoCard
-              title="Player Credentials & Account"
-              fields={[
-                { label: "User ID", value: selectedUser.id, isMono: true },
-                { label: "Account Role", value: selectedUser.role === "super_admin" ? "SUPER ADMIN" : selectedUser.role.toUpperCase() },
-                { label: "Joined Date", value: formatDate(selectedUser.joinedAt) },
-                {
-                  label: "Last Session",
-                  value: selectedUser.lastActiveAt === null ? "—" : formatTimeAgo(selectedUser.lastActiveAt),
-                },
-              ]}
-            />
-
-            <InfoCard
-              title="Multiplayer Career Statistics"
-              fields={[
-                { label: "Matches Completed", value: selectedUser.matchesPlayed },
-                { label: "Win Rate", value: selectedUser.winRate },
-                { label: "Competitive Rating", value: selectedUser.rating, isMono: true },
-                { label: "Favorite Game", value: selectedUser.favoriteGame },
-              ]}
-            />
+            </div>}
 
             {/* Player Economy & Coins Top-Up Action */}
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
@@ -578,13 +501,13 @@ export default function AdminUsersPage() {
                 onClick={() =>
                   navigate(`/admin/economy?tab=player&identityId=${encodeURIComponent(selectedUser.id)}`)
                 }
-                className="w-full h-10 mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="w-full min-h-[44px] mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 <Coins className="w-4 h-4" />
                 <span>Top-Up Coins / Investigate Wallet</span>
               </button>
             </div>
-          </div>
+          </UserInspection>
         )}
       </DetailDrawer>
     </AdminLayout>

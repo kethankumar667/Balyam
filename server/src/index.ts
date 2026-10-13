@@ -22,6 +22,7 @@ import { createOperationalRouter } from "./observability/OperationalController.j
 import { createDashboardRouter } from "./admin/DashboardController.js";
 import { createAuditRouter } from "./admin/AuditController.js";
 import { createAdminUsersRouter } from "./admin/AdminUsersController.js";
+import { adminPlayerService } from "./admin/AdminPlayerService.js";
 import { attachPlayerIdentity } from "./auth/identity.js";
 import { authRouter } from "./auth/AuthController.js";
 import { assertGuestTokenDurabilityConfigured } from "./auth/guestToken.js";
@@ -623,6 +624,7 @@ io.on("connection", (socket) => {
  */
 async function boot(): Promise<void> {
   const persistence = await initialiseProgressionStore();
+  await adminPlayerService().hydrate();
   if (persistence.durable) {
     await hydrateProgression();
   } else {

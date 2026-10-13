@@ -639,6 +639,8 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
     const listeners: Record<string, Function> = {};
     const guestSocket = {
       id: "s_b",
+      connected: true,
+      data: {},
       use: () => {},
       on: (ev: string, handler: Function) => { listeners[ev] = handler; },
       emit: vi.fn(),

@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { mintGuestToken, verifyGuestToken } from "./guestToken.js";
-import { requireIdentity, touchGuestIdentity } from "./identity.js";
+import { requireIdentity, touchGuestIdentity, ensureGuestIdentityProvisioned } from "./identity.js";
+import { GuestProvisioningThrottledError } from "./guestProvisioningGate.js";
+import { adminPlayerService } from "../admin/AdminPlayerService.js";
 import { logger } from "../lib/logger.js";
 import { guestNetworkLimiter, networkLimitIsTrustworthy } from "./guestNetworkLimiter.js";
 
@@ -26,7 +28,7 @@ export const authRouter = Router();
  * stored. That changes when guest identities become rows (P0-3), and the note
  * is here so it is not rediscovered then.
  */
-authRouter.post("/guest", (req: Request, res: Response) => {
+authRouter.post("/guest", async (req: Request, res: Response) => {
   // A guest account is the unit of free coins, so remaking it is rate-limited per NETWORK (a salted
   // hash held in memory, never the address). Skipped when the address cannot be trusted, so a
   // misconfigured proxy cannot lock everyone out. See guestNetworkLimiter.ts for the whole argument.
@@ -44,6 +46,14 @@ authRouter.post("/guest", (req: Request, res: Response) => {
     }
   }
   const minted = mintGuestToken();
+  try {
+    await ensureGuestIdentityProvisioned(minted.playerId);
+  } catch (error) {
+    const throttled = error instanceof GuestProvisioningThrottledError;
+    if (throttled) res.setHeader("Retry-After", "60");
+    res.status(throttled ? 429 : 503).json({ error: throttled ? "GuestProvisioningThrottled" : "IdentityStoreUnavailable" });
+    return;
+  }
   res.status(201).json({
     playerId: minted.playerId,
     token: minted.token,
@@ -71,12 +81,20 @@ authRouter.post("/guest/renew", async (req: Request, res: Response) => {
     res.status(401).json({ error: "This guest identity can no longer be renewed." });
     return;
   }
+  if (adminPlayerService().isDenied(playerId)) {
+    res.status(403).json({ error: "Suspended" });
+    return;
+  }
   // Keep the idle purge in step with the token: a guest who renews is, by definition, not idle. A
   // failure here must not log the guest out, so it is reported and the renewal still succeeds.
   try {
     await touchGuestIdentity(playerId);
   } catch (err) {
     logger.warn({ message: `Guest last-seen update failed during renewal: ${String(err)}`, module: "AUTH" });
+  }
+  if (adminPlayerService().isDenied(playerId)) {
+    res.status(403).json({ error: "Suspended" });
+    return;
   }
   const minted = mintGuestToken(playerId);
   res.status(200).json({

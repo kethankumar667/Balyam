@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { randomUUID } from "node:crypto";
 import type { Server } from "socket.io";
 import { RoomManager } from "../RoomManager.js";
 import { profileService } from "../../profile/ProfileService.js";
@@ -30,18 +31,22 @@ const OPTIONS_ARG_INDEX = 19; // socketId, name, game, then 16 per-game option s
 function createTtt(rm: RoomManager, opts: unknown, socket = "sA", name = "Alice") {
   const args: unknown[] = [socket, name, "tictactoe", ...Array(16).fill(undefined), opts];
   expect(args[OPTIONS_ARG_INDEX]).toBe(opts);
-  return rm.createRoom(...(args as Parameters<RoomManager["createRoom"]>));
+  const identityId = randomUUID();
+  args[rm.createRoom.length - 3] = "member";
+  args[rm.createRoom.length - 2] = identityId;
+  return { ...rm.createRoom(...(args as Parameters<RoomManager["createRoom"]>)), identityId };
 }
 
 function startTwoPlayer(rm: RoomManager, opts: Partial<TicTacToeOptions> | unknown) {
   const created = createTtt(rm, opts);
-  const joined = rm.joinRoom("sB", "Bob", created.code);
+  const bobIdentityId = randomUUID();
+  const joined = rm.joinRoom("sB", "Bob", created.code, undefined, undefined, undefined, "member", bobIdentityId);
   expect(joined.ok).toBe(true);
   rm.setReady("sA", true);
   rm.setReady("sB", true);
   rm.startGame("sA");
   const room = (rm as unknown as { rooms: Map<string, any> }).rooms.get(created.code)!;
-  return { code: created.code, aliceId: created.playerId, bobId: (joined as { playerId: string }).playerId, room };
+  return { code: created.code, aliceId: created.playerId, bobId: (joined as { playerId: string }).playerId, aliceIdentityId: created.identityId, bobIdentityId, room };
 }
 
 const DRAW: [string, number][] = [
@@ -68,10 +73,10 @@ describe("Tic Tac Toe through RoomManager", () => {
   describe("results", () => {
     it("records a classic DRAW as a draw (not a loss) for both players", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId, bobId, room } = startTwoPlayer(rm, { mode: "classic", turnTimerSeconds: 0 });
+      const { aliceIdentityId, bobIdentityId, room } = startTwoPlayer(rm, { mode: "classic", turnTimerSeconds: 0 });
       await play(rm, DRAW);
       expect(room.phase).toBe("finished");
-      for (const id of [aliceId, bobId]) {
+      for (const id of [aliceIdentityId, bobIdentityId]) {
         const stats = profileService.getStats(id);
         expect(stats.draws).toBe(1);
         expect(stats.losses).toBe(0);
@@ -81,43 +86,45 @@ describe("Tic Tac Toe through RoomManager", () => {
 
     it("records a win and a loss with the normal XP", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId, bobId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
+      const { aliceId, bobId, aliceIdentityId, bobIdentityId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
       await play(rm, ALICE_WINS_IN_3);
-      expect(profileService.getStats(aliceId).wins).toBe(1);
-      expect(profileService.getStats(bobId).losses).toBe(1);
-      expect(profileService.getProfile(aliceId)?.experiencePoints).toBe(50);
-      expect(profileService.getProfile(bobId)?.experiencePoints).toBe(15);
+      expect(profileService.getStats(aliceIdentityId).wins).toBe(1);
+      expect(profileService.getStats(bobIdentityId).losses).toBe(1);
+      expect(profileService.getProfile(aliceIdentityId)?.experiencePoints).toBe(50);
+      expect(profileService.getProfile(bobIdentityId)?.experiencePoints).toBe(15);
+      expect(profileService.getStats(aliceId).totalMatches).toBe(0);
+      expect(profileService.getStats(bobId).totalMatches).toBe(0);
     });
 
     it("scores a win by efficiency: a 3-move win is the best possible score", async () => {
       const rm = new RoomManager(makeIo());
-      const { aliceId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
+      const { aliceIdentityId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
       await play(rm, ALICE_WINS_IN_3);
-      const card = scorecardService.getScorecards(aliceId).games["tictactoe"]?.modes["quantum"];
+      const card = scorecardService.getScorecards(aliceIdentityId).games["tictactoe"]?.modes["quantum"];
       expect(card?.bestScore).toBe(8);
     });
 
     it("does not touch the scorecard for a loss or a draw — no phantom 'personal best'", async () => {
       const rm = new RoomManager(makeIo());
-      const { bobId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
+      const { bobIdentityId } = startTwoPlayer(rm, { mode: "quantum", turnTimerSeconds: 0 });
       await play(rm, ALICE_WINS_IN_3);
-      expect(scorecardService.getScorecards(bobId).games["tictactoe"]).toBeUndefined();
-      expect(scorecardService.getScorecards(bobId).totalPersonalBestsBeaten).toBe(0);
+      expect(scorecardService.getScorecards(bobIdentityId).games["tictactoe"]).toBeUndefined();
+      expect(scorecardService.getScorecards(bobIdentityId).totalPersonalBestsBeaten).toBe(0);
 
       const rm2 = new RoomManager(makeIo());
       const drawn = startTwoPlayer(rm2, { mode: "classic", turnTimerSeconds: 0 });
       await play(rm2, DRAW);
-      expect(scorecardService.getScorecards(drawn.aliceId).games["tictactoe"]).toBeUndefined();
+      expect(scorecardService.getScorecards(drawn.aliceIdentityId).games["tictactoe"]).toBeUndefined();
     });
 
     it("gives the leaver's opponent the win when someone leaves mid-match", async () => {
       const rm = new RoomManager(makeIo());
-      const { bobId, room } = startTwoPlayer(rm, { turnTimerSeconds: 0 });
+      const { bobIdentityId, room } = startTwoPlayer(rm, { turnTimerSeconds: 0 });
       await rm.leaveRoom("sA");
       expect(room.phase).toBe("finished");
-      expect(profileService.getStats(bobId).wins).toBe(1);
+      expect(profileService.getStats(bobIdentityId).wins).toBe(1);
       // A walkover is not an efficiency result: it must not mint a scorecard entry.
-      expect(scorecardService.getScorecards(bobId).games["tictactoe"]).toBeUndefined();
+      expect(scorecardService.getScorecards(bobIdentityId).games["tictactoe"]).toBeUndefined();
     });
   });
 
@@ -216,7 +223,7 @@ describe("Tic Tac Toe through RoomManager", () => {
       await rm.applyMove("sA", "place", { cellIndex: 2 });
 
       expect(room.phase).toBe("finished");
-      expect(scorecardService.getScorecards(created.playerId).games["tictactoe"]).toBeUndefined();
+      expect(scorecardService.getScorecards(created.identityId).games["tictactoe"]).toBeUndefined();
     });
   });
 });

@@ -5,6 +5,7 @@ import { verifyGuestToken } from "./guestToken.js";
 import { GuestProvisioningThrottledError, tryTakeGuestProvisioningSlot } from "./guestProvisioningGate.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
 import { progressionRepository } from "../persistence/index.js";
+import { adminPlayerService, AdminPlayerError } from "../admin/AdminPlayerService.js";
 
 /**
  * Who the server believes is making this request.
@@ -263,11 +264,14 @@ export async function ensureMemberIdentityProvisioned(userId: string): Promise<v
  */
 export async function resolvePlayerIdentity(
   token: string | null | undefined,
+  allowSuspendedErasure = false,
 ): Promise<PlayerIdentity | null> {
   if (!token) return null;
 
   const guestId = verifyGuestToken(token);
   if (guestId) {
+    if (allowSuspendedErasure) return { kind: "guest", playerId: guestId };
+    adminPlayerService().assertAllowed(guestId);
     try {
       await ensureGuestIdentityProvisioned(guestId);
     } catch (err) {
@@ -283,12 +287,15 @@ export async function resolvePlayerIdentity(
         module: "AUTH",
       });
     }
+    adminPlayerService().assertAllowed(guestId);
     return { kind: "guest", playerId: guestId };
   }
 
   try {
     const account = await verifyAccessToken(token);
     if (account) {
+      if (allowSuspendedErasure) return { kind: "member", playerId: account.userId, email: account.email };
+      adminPlayerService().assertAllowed(account.userId);
       try {
         await ensureMemberIdentityProvisioned(account.userId);
       } catch (err) {
@@ -301,9 +308,11 @@ export async function resolvePlayerIdentity(
           module: "AUTH",
         });
       }
+      adminPlayerService().assertAllowed(account.userId);
       return { kind: "member", playerId: account.userId, email: account.email };
     }
   } catch (err) {
+    if (err instanceof AdminPlayerError) throw err;
     // An unresolvable credential is simply no identity. Downstream guards
     // decide whether that is fatal for the route in question.
     logger.warn({
@@ -314,7 +323,7 @@ export async function resolvePlayerIdentity(
   return null;
 }
 
-export function attachPlayerIdentity(req: Request, _res: Response, next: NextFunction): void {
+export function attachPlayerIdentity(req: Request, res: Response, next: NextFunction): void {
   const token = bearer(req);
   if (!token) {
     next();
@@ -322,8 +331,14 @@ export function attachPlayerIdentity(req: Request, _res: Response, next: NextFun
   }
 
   void (async () => {
-    req.player = (await resolvePlayerIdentity(token)) ?? undefined;
-    next();
+    try {
+      const selfErasure = req.method === "DELETE" && /^\/api\/profile\/[^/]+\/?$/.test(req.originalUrl.split("?")[0]);
+      req.player = (await resolvePlayerIdentity(token, selfErasure)) ?? undefined;
+      next();
+    } catch (error) {
+      if (error instanceof AdminPlayerError) res.status(403).json({ error: "Suspended", message: "This identity is suspended." });
+      else next(error);
+    }
   })();
 }
 
@@ -334,6 +349,10 @@ function deny(res: Response, status: 401 | 403, message: string): void {
 
 /** The route needs a caller — member or guest, either is fine. */
 export const requireIdentity: RequestHandler = (req, res, next) => {
+  if (adminPlayerService().isDenied(req.player?.playerId)) {
+    deny(res, 403, "This identity is suspended.");
+    return;
+  }
   if (!req.player) {
     deny(res, 401, "Sign in, or request a guest identity from POST /api/auth/guest.");
     return;
@@ -343,6 +362,10 @@ export const requireIdentity: RequestHandler = (req, res, next) => {
 
 /** The route needs a real account. Used where a guest genuinely cannot act. */
 export const requireMember: RequestHandler = (req, res, next) => {
+  if (adminPlayerService().isDenied(req.player?.playerId)) {
+    deny(res, 403, "This identity is suspended.");
+    return;
+  }
   if (verificationMode() === "off") {
     if (!req.player) {
       req.player = { kind: "member", playerId: "dev_member", email: "dev_member@bhalyam.io" };
