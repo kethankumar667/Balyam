@@ -4,6 +4,7 @@ import type { RoomManager } from "../rooms/RoomManager.js";
 import { globalRateLimiter, machineRateLimiter } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { buildIceConfig } from "../lib/iceServers.js";
+import { isVoiceEnabled } from "../lib/voiceFeature.js";
 import { resolveAccountKind } from "../lib/supabaseAuth.js";
 import { resolveIdentity } from "../rooms/economyIdentity.js";
 import { capabilitiesFor } from "@shared/permissions.js";
@@ -349,6 +350,8 @@ export function registerSocketHandlers(
   });
 
   socket.on("webrtc:signal", ({ toPlayerId, signal }) => {
+    // Voice is switched off for launch: a signal can only come from a modified client, so drop it.
+    if (!isVoiceEnabled()) return;
     rooms.relayWebRtcSignal(socket.id, toPlayerId, signal);
   });
 
@@ -411,6 +414,11 @@ export function registerSocketHandlers(
 
   socket.on("webrtc:iceConfig", (ack) => {
     if (typeof ack !== "function") return;
+    if (!isVoiceEnabled()) {
+      // No relay credentials are issued while voice is off.
+      ack({ iceServers: [], hasRelay: false, ttlSeconds: 0 });
+      return;
+    }
     // Socket id is enough of an identity: it is stable for the connection and
     // makes relay logs traceable without exposing anything about the player.
     ack(buildIceConfig(socket.id));

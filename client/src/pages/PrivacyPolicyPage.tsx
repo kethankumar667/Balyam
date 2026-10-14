@@ -399,7 +399,7 @@ export default function PrivacyPolicyPage() {
 
                 {sec.id === "children-privacy" && (
                   <p>
-                    BHALYAM is built as a wholesome family veranda. We do not knowingly collect personal information from minors under 18 years of age without verifiable parental consent. {MINORS_NOTICE} If you believe a minor has created an unauthorized account, please contact our privacy desk.
+                    BHALYAM is built as a wholesome family veranda. {MINORS_NOTICE} The first time you open BHALYAM we ask whether you are 18 or older. If you say you are under 18, we ask that a parent or guardian is with you and agrees. We keep only that answer, on your own device, and no birthday. For under-18s we switch off sending and asking for coins between players. This is a self-declared answer, not a verified check; we are building a verified way to confirm a parent or guardian's consent ahead of the Digital Personal Data Protection Rules taking full effect in May 2027. If you believe a minor has created an unauthorized account, please contact our privacy desk.
                   </p>
                 )}
 

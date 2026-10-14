@@ -38,6 +38,7 @@ import { freshMeldLayout, appendIncomingCards, applyHintSuggestion, redistribute
 import { useRummyFeed, type RummyFeedItem } from "./useRummyFeed";
 import { isRummySoundEnabled, rummySfx, setRummySoundEnabled } from "./sound";
 import VoicePanel from "../../components/VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyPureSequenceBurst, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import PlayerList from "../../components/PlayerList";
@@ -1264,7 +1265,7 @@ export default function RummyBoardDesktop({
                   {(
                     [
                       "chat",
-                      "voice",
+                      ...(VOICE_CHAT_ENABLED ? (["voice"] as const) : []),
                       "players",
                       "points",
                       ...(history.length > 0 || champion ? (["history"] as const) : []),

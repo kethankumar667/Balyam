@@ -215,9 +215,9 @@ const FAQS_CATALOG: FAQItem[] = [
   {
     id: "tc-1",
     category: "technical",
-    question: "How does in-room Voice Chat work?",
+    question: "Is voice chat available?",
     answer:
-      "BHALYAM uses peer-to-peer WebRTC mesh voice calling. Audio is transmitted directly between players and is NEVER recorded, stored, or processed on our servers.",
+      "Not yet. We want voice to launch with proper safety controls, so it is planned for a later update. Room chat and emoji reactions are available now.",
   },
   {
     id: "tc-2",
@@ -252,7 +252,7 @@ const FAQS_CATALOG: FAQItem[] = [
     category: "account",
     question: "Is BHALYAM free to play?",
     answer:
-      "Yes, 100% free! All 16+ multiplayer and retro games, lobbies, bots, and voice chat are completely free for all players.",
+      "Yes, 100% free! All 16+ multiplayer and retro games, lobbies, and bots are completely free for all players.",
   },
   {
     id: "ac-2",

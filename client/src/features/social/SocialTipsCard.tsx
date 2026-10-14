@@ -29,7 +29,7 @@ export default function SocialTipsCard() {
         <div className="flex items-start gap-2">
           <span className="text-purple-500 font-bold font-mono">02</span>
           <p>
-            <strong>Seamless WebRTC Voice:</strong> Use high-fidelity mesh voice chat inside private squad lobbies to strategize in real time.
+            <strong>Quick Reactions:</strong> Use room chat and emoji reactions inside private squad lobbies to cheer, tease and keep the table lively.
           </p>
         </div>
         <div className="flex items-start gap-2">

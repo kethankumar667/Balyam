@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { recordConsent } from "../../../lib/privacy/consent";
+import { recordAgeAnswer } from "../../../lib/privacy/ageGate";
 import { useAuthStore } from "../../../store/authStore";
 import ConsentModal from "../../privacy/ConsentModal";
 import MemberOnboarding from "../MemberOnboarding";
@@ -33,6 +34,8 @@ describe("MemberOnboarding", () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
+    // The age question is asked before the privacy choice; these tests are about what comes after it.
+    recordAgeAnswer("adult", false);
     useAuthStore.setState({ userId: null, profileReady: true });
   });
 

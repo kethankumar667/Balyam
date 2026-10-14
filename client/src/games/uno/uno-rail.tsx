@@ -3,6 +3,7 @@ import type { ChatMessage, Player, UnoChampion, UnoRoundRecap } from "@shared/ty
 import { getSocket } from "../../lib/socket";
 import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import PlayerList from "../../components/PlayerList";
 import { ScorePanel } from "./uno-shared";
 import UnoRoomHistory from "../../components/nostalgia/UnoRoomHistory";
@@ -27,7 +28,9 @@ import { useVisualViewport } from "../../lib/useVisualViewport";
  */
 
 type UnoRailTab = "chat" | "voice" | "players" | "points" | "history";
-const TABS: UnoRailTab[] = ["chat", "voice", "players", "points", "history"];
+const TABS: UnoRailTab[] = VOICE_CHAT_ENABLED
+  ? ["chat", "voice", "players", "points", "history"]
+  : ["chat", "players", "points", "history"];
 
 export interface UnoRoomRailProps {
   variant: "sidebar" | "sheet";

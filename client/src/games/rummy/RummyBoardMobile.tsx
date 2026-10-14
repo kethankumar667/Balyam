@@ -27,6 +27,7 @@ import { useTutorialGate } from "../../components/GameTutorial";
 import PlayerList from "../../components/PlayerList";
 import QrCodeModal from "../../components/QrCodeModal";
 import VoicePanel from "../../components/VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
 import Avatar from "./Avatar";
@@ -1548,7 +1549,9 @@ export default function RummyBoardMobile({
                 );
               }}
             />
-            <MenuRow emoji="🎤" label="Voice chat" onClick={() => { setMenuOpen(false); setVoiceOpen(true); }} />
+            {VOICE_CHAT_ENABLED && (
+              <MenuRow emoji="🎤" label="Voice chat" onClick={() => { setMenuOpen(false); setVoiceOpen(true); }} />
+            )}
             <MenuRow
               emoji="💬"
               label="Chat"

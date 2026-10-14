@@ -15,9 +15,9 @@ import {
   HC_COUNTRIES,
   HC_FRANCHISES,
   evaluateSquadComposition,
-  getRosterFor,
   type HcPlayerProfile,
 } from "@shared/hc-rosters";
+import { getRosterFor } from "./hc-custom-names";
 import {
   getJsonTeamMeta,
   getJsonPlayerStyleMap,
@@ -261,7 +261,7 @@ export function TeamPicker({
     return (
       <div className="bg-emerald-950/50 rounded-lg p-4 space-y-3">
         <div className="text-center text-emerald-100 font-bold">
-          Pick your IPL franchise (2026 season)
+          Pick your franchise team
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {FRANCHISE_LIST.map((id) => {
@@ -301,7 +301,7 @@ export function TeamPicker({
         </div>
         <div className="text-center text-xs text-emerald-300/80">
           Same franchise? No problem — we'll show it as{" "}
-          <span className="text-amber-300">CSK(Sri Krishna) vs CSK(Radha)</span>.
+          <span className="text-amber-300">CCO(Sri Krishna) vs CCO(Radha)</span>.
         </div>
       </div>
     );

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { HcBall, HcInnings, HcState, Player } from "@shared/types";
-import { getRosterFor } from "@shared/hc-rosters";
+import { getRosterFor } from "./hc-custom-names";
 import { useRoomStore } from "../../store/roomStore";
 
 /**

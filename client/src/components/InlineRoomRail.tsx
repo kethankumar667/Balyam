@@ -16,6 +16,7 @@ const NUDGE_EMOJIS: readonly string[] = NUDGE_REACTIONS;
 
 import PlayerList from "./PlayerList";
 import VoicePanel from "./VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../lib/voiceFeature";
 import Chat from "./Chat";
 import QrCodeModal from "./QrCodeModal";
 import { useVisualViewport } from "../lib/useVisualViewport";
@@ -191,14 +192,16 @@ export default function InlineRoomRail({
           >
             <IconUsers />
           </InlineButton>
-          <InlineButton
-            label="Voice"
-            paper={paper}
-            active={open === "voice"}
-            onClick={() => setOpen(open === "voice" ? null : "voice")}
-          >
-            <IconMic />
-          </InlineButton>
+          {VOICE_CHAT_ENABLED && (
+            <InlineButton
+              label="Voice"
+              paper={paper}
+              active={open === "voice"}
+              onClick={() => setOpen(open === "voice" ? null : "voice")}
+            >
+              <IconMic />
+            </InlineButton>
+          )}
           <InlineButton
             label="Chat"
             paper={paper}

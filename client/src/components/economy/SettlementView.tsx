@@ -104,7 +104,7 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
 
   // SETTLED state
   return (
-    <div className={`p-5 rounded-3xl border border-amber-600/30 dark:border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-transparent to-amber-500/5 dark:from-[#131824] dark:to-[#0E131F] font-sans space-y-4 ${className}`}>
+    <div className={`p-5 rounded-3xl border border-amber-600/30 dark:border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-transparent to-amber-500/5 dark:from-[#131824] dark:to-[#0E131F] font-sans space-y-4 min-w-0 max-w-full ${className}`}>
       <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3">
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-amber-500" aria-hidden="true" />
@@ -142,16 +142,16 @@ export const SettlementView: React.FC<SettlementViewProps> = ({
         }}
       />
 
-      <div className="grid grid-cols-3 gap-2 text-xs font-sans">
-        <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
+      <div className="grid grid-cols-3 gap-2 text-xs font-sans min-w-0">
+        <div className="min-w-0 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">Total Reward Pool</span>
           <CoinAmount amount={settlement.totalCollected} size="sm" className="font-bold" />
         </div>
-        <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
+        <div className="min-w-0 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">Wallet Prizes</span>
           <CoinAmount amount={settlement.totalWalletRewarded} size="sm" className="font-bold text-emerald-700 dark:text-emerald-400" />
         </div>
-        <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
+        <div className="min-w-0 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-center">
           <span className="text-[10px] text-ink-lo dark:text-text-lo block">World Bank</span>
           <CoinAmount amount={settlement.totalWorldBankCut} size="sm" className="font-bold text-indigo-700 dark:text-indigo-400" />
         </div>

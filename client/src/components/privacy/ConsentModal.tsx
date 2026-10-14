@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { recordConsent } from "../../lib/privacy/consent";
 import { useConsentPending } from "../../hooks/useConsentPending";
+import { useAgeGatePending } from "../../hooks/useAgeGatePending";
 import { useAuthStore } from "../../store/authStore";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { KeyholeIcon } from "../auth/authIcons";
@@ -29,9 +30,11 @@ export default function ConsentModal() {
   const [noticeOpened, setNoticeOpened] = useState(false);
   const { pathname } = useLocation();
   const isConsentPending = useConsentPending();
+  // The age question is asked first; the privacy choice waits for it.
+  const isAgePending = useAgeGatePending();
   const memberId = useAuthStore((state) => state.userId);
   const profileReady = useAuthStore((state) => state.profileReady);
-  const open = isReady && isConsentPending && profileReady !== false && pathname !== "/privacy";
+  const open = isReady && !isAgePending && isConsentPending && profileReady !== false && pathname !== "/privacy";
   const acceptRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

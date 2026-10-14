@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ConsentModal from "./components/privacy/ConsentModal";
+import AgeGateModal from "./components/privacy/AgeGateModal";
 import { enforceConsentOnLoad } from "./lib/privacy/consent";
 import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
@@ -351,6 +352,7 @@ export default function App({ components = {} }: AppProps) {
         <TooltipProvider delayDuration={200} skipDelayDuration={100}>
           <ScrollToTopOnRouteChange />
           <ToastHost />
+          <AgeGateModal />
           <ConsentModal />
           <CarryOverArrivalDialog />
           <CoinJoyOverlay />

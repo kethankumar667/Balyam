@@ -22,6 +22,7 @@ import Modal from "../../components/Modal";
 import Chat from "../../components/Chat";
 import VoicePanel from "../../components/VoicePanel";
 import { useVoiceSession } from "../../lib/voice-session";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import {
   BookOpen,
   Zap,
@@ -528,31 +529,33 @@ export default function WordBuildingBoardMobile(props: WordBuildingBoardProps) {
             )}
 
             {/* Voice Chat Button */}
-            <button
-              type="button"
-              onClick={() => setShowVoice(true)}
-              className={`relative flex flex-col items-center justify-center w-14 h-13 rounded-2xl border active:scale-95 transition-all cursor-pointer shadow-sm ${
-                m.isNeon
-                  ? voice.status === "live"
-                    ? "bg-emerald-950/60 border-emerald-500/60 text-emerald-300 hover:text-emerald-100"
-                    : "bg-slate-900/90 border-slate-800 text-slate-300 hover:text-white"
-                  : voice.status === "live"
-                    ? "bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100"
-                    : "bg-white border-stone-300 text-stone-700 hover:text-stone-950"
-              }`}
-              aria-label="Voice Chat"
-              title="Voice Chat"
-            >
-              {voice.status === "live" ? (
-                <Mic className="w-4 h-4 mb-0.5 text-emerald-500 animate-pulse" />
-              ) : (
-                <MicOff className="w-4 h-4 mb-0.5 opacity-60" />
-              )}
-              <span className="text-[10px] font-semibold">Voice</span>
-              {voice.status === "live" && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              )}
-            </button>
+            {VOICE_CHAT_ENABLED && (
+              <button
+                type="button"
+                onClick={() => setShowVoice(true)}
+                className={`relative flex flex-col items-center justify-center w-14 h-13 rounded-2xl border active:scale-95 transition-all cursor-pointer shadow-sm ${
+                  m.isNeon
+                    ? voice.status === "live"
+                      ? "bg-emerald-950/60 border-emerald-500/60 text-emerald-300 hover:text-emerald-100"
+                      : "bg-slate-900/90 border-slate-800 text-slate-300 hover:text-white"
+                    : voice.status === "live"
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100"
+                      : "bg-white border-stone-300 text-stone-700 hover:text-stone-950"
+                }`}
+                aria-label="Voice Chat"
+                title="Voice Chat"
+              >
+                {voice.status === "live" ? (
+                  <Mic className="w-4 h-4 mb-0.5 text-emerald-500 animate-pulse" />
+                ) : (
+                  <MicOff className="w-4 h-4 mb-0.5 opacity-60" />
+                )}
+                <span className="text-[10px] font-semibold">Voice</span>
+                {voice.status === "live" && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                )}
+              </button>
+            )}
           </div>
         </footer>
       </div>

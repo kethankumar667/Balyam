@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { ChatMessage, Player } from "@shared/types";
 import { MessageSquare, Mic, ChevronRight } from "lucide-react";
 import VoicePanel from "../VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import Chat from "../Chat";
 import { useVoiceSession } from "../../lib/voice-session";
 import { useVisualViewport } from "../../lib/useVisualViewport";
@@ -65,24 +66,26 @@ export default function CommunicationPanel({
           )}
         </button>
 
-        <button
-          role="tab"
-          type="button"
-          aria-selected={activeTab === "voice"}
-          aria-controls="comm-tab-voice"
-          onClick={() => setActiveTab("voice")}
-          className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === "voice"
-              ? "bg-white dark:bg-slate-900 text-[#2B3550] dark:text-slate-100 shadow-xs border border-[#EEDBCA] dark:border-slate-800"
-              : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
-          }`}
-        >
-          <Mic size={14} aria-hidden />
-          <span>Voice</span>
-          {voiceConnected && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
-          )}
-        </button>
+        {VOICE_CHAT_ENABLED && (
+          <button
+            role="tab"
+            type="button"
+            aria-selected={activeTab === "voice"}
+            aria-controls="comm-tab-voice"
+            onClick={() => setActiveTab("voice")}
+            className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "voice"
+                ? "bg-white dark:bg-slate-900 text-[#2B3550] dark:text-slate-100 shadow-xs border border-[#EEDBCA] dark:border-slate-800"
+                : "text-[#8A6D4B] dark:text-slate-400 hover:text-[#2B3550] dark:hover:text-slate-200"
+            }`}
+          >
+            <Mic size={14} aria-hidden />
+            <span>Voice</span>
+            {voiceConnected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Active Tab Panel */}
@@ -129,20 +132,20 @@ export default function CommunicationPanel({
               setMobileDrawerOpen(true);
             }
           }}
-          aria-label="Open Chat and Voice drawer"
+          aria-label={VOICE_CHAT_ENABLED ? "Open Chat and Voice drawer" : "Open Chat drawer"}
           className="w-full bg-white dark:bg-[#131926] border border-stone-200/80 dark:border-slate-800 rounded-3xl p-3.5 sm:p-4 shadow-xs flex items-center justify-between gap-3 relative overflow-hidden select-none cursor-pointer hover:border-amber-300 dark:hover:border-slate-700 transition active:scale-98 group"
         >
           {/* Left: Chat & Mic Icons Container */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200/70 dark:border-sky-800/60 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 gap-0.5">
               <MessageSquare size={16} />
-              <Mic size={14} className="opacity-80" />
+              {VOICE_CHAT_ENABLED && <Mic size={14} className="opacity-80" />}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-[#2B3550] dark:text-slate-100">
-                  Chat &amp; Voice
+                  {VOICE_CHAT_ENABLED ? "Chat & Voice" : "Chat"}
                 </span>
                 {messages.length > 0 && (
                   <span className="text-[10px] bg-orange-600 text-white rounded-full px-1.5 py-0.2 font-black">
@@ -151,7 +154,7 @@ export default function CommunicationPanel({
                 )}
               </div>
               <p className="text-xs text-stone-500 dark:text-slate-400 font-medium truncate">
-                Chat with players or jump on voice before the match
+                {VOICE_CHAT_ENABLED ? "Chat with players or jump on voice before the match" : "Chat with players before the match"}
               </p>
             </div>
           </div>
@@ -163,10 +166,12 @@ export default function CommunicationPanel({
               <ChevronRight size={14} />
             </div>
 
-            <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 dark:text-slate-400">
-              <span className={`w-1.5 h-1.5 rounded-full ${voiceConnected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"}`} />
-              <span>Voice available</span>
-            </div>
+            {VOICE_CHAT_ENABLED && (
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 dark:text-slate-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${voiceConnected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"}`} />
+                <span>Voice available</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -175,7 +180,7 @@ export default function CommunicationPanel({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Chat and Voice Drawer"
+            aria-label={VOICE_CHAT_ENABLED ? "Chat and Voice Drawer" : "Chat Drawer"}
             className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs touch-none animate-in fade-in"
           >
             <button

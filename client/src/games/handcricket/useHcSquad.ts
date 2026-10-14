@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { HcState } from "@shared/types";
 import {
   evaluateSquadComposition,
-  getRosterFor,
   type HcCompositionReport,
   type HcPlayerProfile,
 } from "@shared/hc-rosters";
+import { getRosterFor } from "./hc-custom-names";
 import { getJsonPlayerStyleMap, getJsonPlayers, getJsonTeamMeta, type JsonPlayerStyle } from "./hc-json-data";
 import { getSocket } from "../../lib/socket";
 

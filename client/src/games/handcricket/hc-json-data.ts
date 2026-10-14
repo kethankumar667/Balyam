@@ -14,6 +14,7 @@ import testData from "./data/test.json";
 import odiData from "./data/odi.json";
 import t20Data from "./data/t20.json";
 import iplData from "./data/ipl26.json";
+import { customNameFor, getCustomNames, type CustomNameMap } from "./hc-custom-names";
 
 // ---------------------------------------------------------------------------
 // Internal shape declarations — describe the JSON structure without trusting
@@ -201,10 +202,10 @@ export function getJsonTeamMeta(
     const team = findCountryTeam(format, countryCode);
     if (team) {
       return {
-        playingXI: team.playingXI,
-        captain: team.captain,
-        viceCaptain: team.viceCaptain,
-        coach: team.coach,
+        playingXI: team.playingXI.map(customNameFor),
+        captain: customNameFor(team.captain),
+        viceCaptain: customNameFor(team.viceCaptain),
+        coach: customNameFor(team.coach),
         homeCity: "",
       };
     }
@@ -216,10 +217,10 @@ export function getJsonTeamMeta(
     const team = findFranchiseTeam(franchiseCode);
     if (team) {
       return {
-        playingXI: team.playingXI,
-        captain: team.captain,
-        viceCaptain: team.viceCaptain,
-        coach: team.coach,
+        playingXI: team.playingXI.map(customNameFor),
+        captain: customNameFor(team.captain),
+        viceCaptain: customNameFor(team.viceCaptain),
+        coach: customNameFor(team.coach),
         homeCity: team.homeGround?.city ?? "",
       };
     }
@@ -233,7 +234,35 @@ export function getJsonTeamMeta(
  * and format. Players from formatLegends / franchiseLegends are NOT included
  * (they are extras not in the regular pool).
  */
-export function getJsonPlayers(
+/**
+ * Same list as {@link getJsonPlayersRaw}, with the player's custom names applied.
+ * Returns the SAME array while nothing is renamed, and a cached copy afterwards,
+ * so callers that memoise on it keep a stable identity.
+ */
+export function getJsonPlayers(teamId: string, format: HcFormat): JsonPlayer[] {
+  return withCustomNames(getJsonPlayersRaw(teamId, format));
+}
+
+const renamedPlayers = new WeakMap<JsonPlayer[], { names: CustomNameMap; players: JsonPlayer[] }>();
+
+function withCustomNames(players: JsonPlayer[]): JsonPlayer[] {
+  const names = getCustomNames();
+  if (Object.keys(names).length === 0 || players.length === 0) return players;
+  const hit = renamedPlayers.get(players);
+  if (hit && hit.names === names) return hit.players;
+  const players2 = players.map((p) => {
+    const name = customNameFor(p.name);
+    if (name === p.name) return p;
+    const parts = name.split(" ");
+    const shortName = parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : name;
+    return { ...p, name, shortName };
+  });
+  renamedPlayers.set(players, { names, players: players2 });
+  return players2;
+}
+
+/** The shipped (fictional) players, before any custom names. Used by the rename dialog. */
+export function getJsonPlayersRaw(
   teamId: string,
   format: HcFormat,
 ): JsonPlayer[] {

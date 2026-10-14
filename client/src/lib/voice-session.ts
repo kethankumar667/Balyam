@@ -2,6 +2,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { Player } from "@shared/types";
 import { getSocket } from "./socket";
 import { VoiceManager, hasTurnServer, type RemotePeerInfo } from "./webrtc";
+import { VOICE_CHAT_ENABLED } from "./voiceFeature";
 
 /**
  * Room-wide voice session.
@@ -246,7 +247,8 @@ export interface VoiceControls extends VoiceState {
 }
 
 export function useVoiceSession(selfId: string | null): VoiceControls {
-  const active = selfId ? getSession(selfId) : null;
+  // While voice is switched off no session is ever created, so there is no mic, no peer mesh and no signalling.
+  const active = VOICE_CHAT_ENABLED && selfId ? getSession(selfId) : null;
 
   const state = useSyncExternalStore(
     active ? active.subscribe : noopSubscribe,
@@ -271,7 +273,7 @@ export function useVoiceSession(selfId: string | null): VoiceControls {
  */
 export function useVoiceRoster(players: Player[] | undefined, selfId: string | null): void {
   useEffect(() => {
-    if (!selfId || !players) return;
+    if (!VOICE_CHAT_ENABLED || !selfId || !players) return;
     getSession(selfId).setRoster(players);
   }, [players, selfId]);
 }

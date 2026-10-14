@@ -157,7 +157,6 @@ const ISSUE_TYPES_BY_CATEGORY: Record<HelpCategory, string[]> = {
     "Other room issue",
   ],
   technical: [
-    "WebRTC voice chat not connecting / no audio",
     "High latency or reconnect loop",
     "Visual glitches / layout issue",
     "App failed to load or black screen",

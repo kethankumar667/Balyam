@@ -18,7 +18,8 @@ import type {
   Player,
   ChatMessage,
 } from "@shared/types";
-import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor } from "@shared/hc-rosters";
+import { HC_COUNTRIES, HC_FRANCHISES } from "@shared/hc-rosters";
+import { getRosterFor } from "./hc-custom-names";
 import { getJsonPlayers } from "./hc-json-data";
 import { GAME_REACTIONS, THROW_REACTIONS } from "@shared/reactions";
 import { getSocket } from "../../lib/socket";
@@ -50,6 +51,7 @@ import {
 } from "country-flag-icons/react/3x2";
 import PlayerList from "../../components/PlayerList";
 import VoicePanel from "../../components/VoicePanel";
+import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import Chat from "../../components/Chat";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import { useVisualViewport } from "../../lib/useVisualViewport";
@@ -372,7 +374,163 @@ function labelFor(
   };
 }
 
-/** Comprehensive vector emblems for all 10 IPL Franchises */
+/**
+ * Original emblems for the ten fictional franchises.
+ *
+ * Each crest is a colour plate with a simple geometric motif and the team's
+ * short code. They are drawn from scratch — nothing here is traced from, or
+ * meant to evoke, any real league's team marks.
+ */
+const CREST_CODES: Record<HcFranchise, string> = {
+  csk: "CCO",
+  mi: "MMA",
+  rcb: "BLZ",
+  kkr: "KKE",
+  srh: "HYH",
+  dc: "DDR",
+  pbks: "PPA",
+  rr: "JJA",
+  gt: "AAR",
+  lsg: "LLA",
+};
+
+interface CrestStyle {
+  base: string;
+  edge: string;
+  ink: string;
+  motif: JSX.Element;
+}
+
+const CREST_STYLES: Record<HcFranchise, CrestStyle> = {
+  // Cobra: a hooded S-curve
+  csk: {
+    base: "#F59E0B",
+    edge: "#B45309",
+    ink: "#1C1917",
+    motif: (
+      <g transform="translate(20 12)">
+        <path d="M-6 8 C-9 2 -2 0 0 -3 C2 -6 -3 -8 -6 -5" stroke="#1C1917" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <circle cx="-6" cy="-5" r="1.4" fill="#1C1917" />
+        <path d="M2 -2 L8 -6 L8 2 Z" fill="#1C1917" opacity="0.85" />
+      </g>
+    ),
+  },
+  // Mariners: three waves
+  mi: {
+    base: "#1D4ED8",
+    edge: "#1E3A8A",
+    ink: "#FDE68A",
+    motif: (
+      <g stroke="#FDE68A" strokeWidth="2" strokeLinecap="round" fill="none" transform="translate(20 12)">
+        <path d="M-9 -4 q3 -3 6 0 t6 0 t6 0" />
+        <path d="M-9 1 q3 -3 6 0 t6 0 t6 0" />
+        <path d="M-9 6 q3 -3 6 0 t6 0 t6 0" />
+      </g>
+    ),
+  },
+  // Blazers: a flame
+  rcb: {
+    base: "#B91C1C",
+    edge: "#7F1D1D",
+    ink: "#FEF3C7",
+    motif: (
+      <g transform="translate(20 12)">
+        <path d="M0 -9 C5 -4 8 0 5 5 C3 8 -3 8 -5 5 C-8 0 -3 -2 0 -9 Z" fill="#FBBF24" />
+        <path d="M0 -2 C3 1 3 4 0 6 C-3 4 -3 1 0 -2 Z" fill="#B91C1C" />
+      </g>
+    ),
+  },
+  // Kestrels: a bird in flight
+  kkr: {
+    base: "#6D28D9",
+    edge: "#4C1D95",
+    ink: "#FDE047",
+    motif: (
+      <g transform="translate(20 12)" fill="#FDE047">
+        <path d="M-10 -2 C-6 -6 -2 -5 0 0 C2 -5 6 -6 10 -2 C6 -3 3 -1 0 5 C-3 -1 -6 -3 -10 -2 Z" />
+      </g>
+    ),
+  },
+  // Hawks: a downward arrowhead with a sun disc
+  srh: {
+    base: "#EA580C",
+    edge: "#9A3412",
+    ink: "#FFFFFF",
+    motif: (
+      <g transform="translate(20 12)">
+        <circle cx="0" cy="-3" r="4" fill="#FDE047" />
+        <path d="M-9 0 L0 9 L9 0 L0 3 Z" fill="#1C1917" />
+      </g>
+    ),
+  },
+  // Dragons: a spiked gem
+  dc: {
+    base: "#1D4ED8",
+    edge: "#1E3A8A",
+    ink: "#FECACA",
+    motif: (
+      <g transform="translate(20 12)">
+        <path d="M0 -9 L4 -3 L10 -4 L6 2 L9 8 L0 5 L-9 8 L-6 2 L-10 -4 L-4 -3 Z" fill="#F87171" />
+        <circle cx="0" cy="0" r="2.4" fill="#1E3A8A" />
+      </g>
+    ),
+  },
+  // Panthers: a paw print
+  pbks: {
+    base: "#BE123C",
+    edge: "#881337",
+    ink: "#FFE4E6",
+    motif: (
+      <g transform="translate(20 12)" fill="#FFE4E6">
+        <ellipse cx="0" cy="3" rx="5" ry="4" />
+        <circle cx="-6" cy="-2" r="2" />
+        <circle cx="-2" cy="-6" r="2" />
+        <circle cx="2.5" cy="-6" r="2" />
+        <circle cx="6.5" cy="-2" r="2" />
+      </g>
+    ),
+  },
+  // Jaguars: a spotted disc
+  rr: {
+    base: "#DB2777",
+    edge: "#9D174D",
+    ink: "#FFFFFF",
+    motif: (
+      <g transform="translate(20 12)">
+        <circle cx="0" cy="0" r="8" fill="#FCD34D" />
+        <circle cx="-3" cy="-2" r="1.8" fill="#9D174D" />
+        <circle cx="3" cy="-3" r="1.4" fill="#9D174D" />
+        <circle cx="1" cy="3" r="2" fill="#9D174D" />
+        <circle cx="-4" cy="4" r="1.2" fill="#9D174D" />
+      </g>
+    ),
+  },
+  // Arrows: one bold upward arrow
+  gt: {
+    base: "#0E7490",
+    edge: "#164E63",
+    ink: "#CFFAFE",
+    motif: (
+      <g transform="translate(20 12)" fill="#FDE047">
+        <path d="M0 -9 L8 0 L3 0 L3 8 L-3 8 L-3 0 L-8 0 Z" />
+      </g>
+    ),
+  },
+  // Lancers: a diagonal lance and a star
+  lsg: {
+    base: "#0369A1",
+    edge: "#075985",
+    ink: "#FFFFFF",
+    motif: (
+      <g transform="translate(20 12)">
+        <line x1="-8" y1="8" x2="7" y2="-7" stroke="#F59E0B" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M7 -9 L10 -6 L7 -3 Z" fill="#F59E0B" />
+        <path d="M-4 -4 L-2.8 -1.4 L0 -1 L-2 0.8 L-1.4 3.6 L-4 2.2 L-6.6 3.6 L-6 0.8 L-8 -1 L-5.2 -1.4 Z" fill="#FFFFFF" />
+      </g>
+    ),
+  },
+};
+
 export function FranchiseEmblem({
   id,
   className = "",
@@ -384,314 +542,49 @@ export function FranchiseEmblem({
 }) {
   const width = size;
   const height = Math.round(size * 0.82); // 34x28 matching 3x2 country flag proportions
+  const style = (CREST_STYLES as Record<string, CrestStyle | undefined>)[id];
 
-  switch (id) {
-    case "csk":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#FACC15" stroke="#CA8A04" strokeWidth="1.2" />
-          {/* Blue bottom stripe */}
-          <path d="M0 24 L40 24 L40 32 L0 32 Z" fill="#0284C7" />
-          <rect width="40" height="32" rx="4" fill="none" stroke="#CA8A04" strokeWidth="1.2" />
-          {/* Crown */}
-          <path d="M15 5 L17.5 8 L20 4 L22.5 8 L25 5 L24 9 L16 9 Z" fill="#B45309" />
-          {/* Roaring Lion Head */}
-          <path
-            d="M13 13 C12 10 15 8 20 8 C25 8 28 10 27 13 C28 15 27 17 24 17 C23 19 20 20 17 19 C14 18 13 15 13 13 Z"
-            fill="#B45309"
-          />
-          <circle cx="18" cy="12" r="1" fill="#FFFFFF" />
-          <path d="M19 15 L23 15 L21 17 Z" fill="#0284C7" />
-          {/* Bottom text */}
-          <text x="20" y="30" textAnchor="middle" fill="#FFFFFF" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.05em">
-            CSK
-          </text>
-        </svg>
-      );
-
-    case "mi":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#1E40AF" stroke="#1D4ED8" strokeWidth="1.2" />
-          {/* Gold accent stripes */}
-          <path d="M0 0 L10 0 L5 32 L0 32 Z" fill="#F59E0B" opacity="0.4" />
-          <path d="M30 0 L40 0 L40 32 L35 32 Z" fill="#F59E0B" opacity="0.4" />
-          {/* Sudarshan Chakra / Cyclone Vortex */}
-          <g transform="translate(20, 13)">
-            <circle cx="0" cy="0" r="7" fill="#1E3A8A" stroke="#F59E0B" strokeWidth="1" />
-            <path d="M0 -7 C3 -3.5 4.5 -1 7 0 C3.5 3.5 1 4.5 0 7 C-3.5 3.5 -4.5 1 -7 0 C-3.5 -3.5 -1 -4.5 0 -7 Z" fill="#F59E0B" />
-            <circle cx="0" cy="0" r="2.8" fill="#FFFFFF" />
-            <circle cx="0" cy="0" r="1.4" fill="#1E40AF" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FBBF24" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            MI
-          </text>
-        </svg>
-      );
-
-    case "rcb":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#DC2626" stroke="#991B1B" strokeWidth="1.2" />
-          {/* Black & Gold header strip */}
-          <path d="M0 0 L40 0 L40 7 L0 7 Z" fill="#1C1917" />
-          <line x1="0" y1="7" x2="40" y2="7" stroke="#FBBF24" strokeWidth="1" />
-          {/* Royal Lion with Crown */}
-          <g transform="translate(20, 17)">
-            {/* Crown */}
-            <path d="M-5 -8 L-3 -5 L0 -9 L3 -5 L5 -8 L4 -3 L-4 -3 Z" fill="#FBBF24" />
-            {/* Rampant Lion Silhouette */}
-            <path
-              d="M-3 -2 C-4 0 -5 3 -3 5 C-2 6 0 6 2 4 C3 2 4 0 2 -2 Z"
-              fill="#FBBF24"
-            />
-            <path d="M-1 4 L2 9 L4 9 L2 5 Z" fill="#FBBF24" />
-            <path d="M1 0 L5 -1 M1 2 L6 2" stroke="#FBBF24" strokeWidth="1.2" strokeLinecap="round" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FEE2E2" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            RCB
-          </text>
-        </svg>
-      );
-
-    case "kkr":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#581C87" stroke="#3B0764" strokeWidth="1.2" />
-          {/* Knight Shield frame */}
-          <path d="M12 4 L28 4 C28 14 20 18 20 20 C20 18 12 14 12 4 Z" fill="#7E22CE" stroke="#FBBF24" strokeWidth="0.9" />
-          {/* Golden Corinthian Knight Helmet */}
-          <path d="M17 7 L23 7 L24 12 L20 14 L16 12 Z" fill="#FBBF24" />
-          <path d="M19 5 L21 5 L21 8 L19 8 Z" fill="#EF4444" />
-          <line x1="18" y1="10" x2="22" y2="10" stroke="#581C87" strokeWidth="0.8" />
-          {/* Bottom text */}
-          <text x="20" y="29" textAnchor="middle" fill="#FDE047" fontSize="6" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            KKR
-          </text>
-        </svg>
-      );
-
-    case "srh":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#EA580C" stroke="#C2410C" strokeWidth="1.2" />
-          {/* Dark bottom bar */}
-          <path d="M0 23 L40 23 L40 32 L0 32 Z" fill="#1C1917" />
-          {/* Rising Sun Rays */}
-          <g transform="translate(20, 12)">
-            <circle cx="0" cy="0" r="4.5" fill="#FDE047" />
-            <path d="M0 -6.5 L0 -8.5 M4.5 -4.5 L6.5 -6.5 M6.5 0 L8.5 0 M4.5 4.5 L6.5 6.5 M0 6.5 L0 8.5 M-4.5 4.5 L-6.5 6.5 M-6.5 0 L-8.5 0 M-4.5 -4.5 L-6.5 -6.5" stroke="#FDE047" strokeWidth="0.9" strokeLinecap="round" />
-            {/* Eagle Wings Silhouette */}
-            <path d="M-8 2 C-4 -1 0 1 0 3 C0 1 4 -1 8 2 C4 4 0 5 0 5 C0 5 -4 4 -8 2 Z" fill="#1C1917" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FB923C" fontSize="6.2" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            SRH
-          </text>
-        </svg>
-      );
-
-    case "dc":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="1.2" />
-          {/* Red split shield */}
-          <path d="M20 0 L40 0 L40 32 L20 32 Z" fill="#DC2626" opacity="0.4" />
-          {/* Roaring Tiger Face */}
-          <g transform="translate(20, 12)">
-            <circle cx="0" cy="0" r="6" fill="#DC2626" stroke="#FEF08A" strokeWidth="0.8" />
-            <polygon points="-3.5,-5.5 -1.5,-2.5 -4.5,-1.5" fill="#FEF08A" />
-            <polygon points="3.5,-5.5 1.5,-2.5 4.5,-1.5" fill="#FEF08A" />
-            <circle cx="-1.8" cy="-1" r="0.7" fill="#FFFFFF" />
-            <circle cx="1.8" cy="-1" r="0.7" fill="#FFFFFF" />
-            <polygon points="0,0.8 -1.2,2.5 1.2,2.5" fill="#1E3A8A" />
-            <line x1="-4.5" y1="0.8" x2="-1.8" y2="0.8" stroke="#FEF08A" strokeWidth="0.7" />
-            <line x1="4.5" y1="0.8" x2="1.8" y2="0.8" stroke="#FEF08A" strokeWidth="0.7" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            DC
-          </text>
-        </svg>
-      );
-
-    case "pbks":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#B91C1C" stroke="#991B1B" strokeWidth="1.2" />
-          {/* Gold Shield */}
-          <path d="M12 4 L28 4 L28 15 C28 20 20 23 20 23 C20 23 12 20 12 15 Z" fill="#DC2626" stroke="#FBBF24" strokeWidth="1" />
-          {/* Golden Crown / Lion head */}
-          <g transform="translate(20, 11)">
-            <path d="M-4 -4 L-2 -2 L0 -5 L2 -2 L4 -4 L3 0 L-3 0 Z" fill="#FDE047" />
-            <circle cx="0" cy="3" r="2.8" fill="#FDE047" />
-            <circle cx="-1" cy="2.5" r="0.5" fill="#991B1B" />
-            <circle cx="1" cy="2.5" r="0.5" fill="#991B1B" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FEF08A" fontSize="5.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            PBKS
-          </text>
-        </svg>
-      );
-
-    case "rr":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#DB2777" stroke="#BE185D" strokeWidth="1.2" />
-          {/* Navy Blue bottom accent */}
-          <path d="M0 23 L40 23 L40 32 L0 32 Z" fill="#1E3A8A" />
-          {/* Royal Palace Crown */}
-          <g transform="translate(20, 11)">
-            <path d="M-6 -4 L-3.5 0 L0 -5.5 L3.5 0 L6 -4 L5 3.5 L-5 3.5 Z" fill="#FDE047" stroke="#CA8A04" strokeWidth="0.6" />
-            <circle cx="-3.5" cy="1.8" r="0.8" fill="#DB2777" />
-            <circle cx="0" cy="1.8" r="0.9" fill="#1E3A8A" />
-            <circle cx="3.5" cy="1.8" r="0.8" fill="#DB2777" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            RR
-          </text>
-        </svg>
-      );
-
-    case "gt":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#0F172A" stroke="#334155" strokeWidth="1.2" />
-          {/* Electric Teal / Cyan triangle apex */}
-          <path d="M20 3 L32 22 L8 22 Z" fill="#1E293B" stroke="#06B6D4" strokeWidth="1" />
-          {/* Golden Lightning bolt */}
-          <path d="M21 5 L17 13 L21 13 L19 20 L24 11 L20 11 Z" fill="#FDE047" />
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#22D3EE" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            GT
-          </text>
-        </svg>
-      );
-
-    case "lsg":
-      return (
-        <svg
-          width={width}
-          height={height}
-          viewBox="0 0 40 32"
-          className={className}
-          fill="none"
-          aria-hidden
-        >
-          {/* Badge base */}
-          <rect width="40" height="32" rx="4" fill="#0284C7" stroke="#0369A1" strokeWidth="1.2" />
-          {/* Wings & Tri-color cricket ball */}
-          <g transform="translate(20, 11)">
-            {/* Wings */}
-            <path d="M-8 -1 C-5 -4.5 -2 -3.5 0 0 C2 -3.5 5 -4.5 8 -1 C5 2.5 2 3.5 0 3.5 C-2 3.5 -5 2.5 -8 -1 Z" fill="#F59E0B" />
-            <path d="M-6 0 C-3.5 -2.5 -1 -1.5 0 1 C1 -1.5 3.5 -2.5 6 0 C3.5 1.5 1 2.5 0 2.5 C-1 2.5 -3.5 1.5 -6 0 Z" fill="#FFFFFF" />
-            {/* Center core */}
-            <circle cx="0" cy="1" r="2.2" fill="#EA580C" />
-          </g>
-          {/* Bottom text */}
-          <text x="20" y="29.5" textAnchor="middle" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="system-ui, sans-serif" letterSpacing="0.08em">
-            LSG
-          </text>
-        </svg>
-      );
-
-    default:
-      return (
-        <div
-          style={{
-            width,
-            height,
-            borderRadius: 4,
-            background: "#475569",
-            color: "#ffffff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 800,
-            fontSize: 9,
-          }}
-          className={className}
-        >
-          {String(id).slice(0, 3).toUpperCase()}
-        </div>
-      );
+  if (!style) {
+    return (
+      <div
+        style={{
+          width,
+          height,
+          borderRadius: 4,
+          background: "#475569",
+          color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 800,
+          fontSize: 9,
+        }}
+        className={className}
+      >
+        {String(id).slice(0, 3).toUpperCase()}
+      </div>
+    );
   }
+
+  return (
+    <svg width={width} height={height} viewBox="0 0 40 32" className={className} fill="none" aria-hidden>
+      <rect width="40" height="32" rx="4" fill={style.base} stroke={style.edge} strokeWidth="1.2" />
+      {style.motif}
+      <rect x="0" y="23" width="40" height="9" fill="rgba(0,0,0,0.38)" />
+      <text
+        x="20"
+        y="30"
+        textAnchor="middle"
+        fill={style.ink}
+        fontSize="6.5"
+        fontWeight="900"
+        fontFamily="system-ui, sans-serif"
+        letterSpacing="0.06em"
+      >
+        {CREST_CODES[id as HcFranchise]}
+      </text>
+    </svg>
+  );
 }
 
 export function HcTeamCrest({
@@ -1547,13 +1440,15 @@ function HcActionBarStrip({
           >
             <IconTeamSketch />
           </StripIconBtn>
-          <StripIconBtn
-            label="Voice chat"
-            active={open === "voice"}
-            onClick={() => setOpen(open === "voice" ? null : "voice")}
-          >
-            <IconMicSketch />
-          </StripIconBtn>
+          {VOICE_CHAT_ENABLED && (
+            <StripIconBtn
+              label="Voice chat"
+              active={open === "voice"}
+              onClick={() => setOpen(open === "voice" ? null : "voice")}
+            >
+              <IconMicSketch />
+            </StripIconBtn>
+          )}
           <StripIconBtn
             label="Chat"
             active={open === "chat"}
@@ -3095,7 +2990,7 @@ export function HcFranchisePickerNotebook({
               letterSpacing: "-1px",
             }}
           >
-            IPL
+            LEAGUE
           </span>
           <span
             style={{
@@ -3179,7 +3074,7 @@ export function HcFranchisePickerNotebook({
           {/* Heading with radiating arrows */}
           <div className="mb-2">
             <HcSketchHeading size="clamp(15px,1.8vw,20px)">
-              Pick Your IPL Franchise
+              Pick Your Franchise
             </HcSketchHeading>
           </div>
 
@@ -3323,11 +3218,11 @@ export function HcFranchisePickerNotebook({
           >
             Same franchise? No problem — we'll show it as{" "}
             <span className="font-bold" style={{ color: STAMP_G }}>
-              CSK (Sri Krishna)
+              CCO (Sri Krishna)
             </span>
             {" vs "}
             <span className="font-bold" style={{ color: INK_RED }}>
-              CSK (Radha)
+              CCO (Radha)
             </span>
             .
           </div>

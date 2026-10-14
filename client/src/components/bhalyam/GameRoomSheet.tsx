@@ -2036,7 +2036,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                   type="button"
                   onClick={passPlay ? startPassAndPlay : createRoom}
                   disabled={busy}
-                  className="w-full inline-flex items-center justify-center gap-2.5
+                  className="w-full inline-flex flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5 px-3 py-2 text-center
                              min-h-[56px] rounded-2xl
                              bg-gradient-to-r from-chest-600 via-chest-600 to-lamp-600 hover:brightness-110
                              text-white font-black text-[15px] sm:text-[16px]
@@ -2068,15 +2068,15 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                       <SparkIcon className="w-5 h-5" />
                       <span>Play vs Bots</span>
                       {!isFreeEconomyGame && (
-                        <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
                       )}
                     </>
                   ) : (
                     <>
                       <SparkIcon className="w-5 h-5" />
-                      <span>Create Room</span>
+                      <span className="whitespace-nowrap">Create Room</span>
                       {!isFreeEconomyGame && (
-                        <span className="inline-flex items-center gap-1 text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-white/90">(<CoinIcon className="w-4 h-4" />{entryStakeCoins}/seat)</span>
                       )}
                     </>
                   )}

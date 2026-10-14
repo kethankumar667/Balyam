@@ -66,9 +66,9 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
           y: stage === "elevate" ? -4 : 0,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-between"
+        className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex flex-wrap items-center justify-between gap-2 min-w-0"
       >
-        <div className="flex items-center gap-2 text-left">
+        <div className="flex items-center gap-2 text-left min-w-0">
           <Landmark className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
           <div>
             <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300 block">
@@ -80,7 +80,7 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
           </div>
         </div>
 
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+        <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
           <CheckCircle className="w-3 h-3" />
           Verified
         </span>
@@ -98,13 +98,13 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
             initial={!reduceMotion ? { opacity: 0, x: -10 } : undefined}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 + idx * 0.1 }}
-            className={`p-3 rounded-2xl border flex items-center justify-between ${
+            className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${
               w.isSelf
                 ? "bg-amber-500/20 border-amber-500/50 shadow-xs"
                 : "bg-white/40 dark:bg-black/20 border-amber-600/15 dark:border-amber-400/10"
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1 basis-[9rem]">
               <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Award className="w-4 h-4" />
               </div>
@@ -118,15 +118,17 @@ export const SettlementSequence: React.FC<SettlementSequenceProps> = ({
               </div>
             </div>
 
-            <CoinDelta delta={w.payoutAmount} type="CREDIT" size="md" />
+            <span className="shrink-0">
+              <CoinDelta delta={w.payoutAmount} type="CREDIT" size="md" />
+            </span>
           </motion.div>
         ))}
       </div>
 
       {payload.worldBankFeeAmount && (
-        <div className="text-[11px] text-ink-lo dark:text-text-lo flex items-center justify-between px-2 pt-1 border-t border-amber-600/15 dark:border-amber-400/10">
-          <span>World Bank Community Reserve Contribution:</span>
-          <span className="font-mono font-bold">
+        <div className="text-[11px] text-ink-lo dark:text-text-lo flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-2 pt-1 border-t border-amber-600/15 dark:border-amber-400/10">
+          <span className="min-w-0">World Bank Community Reserve Contribution:</span>
+          <span className="shrink-0 font-mono font-bold">
             {formatCoinString(payload.worldBankFeeAmount)} coins
           </span>
         </div>

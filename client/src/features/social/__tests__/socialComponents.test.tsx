@@ -51,7 +51,7 @@ describe("Social & Party UI Components Suite", () => {
     render(<SocialTipsCard />);
     expect(screen.getByText("Squad Gaming Tips")).toBeDefined();
     expect(screen.getByText(/Squad Up for Tournaments/i)).toBeDefined();
-    expect(screen.getByText(/Seamless WebRTC Voice/i)).toBeDefined();
+    expect(screen.getByText(/Quick Reactions/i)).toBeDefined();
     expect(screen.getByText(/Shared Match Records/i)).toBeDefined();
   });
 

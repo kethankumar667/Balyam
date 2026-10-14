@@ -39,6 +39,7 @@ import { useMandaliInboxStore } from "../../store/mandaliInboxStore";
 import { insertUnreadDivider } from "../../lib/mandaliUnreadDivider";
 import AppLayout from "../../components/layout/AppLayout";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useIsMinor } from "../../hooks/useAgeGatePending";
 import { AlbumButton, AlbumCover } from "../../components/mandali/album";
 
 export default function MandaliHubPage(): JSX.Element {
@@ -55,6 +56,7 @@ export default function MandaliHubPage(): JSX.Element {
   const avatarId = useRoomStore((s) => s.avatarId);
 
   const [showCoinTransfer, setShowCoinTransfer] = useState(false);
+  const isMinor = useIsMinor();
   const [coinTransferInitialType, setCoinTransferInitialType] = useState<"SEND" | "REQUEST">("SEND");
   const [preselectedMemberId, setPreselectedMemberId] = useState<string | undefined>(undefined);
   const [showInvite, setShowInvite] = useState(false);
@@ -285,7 +287,8 @@ export default function MandaliHubPage(): JSX.Element {
       navigate("/", { state: { newRoom: game, shareToMandali: activeMandali.id } });
       return { success: true };
     },
-    onOpenCoinTransfer: handleOpenCoinTransfer,
+    // Under-18 limited mode: no sending or asking for coins between players (every entry point hides when this is absent).
+    onOpenCoinTransfer: isMinor ? undefined : handleOpenCoinTransfer,
     onRequestCoins: () => void coinRequest.requestCoins(),
     onPayCoinRequest: fundCoinRequest,
     onPinMessage: (channelId: string, messageId: string, pinned: boolean) => pinMessage(channelId, messageId, pinned),
@@ -354,7 +357,7 @@ export default function MandaliHubPage(): JSX.Element {
         </div>
 
       {/* Coin Transfer Modal (For sending coins) */}
-      {showCoinTransfer && activeMandali && (
+      {showCoinTransfer && activeMandali && !isMinor && (
         <CoinTransferModal
           mandaliId={activeMandali.id}
           channelId={chatChannelId ?? undefined}

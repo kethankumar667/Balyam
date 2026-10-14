@@ -302,7 +302,7 @@ export default function TermsOfServicePage() {
 
                   {sec.id === "eligibility" && (
                     <p>
-                      {MINORS_NOTICE} You must be of legal age in your jurisdiction or possess parental/guardian consent to use BHALYAM. By accessing our services, you affirm that your participation complies with all applicable local laws.
+                      {MINORS_NOTICE} When you first open BHALYAM we ask whether you are 18 or older; an under-18 player is asked to confirm that a parent or guardian is with them and agrees, and some features (such as sending or asking for coins) are switched off for them. You must be of legal age in your jurisdiction or possess parental/guardian consent to use BHALYAM. By accessing our services, you affirm that your participation complies with all applicable local laws.
                     </p>
                   )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { HcBall, HcInnings, HcState, Player } from "@shared/types";
-import { HC_COUNTRIES, HC_FRANCHISES, getRosterFor, type HcPlayerProfile } from "@shared/hc-rosters";
+import { HC_COUNTRIES, HC_FRANCHISES, type HcPlayerProfile } from "@shared/hc-rosters";
+import { getRosterFor } from "./hc-custom-names";
 import { getSocket } from "../../lib/socket";
 import { computeManOfTheMatch, summarizeMatch } from "./hc-shared";
 import { useHcSquad } from "./useHcSquad";
@@ -47,7 +48,7 @@ import { HcScorecardFX } from "./animations3d/scorecard/HcScorecardFX";
  * broadcast: a persistent score bug, team colour plates rather than emoji
  * flags, run-rate and target readouts, and a ball-by-ball ticker.
  *
- * Team identity uses SHORT CODES on a colour plate ("IND", "CSK"), not the
+ * Team identity uses SHORT CODES on a colour plate ("IND", "CCO"), not the
  * emoji flags the notebook skin uses — which is both what a real broadcast
  * does and what keeps the skin free of per-OS emoji rendering.
  *

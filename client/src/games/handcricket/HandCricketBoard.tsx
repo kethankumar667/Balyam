@@ -1,8 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import InningsBreakOverlay from "./InningsBreakOverlay";
 import { HcPhaseCountdown } from "./HcPhaseCountdown";
 import { useHcSkin, type HcSkin } from "./hc-skin";
 import type { HandCricketBoardProps } from "./hc-shared";
+import { useCustomNames } from "./hc-custom-names";
+import { HcRenamePlayersModal } from "./HcRenamePlayersModal";
 
 /**
  * Lazy per-theme: `check:bundle`'s 550 KB budget for this chunk was blown by
@@ -56,7 +58,7 @@ function isDesktopLayout(): boolean {
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
 
-export default function HandCricketBoard(props: HandCricketBoardProps) {
+function HandCricketBoardInner(props: HandCricketBoardProps) {
   const [isDesktop, setIsDesktop] = useState<boolean>(() => isDesktopLayout());
   useEffect(() => {
     const onResize = () => setIsDesktop(isDesktopLayout());
@@ -115,5 +117,49 @@ export default function HandCricketBoard(props: HandCricketBoardProps) {
       <HcPhaseCountdown state={props.state} />
       <InningsBreakOverlay state={props.state} players={props.players} selfId={props.selfId} />
     </Suspense>
+  );
+}
+
+/**
+ * The board plus the "Rename players" control.
+ *
+ * A custom name changes data that many memoised lookups are derived from, so
+ * the skin is re-mounted when the set of custom names changes — every derived
+ * value then recomputes from the new names. The dialog sits outside the
+ * re-mounted part, so it keeps its own state while the board refreshes.
+ */
+export default function HandCricketBoard(props: HandCricketBoardProps) {
+  const names = useCustomNames();
+  const version = useRef({ names, n: 0 });
+  if (version.current.names !== names) version.current = { names, n: version.current.n + 1 };
+  const [renameOpen, setRenameOpen] = useState(false);
+
+  const canRename = !!props.selfId && !!props.state.teamSelections[props.selfId]?.teamId;
+
+  return (
+    <>
+      <Fragment key={version.current.n}>
+        <HandCricketBoardInner {...props} />
+      </Fragment>
+      {canRename && props.selfId && (
+        <>
+          <button
+            type="button"
+            onClick={() => setRenameOpen(true)}
+            aria-label="Rename players"
+            className="fixed bottom-3 left-3 z-[60] min-h-[44px] min-w-[44px] rounded-full bg-stone-900/85 px-3 text-xs font-bold text-white shadow-lg backdrop-blur hover:bg-stone-900"
+          >
+            <span aria-hidden="true">✎ </span>
+            Rename
+          </button>
+          <HcRenamePlayersModal
+            open={renameOpen}
+            onClose={() => setRenameOpen(false)}
+            state={props.state}
+            selfId={props.selfId}
+          />
+        </>
+      )}
+    </>
   );
 }

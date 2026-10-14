@@ -383,6 +383,29 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.age.band",
+    label: "Your age answer",
+    description:
+      "Whether you said you are 18 or older or under 18 (and, if under 18, that a parent or guardian agreed), and when you answered. No birthday is stored. It stays on this device and switches on limited mode for under-18s.",
+    purpose: "consent",
+    isPersonalData: true,
+  },
+  {
+    key: "mpg.hc.customNames",
+    label: "Hand Cricket player names you chose",
+    description:
+      "The names you typed for Hand Cricket players, so you can spot your favourites. They stay on this device and are never sent to a server or shown to other players.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "mpg.hc.skin",
+    label: "Hand Cricket look",
+    description: "Which Hand Cricket theme (Classic, Broadcast, Live Score or Rerun) you picked on this device.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
     key: "snl.tutorial.completed.v1",
     label: "Snakes & Ladders tutorial seen",
     description: "Whether you have seen the Snakes & Ladders tutorial, so it stops reappearing.",
