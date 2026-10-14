@@ -63,7 +63,7 @@ export function CricbuzzHeader({
       : opts.format === "odi"
       ? "ODI · 15 Overs"
       : `T20 · ${state.oversPerInnings ?? 10} Overs`;
-  const categoryLabel = opts.category === "ipl" ? "IPL" : "International";
+  const categoryLabel = opts.category === "ipl" ? "League" : "International";
 
   return (
     <header className="shrink-0 bg-[#004838] text-white shadow-md select-none border-b border-[#035A46] px-3.5 py-2 sm:px-5 flex flex-col gap-2">

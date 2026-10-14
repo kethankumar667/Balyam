@@ -422,7 +422,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     teluguName: "కలర్ కార్డ్స్",
     tagline: "Color match, Draw Fours & wild turns",
     shortDescription: "The fast-paced card shedding frenzy. Match colors or numbers, drop Draw 4 cards, and yell ONE!",
-    description: "The global party card sensation. Match cards by color or number, play devastating Action cards like Skip, Reverse, and Wild Draw 4, and remember to shout ONE when you have just one card left in your hand.",
+    description: "The global party card sensation. Match cards by color or number, play devastating Action cards like Skip, Reverse, and Wild +4, and remember to shout ONE when you have just one card left in your hand.",
     nostalgiaQuote: "\"Playing a +4 on your best friend was pure joy.\" — Veranda adda matches.",
     minPlayers: 2,
     maxPlayers: 10,
@@ -442,7 +442,7 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     heroAsset: "/games/heroes/uno-hero.svg",
     howToPlay: [
       { stepNumber: 1, title: "Match the Card", instruction: "Play a card from your hand matching the top card's color, number, or symbol." },
-      { stepNumber: 2, title: "Use Action Cards", instruction: "Turn the tide with Skips, Reverses, +2s, and Wild Draw 4 cards." },
+      { stepNumber: 2, title: "Use Action Cards", instruction: "Turn the tide with Skips, Reverses, +2s, and Wild +4 cards." },
       { stepNumber: 3, title: "Call ONE", instruction: "Press the ONE button before your turn ends when you have 1 card remaining." },
       { stepNumber: 4, title: "Empty Hand", instruction: "First player to shed all their cards wins the round." },
     ],

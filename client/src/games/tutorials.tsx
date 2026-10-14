@@ -35,12 +35,12 @@ export const UNO_TUTORIAL: TutorialDeck = {
     {
       emoji: "🌈",
       title: "Wild cards",
-      body: "A Wild lets you choose the next colour. Wild Draw Four also makes the next player draw four cards — play it only when you have no matching colour.",
+      body: "A Wild lets you choose the next colour. Wild +4 also makes the next player draw four cards — play it only when you have no matching colour.",
     },
     {
       emoji: "🤔",
-      title: "Challenge a Wild Draw Four",
-      body: "Think someone played Wild Draw Four illegally — they actually had a matching-colour card? Challenge it! Guess right and they draw 4 instead of you. Guess wrong and you draw 6.",
+      title: "Challenge a Wild +4",
+      body: "Think someone played Wild +4 illegally — they actually had a matching-colour card? Challenge it! Guess right and they draw 4 instead of you. Guess wrong and you draw 6.",
     },
     {
       emoji: "🃏",
@@ -67,7 +67,7 @@ export const HANDCRICKET_TUTORIAL: TutorialDeck = {
     {
       emoji: "🏏",
       title: "Pick your team",
-      body: "Choose a country or IPL franchise, then select your playing XI and a captain before the match.",
+      body: "Choose a country or franchise team, then select your playing XI and a captain before the match.",
     },
     {
       emoji: "🎲",

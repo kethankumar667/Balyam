@@ -329,7 +329,7 @@ describe("PartyScreen (TV Mode Spectator Experience)", () => {
 
       // Theme mode toggler chips rendered
       expect(screen.getByText("📺 Broadcast")).toBeDefined();
-      expect(screen.getByText("🏏 Cricbuzz")).toBeDefined();
+      expect(screen.getByText("🏏 Live Score")).toBeDefined();
       expect(screen.getByText("📼 Rerun")).toBeDefined();
       expect(screen.getByText("📓 Classic")).toBeDefined();
 
@@ -339,7 +339,7 @@ describe("PartyScreen (TV Mode Spectator Experience)", () => {
     });
 
     // Test clicking Cricbuzz theme mode toggler
-    const cricbuzzBtn = screen.getByText("🏏 Cricbuzz");
+    const cricbuzzBtn = screen.getByText("🏏 Live Score");
     fireEvent.click(cricbuzzBtn);
 
     await waitFor(() => {

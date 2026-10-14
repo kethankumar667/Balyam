@@ -17,8 +17,13 @@
 - Grievance acknowledgement is 24 hours (IT Rules), resolution 15 days.
 - Player-visible "stake / bet / pot" wording is now "room entry / reward pool", including server error messages.
 
-**Still open (needs you, art, a licence or a lawyer):** items 1, 2, 4, 5 (officer details), 7 and 8 to 11 in section 8, plus:
-- The Color Cards card face, wild card and pile still use a UNO-like layout (oval centre, Wild Draw 4, Skip, Reverse). Redesign or get a legal view.
+**Also done (2026-10-14, second pass):**
+- **Hand Cricket** no longer contains any real cricketer, coach or IPL franchise. All 674 names in the four roster JSON files and `shared/hc-rosters.ts` are replaced by generated fictional names (same roles, captains and squad shapes), and the ten franchises are now fictional ("Chennai Cobras", "Mumbai Mariners", ...). "IPL" wording is now "League"/"Franchise", the "Cricbuzz" skin is labelled "Live Score", and the "DD Sports" caption is neutral. Internal ids (`csk`, `mi`, the `cricbuzz`/`doordarshan` skin ids, `ipl` category) are unchanged so nothing saved breaks. Country names stay (a country is not a brand), and home-ground names stay (factual venues).
+- **Color Cards card face** is redrawn: dark frame, cream rounded-diamond gem instead of the white tilted oval, upright "hold" bars for Skip, upright flip arrows for Reverse, a four-gem cluster for Wild, corner indices on dark badges. "Wild Draw 4/Four" is now "Wild +4" in all UI text.
+
+**Still open (needs you, a licence or a lawyer):** items 1, 2, 4, 5 (officer details) and 8 to 11 in section 8, plus:
+- The card *names* Skip, Reverse, Draw Two and Wild, the 108-card structure and the four colours are ordinary game rules and vocabulary, and the server's action messages depend on them, so they were kept. A lawyer should confirm that is acceptable.
+- The Hand Cricket skins named after real broadcasters (Cricbuzz, Doordarshan) are renamed in the UI but still imitate their look; a lawyer should confirm the visual styling is acceptable, or restyle them.
 - Database rows and `shared/cosmetics.ts` keep the legacy cosmetic ids and asset keys (ending in `_uno`); renaming them would orphan items players already own.
 
 **Correction:** an earlier note said the Terms' 10-minute reconnect grace contradicted the code. It does not: a live match has a 10-minute grace and the lobby has 90 seconds, so the Terms are right.

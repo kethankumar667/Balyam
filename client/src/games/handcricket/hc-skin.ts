@@ -20,7 +20,7 @@ export type HcSkin = "broadcast" | "doordarshan" | "nostalgia" | "cricbuzz";
 export const HC_SKINS: readonly { id: HcSkin; label: string }[] = [
   { id: "nostalgia", label: "Classic" },
   { id: "broadcast", label: "Broadcast" },
-  { id: "cricbuzz", label: "Cricbuzz" },
+  { id: "cricbuzz", label: "Live Score" },
   { id: "doordarshan", label: "Rerun" },
 ];
 

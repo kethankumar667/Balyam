@@ -30,7 +30,7 @@ export const CARD_DISPLAY: Record<
   Reverse: { emoji: "🔄", label: "Reverse", shortLabel: "↩" },
   "+2": { emoji: "2️⃣", label: "Draw Two", shortLabel: "+2" },
   Wild: { emoji: "🌈", label: "Wild", shortLabel: "🌈" },
-  "Wild+4": { emoji: "🌈4️⃣", label: "Wild Draw Four", shortLabel: "W+4" },
+  "Wild+4": { emoji: "🌈4️⃣", label: "Wild +4", shortLabel: "W+4" },
 };
 
 export function getCardEmoji(card: UnoCard): string {
@@ -95,6 +95,6 @@ export function sortHand(cards: UnoCard[]): UnoCard[] {
  */
 export function describeCard(card: UnoCard): string {
   if (card.rank === "Wild") return "Wild card";
-  if (card.rank === "Wild+4") return "Wild Draw Four";
+  if (card.rank === "Wild+4") return "Wild +4";
   return `${CARD_DISPLAY[card.color!]?.label || "Unknown"} ${card.rank}`;
 }

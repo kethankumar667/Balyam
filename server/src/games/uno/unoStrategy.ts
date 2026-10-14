@@ -15,7 +15,7 @@ import type { UnoCard, UnoColor } from "@shared/types.js";
  *
  * ── Fair play ────────────────────────────────────────────────────────
  * It sees exactly what a player at the table sees: its own hand, the card on top, and how MANY cards
- * each opponent holds. It never reads another hand. It also never bluffs a Wild Draw Four (one is only
+ * each opponent holds. It never reads another hand. It also never bluffs a Wild +4 (one is only
  * legal when no card matches the current colour, and breaking that invites a challenge it cannot win).
  *
  * Pure and deterministic: the same situation always gives the same choice, which is what makes it
@@ -82,7 +82,7 @@ function scoreCard(card: UnoCard, view: UnoBotView): number {
     score -= 45;
     if (remaining.length <= 1) score += 30; // one card left after this, so spend it and go out next turn
     if (nearWin) score += 35; // someone is about to win, so this is the moment
-    // A Wild Draw Four is only legal with no card of the current colour; anything else is a bluff that can be challenged.
+    // A Wild +4 is only legal with no card of the current colour; anything else is a bluff that can be challenged.
     if (card.rank === "Wild+4" && countOf(view.hand, view.currentColor) > 0) score -= 500;
   }
 

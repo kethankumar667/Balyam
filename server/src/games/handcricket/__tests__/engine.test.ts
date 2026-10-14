@@ -261,9 +261,9 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: "india" } });
     // India T20: 5 batters + 3 ARs + 3 bowlers = 11 (no keeper).
     const noKeeperIds = [
-      "rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav", "rinku-singh",
-      "hardik-pandya", "shivam-dube", "axar-patel",
-      "jasprit-bumrah", "arshdeep-singh", "kuldeep-yadav",
+      "pranav-upadhye", "rohan-oberoi", "darpan-thakur", "chirag-dalvi", "tanmay-rajan",
+      "dhruv-shenoy", "darpan-hiremath", "ishaan-menon",
+      "yuvan-rajan", "jayant-upadhye", "jayant-hegde",
     ];
     const r = engine.applyMove({
       playerId: "p0",
@@ -279,9 +279,9 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: "india" } });
     // 5 T20 batters + 5 legend batters + 1 keeper = 11. Bowling options = 0 ✗
     const tooFewBowlersIds = [
-      "rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav", "rinku-singh",
-      "sachin-tendulkar", "sunil-gavaskar", "rahul-dravid", "virender-sehwag", "shikhar-dhawan",
-      "rishabh-pant",
+      "pranav-upadhye", "rohan-oberoi", "darpan-thakur", "chirag-dalvi", "tanmay-rajan",
+      "lokesh-talwar", "darpan-vaidya", "chirag-shenoy", "laksh-oberoi", "arnav-chitnis",
+      "tejas-venkat",
     ];
     const r = engine.applyMove({
       playerId: "p0",
@@ -298,15 +298,15 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     // India T20: 5 batters + 1 AR + 1 keeper + 4 bowlers = 11.
     // Bowling options = 1 + 4 = 5 ✓
     const validIds = [
-      "rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav", "rinku-singh",
-      "hardik-pandya",
-      "rishabh-pant",
-      "jasprit-bumrah", "arshdeep-singh", "kuldeep-yadav", "mohammed-siraj",
+      "pranav-upadhye", "rohan-oberoi", "darpan-thakur", "chirag-dalvi", "tanmay-rajan",
+      "dhruv-shenoy",
+      "tejas-venkat",
+      "yuvan-rajan", "jayant-upadhye", "jayant-hegde", "darpan-lodha",
     ];
     const r = engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: validIds, captainId: "rohit-sharma" },
+      data: { playerIds: validIds, captainId: "pranav-upadhye" },
     });
     expect(r.ok).toBe(true);
   });
@@ -317,29 +317,29 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({ playerId: "p1", type: "selectTeam", data: { teamId: "australia" } });
     // India T20 valid XI (5 bat + 1 AR + 1 WK + 4 bowl)
     const indiaXI = [
-      "rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav", "rinku-singh",
-      "hardik-pandya",
-      "rishabh-pant",
-      "jasprit-bumrah", "arshdeep-singh", "kuldeep-yadav", "mohammed-siraj",
+      "pranav-upadhye", "rohan-oberoi", "darpan-thakur", "chirag-dalvi", "tanmay-rajan",
+      "dhruv-shenoy",
+      "tejas-venkat",
+      "yuvan-rajan", "jayant-upadhye", "jayant-hegde", "darpan-lodha",
     ];
     // Australia T20 valid XI (4 bat + 1 AR + 1 WK + 5 bowl).
-    // david-warner is a pure batter in T20; glenn-maxwell is an all-rounder.
+    // the chosen player is a pure batter in T20; the other is an all-rounder.
     const ausXI = [
-      "mitchell-marsh", "david-warner", "travis-head", "tim-david",
-      "glenn-maxwell",
-      "josh-inglis",
-      "pat-cummins", "mitchell-starc", "josh-hazlewood", "adam-zampa", "nathan-ellis",
+      "mason-elwood", "brodie-fairley", "mason-vance", "callum-corrigan",
+      "lachlan-garrick",
+      "nate-thornley",
+      "flynn-jarvis", "jett-fairley", "riley-selwyn", "liam-ackland", "griffin-thornley",
     ];
     const r0 = engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: indiaXI, captainId: "rohit-sharma" },
+      data: { playerIds: indiaXI, captainId: "pranav-upadhye" },
     });
     expect(r0.ok).toBe(true);
     const r1 = engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ausXI, captainId: "mitchell-marsh" },
+      data: { playerIds: ausXI, captainId: "mason-elwood" },
     });
     expect(r1.ok).toBe(true);
     // Caller calls even. Sum 4 → even → p0 wins toss.
@@ -347,11 +347,11 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p0", type: "tossChoice", data: { choice: "bat" } });
-    // p1 is bowling. Try sending David Warner (pure batter) to bowl.
+    // p1 is bowling. Try sending a pure batter to bowl.
     const rBat = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
-      data: { playerId: "david-warner" },
+      data: { playerId: "brodie-fairley" },
     });
     expect(rBat.ok).toBe(false);
     expect(rBat.error).toMatch(/bowlers and all-rounders/i);
@@ -359,7 +359,7 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     const rAR = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
-      data: { playerId: "glenn-maxwell" },
+      data: { playerId: "lachlan-garrick" },
     });
     expect(rAR.ok).toBe(true);
   });
@@ -785,27 +785,27 @@ describe("HandCricketEngine — Phase 1 (overs + 10 wickets + team select)", () 
     engine.applyMove({ playerId: "p0", type: "selectTeam", data: { teamId: "india" } });
     engine.applyMove({ playerId: "p1", type: "selectTeam", data: { teamId: "australia" } });
     // Galli accepts any squad of 1-15 valid pool members; no composition checks.
-    const indiaSquad = ["rohit-sharma", "yashasvi-jaiswal", "virat-kohli", "suryakumar-yadav"];
-    const ausSquad = ["mitchell-marsh", "david-warner", "travis-head", "tim-david"];
+    const indiaSquad = ["pranav-upadhye", "rohan-oberoi", "darpan-thakur", "chirag-dalvi"];
+    const ausSquad = ["mason-elwood", "brodie-fairley", "mason-vance", "callum-corrigan"];
     expect(engine.applyMove({
       playerId: "p0",
       type: "confirmSquad",
-      data: { playerIds: indiaSquad, captainId: "rohit-sharma" },
+      data: { playerIds: indiaSquad, captainId: "pranav-upadhye" },
     }).ok).toBe(true);
     expect(engine.applyMove({
       playerId: "p1",
       type: "confirmSquad",
-      data: { playerIds: ausSquad, captainId: "mitchell-marsh" },
+      data: { playerIds: ausSquad, captainId: "mason-elwood" },
     }).ok).toBe(true);
     engine.applyMove({ playerId: "p0", type: "tossCall", data: { call: "even" } });
     engine.applyMove({ playerId: "p0", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p1", type: "tossPick", data: { pick: 2 } });
     engine.applyMove({ playerId: "p0", type: "tossChoice", data: { choice: "bat" } });
-    // david-warner is a pure batter — would be rejected in T20, but Galli allows it.
+    // the chosen player is a pure batter — would be rejected in T20, but Galli allows it.
     const r = engine.applyMove({
       playerId: "p1",
       type: "selectBowler",
-      data: { playerId: "david-warner" },
+      data: { playerId: "brodie-fairley" },
     });
     expect(r.ok).toBe(true);
   });

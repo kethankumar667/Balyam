@@ -863,7 +863,7 @@ export function HcNotebookHeader({
         ? "ODI • 15 Overs"
         : "T20 • 10 Overs";
   const categoryLabel =
-    state.options.category === "ipl" ? "IPL" : "International";
+    state.options.category === "ipl" ? "League" : "International";
   const isLiveMatch = state.phase === "innings1" || state.phase === "innings2";
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -2928,16 +2928,16 @@ export function HcFranchisePickerNotebook({
   ];
 
   const fullNames: Record<HcFranchise, string> = {
-    csk: "Chennai Super Kings",
-    mi: "Mumbai Indians",
-    rcb: "Royal Challengers Bengaluru",
-    kkr: "Kolkata Knight Riders",
-    srh: "Sunrisers Hyderabad",
-    dc: "Delhi Capitals",
-    pbks: "Punjab Kings",
-    rr: "Rajasthan Royals",
-    gt: "Gujarat Titans",
-    lsg: "Lucknow Super Giants",
+    csk: "Chennai Cobras",
+    mi: "Mumbai Mariners",
+    rcb: "Bengaluru Blazers",
+    kkr: "Kolkata Kestrels",
+    srh: "Hyderabad Hawks",
+    dc: "Delhi Dragons",
+    pbks: "Punjab Panthers",
+    rr: "Jaipur Jaguars",
+    gt: "Ahmedabad Arrows",
+    lsg: "Lucknow Lancers",
   };
 
   return (
@@ -3049,7 +3049,7 @@ export function HcFranchisePickerNotebook({
           }}
         />
 
-        {/* "IPL is not just a game, it's an emotion." — hand-lettered quote */}
+        {/* "A league night is not just a game, it's an emotion." — hand-lettered quote */}
         <div
           style={{
             position: "absolute",

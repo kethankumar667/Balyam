@@ -383,7 +383,7 @@ const HC_FORMATS: { id: HcFormat; label: string; blurb: string }[] = [
 
 const HC_CATEGORIES: { id: HcCategory; label: string; blurb: string }[] = [
   { id: "international", label: "International", blurb: "Pick a country & select your XI" },
-  { id: "ipl",           label: "IPL",           blurb: "Pick a 2026 IPL franchise & select your XI" },
+  { id: "ipl",           label: "League",        blurb: "Pick a franchise team & select your XI" },
 ];
 
 // Carrom Option Catalogs (Miniclip parity: Classic, Disc Pool, Freestyle)
@@ -587,7 +587,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
   const gameConfigSummary = useMemo(() => {
     if (!game) return "Standard Match";
     if (game === "handcricket") {
-      const cat = hcCategory === "ipl" ? "IPL 2026" : "International";
+      const cat = hcCategory === "ipl" ? "Franchise League" : "International";
       const fmt = hcMode === "galli" ? `${hcGalliOvers} Ov Galli` : hcFormat.toUpperCase();
       return `${cat} · ${fmt}`;
     }

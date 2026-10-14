@@ -54,7 +54,7 @@ export function fireComicDustBurst(anchor: FeltAnchor, opts: ComicBurstOptions =
 
 /** Meteor-strike impact: grey smoke that lingers and drifts up (low
  *  decay, negative-ish gravity via a small upward drift), rainbow
- *  sparkles (the Wild Draw Four's colour-choice identity), and dark
+ *  sparkles (the Wild +4's colour-choice identity), and dark
  *  angular debris chunks flung outward harder than the dust burst's
  *  gentle puff — a bigger, more violent event than a plain +2. */
 const METEOR_SMOKE_COLORS = ["#6B6660", "#8C8680", "#4A453F", "#B5AFA6"];

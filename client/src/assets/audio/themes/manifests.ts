@@ -64,7 +64,7 @@ const CLASSIC_THEME: ThemeManifest = {
   id: AUDIO_THEME.CLASSIC,
   name: "Classic 90's",
   description:
-    "Soft flute, xylophone, light tabla, acoustic guitar — childhood evenings on Doordarshan.",
+    "Soft flute, xylophone, light tabla, acoustic guitar — childhood evenings in front of the family TV.",
   files: {
     /* UI */
     [AUDIO.UI_CLICK]:        f("classic", "ui", "wooden-click.mp3"),

@@ -355,7 +355,7 @@ function StadiumWatermark() {
         <pattern id="uno-watermark" width="132" height="132" patternUnits="userSpaceOnUse" patternTransform="rotate(-16)">
           <g opacity="0.05">
             <rect x="46" y="34" width="40" height="60" rx="7" fill="none" stroke="#fff" strokeWidth="2.5" />
-            <ellipse cx="66" cy="64" rx="19" ry="11" fill="#fff" opacity="0.55" />
+            <polygon points="66,50 86,64 66,78 46,64" fill="#fff" opacity="0.55" />
             <text x="66" y="67" fontSize="9" fontWeight="900" fontStyle="italic" fill="#ffffff" textAnchor="middle" fontFamily="'Nunito','Poppins',sans-serif">ONE</text>
           </g>
         </pattern>

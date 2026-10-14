@@ -95,7 +95,7 @@ export const UnoChallengeSandbox: React.FC<SandboxProps> = ({ onComplete }) => {
       {/* Challenge Simulation Controls */}
       <div className="w-full max-w-sm flex flex-col gap-2">
         <span className="text-xs font-mono text-stone-300 font-semibold">
-          Opponent played Wild Draw 4! Did they hold matching Red cards?
+          Opponent played Wild +4! Did they hold matching Red cards?
         </span>
 
         <div className="flex items-center gap-2 justify-center">

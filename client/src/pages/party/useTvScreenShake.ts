@@ -73,7 +73,7 @@ export function useTvScreenShake({ game, gameState }: UseTvScreenShakeProps = {}
       }
     }
 
-    // UNO Wild Draw 4 / Action
+    // UNO Wild +4 / Action
     if (game === "uno") {
       const topCardRaw = typeof gameState.topCard === "object" && gameState.topCard !== null
         ? (gameState.topCard as Record<string, unknown>)

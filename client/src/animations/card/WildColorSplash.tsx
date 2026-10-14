@@ -21,7 +21,7 @@ const COLOR_NAME: Record<UnoColor, string> = { R: "Red", G: "Green", B: "Blue", 
 /**
  * "Wild Card" — animation #5 of `UNO_Animation_Implementation_Guide.md`.
  *
- * Story: whoever played a Wild (or Wild Draw Four) just chose a colour —
+ * Story: whoever played a Wild (or Wild +4) just chose a colour —
  * the felt gets repainted at the pile. Library split exactly per the
  * guide:
  *   - GSAP         → the paint-spread timeline — an expanding wash of

@@ -186,7 +186,7 @@ export function HcProHeader({
       : opts.format === "odi"
       ? "ODI · 15 Overs"
       : `T20 · ${overs ?? 10} Overs`;
-  const categoryLabel = opts.category === "ipl" ? "IPL" : "International";
+  const categoryLabel = opts.category === "ipl" ? "League" : "International";
 
   return (
     <div
@@ -482,7 +482,7 @@ export function HcProTeamPicker({
         name: f.name,
         short: f.short,
         color: f.color,
-        sub: "IPL 2026",
+        sub: "Franchise League",
       }));
     }
     return Object.values(HC_COUNTRIES).map((c) => ({
@@ -2436,7 +2436,7 @@ export function HcProInnings({
    *
    * The board previously had NO live region at all — the only one in the game
    * belonged to the nostalgia celebration overlay, so a screen-reader user
-   * heard "Kohli sends it out of the park!" but never the score, never "out",
+   * heard "He sends it out of the park!" but never the score, never "out",
    * and never the target. This announces the substance of each delivery, then
    * the state that follows it.
    *

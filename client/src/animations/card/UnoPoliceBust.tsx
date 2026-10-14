@@ -10,7 +10,7 @@ import type { AnimationConfig, FeltAnchor } from "../helpers/types";
 /**
  * "UNO Police" — animation #17 of `UNO_Animation_Implementation_Guide.md`.
  *
- * Story: a Wild Draw Four challenge SUCCEEDS — the play really was
+ * Story: a Wild +4 challenge SUCCEEDS — the play really was
  * illegal (a legal card was available), and the bluffing player gets
  * busted, drawing 4 (`UnoEngine.handleChallengeDecision`'s "challenge
  * succeeds" branch, `lastAction` reads "…challenged successfully — …

@@ -70,7 +70,7 @@ export interface InternalUnoState {
    *  hand. See syncUnoDeclaration() for why this must be kept in sync with
    *  hand size rather than just accumulated. */
   unoDeclaredBy: Set<string>;
-  /** Non-null from the instant a Wild Draw Four is played until the
+  /** Non-null from the instant a Wild +4 is played until the
    *  targeted player accepts or challenges. `wasLegal` is server-only —
    *  never put it on UnoPublicState, or the challenge has no purpose. */
   pendingChallenge: {
@@ -147,7 +147,7 @@ export class UnoEngine implements GameEngine {
 
   /**
    * Who a room-level turn-timeout should force a move for — the real turn
-   * holder, or (while a Wild Draw Four decision is outstanding) the
+   * holder, or (while a Wild +4 decision is outstanding) the
    * targeted player. Deliberately NOT the same set as pendingActors(),
    * which also lists anyone merely eligible to declare UNO — auto-declaring
    * for a human on a generic turn timeout would strip all risk from that
@@ -294,7 +294,7 @@ export class UnoEngine implements GameEngine {
     const moveType = move.type as string;
 
     // Available to any seated player at any time, not gated by "is it your
-    // turn" — declaring/catching UNO and resolving a Wild Draw Four
+    // turn" — declaring/catching UNO and resolving a Wild +4
     // challenge are all independent of the normal turn cycle.
     if (moveType === "declareUno") {
       return this.handleDeclareUno(move.playerId);
@@ -322,7 +322,7 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Not your turn" };
     }
     if (this.state.pendingChallenge) {
-      return { ok: false, error: "Waiting for a Wild Draw Four decision" };
+      return { ok: false, error: "Waiting for a Wild +4 decision" };
     }
 
     if (moveType === "draw") {
@@ -390,7 +390,7 @@ export class UnoEngine implements GameEngine {
   }
 
   /**
-   * Resolves the Wild Draw Four challenge window. Turn math: `turnIndex`
+   * Resolves the Wild +4 challenge window. Turn math: `turnIndex`
    * was deliberately left unadvanced when the Wild+4 was played (see
    * handlePlay), so it still sits at the original player's slot — stepping
    * by 1 from there lands on the challenger, by 2 lands on whoever comes
@@ -413,7 +413,7 @@ export class UnoEngine implements GameEngine {
       this.state.hands[pending.challengerId]!.push(...drawn);
       this.syncUnoDeclaration(pending.challengerId);
       this.state.lastHit = { targetIds: [pending.challengerId], kind: "draw4", count: 4 };
-      this.state.lastAction = `${this.nameOf(pending.challengerId)} accepted the Wild Draw Four and drew 4.`;
+      this.state.lastAction = `${this.nameOf(pending.challengerId)} accepted the Wild +4 and drew 4.`;
       this.state.turnIndex = this.stepIndex(this.state.turnIndex, 2);
       return { ok: true };
     }
@@ -577,7 +577,7 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Must choose color for Wild card" };
     }
 
-    // Wild Draw Four legality (Volume 4 §16): official UNO never blocks the
+    // Wild +4 legality (Volume 4 §16): official UNO never blocks the
     // play outright — a player CAN attempt it illegally, since opponents
     // can't see their hand. Illegality only matters if challenged, so
     // snapshot it now, before the card leaves the hand, and let the
@@ -610,7 +610,7 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Not your turn" };
     }
     if (this.state.pendingChallenge) {
-      return { ok: false, error: "Waiting for a Wild Draw Four decision" };
+      return { ok: false, error: "Waiting for a Wild +4 decision" };
     }
     if (this.state.pendingDrawStack) {
       return { ok: false, error: "A draw stack is active — only the current player may respond" };
@@ -696,7 +696,7 @@ export class UnoEngine implements GameEngine {
         playedById: playerId,
         wasLegal: wasLegalWildFour,
       };
-      this.state.lastAction = `Wild Draw Four! ${this.nameOf(playerId)} chose ${COLOR_NAMES[this.state.currentColor!]}. Waiting for ${this.nameOf(targetId)} to accept or challenge.`;
+      this.state.lastAction = `Wild +4! ${this.nameOf(playerId)} chose ${COLOR_NAMES[this.state.currentColor!]}. Waiting for ${this.nameOf(targetId)} to accept or challenge.`;
       return { ok: true };
     }
 
@@ -817,7 +817,7 @@ export class UnoEngine implements GameEngine {
     description: string;
     /** A hit worth a client-side comedic flourish (Skip/Draw Two/Zero
      *  Rotate/Seven Swap) — omitted for effect-less cards (plain numbers,
-     *  Reverse with 3+ players, Wild). Wild Draw Four's own hit is set
+     *  Reverse with 3+ players, Wild). Wild +4's own hit is set
      *  separately in handleChallengeDecision, once it actually resolves. */
     hit?: { targetIds: string[]; kind: "skip" | "draw2" | "swap" | "rotate"; count?: number };
   } {
@@ -1146,7 +1146,7 @@ export class UnoEngine implements GameEngine {
   applyAutoMove(playerId: string): MoveResult {
     if (this.state.phase !== "playing") return { ok: false };
 
-    // Resolve an outstanding Wild Draw Four decision first. Bots never have
+    // Resolve an outstanding Wild +4 decision first. Bots never have
     // enough information to know whether a challenge would succeed (hidden
     // hand data), so the safe, non-exploitable default is to always accept
     // — a simple baseline, not a strategy tier (see UNO_GAME_PLAN.md §15

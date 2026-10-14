@@ -5,10 +5,10 @@ export interface WildDrawFourChallengePromptProps {
 }
 
 /**
- * Shown only to the player targeted by a Wild Draw Four, while
+ * Shown only to the player targeted by a Wild +4, while
  * `state.pendingChallenge.challengerId === selfId`. Every other player just
  * sees the existing `UnoActionToast` surface the engine's own
- * `lastAction` ("Wild Draw Four! Waiting for {target} to accept or
+ * `lastAction` ("Wild +4! Waiting for {target} to accept or
  * challenge.") — no separate "someone else is deciding" banner needed.
  *
  * Deliberately doesn't reveal whether the play was legal — the server
@@ -26,7 +26,7 @@ export function WildDrawFourChallengePrompt({
       style={{ background: "rgba(0,0,0,0.45)" }}
       role="dialog"
       aria-modal="true"
-      aria-label="Wild Draw Four decision"
+      aria-label="Wild +4 decision"
     >
       <div
         className="w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl"
@@ -34,9 +34,9 @@ export function WildDrawFourChallengePrompt({
       >
         <div className="text-center space-y-1">
           <div className="text-3xl">🌈4️⃣</div>
-          <h2 className="text-lg font-black text-[#2B2118]">Wild Draw Four!</h2>
+          <h2 className="text-lg font-black text-[#2B2118]">Wild +4!</h2>
           <p className="text-sm text-[#6E5E4D]">
-            <span className="font-bold">{playedByName}</span> played a Wild Draw Four on you.
+            <span className="font-bold">{playedByName}</span> played a Wild +4 on you.
             Accept the 4 cards, or challenge it if you think they had another card they could
             have played instead.
           </p>

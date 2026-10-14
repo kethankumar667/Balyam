@@ -5,12 +5,12 @@ import { generateCricbuzzCommentary } from "../CricbuzzCommentary";
 
 describe("CricbuzzCommentary", () => {
   const battingProfiles = new Map<string, HcPlayerProfile>([
-    ["p1", { id: "p1", name: "Virat Kohli", role: "batter" }],
-    ["p2", { id: "p2", name: "Rohit Sharma", role: "batter" }],
+    ["p1", { id: "p1", name: "Kabir Menon", role: "batter" }],
+    ["p2", { id: "p2", name: "Yash Mehra", role: "batter" }],
   ]);
 
   const bowlingProfiles = new Map<string, HcPlayerProfile>([
-    ["b1", { id: "b1", name: "Jasprit Bumrah", role: "bowler" }],
+    ["b1", { id: "b1", name: "Varun Pillai", role: "bowler" }],
   ]);
 
   it("generates commentary entries for balls with boundaries and wickets", () => {
@@ -75,8 +75,8 @@ describe("CricbuzzCommentary", () => {
     // Newest on top
     expect(commentary[0].isWicket).toBe(true);
     expect(commentary[0].headline).toBe("OUT!");
-    expect(commentary[0].batterName).toBe("Virat Kohli");
-    expect(commentary[0].bowlerName).toBe("Jasprit Bumrah");
+    expect(commentary[0].batterName).toBe("Kabir Menon");
+    expect(commentary[0].bowlerName).toBe("Varun Pillai");
 
     expect(commentary[1].runs).toBe(4);
     expect(commentary[1].headline).toBe("FOUR");

@@ -89,7 +89,7 @@ export const RUMMY_ACADEMY: GameAcademySpec = {
 export const UNO_ACADEMY: GameAcademySpec = {
   slug: "uno",
   title: "Color Cards",
-  tagline: "High-octane card matching — unleash Skips, Reverse momentum, and challenge illegal Wild Draw 4s.",
+  tagline: "High-octane card matching — unleash Skips, Reverse momentum, and challenge illegal Wild +4s.",
   genre: "cards",
   players: "2–10 Players",
   duration: "10–15 min",
@@ -122,10 +122,10 @@ export const UNO_ACADEMY: GameAcademySpec = {
     {
       id: "wild_draw_four",
       badge: "HIGH STAKES",
-      title: "Challenge the Wild Draw Four",
-      summary: "Wild Draw Four can only be played legally if you hold NO matching color cards. The targeted player can CHALLENGE the play!",
+      title: "Challenge the Wild +4",
+      summary: "Wild +4 can only be played legally if you hold NO matching color cards. The targeted player can CHALLENGE the play!",
       keyRule: "If challenged and guilty, the offender draws 4 cards. If innocent, the challenger draws 6 cards!",
-      proTip: "Save Wild Draw 4 as your absolute last line of defense when an opponent is shouting ONE.",
+      proTip: "Save Wild +4 as your absolute last line of defense when an opponent is shouting ONE.",
       iconName: "ShieldCheck",
       sandboxKind: "uno-challenge",
       sandboxConfig: { mode: "challenge" },
@@ -154,7 +154,7 @@ export const UNO_ACADEMY: GameAcademySpec = {
       ],
     },
     {
-      title: "The Wild Draw 4 Rule",
+      title: "The Wild +4 Rule",
       iconName: "ShieldCheck",
       items: [
         { label: "Legal Play", detail: "Only permitted if you have ZERO cards of the active color in hand.", tag: "Rule" },

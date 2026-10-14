@@ -11,7 +11,7 @@ import type { AnimationConfig, FeltAnchor } from "../helpers/types";
 /**
  * "+4 Meteor Strike" — animation #2 of `UNO_Animation_Implementation_Guide.md`.
  *
- * Story: the Wild Draw Four lands, and a comet streaks down from off-screen
+ * Story: the Wild +4 lands, and a comet streaks down from off-screen
  * to crater the struck seat. Library split exactly per the guide (note
  * this one differs from +2 Flying Slippers on purpose — "screen recoil"
  * is React Spring here, not GSAP):

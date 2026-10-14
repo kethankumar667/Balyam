@@ -775,7 +775,7 @@ function UnoTvBoard({
 
   return (
     <div className="relative w-full max-w-6xl h-full flex flex-col items-center justify-between gap-3 p-3 sm:p-4 rounded-[28px] bg-gradient-to-b from-stone-900/90 via-black/95 to-black/90 border-2 border-amber-600/40 shadow-2xl backdrop-blur-xl min-h-0 overflow-hidden">
-      {/* UNO In-Game Action Toast Banner (Skip, Reverse, Draw Two, Wild Draw 4) */}
+      {/* UNO In-Game Action Toast Banner (Skip, Reverse, Draw Two, Wild +4) */}
       <UnoActionToast lastAction={lastAction} className="top-14" />
 
       {/* Match Winner Celebration Overlay */}
@@ -1221,7 +1221,7 @@ function HandCricketTvBoard({
                     : "text-stone-400 hover:text-white"
                 }`}
               >
-                {opt.id === "broadcast" ? "📺 Broadcast" : opt.id === "cricbuzz" ? "🏏 Cricbuzz" : opt.id === "doordarshan" ? "📼 Rerun" : "📓 Classic"}
+                {opt.id === "broadcast" ? "📺 Broadcast" : opt.id === "cricbuzz" ? "🏏 Live Score" : opt.id === "doordarshan" ? "📼 Rerun" : "📓 Classic"}
               </button>
             );
           })}

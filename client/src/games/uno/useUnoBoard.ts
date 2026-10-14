@@ -81,7 +81,7 @@ export interface UnoBoardModel {
   canDeclareUno: boolean;
   /** Opponent ids currently sitting on an undeclared 1-card hand — catchable. */
   catchableOpponents: string[];
-  /** Non-null while a Wild Draw Four decision is outstanding (server-driven). */
+  /** Non-null while a Wild +4 decision is outstanding (server-driven). */
   pendingChallenge: { challengerId: string; playedById: string } | null;
   /** True when the caller is the player who must accept or challenge right now. */
   isChallengeTarget: boolean;

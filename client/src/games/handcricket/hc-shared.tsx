@@ -157,7 +157,7 @@ export function MatchHeader({
           {formatLabel}
         </span>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-700/60 text-cyan-100 font-bold">
-          {state.options.category === "international" ? "International" : "IPL"}
+          {state.options.category === "international" ? "International" : "League"}
         </span>
       </div>
       <div className="flex items-center gap-2 text-sm font-bold">
@@ -4611,7 +4611,7 @@ export function RecentBalls({ history, currentOver }: { history: HcBall[]; curre
 export function MatchInfoCard({ state }: { state: HcState }) {
   const format = state.options.format.toUpperCase();
   const overs = state.options.format === "test" ? 30 : state.options.format === "odi" ? 15 : 10;
-  const venue = state.options.category === "ipl" ? "IPL Franchise" : "International";
+  const venue = state.options.category === "ipl" ? "Franchise League" : "International";
   const powerplay = "Overs 1-3";
   const mode = "Classic";
 

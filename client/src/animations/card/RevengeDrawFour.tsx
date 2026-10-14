@@ -11,7 +11,7 @@ import type { AnimationConfig, FeltAnchor } from "../helpers/types";
 /**
  * "Revenge" — animation #12 of `UNO_Animation_Implementation_Guide.md`.
  *
- * Story: a Wild Draw Four challenge FAILS — the play really was legal,
+ * Story: a Wild +4 challenge FAILS — the play really was legal,
  * and the doubting challenger draws 6 instead of the usual 4
  * (`UnoEngine.handleChallengeDecision`'s "challenge fails" branch,
  * `lastAction` reads "…challenged and lost — draws 6."). The original

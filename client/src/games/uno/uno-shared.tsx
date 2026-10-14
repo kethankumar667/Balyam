@@ -22,16 +22,16 @@ const WILD_COLORS: ReadonlyArray<UnoColor> = ["R", "G", "B", "Y"];
 
 /**
  * ----------------------------------------------------------------------------
- * Authentic UNO card art
+ * Color Cards card art
  * ----------------------------------------------------------------------------
- * UNO is a card game and should read like one — the old faces were a colour
- * emoji on a pastel rectangle, which looked like a placeholder next to Rummy's
- * real playing cards. These render the genuine article: a solid vivid body, the
- * signature white diagonal oval, a large centre symbol, mirrored corner
- * indices, and a patterned back for the draw pile. Everything is one scalable
- * SVG (viewBox 100×150) so the hand (md/lg), the discard top, the draw pile and
- * the selected-card preview all stay crisp at any size. Both shells consume
- * these through `Card` / `DeckPanel`, so the look is defined exactly once.
+ * An original look, deliberately not borrowed from any commercial deck: a dark
+ * frame around a vivid colour panel, a cream rounded-diamond "gem" in the
+ * centre carrying the symbol, mirrored corner indices on dark badges, and
+ * vertical flip arrows / a four-gem cluster for the special cards. No oval, no
+ * wordmark, no tilted lettering. Everything is one scalable SVG (viewBox
+ * 100×150) so the hand (md/lg), the discard top, the draw pile and the
+ * selected-card preview all stay crisp at any size. Both shells consume these
+ * through `Card` / `DeckPanel`, so the look is defined exactly once.
  */
 
 /** Solid card-body colours. */
@@ -82,12 +82,13 @@ function unoText(
   );
 }
 
-/** Skip: a ring with a diagonal bar through it. */
+/** Skip: two upright bars, a "hold" mark. `sw` is the bar width. */
 function SkipMark({ cx, cy, r, color, sw }: { cx: number; cy: number; r: number; color: string; sw: number }) {
+  const gap = r * 0.42;
   return (
     <g stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round">
-      <circle cx={cx} cy={cy} r={r} />
-      <line x1={cx - r * 0.72} y1={cy - r * 0.72} x2={cx + r * 0.72} y2={cy + r * 0.72} />
+      <line x1={cx - gap} y1={cy - r * 0.78} x2={cx - gap} y2={cy + r * 0.78} />
+      <line x1={cx + gap} y1={cy - r * 0.78} x2={cx + gap} y2={cy + r * 0.78} />
     </g>
   );
 }
@@ -110,34 +111,43 @@ function arrowPts(cx: number, yc: number, half: number, th: number, dir: 1 | -1)
     .join(" ");
 }
 
-/** Reverse: two opposed arrows, tilted to echo the oval. */
+/** Reverse: two opposed arrows standing upright, like a flip. */
 function ReverseMark({ cx, cy, r, color }: { cx: number; cy: number; r: number; color: string }) {
   const half = r * 0.82;
   const th = r * 0.24;
   const off = r * 0.5;
   return (
-    <g fill={color} transform={`rotate(-20 ${cx} ${cy})`}>
+    <g fill={color} transform={`rotate(90 ${cx} ${cy})`}>
       <polygon points={arrowPts(cx, cy - off, half, th, 1)} />
       <polygon points={arrowPts(cx, cy + off, half, th, -1)} />
     </g>
   );
 }
 
-/** Four-colour pinwheel used by Wild faces. */
+/** Four-gem cluster (one gem per colour) used by Wild faces. */
 function Pinwheel({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const k = 0.7071;
-  const wedges: ReadonlyArray<{ c: string; d: string }> = [
-    { c: UNO_BODY.R, d: `M0 0 L${-k} ${-k} A1 1 0 0 1 ${k} ${-k} Z` },
-    { c: UNO_BODY.B, d: `M0 0 L${k} ${-k} A1 1 0 0 1 ${k} ${k} Z` },
-    { c: UNO_BODY.Y, d: `M0 0 L${k} ${k} A1 1 0 0 1 ${-k} ${k} Z` },
-    { c: UNO_BODY.G, d: `M0 0 L${-k} ${k} A1 1 0 0 1 ${-k} ${-k} Z` },
+  const gems: ReadonlyArray<{ c: string; x: number; y: number }> = [
+    { c: UNO_BODY.R, x: 0, y: -0.52 },
+    { c: UNO_BODY.B, x: 0.52, y: 0 },
+    { c: UNO_BODY.Y, x: 0, y: 0.52 },
+    { c: UNO_BODY.G, x: -0.52, y: 0 },
   ];
   return (
-    <g transform={`translate(${cx} ${cy}) scale(${r}) rotate(-20)`}>
-      {wedges.map((w, i) => (
-        <path key={i} d={w.d} fill={w.c} />
+    <g transform={`translate(${cx} ${cy}) scale(${r})`}>
+      {gems.map((g, i) => (
+        <rect
+          key={i}
+          x={g.x - 0.34}
+          y={g.y - 0.34}
+          width={0.68}
+          height={0.68}
+          rx={0.14}
+          fill={g.c}
+          stroke="#17181d"
+          strokeWidth={0.07}
+          transform={`rotate(45 ${g.x} ${g.y})`}
+        />
       ))}
-      <circle cx={0} cy={0} r={1} fill="none" stroke="#fff" strokeWidth={2.4 / r} />
     </g>
   );
 }
@@ -146,19 +156,19 @@ function isNumber(rank: string): boolean {
   return /^[0-9]$/.test(rank);
 }
 
-/** Large centre symbol drawn in the card's ink colour on the white oval. */
+/** Large centre symbol drawn in the card's ink colour on the cream gem. */
 function CentreGlyph({ card, ink }: { card: UnoCard; ink: string }) {
   const r = card.rank;
-  if (isNumber(r)) return unoText(50, 75, 64, ink, r);
-  if (r === "+2") return unoText(50, 75, 46, ink, "+2");
-  if (r === "Skip") return <SkipMark cx={50} cy={75} r={24} color={ink} sw={7} />;
-  if (r === "Reverse") return <ReverseMark cx={50} cy={75} r={26} color={ink} />;
-  if (r === "Wild") return <Pinwheel cx={50} cy={75} r={28} />;
+  if (isNumber(r)) return unoText(50, 75, 54, ink, r);
+  if (r === "+2") return unoText(50, 75, 38, ink, "+2");
+  if (r === "Skip") return <SkipMark cx={50} cy={75} r={22} color={ink} sw={9} />;
+  if (r === "Reverse") return <ReverseMark cx={50} cy={75} r={22} color={ink} />;
+  if (r === "Wild") return <Pinwheel cx={50} cy={75} r={26} />;
   if (r === "Wild+4")
     return (
       <>
-        <Pinwheel cx={50} cy={75} r={26} />
-        {unoText(50, 112, 22, "#fff", "+4", WILD_BODY)}
+        <Pinwheel cx={50} cy={64} r={19} />
+        {unoText(50, 97, 20, WILD_BODY, "+4")}
       </>
     );
   return null;
@@ -219,21 +229,36 @@ export function UnoCardFace({ card, className }: { card: UnoCard; className?: st
       aria-label={getCardLabel(card)}
       preserveAspectRatio="xMidYMid meet"
     >
-      <rect x={0} y={0} width={100} height={150} rx={14} fill="#fff" />
-      <rect x={5} y={5} width={90} height={140} rx={10} fill={body} />
-      <ellipse cx={50} cy={75} rx={46} ry={29} fill="#fff" transform="rotate(-20 50 75)" />
+      <rect x={0} y={0} width={100} height={150} rx={14} fill="#14161c" />
+      <rect x={6} y={6} width={88} height={138} rx={9} fill={body} />
+      {isWild ? (
+        <rect x={6} y={6} width={88} height={138} rx={9} fill="none" stroke="#E8B100" strokeWidth={1.6} />
+      ) : null}
+      <rect
+        x={20}
+        y={45}
+        width={60}
+        height={60}
+        rx={12}
+        fill="#FFF8E7"
+        stroke="#14161c"
+        strokeWidth={2.4}
+        transform="rotate(45 50 75)"
+      />
       <CentreGlyph card={card} ink={ink} />
+      <circle cx={20} cy={26} r={13} fill="rgba(0,0,0,0.3)" />
       <CornerGlyph card={card} x={20} y={26} />
-      <ColorBlindGlyph color={card.color} x={20} y={40} />
+      <ColorBlindGlyph color={card.color} x={20} y={42} />
       <g transform="rotate(180 50 75)">
+        <circle cx={20} cy={26} r={13} fill="rgba(0,0,0,0.3)" />
         <CornerGlyph card={card} x={20} y={26} />
-        <ColorBlindGlyph color={card.color} x={20} y={40} />
+        <ColorBlindGlyph color={card.color} x={20} y={42} />
       </g>
     </svg>
   );
 }
 
-/** The face-down draw-pile back: custom cosmetic skin or classic black body, red oval, slanted "UNO". */
+/** The face-down draw-pile back: custom cosmetic skin or the classic dark body with a diamond badge. */
 export function UnoCardBack({ className, skin }: { className?: string; skin?: string }) {
   const localSkin = useCardBack("uno");
   const config = getUnoCardBackConfig(skin ?? localSkin);

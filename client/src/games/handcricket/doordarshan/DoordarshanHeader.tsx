@@ -127,7 +127,7 @@ export function DoordarshanHeader({
       : opts.format === "odi"
       ? "ODI · 15 OV"
       : `T20 · ${state.oversPerInnings ?? 10} OV`;
-  const categoryLabel = opts.category === "ipl" ? "IPL" : "INTERNATIONAL";
+  const categoryLabel = opts.category === "ipl" ? "LEAGUE" : "INTERNATIONAL";
 
   return (
     <div

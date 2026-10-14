@@ -59,7 +59,7 @@ export default function PreviewAnimations3D() {
     }
 
     if (activeFX === "runnerCheer") {
-      return <HcRunnerCheerUp skin={activeSkin} runnerName="Kohli" onComplete={() => setActiveFX(null)} />;
+      return <HcRunnerCheerUp skin={activeSkin} runnerName="Menon" onComplete={() => setActiveFX(null)} />;
     }
 
     const glow =
@@ -75,37 +75,37 @@ export default function PreviewAnimations3D() {
       <Hc3DStage skin={activeSkin} onDismiss={() => setActiveFX(null)} ambientGlow={glow}>
         {activeSkin === "broadcast" && (
           <>
-            {activeFX === "duck" && <Broadcast3DDuck batter="Rohit Sharma" duckType="golden" balls={1} />}
-            {activeFX === "milestone50" && <Broadcast3DMilestone batter="Virat Kohli" runs={50} balls={24} fours={5} sixes={3} />}
-            {activeFX === "milestone100" && <Broadcast3DMilestone batter="Virat Kohli" runs={100} balls={48} fours={9} sixes={6} />}
-            {activeFX === "six" && <Broadcast3DSix batter="Hardik Pandya" message="Deposited onto the stadium roof!" />}
-            {activeFX === "four" && <Broadcast3DFour batter="Shubman Gill" message="Classy cover drive races to the fence!" />}
-            {activeFX === "bowled" && <Broadcast3DBowled batter="Steve Smith" bowler="Jasprit Bumrah" isYorker={true} message="Toe-crushing yorker flattens the stumps!" />}
-            {activeFX === "hattrick" && <Broadcast3DHattrick bowler="Jasprit Bumrah" message="Three wickets in three balls!" />}
+            {activeFX === "duck" && <Broadcast3DDuck batter="Yash Mehra" duckType="golden" balls={1} />}
+            {activeFX === "milestone50" && <Broadcast3DMilestone batter="Kabir Menon" runs={50} balls={24} fours={5} sixes={3} />}
+            {activeFX === "milestone100" && <Broadcast3DMilestone batter="Kabir Menon" runs={100} balls={48} fours={9} sixes={6} />}
+            {activeFX === "six" && <Broadcast3DSix batter="Omkar Chitnis" message="Deposited onto the stadium roof!" />}
+            {activeFX === "four" && <Broadcast3DFour batter="Girish Vaidya" message="Classy cover drive races to the fence!" />}
+            {activeFX === "bowled" && <Broadcast3DBowled batter="Brodie Ashby" bowler="Varun Pillai" isYorker={true} message="Toe-crushing yorker flattens the stumps!" />}
+            {activeFX === "hattrick" && <Broadcast3DHattrick bowler="Varun Pillai" message="Three wickets in three balls!" />}
           </>
         )}
 
         {activeSkin === "cricbuzz" && (
           <>
-            {activeFX === "duck" && <Cricbuzz3DDuck batter="Rohit Sharma" duckType="golden" balls={1} />}
-            {activeFX === "milestone50" && <Cricbuzz3DMilestone batter="Virat Kohli" runs={50} balls={24} fours={5} sixes={3} />}
-            {activeFX === "milestone100" && <Cricbuzz3DMilestone batter="Virat Kohli" runs={100} balls={48} fours={9} sixes={6} />}
-            {activeFX === "six" && <Cricbuzz3DSix batter="Hardik Pandya" message="Monster hit over deep midwicket!" />}
-            {activeFX === "four" && <Cricbuzz3DFour batter="Shubman Gill" message="Precision gap-piercing boundary!" />}
-            {activeFX === "bowled" && <Cricbuzz3DBowled batter="Steve Smith" bowler="Jasprit Bumrah" isYorker={true} message="Radar clocked at 145.8 km/h!" />}
-            {activeFX === "hattrick" && <Cricbuzz3DHattrick bowler="Jasprit Bumrah" message="Telemetry confirmed: 3 consecutive dismissals!" />}
+            {activeFX === "duck" && <Cricbuzz3DDuck batter="Yash Mehra" duckType="golden" balls={1} />}
+            {activeFX === "milestone50" && <Cricbuzz3DMilestone batter="Kabir Menon" runs={50} balls={24} fours={5} sixes={3} />}
+            {activeFX === "milestone100" && <Cricbuzz3DMilestone batter="Kabir Menon" runs={100} balls={48} fours={9} sixes={6} />}
+            {activeFX === "six" && <Cricbuzz3DSix batter="Omkar Chitnis" message="Monster hit over deep midwicket!" />}
+            {activeFX === "four" && <Cricbuzz3DFour batter="Girish Vaidya" message="Precision gap-piercing boundary!" />}
+            {activeFX === "bowled" && <Cricbuzz3DBowled batter="Brodie Ashby" bowler="Varun Pillai" isYorker={true} message="Radar clocked at 145.8 km/h!" />}
+            {activeFX === "hattrick" && <Cricbuzz3DHattrick bowler="Varun Pillai" message="Telemetry confirmed: 3 consecutive dismissals!" />}
           </>
         )}
 
         {activeSkin === "doordarshan" && (
           <>
-            {activeFX === "duck" && <Doordarshan3DDuck batter="कपिल देव" duckType="golden" balls={1} />}
-            {activeFX === "milestone50" && <Doordarshan3DMilestone batter="सचिन तेंदुलकर" runs={50} balls={24} />}
-            {activeFX === "milestone100" && <Doordarshan3DMilestone batter="सचिन तेंदुलकर" runs={100} balls={48} />}
-            {activeFX === "six" && <Doordarshan3DSix batter="कपिल देव" message="गेंद सीमा रेखा के बाहर!" />}
-            {activeFX === "four" && <Doordarshan3DFour batter="सुनील गावस्कर" message="सटीक टाइमिंग से चौका!" />}
-            {activeFX === "bowled" && <Doordarshan3DBowled batter="इमरान खान" bowler="कपिल देव" isYorker={true} message="मिस्त्री यॉर्कर से विकेट उखड़ी!" />}
-            {activeFX === "hattrick" && <Doordarshan3DHattrick bowler="चेतन शर्मा" message="विश्व कप हैट्रिक का ऐतिहासिक पल!" />}
+            {activeFX === "duck" && <Doordarshan3DDuck batter="आर्यन मेहरा" duckType="golden" balls={1} />}
+            {activeFX === "milestone50" && <Doordarshan3DMilestone batter="कबीर मेनन" runs={50} balls={24} />}
+            {activeFX === "milestone100" && <Doordarshan3DMilestone batter="कबीर मेनन" runs={100} balls={48} />}
+            {activeFX === "six" && <Doordarshan3DSix batter="आर्यन मेहरा" message="गेंद सीमा रेखा के बाहर!" />}
+            {activeFX === "four" && <Doordarshan3DFour batter="विवान जोशी" message="सटीक टाइमिंग से चौका!" />}
+            {activeFX === "bowled" && <Doordarshan3DBowled batter="ज़ैद कुरैशी" bowler="आर्यन मेहरा" isYorker={true} message="मिस्त्री यॉर्कर से विकेट उखड़ी!" />}
+            {activeFX === "hattrick" && <Doordarshan3DHattrick bowler="रुद्र पिल्लई" message="विश्व कप हैट्रिक का ऐतिहासिक पल!" />}
           </>
         )}
 

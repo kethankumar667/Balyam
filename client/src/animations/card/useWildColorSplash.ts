@@ -7,7 +7,7 @@ export interface WildColorSplashEvent {
 }
 
 /**
- * Watches `lastAction` for a Wild/Wild Draw Four colour choice resolving
+ * Watches `lastAction` for a Wild/Wild +4 colour choice resolving
  * — the engine's own "… chose Green!" text, the same signal
  * `UnoActionToast` already keys its emphasized-pill treatment off of —
  * and returns a fresh trigger event carrying the just-chosen colour from

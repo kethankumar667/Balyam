@@ -3,7 +3,7 @@ import { messageFor } from "./DoordarshanCelebration";
 import { useTypewriter } from "./useTypewriter";
 import { DD } from "./doordarshan-kit";
 
-const IDLE_CAPTION = "— DD Sports commentary —";
+const IDLE_CAPTION = "— retro commentary —";
 
 /**
  * A persistent lower-third caption bar that types its text on

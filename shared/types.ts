@@ -1745,7 +1745,7 @@ export interface UnoPublicState {
    *  player's hand size changes away from 1 (see UnoEngine.syncUnoDeclaration). */
   unoDeclaredBy: string[];
   /**
-   * Set the instant a Wild Draw Four is played; the game pauses (no other
+   * Set the instant a Wild +4 is played; the game pauses (no other
    * turn-gated move is accepted) until `challengerId` sends "challenge" or
    * "acceptDraw". Deliberately omits whether the play was actually legal —
    * that must stay hidden until resolved, or the challenge has no purpose.
@@ -1754,7 +1754,7 @@ export interface UnoPublicState {
   /** Total cards the current player must draw if they decline (or can't)
    *  continue a Stack Draw Cards chain (Volume 4 §29). 0 when no stack is
    *  pending — the common case when the house rule is off. Only "+2" cards
-   *  currently participate in stacking; Wild Draw Four stacking is a
+   *  currently participate in stacking; Wild +4 stacking is a
    *  deliberately deferred scope decision (see UnoEngine.handleActionCard). */
   pendingDrawCount: number;
   /**
@@ -1863,12 +1863,12 @@ export interface UnoCatchUnoMove {
   data: { targetId: string };
 }
 
-/** Sent by the player targeted by a Wild Draw Four: disputes its legality. */
+/** Sent by the player targeted by a Wild +4: disputes its legality. */
 export interface UnoChallengeMove {
   type: "challenge";
 }
 
-/** Sent by the player targeted by a Wild Draw Four: accepts the draw without disputing it. */
+/** Sent by the player targeted by a Wild +4: accepts the draw without disputing it. */
 export interface UnoAcceptDrawMove {
   type: "acceptDraw";
 }
@@ -1894,7 +1894,7 @@ export type UnoMoveType =
 export interface UnoGameOptions {
   /** Seconds per turn before auto-draw. Volume 4 §3's official default is 20. */
   turnTimerSeconds: number;
-  /** House rule: Draw Two / Wild Draw Four penalties may be stacked onto the next player. */
+  /** House rule: Draw Two / Wild +4 penalties may be stacked onto the next player. */
   stackDrawCards: boolean;
   /** House rule: a player holding an exact match to the top card may play out of turn. */
   jumpIn: boolean;

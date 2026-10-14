@@ -8,7 +8,7 @@ export interface UnoActionToastProps {
 /**
  * Surfaces `UnoPublicState.lastAction` — the engine already produces a
  * human-readable description on every state-changing move ("Skip! Next
- * player skipped.", "Wild Draw Four! Next player draws 4.") but nothing
+ * player skipped.", "Wild +4! Next player draws 4.") but nothing
  * rendered it before this (see UNO_GAME_PLAN.md §8.4). Small, centred,
  * auto-dismissing banner — same "watch for a new value, show, fade" shape
  * as the room-level ChatMessageToast, scoped to UNO's own cream/gold table

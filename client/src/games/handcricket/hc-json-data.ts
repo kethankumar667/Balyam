@@ -100,16 +100,16 @@ const COUNTRY_CODE: Record<HcCountry, string> = {
 
 // Map shared HcFranchise key → JSON teamCode field value
 const FRANCHISE_CODE: Record<HcFranchise, string> = {
-  csk: "CSK",
-  mi: "MI",
-  rcb: "RCB",
-  kkr: "KKR",
-  srh: "SRH",
-  dc: "DC",
-  pbks: "PBKS",
-  rr: "RR",
-  gt: "GT",
-  lsg: "LSG",
+  csk: "CCO",
+  mi: "MMA",
+  rcb: "BLZ",
+  kkr: "KKE",
+  srh: "HYH",
+  dc: "DDR",
+  pbks: "PPA",
+  rr: "JJA",
+  gt: "AAR",
+  lsg: "LLA",
 };
 
 // ---------------------------------------------------------------------------

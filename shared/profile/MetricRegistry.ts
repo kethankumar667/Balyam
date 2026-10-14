@@ -226,7 +226,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
         key: "wildCardsPlayed",
         label: "Wild & Action Cards Played",
         shortLabel: "Wild Plays",
-        description: "Tactical Wild and Wild Draw Four cards deployed",
+        description: "Tactical Wild and Wild +4 cards deployed",
         format: "raw_number",
         direction: "HIGHER_IS_BETTER",
         importance: "SECONDARY",
