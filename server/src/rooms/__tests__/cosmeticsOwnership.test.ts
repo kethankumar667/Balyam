@@ -162,6 +162,45 @@ describe("cosmetics broadcast to the room only when actually owned", () => {
     expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.podiumTitle).toBe("title_grandmaster");
   });
 
+  it("shows a skin an admin equipped in the shop, even though the live connection cannot see the operational key", async () => {
+    const { rooms, economyService, cosmeticsService } = makeHarness();
+    const identityId = "player_key_admin";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    // The shop's HTTP side treats a caller holding the operational key as an admin: nothing is
+    // purchased, so there is no entitlement row, but the equipped slot IS recorded.
+    await cosmeticsService.equipCosmetic(identityId, "TOKEN_SKIN", "ludo", "token_imperial_sovereign", true);
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { tokenSkin: "token_imperial_sovereign" });
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.tokenSkin).toBe("token_imperial_sovereign");
+  });
+
+  it("only honours what the server recorded as equipped, not what the client claims", async () => {
+    const { rooms, economyService, cosmeticsService } = makeHarness();
+    const identityId = "player_key_admin_other";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    await cosmeticsService.equipCosmetic(identityId, "TOKEN_SKIN", "ludo", "token_imperial_sovereign", true);
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { tokenSkin: "token_draco_inferno" }); // equipped a different one
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.tokenSkin).toBeUndefined();
+  });
+
+  it("stops showing an admin-equipped skin once it is unequipped", async () => {
+    const { rooms, economyService, cosmeticsService } = makeHarness();
+    const identityId = "player_key_admin_unequip";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    await cosmeticsService.equipCosmetic(identityId, "TOKEN_SKIN", "ludo", "token_imperial_sovereign", true);
+    await cosmeticsService.unequipCosmetic(identityId, "TOKEN_SKIN", "ludo");
+
+    const alice = hostWithIdentity(rooms, "sock_alice", "Alice", identityId);
+    await rooms.setCosmetics("sock_alice", { tokenSkin: "token_imperial_sovereign" });
+
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.tokenSkin).toBeUndefined();
+  });
+
   it("shows nothing for an unresolved identity (no wallet to verify ownership against)", async () => {
     const { rooms } = makeHarness();
     // createRoom tolerates a null/absent identityId (a guest with no valid

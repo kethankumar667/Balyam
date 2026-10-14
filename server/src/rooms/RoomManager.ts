@@ -2750,7 +2750,24 @@ export class RoomManager {
 
     if (this.isIdentityAdmin(identityId)) return loadout;
 
-    const ownedIds = new Set((await this.cosmeticsService.getUserLoadout(identityId, false)).ownedIds);
+    const state = await this.cosmeticsService.getUserLoadout(identityId, false);
+    const ownedIds = new Set(state.ownedIds);
+    // What the server itself recorded as equipped is trusted too. The shop's equip endpoint already
+    // refuses an unowned skin for an ordinary player, but lets an admin equip any skin — and an admin
+    // recognised only by the operational key (the HTTP side's check) has no entitlement rows and is
+    // invisible to this socket, so without this their equipped skin would silently never show in a match.
+    // Unequipping and refunding both clear the slot, so this cannot outlive a revoked item.
+    const eq = state.equipped;
+    for (const id of [
+      ...Object.values(eq.tableThemes),
+      ...Object.values(eq.diceSkins),
+      ...Object.values(eq.tokenSkins),
+      ...Object.values(eq.cardBacks),
+      eq.avatarAura,
+      eq.podiumTitle,
+    ]) {
+      if (typeof id === "string") ownedIds.add(id);
+    }
     const isAllowed = (
       cosmeticId: string | undefined,
       category: CosmeticCategory,
