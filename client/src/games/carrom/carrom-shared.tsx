@@ -874,6 +874,7 @@ export function CarromSvgBoard({
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onPointerCancel,
 }: {
   state: CarromPublicState;
   selfId: string;
@@ -884,6 +885,8 @@ export function CarromSvgBoard({
   onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGSVGElement>) => void;
+  /** Required, not defaulted to `onPointerUp`: a touch the system interrupts must never fire the shot. */
+  onPointerCancel: (e: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   const striker = state.pieces.find((p) => p.kind === "striker");
   // What is DRAWN lags the server by a few frames so shots glide; aiming and rules read `state.pieces`.
@@ -1007,7 +1010,7 @@ export function CarromSvgBoard({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         <defs>
           <linearGradient id="frameGrad" x1="0%" y1="0%" x2="30%" y2="100%">

@@ -2,6 +2,9 @@ import React, { useRef, useCallback } from "react";
 import { HapticsManager } from "../../services/HapticsManager";
 import { toUiSliderPos, toServerSliderPos } from "./carrom-shared";
 
+/** The slider ticks the phone once per 5% of travel. */
+const HAPTIC_NOTCHES = 20;
+
 interface CarromStrikerSliderProps {
   myTurn: boolean;
   phase: string;
@@ -19,6 +22,7 @@ export function CarromStrikerSlider({
 }: CarromStrikerSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const lastNotchRef = useRef<number | null>(null);
 
   const canPlace = myTurn && phase === "aiming";
   const uiPos = toUiSliderPos(strikerPos, isFlipped);
@@ -35,7 +39,13 @@ export function CarromStrikerSlider({
       const serverPos = toServerSliderPos(clampedUiPos, isFlipped);
 
       onPlace(serverPos);
-      HapticsManager.getInstance().subtle();
+
+      // One tick per notch of travel. Buzzing on every move event is a continuous rattle, not a feel.
+      const notch = Math.round(clampedUiPos * HAPTIC_NOTCHES);
+      if (notch !== lastNotchRef.current) {
+        lastNotchRef.current = notch;
+        HapticsManager.getInstance().subtle();
+      }
     },
     [onPlace, isFlipped]
   );
@@ -55,6 +65,7 @@ export function CarromStrikerSlider({
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
+      lastNotchRef.current = null;
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch {

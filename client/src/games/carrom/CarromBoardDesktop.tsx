@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import type { CarromBoardProps } from "./CarromBoard";
 import type { StrikerSkin, BoardFeltSkin } from "@shared/types";
-import { CARROM_BOARD } from "@shared/types";
 import {
   CarromLoungeHeader,
   CarromPlayerCards,
@@ -11,9 +10,9 @@ import {
   CarromActivityLog,
   CarromRulesList,
   useCarromFeed,
-  pointerToBoard,
-  type AimData,
 } from "./carrom-shared";
+import { useCarromAim } from "./useCarromAim";
+import { useThrottledPlace } from "./useThrottledPlace";
 import CarromSkinModal from "./CarromSkinModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
@@ -34,7 +33,6 @@ export default function CarromBoardDesktop({
   onLeave,
 }: CarromBoardProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [showSkins, setShowSkins] = useState(false);
   const { settings } = useAudio();
 
@@ -66,47 +64,23 @@ export default function CarromBoardDesktop({
       ? "Disc Pool"
       : "Classic";
 
-  function toBoard(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } | null {
-    const svg = svgRef.current;
-    if (!svg) return null;
-    return pointerToBoard(svg.getBoundingClientRect(), e.clientX, e.clientY, isFlipped);
-  }
-
-  const aim: AimData | null = useMemo(() => {
-    if (!drag || !striker) return null;
-    const dx = striker.x - drag.x;
-    const dy = striker.y - drag.y;
-    const pull = Math.hypot(dx, dy);
-    if (pull < 1) return null;
-    const power = Math.min(1, pull / (CARROM_BOARD.size / 3));
-    return { angle: Math.atan2(dy, dx), power, dx, dy };
-  }, [drag, striker]);
-
-  function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
-    if (!myTurn) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag(toBoard(e));
-  }
-
   const [activeImpact, setActiveImpact] = useState<{ x: number; y: number; power: number } | null>(null);
 
-  function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    if (!drag || !myTurn) return;
-    setDrag(toBoard(e));
-  }
+  // Sliding the striker sends at most one message per 50 ms instead of one per input event.
+  const placeStriker = useThrottledPlace((pos) => onMove("place", { pos }));
 
-  function handlePointerUp() {
-    if (aim && myTurn) {
-      CarromAudio.playStrikerPunch(aim.power);
-      setActiveImpact({
-        x: striker?.x ?? 50,
-        y: striker?.y ?? 50,
-        power: aim.power,
-      });
-      onMove("shoot", { angle: aim.angle, power: aim.power });
-    }
-    setDrag(null);
-  }
+  // Pull back with the mouse (primary button) to aim, release to shoot. The same input as the mobile
+  // board (useCarromAim); Escape cancels.
+  const { aim, handlers: aimHandlers } = useCarromAim({
+    svgRef,
+    isFlipped,
+    enabled: myTurn && !!striker,
+    onShoot: (shot) => {
+      CarromAudio.playStrikerPunch(shot.power);
+      setActiveImpact({ x: striker?.x ?? 50, y: striker?.y ?? 50, power: shot.power });
+      onMove("shoot", { angle: shot.angle, power: shot.power });
+    },
+  });
 
   // Audio feedback for combos and fouls
   useEffect(() => {
@@ -119,15 +93,6 @@ export default function CarromBoardDesktop({
       CarromAudio.playCoinClack(0.85);
     }
   }, [state.lastCombo]);
-
-  useEffect(() => {
-    if (!drag) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrag(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [drag]);
 
   const activeState = useMemo(
     () => ({
@@ -212,9 +177,10 @@ export default function CarromBoardDesktop({
               aim={aim}
               svgRef={svgRef}
               isFlipped={isFlipped}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
+              onPointerDown={aimHandlers.onPointerDown}
+              onPointerMove={aimHandlers.onPointerMove}
+              onPointerUp={aimHandlers.onPointerUp}
+              onPointerCancel={aimHandlers.onPointerCancel}
             />
             <CarromVfxOverlay
               lastCombo={state.lastCombo}
@@ -225,7 +191,7 @@ export default function CarromBoardDesktop({
           <CarromShotControls
             myTurn={myTurn}
             strikerPos={state.strikerPos}
-            onPlace={(pos) => onMove("place", { pos })}
+            onPlace={placeStriker}
             aim={aim}
             phase={state.phase}
             isFlipped={isFlipped}
