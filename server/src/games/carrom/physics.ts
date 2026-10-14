@@ -20,6 +20,18 @@ import { CARROM_BOARD } from "@shared/types.js";
 export const REST_SPEED = 0.6;
 /** Fraction of velocity retained per second — cloth friction. */
 const FRICTION_PER_SECOND = 0.28;
+/**
+ * Below this speed (units/second) a piece is crawling. Friction alone never finishes the job: it
+ * removes the same FRACTION of speed each second, so a slow piece crept for over two seconds and
+ * every shot took 3 to 4 seconds to end, with the next player locked out the whole time.
+ */
+const CRAWL_SPEED = 14;
+/**
+ * Constant slowdown (units/second²) once a piece is crawling, as on a real board where a slow
+ * coin simply runs out of push. A crawling piece now stops in under a third of a second. The fast
+ * part of a strike is untouched, so a hard shot travels about as far as it always did.
+ */
+const CRAWL_DECELERATION = 50;
 /** Energy kept on a cushion bounce. */
 const CUSHION_RESTITUTION = 0.62;
 /** Energy kept in a coin-coin impact. */
@@ -84,8 +96,11 @@ export function step(pieces: CarromPiece[], dt: number): CarromPiece[] {
     for (const p of live) {
       p.x += p.vx * subDt;
       p.y += p.vy * subDt;
-      p.vx *= damping;
-      p.vy *= damping;
+      const speed = speedOf(p);
+      // `speed > 0` guards the division: a piece already at rest has nothing to slow.
+      const keep = speed > 0 && speed < CRAWL_SPEED ? Math.max(0, speed - CRAWL_DECELERATION * subDt) / speed : damping;
+      p.vx *= keep;
+      p.vy *= keep;
       if (speedOf(p) < REST_SPEED) {
         p.vx = 0;
         p.vy = 0;
