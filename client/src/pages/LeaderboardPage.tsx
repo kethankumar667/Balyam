@@ -250,8 +250,8 @@ interface PersonalScoreItem {
 const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "handcricket", label: "Hand Cricket", icon: "🏏" },
   { id: "2048", label: "2048 Classic", icon: "🔢" },
-  { id: "nokiasnake", label: "Nokia Snake", icon: "📱" },
-  { id: "nokiacricket", label: "Nokia Cricket", icon: "🏏" },
+  { id: "nokiasnake", label: "Retro Snake", icon: "📱" },
+  { id: "nokiacricket", label: "Retro Cricket", icon: "🏏" },
   { id: "roadrash", label: "Brick Racer", icon: "🏎️" },
   { id: "brickblocks", label: "Brick Tetris", icon: "🧱" },
   { id: "ludo", label: "Ludo", icon: "🎲" },

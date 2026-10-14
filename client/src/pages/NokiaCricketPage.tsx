@@ -21,7 +21,7 @@ export default function NokiaCricketPage() {
 
   return (
     <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0D1322] overflow-hidden">
-      <h1 className="sr-only">Nokia Cricket 2D — Classic Retro Handheld Cricket Game</h1>
+      <h1 className="sr-only">Retro Cricket 2D — Classic Retro Handheld Cricket Game</h1>
       <NokiaCricketBoard onExit={() => navigate("/games")} />
     </div>
   );

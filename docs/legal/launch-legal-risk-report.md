@@ -28,6 +28,10 @@
 - Layout: the Create Room button no longer clips at tablet width, and the settlement card now fits its container on a phone.
 - Two storage keys were missing from the DPDP data inventory (`mpg.hc.skin`) or are new (`mpg.hc.customNames`, `bhalyam.age.band`); all three are now declared.
 
+**Also done (2026-10-14, token review):** the 16 new 3D Ludo tokens were reviewed before merge. Names and code comments no longer reference a competitor ("Ludo King") or a Nokia model number ("Retro 3310" is now "Retro Handset"). A production migration (`20261102000000_ludo_collectible_tokens.sql`) and rollback were added. Leftover "Nokia" and "3310" wording in player-visible text (catalog, leaderboards, navigation, About page) was also replaced; internal ids and routes are unchanged.
+- Worth a lawyer's look: "Sacred Trishula" is a religious symbol (Shiva's trident and damru) sold as a cosmetic for coins, and the Retro Handset's drawing (dark-blue body, green screen, Snake) still evokes the Nokia 3310 look even though it carries no name.
+- Still open: the catalog descriptions for the UNO-style card backs (dev seed and the database rows from migration `20260923000000`) still say "behind the classic logo", which is no longer true now that the art is logo-free; fixing the live database text needs a new migration.
+
 **Still open (needs you, a licence or a lawyer):** items 1, 2, 4, 5 (officer details) and 8 to 11 in section 8, plus:
 - The card *names* Skip, Reverse, Draw Two and Wild, the 108-card structure and the four colours are ordinary game rules and vocabulary, and the server's action messages depend on them, so they were kept. A lawyer should confirm that is acceptable.
 - The Hand Cricket skins named after real broadcasters (Cricbuzz, Doordarshan) are renamed in the UI but still imitate their look; a lawyer should confirm the visual styling is acceptable, or restyle them.

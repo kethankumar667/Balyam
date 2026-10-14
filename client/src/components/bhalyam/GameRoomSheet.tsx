@@ -370,7 +370,7 @@ const SNAKE_WALL_MODES: { id: "solid" | "wrap"; label: string; blurb: string }[]
 
 const SNAKE_THEMES: { id: "monochrome" | "color" | "neon-modern"; label: string; blurb: string }[] = [
   { id: "monochrome", label: "Pocket", blurb: "Green LCD dot matrix" },
-  { id: "color",      label: "6110", blurb: "Classic color screen" },
+  { id: "color",      label: "Color", blurb: "Classic color screen" },
   { id: "neon-modern",      label: "Neon Glow",  blurb: "Modern vibrant dark mode" },
 ];
 

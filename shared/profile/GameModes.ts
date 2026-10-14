@@ -78,11 +78,11 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   nokiasnake: {
     game: "nokiasnake",
-    displayName: "Nokia Snake",
+    displayName: "Retro Snake",
     category: "retro_arcade",
     defaultModeId: "classic_walled",
     modes: [
-      { modeId: "classic_walled", displayName: "Classic 3310 Walled", description: "Pixelated nostalgia run with LCD dot matrix", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
+      { modeId: "classic_walled", displayName: "Classic Walled", description: "Pixelated nostalgia run with LCD dot matrix", scoringDirection: "HIGHER_IS_BETTER", unit: "apples", isDefault: true },
       { modeId: "speed_rush", displayName: "Arcade Rush", description: "High-speed reflex challenge", scoringDirection: "HIGHER_IS_BETTER", unit: "apples" },
     ],
   },
@@ -172,7 +172,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   nokiacricket: {
     game: "nokiacricket",
-    displayName: "Nokia Cricket",
+    displayName: "Retro Cricket",
     category: "retro_arcade",
     defaultModeId: "2_overs",
     modes: [

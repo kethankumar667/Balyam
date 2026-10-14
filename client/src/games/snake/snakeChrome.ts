@@ -27,8 +27,8 @@ export interface SnakeChrome {
 export const SNAKE_THEMES: SnakeTheme[] = ["nokia-monochrome", "nokia-color", "neon-modern"];
 
 export const THEME_LABELS: Record<SnakeTheme, string> = {
-  "nokia-monochrome": "3310 LCD",
-  "nokia-color": "6110 Color",
+  "nokia-monochrome": "Mono LCD",
+  "nokia-color": "Color LCD",
   "neon-modern": "Neon",
 };
 

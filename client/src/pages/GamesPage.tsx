@@ -86,7 +86,7 @@ export default function GamesPage() {
             Explore All Games
           </h1>
           <p className="text-xs sm:text-sm text-ink-mid max-w-2xl">
-            Relive your 90s school days with Nokia mobile classics, board games, cards, and multiplayer school games with friends.
+            Relive your 90s school days with retro mobile classics, board games, cards, and multiplayer school games with friends.
           </p>
         </header>
 

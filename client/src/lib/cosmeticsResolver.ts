@@ -22,6 +22,7 @@ import {
 } from "@shared/cosmetics";
 import type { TokenFinishId } from "../games/ludo/TokenFinishOverlay";
 import type { TokenThemeId } from "../games/ludo/TokenThemeOverlay";
+import type { TokenFigurineType } from "../games/ludo/tokens/TokenFigurineRenderer";
 import { UNO_BACK_ART } from "./unoCardBackArt";
 
 // ── 1. Table Themes ──
@@ -262,6 +263,12 @@ export interface TokenSkinConfig {
   hasDiamond: boolean;
   hasPhoenixWing: boolean;
   /**
+   * 3D Collectible Figurine Type (collectible set).
+   * When set, replaces the classic 2D pawn silhouette with a full
+   * collectible 3D SVG figurine standing on an illuminated seat-color aura dais.
+   */
+  figurineType?: TokenFigurineType;
+  /**
    * Premium craftsmanship finish (see `TokenFinishOverlay`). Always
    * rendered in the player's own seat color — never a fixed hue — so
    * equipping a finish never overrides seat-color identity on the board.
@@ -474,6 +481,88 @@ export const TOKEN_SKINS: Record<string, TokenSkinConfig> = {
     id: "token_theme_void_reaper",
     hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
     theme: "voidReaper",
+  },
+
+  // ── 3D Collectible Tokens ──
+  token_imperial_sovereign: {
+    id: "token_imperial_sovereign",
+    hasCrown: true, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "imperial_sovereign",
+  },
+  token_scepter_radiance: {
+    id: "token_scepter_radiance",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "scepter_radiance",
+  },
+  token_throne_valor: {
+    id: "token_throne_valor",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "throne_valor",
+  },
+  token_signet_empire: {
+    id: "token_signet_empire",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "signet_empire",
+  },
+  token_draco_inferno: {
+    id: "token_draco_inferno",
+    hasCrown: false, hasFireball: true, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "draco_inferno",
+  },
+  token_phoenix_rebirth: {
+    id: "token_phoenix_rebirth",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: true,
+    figurineType: "phoenix_rebirth",
+  },
+  token_airavata_royale: {
+    id: "token_airavata_royale",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "airavata_royale",
+  },
+  token_bengal_vyaghra: {
+    id: "token_bengal_vyaghra",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "bengal_vyaghra",
+  },
+  token_neo_valkyrie: {
+    id: "token_neo_valkyrie",
+    hasCrown: false, hasFireball: false, hasNeonRing: true, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "neo_valkyrie",
+  },
+  token_celestial_shard: {
+    id: "token_celestial_shard",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: true, hasPhoenixWing: false,
+    figurineType: "celestial_shard",
+  },
+  token_supernova_core: {
+    id: "token_supernova_core",
+    hasCrown: false, hasFireball: true, hasNeonRing: true, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "supernova_core",
+  },
+  token_astral_voyager: {
+    id: "token_astral_voyager",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "astral_voyager",
+  },
+  token_aegis_champion: {
+    id: "token_aegis_champion",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "aegis_champion",
+  },
+  token_samurai_shogun: {
+    id: "token_samurai_shogun",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "samurai_shogun",
+  },
+  token_sacred_trishula: {
+    id: "token_sacred_trishula",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "sacred_trishula",
+  },
+  token_retro_handset: {
+    id: "token_retro_handset",
+    hasCrown: false, hasFireball: false, hasNeonRing: false, hasDiamond: false, hasPhoenixWing: false,
+    figurineType: "retro_handset",
   },
 };
 

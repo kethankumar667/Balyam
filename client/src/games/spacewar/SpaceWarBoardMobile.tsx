@@ -456,7 +456,7 @@ export default function SpaceWarBoardMobile({
             <div className="flex items-center gap-1">
               {[
                 { id: "cyberpunk", label: "🌌 Cyber" },
-                { id: "retro_nokia", label: "📟 Nokia" },
+                { id: "retro_nokia", label: "📟 Retro Phone" },
                 { id: "neon_synthwave", label: "🌅 Synth" },
                 { id: "solar_flare", label: "☀️ Solar" },
               ].map((t) => (

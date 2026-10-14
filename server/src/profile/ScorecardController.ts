@@ -45,7 +45,7 @@ scorecardRouter.get("/:playerId/scorecards/:game/:mode/ghost", (req, res) => {
 /**
  * PRIVATE — POST /api/profile/:playerId/scorecards/record
  *
- * Records a solo/arcade game score (e.g. 2048, Nokia Snake, Nokia Cricket).
+ * Records a solo/arcade game score (e.g. 2048, Retro Snake, Retro Cricket).
  */
 // A solo game records once per finished run, so 30 in a burst refilling at one
 // every two seconds is generous for a real player and stops a script from

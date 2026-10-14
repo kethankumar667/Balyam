@@ -121,7 +121,7 @@ export default function SpaceWarBoardDesktop({
           <div className="flex items-center gap-1.5 bg-[#0a0d1c] p-1.5 rounded-xl border border-[#1f2952]">
             {[
               { id: "cyberpunk", label: "🌌 Cyberpunk" },
-              { id: "retro_nokia", label: "📟 3310 Nokia" },
+              { id: "retro_nokia", label: "📟 Retro Phone" },
               { id: "neon_synthwave", label: "🌅 Synthwave" },
               { id: "solar_flare", label: "☀️ Solar Flare" },
             ].map((t) => (

@@ -159,7 +159,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       },
       {
         id: "games-retro",
-        label: "Classic Nokia Games",
+        label: "Classic Retro Games",
         icon: Gamepad2,
         path: "/games",
         search: "?c=retro",

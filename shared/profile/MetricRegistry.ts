@@ -804,7 +804,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       key: "bestScore",
       label: "High Score Runs",
       shortLabel: "Runs",
-      description: "Highest runs scored in retro Nokia cricket innings",
+      description: "Highest runs scored in retro cricket innings",
       format: "runs",
       direction: "HIGHER_IS_BETTER",
       importance: "PRIMARY",

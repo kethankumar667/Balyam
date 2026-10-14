@@ -192,7 +192,7 @@ function BicycleDoodleSVG({ className = "" }: { className?: string }) {
 const NOSTALGIA_TIMELINE = [
   { year: "1995", title: "Classroom Desks", text: "Tearing paper, making balls, and playing Hand Cricket during lunch breaks under teacher's desk.", icon: "🏏" },
   { year: "2000", title: "Veranda Carrom", text: "Summer holidays with boric powder, wooden carrom boards, and endless Ludo cutting battles.", icon: "🎲" },
-  { year: "2005", title: "Nokia Brick Era", text: "Pushing green pixels in Snake II and passing phone around in university hostels.", icon: "🐍" },
+  { year: "2005", title: "Brick Phone Era", text: "Pushing green pixels in Snake II and passing phone around in university hostels.", icon: "🐍" },
   { year: "2026", title: "Bhalyam is Born", text: "Rebuilding our digital lounge so we never lose our childhood friends, no matter where life takes us.", icon: "🛋️" },
 ];
 
