@@ -839,17 +839,7 @@ export function usePodiumTitle(seatTitle?: string): PodiumTitleConfig | null {
 }
 
 /**
- * Formats the public presentation payload to broadcast to the room.
+ * The payload sent to the room lives in `publicPresentation.ts`, which does not import the store
+ * (the store sends it, and this file reads the store). Re-exported so callers keep one import path.
  */
-export function getPublicPresentationLoadout(
-  resolved: ResolvedCosmeticsLoadout,
-  game?: GameKind,
-): PublicPresentationLoadout {
-  const gameScope = (game as CosmeticGameScope) ?? "GLOBAL";
-  return {
-    avatarAura: resolved.avatarAura !== "aura_none" ? resolved.avatarAura : undefined,
-    podiumTitle: resolved.podiumTitle !== "title_none" ? resolved.podiumTitle : undefined,
-    tokenSkin: resolved.tokenSkins[gameScope] ?? resolved.tokenSkins.GLOBAL,
-    diceSkin: resolved.diceSkins[gameScope] ?? resolved.diceSkins.GLOBAL,
-  };
-}
+export { getPublicPresentationLoadout } from "./publicPresentation";

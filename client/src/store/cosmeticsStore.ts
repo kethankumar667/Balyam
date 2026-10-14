@@ -27,6 +27,7 @@ import {
   resolveEffectiveLoadout,
   getDefaultCosmetic,
 } from "@shared/cosmetics";
+import { getPublicPresentationLoadout } from "../lib/publicPresentation";
 import { apiFetch, apiJson } from "../lib/playerIdentity";
 import { refreshCurrentWallet } from "../hooks/useEconomy";
 import { getSocket } from "../lib/socket";
@@ -67,17 +68,18 @@ const initialEquipped: EquippedCosmeticsLoadout = {
   cardBacks: {},
 };
 
+/** The slot a category lives in when the caller did not pick one: tokens are Ludo's, card backs start on Rummy. */
+function defaultScopeFor(category: CosmeticCategory): CosmeticGameScope {
+  if (category === "TOKEN_SKIN") return "ludo";
+  if (category === "CARD_BACK") return "rummy";
+  return "GLOBAL";
+}
+
 function syncRoomCosmetics(resolved: ResolvedCosmeticsLoadout) {
   try {
     const roomState = useRoomStore.getState().roomState;
     if (roomState) {
-      const gameScope = (roomState.game as CosmeticGameScope) ?? "GLOBAL";
-      getSocket().emit("room:setCosmetics", {
-        avatarAura: resolved.avatarAura !== "aura_none" ? resolved.avatarAura : undefined,
-        podiumTitle: resolved.podiumTitle !== "title_none" ? resolved.podiumTitle : undefined,
-        tokenSkin: resolved.tokenSkins[gameScope] ?? resolved.tokenSkins.GLOBAL,
-        diceSkin: resolved.diceSkins[gameScope] ?? resolved.diceSkins.GLOBAL,
-      });
+      getSocket().emit("room:setCosmetics", getPublicPresentationLoadout(resolved, roomState.game));
     }
   } catch {
     // Socket may not be initialized yet
@@ -116,6 +118,8 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
           equipped: data.equipped || initialEquipped,
           resolved: data.resolved || resolveEffectiveLoadout(data.equipped),
         });
+        // A room joined before this finished was told the default look; correct it now.
+        syncRoomCosmetics(get().resolved);
       } else {
         // Fallback: public catalog only
         const catalogOnly = await apiJson<CosmeticCatalogItem[]>("/api/cosmetics/catalog");
@@ -135,7 +139,7 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
 
   openStore: (category?: CosmeticCategory, scope?: CosmeticGameScope) => {
     const nextCategory = category ?? get().selectedCategory;
-    const nextScope = scope ?? "GLOBAL";
+    const nextScope = scope ?? defaultScopeFor(nextCategory);
     set({
       isOpen: true,
       selectedCategory: nextCategory,
@@ -150,16 +154,9 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
   },
 
   selectCategory: (category: CosmeticCategory) => {
-    const scope: CosmeticGameScope =
-      category === "TOKEN_SKIN"
-        ? "ludo"
-        : category === "CARD_BACK"
-          ? "rummy"
-          : "GLOBAL";
-
     set({
       selectedCategory: category,
-      selectedScope: scope,
+      selectedScope: defaultScopeFor(category),
       selectedItemId: null,
       errorMessage: null,
     });
