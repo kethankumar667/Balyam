@@ -14,6 +14,7 @@ import {
 } from "./carromFeed";
 import { computeCarromTrajectory } from "@shared/carromTrajectory";
 import { CarromAudio } from "./carromAudio";
+import { useSmoothedPieces } from "./useSmoothedPieces";
 
 export type { CarromFeedEntry };
 
@@ -885,6 +886,8 @@ export function CarromSvgBoard({
   onPointerUp: (e: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   const striker = state.pieces.find((p) => p.kind === "striker");
+  // What is DRAWN lags the server by a few frames so shots glide; aiming and rules read `state.pieces`.
+  const shown = useSmoothedPieces(state.pieces, state.phase === "resolving");
   const size = CARROM_BOARD.size;
   const cushion = CARROM_BOARD.cushion;
   const center = size / 2;
@@ -911,13 +914,13 @@ export function CarromSvgBoard({
       startTime: number;
     }>
   >([]);
-  const prevPiecesRef = useRef(state.pieces);
+  const prevPiecesRef = useRef(shown);
 
   useEffect(() => {
     const prev = prevPiecesRef.current;
-    prevPiecesRef.current = state.pieces;
+    prevPiecesRef.current = shown;
 
-    const newlyPotted = state.pieces.filter((curr) => {
+    const newlyPotted = shown.filter((curr) => {
       const old = prev.find((p) => p.id === curr.id);
       return curr.pocketed && old && !old.pocketed;
     });
@@ -945,7 +948,7 @@ export function CarromSvgBoard({
 
       setSinkingPieces((prevSinks) => [...prevSinks, ...newSinks]);
     }
-  }, [state.pieces, pockets]);
+  }, [shown, pockets]);
 
   useEffect(() => {
     if (sinkingPieces.length === 0) return;
@@ -1337,7 +1340,7 @@ export function CarromSvgBoard({
           })}
 
           {/* ── Rendered Pieces (3D Beveled Cylindrical Tokens) ── */}
-          {state.pieces
+          {shown
             .filter((p) => !p.pocketed)
             .map((p) => {
               const isStriker = p.kind === "striker";

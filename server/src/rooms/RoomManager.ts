@@ -163,6 +163,7 @@ import { resolveIdentity } from "./economyIdentity.js";
 import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
 import { DurableSettlementWorker } from "../economy/DurableSettlementWorker.js";
 import type { CosmeticsService } from "../cosmetics/CosmeticsService.js";
+import { tickPeriodMs } from "./simulationClock.js";
 import { operationalAuthConfig, getUserRole } from "../security/operationalAuth.js";
 import type { RoomSnapshot, RoomSnapshotRepository } from "./durability/types.js";
 import { roomSnapshotStore } from "./durability/index.js";
@@ -4824,7 +4825,8 @@ export class RoomManager {
   /** The interval an engine is currently asking for, in ms. */
   private periodFor(engine: GameEngine | null): number | null {
     if (!engine || !isRealtimeEngine(engine)) return null;
-    return Math.max(20, Math.round(1000 / engine.tickRateHz));
+    // Exact, unrounded and with a low floor: see simulationClock.ts for the 83%-speed bug the old clamp caused.
+    return tickPeriodMs(engine.tickRateHz);
   }
 
   private stopSimulation(room: Room): void {
