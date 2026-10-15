@@ -21,7 +21,18 @@ export interface StreakRewardItem {
   milestoneChest?: StreakMilestoneChest;
   specialRewardTitle?: string;
   specialRewardType?: StreakRewardType;
+  /**
+   * Streak Shields credited on top of the special reward. A separate field because
+   * `specialRewardType` holds one value and Day 30 already uses it for its badge.
+   * Read it through `shieldsGrantedBy`, never directly.
+   */
+  bonusShields?: number;
   description: string;
+}
+
+/** How many Streak Shields claiming this reward credits: the shield special reward plus any bonus. */
+export function shieldsGrantedBy(reward: StreakRewardItem): number {
+  return (reward.specialRewardType === "shield" ? 1 : 0) + (reward.bonusShields ?? 0);
 }
 
 export type StreakDayStatus = "CLAIMED" | "CLAIMABLE" | "LOCKED";
@@ -98,6 +109,7 @@ export const STREAK_REWARDS_SCHEDULE: readonly StreakRewardItem[] = [
     milestoneChest: "diamond",
     specialRewardTitle: "Monthly Champion",
     specialRewardType: "badge",
+    bonusShields: 1,
     description: "Diamond Crown Chest: 10,000 Coins + Streak Shield + 'Monthly Champion' Badge",
   },
 ] as const;

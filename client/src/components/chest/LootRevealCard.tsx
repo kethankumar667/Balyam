@@ -11,16 +11,21 @@ interface LootRevealCardProps {
   index?: number;
   total?: number;
   isCompact?: boolean;
-  /** Compact below `sm`, full size from `sm` up: the summary shows several cards, a phone cannot fit them full size. */
-  compactOnMobile?: boolean;
+  /**
+   * `card` is the tall collectible shown one at a time; `row` is a compact one-line entry
+   * for the phone summary, where several rewards must fit without scrolling.
+   */
+  layout?: "card" | "row";
   className?: string;
 }
 
 const SIZE_CLASSES = {
-  compact: "w-44 h-60 p-5",
-  compactOnMobile: "w-40 h-56 p-3 sm:w-72 sm:h-[22rem] sm:p-5",
-  full: "w-64 sm:w-72 h-80 sm:h-[22rem] p-5",
+  compact: "w-44 h-60",
+  full: "w-64 sm:w-72 h-80 sm:h-[22rem]",
 } as const;
+
+const BADGE_CLASSES =
+  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap border shadow-xs";
 
 const RARITY_THEMES: Record<
   LootItemRarity,
@@ -75,14 +80,10 @@ const RARITY_THEMES: Record<
 export const LootRevealCard: React.FC<LootRevealCardProps> = ({
   item,
   isCompact = false,
-  compactOnMobile = false,
+  layout = "card",
   className = "",
 }) => {
-  const sizeClasses = isCompact
-    ? SIZE_CLASSES.compact
-    : compactOnMobile
-      ? SIZE_CLASSES.compactOnMobile
-      : SIZE_CLASSES.full;
+  const sizeClasses = isCompact ? SIZE_CLASSES.compact : SIZE_CLASSES.full;
   const rarity = RARITY_THEMES[item.rarity] ?? RARITY_THEMES.common;
   const isLegendary = item.rarity === "legendary";
 
@@ -142,8 +143,37 @@ export const LootRevealCard: React.FC<LootRevealCardProps> = ({
     }
   };
 
+  if (layout === "row") {
+    return (
+      <motion.div
+        data-layout="row"
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={bhalyamSpring}
+        className={`w-full max-w-sm select-none ${className}`}
+      >
+        <div
+          className={`relative flex items-center gap-3 rounded-2xl border-2 p-3 overflow-hidden bg-gradient-to-r ${rarity.cardBg} ${rarity.border}`}
+          style={{ boxShadow: `0 10px 24px -10px rgba(0, 0, 0, 0.8), 0 0 18px -4px ${rarity.glow}` }}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center">
+            <div className="scale-75">{renderIcon()}</div>
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <span className={`${BADGE_CLASSES} ${rarity.badgeBg}`}>{item.badgeText || rarity.name}</span>
+            <h4 className="mt-1 text-sm font-black text-white leading-tight break-words">{item.title}</h4>
+            {item.description && (
+              <p className="mt-0.5 text-xs font-medium leading-snug text-stone-300/90 line-clamp-2">{item.description}</p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
+      data-layout="card"
       initial={{ scale: 0.2, y: 70, opacity: 0, rotateY: 180 }}
       animate={{ scale: 1, y: 0, opacity: 1, rotateY: 0 }}
       transition={bhalyamSpring}
@@ -162,7 +192,7 @@ export const LootRevealCard: React.FC<LootRevealCardProps> = ({
         className="w-full h-full"
       >
         <div
-          className={`relative rounded-3xl flex flex-col items-center justify-between text-center border-2 backdrop-blur-md overflow-hidden bg-gradient-to-b ${rarity.cardBg} ${rarity.border} ${sizeClasses}`}
+          className={`relative rounded-3xl p-5 flex flex-col items-center justify-between text-center border-2 backdrop-blur-md overflow-hidden bg-gradient-to-b ${rarity.cardBg} ${rarity.border} ${sizeClasses}`}
           style={{
             boxShadow: `0 16px 36px -10px rgba(0, 0, 0, 0.8), 0 0 24px -4px ${rarity.glow}`,
           }}
@@ -182,7 +212,7 @@ export const LootRevealCard: React.FC<LootRevealCardProps> = ({
           {/* Top Rarity Header & Badge */}
           <div className="relative z-10 w-full flex items-center justify-between">
             <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap border shadow-xs ${rarity.badgeBg}`}
+              className={`${BADGE_CLASSES} ${rarity.badgeBg}`}
             >
               {item.badgeText || rarity.name}
             </span>

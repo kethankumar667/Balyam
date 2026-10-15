@@ -8,6 +8,7 @@
 
 import {
   STREAK_REWARDS_SCHEDULE,
+  shieldsGrantedBy,
   type DailyStreakState,
   type StreakDayStatus,
   type StreakRewardItem,
@@ -118,7 +119,7 @@ export function evaluateStreakClaim(
     const reward = STREAK_REWARDS_SCHEDULE[0];
     const newStreak = 1;
     const newLongestStreak = Math.max(longestStreak, 1);
-    const newShieldsRemaining = shieldsRemaining + (reward.specialRewardType === "shield" ? 1 : 0);
+    const newShieldsRemaining = shieldsRemaining + shieldsGrantedBy(reward);
 
     return {
       canClaim: true,
@@ -205,7 +206,7 @@ export function evaluateStreakClaim(
     const claimedDay = ((newStreak - 1) % 30) + 1;
     const reward = STREAK_REWARDS_SCHEDULE[claimedDay - 1];
     const newLongestStreak = Math.max(longestStreak, newStreak);
-    const newShieldsRemaining = shieldsRemaining + (reward.specialRewardType === "shield" ? 1 : 0);
+    const newShieldsRemaining = shieldsRemaining + shieldsGrantedBy(reward);
 
     const code: StreakClaimStatusCode = cycleCompleted && newStreak === 30 ? "CYCLE_COMPLETED" : "SUCCESS";
     const message = cycleCompleted && newStreak === 30
@@ -259,7 +260,7 @@ export function evaluateStreakClaim(
     const claimedDay = ((newStreak - 1) % 30) + 1;
     const reward = STREAK_REWARDS_SCHEDULE[claimedDay - 1];
     const newLongestStreak = Math.max(longestStreak, newStreak);
-    const finalShieldsRemaining = newShieldsRemaining + (reward.specialRewardType === "shield" ? 1 : 0);
+    const finalShieldsRemaining = newShieldsRemaining + shieldsGrantedBy(reward);
 
     return {
       canClaim: true,
@@ -289,7 +290,7 @@ export function evaluateStreakClaim(
   const reward = STREAK_REWARDS_SCHEDULE[0];
   const newStreak = 1;
   const newLongestStreak = Math.max(longestStreak, 1);
-  const newShieldsRemaining = shieldsRemaining + (reward.specialRewardType === "shield" ? 1 : 0);
+  const newShieldsRemaining = shieldsRemaining + shieldsGrantedBy(reward);
 
   return {
     canClaim: true,

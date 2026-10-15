@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LEVEL_MILESTONES } from "@shared/progression/MiniclipProgression";
-import { STREAK_REWARDS_SCHEDULE, type DailyStreakClaimResult } from "@shared/streak-types";
+import { STREAK_REWARDS_SCHEDULE, shieldsGrantedBy, type DailyStreakClaimResult } from "@shared/streak-types";
 import {
   buildLevelMilestoneLoot,
   buildStreakLoot,
@@ -93,23 +93,28 @@ describe("buildStreakLoot", () => {
     expect(items[1].title).toBe("Early Bird");
   });
 
-  it("never shows a streak shield the server does not grant (Day 30 grants a badge)", () => {
+  it("shows Day 30's shield, because the engine credits one with the badge", () => {
     const items = buildStreakLoot(streakResult(30), NOW);
-    expect(items.some((i) => i.type === "shield")).toBe(false);
-    expect(items.map((i) => i.type)).toEqual(["coins", "badge"]);
+    expect(items.map((i) => i.type)).toEqual(["coins", "badge", "shield"]);
+    expect(items[2].title).toBe("1x Streak Shield");
   });
 
-  it("does not repeat the schedule's whole-chest blurb, which still promises a shield on Day 30", () => {
-    const special = buildStreakLoot(streakResult(30), NOW)[1];
-    expect(special.description).toBe("Exclusive profile badge");
-    expect(JSON.stringify(buildStreakLoot(streakResult(30), NOW))).not.toMatch(/shield/i);
+  it("shows a shield card for exactly the days whose reward credits one", () => {
+    for (const reward of STREAK_REWARDS_SCHEDULE.filter((r) => r.milestoneChest)) {
+      const shown = buildStreakLoot(streakResult(reward.day), NOW).some((i) => i.type === "shield");
+      expect(shown, `day ${reward.day}`).toBe(shieldsGrantedBy(reward) > 0);
+    }
   });
 
-  it("shows a shield only when the schedule's special reward is a shield", () => {
+  it("uses short card copy, not the schedule's whole-chest blurb", () => {
+    expect(buildStreakLoot(streakResult(30), NOW)[1].description).toBe("Exclusive profile badge");
+  });
+
+  it("gives a shield special reward a single card, not a second bonus card", () => {
     const result = streakResult(7, {
       reward: { day: 7, coins: 1, description: "d", specialRewardTitle: "Streak Shield", specialRewardType: "shield" },
     });
-    expect(buildStreakLoot(result, NOW).some((i) => i.type === "shield")).toBe(true);
+    expect(buildStreakLoot(result, NOW).filter((i) => i.type === "shield")).toHaveLength(1);
   });
 
   it("reports the vesting arrival time on the coin card", () => {

@@ -9,6 +9,8 @@ import { AudioManager } from "../../services/AudioManager";
 import { HapticsManager } from "../../services/HapticsManager";
 import { AUDIO } from "../../constants/audio";
 import { bhalyamSpring } from "../../lib/motion";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useViewport } from "../../lib/useViewport";
 
 export interface ArcadeChestOpeningModalProps {
   isOpen: boolean;
@@ -35,6 +37,7 @@ export const ArcadeChestOpeningModal: React.FC<ArcadeChestOpeningModalProps> = (
 }) => {
   const [stage, setStage] = useState<ChestOpeningStage>("idle");
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const viewport = useViewport();
   /** Pending rumble → burst → reveal steps, so Skip and close can cancel them. */
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -42,6 +45,11 @@ export const ArcadeChestOpeningModal: React.FC<ArcadeChestOpeningModalProps> = (
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
   }, []);
+
+  // Tab stays inside the chest and focus returns to the opener on close. No `onClose`:
+  // Escape is handled below, because here it means "skip" before it means "close".
+  const unlockButtonRef = useRef<HTMLButtonElement>(null);
+  const { containerRef } = useFocusTrap<HTMLDivElement>({ open: isOpen, initialFocusRef: unlockButtonRef });
 
   const config = CHEST_TIER_CONFIGS[tier] ?? CHEST_TIER_CONFIGS.gold;
 
@@ -207,6 +215,7 @@ export const ArcadeChestOpeningModal: React.FC<ArcadeChestOpeningModalProps> = (
     <AnimatePresence>
       {/* z-[120]: this opens on top of the level roadmap (z-[90]) and its CoinRain (z-[100]). */}
       <div
+        ref={containerRef}
         role="dialog"
         aria-modal="true"
         aria-label={chestTitle}
@@ -260,8 +269,8 @@ export const ArcadeChestOpeningModal: React.FC<ArcadeChestOpeningModalProps> = (
                   className="mt-8"
                 >
                   <button
+                    ref={unlockButtonRef}
                     type="button"
-                    autoFocus
                     onClick={handleUnlockChest}
                     className="group relative px-8 py-3.5 rounded-2xl font-black text-sm sm:text-base tracking-wider uppercase text-stone-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-400 border-2 border-white/60 shadow-[0_0_28px_rgba(251,191,36,0.55)] hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
                   >
@@ -353,7 +362,7 @@ export const ArcadeChestOpeningModal: React.FC<ArcadeChestOpeningModalProps> = (
                     key={item.id}
                     item={item}
                     isCompact={activeItems.length > 2}
-                    compactOnMobile
+                    layout={viewport === "mobile" ? "row" : "card"}
                   />
                 ))}
               </div>

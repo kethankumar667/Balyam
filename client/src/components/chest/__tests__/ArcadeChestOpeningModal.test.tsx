@@ -116,6 +116,76 @@ describe("ArcadeChestOpeningModal", () => {
     expect(underneath).not.toHaveBeenCalled();
   });
 
+  describe("summary layout", () => {
+    const stubViewport = (isMobile: boolean) =>
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: isMobile && query.includes("max-width"),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const summaryLayouts = () =>
+      [...document.querySelectorAll("[data-layout]")].map((el) => el.getAttribute("data-layout"));
+
+    it("lists the rewards as compact rows on a phone, so the summary needs no scrolling", () => {
+      stubViewport(true);
+      renderModal();
+      fireEvent.click(screen.getByRole("button", { name: /skip/i }));
+      expect(summaryLayouts()).toEqual(["row", "row"]);
+    });
+
+    it("keeps full cards on desktop", () => {
+      stubViewport(false);
+      renderModal();
+      fireEvent.click(screen.getByRole("button", { name: /skip/i }));
+      expect(summaryLayouts()).toEqual(["card", "card"]);
+    });
+
+    it("still reveals one full card at a time on a phone", () => {
+      stubViewport(true);
+      renderModal();
+      press("Enter");
+      advance(SEQUENCE_MS);
+      expect(summaryLayouts()).toEqual(["card"]);
+    });
+  });
+
+  it("puts keyboard focus on Tap To Unlock when it opens", () => {
+    renderModal();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /tap to unlock/i }));
+  });
+
+  it("wraps Tab inside the chest instead of letting focus escape to the dialog behind it", () => {
+    renderModal();
+    const skip = screen.getByRole("button", { name: /skip/i });
+    const unlock = screen.getByRole("button", { name: /tap to unlock/i });
+
+    unlock.focus();
+    press("Tab");
+    expect(document.activeElement).toBe(skip);
+
+    skip.focus();
+    press("Tab", { shiftKey: true });
+    expect(document.activeElement).toBe(unlock);
+  });
+
+  it("hands focus back to whatever opened it when it closes", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    const { onClose } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: /skip/i }));
+    fireEvent.click(screen.getByRole("button", { name: /collect all/i }));
+    expect(onClose).toHaveBeenCalled();
+    cleanup();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it("renders above the level roadmap (z-[90]) and its coin rain (z-[100])", () => {
     renderModal();
     expect(screen.getByRole("dialog").className).toContain("z-[120]");

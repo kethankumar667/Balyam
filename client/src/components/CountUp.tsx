@@ -67,6 +67,12 @@ export default function CountUp({
     return <span className={className}>{prefix}{formatted}{suffix}</span>;
   }
 
+  // Render-prop form on purpose. The plain `<ReactCountUp start=…/>` form calls
+  // `getCountUp()` during render to print the start value, while its container ref is
+  // still null, so countup.js logs "[CountUp] target is null or undefined" on every
+  // first mount (twice under StrictMode) and caches an instance with no element.
+  // Here the span is attached first and the instance is built on mount.
+  // `delay={0}` keeps the immediate start the plain form has.
   return (
     <ReactCountUp
       start={start}
@@ -77,10 +83,12 @@ export default function CountUp({
       separator={effectiveSeparator}
       prefix={prefix}
       suffix={suffix}
-      className={className}
+      delay={0}
       enableScrollSpy
       scrollSpyOnce
       preserveValue={preserveValue}
-    />
+    >
+      {({ countUpRef }) => <span ref={countUpRef} className={className} />}
+    </ReactCountUp>
   );
 }

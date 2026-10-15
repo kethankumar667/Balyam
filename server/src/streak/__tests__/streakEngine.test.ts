@@ -9,7 +9,7 @@ import {
   type StoredStreakRecord,
 } from "../StreakEngine.js";
 import { StreakService } from "../StreakService.js";
-import { STREAK_REWARDS_SCHEDULE } from "@shared/streak-types.js";
+import { STREAK_REWARDS_SCHEDULE, shieldsGrantedBy } from "@shared/streak-types.js";
 import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepository.js";
 import { EconomyService } from "../../economy/EconomyService.js";
 import { RewardGateway, VESTING_MS } from "../../rewards/RewardGateway.js";
@@ -262,6 +262,62 @@ describe("StreakEngine — Progression & Evaluation", () => {
     expect(resDay31.newStreak).toBe(1);
     expect(resDay31.newCycleCount).toBe(1);
     expect(resDay31.coinsAwarded).toBe(100);
+  });
+});
+
+describe("StreakEngine — Streak Shield grants", () => {
+  const recordAt = (streak: number, shields: number, lastDate: string, lastAt: number): StoredStreakRecord => ({
+    playerId: "p1",
+    currentStreak: streak,
+    longestStreak: streak,
+    cycleCount: 0,
+    lastClaimedDate: lastDate,
+    lastClaimedAt: lastAt,
+    shieldsRemaining: shields,
+    claimHistory: [],
+  });
+
+  it("grants exactly one shield for claiming Day 30, which the schedule and the UI promise", () => {
+    const record = recordAt(29, 0, "2026-09-29", Date.UTC(2026, 8, 29, 12));
+    const result = evaluateStreakClaim(record, Date.UTC(2026, 8, 30, 12));
+    expect(result.claimedDay).toBe(30);
+    expect(result.newShieldsRemaining).toBe(1);
+  });
+
+  it("adds the Day 30 shield to shields the player already holds", () => {
+    const record = recordAt(29, 2, "2026-09-29", Date.UTC(2026, 8, 29, 12));
+    expect(evaluateStreakClaim(record, Date.UTC(2026, 8, 30, 12)).newShieldsRemaining).toBe(3);
+  });
+
+  it("still grants the Day 30 shield when a held shield was spent to reach Day 30", () => {
+    // Missed a day at Day 29: one shield saves the streak, and landing on Day 30 pays one back.
+    const record = recordAt(29, 1, "2026-09-27", Date.UTC(2026, 8, 27, 12));
+    const result = evaluateStreakClaim(record, Date.UTC(2026, 8, 30, 12));
+    expect(result.shieldUsed).toBe(true);
+    expect(result.claimedDay).toBe(30);
+    expect(result.newShieldsRemaining).toBe(1);
+  });
+
+  it("grants no shield on any other day", () => {
+    for (const reward of STREAK_REWARDS_SCHEDULE.filter((r) => r.day !== 30)) {
+      expect(shieldsGrantedBy(reward), `day ${reward.day}`).toBe(0);
+    }
+  });
+
+  it("keeps Day 30's special reward as the Monthly Champion badge", () => {
+    const day30 = STREAK_REWARDS_SCHEDULE[29];
+    expect(day30.specialRewardType).toBe("badge");
+    expect(shieldsGrantedBy(day30)).toBe(1);
+  });
+
+  it("still honours a special reward of type shield", () => {
+    const reward = { day: 5, coins: 1, description: "d", specialRewardType: "shield" as const };
+    expect(shieldsGrantedBy(reward)).toBe(1);
+  });
+
+  it("adds a shield special reward and bonusShields together", () => {
+    const reward = { day: 5, coins: 1, description: "d", specialRewardType: "shield" as const, bonusShields: 1 };
+    expect(shieldsGrantedBy(reward)).toBe(2);
   });
 });
 

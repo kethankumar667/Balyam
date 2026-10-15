@@ -5,11 +5,7 @@ import type { ChestTier, LootItem, LootItemRarity } from "./types";
 
 const PAID_AT_ONCE_FOOTNOTE = "Added to your BHALYAM balance & inventory";
 
-/**
- * Short card copy per special reward. The schedule's own `description` is a whole-chest
- * blurb that also promises things the engine does not grant (Day 30 lists a Streak
- * Shield, but only a `"shield"` special reward is ever credited), so it is not repeated here.
- */
+/** Short card copy per special reward; the schedule's `description` is a whole-chest blurb. */
 const SPECIAL_REWARD_BLURB: Record<StreakRewardType, string> = {
   coins: "Bonus coins",
   title: "Exclusive profile title",
@@ -96,8 +92,9 @@ export function buildLevelMilestoneLoot(
 
 /**
  * What a streak milestone chest shows: the schedule's own coins and special
- * reward, nothing more. A shield is listed only when the schedule's special
- * reward is one — that is the only case `StreakEngine` grants it.
+ * reward and shields, nothing more. A shield card appears exactly when
+ * `shieldsGrantedBy` says the engine credits one, so the chest cannot promise
+ * a shield the claim did not pay.
  */
 export function buildStreakLoot(result: DailyStreakClaimResult, now: number = Date.now()): LootItem[] {
   const day = result.claimedDay;
@@ -122,6 +119,19 @@ export function buildStreakLoot(result: DailyStreakClaimResult, now: number = Da
       description: SPECIAL_REWARD_BLURB[specialType],
       rarity: day >= 30 ? "legendary" : day >= 21 ? "epic" : "rare",
       badgeText: special.specialRewardType?.toUpperCase(),
+    });
+  }
+
+  // A shield that rides on top of the special reward (Day 30: badge + shield). A shield that IS
+  // the special reward already has its card above.
+  const bonusShields = special?.bonusShields ?? 0;
+  if (bonusShields > 0) {
+    items.push({
+      id: `streak-shield-${day}`,
+      type: "shield",
+      title: `${bonusShields}x Streak Shield`,
+      description: SPECIAL_REWARD_BLURB.shield,
+      rarity: day >= 30 ? "legendary" : "epic",
     });
   }
 
