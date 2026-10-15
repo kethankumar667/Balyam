@@ -115,30 +115,6 @@ export const ChessGameIcon: React.FC<GameIconProps> = ({ size = 28, className = 
   </svg>
 );
 
-export const CarromGameIcon: React.FC<GameIconProps> = ({ size = 28, className = "", ...props }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={`inline-block ${className}`}
-    aria-hidden="true"
-    {...props}
-  >
-    <rect x="4" y="4" width="40" height="40" rx="6" fill="#78350F" stroke="#D97706" strokeWidth="2" />
-    <rect x="8" y="8" width="32" height="32" rx="3" fill="#FDE68A" />
-    {/* Center Red Queen */}
-    <circle cx="24" cy="24" r="5" fill="#DC2626" stroke="#991B1B" strokeWidth="1.5" />
-    <circle cx="24" cy="24" r="2" fill="#FEF08A" />
-    {/* 4 Corner Pockets */}
-    <circle cx="11" cy="11" r="2.5" fill="#1E293B" />
-    <circle cx="37" cy="11" r="2.5" fill="#1E293B" />
-    <circle cx="11" cy="37" r="2.5" fill="#1E293B" />
-    <circle cx="37" cy="37" r="2.5" fill="#1E293B" />
-  </svg>
-);
-
 export const SnakeGameIcon: React.FC<GameIconProps> = ({ size = 28, className = "", ...props }) => (
   <svg
     width={size}
@@ -200,8 +176,6 @@ export const GameCategoryIcon: React.FC<{ game: GameKind | string; size?: number
       return <HandCricketGameIcon size={size} className={className} />;
     case "chess":
       return <ChessGameIcon size={size} className={className} />;
-    case "carrom":
-      return <CarromGameIcon size={size} className={className} />;
     case "snake":
     case "nokiasnake":
       return <SnakeGameIcon size={size} className={className} />;

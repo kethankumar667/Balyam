@@ -171,7 +171,7 @@ export function computeRoomViewModel(
   const selfIsReady = selfPlayer?.isReady ?? false;
 
   const minPlayersNeeded =
-    game === "snake" || game === "carrom" || game === "spacewar" ? 1 : 2;
+    game === "snake" || game === "spacewar" ? 1 : 2;
 
   const readyPlayers = players.filter((p) => p.isReady);
   const readyPlayersCount = readyPlayers.length;

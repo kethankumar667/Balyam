@@ -388,7 +388,7 @@ export default function ChessBoardMobile({
           canned line, EMOJI posted "😊" as a plain chat message, VOICE and
           PLAYERS did nothing). They now drive the strip-less InlineRoomRail
           mounted below through the `bhalyam:open-room-panel` bridge — same
-          pattern as Carrom/Ludo mobile — so EMOJI opens the real, game-themed
+          pattern as Ludo mobile — so EMOJI opens the real, game-themed
           (♟️👑🧠😏🔥😂) targeted reaction tray and PLAYERS opens the panel
           whose tap-a-player row pre-targets it. */}
       <div className="fixed bottom-1 left-1.5 right-1.5 z-40 max-w-lg mx-auto p-1.5 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">

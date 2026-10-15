@@ -17,6 +17,8 @@ export const RETIRED_STORAGE_KEYS: readonly string[] = [
   "bhalyam.pending_voucher_amount",
   // The "auto-start next round" switch: it only ever armed rematch countdowns, and rematch is gone.
   "bhalyam.auto_start",
+  // The Carrom academy lesson's saved progress. Carrom is gone, and with it the lesson that wrote this.
+  "bhalyam.academy.carrom.v2",
 ];
 
 /** Remove every retired key from both kinds of storage. Safe to call on every start; never throws. */

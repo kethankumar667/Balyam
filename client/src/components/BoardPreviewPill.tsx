@@ -38,7 +38,7 @@ export default function BoardPreviewPill({
       let blob: Blob | null = null;
 
       if (targetSvg) {
-        // SVG boards (Ludo, Carrom, Chess) rasterise from the vector, which
+        // SVG boards (Ludo, Chess) rasterise from the vector, which
         // is sharper than screen-scraping the DOM.
         blob = await svgToPngBlob(targetSvg, window.devicePixelRatio || 2);
       } else if (targetElementId) {

@@ -40,7 +40,6 @@ const BUNDLE_BUDGETS = {
   "RpsBoard-*.js": 70,
   "BrickTetrisPage-*.js": 60,
   "NokiaCricketPage-*.js": 60,
-  "CarromBoard-*.js": 50,
   "DotsBoxesBoard-*.js": 50,
   "Connect4Board-*.js": 70,
   "BrickRacerPage-*.js": 50,

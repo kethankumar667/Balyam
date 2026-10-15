@@ -1,4 +1,5 @@
 ﻿import type { BhalyamGameSlug } from "../components/bhalyam/data";
+import { isRetiredGame } from "@shared/retiredGames";
 
 const FAVOURITES_KEY = "bhalyam.favourites";
 
@@ -24,7 +25,8 @@ class FavouritesManagerService {
         return this.cache;
       }
 
-      this.cache = parsed.filter((slug): slug is BhalyamGameSlug => typeof slug === "string");
+      // A game removed since this was saved is dropped, not drawn as a tile that no longer exists.
+      this.cache = parsed.filter((slug): slug is BhalyamGameSlug => typeof slug === "string" && !isRetiredGame(slug));
       return this.cache;
     } catch {
       this.cache = [];

@@ -97,7 +97,7 @@ export default function LeaderboardTable({
         >
           All Games
         </button>
-        {(["ludo", "rummy", "uno", "handcricket", "chess", "carrom", "snake"] as const).map(
+        {(["ludo", "rummy", "uno", "handcricket", "chess", "snake"] as const).map(
           (g) => (
             <button
               key={g}

@@ -26,7 +26,6 @@ const REAL_SANDBOX_KINDS: readonly InteractiveSandboxKind[] = [
 ];
 
 const PLACEHOLDER_KINDS: readonly InteractiveSandboxKind[] = [
-  "carrom-striker",
   "chess-tactics",
   "star-slap",
   "bingo-cross",
@@ -64,8 +63,8 @@ describe("SandboxRenderer routing", () => {
     expect(hasSandbox()).toBe(false);
   });
 
-  it("covers every kind in the union (13 in total)", () => {
-    expect(REAL_SANDBOX_KINDS.length + PLACEHOLDER_KINDS.length).toBe(13);
+  it("covers every kind in the union (12 in total)", () => {
+    expect(REAL_SANDBOX_KINDS.length + PLACEHOLDER_KINDS.length).toBe(12);
   });
 
   it("renders nothing for kinds without a real demo", () => {

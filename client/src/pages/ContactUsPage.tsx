@@ -131,7 +131,6 @@ const GAMES_OPTIONS = [
   { value: "stargame", label: "⭐ Star Game" },
   { value: "bingo", label: "🎯 Bingo" },
   { value: "chess", label: "♟️ Chess" },
-  { value: "carrom", label: "⚪ Carrom" },
   { value: "snake", label: "🕹️ Classic Snake" },
   { value: "spacewar", label: "🚀 Space War" },
   { value: "nokiacricket", label: "📱 Pocket Cricket" },

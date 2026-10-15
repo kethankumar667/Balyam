@@ -125,15 +125,6 @@ export const STRUCTURED_DATA_GAMES = [
     genre: ["Board Game", "Strategy", "Mind Game", "Multiplayer"],
   },
   {
-    slug: "carrom",
-    name: "Carrom Board Lounge",
-    description: "Traditional Indian tabletop board game with smooth striker controls, pocketing carrom men, and queen covers.",
-    image: `${BASE_URL}/og/carrom.jpg`,
-    minPlayers: 2,
-    maxPlayers: 4,
-    genre: ["Board Game", "Family Game", "Multiplayer"],
-  },
-  {
     slug: "spacewar",
     name: "Space War 90s",
     description: "Retro 90s pixel space shooter. Battle alien squadrons, dodge bullets, and climb high scores.",

@@ -155,7 +155,6 @@ export default function DesignSystemCatalogPage() {
               "rummy",
               "handcricket",
               "chess",
-              "carrom",
               "snake",
               "spacewar",
             ].map((game) => (

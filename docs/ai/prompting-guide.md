@@ -50,7 +50,7 @@ State all hard boundaries (no Redis, no external DB in game loop, zero any types
    - ❌ *"Clean up the room store."*
    - ✅ *Specify backward compatibility, state transition invariants, test coverage preservation, and zero regression requirements.*
 3. **Anti-Pattern 3: Ignoring Dual Layouts**
-   - ❌ *"Build the Carrom board."*
+   - ❌ *"Build the Chess board."*
    - ✅ *Explicitly demand `<Game>BoardMobile.tsx` (touch-first) and `<Game>BoardDesktop.tsx` (side-rail layout).*
 
 ---

@@ -15,7 +15,7 @@ Players land in the lounge, explore a rich catalog of board, card, and retro arc
 ### Core Value Propositions:
 1. **Zero Barrier to Play**: Instant browser loading without downloads, app stores, or mandatory registration barriers for casual play.
 2. **Nostalgia Meets Modernity**: Authentic retro feeling (Hand Cricket, Nokia Snake, Brick Racer, Ludo) enhanced with glowing rank auras, seasonal ladders, WebRTC voice chat, and rich soundscapes.
-3. **Multi-Sensory Delight**: Every roll of dice, slap of card, strike of carrom striker, and score threshold produces synchronized visual micro-motion, haptic pulses, and audio cues.
+3. **Multi-Sensory Delight**: Every roll of dice, slap of card, and score threshold produces synchronized visual micro-motion, haptic pulses, and audio cues.
 4. **Resilient Lounge Architecture**: In-memory server authority with 90-second disconnect grace periods, cryptographic HMAC seat tokens, and zero forfeit on tab backgrounding or temporary network drops.
 
 ---
@@ -26,7 +26,7 @@ BHALYAM hosts games categorized across four distinct gaming domains:
 
 | Category | Games Included | Player Count | Key Mechanics & Rules |
 | :--- | :--- | :--- | :--- |
-| **Classic Board Games** | **Ludo**, **Snakes & Ladders**, **Dots & Boxes**, **Chess**, **Carrom** | 2 – 4 Players | Turn-based token movement, safe stars, capturing opponents, home runs, spatial board geometry. |
+| **Classic Board Games** | **Ludo**, **Snakes & Ladders**, **Dots & Boxes**, **Chess** | 2 – 4 Players | Turn-based token movement, safe stars, capturing opponents, home runs, spatial board geometry. |
 | **Card & Meld Games** | **Rummy**, **UNO** | 2 – 6 Players | 13-card hand melds (pure sequence, sets, declaration validation), color matching, action cards (+2, +4, Skip, Reverse). |
 | **Social & Street Classics**| **Hand Cricket**, **Rock Paper Scissors**, **Name Place Animal Thing**, **Tambola / Bingo** | 2 – 8 Players | Hand finger runs & wickets, simultaneous choice showdowns, timed word builder grids, ticket number marking. |
 | **Retro Arcade (Nokia 2D)**| **Snake 2D**, **Brick Racer**, **Brick Tetris / Pentix**, **Brick Breakout**, **Space Impact**, **Bounce** | 1 – 2 Players | D-Pad / swipe grid movement, collision physics, high-score chase, progressive speed throttling. |

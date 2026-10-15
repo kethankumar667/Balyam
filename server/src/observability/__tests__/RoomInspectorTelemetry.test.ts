@@ -35,7 +35,7 @@ function createMemberRoom(rm: RoomManager, socketId: string, name: string, game 
     undefined, // namesplaceanimal
     undefined, // tambola
     undefined, // snake
-    undefined, // carrom
+    undefined, // retired slot (Carrom options)
     undefined, // chess
     undefined, // blockBlast
     undefined, // spaceWar

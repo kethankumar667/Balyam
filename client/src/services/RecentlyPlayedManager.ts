@@ -1,4 +1,5 @@
 ﻿import type { BhalyamGameSlug } from "../components/bhalyam/data";
+import { isRetiredGame } from "@shared/retiredGames";
 
 const RECENTLY_PLAYED_KEY = "bhalyam.recently_played";
 const MAX_RECENT_ITEMS = 10;
@@ -33,7 +34,7 @@ class RecentlyPlayedManagerService {
 
       this.cache = parsed
         .filter((item): item is RecentlyPlayedItem =>
-          typeof item?.slug === "string" && typeof item?.lastPlayedAt === "number"
+          typeof item?.slug === "string" && typeof item?.lastPlayedAt === "number" && !isRetiredGame(item.slug)
         )
         .slice(0, MAX_RECENT_ITEMS);
 

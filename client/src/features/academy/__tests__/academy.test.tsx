@@ -24,7 +24,6 @@ const REQUIRED_SLUGS = [
   "stargame",
   "bingo",
   "chess",
-  "carrom",
   "snake",
   "tetris",
   "breakout",

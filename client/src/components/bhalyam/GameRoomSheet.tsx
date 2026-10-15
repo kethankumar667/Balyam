@@ -10,9 +10,6 @@ import type {
   RoomPublicState,
   RummyMatchMode,
   SnlDifficulty,
-  CarromMode,
-  BoardFeltSkin,
-  StrikerSkin,
 } from "@shared/types";
 import {
   HC_GALLI_MAX_OVERS,
@@ -69,7 +66,6 @@ import {
   TambolaGlyph,
   StarGameGlyph,
   BingoGlyph,
-  CarromGlyph,
   TicTacToeGlyph,
   Connect4Glyph,
 } from "./icons";
@@ -131,7 +127,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   brickblocks: StarGameGlyph,
   tetris: StarGameGlyph,
   breakout: StarGameGlyph,
-  carrom: CarromGlyph,
   chess: StarGameGlyph,
   spacewar: StarGameGlyph,
   nokiacricket: HandCricketGlyph,
@@ -150,7 +145,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  */
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
-  "namesplaceanimal", "tambola", "snake", "carrom", "roadrash", "chess",
+  "namesplaceanimal", "tambola", "snake", "roadrash", "chess",
   "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4",
  ]);
 
@@ -194,7 +189,6 @@ const NOSTALGIC_NICKNAMES = [
   "GoldStriker",
   "SuperSixer",
   "MasterBlaster",
-  "CarromPro",
   "SnakeCharmer",
   "ArcadeHero",
   "DesiGamer",
@@ -386,51 +380,6 @@ const HC_CATEGORIES: { id: HcCategory; label: string; blurb: string }[] = [
   { id: "ipl",           label: "League",        blurb: "Pick a franchise team & select your XI" },
 ];
 
-// Carrom Option Catalogs (Miniclip parity: Classic, Disc Pool, Freestyle)
-const CARROM_MODES: { id: CarromMode; label: string; blurb: string }[] = [
-  {
-    id: "classic",
-    label: "Classic Carrom",
-    blurb: "Traditional rules with red Queen. Mandatory cover coin required to secure the Queen.",
-  },
-  {
-    id: "discpool",
-    label: "Disc Pool",
-    blurb: "Miniclip speed mode. No Queen on board — first player to pocket all pucks of their colour wins!",
-  },
-  {
-    id: "freestyle",
-    label: "Freestyle Points",
-    blurb: "Points race: Queen = 25 pts, White = 10 pts, Black = 5 pts. First to reach target score wins.",
-  },
-];
-
-const CARROM_TURN_TIMERS: { id: "15" | "30" | "45" | "0"; label: string; blurb: string }[] = [
-  { id: "15", label: "Fast (15s)",     blurb: "Quick-fire blitz — fast-paced match pace." },
-  { id: "30", label: "Standard (30s)", blurb: "Miniclip match default — balanced aiming window." },
-  { id: "45", label: "Relaxed (45s)",  blurb: "Deliberate angles & bank shot calculations." },
-  { id: "0",  label: "Untimed",        blurb: "Casual play with no clock for practice or family." },
-];
-
-const CARROM_TARGET_POINTS: { id: "50" | "100" | "160"; label: string; blurb: string }[] = [
-  { id: "50",  label: "50 Points",  blurb: "Quick sprint race." },
-  { id: "100", label: "100 Points", blurb: "Standard tournament match." },
-  { id: "160", label: "160 Points", blurb: "Championship marathon." },
-];
-
-const CARROM_BOT_TIERS: { id: "easy" | "medium" | "pro"; label: string; blurb: string }[] = [
-  { id: "easy",   label: "Casual",   blurb: "Gentle breaks and forgiving angles." },
-  { id: "medium", label: "Club",     blurb: "Miniclip standard — solid direct cuts." },
-  { id: "pro",    label: "Pro Shark", blurb: "Master of bank shots, rebounds & combos." },
-];
-
-const CARROM_FELT_THEMES: { id: BoardFeltSkin; label: string; blurb: string }[] = [
-  { id: "birch",   label: "Birch Classic",  blurb: "Traditional polished amber wood." },
-  { id: "velvet",  label: "Royal Velvet",   blurb: "Deep maroon club baize." },
-  { id: "emerald", label: "Emerald Felt",   blurb: "Lush tournament green." },
-  { id: "ebony",   label: "Midnight Ebony",  blurb: "Modern sleek dark lacquer." },
-];
-
 const TTT_MODES: { id: "quantum" | "classic"; label: string; blurb: string }[] = [
   { id: "quantum", label: "Quantum Flux (Hero)", blurb: "3-piece FIFO limit. 4th piece evaporates the oldest, so the board never locks into a draw." },
   { id: "classic", label: "Classic Matrix",      blurb: "Traditional 3x3 grid. Align 3 in a row to win." },
@@ -520,11 +469,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
   const [snakeGridSize, setSnakeGridSize] = useState<"15" | "20" | "25">("20");
   const [snakeWallMode, setSnakeWallMode] = useState<"solid" | "wrap">("wrap");
   const [snakeTheme, setSnakeTheme] = useState<"nokia-monochrome" | "nokia-color" | "neon-modern">("nokia-monochrome");
-  const [carromMode, setCarromMode] = useState<CarromMode>("classic");
-  const [carromTurnTimer, setCarromTurnTimer] = useState<"15" | "30" | "45" | "0">("30");
-  const [carromTargetScore, setCarromTargetScore] = useState<"50" | "100" | "160">("100");
-  const [carromBotDifficulty, setCarromBotDifficulty] = useState<"easy" | "medium" | "pro">("medium");
-  const [carromBoardSkin, setCarromBoardSkin] = useState<BoardFeltSkin>("birch");
   const [tttMode, setTttMode] = useState<"quantum" | "classic">("quantum");
   const [tttTurnTimer, setTttTurnTimer] = useState<"10" | "15" | "30" | "0">("15");
   const [connect4TurnTimer, setConnect4TurnTimer] = useState<"10" | "15" | "20" | "30" | "45">("20");
@@ -621,15 +565,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
     if (game === "snake") {
       return `${snakeTheme} · ${snakeWallMode === "wrap" ? "Wrap Walls" : "Solid Walls"}`;
     }
-    if (game === "carrom") {
-      const modeName =
-        carromMode === "discpool"
-          ? "Disc Pool"
-          : carromMode === "freestyle"
-          ? `Freestyle (${carromTargetScore} pts)`
-          : "Classic Carrom";
-      return `${modeName} · ${carromTurnTimer === "0" ? "Untimed" : `${carromTurnTimer}s`}`;
-    }
     if (game === "tictactoe") {
       const modeName = tttMode === "quantum" ? "Quantum Flux" : "Classic Matrix";
       return `${modeName} · ${tttTurnTimer === "0" ? "Untimed" : `${tttTurnTimer}s`}`;
@@ -661,9 +596,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
     starRounds,
     snakeTheme,
     snakeWallMode,
-    carromMode,
-    carromTurnTimer,
-    carromTargetScore,
     tttMode,
     tttTurnTimer,
     connect4TurnTimer,
@@ -693,11 +625,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
       setNpaDifficulty("medium");
       setNpaRounds(5);
       setNpaThemePack("classic");
-      setCarromMode("classic");
-      setCarromTurnTimer("30");
-      setCarromTargetScore("100");
-      setCarromBotDifficulty("medium");
-      setCarromBoardSkin("birch");
       setTttMode("quantum");
       setTttTurnTimer("15");
       setConnect4TurnTimer("20");
@@ -854,16 +781,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                   gridSize: Number(snakeGridSize),
                   wallMode: snakeWallMode,
                   theme: snakeTheme,
-                }
-              : undefined,
-          carromOptions:
-            game === "carrom"
-              ? {
-                  mode: carromMode,
-                  shotTimerSeconds: Number(carromTurnTimer),
-                  targetScore: Number(carromTargetScore),
-                  botDifficulty: carromBotDifficulty,
-                  boardSkin: carromBoardSkin,
                 }
               : undefined,
           ticTacToeOptions:
@@ -1024,16 +941,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                 gridSize: Number(snakeGridSize),
                 wallMode: snakeWallMode,
                 theme: snakeTheme,
-              }
-            : undefined,
-        carromOptions:
-          game === "carrom"
-            ? {
-                mode: carromMode,
-                shotTimerSeconds: Number(carromTurnTimer),
-                targetScore: Number(carromTargetScore),
-                botDifficulty: carromBotDifficulty,
-                boardSkin: carromBoardSkin,
               }
             : undefined,
         ticTacToeOptions:
@@ -1364,14 +1271,14 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
             <div className={mobileTab === "join" ? "hidden md:block md:space-y-4" : "space-y-4"}>
 
             {/* Pass & Play toggle */}
-            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "carrom" || game === "tictactoe" || game === "connect4") && (
+            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "tictactoe" || game === "connect4") && (
               <PassPlayBlock
                 on={passPlay}
                 onToggle={() => setPassPlay((v) => !v)}
                 names={localNames}
                 onNamesChange={setLocalNames}
                 maxExtraSeats={
-                  game === "carrom" || game === "tictactoe" || game === "connect4"
+                  game === "tictactoe" || game === "connect4"
                     ? 1
                     : game === "ludo"
                     ? 3
@@ -1830,57 +1737,6 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                     value={snakeSpeed}
                     onChange={(v) => setSnakeSpeed(v as "140" | "100" | "70")}
                     cols={3}
-                  />
-                </Field>
-              </>
-            )}
-
-            {game === "carrom" && (
-              <>
-                <Field label="Game Mode">
-                  <OptionGrid
-                    items={CARROM_MODES}
-                    value={carromMode}
-                    onChange={(v) => setCarromMode(v as CarromMode)}
-                    cols={1}
-                  />
-                </Field>
-
-                {carromMode === "freestyle" && (
-                  <Field label="Target Points">
-                    <OptionGrid
-                      items={CARROM_TARGET_POINTS}
-                      value={carromTargetScore}
-                      onChange={(v) => setCarromTargetScore(v as "50" | "100" | "160")}
-                      cols={3}
-                    />
-                  </Field>
-                )}
-
-                <Field label="Shot Timer">
-                  <OptionGrid
-                    items={CARROM_TURN_TIMERS}
-                    value={carromTurnTimer}
-                    onChange={(v) => setCarromTurnTimer(v as "15" | "30" | "45" | "0")}
-                    cols={2}
-                  />
-                </Field>
-
-                <Field label="Bot Difficulty">
-                  <OptionGrid
-                    items={CARROM_BOT_TIERS}
-                    value={carromBotDifficulty}
-                    onChange={(v) => setCarromBotDifficulty(v as "easy" | "medium" | "pro")}
-                    cols={3}
-                  />
-                </Field>
-
-                <Field label="Board Felt Style">
-                  <OptionGrid
-                    items={CARROM_FELT_THEMES}
-                    value={carromBoardSkin}
-                    onChange={(v) => setCarromBoardSkin(v as BoardFeltSkin)}
-                    cols={2}
                   />
                 </Field>
               </>

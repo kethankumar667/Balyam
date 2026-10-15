@@ -66,7 +66,7 @@ import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPla
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
-import type { SnakePublicState, CarromPublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState } from "@shared/types";
+import type { SnakePublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState } from "@shared/types";
 
 import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
 
@@ -84,7 +84,6 @@ const BingoBoard = lazy(() => import("../games/bingo/BingoBoard"));
 const NamePlaceAnimalBoard = lazy(() => import("../games/namesplaceanimal/NamePlaceAnimalBoard"));
 const TambolaBoard = lazy(() => import("../games/tambola/TambolaBoard"));
 const SnakeBoard = lazy(() => import("../games/snake/SnakeBoard"));
-const CarromBoard = lazy(() => import("../games/carrom/CarromBoard"));
 const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
 const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
 const TicTacToeBoard = lazy(() => import("../games/tictactoe/TicTacToeBoard"));
@@ -296,7 +295,7 @@ const GAMES_WITH_OWN_SCORECARD: ReadonlySet<string> = new Set(["rummy", "rps", "
  * the normal padded, max-width page instead.
  *
  * This used to be two separate inline lists, one for the outer wrapper and
- * one for the inner. Carrom and Chess were added to neither, so their boards
+ * one for the inner. Chess was added to neither, so its board
  * asked for `h-screen` inside a container that already had `p-2 sm:p-4` — the
  * page then overflowed by exactly the padding, and `overflow-hidden` on the
  * board clipped whatever fell off the bottom. One list means the next
@@ -307,7 +306,6 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "dotsboxes",
   "uno",
   "stargame",
-  "carrom",
   "chess",
   "rps",
   // Its board sizes itself to the viewport (`h-dvh-safe`); without this it sat
@@ -2278,19 +2276,6 @@ export default function Room() {
                   messages={messages}
                   roomCode={roomState.code}
                   roomPhase={roomState.phase}
-                />
-              )}
-
-              {roomState.game === "carrom" && gameState != null && (
-                <CarromBoard
-                  state={gameState as CarromPublicState}
-                  players={effectiveMatchPlayers}
-                  selfId={playerId || ""}
-                  messages={messages}
-                  roomCode={roomState.code}
-                  roomPhase={roomState.phase}
-                  onLeave={requestLeaveConfirmation}
-                  onMove={sendMove}
                 />
               )}
 

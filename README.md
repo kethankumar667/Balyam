@@ -17,7 +17,7 @@ Eighteen games ship in `GameKind` (`shared/types.ts`); the home catalog
 
 | Category | Games |
 |---|---|
-| **Board & cards** | Ludo, Snakes & Ladders, Rummy, UNO, Carrom, Chess, Dots & Boxes |
+| **Board & cards** | Ludo, Snakes & Ladders, Rummy, UNO, Chess, Dots & Boxes |
 | **Party & quiz** | Bingo, Tambola, Star Game, Name-Place-Animal |
 | **Arcade & quick** | Rock Paper Scissors, Hand Cricket, Snake, Block Blast, Space War, Road Rash |
 | **Classroom** | Word Building |

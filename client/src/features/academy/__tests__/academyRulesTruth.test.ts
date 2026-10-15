@@ -26,7 +26,7 @@ const CATALOG_KEY_BY_ACADEMY_SLUG: Readonly<Record<string, string>> = {
  */
 const SOLO_ONLY_DESPITE_CATALOG: ReadonlySet<string> = new Set(["roadrash"]);
 
-/** The sandboxes SandboxRenderer can actually draw (carrom/chess/star/bingo have none). */
+/** The sandboxes SandboxRenderer can actually draw (chess/star/bingo have none). */
 const REAL_SANDBOX_KINDS: ReadonlySet<InteractiveSandboxKind> = new Set<InteractiveSandboxKind>([
   "dice-roll",
   "card-meld",
@@ -85,7 +85,7 @@ describe("academy player counts match shared/catalog GAME_LIMITS", () => {
   it("actually checks the catalog-backed games (guards against a silently empty loop)", () => {
     expect(checked.length).toBeGreaterThanOrEqual(18);
     for (const slug of ["ludo", "snl", "uno", "dotsboxes", "wordbuilding", "stargame", "bingo", "tambola",
-      "namesplaceanimal", "carrom", "spacewar", "brickblocks"]) {
+      "namesplaceanimal", "spacewar", "brickblocks"]) {
       expect(checked, slug).toContain(slug);
     }
   });
@@ -277,11 +277,5 @@ describe("rules match the engines", () => {
   it("Snake: walls are only lethal in solid-wall mode (default is wrap)", () => {
     const snake = specOf("snake");
     expect(snake.slides[0].keyRule).toMatch(/solid|wrap/i);
-  });
-
-  it("Carrom is a two-player game and the striker foul is a 1-point penalty", () => {
-    const carrom = specOf("carrom");
-    expect(carrom.players).toBe("2 Players");
-    expect(textOf(carrom)).not.toMatch(/2.4 Players/);
   });
 });

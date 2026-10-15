@@ -39,7 +39,7 @@ const ONBOARDING_STAGES: OnboardingStage[] = [
     title: "The Ultimate Multiplayer Lounge",
     subtitle: "Two dozen classic and strategy games",
     description:
-      "Play Ludo, Rummy, Color Cards, Hand Cricket, Chess, Carrom and retro handheld arcade classics instantly in your browser, with nothing to install.",
+      "Play Ludo, Rummy, Color Cards, Hand Cricket, Chess and retro handheld arcade classics instantly in your browser, with nothing to install.",
     features: [
       "The server checks every move, so every player sees the same game",
       "Dedicated mobile (touch-first) and desktop layouts",

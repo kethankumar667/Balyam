@@ -17,7 +17,6 @@ const AVAILABLE_GAMES: Array<{ key: GameKind | "all"; label: string }> = [
   { key: "connect4", label: "Four in a Row" },
   { key: "namesplaceanimal", label: "Name Place Animal" },
   { key: "tambola", label: "Tambola" },
-  { key: "carrom", label: "Carrom" },
   { key: "chess", label: "Chess" },
   { key: "snake", label: "Snake" },
   { key: "blockblast", label: "Block Blast" },

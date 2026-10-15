@@ -6,7 +6,7 @@
 
 ## Playbook 1: Onboarding a New Multiplayer Game
 
-When adding a new game (e.g., `spaceimpact`, `bounce`, `carrom`, etc.) to BHALYAM, follow this mandatory 6-step lifecycle:
+When adding a new game (e.g., `spaceimpact`, `bounce`, etc.) to BHALYAM, follow this mandatory 6-step lifecycle:
 
 ```
 Step 1: Shared Contracts (@shared/types.ts)

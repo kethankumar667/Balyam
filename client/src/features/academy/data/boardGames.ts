@@ -2,7 +2,7 @@ import type { GameAcademySpec } from "../types/academy";
 
 // Rules text in this file is checked against the engines by
 // __tests__/academyRulesTruth.test.ts. Sources: server/src/games/{ludo,snl,
-// dotsboxes,chess,carrom}, shared/ludo-rules.ts, shared/catalog.ts.
+// dotsboxes,chess}, shared/ludo-rules.ts, shared/catalog.ts.
 
 export const LUDO_ACADEMY: GameAcademySpec = {
   slug: "ludo",
@@ -239,52 +239,6 @@ export const CHESS_ACADEMY: GameAcademySpec = {
         { label: "Time Control", detail: "The default is 3 minutes per side plus a 2-second increment; the host can change it.", tag: "Clock" },
         { label: "Flag Fall", detail: "Running out of time loses the game.", tag: "Loss" },
         { label: "Draws", detail: "Stalemate, threefold repetition, the 50-move rule, insufficient material, or an accepted draw offer.", tag: "Draw" },
-      ],
-    },
-  ],
-};
-
-export const CARROM_ACADEMY: GameAcademySpec = {
-  slug: "carrom",
-  title: "Classic Carrom",
-  tagline: "Striker flick precision on wooden felt — pocket carrom men, sink the Queen, and seal victory.",
-  genre: "board",
-  players: "2 Players",
-  duration: "10–20 min",
-  difficulty: "Tactical",
-  primaryAccent: "#B45309",
-  secondaryAccent: "#DC2626",
-  glowAura: "from-amber-700/20 via-red-600/10 to-transparent",
-  storageKey: "bhalyam.academy.carrom.v2",
-  slides: [
-    {
-      id: "objective",
-      badge: "MISSION 01",
-      title: "Pocket the Carrom Men",
-      summary: "Position your striker on the baseline and flick it to sink your designated carrom pieces (White or Black) into the corner pockets.",
-      keyRule: "Pocketing one of your own pieces earns a point and another shot. Pocketing only an opponent's piece scores for them and ends your turn; pocketing one of your own on the same shot keeps it.",
-      proTip: "Use rebound cushion angles to unlock carrom men clustered in dead corners.",
-      iconName: "Target",
-    },
-    {
-      id: "queen_cover",
-      badge: "THE RED JEWEL",
-      title: "The Queen & Mandatory Cover",
-      summary: "In Classic mode the Red Queen is worth 3 points, awarded once she is covered: pocket one of your own pieces on the same shot or on the very next shot.",
-      keyRule: "Failure to cover the Queen returns her to the center spot.",
-      proTip: "Never attempt the Queen unless an easy cover piece is sitting near an adjacent pocket.",
-      iconName: "Crown",
-    },
-  ],
-  cheatsheet: [
-    {
-      title: "Board Regulations",
-      iconName: "ShieldCheck",
-      items: [
-        { label: "Points Value", detail: "Classic mode: White piece 1 pt · Black piece 1 pt · Red Queen 3 pts. Freestyle mode pays 10 / 5 / 25.", tag: "Scoring" },
-        { label: "Queen Cover", detail: "Pocket one of your own pieces on the same shot or the follow-up strike.", tag: "Crucial" },
-        { label: "Striker Foul", detail: "Classic mode: pocketing the striker costs 1 point and your turn, and one of your pocketed pieces returns to the board.", tag: "Foul" },
-        { label: "Winning", detail: "Classic mode: first to the target score (21 by default), or clear your own color with the Queen settled.", tag: "Victory" },
       ],
     },
   ],

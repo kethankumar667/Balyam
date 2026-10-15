@@ -17,13 +17,22 @@ describe("purgeRetiredStorage", () => {
     window.sessionStorage.clear();
   });
 
-  it("names the keys the removed voucher and rematch features used", () => {
+  it("names the keys the removed voucher, rematch and Carrom features used", () => {
     expect([...RETIRED_STORAGE_KEYS].sort()).toEqual([
+      "bhalyam.academy.carrom.v2",
       "bhalyam.auto_start",
       "bhalyam.pending_voucher_amount",
       "bhalyam.pending_voucher_code",
       "bhalyam.pending_vouchers",
     ]);
+  });
+
+  it("clears the saved progress of the removed Carrom lesson", () => {
+    window.localStorage.setItem("bhalyam.academy.carrom.v2", JSON.stringify({ completedSlides: ["objective"] }));
+
+    purgeRetiredStorage();
+
+    expect(window.localStorage.getItem("bhalyam.academy.carrom.v2")).toBeNull();
   });
 
   it("clears the retired rematch auto-start switch", () => {

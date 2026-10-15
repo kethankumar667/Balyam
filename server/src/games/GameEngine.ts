@@ -17,7 +17,7 @@ export interface MoveResult {
    *
    * Only real-time engines need this. A turn-based engine changes phase as a
    * direct result of `applyMove`, and RoomManager re-arms timers on that path
-   * already. A tick-driven engine does not: Carrom resolves a strike over
+   * already. A tick-driven engine does not: a physics engine resolves a strike over
    * dozens of ticks and only returns to "aiming" on whichever tick the pieces
    * happen to stop, so nothing else can tell the room that a new turn has
    * begun. Without this flag the turn timer is never re-armed and a bot or a

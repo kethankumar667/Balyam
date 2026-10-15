@@ -187,14 +187,6 @@ export const BOT_TAGLINES_BY_GAME: Record<GameKind, readonly string[]> = {
     "Tetris brain, Block Blast hands",
     "Never panics on a full board",
   ],
-  carrom: [
-    "Pockets the queen with a flick",
-    "Powder on the board, ice in the veins",
-    "Breaks the board like a pro",
-    "Rebounds off every wall",
-    "Neighbourhood carrom champion",
-    "Covers the queen every time",
-  ],
   roadrash: [
     "Overtakes on the blind turn",
     "Nitro at the first straight",

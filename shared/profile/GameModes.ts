@@ -158,18 +158,6 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
       { modeId: "timed_sprint", displayName: "Timed Sprint", description: "30s rapid anagram word builder", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
-  carrom: {
-    game: "carrom",
-    displayName: "Carrom Lounge",
-    category: "board",
-    defaultModeId: "classic",
-    modes: [
-      { modeId: "classic", displayName: "Classic Carrom", description: "Traditional rules with red Queen & mandatory cover", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
-      { modeId: "discpool", displayName: "Disc Pool", description: "Miniclip speed mode — pocket all color pucks", scoringDirection: "LOWER_IS_BETTER", unit: "shots to clear" },
-      { modeId: "freestyle", displayName: "Freestyle Points", description: "Race to target score (Queen 25, White 10, Black 5)", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
-      { modeId: "points_carrom", displayName: "Points Carrom (29)", description: "29-point race to victory", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
-    ],
-  },
   nokiacricket: {
     game: "nokiacricket",
     displayName: "Retro Cricket",
@@ -449,13 +437,6 @@ export function resolveModeId(game: string, options?: Record<string, unknown>): 
       if (options.mode === "zen") return "zen";
     }
     return "daily";
-  }
-
-  // Carrom
-  if (game === "carrom" && typeof options.carromMode === "string") {
-    if (["classic", "discpool", "freestyle"].includes(options.carromMode)) {
-      return options.carromMode;
-    }
   }
 
   // Tic Tac Toe

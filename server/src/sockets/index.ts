@@ -115,7 +115,7 @@ export function registerSocketHandlers(
         payload.namesplaceanimalOptions,
         payload.tambolaOptions,
         payload.snakeOptions,
-        payload.carromOptions,
+        undefined, // retired slot: Carrom options (positional, so the slot stays)
         payload.chessOptions,
         payload.blockBlastOptions,
         payload.spaceWarOptions,

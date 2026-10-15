@@ -68,7 +68,6 @@ const ACADEMY_GAMES: ReadonlyArray<readonly [slug: string, name: string]> = [
   ["snl", "Snakes & Ladders"],
   ["dotsboxes", "Dots & Boxes"],
   ["chess", "Chess"],
-  ["carrom", "Carrom"],
   ["rummy", "Rummy"],
   ["uno", "Uno"],
   ["handcricket", "Hand Cricket"],

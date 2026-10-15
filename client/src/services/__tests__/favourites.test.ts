@@ -34,10 +34,10 @@ describe("FavouritesManager", () => {
 
   it("preserves ordering of favourites added", () => {
     FavouritesManager.addFavourite("snake");
-    FavouritesManager.addFavourite("carrom");
+    FavouritesManager.addFavourite("tictactoe");
     FavouritesManager.addFavourite("chess");
 
-    expect(FavouritesManager.getFavourites()).toEqual(["snake", "carrom", "chess"]);
+    expect(FavouritesManager.getFavourites()).toEqual(["snake", "tictactoe", "chess"]);
   });
 
   it("notifies subscribers upon toggle", () => {

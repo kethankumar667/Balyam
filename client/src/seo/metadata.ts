@@ -1337,17 +1337,6 @@ export const GAME_SOCIAL_METADATA: Record<string, GameSocialShareData> = {
     imageType: "image/jpeg",
     imageAlt: "Rock Paper Scissors Arena",
   },
-  carrom: {
-    game: "carrom",
-    name: "Carrom",
-    shareTitle: "Carrom Board Lounge | Striker & Queen Showdown — BHALYAM",
-    shareDescription: "Pocket carrom men, sink the red queen, and control the striker in this classic veranda board game.",
-    imageUrl: `${BASE_URL}/og/carrom.jpg`,
-    imageWidth: "800",
-    imageHeight: "533",
-    imageType: "image/jpeg",
-    imageAlt: "Carrom Board Lounge Table",
-  },
   chess: {
     game: "chess",
     name: "Chess",

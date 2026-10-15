@@ -37,7 +37,7 @@ describe("RecentlyPlayedManager", () => {
   it("caps list to maximum 10 items", () => {
     const games = [
       "ludo", "rummy", "uno", "snl", "rps",
-      "chess", "carrom", "snake", "roadrash", "tetris", "stargame",
+      "chess", "tictactoe", "snake", "roadrash", "tetris", "stargame",
     ] as const;
 
     for (const g of games) {

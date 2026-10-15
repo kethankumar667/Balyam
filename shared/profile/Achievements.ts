@@ -144,14 +144,6 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     targetValue: 5,
   },
   {
-    id: "carrom_striker",
-    title: "Queen Striker",
-    description: "Win 5 matches of Carrom.",
-    icon: "🎯",
-    category: "skill",
-    targetValue: 5,
-  },
-  {
     id: "marathon_gamer",
     title: "Marathon Gamer",
     description: "Accumulate 60 minutes of multiplayer gaming.",

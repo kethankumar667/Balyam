@@ -178,7 +178,7 @@ describe("RoomManager — mid-game departure", () => {
 
   /**
    * A LEAVE that ENDS the match outright — a 1v1 forfeit (Hand Cricket,
-   * Chess, Carrom, RPS) rather than the multi-seat "table plays on" case
+   * Chess, RPS) rather than the multi-seat "table plays on" case
    * above. Root-caused 2026-09-09 from a live report: two signed-in players
    * on a paid Hand Cricket match, one clicks Leave mid-game, and the
    * opponent's screen shows nothing — no winner banner, no scorecard —

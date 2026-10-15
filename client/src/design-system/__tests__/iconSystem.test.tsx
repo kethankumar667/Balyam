@@ -28,7 +28,7 @@ describe("Design System Iconography Suite", () => {
   });
 
   it("renders GameCategoryIcon for supported multiplayer games", () => {
-    const games = ["ludo", "uno", "rummy", "handcricket", "chess", "carrom", "snake", "spacewar"];
+    const games = ["ludo", "uno", "rummy", "handcricket", "chess", "snake", "spacewar"];
     for (const game of games) {
       const el = React.createElement(GameCategoryIcon, { game, size: 24 });
       expect(el).toBeDefined();

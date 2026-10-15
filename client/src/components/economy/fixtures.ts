@@ -157,7 +157,7 @@ export const DEMO_CHECKOUT_AFFORDABLE: SyntheticCheckoutFixture = {
 
 export const DEMO_CHECKOUT_INSUFFICIENT: SyntheticCheckoutFixture = {
   roomCode: "XARWQX",
-  game: "Carrom",
+  game: "Ludo",
   seatCount: 4,
   humanSeats: 2,
   botSeats: 2,

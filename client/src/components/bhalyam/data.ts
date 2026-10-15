@@ -37,7 +37,6 @@ export type BhalyamGameSlug =
   | "brickblocks"
   | "tetris"
   | "breakout"
-  | "carrom"
   | "2048"
   | "sudoku"
   | "tictactoe"
@@ -498,22 +497,6 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "Authentic 9999-in-1 Brick Game Block Breaker. 10x20 LCD matrix, 3-cell paddle deflection, normal & reinforced steel blocks, combo multiplier scoring, and retro chiptune audio.",
     accent: { from: "#5EEAD4", to: "#0F766E" },
-  },
-  {
-    slug: "carrom",
-    tags: ["multiplayer", "board"],
-    theme: "Board Classic 🎯",
-    title: "Carrom",
-    badge: "🎯 Queen Cover",
-    nostalgiaQuote: "Powder on board, thumb the striker!",
-    playerRange: "2–4 Players",
-    duration: "10–25 min",
-    paperBg: "linear-gradient(155deg, #2A1B0D 0%, #170F07 45%, #0B0704 100%)",
-    paperBorder: "rgba(139, 94, 52, 0.55)",
-    btnGradient: { from: "#8B5E34", to: "#4A3218", shadow: "#2B1B0D" },
-    blurb:
-      "Powder on the board, thumb cocked, queen in the middle. Strike, rebound and cover her before your cousin does.",
-    accent: { from: "#8B5E34", to: "#4A3218" },
   },
   {
     slug: "spacewar",

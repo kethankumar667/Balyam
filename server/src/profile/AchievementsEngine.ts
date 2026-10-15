@@ -64,9 +64,6 @@ export class AchievementsEngine {
         case "chess_grandmaster":
           progress = stats.perGame["chess"]?.wins || 0;
           break;
-        case "carrom_striker":
-          progress = stats.perGame["carrom"]?.wins || 0;
-          break;
         case "marathon_gamer":
           progress = Math.floor(stats.totalPlayTimeMinutes);
           break;

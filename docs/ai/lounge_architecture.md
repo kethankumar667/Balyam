@@ -62,8 +62,8 @@ The **BHALYAM Lounge** is the heart of the platform. It is not an analytical das
 | :--- | :--- | :--- |
 | **🏫 School Break** | Played between bells, under wooden desks, and on the back page of rough notebooks. | Hand Cricket, Dots & Boxes, Name Place Animal Thing, Rock Paper Scissors, Word Building, Star Game, Bingo |
 | **🌧 Rainy Evening** | Unrushed, cozy strategy when rain trapped cousins and siblings indoors with hot chai. | Snakes & Ladders, Indian Rummy, UNO, Word Building, Block Blast, Chess |
-| **☀️ Sunday Afternoon** | Grand post-lunch family tournaments across the living room carpet. | Ludo, Carrom, Chess, Tambola, Indian Rummy, Star Game, Nokia Snake |
-| **👬 Friends' Adda** | High-energy gatherings on the veranda with noisy laughter and friendly rivalries. | UNO, Hand Cricket, Carrom, Tambola, Bingo, Road Rash, Rock Paper Scissors |
+| **☀️ Sunday Afternoon** | Grand post-lunch family tournaments across the living room carpet. | Ludo, Chess, Tambola, Indian Rummy, Star Game, Nokia Snake |
+| **👬 Friends' Adda** | High-energy gatherings on the veranda with noisy laughter and friendly rivalries. | UNO, Hand Cricket, Tambola, Bingo, Road Rash, Rock Paper Scissors |
 
 ---
 

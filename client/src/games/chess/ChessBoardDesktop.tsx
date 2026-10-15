@@ -360,7 +360,7 @@ export default function ChessBoardDesktop({
               Replaces the old "Quick Social Toolbar" (four of its five
               buttons were inert) and the bespoke chat panel (no voice, no
               player list, no reaction picker) with the app's real room
-              chrome, same as Carrom/RPS. */}
+              chrome, same as RPS. */}
           {roomCode && (
             <div className="rounded-2xl overflow-hidden p-3 bg-[#1A1412] border border-amber-500/20 shadow-2xl">
               <InlineRoomRail

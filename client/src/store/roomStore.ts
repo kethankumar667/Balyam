@@ -17,7 +17,6 @@ import type {
   NamePlaceAnimalPlayerState,
   TambolaPlayerState,
   SnakePublicState,
-  CarromPublicState,
   ChessPublicState,
   SpaceWarPublicState,
   TicTacToePublicState,
@@ -41,7 +40,6 @@ export interface GameStateMap {
   namesplaceanimal: NamePlaceAnimalPlayerState;
   tambola: TambolaPlayerState;
   snake: SnakePublicState;
-  carrom: CarromPublicState;
   chess: ChessPublicState;
   spacewar: SpaceWarPublicState;
   tictactoe: TicTacToePublicState;

@@ -39,7 +39,6 @@ export const MIN_MATCH_DURATION_MS: MinDurationTable = {
   snl: 60 * SECOND,
   uno: 60 * SECOND,
   chess: 60 * SECOND,
-  carrom: 60 * SECOND,
   bingo: 60 * SECOND,
   tambola: 60 * SECOND,
   ludo: 90 * SECOND,

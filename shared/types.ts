@@ -1,6 +1,6 @@
 import type { BotProfile } from "./bot-profile.js";
 
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "carrom" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
 
 /**
  * What a player is: somebody with an account, or somebody who just started
@@ -2429,100 +2429,6 @@ export interface SnakePublicState {
   winnerId: string | null;
 }
 
-// ---- Carrom ----
-/**
- * Board is a square in abstract units; the client scales it. Physics are
- * therefore identical on a phone and a projector, and nothing is in pixels.
- */
-export const CARROM_BOARD = {
-  size: 100,
-  /** Playfield inset from the frame — coins rebound off this square. */
-  cushion: 6,
-  pocketRadius: 4.2,
-  coinRadius: 1.9,
-  strikerRadius: 2.6,
-  /** Distance of the baseline from the board edge. */
-  baseline: 18,
-} as const;
-
-export type CarromColor = "white" | "black";
-export type CarromPieceKind = CarromColor | "queen" | "striker";
-
-export interface CarromPiece {
-  id: string;
-  kind: CarromPieceKind;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  /** Potted pieces stop being simulated but stay in state for the animation. */
-  pocketed: boolean;
-}
-
-export type CarromMode = "classic" | "discpool" | "freestyle";
-export type StrikerSkin = "pearl" | "gold" | "cyber" | "ruby" | "emerald";
-export type BoardFeltSkin = "birch" | "velvet" | "emerald" | "ebony";
-
-export interface CarromOptions {
-  /** Points needed to win the match. */
-  targetScore: number;
-  /** Seconds a player has to take their shot. */
-  shotTimerSeconds: number;
-  mode: CarromMode;
-  strikerSkin: StrikerSkin;
-  boardSkin: BoardFeltSkin;
-  botDifficulty: "easy" | "medium" | "pro";
-}
-
-export const DEFAULT_CARROM_OPTIONS: CarromOptions = {
-  targetScore: 21,
-  shotTimerSeconds: 30,
-  mode: "classic",
-  strikerSkin: "pearl",
-  boardSkin: "birch",
-  botDifficulty: "medium",
-};
-
-/**
- * "aiming"   — waiting for the current player's shot.
- * "resolving"— the strike is playing out; nobody may act.
- * "finished" — match over.
- */
-export type CarromPhase = "aiming" | "resolving" | "finished";
-
-export interface CarromSeat {
-  playerId: string;
-  color: CarromColor;
-  score: number;
-  /** Coins of their colour still on the board. */
-  remaining: number;
-}
-
-export interface CarromPublicState {
-  kind: "carrom";
-  phase: CarromPhase;
-  turnPlayerId: string | null;
-  seats: CarromSeat[];
-  pieces: CarromPiece[];
-  /** Where the striker may be placed along the current baseline, as 0..1. */
-  strikerPos: number;
-  /** Whoever pocketed the queen and still owes a covering coin. */
-  queenPendingFor: string | null;
-  /** Human-readable outcome of the last completed shot. */
-  lastShot: string | null;
-  lastCombo?: string | null;
-  mode: CarromMode;
-  targetScore?: number;
-  /** Configured seconds-per-shot for this match — the countdown ring's denominator, since the timer is room-configurable (15/30/45/untimed). */
-  shotTimerSeconds?: number;
-  strikerSkin: StrikerSkin;
-  boardSkin: BoardFeltSkin;
-  turnDeadline: number | null;
-  isOver: boolean;
-  winnerId: string | null;
-}
-
-
 // ---- Space War ----
 export type SpaceWarSpecialType = "missile" | "laser" | "wall";
 export type SpaceWarThemeId = "cyberpunk" | "retro_nokia" | "neon_synthwave" | "solar_flare";
@@ -2878,9 +2784,7 @@ export interface CreateRoomPayload {
   bingoOptions?: Partial<BingoGameOptions>;
   namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>;
   tambolaOptions?: Partial<TambolaOptions>;
-  snakeOptions?: Partial<SnakeOptions>;
-  carromOptions?: Partial<CarromOptions>;
-  chessOptions?: Partial<ChessOptions>;
+  snakeOptions?: Partial<SnakeOptions>;  chessOptions?: Partial<ChessOptions>;
   blockBlastOptions?: Partial<BlockBlastOptions>;
   spaceWarOptions?: Partial<SpaceWarOptions>;
   ticTacToeOptions?: Partial<TicTacToeOptions>;

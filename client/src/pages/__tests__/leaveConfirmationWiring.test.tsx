@@ -5,13 +5,12 @@ import LeaveRoomModal from "../../components/room/LeaveRoomModal";
 
 /**
  * Regression coverage for the leave-confirmation bypass found in a
- * production certification audit: nine game boards (Ludo, UNO, Rummy,
- * Carrom, Word Building, Dots & Boxes, Bingo, Hand Cricket, RPS) were wired
+ * production certification audit: eight game boards (Ludo, UNO, Rummy,
+ * Word Building, Dots & Boxes, Bingo, Hand Cricket, RPS) were wired
  * as `onLeave={leaveRoom}` in Room.tsx — every board just forwards whatever
  * `onLeave` callback it's given to its own Leave button (see
  * `HcLeaveButton` in hc-notebook.tsx, `DoordarshanLeaveButton` in Hand
- * Cricket's `doordarshan/` theme folder, `ludo-board-composites.tsx`,
- * `carrom-shared.tsx`, etc.), so the bug was entirely in Room.tsx's own
+ * Cricket's `doordarshan/` theme folder, `ludo-board-composites.tsx`, etc.), so the bug was entirely in Room.tsx's own
  * wiring: it hands boards the real leave function instead of a function
  * that opens `LeaveRoomModal` first.
  *

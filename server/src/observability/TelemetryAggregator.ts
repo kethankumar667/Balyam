@@ -141,7 +141,6 @@ export class TelemetryAggregator {
       "bingo",
       "namesplaceanimal",
       "tambola",
-      "carrom",
       "chess",
       "snake",
       "spacewar",

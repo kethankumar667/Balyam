@@ -13,7 +13,6 @@ import { BingoEngine } from "./bingo/BingoEngine.js";
 import { NamePlaceAnimalEngine } from "./namesplaceanimal/NamePlaceAnimalEngine.js";
 import { TambolaEngine } from "./tambola/TambolaEngine.js";
 import { SnakeEngine } from "./snake/SnakeEngine.js";
-import { CarromEngine } from "./carrom/CarromEngine.js";
 import { ChessEngine } from "./chess/ChessEngine.js";
 import { BlockBlastEngine } from "./blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
@@ -48,8 +47,6 @@ export function createEngine(kind: GameKind): GameEngine {
       return new TambolaEngine();
     case "snake":
       return new SnakeEngine();
-    case "carrom":
-      return new CarromEngine();
     case "chess":
       return new ChessEngine();
     case "blockblast":

@@ -17,7 +17,6 @@ export type InteractiveSandboxKind =
   | "dots-chain"
   | "word-chain"
   | "sudoku-scanner"
-  | "carrom-striker"
   | "chess-tactics"
   | "star-slap"
   | "bingo-cross"

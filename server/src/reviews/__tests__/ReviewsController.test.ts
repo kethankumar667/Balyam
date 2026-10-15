@@ -126,7 +126,7 @@ describe("POST /api/reviews", () => {
     // Six DIFFERENT-game submissions are each legitimate on their own (no
     // duplicate-scope 409 to confuse with), so the 6th tripping the limiter
     // proves the limiter — not the uniqueness constraint — caused the 429.
-    const games = ["ludo", "rummy", "uno", "chess", "carrom", "dotsboxes"];
+    const games = ["ludo", "rummy", "uno", "chess", "snl", "dotsboxes"];
     for (const gameId of games) {
       const res = await server.request("/api/reviews", {
         method: "POST",

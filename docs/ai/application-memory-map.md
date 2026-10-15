@@ -101,13 +101,13 @@ Typed event interfaces live at the bottom of `shared/types.ts` as `ServerToClien
 
 `shared/types.ts` currently defines:
 
-`rps`, `rummy`, `ludo`, `snl`, `handcricket`, `uno`, `wordbuilding`, `dotsboxes`, `stargame`, `bingo`, `namesplaceanimal`, `tambola`, `snake`, `carrom`, `roadrash`, `chess`, `blockblast`, `spacewar`.
+`rps`, `rummy`, `ludo`, `snl`, `handcricket`, `uno`, `wordbuilding`, `dotsboxes`, `stargame`, `bingo`, `namesplaceanimal`, `tambola`, `snake`, `roadrash`, `chess`, `blockblast`, `spacewar`.
 
 `server/src/games/registry.ts` currently implements engines for all of those except `roadrash`. Before wiring a catalog tile or room creation path, verify whether a game kind is playable, maintenance-only, standalone, or missing a server engine.
 
 Client game folders currently include room games and standalone/legacy game surfaces:
 
-`bingo`, `brickracer`, `carrom`, `chess`, `dotsboxes`, `handcricket`, `ludo`, `namesplaceanimal`, `nokiacricket`, `nokiasnake`, `pro`, `rps`, `rummy`, `shared`, `snake`, `snl`, `spacewar`, `stargame`, `tambola`, `uno`, `wordbuilding`.
+`bingo`, `brickracer`, `chess`, `dotsboxes`, `handcricket`, `ludo`, `namesplaceanimal`, `nokiacricket`, `nokiasnake`, `pro`, `rps`, `rummy`, `shared`, `snake`, `snl`, `spacewar`, `stargame`, `tambola`, `uno`, `wordbuilding`.
 
 When adding or repairing a multiplayer room game, work in this order:
 

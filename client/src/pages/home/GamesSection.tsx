@@ -54,7 +54,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   stargame: StarGameGlyph,
   bingo: BingoGlyph,
   snake: StarGameGlyph,
-  carrom: StarGameGlyph,
   roadrash: StarGameGlyph,
   brickblocks: BlockBlastGlyph,
   tetris: BlockBlastGlyph,

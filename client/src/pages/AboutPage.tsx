@@ -17,7 +17,7 @@ import {
    Nostalgic Web Audio Soundboard Synthesizer
    (100% Client-side Web Audio, Zero Dependencies, Zero Latency)
    ───────────────────────────────────────────────────────────── */
-function playNostalgicSfx(type: "bell" | "striker" | "chalk" | "dice") {
+function playNostalgicSfx(type: "bell" | "chalk" | "dice") {
   try {
     HapticsManager.getInstance().subtle();
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -37,19 +37,6 @@ function playNostalgicSfx(type: "bell" | "striker" | "chalk" | "dice") {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 1.2);
-    } else if (type === "striker") {
-      // Carrom striker wooden 'tack'
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(280, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.6, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
     } else if (type === "chalk") {
       // Chalk on blackboard scratch tone
       const bufferSize = ctx.sampleRate * 0.2;
@@ -125,25 +112,6 @@ function PushPin({ className = "" }: { className?: string }) {
   );
 }
 
-function SmileyBadge({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-9 h-9 drop-shadow-md ${className}`}>
-      <circle cx="20" cy="20" r="18" fill="url(#smileyGrad)" stroke="#D97706" strokeWidth="2" />
-      <ellipse cx="14" cy="16" rx="2" ry="3" fill="#78350F" />
-      <ellipse cx="26" cy="16" rx="2" ry="3" fill="#78350F" />
-      <path d="M12 22 C 14 29, 26 29, 28 22" stroke="#78350F" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-      <path d="M10.5 21.5 L12.5 23" stroke="#78350F" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M29.5 21.5 L27.5 23" stroke="#78350F" strokeWidth="1.8" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="smileyGrad" x1="0" y1="0" x2="40" y2="40">
-          <stop offset="0%" stopColor="#FDE047" />
-          <stop offset="100%" stopColor="#F59E0B" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
 function AirplaneWithLoopSVG({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={`w-32 h-20 ${className}`}>
@@ -191,7 +159,7 @@ function BicycleDoodleSVG({ className = "" }: { className?: string }) {
 
 const NOSTALGIA_TIMELINE = [
   { year: "1995", title: "Classroom Desks", text: "Tearing paper, making balls, and playing Hand Cricket during lunch breaks under teacher's desk.", icon: "🏏" },
-  { year: "2000", title: "Veranda Carrom", text: "Summer holidays with boric powder, wooden carrom boards, and endless Ludo cutting battles.", icon: "🎲" },
+  { year: "2000", title: "Veranda Games", text: "Summer holidays on the veranda, wooden game boards, and endless Ludo cutting battles.", icon: "🎲" },
   { year: "2005", title: "Brick Phone Era", text: "Pushing green pixels in Snake II and passing phone around in university hostels.", icon: "🐍" },
   { year: "2026", title: "Bhalyam is Born", text: "Rebuilding our digital lounge so we never lose our childhood friends, no matter where life takes us.", icon: "🛋️" },
 ];
@@ -201,7 +169,7 @@ export default function AboutPage() {
   const isDark = theme === "dark";
   const [activeSound, setActiveSound] = useState<string | null>(null);
 
-  const handleTriggerSfx = (type: "bell" | "striker" | "chalk" | "dice", label: string) => {
+  const handleTriggerSfx = (type: "bell" | "chalk" | "dice", label: string) => {
     setActiveSound(label);
     playNostalgicSfx(type);
     setTimeout(() => setActiveSound(null), 1200);
@@ -314,23 +282,6 @@ export default function AboutPage() {
                     </p>
                   </div>
 
-                  <div className="absolute bottom-2.5 left-6 rotate-[-4deg] p-2 rounded-xl border shadow-xl max-w-[190px] sm:max-w-[210px] z-20 bg-white dark:bg-[#1F2B44] border-[#E0D0B6] dark:border-white/20">
-                    <picture className="w-full h-full">
-                      <source type="image/avif" srcSet="/about_carrom_kids.avif" />
-                      <source type="image/webp" srcSet="/about_carrom_kids.webp" />
-                      <img
-                        src="/about_carrom_kids.jpg"
-                        alt="Gang of friends playing games together"
-                        width={210}
-                        height={112}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-24 sm:h-28 object-cover rounded-lg border border-[#ECD9BA]"
-                      />
-                    </picture>
-                    <SmileyBadge className="absolute -bottom-3 -right-3" />
-                  </div>
-
                   <AirplaneWithLoopSVG className="absolute bottom-0 right-0 pointer-events-none z-30" />
                 </div>
               </div>
@@ -365,7 +316,7 @@ export default function AboutPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => handleTriggerSfx("bell", "School Bell")}
@@ -376,18 +327,6 @@ export default function AboutPage() {
                   School Bell
                 </h4>
                 <p className="text-[10.5px] text-stone-500 dark:text-slate-400">Period end chime</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTriggerSfx("striker", "Carrom Striker")}
-                className="p-3.5 rounded-2xl bg-orange-50/70 dark:bg-[#182238] border border-orange-200/80 dark:border-orange-500/20 hover:border-orange-500 text-left transition-all hover:scale-102 active:scale-95 cursor-pointer min-h-[44px] group focus-visible:outline-2 focus-visible:outline-amber-500"
-              >
-                <span className="text-2xl block mb-1">🎯</span>
-                <h4 className="font-bold text-xs text-stone-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400">
-                  Carrom Striker
-                </h4>
-                <p className="text-[10.5px] text-stone-500 dark:text-slate-400">Wooden pocket thud</p>
               </button>
 
               <button
@@ -476,7 +415,7 @@ export default function AboutPage() {
                 How Childhood Echoes Across 30 Years
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-300 leading-relaxed">
-                Bhalyam is rooted in the simple times before push notifications, when summer vacations were measured in carrom powder, scraped knees, and shouting "OUT!" across classroom benches.
+                Bhalyam is rooted in the simple times before push notifications, when summer vacations were measured in chalk dust, scraped knees, and shouting "OUT!" across classroom benches.
               </p>
             </div>
 

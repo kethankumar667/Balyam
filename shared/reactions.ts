@@ -59,7 +59,6 @@ export const GAME_REACTIONS: Partial<Record<string, readonly string[]>> = {
   rummy: ["🍅", "🩴", "🃏", "😤", "💰", "😂"],
   rps: ["👊", "✊", "✌️", "🔥", "😤", "😂"],
   handcricket: ["🏏", "🎯", "🔥", "💪", "😤", "🙌"],
-  carrom: ["🎯", "💥", "👊", "😎", "🔥", "😂"],
   chess: ["♟️", "👑", "🧠", "😏", "🔥", "😂"],
   bingo: ["🔢", "🎊", "🙌", "🍀", "😂", "🎉"],
   tambola: ["🔢", "🎊", "🙌", "🍀", "😂", "🎉"],

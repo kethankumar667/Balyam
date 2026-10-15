@@ -5,8 +5,8 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@shared/types.j
 
 /**
  * The room's real-time loop must run a 60 Hz engine at 60 ticks per wall-clock second. It used to
- * clamp the period to 20 ms, which gave 50 ticks a second and made every Carrom coin move at 83% of
- * its real speed. This drives the REAL loop with a stub engine and counts ticks over one second.
+ * clamp the period to 20 ms, which gave 50 ticks a second and made every piece of a 60 Hz physics engine
+ * move at 83% of its real speed. This drives the REAL loop with a stub engine and counts ticks over one second.
  */
 
 interface LoopRoom {
@@ -35,7 +35,7 @@ function countTicks(tickRateHz: number, wallMs: number): Promise<number> {
     },
     isOver: () => false,
   };
-  const room: LoopRoom = { code: "SPEED1", game: "carrom", phase: "playing", engine };
+  const room: LoopRoom = { code: "SPEED1", game: "spacewar", phase: "playing", engine };
   // The loop broadcasts after every wake-up; there is nobody to broadcast to here.
   (rooms as unknown as { broadcastGameState: () => void }).broadcastGameState = () => {};
   (rooms as unknown as { startSimulation: (r: LoopRoom) => void }).startSimulation(room);

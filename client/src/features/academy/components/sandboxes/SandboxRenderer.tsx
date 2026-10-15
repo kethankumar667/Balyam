@@ -20,7 +20,7 @@ interface SandboxRendererProps {
 /**
  * The single source of truth for which sandbox kinds have a real demo.
  * `hasSandbox` and the renderer both read this table, so they cannot drift.
- * Kinds that are absent (carrom-striker, chess-tactics, star-slap,
+ * Kinds that are absent (chess-tactics, star-slap,
  * bingo-cross) deliberately render nothing rather than an unrelated demo.
  */
 const SANDBOX_COMPONENTS: Partial<

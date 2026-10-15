@@ -24,7 +24,6 @@ const NOSTALGIC_NICKNAMES = [
   "LudoKing",
   "GoldStriker",
   "SuperSixer",
-  "CarromAce",
   "MasterMind",
   "SpeedySnake",
   "DeckMaster",

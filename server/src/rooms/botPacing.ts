@@ -2,9 +2,9 @@
  * Platform-default bot "think" pause — used by every bot-capable engine that
  * does NOT define its own `getBotThinkDelayMs()` (server/src/games/GameEngine.ts).
  *
- * Of the 17 bot-capable engines, only Ludo, Tambola, BlockBlast, and StarGame
- * override this with game-tuned pacing. The other 13 (Rummy, UNO, Hand
- * Cricket, RPS, Bingo, Chess, Dots & Boxes, Carrom, SNL, WordBuilding,
+ * Of the 16 bot-capable engines, only Ludo, Tambola, BlockBlast, and StarGame
+ * override this with game-tuned pacing. The other 12 (Rummy, UNO, Hand
+ * Cricket, RPS, Bingo, Chess, Dots & Boxes, SNL, WordBuilding,
  * NamesPlaceAnimal, Snake, ...) all fell through to a single flat
  * `1200 + Math.random() * 800` band regardless of how fast or slow that game
  * actually feels — a uniform cadence is itself the tell that gives a bot

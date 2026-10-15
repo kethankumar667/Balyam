@@ -6,7 +6,6 @@ import { AudioProvider } from "../../context/AudioContext";
 import RecoveryBanner from "../../core/recovery/RecoveryBanner";
 import RejoinBanner from "../../core/recovery/RejoinBanner";
 import BhalyamResultModal from "../../components/BhalyamResultModal";
-import CarromSkinModal from "../../games/carrom/CarromSkinModal";
 import ChessSkinModal from "../../games/chess/ChessSkinModal";
 import EmptyState from "../../components/games/EmptyState";
 import NokiaCricketPage from "../../pages/NokiaCricketPage";
@@ -180,24 +179,6 @@ describe("Launch Remediation — P0-03: WCAG Touch Target Compliance (≥44x44px
     expect(closeBtn.className).toContain("min-h-[44px]");
   });
 
-  it("enforces ≥44x44px touch target on CarromSkinModal close button", () => {
-    const onClose = vi.fn();
-    render(
-      <CarromSkinModal
-        open={true}
-        onClose={onClose}
-        currentStriker="pearl"
-        currentFelt="birch"
-        onSelectStriker={() => {}}
-        onSelectFelt={() => {}}
-      />
-    );
-
-    const closeBtn = screen.getByRole("button", { name: /Close/i });
-    expect(closeBtn.className).toContain("min-w-[44px]");
-    expect(closeBtn.className).toContain("min-h-[44px]");
-  });
-
   it("enforces ≥44x44px touch target on ChessSkinModal close button", () => {
     const onClose = vi.fn();
     render(
@@ -322,24 +303,7 @@ describe("Launch Remediation — P1-01: Results Flow", () => {
   });
 });
 
-describe("Launch Remediation — P1-02: Modal Standardization (Carrom & Chess)", () => {
-  function CarromHarness() {
-    const [open, setOpen] = useState(false);
-    return (
-      <div>
-        <button onClick={() => setOpen(true)}>Open Carrom Skins</button>
-        <CarromSkinModal
-          open={open}
-          onClose={() => setOpen(false)}
-          currentStriker="pearl"
-          currentFelt="birch"
-          onSelectStriker={() => {}}
-          onSelectFelt={() => {}}
-        />
-      </div>
-    );
-  }
-
+describe("Launch Remediation — P1-02: Modal Standardization (Chess)", () => {
   function ChessHarness() {
     const [open, setOpen] = useState(false);
     return (
@@ -356,26 +320,6 @@ describe("Launch Remediation — P1-02: Modal Standardization (Carrom & Chess)",
       </div>
     );
   }
-
-  it("CarromSkinModal exposes dialog semantics, closes on Escape, and traps/restores focus", async () => {
-    render(<CarromHarness />);
-    const trigger = screen.getByText("Open Carrom Skins");
-    trigger.focus();
-    fireEvent.click(trigger);
-
-    await waitFor(() => {
-      const dialog = screen.getByRole("dialog");
-      expect(dialog.getAttribute("aria-modal")).toBe("true");
-      expect(dialog.getAttribute("aria-label")).toBe("Custom Skins & Themes");
-    });
-
-    fireEvent.keyDown(window, { key: "Escape" });
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).toBeNull();
-      expect(document.activeElement).toBe(trigger);
-    });
-  });
 
   it("ChessSkinModal exposes dialog semantics, closes on Escape, and traps/restores focus", async () => {
     render(<ChessHarness />);

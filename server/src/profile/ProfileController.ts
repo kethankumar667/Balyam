@@ -4,6 +4,7 @@ import { matchHistoryService } from "./MatchHistoryService.js";
 import { requireSelfParam, callerId } from "../auth/identity.js";
 import type { GameKind } from "@shared/types.js";
 import { demoProgressionFor, demoStatsFor } from "./demoStats.js";
+import { withoutRetiredGames } from "./retiredGameStats.js";
 
 /**
  * Player profiles.
@@ -82,7 +83,7 @@ profileRouter.delete("/:playerId", requireSelfParam(), (req, res) => {
 
 /** PUBLIC — career totals. These are what a leaderboard row is made of. */
 profileRouter.get("/:playerId/stats", (req, res) => {
-  res.json({ stats: demoStatsFor(profileService.getStats(req.params.playerId)) });
+  res.json({ stats: withoutRetiredGames(demoStatsFor(profileService.getStats(req.params.playerId))) });
 });
 
 /** PRIVATE — who you played, and when. */

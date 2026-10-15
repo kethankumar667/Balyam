@@ -22,7 +22,6 @@ const GAME_TILES = [
   'Roadrash Game Tile.png',
   'Frogger Game Tile.png',
   'BrickBreakout Game Tile.png',
-  'Carrom Game Tile.png',
   'SpacewarTile.png',
   'BrickRacer Game Tile.png',
   'Chess Game Tile.png',
@@ -62,7 +61,6 @@ const PROMO_AUTH_ASSETS = [
   'Foundersectionasset.png',
   'FooterBhalyamlogo.png',
   'creator_boy_photo.jpg',
-  'about_carrom_kids.jpg',
   'about-page-preview.png',
   'Bhalyam-logo.png',
 ];

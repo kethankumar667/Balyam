@@ -697,41 +697,6 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       },
     ],
   },
-  carrom: {
-    game: "carrom",
-    primaryRankMetric: {
-      key: "bestScore",
-      label: "Most Coins Pocketed",
-      shortLabel: "Coins",
-      description: "Total carrom coins cleanly pocketed in match",
-      format: "coins",
-      direction: "HIGHER_IS_BETTER",
-      importance: "PRIMARY",
-      icon: "Trophy",
-    },
-    secondaryMetrics: [
-      {
-        key: "queenCovered",
-        label: "Queen & Cover Clears",
-        shortLabel: "Queen Clears",
-        description: "Red Queen pocketed with immediate cover coin",
-        format: "raw_number",
-        direction: "HIGHER_IS_BETTER",
-        importance: "SECONDARY",
-        icon: "Crown",
-      },
-      {
-        key: "foulCount",
-        label: "Striker Fouls",
-        shortLabel: "Fouls",
-        description: "Direct striker pocketings or penalty returns",
-        format: "raw_number",
-        direction: "LOWER_IS_BETTER",
-        importance: "SECONDARY",
-        icon: "Flame",
-      },
-    ],
-  },
   wordbuilding: {
     game: "wordbuilding",
     primaryRankMetric: {

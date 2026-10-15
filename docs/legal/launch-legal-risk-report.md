@@ -134,7 +134,7 @@ The state-law rows are from my background knowledge plus secondary summaries, no
 | **IPL franchises and real players** in Hand Cricket (`shared/hc-rosters.ts`: "2026 IPL franchise squads, sourced from user-provided data") | Team names, colours and logos are trademarks; real names raise personality and publicity rights, which Indian courts enforce. I did not check whether logos are used. | **HIGH** |
 | **"Connect 4"** | Trade mark of Hasbro (background knowledge **[verify]**). Use a generic name ("Four in a Row"). | Medium |
 | "Breakout", "Tetris" (slug only), "Space War" | Atari and Tetris Holding are active owners. The visible name "Brick Breakout" is fine; check assets and sounds. | Low–Medium |
-| Ludo, Snakes & Ladders, Carrom, Chess, Rummy, Bingo, Tic-Tac-Toe, Sudoku, 2048 | Generic game names or open licences (2048 is MIT). | Low |
+| Ludo, Snakes & Ladders, Chess, Rummy, Bingo, Tic-Tac-Toe, Sudoku, 2048 | Generic game names or open licences (2048 is MIT). | Low |
 | Sounds, fonts, images, AI-generated art | Licence provenance is not recorded anywhere I found. | Medium |
 | **BHALYAM** name and logo | Confirm a trademark search and registration (Classes 9, 28, 41). | Medium |
 

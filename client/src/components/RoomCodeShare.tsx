@@ -54,7 +54,6 @@ export default function RoomCodeShare({
     tambola: "Tambola (Housie)",
     snake: "Snake",
     roadrash: "Road Rash 90s",
-    carrom: "Carrom",
     chess: "Chess Grandmaster",
     spacewar: "Space War",
   };

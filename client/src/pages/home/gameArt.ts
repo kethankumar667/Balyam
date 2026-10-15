@@ -23,7 +23,6 @@ export const TILE_ART_BY_GAME: Record<BhalyamGameSlug, string> = {
   brickblocks: "/BlockBlast Game Tile.png",
   tetris: "/BlockBlast Game Tile.png",
   breakout: "/BrickBreakout Game Tile.png",
-  carrom: "/Carrom Game Tile.png",
   chess: "/Chess Game Tile.png",
   spacewar: "/SpacewarTile.png",
   nokiacricket: "/RetroCricket Game Tile.png",

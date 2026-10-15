@@ -362,12 +362,6 @@ export class ScorecardService {
         tournament_10x10: [185, 140, 95],
         timed_sprint: [72, 54, 38],
       },
-      carrom: {
-        classic: [24, 18, 12],
-        discpool: [7, 10, 14],
-        freestyle: [85, 65, 45],
-        points_carrom: [29, 21, 15],
-      },
       rps: {
         best_of_3: [3, 2, 1],
         best_of_5: [5, 4, 3],

@@ -31,7 +31,6 @@ import type {
   NamePlaceAnimalOptions,
   TambolaOptions,
   SnakeOptions,
-  CarromOptions,
   ChessOptions,
   BlockBlastOptions,
   SpaceWarOptions,
@@ -59,7 +58,6 @@ import {
   DEFAULT_BINGO_OPTIONS,
   DEFAULT_NAMESPLACEANIMAL_OPTIONS,
   DEFAULT_TAMBOLA_OPTIONS,
-  DEFAULT_CARROM_OPTIONS,
   DEFAULT_CHESS_OPTIONS,
   DEFAULT_SNAKE_OPTIONS,
   DEFAULT_BLOCKBLAST_OPTIONS,
@@ -140,7 +138,6 @@ import { UnoEngine } from "../games/uno/UnoEngine.js";
 import { BingoEngine } from "../games/bingo/BingoEngine.js";
 import { NamePlaceAnimalEngine } from "../games/namesplaceanimal/NamePlaceAnimalEngine.js";
 import { TambolaEngine } from "../games/tambola/TambolaEngine.js";
-import { CarromEngine } from "../games/carrom/CarromEngine.js";
 import { ChessEngine } from "../games/chess/ChessEngine.js";
 import { SnakeEngine } from "../games/snake/SnakeEngine.js";
 import { BlockBlastEngine } from "../games/blockblast/BlockBlastEngine.js";
@@ -164,6 +161,7 @@ import { extractRankedParticipants, getWinnerId } from "./economyPlacements.js";
 import { DurableSettlementWorker } from "../economy/DurableSettlementWorker.js";
 import type { CosmeticsService } from "../cosmetics/CosmeticsService.js";
 import { tickPeriodMs } from "./simulationClock.js";
+import { isRetiredGame } from "@shared/retiredGames.js";
 import { operationalAuthConfig, getUserRole } from "../security/operationalAuth.js";
 import type { RoomSnapshot, RoomSnapshotRepository } from "./durability/types.js";
 import { roomSnapshotStore } from "./durability/index.js";
@@ -330,10 +328,6 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   blockblast: [
     "Tetra", "Chotu", "Gattu", "Rubik", "Pixel", "Mosaic", "Bittu", "Domino",
     "Matrix", "Prism", "Voxel", "Nexus",
-  ],
-  carrom: [
-    "Breaker", "Rebound", "Cutshot", "Thumbi", "Pocket", "Striker Pro",
-    "Queen Chaser", "Carrom King",
   ],
   roadrash: ["Rider", "Speedy", "Biker", "Racer", "Nitro", "Drifter", "Burnout", "Throttle"],
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender", "Nova", "Starlight", "Galaxy", "Pulsar"],
@@ -551,7 +545,6 @@ export interface Room {
   bingoOptions: BingoGameOptions;
   namesplaceanimalOptions: NamePlaceAnimalOptions;
   tambolaOptions: TambolaOptions;
-  carromOptions: CarromOptions;
   chessOptions: ChessOptions;
   snakeOptions: SnakeOptions;
   blockBlastOptions: BlockBlastOptions;
@@ -871,7 +864,6 @@ export class RoomManager {
       bingoOptions: room.bingoOptions,
       namesplaceanimalOptions: room.namesplaceanimalOptions,
       tambolaOptions: room.tambolaOptions,
-      carromOptions: room.carromOptions,
       chessOptions: room.chessOptions,
       snakeOptions: room.snakeOptions,
       blockBlastOptions: room.blockBlastOptions,
@@ -987,7 +979,6 @@ export class RoomManager {
       bingoOptions: typeof opts.bingoOptions === "object" && opts.bingoOptions !== null ? { ...DEFAULT_BINGO_OPTIONS, ...opts.bingoOptions } : { ...DEFAULT_BINGO_OPTIONS },
       namesplaceanimalOptions: typeof opts.namesplaceanimalOptions === "object" && opts.namesplaceanimalOptions !== null ? { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...opts.namesplaceanimalOptions } : { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS },
       tambolaOptions: typeof opts.tambolaOptions === "object" && opts.tambolaOptions !== null ? { ...DEFAULT_TAMBOLA_OPTIONS, ...opts.tambolaOptions } : { ...DEFAULT_TAMBOLA_OPTIONS },
-      carromOptions: typeof opts.carromOptions === "object" && opts.carromOptions !== null ? { ...DEFAULT_CARROM_OPTIONS, ...opts.carromOptions } : { ...DEFAULT_CARROM_OPTIONS },
       chessOptions: typeof opts.chessOptions === "object" && opts.chessOptions !== null ? { ...DEFAULT_CHESS_OPTIONS, ...opts.chessOptions } : { ...DEFAULT_CHESS_OPTIONS },
       snakeOptions: typeof opts.snakeOptions === "object" && opts.snakeOptions !== null ? { ...DEFAULT_SNAKE_OPTIONS, ...opts.snakeOptions } : { ...DEFAULT_SNAKE_OPTIONS },
       blockBlastOptions: typeof opts.blockBlastOptions === "object" && opts.blockBlastOptions !== null ? { ...DEFAULT_BLOCKBLAST_OPTIONS, ...opts.blockBlastOptions } : { ...DEFAULT_BLOCKBLAST_OPTIONS },
@@ -1138,6 +1129,20 @@ export class RoomManager {
         this.rooms.set(room.code, room);
         if (room.phase === "playing" && !room.engine) {
           await this.abandonUnresumableMatch(room);
+          continue;
+        }
+        if (room.phase === "lobby" && isRetiredGame(room.game)) {
+          // The game was removed while this table was saved. Nobody can play it, so it is closed
+          // (and anything committed to it refunded) rather than restored as an empty ghost table.
+          logger.warn({
+            message: `Room ${room.code} is a lobby of the removed game "${room.game}"; closing it instead of restoring it.`,
+            module: "DURABILITY",
+            roomCode: room.code,
+          });
+          await this.abandonRoom(room);
+          // `abandonRoom` removes the saved file without waiting for it; boot cleanup should be finished
+          // by the time restore returns, or a crash right after would bring the table back again.
+          await this.deleteRoomSnapshot(room.code);
           continue;
         }
         restored++;
@@ -1784,7 +1789,8 @@ export class RoomManager {
     namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>,
     tambolaOptions?: Partial<TambolaOptions>,
     snakeOptions?: Partial<SnakeOptions>,
-    carromOptions?: Partial<CarromOptions>,
+    /** Retired: Carrom was removed. The slot stays because this list is positional (see `avatar` below). */
+    _retiredCarromOptions?: unknown,
     chessOptions?: Partial<ChessOptions>,
     blockBlastOptions?: Partial<BlockBlastOptions>,
     spaceWarOptions?: Partial<SpaceWarOptions>,
@@ -1928,7 +1934,6 @@ export class RoomManager {
       bingoOptions: { ...DEFAULT_BINGO_OPTIONS, ...(bingoOptions ?? {}) },
       namesplaceanimalOptions: { ...DEFAULT_NAMESPLACEANIMAL_OPTIONS, ...(namesplaceanimalOptions ?? {}) },
       tambolaOptions: { ...DEFAULT_TAMBOLA_OPTIONS, ...(tambolaOptions ?? {}) },
-      carromOptions: { ...DEFAULT_CARROM_OPTIONS, ...(carromOptions ?? {}) },
       chessOptions: { ...DEFAULT_CHESS_OPTIONS, ...(chessOptions ?? {}) },
       snakeOptions: { ...DEFAULT_SNAKE_OPTIONS, ...(snakeOptions ?? {}) },
       blockBlastOptions: { ...DEFAULT_BLOCKBLAST_OPTIONS, ...(blockBlastOptions ?? {}) },
@@ -2279,7 +2284,7 @@ export class RoomManager {
     }
     if (room.phase === "playing" && room.engine?.isOver()) {
       // The departure itself just ended the match — a 1v1 forfeit-to-
-      // opponent (Chess/Carrom/RPS/Hand Cricket's removePlayer) or a
+      // opponent (Chess/RPS/Hand Cricket's removePlayer) or a
       // multiplayer walkover down to the last seat (Ludo/UNO/SNL/...).
       // Without this, room.phase stayed "playing" forever: the engine
       // knew it was over but nothing ever told the room, so no match
@@ -3576,9 +3581,6 @@ export class RoomManager {
       if (engine instanceof NamePlaceAnimalEngine) {
         engine.setOptions(room.namesplaceanimalOptions);
       }
-      if (engine instanceof CarromEngine) {
-        engine.setOptions(room.carromOptions);
-      }
       if (engine instanceof ChessEngine) {
         engine.setOptions(room.chessOptions);
       }
@@ -3756,7 +3758,7 @@ export class RoomManager {
    * — before this method existed, three of those four set `room.phase`
    * directly and skipped recording + the lifecycle transition entirely,
    * so a match that ended by timeout, bot-takeover, or a real-time
-   * engine (Snake/Carrom/SpaceWar) finishing left no match history, no
+   * engine (Snake/SpaceWar) finishing left no match history, no
    * XP, no achievements, and a `lifecycleState` stuck at whatever it was
    * before (see MULTIPLAYER-RELIABILITY-BASELINE.md gaps G1/G2). Callers
    * that own an interval/timer of their own (e.g. `startSimulation`)
@@ -4740,7 +4742,7 @@ export class RoomManager {
      *
      * Stepping until the simulation catches up with elapsed real time makes
      * pace independent of the platform's timer. This is the standard fixed-
-     * timestep loop, and it is MORE correct for physics (Carrom) than a
+     * timestep loop, and it is MORE correct for physics than a
      * variable one, not less.
      */
     let simulatedUntil = Date.now();
@@ -4790,7 +4792,7 @@ export class RoomManager {
           this.stopSimulation(room);
           await this.finalizeMatch(room);
         } else if (result?.turnPhaseChanged) {
-          // A real-time physics turn (e.g., Carrom strike) just completed and returned to aiming phase.
+          // A real-time physics turn (e.g., a physics strike) just completed and returned to aiming phase.
           // Re-arm turn timers and trigger bot scheduler so bot/taken-over seats take their turn!
           this.scheduleTurnTimer(room);
           this.scheduleBotMoveIfNeeded(room);
