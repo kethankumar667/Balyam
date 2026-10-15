@@ -1,5 +1,7 @@
 # Session handoff
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 **State:** all green — client 152/152, server 531/531, both typechecks clean.
 Everything below is committed on `session/mobile-bug-batch`, not on `main`.
 

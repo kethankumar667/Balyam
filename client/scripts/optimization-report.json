@@ -1,9 +1,9 @@
 {
   "summary": {
-    "totalOriginalMB": "74.99",
-    "totalOptimizedMB": "5.23",
-    "savedMB": "69.76",
-    "overallPct": "93.0"
+    "totalOriginalMB": "71.98",
+    "totalOptimizedMB": "4.96",
+    "savedMB": "67.02",
+    "overallPct": "93.1"
   },
   "details": {
     "heroes": [
@@ -74,13 +74,6 @@
         "webpSize": 112970,
         "avifSize": 78650,
         "savingsPct": "96.3"
-      },
-      {
-        "relPath": "Carrom Game Tile.png",
-        "originalSize": 2052452,
-        "webpSize": 40238,
-        "avifSize": 33691,
-        "savingsPct": "98.4"
       },
       {
         "relPath": "SpacewarTile.png",
@@ -316,13 +309,6 @@
         "webpSize": 260596,
         "avifSize": 235323,
         "savingsPct": "78.8"
-      },
-      {
-        "relPath": "about_carrom_kids.jpg",
-        "originalSize": 1103512,
-        "webpSize": 258440,
-        "avifSize": 244043,
-        "savingsPct": "77.9"
       },
       {
         "relPath": "about-page-preview.png",

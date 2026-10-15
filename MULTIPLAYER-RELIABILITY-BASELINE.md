@@ -1,5 +1,7 @@
 # Multiplayer Reliability Baseline
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 **Phase 0 — Discovery & Baseline Audit.** Repository behavior and executable
 evidence are the source of truth. No implementation changes were made while
 producing this document. Read against: `AGENTS.md` + the 17 docs under

@@ -1,5 +1,7 @@
 # BHALYAM Design System — Baseline Measurements
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 Companion to [DESIGN-SYSTEM-ARCHITECTURE.md](DESIGN-SYSTEM-ARCHITECTURE.md)
 (read that first for what the numbers below mean in context — several look
 different once the governance-vs-reality gap in its §1 is accounted for).

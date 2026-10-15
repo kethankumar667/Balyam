@@ -1,5 +1,7 @@
 # TOURNAMENT-REDESIGN-IMPLEMENTATION-REPORT.md — Implementation Details & Code Changes
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 > **Author:** Principal Frontend Engineer, React & TypeScript Architect  
 > **Date:** 2026-08-19  
 > **Target Module:** BHALYAM Tournaments Redesign (`/tournaments`)  

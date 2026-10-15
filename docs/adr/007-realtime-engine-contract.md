@@ -1,5 +1,7 @@
 # ADR-007 — Real-time engines in the `GameEngine` contract
 
+> **Status note (2026-10-15):** the game that prompted this decision (Carrom, below) has since been removed from the application. The contract is unchanged and is still used by Snake and Space War.
+
 **Status:** Accepted — 2026-08-09
 **Context date:** raised 2026-08-07 in ROADMAP.md "Engagement track" #4
 

@@ -1,5 +1,7 @@
 # DESIGN-INVENTORY.md — Full Screen Inventory
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 > **Phase 1 of the BHALYAM Design Execution Audit.** Every reachable screen, rendered and measured.
 >
 > **Capture rig.** Playwright/Chromium, `reducedMotion: "reduce"`, viewports **390 × 844** (mobile),

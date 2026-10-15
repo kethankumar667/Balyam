@@ -1,5 +1,7 @@
 # Modal Consolidation — Report
 
+> **Note (2026-10-15):** the Carrom game was removed from the application after this was written. Mentions of it below describe the product as it was then.
+
 Expands adoption of the existing `client/src/components/Modal.tsx` /
 `useFocusTrap.ts`. No new Modal component was created. Verifies the five
 required properties — `aria-modal`, focus trap, Escape handling, focus

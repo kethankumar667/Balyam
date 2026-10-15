@@ -163,8 +163,8 @@ type (`User`, `GameHistory`, `Room`, `FriendLink`) gets its own repo with
 ## Engagement track — 2026-08 intake
 
 Six features taken in on 2026-08-07, ordered by fun-per-hour-of-work rather
-than by ambition. The first three extend what already exists; Carrom does not,
-and is called out separately below.
+than by ambition. The first three extend what already exists; the fourth was a new engine kind
+and has since been removed (see its entry below).
 
 Effort is in focused days for one person. Risk is the chance it goes badly
 wrong or drags, not the chance it is disliked.
@@ -174,7 +174,7 @@ wrong or drags, not the chance it is disliked.
 | 1 | In-Room Soundboard + Reaction Stickers | `room:reaction` relay, `InlineRoomRail` | 1d | Low | A |
 | 2 | AI Coach (hint button) | Rummy + Word Building engines | 2-3d | Low | A |
 | 3 | Smart TV / Party Mode | new spectator socket role, new layout | 3-4d | Medium | C |
-| 4 | 2D Physics Carrom | **new engine kind**, netcode, renderer | 8-12d | **High** | C |
+| 4 | *(removed 2026-10-15)* | — | — | — | — |
 | 5 | Voice Command Gameplay | client-only speech layer | 2-3d | Medium | C |
 | 6 | TURN relay for voice | infra only — see correction below | 0.5d | Low | **A (was E)** |
 
@@ -216,26 +216,11 @@ view that receives full state leaks every hand in the room to anyone glancing
 at the screen. The `getStateFor(playerId)` contract already gives the right
 seam — add a spectator pseudo-player rather than bypassing it.
 
-### 4. 2D Physics Carrom — the architectural exception
+### 4. Removed
 
-Highest regional appeal of the six, and the only one that does not fit the
-existing plugin contract.
-
-Every current game is turn-based and discrete: `applyMove` takes a move and
-returns a new state. Carrom is continuous — a strike produces several seconds
-of simulated motion that every client must see identically. That needs a
-fixed-timestep server simulation with tick broadcasting and client-side
-interpolation, which is a **second kind of engine** living beside the existing
-one, not a new folder under it.
-
-Decision needed before any code is written (see ADR table): does the
-`GameEngine` contract grow a real-time variant, or does Carrom run as a
-separate engine type with its own contract? Building it without answering that
-is how the contract — "the single most important interface in the project" —
-gets broken by accident.
-
-**Do not start this before features 1-3 ship.** It is worth building; it is
-not worth building first.
+This slot held a 2D physics board game. It was built, and then removed from the
+application on 2026-10-15. The real-time engine contract it forced is recorded in
+ADR 007 and is still used by Snake and Space War.
 
 ### 5. Voice Command Gameplay
 
@@ -279,7 +264,7 @@ Each ADR is 1-2 pages: context, decision, alternatives considered, consequences.
 | 004 | Voice topology (mesh vs SFU vs SaaS) | Phase E start |
 | 005 | Frontend rendering (CSR vs SSR vs RSC) | Phase C start |
 | 006 | Mobile strategy (PWA vs React Native) | Phase F start |
-| 007 | Real-time engine contract (does `GameEngine` grow a tick-based variant, or does Carrom get its own?) | **Before Carrom — see Engagement track #4** |
+| 007 | Real-time engine contract (does `GameEngine` grow a tick-based variant, or does each real-time game get its own?) | **Settled — see ADR 007** |
 
 ---
 

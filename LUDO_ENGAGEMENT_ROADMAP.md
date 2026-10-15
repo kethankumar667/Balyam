@@ -211,7 +211,7 @@ at 375/768/1024/1440px for any UI task.
   3 themes preserved.
 
 **P2.2 — देसी / festival board themes**
-- *What:* Add **Wooden Carrom**, **Diwali (diyas + rangoli rim)**, **Pongal/Holi
+- *What:* Add **Wooden Board**, **Diwali (diyas + rangoli rim)**, **Pongal/Holi
   seasonal**, **Retro Cardboard** themes using the `bhalyam.*` palette.
 - *Heart:* The literal board from home, lit for the festival you're calling in for.
 - *Files:* theme table from P2.1, optional SVG rim ornaments.
