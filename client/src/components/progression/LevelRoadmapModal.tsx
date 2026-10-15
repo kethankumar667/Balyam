@@ -29,6 +29,12 @@ import {
 } from "@shared/progression/MiniclipProgression";
 import type { LevelTierName } from "@shared/progression/MiniclipProgression";
 import { apiFetch } from "../../lib/playerIdentity";
+import {
+  ArcadeChestOpeningModal,
+  buildLevelMilestoneLoot,
+  chestTierForLevel,
+  lootFootnote,
+} from "../chest";
 
 export interface LevelRoadmapModalProps {
   isOpen: boolean;
@@ -78,6 +84,12 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
     setPendingUntil((prev) => ({ ...prev, ...fromServer }));
   };
   const [rewardsRefresh, setRewardsRefresh] = useState(0);
+  /** A claimed major milestone whose chest ceremony is open; `arrivesAt` is set while its coins vest. */
+  const [activeChestOpening, setActiveChestOpening] = useState<{
+    milestone: (typeof LEVEL_MILESTONES)[number];
+    coins: number;
+    arrivesAt?: number;
+  } | null>(null);
 
   const progression = calculateMiniclipXPProgression(experiencePoints);
   const currentLevel = progression.currentLevel;
@@ -104,12 +116,20 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
         setClaimedLevels((prev) => new Set([...prev, level]));
         // Coins vest for a day: say when they arrive instead of implying they are already there.
         const body = (await res.json().catch(() => null)) as { payout?: { status?: string; vestingUntil?: number } | null } | null;
+        let arrivesAt: number | undefined;
         if (body?.payout?.status === "PENDING" && typeof body.payout.vestingUntil === "number") {
-          const arrivesAt = body.payout.vestingUntil;
-          setPendingUntil((prev) => ({ ...prev, [level]: arrivesAt }));
+          arrivesAt = body.payout.vestingUntil;
+          setPendingUntil((prev) => ({ ...prev, [level]: arrivesAt! }));
+        }
+
+        // A major milestone opens its chest (which says when held coins land); the rest rain or wait quietly.
+        const targetMilestone = tierMilestones.find((m) => m.level === level);
+        if (targetMilestone?.isMajor) {
+          setActiveChestOpening({ milestone: targetMilestone, coins, arrivesAt });
         } else if (body?.payout?.status === "RELEASED") {
           setRaining(true);
         }
+
         setRewardsRefresh((n) => n + 1);
         if (onClaimReward) {
           onClaimReward(level, coins);
@@ -395,6 +415,23 @@ export const LevelRoadmapModal: React.FC<LevelRoadmapModalProps> = ({
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Arcade 3D Chest Opening Ceremony for Major Progression Milestones */}
+      {activeChestOpening && (
+        <ArcadeChestOpeningModal
+          isOpen={Boolean(activeChestOpening)}
+          tier={chestTierForLevel(activeChestOpening.milestone.level)}
+          chestTitle={`Level ${activeChestOpening.milestone.level} Milestone Chest`}
+          subtitle={`Prestige reward for reaching Level ${activeChestOpening.milestone.level}`}
+          items={buildLevelMilestoneLoot(
+            activeChestOpening.milestone,
+            activeChestOpening.coins,
+            activeChestOpening.arrivesAt,
+          )}
+          footnote={lootFootnote(activeChestOpening.arrivesAt)}
+          onClose={() => setActiveChestOpening(null)}
+        />
       )}
     </AnimatePresence>
   );

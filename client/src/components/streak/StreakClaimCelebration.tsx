@@ -18,6 +18,7 @@ import { bhalyamSpring } from "../../lib/motion";
 import CountUp from "../CountUp";
 import { getChestImageUrl, PremiumRewardChest } from "./PremiumRewardChest";
 import { CoinFountain } from "../faucet/CoinCelebrations";
+import { ArcadeChestOpeningModal, buildStreakLoot, lootFootnote } from "../chest";
 
 interface StreakClaimCelebrationProps {
   result: DailyStreakClaimResult;
@@ -45,13 +46,34 @@ const CONFETTI_COLORS = [
   "#c084fc", // Purple
 ];
 
+/**
+ * Milestone days (7, 14, 21, 30) open the 3D chest ceremony; every other day gets the
+ * coin card below. Split into two components so neither branch calls hooks conditionally.
+ */
 export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrationProps) {
+  const chestTier = result.reward?.milestoneChest;
+  if (!chestTier) return <CoinStreakCelebration result={result} onClose={onClose} />;
+
+  const arrivesAt = result.pendingUntil;
+  return (
+    <ArcadeChestOpeningModal
+      isOpen
+      tier={chestTier}
+      chestTitle={`Day ${result.claimedDay} Milestone Chest`}
+      subtitle={`Achieved ${result.newStreak}-day login streak!`}
+      items={buildStreakLoot(result)}
+      footnote={lootFootnote(arrivesAt)}
+      onClose={onClose}
+    />
+  );
+}
+
+function CoinStreakCelebration({ result, onClose }: StreakClaimCelebrationProps) {
+  const isGrandCycle = Boolean(result.cycleCompleted);
+  const milestoneChestType = result.claimedDay === 30 ? "diamond" : undefined;
+
   // 3-Stage Reveal: "rumble" -> "burst" -> "revealed"
   const [stage, setStage] = useState<"rumble" | "burst" | "revealed">("rumble");
-
-  const isMilestone = Boolean(result.reward?.milestoneChest);
-  const isGrandCycle = Boolean(result.cycleCompleted);
-  const milestoneChestType = result.reward?.milestoneChest ?? (result.claimedDay === 30 ? "diamond" : undefined);
 
   // Compute tomorrow's teaser reward
   const nextDayNum = (result.claimedDay % 30) + 1;
@@ -67,7 +89,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
     const burstTimer = setTimeout(() => {
       // Stage 2: Light ray burst + audio fanfare
       setStage("burst");
-      if (isMilestone || isGrandCycle) {
+      if (isGrandCycle) {
         AudioManager.play(AUDIO.REWARD_ACHIEVEMENT);
       } else {
         AudioManager.play(AUDIO.REWARD_COIN);
@@ -84,7 +106,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
       clearTimeout(burstTimer);
       clearTimeout(revealTimer);
     };
-  }, [isMilestone, isGrandCycle]);
+  }, [isGrandCycle]);
 
   // Keyboard accessibility
   useEffect(() => {
@@ -232,11 +254,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
               Day {result.claimedDay} Complete!
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-sm">
-              {result.cycleCompleted
-                ? "Grand Cycle Completed!"
-                : isMilestone
-                  ? `${result.reward?.milestoneChest?.toUpperCase()} CHEST UNLOCKED`
-                  : "Daily Streak Maintained!"}
+              {result.cycleCompleted ? "Grand Cycle Completed!" : "Daily Streak Maintained!"}
             </h2>
           </motion.div>
 
