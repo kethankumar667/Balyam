@@ -91,13 +91,19 @@ export default function CoinRequestCard({ message, request, selfId, members, onP
   const openStatus = isOpen ? { Icon: Clock, label: t("mandali.coin.open") } : null;
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-album-line border-l-4 border-l-album-foil bg-album-raised px-3 py-2.5">
+    // `min-w-0` is what lets the card shrink inside the chat row. Without it a
+    // flex item cannot go narrower than its content, and a single-line
+    // headline ("Kethan Kumar asked for 100 coins") pushed the card past the
+    // right edge of a phone screen.
+    <div className="w-full min-w-0 max-w-sm rounded-xl border border-album-line border-l-4 border-l-album-foil bg-album-raised px-3 py-2.5">
       <div className="flex min-h-[44px] items-center gap-3">
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-album-foilfill/20 text-album-foil">
           <Coins className="h-4 w-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="m-0 truncate text-[15px] font-semibold leading-snug text-album-ink">{headline}</p>
+          {/* Wraps to two lines rather than truncating: the amount is the
+              last word of the headline and must never be the part that is cut. */}
+          <p className="m-0 line-clamp-2 break-words text-[15px] font-semibold leading-snug text-album-ink">{headline}</p>
           {outcome ? (
             <p className={`m-0 flex items-center gap-1 truncate text-[13px] font-medium ${outcome.tone}`}>
               <outcome.Icon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />

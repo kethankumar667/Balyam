@@ -46,15 +46,21 @@ export default function EndGameCard({
   // True standings: placed players in the order they got home, then whoever
   // did not finish. Sorting by finishedCount alone put the placed players in
   // arbitrary order relative to each other, since they all have 4.
-  const order = standingsFor(
-    playerOrder.length ? playerOrder : players.map((p) => p.id),
-    finishOrder,
-    finishedCount,
-  );
-  const byId = new Map(players.map((p) => [p.id, p]));
-  const known = useRoomStore.getState().knownPlayers;
-  const orderedPlayers = order.map((id) => byId.get(id) ?? known[id]).filter((p): p is Player => !!p);
-  const placedCount = finishOrder.length;
+  //
+  // The winner is always a row, and always first. The seat list can lose them
+  // (a winner who has already left the room is no longer in `playerOrder`),
+  // and the rows used to be filtered down to players still in the room — so
+  // the winner's row vanished, the loser slid into row 1 and was shown as
+  // "1" and credited with the winner's prize, which is indexed by row.
+  const seatIds = playerOrder.length ? playerOrder : players.map((p) => p.id);
+  const allSeatIds = winnerId && !seatIds.includes(winnerId) ? [...seatIds, winnerId] : seatIds;
+  const placedOrder = winnerId && !finishOrder.includes(winnerId) ? [winnerId, ...finishOrder] : finishOrder;
+  const order = standingsFor(allSeatIds, placedOrder, finishedCount);
+  const placedCount = placedOrder.filter((id) => allSeatIds.includes(id)).length;
+  // 220 px of header plus 80 px a row, plus the footer. Four rows come to the
+  // original 600, so a full table is unchanged; a two-player recap no longer
+  // carries ~160 px of empty panel (and renders its text larger on a phone).
+  const recapHeight = 220 + order.length * 80 + 60;
 
   // Real-money prize per placement, for a paid, settled match only.
   const roomState = useRoomStore((s) => s.roomState);
@@ -138,19 +144,25 @@ export default function EndGameCard({
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-auto"
       onClick={onClose}
     >
+      {/* `text-slate-100` is load-bearing: the panel is always navy, but the
+          page's default ink is dark brown in the light theme, so the title and
+          every button that does not set its own colour (Copy, Download,
+          Close) rendered brown-on-navy. `max-h` + scroll keeps the top of the
+          card reachable on a short landscape phone, where a centred panel
+          taller than the screen would otherwise clip upward. */}
       <div
-        className="bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-4 space-y-4"
+        className="bg-slate-900 text-slate-100 rounded-2xl shadow-2xl max-w-2xl w-full p-4 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold">Game Recap</h2>
+          <h2 className="text-xl font-bold text-white">Game Recap</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
         </div>
 
         <div className="bg-slate-800 rounded-xl overflow-hidden">
           <svg
             ref={svgRef}
-            viewBox="0 0 800 600"
+            viewBox={`0 0 800 ${recapHeight}`}
             width="100%"
             preserveAspectRatio="xMidYMid meet"
             xmlns="http://www.w3.org/2000/svg"
@@ -167,7 +179,7 @@ export default function EndGameCard({
               </linearGradient>
             </defs>
 
-            <rect width="800" height="600" fill="url(#bg)" />
+            <rect width="800" height={recapHeight} fill="url(#bg)" />
 
             {/* Title */}
             <text x="40" y="60" fontSize="38" fontWeight="bold" fill="#fde68a">
@@ -199,13 +211,13 @@ export default function EndGameCard({
             )}
 
             {/* Player rows */}
-            {orderedPlayers.map((p, i) => {
-              const color = playerColors[p.id];
+            {order.map((id, i) => {
+              const color = playerColors[id];
               const hex = color ? COLOR_HEX[color] : "#64748b";
               const darkHex = color ? COLOR_HEX_DARK[color] : "#334155";
               const y = 220 + i * 80;
               return (
-                <g key={p.id}>
+                <g key={id}>
                   <rect x="40" y={y} width="720" height="64" rx="12" fill="#0f172a" stroke={darkHex} strokeWidth="1.5" />
                   <circle cx="80" cy={y + 32} r="22" fill={hex} />
                   <text x="80" y={y + 39} fontSize="20" fontWeight="bold" fill="white" textAnchor="middle">
@@ -219,7 +231,7 @@ export default function EndGameCard({
                   </text>
 
                   <text x="120" y={y + 30} fontSize="20" fontWeight="bold" fill="#f8fafc">
-                    {p.name}
+                    {nameOf(id)}
                   </text>
                   <text x="120" y={y + 52} fontSize="14" fill="#94a3b8">
                     {color?.toUpperCase()}
@@ -232,11 +244,11 @@ export default function EndGameCard({
                       sixes — which the engine has always tracked and nothing
                       ever rendered, so the number was dead weight. */}
                   {[
-                    { label: "Home", value: `${finishedCount[p.id] ?? 0}/4` },
-                    { label: "Rolls", value: String(stats.rollCount[p.id] ?? 0) },
-                    { label: "Captures", value: String(stats.captureCount[p.id] ?? 0) },
-                    { label: "Sixes", value: String(stats.sixCount[p.id] ?? 0) },
-                    { label: "Best run", value: String(stats.biggestStreak[p.id] ?? 0) },
+                    { label: "Home", value: `${finishedCount[id] ?? 0}/4` },
+                    { label: "Rolls", value: String(stats.rollCount[id] ?? 0) },
+                    { label: "Captures", value: String(stats.captureCount[id] ?? 0) },
+                    { label: "Sixes", value: String(stats.sixCount[id] ?? 0) },
+                    { label: "Best run", value: String(stats.biggestStreak[id] ?? 0) },
                   ].map((s, j) => (
                     <g key={s.label}>
                       <text x={300 + j * 100} y={y + 28} fontSize="22" fontWeight="bold" fill="#f8fafc" textAnchor="middle">
@@ -252,7 +264,7 @@ export default function EndGameCard({
             })}
 
             {/* Footer */}
-            <text x="400" y="570" fontSize="13" fill="#64748b" textAnchor="middle">
+            <text x="400" y={recapHeight - 30} fontSize="13" fill="#64748b" textAnchor="middle">
               Multiplayer Games Hub
             </text>
           </svg>
@@ -268,7 +280,7 @@ export default function EndGameCard({
           </button>
           <button
             onClick={share}
-            className="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4 py-2 text-sm font-semibold"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-sm font-semibold"
           >
             📤 Share
           </button>

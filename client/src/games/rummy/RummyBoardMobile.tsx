@@ -31,6 +31,8 @@ import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
 import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
 import Avatar from "./Avatar";
+import "./rummy-mobile-fit.css";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
 import RummyRoomHistory from "../../components/nostalgia/RummyRoomHistory";
@@ -101,6 +103,13 @@ function newGroupId(): string {
 const MAX_GROUPS = 7;
 
 const NOOP: () => void = () => {};
+
+/**
+ * A phone held in landscape: wide, but only ~360–420 px tall. Keep in step
+ * with the media query in `rummy-mobile-fit.css`, which shrinks the cards;
+ * this flag shrinks the pieces CSS can't reach (avatar diameters, gaps).
+ */
+const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 520px)";
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Pointer Events-based drag and drop.
@@ -235,7 +244,8 @@ function DraggableHandCard({
   isSelected: boolean;
   isDragged: boolean;
   isFresh: boolean;
-  marginLeft: number;
+  /** Overlap with the previous card; scales with the card width token. */
+  marginLeft: number | string;
   zIndex: number;
   selected: Set<string>;
   onTap: (id: string) => void;
@@ -425,6 +435,7 @@ export default function RummyBoardMobile({
   // into a narrow column. Declared before the gate below because the gate
   // needs this value (not the server-echoed one) for the LOCAL player.
   const needsLandscape = useOrientationReport();
+  const isShortLandscape = useMediaQuery(SHORT_LANDSCAPE_QUERY);
 
   // Two-phase opening animation — STRICTLY shown only when the player is
   // actually starting the game. NOT on rejoin, refresh, mid-game arrival,
@@ -1378,6 +1389,7 @@ export default function RummyBoardMobile({
         </div>
       ) : (
         <HandArea
+          compact={isShortLandscape}
           layout={layout}
           byId={byId}
           wildRank={wildRank}
@@ -1402,6 +1414,7 @@ export default function RummyBoardMobile({
       {!iDropped && state.phase === "playing" && (
         <div className="flex items-center justify-between gap-2 flex-shrink-0 px-1 flex-wrap">
           <PlayerStrip
+            compact={isShortLandscape}
             state={state}
             selfId={selfId}
             nameOf={nameOf}
@@ -2109,13 +2122,17 @@ function TopStrip({
       )}
 
       {/* Center — game type + room code + copy */}
-      <div className="flex items-center gap-1">
+      {/* min-w-0 lets this column shrink inside the flex row; the pill itself
+          stays on one line. It used to carry `max-w-[70%]` — a percentage of a
+          shrink-to-fit parent — which collapsed the label to "Point…" even on
+          an 800 px-wide phone. */}
+      <div className="flex items-center gap-1 min-w-0">
         <button
           onClick={onCopy}
           disabled={!roomCode}
           aria-label={roomCode ? `Copy room code ${roomCode}` : "Room code"}
           title={roomCode ? "Tap to copy room code" : ""}
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide truncate max-w-[70%] disabled:cursor-default"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide whitespace-nowrap min-w-0 disabled:cursor-default"
           style={{
             background: "linear-gradient(180deg, #4A2C16 0%, #3a2010 100%)",
             border: "1px solid rgba(201,162,39,0.50)",
@@ -2318,12 +2335,15 @@ function OpponentRow({
 }
 
 function PlayerStrip({
+  compact = false,
   state,
   selfId,
   nameOf,
   avatar,
   livePoints,
 }: {
+  /** Short landscape phone — smaller avatar so the row costs less height. */
+  compact?: boolean;
   state: RummyPlayerState;
   selfId: string | null;
   nameOf: (id: string) => string;
@@ -2340,7 +2360,7 @@ function PlayerStrip({
       <Avatar
         name={myName}
         avatar={avatar}
-        size={52}
+        size={compact ? 36 : 52}
         countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
         scoreBadge={cumulative !== undefined ? cumulative : undefined}
       />
@@ -2629,6 +2649,7 @@ function CenterDeckArea({
 }
 
 function HandArea({
+  compact = false,
   layout,
   byId,
   wildRank,
@@ -2644,6 +2665,8 @@ function HandArea({
   onDragRelease,
   onMoveCard,
 }: {
+  /** Short landscape phone — tighter gap above the hand. */
+  compact?: boolean;
   layout: Layout;
   byId: Map<string, Card>;
   wildRank: string;
@@ -2662,7 +2685,7 @@ function HandArea({
   const dragging = draggingIds.length > 0;
   return (
     <div
-      className="mt-2.5 sm:mt-4 rounded-xl px-1.5 sm:px-2 py-1.5 flex flex-col flex-1 min-h-[96px] overflow-hidden"
+      className={`${compact ? "mt-1.5" : "mt-2.5 sm:mt-4"} rounded-xl px-1.5 sm:px-2 py-1.5 flex flex-col flex-1 min-h-[96px] overflow-hidden`}
       style={{
         background: "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(0,0,0,0.12))",
         border: "1px solid rgba(255,255,255,0.12)",
@@ -2837,7 +2860,7 @@ function GroupLane({
               isSelected={selected.has(cid)}
               isDragged={draggingIds.includes(cid)}
               isFresh={cid === freshCardId}
-              marginLeft={idx === 0 ? 0 : -18}
+              marginLeft={idx === 0 ? 0 : "calc(var(--rm-card-w) * -0.35)"}
               zIndex={idx}
               selected={selected}
               onTap={onCardClick}

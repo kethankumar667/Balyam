@@ -1,0 +1,33 @@
+/**
+ * RUMMY (mobile shell) — fit the table to the viewport HEIGHT.
+ *
+ * A phone held in landscape is the Rummy target, and it is wide but very
+ * short: 360–420 px of usable height once the browser chrome is counted. The
+ * table stacks four fixed-height bands (deck row, hand, player strip, action
+ * bar), so with the default 52 px cards it needed ~410 px — the hand lanes
+ * were clipped at the bottom and the DROP/SORT/…/FINISH row ran off screen.
+ *
+ * Card width is the one knob that moves the two tallest bands together, so
+ * it is derived from the height that is actually available:
+ *
+ *   height = 2 × (card width × ratio) + chrome
+ *
+ * `15.5rem` is that chrome (top strip, labels, lane header, player strip,
+ * action bar, felt padding) measured on the live table with a little slack.
+ * Above ~386 px of height the clamp's ceiling is the normal 52 px card, so
+ * taller phones and tablets are untouched.
+ */
+@media (orientation: landscape) and (max-height: 520px) {
+  #rummy-table-container {
+    --rm-fit-card-w: clamp(1.9rem, calc((100vh - 15.5rem) / 2.8), 3.25rem);
+    --rm-card-w: var(--rm-fit-card-w);
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (orientation: landscape) and (max-height: 520px) {
+    #rummy-table-container {
+      --rm-fit-card-w: clamp(1.9rem, calc((100dvh - 15.5rem) / 2.8), 3.25rem);
+    }
+  }
+}

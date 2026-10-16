@@ -62,15 +62,23 @@ export default function FullscreenGatePrompt({
     );
   }
 
+  // On a phone held in landscape the bottom-centre of the screen is the
+  // game's action row (DROP / SORT / … / FINISH), so a centred pill sat on
+  // top of those buttons. There it shrinks to an icon in the bottom-right
+  // corner, which the action row leaves free.
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[70] flex justify-center px-4">
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-400/40 bg-[#1a1204]/95 py-1.5 pl-4 pr-1.5 shadow-lg backdrop-blur-md">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[70] flex justify-center px-4 [@media(orientation:landscape)_and_(max-height:520px)]:justify-end">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-400/40 bg-[#1a1204]/95 py-1.5 pl-4 pr-1.5 shadow-lg backdrop-blur-md [@media(orientation:landscape)_and_(max-height:520px)]:gap-1 [@media(orientation:landscape)_and_(max-height:520px)]:pl-2">
         <button
           type="button"
           onClick={onEnterFullscreen}
+          aria-label="Play fullscreen"
           className="cursor-pointer text-xs font-bold uppercase tracking-wider text-amber-200 hover:text-amber-100"
         >
-          Play fullscreen
+          <span className="[@media(orientation:landscape)_and_(max-height:520px)]:hidden">Play fullscreen</span>
+          <span aria-hidden className="hidden text-base leading-none [@media(orientation:landscape)_and_(max-height:520px)]:inline">
+            ⛶
+          </span>
         </button>
         <button
           type="button"
