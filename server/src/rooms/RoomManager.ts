@@ -3511,8 +3511,11 @@ export class RoomManager {
     const botSeats = playersList.filter((p) => p.isBot).length;
     const humanSeats = playersList.filter((p) => !p.isBot).length;
     const isBotPractice = botSeats > 0 && humanSeats <= 1;
+    // `requestGameStart` lets these through with no commit; this guard has to agree, or a lone human can never
+    // start Snake or Space War whenever an economy service is configured.
+    const isFreeEconomyGame = NO_ECONOMY_GAMES.has(room.game);
 
-    if (this.economyService && !room.currentMatchId && !isBotPractice) {
+    if (this.economyService && !room.currentMatchId && !isBotPractice && !isFreeEconomyGame) {
       // Player-facing text. The developer-facing reason (callers must go through `requestGameStart`, which
       // commits the stake, rather than calling `startGame` directly) is the comment above — it used to be
       // the message itself, so a player saw "Use requestGameStart, not startGame…" in the lobby.
