@@ -453,7 +453,10 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/watch/:code" element={<PartyScreen mode="audience" />} />
             {/* Connection log for debugging reconnect failures on real devices. */}
             <Route path="/diagnostics" element={<Diagnostics />} />
-            <Route path="/preview/ludo" element={<PreviewLudo />} />
+            {/* Internal board previewer (see bhalyam-illustration-system-review.md: "Internal tool"). Dev builds
+                only, like /preview/mandali, /faucet and /level — it is not a player page and was shipping with
+                covered and off-screen controls that nobody is meant to use. */}
+            {import.meta.env.DEV && <Route path="/preview/ludo" element={<PreviewLudo />} />}
             {LazyPreviewMandali && <Route path="/preview/mandali" element={<LazyPreviewMandali />} />}
             {LazyPreviewFaucet && <Route path="/preview/faucet" element={<LazyPreviewFaucet />} />}
             {LazyPreviewLevelJourney && <Route path="/preview/level" element={<LazyPreviewLevelJourney />} />}

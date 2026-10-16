@@ -31,7 +31,7 @@ export function BrickKeypad({ onKeyPress, isBoosting }: BrickKeypadProps) {
           type="button"
           onClick={() => onKeyPress("4")}
           aria-label="Steer Left"
-          className="min-h-[72px] sm:min-h-[80px] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
+          className="min-h-[clamp(52px,8.6dvh,72px)] sm:min-h-[clamp(56px,9dvh,80px)] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
         >
           <span className="text-3xl leading-none font-black text-amber-400">◄</span>
           <span className="text-[10px] text-zinc-300 font-black tracking-wider uppercase mt-1">
@@ -44,7 +44,7 @@ export function BrickKeypad({ onKeyPress, isBoosting }: BrickKeypadProps) {
           type="button"
           onClick={() => onKeyPress("8")}
           aria-label="Nitro Speed Boost"
-          className={`min-h-[72px] sm:min-h-[80px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-xl cursor-pointer ${
+          className={`min-h-[clamp(52px,8.6dvh,72px)] sm:min-h-[clamp(56px,9dvh,80px)] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-xl cursor-pointer ${
             isBoosting
               ? "bg-gradient-to-b from-[#FF5722] via-[#E64A19] to-[#BF360C] border-[#870000] text-white ring-4 ring-orange-400 animate-pulse scale-[1.02]"
               : "bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#B45309] border-[#78350F] text-white ring-2 ring-amber-400/80 hover:brightness-110"
@@ -61,7 +61,7 @@ export function BrickKeypad({ onKeyPress, isBoosting }: BrickKeypadProps) {
           type="button"
           onClick={() => onKeyPress("6")}
           aria-label="Steer Right"
-          className="min-h-[72px] sm:min-h-[80px] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
+          className="min-h-[clamp(52px,8.6dvh,72px)] sm:min-h-[clamp(56px,9dvh,80px)] rounded-2xl bg-gradient-to-b from-[#374151] via-[#1F2937] to-[#111827] border-b-4 border-[#030712] text-white font-black flex flex-col items-center justify-center active:scale-95 shadow-xl cursor-pointer hover:brightness-125 ring-2 ring-zinc-500/40"
         >
           <span className="text-3xl leading-none font-black text-amber-400">►</span>
           <span className="text-[10px] text-zinc-300 font-black tracking-wider uppercase mt-1">

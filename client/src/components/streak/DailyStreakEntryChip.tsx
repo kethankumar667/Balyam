@@ -45,7 +45,7 @@ export function DailyStreakEntryChip() {
         onClick={handleClick}
         aria-label={tooltipLabel}
         title={tooltipLabel}
-        className={`group relative min-h-[44px] min-w-[44px] px-3.5 py-1.5 rounded-full border flex items-center gap-2 select-none
+        className={`group relative min-h-[44px] min-w-[44px] px-2.5 sm:px-3.5 py-1.5 rounded-full border flex items-center gap-1.5 sm:gap-2 select-none
                    transition-all duration-300 cursor-pointer flex-shrink-0 focus-visible:outline-hidden focus-visible:ring-2
                    focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f172a]
                    ${

@@ -147,7 +147,10 @@ export default function NokiaSnakeBoardMobile({ onExit }: NokiaSnakeBoardProps) 
       {/* Handset Frame */}
       <NokiaDeviceFrame>
         {/* LCD Screen Container */}
-        <div className="relative w-[256px] h-[256px] bg-[#87A96B] rounded-lg border-4 border-[#3F5E4D] shadow-inner overflow-hidden flex items-center justify-center">
+        {/* The screen follows the height there is: 256px on a tall phone, shrinking to 168px on a short one, and
+            sized from the screen height when held sideways (its own column beside the keypad). It was a fixed
+            256px, which with the keypad needed ~760px of height. */}
+        <div className="relative w-[clamp(168px,calc(100dvh-470px),256px)] aspect-square short-land:!w-[min(256px,calc(100dvh-72px))] shrink-0 bg-[#87A96B] rounded-lg border-4 border-[#3F5E4D] shadow-inner overflow-hidden flex items-center justify-center">
           {/* LCD Phosphor Pixel Grid Texture */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(15,42,29,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,42,29,0.06)_1px,transparent_1px)] bg-[size:3px_3px] pointer-events-none z-10" />
 
@@ -164,7 +167,7 @@ export default function NokiaSnakeBoardMobile({ onExit }: NokiaSnakeBoardProps) 
       </NokiaDeviceFrame>
 
       {/* Footer */}
-      <div className="text-[11px] text-zinc-500 py-1">
+      <div className="text-[11px] text-zinc-500 py-1 short-land:hidden">
         Retro Snake 2D • BHALYAM (Swipe or Keypad)
       </div>
     </div>

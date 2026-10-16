@@ -15,7 +15,7 @@ export function FaucetReadyDot() {
   if (!isReady) return null;
 
   return (
-    <span className="pointer-events-none absolute -top-0.5 -right-0.5 z-10 flex h-3 w-3 sm:hidden" aria-hidden="true">
+    <span className="pointer-events-none absolute -top-0.5 -right-0.5 z-10 flex h-3 w-3 md:hidden" aria-hidden="true">
       {!reducedMotion && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
       <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[var(--chrome-panel)]" />
     </span>

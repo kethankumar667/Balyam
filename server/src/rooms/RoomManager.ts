@@ -3513,9 +3513,12 @@ export class RoomManager {
     const isBotPractice = botSeats > 0 && humanSeats <= 1;
 
     if (this.economyService && !room.currentMatchId && !isBotPractice) {
+      // Player-facing text. The developer-facing reason (callers must go through `requestGameStart`, which
+      // commits the stake, rather than calling `startGame` directly) is the comment above — it used to be
+      // the message itself, so a player saw "Use requestGameStart, not startGame…" in the lobby.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "This match has not been paid for yet. Use requestGameStart, not startGame, when Economy V1 is enabled.",
+        "We couldn't start this match because its entry stake hasn't been set aside yet. Please try Start Game again.",
       );
       return;
     }

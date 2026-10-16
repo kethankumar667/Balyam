@@ -11,7 +11,7 @@ export function NokiaSnakeKeypad({ onKeyPress }: NokiaSnakeKeypadProps) {
   ];
 
   return (
-    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-2.5 select-none font-mono">
+    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-2.5 select-none font-mono short-land:mt-0 short-land:max-w-[280px] short-land:gap-1.5">
       {/* Soft Action Navigation Bar */}
       <div className="w-full flex justify-between px-1 gap-2.5">
         <button
@@ -47,7 +47,7 @@ export function NokiaSnakeKeypad({ onKeyPress }: NokiaSnakeKeypadProps) {
             return (
               <div
                 key={primary}
-                className="h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center border-b-2 bg-[#253240] border-[#18222C] text-[#556778] opacity-35 select-none"
+                className="h-[clamp(40px,6.6dvh,48px)] short-land:!h-[44px] rounded-xl flex flex-col items-center justify-center border-b-2 bg-[#253240] border-[#18222C] text-[#556778] opacity-35 select-none"
               >
                 <span className="text-xs font-bold leading-none">{primary}</span>
               </div>
@@ -61,7 +61,7 @@ export function NokiaSnakeKeypad({ onKeyPress }: NokiaSnakeKeypadProps) {
               type="button"
               onClick={() => onKeyPress(primary)}
               aria-label={secondary || primary}
-              className={`min-h-[58px] sm:min-h-[66px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-md cursor-pointer ${
+              className={`min-h-[clamp(46px,7.4dvh,58px)] sm:min-h-[clamp(50px,7.8dvh,66px)] short-land:!min-h-[44px] rounded-2xl flex flex-col items-center justify-center border-b-4 transition-all active:scale-95 shadow-md cursor-pointer ${
                 isDirectional
                   ? "bg-gradient-to-b from-[#F59E0B] via-[#D97706] to-[#B45309] border-[#78350F] text-white ring-2 ring-amber-400/80 shadow-amber-950/40 hover:brightness-110"
                   : isSelect

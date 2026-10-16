@@ -87,8 +87,14 @@ export default function Modal({
 
   if (!open) return null;
 
-  const align = mobileSheet ? "items-end md:items-center" : "items-center";
+  // `items-start` + a `my-auto` panel, NOT `items-center`: with the backdrop now scrollable, centring the
+  // panel with `items-center` and letting it overflow pushes its top above the scroll origin where no
+  // scrolling can reach it — a dialog taller than the screen (a tutorial on a phone held sideways) lost
+  // its title, close button and call-to-action. `my-auto` centres when there is room and degrades to
+  // "start at the top and scroll" when there is not. A bottom sheet keeps hugging the bottom (`mt-auto`).
+  const align = "items-start";
   const padding = mobileSheet ? "p-0 md:p-4" : "p-4";
+  const panelPlacement = mobileSheet ? "mt-auto md:my-auto" : "my-auto";
 
   // Portalled to `document.body` rather than rendered in place. A caller
   // nested a few levels under a `position:relative` ancestor with an
@@ -101,7 +107,7 @@ export default function Modal({
   // nested-context trap by construction, for this and every other modal.
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex ${align} justify-center ${padding} ${BACKDROP} ${className}`}
+      className={`fixed inset-0 z-50 flex ${align} justify-center overflow-y-auto overscroll-contain ${padding} ${BACKDROP} ${className}`}
       style={zIndex !== undefined ? { zIndex } : undefined}
       onMouseDown={(e) => {
         if (closeOnBackdropClick && onClose && e.target === e.currentTarget) onClose();
@@ -114,7 +120,7 @@ export default function Modal({
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
         aria-label={ariaLabelledBy ? undefined : ariaLabel}
-        className={panelClassName}
+        className={`${panelPlacement} ${panelClassName}`}
         style={panelStyle}
       >
         {children}

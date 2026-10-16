@@ -154,14 +154,14 @@ export default function HelpLayout({
                   key={tab.path}
                   to={tab.path}
                   onClick={handleTabClick}
-                  className={`flex-1 min-w-[130px] sm:min-w-[150px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition min-h-[44px] cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
+                  className={`flex-none sm:flex-1 whitespace-nowrap inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition min-h-[44px] cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
                     active
                       ? "bg-white dark:bg-[#1f293d] text-stone-900 dark:text-white shadow-2xs border border-stone-200/80 dark:border-white/10 scale-[1.01]"
                       : "text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/5"
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-amber-500" : "text-stone-400"}`} />
-                  <span className="truncate">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </Link>
               );
             })}

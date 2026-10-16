@@ -61,7 +61,7 @@ export default function GameTileShowcase() {
             <div className="space-y-1">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition mb-2"
+                className="inline-flex min-h-[44px] items-center gap-2 text-xs font-bold text-[var(--auth-ink-soft)] hover:text-[var(--auth-ink)] transition -my-2.5 mb-0"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Lounge</span>

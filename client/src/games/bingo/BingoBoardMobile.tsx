@@ -65,25 +65,31 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
         </div>
         <div className="flex items-center gap-2">
           <GameThemeToggle theme={theme} onToggle={toggleTheme} variant="compact" />
-          <InlineRoomRail
-            code={props.roomCode}
-            game="bingo"
-            phase={props.roomPhase}
-            players={props.players}
-            selfId={props.selfId}
-            messages={props.messages}
-          />
           {state.callDeadline != null && !isOver && (
             <TurnTimeWarning deadline={state.callDeadline} active={!isOver} />
           )}
           <button
             type="button"
             onClick={onLeave}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-300/40 cursor-pointer"
+            className="min-h-[44px] px-3 py-1.5 text-xs font-bold rounded-xl bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border border-rose-300/40 cursor-pointer"
           >
             Leave
           </button>
         </div>
+      </div>
+
+      {/* The room rail is a self-contained ~280px pill (code / players / chat / react). Inline in the header,
+          beside the title, theme toggle and Leave, it pushed Leave off the right edge at 375–390px and the
+          rail's own last button past it. On its own centred row it fits at every width. */}
+      <div className="mb-2 flex justify-center">
+        <InlineRoomRail
+          code={props.roomCode}
+          game="bingo"
+          phase={props.roomPhase}
+          players={props.players}
+          selfId={props.selfId}
+          messages={props.messages}
+        />
       </div>
 
       {/* Arranging Phase */}

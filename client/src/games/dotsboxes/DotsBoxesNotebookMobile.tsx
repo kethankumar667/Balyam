@@ -95,14 +95,16 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
   return (
     <div className="relative min-h-[100dvh] w-full bg-[#1C1814] text-stone-900 flex flex-col items-center justify-between p-2 select-none font-['Patrick_Hand',cursive] overflow-hidden">
       {/* ── Main Notebook Sheet ── */}
-      <div className="relative w-full flex-1 flex flex-col bg-[#FCF8EE] rounded-3xl border-2 border-[#D7C9B1] shadow-2xl overflow-hidden">
-        {/* Top Spiral Wire Binder */}
-        <div className="w-full h-8 bg-[#EFE9DA] border-b-2 border-[#D7C9B1] flex items-center justify-center relative shadow-inner">
+      {/* Phone held sideways: header / scores / turn banner / footer stack in the left column and the board
+          spans the right one. As a portrait stack the footer (Notes, Undo) fell below the fold. */}
+      <div className="relative w-full flex-1 flex flex-col bg-[#FCF8EE] rounded-3xl border-2 border-[#D7C9B1] shadow-2xl overflow-hidden short-land:grid short-land:grid-cols-[minmax(0,42%)_minmax(0,1fr)] short-land:grid-rows-[auto_auto_1fr_auto]">
+        {/* Top Spiral Wire Binder — decoration only, dropped where height is scarce */}
+        <div className="w-full h-8 bg-[#EFE9DA] border-b-2 border-[#D7C9B1] flex items-center justify-center relative shadow-inner short-land:hidden">
           <SpiralBinderRings orientation="horizontal" count={12} />
         </div>
 
         {/* ── 1. Header Bar ── */}
-        <header className="relative z-20 w-full px-2.5 sm:px-3 py-2 border-b border-[#E5DAC6] bg-[#FCF8EE]/95 flex items-center justify-between">
+        <header className="relative z-20 w-full px-2.5 sm:px-3 py-2 border-b border-[#E5DAC6] bg-[#FCF8EE]/95 flex flex-wrap items-center justify-between gap-y-1.5 short-land:col-start-1 short-land:row-start-1">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <DotsBoxesNotebookLogo className="scale-90 origin-left" />
 
@@ -117,7 +119,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             <button
               type="button"
               onClick={toggleSkin}
-              className="w-8 h-8 rounded-xl border border-amber-400/80 bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-700 shadow-xs active:scale-95 cursor-pointer transition-all"
+              className="w-11 h-11 rounded-xl border border-amber-400/80 bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-700 shadow-xs active:scale-95 cursor-pointer transition-all"
               title="Toggle Theme"
             >
               {skin === "notebook" ? <Zap className="w-4 h-4 text-amber-500 fill-amber-400" /> : <BookOpen className="w-4 h-4 text-stone-700" />}
@@ -127,7 +129,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
               <button
                 type="button"
                 onClick={() => setShowScorecard(true)}
-                className="px-2.5 h-8 rounded-xl border border-amber-500 bg-amber-400 text-stone-950 font-black text-xs shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+                className="px-2.5 h-11 rounded-xl border border-amber-500 bg-amber-400 text-stone-950 font-black text-xs shadow-xs flex items-center gap-1 active:scale-95 transition-all"
               >
                 <Trophy className="w-3.5 h-3.5 text-stone-950" />
                 <span>Scores</span>
@@ -137,7 +139,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             <button
               type="button"
               onClick={toggleMute}
-              className="w-8 h-8 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
+              className="w-11 h-11 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
               title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600" />}
@@ -147,7 +149,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="w-8 h-8 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
+                className="w-11 h-11 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? <Minimize className="w-4 h-4 text-stone-600" /> : <Maximize className="w-4 h-4 text-stone-600" />}
@@ -157,7 +159,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             <button
               type="button"
               onClick={() => helpTut.setOpen(true)}
-              className="w-8 h-8 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
+              className="w-11 h-11 rounded-xl border border-stone-300 bg-white flex items-center justify-center text-stone-700 shadow-xs hover:border-stone-400 active:scale-95 transition-all cursor-pointer"
               title="Help"
             >
               <HelpCircle className="w-4 h-4 text-stone-600" />
@@ -166,7 +168,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
             <button
               type="button"
               onClick={props.onLeave}
-              className="w-8 h-8 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 flex items-center justify-center text-rose-700 shadow-xs hover:border-rose-400 active:scale-95 transition-all cursor-pointer"
+              className="w-11 h-11 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 flex items-center justify-center text-rose-700 shadow-xs hover:border-rose-400 active:scale-95 transition-all cursor-pointer"
               title="Leave Game"
             >
               <LogOut className="w-4 h-4 text-rose-600" />
@@ -175,7 +177,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
         </header>
 
         {/* ── 2. Player Capsule Score Horizon (Matching Neon Theme Layout) ── */}
-        <section className="relative z-10 w-full px-2 py-2 border-b border-[#E5DAC6] bg-white/50">
+        <section className="relative z-10 w-full px-2 py-2 border-b border-[#E5DAC6] bg-white/50 short-land:col-start-1 short-land:row-start-2">
           <div className="flex items-stretch justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
             {state.playerOrder.map((pid) => {
               const theme = themeOf(pid);
@@ -258,7 +260,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
         </section>
 
         {/* ── 3. Active Turn Status Banner & Dominance Bar ── */}
-        <div className="relative z-10 px-3 py-1.5 flex flex-col gap-1 bg-amber-50/70 border-b border-[#E5DAC6]">
+        <div className="relative z-10 px-3 py-1.5 flex flex-col gap-1 bg-amber-50/70 border-b border-[#E5DAC6] short-land:col-start-1 short-land:row-start-3 short-land:self-start">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping inline-block flex-shrink-0" />
@@ -284,7 +286,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
         </div>
 
         {/* ── 4. Main White Board Matrix ── */}
-        <main className="relative z-10 w-full flex-1 flex flex-col items-center justify-center p-2 min-h-0 overflow-hidden">
+        <main className="relative z-10 w-full flex-1 flex flex-col items-center justify-center p-2 min-h-0 overflow-hidden short-land:col-start-2 short-land:row-start-1 short-land:row-span-4">
           {/* Subtle Margin Doodles */}
           <PaperAirplaneDoodle className="absolute top-1 -right-1 w-12 h-12 opacity-60 pointer-events-none rotate-[14deg]" />
           <DoodleStar className="absolute bottom-3 left-1 w-4 h-4 text-amber-500 opacity-60 pointer-events-none" />
@@ -313,7 +315,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
         </main>
 
         {/* ── 5. Bottom Action Controls ── */}
-        <footer className="relative z-10 w-full px-3 py-2 border-t border-[#E5DAC6] bg-white/80 flex items-center justify-between gap-2">
+        <footer className="relative z-10 w-full px-3 py-2 border-t border-[#E5DAC6] bg-white/80 flex items-center justify-between gap-2 short-land:col-start-1 short-land:row-start-4">
           {/* Chat Modal Trigger */}
           <button
             type="button"

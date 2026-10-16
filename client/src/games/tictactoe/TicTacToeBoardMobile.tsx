@@ -98,7 +98,7 @@ export default function TicTacToeBoardMobile({
 
   return (
     <div
-      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe flex flex-col justify-between p-2 sm:p-3 overflow-hidden select-none overscroll-none touch-none bg-gradient-to-b ${theme.bgGradient} text-white relative`}
+      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe flex flex-col justify-between p-2 sm:p-3 overflow-hidden select-none overscroll-none touch-none short-land:flex-row short-land:items-center short-land:justify-center short-land:gap-4 bg-gradient-to-b ${theme.bgGradient} text-white relative`}
     >
       {/* Screen Reader Live Announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
@@ -111,8 +111,11 @@ export default function TicTacToeBoardMobile({
         active={isMyTurn && state.phase === "playing"}
       />
 
-      {/* Top Ergonomic Safe Header */}
-      <header className="w-full max-w-sm sm:max-w-md mx-auto flex items-center justify-between gap-1.5 z-20 pt-safe shrink-0">
+      {/* Left column on a phone held sideways (header + scoreboard); `display: contents` in portrait, so the
+          portrait stack is exactly what it was. */}
+      <div className="contents short-land:flex short-land:min-w-0 short-land:flex-1 short-land:flex-col short-land:justify-center short-land:gap-2 short-land:self-stretch">
+      {/* Top Ergonomic Safe Header — wraps rather than running off the edge at 375–390px */}
+      <header className="w-full max-w-sm sm:max-w-md mx-auto flex flex-wrap items-center justify-between gap-1.5 z-20 pt-safe shrink-0">
         {/* Back / Exit Button */}
         <button
           type="button"
@@ -189,7 +192,7 @@ export default function TicTacToeBoardMobile({
         >
           {/* Player 1 Pod (X - Cyan) */}
           <div
-            className={`flex-1 p-2 rounded-xl transition-all ${
+            className={`flex-1 min-w-0 p-2 rounded-xl transition-all ${
               state.turnPlayerId === p1?.id && !isOver
                 ? "bg-cyan-500/15 border border-cyan-400/70 shadow-[0_0_12px_rgba(6,182,212,0.35)]"
                 : "bg-slate-950/40 border border-transparent"
@@ -251,7 +254,7 @@ export default function TicTacToeBoardMobile({
 
           {/* Player 2 Pod (O - Magenta) */}
           <div
-            className={`flex-1 p-2 rounded-xl transition-all ${
+            className={`flex-1 min-w-0 p-2 rounded-xl transition-all ${
               state.turnPlayerId === p2?.id && !isOver
                 ? "bg-pink-500/15 border border-pink-400/70 shadow-[0_0_12px_rgba(236,72,153,0.35)]"
                 : "bg-slate-950/40 border border-transparent"
@@ -304,9 +307,12 @@ export default function TicTacToeBoardMobile({
           </div>
         </div>
       </section>
+      </div>
 
+      {/* Right column on a phone held sideways (the grid + hint line). */}
+      <div className="contents short-land:flex short-land:flex-1 short-land:flex-col short-land:items-center short-land:justify-center short-land:self-stretch">
       {/* Main Center Cyber Arena Deck */}
-      <main className="flex-1 min-h-0 flex flex-col items-center justify-center w-full max-w-sm sm:max-w-md mx-auto my-auto z-10 relative">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-center w-full max-w-sm sm:max-w-md short-land:max-w-none mx-auto my-auto z-10 relative">
         {/* Turn / Outcome Status Banner */}
         <div className="mb-2 text-center shrink-0">
           {isOver ? (
@@ -362,6 +368,7 @@ export default function TicTacToeBoardMobile({
           </div>
         )}
       </footer>
+      </div>
 
       {/* Tutorial Modal */}
       <TicTacToeTutorialModal

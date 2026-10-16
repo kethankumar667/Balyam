@@ -168,7 +168,9 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
 
       <NokiaDeviceFrame>
         {/* LCD Screen Container */}
-        <div className="relative w-[256px] h-[192px] bg-[#87A96B] rounded-lg border-4 border-[#3F5E4D] shadow-inner overflow-hidden">
+        {/* The screen follows the height there is (4:3): 256px wide on a tall phone, shrinking on a short one, and
+            sized from the screen height when held sideways. It was a fixed 256×192. */}
+        <div className="relative w-[clamp(168px,calc(100dvh-470px),256px)] aspect-[4/3] short-land:!w-[min(256px,calc((100dvh-72px)*1.33))] shrink-0 bg-[#87A96B] rounded-lg border-4 border-[#3F5E4D] shadow-inner overflow-hidden">
           {/* LCD Phosphor Pixel Grid Texture */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(15,42,29,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,42,29,0.06)_1px,transparent_1px)] bg-[size:3px_3px] pointer-events-none z-10" />
 
@@ -184,7 +186,7 @@ export default function NokiaCricketBoardMobile({ onExit }: NokiaCricketBoardPro
         <NokiaKeypad onKeyPress={handleKeypadPress} />
       </NokiaDeviceFrame>
 
-      <div className="text-[11px] text-zinc-500 py-1">
+      <div className="text-[11px] text-zinc-500 py-1 short-land:hidden">
         Retro Cricket 2D • BHALYAM
       </div>
     </div>

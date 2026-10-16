@@ -68,7 +68,7 @@ export default function Connect4BoardMobile({
 
   return (
     <div
-      className={`relative w-full h-[100dvh] flex flex-col justify-between overflow-hidden ${theme.envPatternClass} text-white font-sans transition-colors duration-500`}
+      className={`relative w-full h-[100dvh] flex flex-col justify-between overflow-hidden short-land:grid short-land:grid-cols-[minmax(0,44%)_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto] ${theme.envPatternClass} text-white font-sans transition-colors duration-500`}
     >
       {/* Environmental Atmospheric Lighting Cone from Above */}
       <div
@@ -88,7 +88,9 @@ export default function Connect4BoardMobile({
       </div>
 
       {/* Top Mobile Bar */}
-      <header className="flex items-center justify-between px-3 py-2 border-b border-white/10 z-20 bg-black/40 backdrop-blur-xl">
+      {/* Phone held sideways: header / scoreboard / footer stack in the left column and the board spans the
+          right one. As a portrait stack the board was squeezed to ~90px tall and its column buttons to 13px. */}
+      <header className="flex flex-wrap items-center justify-between gap-y-1 px-3 py-2 border-b border-white/10 z-20 bg-black/40 backdrop-blur-xl short-land:col-start-1 short-land:row-start-1">
         <button
           type="button"
           onClick={onLeave}
@@ -154,7 +156,7 @@ export default function Connect4BoardMobile({
       </header>
 
       {/* Mobile Player Podiums & Live Token Racks */}
-      <section className="px-3 py-1.5 z-10">
+      <section className="px-3 py-1.5 z-10 short-land:col-start-1 short-land:row-start-2 short-land:self-center">
         <div className="grid grid-cols-2 gap-2 max-w-[500px] mx-auto">
           <Connect4TokenRack
             playerName={p1?.name ?? "Player 1"}
@@ -191,7 +193,7 @@ export default function Connect4BoardMobile({
       </section>
 
       {/* Main Grid Area */}
-      <main className="flex-1 flex items-center justify-center px-1.5 py-1 z-10 overflow-hidden">
+      <main className="flex-1 flex items-center justify-center px-1.5 py-1 z-10 overflow-hidden short-land:col-start-2 short-land:row-start-1 short-land:row-span-3">
         <div className={`relative w-full max-w-[min(98vw,480px)] rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 border transition-all duration-300 overflow-hidden ${theme.tableMat}`}>
           {/* Environmental Table Texture Overlay */}
           <div className={`absolute inset-0 pointer-events-none rounded-2xl sm:rounded-3xl ${theme.tableTextureOverlay}`} />
@@ -211,7 +213,7 @@ export default function Connect4BoardMobile({
       </main>
 
       {/* Outcome footer with Safe-Area Inset */}
-      <footer className="px-4 py-3 border-t border-white/10 bg-black/60 backdrop-blur-xl z-20 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+      <footer className="px-4 py-3 border-t border-white/10 bg-black/60 backdrop-blur-xl z-20 pb-[max(env(safe-area-inset-bottom),0.75rem)] short-land:col-start-1 short-land:row-start-3">
         {isOver ? (
           <div className="flex flex-col items-center gap-2.5 max-w-[420px] mx-auto">
             <div className="flex items-center gap-2 text-white">

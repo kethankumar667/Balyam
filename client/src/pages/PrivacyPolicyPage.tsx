@@ -297,7 +297,10 @@ export default function PrivacyPolicyPage() {
                     type="button"
                     onClick={() => handleCopySectionLink(sec.id)}
                     title="Copy direct section link"
-                    className="opacity-60 group-hover:opacity-100 text-stone-400 hover:text-amber-500 transition cursor-pointer p-1"
+                    aria-label="Copy direct section link"
+                    // A 16px icon in 4px padding was a 24px target; the padding is now 44px, with the negative
+                    // margin keeping the heading's line exactly as tall as before.
+                    className="opacity-60 group-hover:opacity-100 text-stone-400 hover:text-amber-500 transition cursor-pointer p-3.5 -m-2.5"
                   >
                     {copiedLink === sec.id ? (
                       <span className="text-[10px] text-emerald-500 font-bold">Copied!</span>

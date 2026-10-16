@@ -125,7 +125,7 @@ export function Connect4Grid({
   const ghostDiscBorder = myDisc === "R" ? theme.rBorder : theme.yBorder;
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[min(94vw,480px,calc((100vh-230px)*1.16))] mx-auto select-none">
+    <div className="flex flex-col items-center w-full max-w-[min(94vw,480px,calc((100vh-230px)*1.16))] short-land:!max-w-[min(100%,calc((100dvh-72px)*1.16))] mx-auto select-none">
       {/* Inline Keyframe Styles for Gravity Drop Physics & Specular Shine */}
       <style>{`
         @keyframes c4DropIn {

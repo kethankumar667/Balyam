@@ -912,7 +912,7 @@ describe("Blocker 06 P1-2 remediation — FAILED-state terminal retry", () => {
 
       expect(room.phase).toBe("lobby");
       expect(emittedErrors).toContain(
-        "This match has not been paid for yet. Use requestGameStart, not startGame, when Economy V1 is enabled."
+        "We couldn't start this match because its entry stake hasn't been set aside yet. Please try Start Game again."
       );
     });
 

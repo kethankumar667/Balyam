@@ -75,7 +75,7 @@ export default function TestimonialsPage() {
           >
             <Link
               to="/games"
-              className="hover:text-amber-600 dark:hover:text-amber-400 transition"
+              className="inline-flex min-h-[44px] items-center -my-3.5 hover:text-amber-600 dark:hover:text-amber-400 transition"
             >
               Lounge
             </Link>

@@ -31,6 +31,7 @@ import { FaucetReadyDot } from "../faucet/FaucetReadyDot";
 import { CosmeticsStoreEntryChip } from "../cosmetics/CosmeticsStoreEntryChip";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { usePlayerSnapshot } from "../../hooks/usePlayerSnapshot";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 
 /**
  * The global header.
@@ -61,6 +62,7 @@ export default function AppHeader({
   unreadCount = 0,
 }: AppHeaderProps) {
   const { pathname } = useLocation();
+  const isPhone = useMediaQuery("(max-width: 639px)");
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
   const { playerName, avatarId } = useRoomStore();
@@ -85,10 +87,14 @@ export default function AppHeader({
   const isFavoritesActive = pathname.startsWith("/favorites");
 
   return (
-    <header className="h-20 w-full flex-shrink-0 z-30 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)] transition-colors">
+    // 64px on a phone, 80px from `sm` up. The row used to be a fixed 80px with a 44px logo and four 44px-tall
+    // chips, which on a ~360px screen was wider than the screen: `overflow-hidden` clipped the avatar off the
+    // right edge, and the left group (allowed to shrink) squeezed the logo until it overlapped the streak chip.
+    <header className="h-16 sm:h-20 w-full flex-shrink-0 z-30 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)] transition-colors">
       <div className="h-full w-full flex items-center overflow-hidden">
-        {/* Left: Sidebar-Aligned Brand Area */}
-        <div className="w-auto lg:w-68 xl:w-72 min-w-0 lg:flex-shrink-0 px-3 sm:px-6 flex items-center gap-2.5 sm:gap-3">
+        {/* Left: Sidebar-Aligned Brand Area. `flex-shrink-0` at every width: it is the right-hand chips that
+            give way on a narrow screen, never the menu button and logo (which then drew over their neighbour). */}
+        <div className="w-auto lg:w-68 xl:w-72 min-w-0 flex-shrink-0 px-2 sm:px-6 flex items-center gap-1.5 sm:gap-3">
           <Tooltip content="Toggle Navigation Menu" side="bottom">
             <Button
               type="button"
@@ -108,8 +114,9 @@ export default function AppHeader({
               aria-label="BHALYAM — go to the lounge home"
               className="flex items-center gap-2.5 sm:gap-3 group min-w-0 select-none"
             >
-              <span className="flex-shrink-0">
-                <BhalyamLogo size={44} decorative />
+              {/* 36px on a phone, and dropped under 360px where the chips need the room (the menu has Home). */}
+              <span className="flex-shrink-0 max-[359px]:hidden">
+                <BhalyamLogo size={isPhone ? 36 : 44} decorative />
               </span>
               <span className="hidden sm:flex flex-col leading-none min-w-0">
                 <span className="bhalyam-display text-[22px] sm:text-[26px] tracking-tight truncate text-[var(--chrome-ink)] group-hover:text-[var(--chrome-accent)] transition-colors">
@@ -133,6 +140,7 @@ export default function AppHeader({
               <Link
                 to="/games"
                 aria-current={isGamesActive ? "page" : undefined}
+                aria-label="All Games"
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 select-none ${
                   isGamesActive
                     ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-accent)] font-extrabold shadow-2xs border border-[var(--chrome-border)]"
@@ -140,7 +148,9 @@ export default function AppHeader({
                 }`}
               >
                 <Gamepad2 className="w-4 h-4 flex-shrink-0" />
-                <span>All Games</span>
+                {/* Below `xl` only the ACTIVE tab keeps its label. The full set needed ~1147px, so on an iPad in
+                    landscape (1024–1100) the right-hand chips ran off the edge. Tooltip + aria-label keep the rest. */}
+                <span className={isGamesActive ? "" : "hidden xl:inline"}>All Games</span>
               </Link>
             </Tooltip>
 
@@ -148,6 +158,7 @@ export default function AppHeader({
               <Link
                 to="/recently-played"
                 aria-current={isRecentActive ? "page" : undefined}
+                aria-label="Recently Played"
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 select-none ${
                   isRecentActive
                     ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-accent)] font-extrabold shadow-2xs border border-[var(--chrome-border)]"
@@ -155,7 +166,7 @@ export default function AppHeader({
                 }`}
               >
                 <History className="w-4 h-4 flex-shrink-0" />
-                <span>Recently Played</span>
+                <span className={isRecentActive ? "" : "hidden xl:inline"}>Recently Played</span>
                 {recentItems.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300">
                     {recentItems.length}
@@ -168,6 +179,7 @@ export default function AppHeader({
               <Link
                 to="/favorites"
                 aria-current={isFavoritesActive ? "page" : undefined}
+                aria-label="Favorites"
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 select-none ${
                   isFavoritesActive
                     ? "bg-[var(--chrome-active-bg)] text-[var(--chrome-accent)] font-extrabold shadow-2xs border border-[var(--chrome-border)]"
@@ -181,7 +193,7 @@ export default function AppHeader({
                       : ""
                   }`}
                 />
-                <span>Favorites</span>
+                <span className={isFavoritesActive ? "" : "hidden xl:inline"}>Favorites</span>
                 {favourites.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-700 dark:text-rose-300">
                     {favourites.length}
@@ -193,8 +205,8 @@ export default function AppHeader({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex-1 md:flex-none flex items-center justify-end px-3 sm:px-6">
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <div className="flex-1 md:flex-none flex items-center justify-end px-2 sm:px-6 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-2.5">
             {/* Free coins every four hours — signed-in members only; a guest has no faucet. */}
             {isMember && <FaucetChip />}
 
@@ -241,7 +253,9 @@ export default function AppHeader({
                     ? `Profile — ${displayName} (${unreadCount} unread notifications)`
                     : `Profile — ${displayName}`
                 }
-                className="relative min-h-[44px] min-w-[44px] w-11 md:w-auto flex items-center gap-0 md:gap-2.5 px-0 md:px-3
+                // The name + chevron appear from `lg`, not `md`: at 768px (tablet portrait) the expanded pill
+                // pushed the header past the screen edge and the avatar was cut off.
+                className="relative min-h-[44px] min-w-[44px] w-11 lg:w-auto flex items-center gap-0 lg:gap-2.5 px-0 lg:px-3
                            justify-center rounded-full border transition-colors cursor-pointer flex-shrink-0
                            bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink)]
                            hover:bg-[var(--chrome-control-hi)] focus-visible:outline-hidden focus-visible:ring-2
@@ -270,10 +284,10 @@ export default function AppHeader({
                   )}
                 </AnimatePresence>
                 {/* Phone: the name and badge are hidden, so the level rides on the avatar itself. */}
-                <span aria-hidden="true" className="md:hidden absolute -bottom-1.5 -right-1.5">
+                <span aria-hidden="true" className="lg:hidden absolute -bottom-1.5 -right-1.5">
                   <MiniclipLevelBadge level={playerLevel} size="xs" showTooltip={false} />
                 </span>
-                <div className="hidden md:flex items-center gap-1.5 min-w-0">
+                <div className="hidden lg:flex items-center gap-1.5 min-w-0">
                   <span className="text-[13px] font-bold tracking-tight max-w-[130px] truncate">
                     {displayName}
                   </span>
@@ -286,7 +300,7 @@ export default function AppHeader({
                     />
                   )}
                 </div>
-                <ChevronDown className="hidden md:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
+                <ChevronDown className="hidden lg:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
               </motion.button>
             </Tooltip>
 

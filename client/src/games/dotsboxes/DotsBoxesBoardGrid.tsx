@@ -105,7 +105,7 @@ export default function DotsBoxesBoardGrid({
 
   return (
     <div
-      className={`relative aspect-square w-full max-w-[540px] mx-auto rounded-3xl p-4 sm:p-6 select-none ${
+      className={`relative aspect-square w-full max-w-[540px] short-land:!max-w-[min(100%,calc(100dvh-40px))] short-land:shrink-0 short-land:!p-2 mx-auto rounded-3xl p-4 sm:p-6 select-none ${
         isNotebook
           ? "bg-[#FCF9F0] border-2 border-[#D7C9B1] shadow-[0_15px_35px_rgba(80,55,30,0.12)]"
           : "bg-white border border-slate-200/80 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"

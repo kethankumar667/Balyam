@@ -62,7 +62,8 @@ export const BrickTetrisGame: React.FC = () => {
           <button
             onClick={() => dispatch({ type: "TOGGLE_GHOST" })}
             title="Toggle Ghost Piece"
-            className="p-2 bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
+            aria-label="Toggle ghost piece"
+            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
           >
             {state.settings.ghostPieceEnabled ? (
               <Eye className="w-4 h-4 text-emerald-400" />
@@ -74,7 +75,8 @@ export const BrickTetrisGame: React.FC = () => {
           <button
             onClick={() => dispatch({ type: "TOGGLE_SOUND" })}
             title="Toggle Audio"
-            className="p-2 bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
+            aria-label="Toggle audio"
+            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
           >
             {state.settings.soundEnabled ? (
               <Volume2 className="w-4 h-4 text-amber-400" />
@@ -86,7 +88,8 @@ export const BrickTetrisGame: React.FC = () => {
           <button
             onClick={() => dispatch({ type: "RESTART_GAME" })}
             title="Restart Match"
-            className="p-2 bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
+            aria-label="Restart match"
+            className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#1A233A] hover:bg-[#232F4E] text-zinc-300 hover:text-white rounded-lg border border-[#2E3C62] transition-colors"
           >
             <RotateCcw className="w-4 h-4 text-blue-400" />
           </button>

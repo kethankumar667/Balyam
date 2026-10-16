@@ -376,7 +376,12 @@ export default function ChessBoardMobile({
               placeholder="Type a message..."
               className="flex-1 bg-[#EAD6B8] border border-[#C5A880] rounded-lg px-1.5 py-0.5 text-[10px] text-[#2B1909] placeholder-[#78593A] focus:outline-none"
             />
-            <button type="submit" className="p-0.5 text-xs">
+            {/* It was an unlabelled emoji at 20×20px. Now a labelled 44px target; `-my-2` keeps the row as tall as it was. */}
+            <button
+              type="submit"
+              aria-label="Send message"
+              className="-my-2 flex min-h-[44px] min-w-[44px] items-center justify-center text-base"
+            >
               😊
             </button>
           </form>

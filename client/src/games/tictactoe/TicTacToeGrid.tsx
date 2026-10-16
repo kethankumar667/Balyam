@@ -51,7 +51,7 @@ export function TicTacToeGrid({
   const beamCoords = getWinningBeamCoordinates();
 
   return (
-    <div className="relative w-full aspect-square max-w-[min(88vw,calc(100dvh-270px),380px)] sm:max-w-[min(84vw,calc(100dvh-290px),420px)] mx-auto p-1.5 sm:p-3 select-none flex items-center justify-center">
+    <div className="relative w-full aspect-square max-w-[min(88vw,calc(100dvh-270px),380px)] sm:max-w-[min(84vw,calc(100dvh-290px),420px)] short-land:!max-w-[min(46vw,calc(100dvh-96px))] short-land:shrink-0 mx-auto p-1.5 sm:p-3 select-none flex items-center justify-center">
       {/* Outer Holographic Glow Container */}
       <div
         className={`relative w-full h-full rounded-2xl sm:rounded-3xl border-2 transition-colors duration-300 ${theme.gridBorder} ${theme.boardBg} p-2 sm:p-3 flex flex-col justify-between overflow-hidden shadow-2xl`}

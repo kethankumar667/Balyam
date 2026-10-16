@@ -225,11 +225,14 @@ export function ProTopBar({
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
   return (
     <div
-      className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5"
+      // `flex-wrap` + the `order`/`basis-full` pairs below: on a phone the match context (live pill, round,
+      // first-to) drops to its own line under the wordmark and the buttons. As one non-wrapping row it
+      // overprinted the wordmark and pushed the last buttons off the right edge at 375–390px.
+      className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4"
       style={{ borderBottom: `1px solid ${PRO.line}`, background: "rgba(4,10,20,0.55)" }}
     >
       {/* Wordmark */}
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="order-1 flex min-w-0 flex-1 items-center gap-2.5 sm:flex-none">
         <div
           className="grid h-7 w-7 shrink-0 place-items-center rounded-md"
           style={{ background: `linear-gradient(150deg, ${PRO.gold}, ${PRO.goldDeep})`, color: "#2A1D05" }}
@@ -253,7 +256,7 @@ export function ProTopBar({
       </div>
 
       {/* Centre: live context */}
-      <div className="flex items-center gap-2">
+      <div className="order-3 flex basis-full flex-wrap items-center justify-center gap-2 sm:order-2 sm:basis-auto">
         {live && <ProLive />}
         <ProChip>Round {round}</ProChip>
         <ProChip tone="gold">
@@ -263,7 +266,7 @@ export function ProTopBar({
       </div>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="order-2 flex shrink-0 items-center gap-1.5 sm:order-3">
         {onSkin && (
           <GameThemeToggle
             theme="neon"

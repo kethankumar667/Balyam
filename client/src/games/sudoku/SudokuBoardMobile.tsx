@@ -50,12 +50,14 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
 
   return (
     <div
-      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe ${theme.bg} flex flex-col items-center justify-between p-2 sm:p-3 select-none overflow-hidden overscroll-none touch-none transition-colors duration-300 relative`}
+      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe ${theme.bg} flex flex-col items-center justify-between p-2 sm:p-3 select-none overflow-hidden overscroll-none touch-none transition-colors duration-300 relative short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_auto_1fr] short-land:items-start short-land:gap-x-3 short-land:justify-start`}
     >
+      {/* Phone held sideways: the board takes the left column at the largest square the height allows and the
+          header / hint / keypad stack on the right. Portrait is the original single column. */}
       {/* Top Cyber Navigation Bar & Telemetry Console */}
-      <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-1.5 shrink-0 z-20">
+      <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-1.5 shrink-0 z-20 short-land:col-start-2 short-land:row-start-1 short-land:max-w-none">
         {!game.zenMode ? (
-          <header className="w-full flex items-center justify-between gap-2 pt-safe">
+          <header className="w-full flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pt-safe">
             {/* Back Button */}
             <button
               type="button"
@@ -289,10 +291,11 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
       </div>
 
       {/* Main Play Deck (Board + Hint + Keypad unified and ergonomically connected) */}
-      <main className="w-full max-w-sm sm:max-w-md flex-1 flex flex-col items-center justify-center min-h-0 py-1 z-10">
-        <div className="w-full flex flex-col items-center gap-2 xs:gap-2.5 sm:gap-3">
+      {/* `short-land:contents` on these two wrappers hands the board, hint and keypad to the shell's grid. */}
+      <main className="w-full max-w-sm sm:max-w-md flex-1 flex flex-col items-center justify-center min-h-0 py-1 z-10 short-land:contents">
+        <div className="w-full flex flex-col items-center gap-2 xs:gap-2.5 sm:gap-3 short-land:contents">
           {/* Matrix Grid Board */}
-          <div className="w-full flex items-center justify-center min-h-0 shrink-0">
+          <div className="w-full flex items-center justify-center min-h-0 shrink-0 short-land:col-start-1 short-land:row-start-1 short-land:row-span-3 short-land:self-center short-land:w-auto">
             <SudokuGrid
               cells={game.cells}
               selectedCellIndex={game.selectedCellIndex}
@@ -310,7 +313,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
           {/* Hint Banner (if active) */}
           {game.hintText && (
             <div
-              className={`w-full px-3 py-1 rounded-xl border text-xs font-bold text-center tracking-wide shrink-0 animate-in fade-in slide-in-from-bottom-1 duration-150 z-20 ${
+              className={`w-full px-3 py-1 rounded-xl border text-xs font-bold text-center tracking-wide shrink-0 short-land:col-start-2 short-land:row-start-2 animate-in fade-in slide-in-from-bottom-1 duration-150 z-20 ${
                 isLight
                   ? "bg-amber-50 border-amber-300 text-amber-800 shadow-xs"
                   : "bg-amber-500/20 border-amber-400/40 text-amber-300"
@@ -321,7 +324,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
           )}
 
           {/* Touch Control Keypad */}
-          <footer className="w-full flex flex-col items-center z-20 shrink-0 pb-safe">
+          <footer className="w-full flex flex-col items-center z-20 shrink-0 pb-safe short-land:col-start-2 short-land:row-start-3 short-land:self-start">
             <SudokuKeypad
               digitCounts={game.digitCounts}
               selectedDigit={game.selectedDigit}

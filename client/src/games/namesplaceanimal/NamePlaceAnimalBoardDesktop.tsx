@@ -325,7 +325,7 @@ export default function NamePlaceAnimalBoardDesktop({
                         <button
                           type="button"
                           onClick={() => handleRequestCategoryClue(cat)}
-                          className={`text-xs hover:underline font-bold flex items-center gap-1 cursor-pointer ${
+                          className={`text-xs hover:underline font-bold flex min-h-[28px] -my-1.5 items-center gap-1 cursor-pointer ${
                             isNeon ? "text-cyan-400" : "text-amber-600 dark:text-amber-300"
                           }`}
                         >

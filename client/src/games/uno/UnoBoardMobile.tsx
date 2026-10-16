@@ -337,14 +337,19 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
         )}
 
         {/* Top Header matching UX image */}
-        <div className="relative flex-shrink-0 px-3 pt-2.5 pb-1 flex flex-col gap-1.5 z-20">
+        {/* The strip itself is `pointer-events-none`; only its real controls opt back in. It spans the full
+            width above the arena, so as one solid layer it sat on top of the top opponent's seat (and its
+            profile button) on a phone held sideways and swallowed their taps. */}
+        <div className="relative flex-shrink-0 px-3 pt-2.5 pb-1 flex flex-col gap-1.5 z-20 pointer-events-none">
           {/* Top Line: Room Code on Left, Meta in Center, Sound/Help/Reactions on Right */}
           <div className="flex items-center justify-between gap-1 w-full">
-            <StadiumRoomCodePlate code={roomCode} />
+            <div className="pointer-events-auto">
+              <StadiumRoomCodePlate code={roomCode} />
+            </div>
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-200/90 whitespace-nowrap">
               GAME: <span className="text-yellow-400 font-extrabold">Color Cards</span> &nbsp;·&nbsp; <span className="text-amber-300 font-extrabold">{state.phase.toUpperCase()}</span>
             </span>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0 pointer-events-auto">
               <StadiumIconButton
                 onClick={toggleMute}
                 ariaLabel={audioSettings.isMuted ? "Unmute sound" : "Mute sound"}
@@ -375,20 +380,22 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
           {/* Second Line: Classic Mode / Rules on Left, Leave Room Button on Right */}
           <div className="flex items-center justify-between w-full">
             {!warningActive && (
-              Object.values(state.activeHouseRules).some(Boolean) ? (
-                <StadiumHouseRulesBadge
-                  rules={state.activeHouseRules}
-                  onClick={() => setShowRulesModal(true)}
-                />
-              ) : (
-                <StadiumClassicModeBadge onClick={() => setShowRulesModal(true)} />
-              )
+              <div className="pointer-events-auto">
+                {Object.values(state.activeHouseRules).some(Boolean) ? (
+                  <StadiumHouseRulesBadge
+                    rules={state.activeHouseRules}
+                    onClick={() => setShowRulesModal(true)}
+                  />
+                ) : (
+                  <StadiumClassicModeBadge onClick={() => setShowRulesModal(true)} />
+                )}
+              </div>
             )}
             <button
               onClick={onLeave}
               aria-label="Leave Game"
               title="Leave Room"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-200 hover:text-white bg-red-950/85 hover:bg-red-600/90 border border-amber-500/40 hover:border-amber-400 transition-all shadow-md active:scale-95 cursor-pointer ml-auto"
+              className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-200 hover:text-white bg-red-950/85 hover:bg-red-600/90 border border-amber-500/40 hover:border-amber-400 transition-all shadow-md active:scale-95 cursor-pointer ml-auto"
               style={{ backdropFilter: "blur(8px)" }}
             >
               <LeaveDoorIcon size={12} />

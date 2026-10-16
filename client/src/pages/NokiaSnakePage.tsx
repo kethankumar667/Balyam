@@ -20,7 +20,9 @@ export default function NokiaSnakePage() {
   }, [setActiveGame]);
 
   return (
-    <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0F172A] flex flex-col justify-between overflow-hidden">
+    // `overflow-y-auto`: the handset is taller than a short phone (≈760px with its keypad). Hidden clipped the
+    // keypad with no way to reach it; this keeps it reachable on any screen the board cannot fully fit.
+    <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0F172A] flex flex-col justify-between overflow-x-hidden overflow-y-auto">
       <h1 className="sr-only">Classic Snake — Retro Monochrome Arcade Game</h1>
       <NokiaSnakeBoard onExit={() => navigate("/games")} />
     </div>

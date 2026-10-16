@@ -2138,7 +2138,8 @@ function TopStrip({
             border: "1px solid rgba(201,162,39,0.50)",
             boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
             color: "#fde68a",
-            height: 22,
+            // 24, not 22: WCAG 2.2 AA 2.5.8 sets 24×24 as the floor for a pointer target.
+            height: 24,
           }}
         >
           <span className="text-[#C9A227] text-[9px]">🃏</span>
@@ -2157,7 +2158,7 @@ function TopStrip({
             onClick={() => setShowQrModal(true)}
             aria-label="Show QR Code"
             title="Show QR Code to join room"
-            className="flex items-center justify-center w-6 h-5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/40 cursor-pointer"
+            className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/40 cursor-pointer"
           >
             📱
           </button>

@@ -250,7 +250,7 @@ export default function StarBoardDesktop(props: StarBoardProps) {
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className="flex items-center gap-1.5 font-display text-sm font-black text-amber-400 hover:text-amber-300 transition"
+                className="flex min-h-[28px] items-center gap-1.5 font-display text-sm font-black text-amber-400 hover:text-amber-300 transition"
               >
                 <span>{props.roomCode}</span>
                 <span className="text-xs opacity-75">{copied ? "✓" : "⧉"}</span>

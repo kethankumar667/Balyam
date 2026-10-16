@@ -42,7 +42,7 @@ function SudokuKeypad({
     : "bg-white/5 border border-white/10 hover:bg-white/10 text-stone-300";
 
   return (
-    <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-2 select-none">
+    <div className="w-full max-w-sm sm:max-w-md short-land:max-w-none flex flex-col gap-2 select-none">
       {/* Action Control Deck */}
       <div className="flex items-center justify-between gap-1.5 px-0.5">
         {/* Undo */}
@@ -123,7 +123,8 @@ function SudokuKeypad({
       </div>
 
       {/* 1-9 Number Row / Touch Grid */}
-      <div className="grid grid-cols-9 gap-1 sm:gap-1.5 w-full">
+      {/* Nine digits across a ~300px column would be ~33px keys; sideways they wrap to 5 + 4 at full size. */}
+      <div className="grid grid-cols-9 short-land:grid-cols-5 gap-1 sm:gap-1.5 w-full">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => {
           const placedCount = digitCounts[digit] || 0;
           const isComplete = placedCount >= 9;
@@ -172,7 +173,7 @@ function SudokuKeypad({
         <button
           type="button"
           onClick={onToggleInputMode}
-          className={`text-[10px] font-bold transition flex items-center gap-1.5 ${
+          className={`min-h-[44px] short-land:min-h-[28px] text-[10px] font-bold transition flex items-center gap-1.5 ${
             isLight ? "text-slate-600 hover:text-slate-900" : "text-stone-400 hover:text-stone-200"
           }`}
         >

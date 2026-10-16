@@ -4,7 +4,7 @@ interface NokiaKeypadProps {
 
 export function NokiaKeypad({ onKeyPress }: NokiaKeypadProps) {
   return (
-    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-2.5 select-none font-mono">
+    <div className="w-full max-w-[320px] mt-3 flex flex-col items-center gap-2.5 select-none font-mono short-land:mt-0 short-land:max-w-[280px] short-land:gap-1.5">
       {/* Soft Action Navigation Bar */}
       <div className="w-full flex justify-between px-1 gap-2.5">
         <button

@@ -60,7 +60,7 @@ export default function Breadcrumbs({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={`w-full py-2 sm:py-2.5 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]/40 backdrop-blur-xs transition-colors select-none ${className}`}
+      className={`w-full py-0 sm:py-2.5 border-b border-[var(--chrome-hairline)] bg-[var(--chrome-panel)]/40 backdrop-blur-xs transition-colors select-none ${className}`}
     >
       <div className={containerClassName}>
         <ol
@@ -89,14 +89,14 @@ export default function Breadcrumbs({
                 {!isLast && item.path ? (
                   <Link
                     to={item.path}
-                    className="inline-flex items-center min-h-[32px] sm:min-h-[28px] py-1 text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-accent)] hover:underline underline-offset-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chrome-accent)] rounded"
+                    className="inline-flex items-center min-h-[44px] sm:min-h-[28px] px-1 sm:px-0 py-1 text-[var(--chrome-ink-soft)] hover:text-[var(--chrome-accent)] hover:underline underline-offset-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--chrome-accent)] rounded"
                   >
                     {item.label}
                   </Link>
                 ) : (
                   <span
                     aria-current={isLast ? "page" : undefined}
-                    className="inline-flex items-center min-h-[32px] sm:min-h-[28px] py-1 font-semibold text-[var(--chrome-ink)] max-w-[240px] sm:max-w-md truncate"
+                    className="inline-flex items-center min-h-[44px] sm:min-h-[28px] py-1 font-semibold text-[var(--chrome-ink)] max-w-[240px] sm:max-w-md truncate"
                     title={item.label}
                   >
                     {item.label}

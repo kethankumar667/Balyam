@@ -9,7 +9,9 @@ export function HcPhaseCountdown({ state }: { state: HcState }) {
   const label = state.phase === "teamSelect" ? "Confirm playing XI" : "Toss decision";
   return (
     <div
-      className="fixed left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border-2 border-amber-300/80 bg-stone-950/90 px-3 py-1.5 text-sm font-black text-amber-100 shadow-xl backdrop-blur-md"
+      // Bottom-centre and `pointer-events-none`: this is a read-only countdown. At top-centre it sat on the
+      // header's centre tabs (hiding "Live Score") and intercepted taps meant for the header on desktop.
+      className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border-2 border-amber-300/80 bg-stone-950/90 px-3 py-1.5 text-sm font-black text-amber-100 shadow-xl backdrop-blur-md"
       role="timer"
       aria-live="polite"
       aria-label={`${label}: ${secondsLeft} seconds remaining`}

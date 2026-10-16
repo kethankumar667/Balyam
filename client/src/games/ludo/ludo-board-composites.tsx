@@ -255,7 +255,10 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       >
         <MenuIcon size={17} />
       </button>
-      <LudoLogo />
+      {/* The wordmark is decoration; dropped sideways, where the header row has to fit six chips. */}
+      <div className="short-land:hidden">
+        <LudoLogo />
+      </div>
       <div className="flex-1 min-w-0 text-center px-1">
         {finished && (
           <button
@@ -283,7 +286,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ background: THEME_SWATCH[m.settings.theme], boxShadow: "0 0 4px currentColor" }}
         />
-        <span className="hidden sm:inline">{themeLabel}</span>
+        <span className="hidden sm:inline short-land:!hidden">{themeLabel}</span>
       </button>
       <button onClick={m.toggleSound} className={iconChip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
         {m.soundOn ? <SpeakerIcon size={16} /> : <SpeakerMutedIcon size={16} />}
@@ -299,7 +302,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       </button>
       <button onClick={() => m.setShowInstructions(true)} className={labelChip} style={chipStyle} title="How to play" aria-label="How to play">
         <HelpIcon size={16} />
-        <span className="hidden sm:inline">Rules</span>
+        <span className="hidden sm:inline short-land:!hidden">Rules</span>
       </button>
       {m.onLeave && (
         <button
@@ -309,7 +312,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           title="Leave room"
           aria-label="Leave room"
         >
-          <span className="hidden sm:inline">Leave</span>
+          <span className="hidden sm:inline short-land:!hidden">Leave</span>
           <LeaveDoorIcon size={15} />
         </button>
       )}
@@ -1495,7 +1498,8 @@ export function LudoBottomBar({
           </span>
         )}
       </span>
-      <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--ludo-nav-text, #4A2E18)" }}>{label}</span>
+      {/* Sideways the four buttons share a row with nothing else to spare; the icon + aria-label carry it. */}
+      <span className="text-[10px] font-extrabold uppercase tracking-wider short-land:hidden" style={{ color: "var(--ludo-nav-text, #4A2E18)" }}>{label}</span>
     </button>
   );
   return (

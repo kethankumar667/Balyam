@@ -1892,8 +1892,12 @@ export default function Room() {
           // `overflow-hidden h-full p-0` treatment meant only for active
           // gameplay — clipping the RoomHeader (and its Leave button) and the
           // room-share content that ternary put inside it.
+          // `overflow-y-auto`, not `overflow-hidden`: a board is sized to the viewport, but on a short
+          // landscape phone some are taller than it. Hidden meant their bottom rows and action buttons
+          // were clipped with no way to reach them; this keeps them reachable and costs a board that
+          // fits exactly nothing (no overflow, no scrollbar).
           FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike
-            ? "bhalyam-font bhalyam-paper h-full overflow-hidden p-0"
+            ? "bhalyam-font bhalyam-paper h-full overflow-x-hidden overflow-y-auto p-0"
             : ludoInPlay
               ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
               : isLobbyLike || isGameStartingCeremony
@@ -1939,7 +1943,13 @@ export default function Room() {
               className={
                 roomState.game === "stargame"
                   ? "pointer-events-none absolute right-3 top-3 z-30 flex items-center justify-end"
-                  : "flex items-center justify-end"
+                  : roomState.game === "handcricket"
+                    ? // Hand Cricket's desktop boards (all four skins) draw their own header with Leave, directly
+                      // over this strip — so on desktop these two buttons were present but hidden under the
+                      // board, unreachable by mouse and a trap for keyboard focus. Same gate as
+                      // `isDesktopLayout()` in HandCricketBoard.tsx; below it this header is still the only one.
+                      "flex items-center justify-end [@media(min-width:1280px)_and_(min-height:720px)_and_(hover:hover)_and_(pointer:fine)]:hidden"
+                    : "flex items-center justify-end"
               }
             >
               {isFullscreenSupported() && (

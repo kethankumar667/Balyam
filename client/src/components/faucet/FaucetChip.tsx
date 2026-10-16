@@ -74,7 +74,9 @@ export function FaucetChip() {
       <ClaimAnnouncement justClaimed={justClaimed} message={message} />
       {/* Mounted here because the chip is the one faucet control every signed-in page has, even on a phone where it is hidden. */}
       <FaucetClaimModal />
-      <div className="hidden sm:contents">
+      {/* From `md` (768px), not `sm`: at 640–767px a member's header — brand, streak, shop, wallet, profile —
+          has ~70px of slack, and this chip is ~105px. Below `md` the wallet's ready-dot carries it. */}
+      <div className="hidden md:contents">
         <Tooltip content={tooltip} side="bottom">
           <motion.button
             type="button"

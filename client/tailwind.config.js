@@ -553,5 +553,18 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    /**
+     * `short-land:` — a phone held sideways: landscape AND no taller than 520px.
+     *
+     * Width alone cannot describe this shape. A phone in landscape is 640–930px wide, so `sm:`/`md:`
+     * treat it as a tablet, yet it has only 320–430px of height, which is what actually breaks
+     * game boards (Rummy's hand and action row ran off the bottom). Use `short-land:` to re-arrange
+     * a layout for that shape — usually "stack" becomes "two columns". Keep the 520px bound in step
+     * with `SHORT_LANDSCAPE_QUERY` in games/rummy/RummyBoardMobile.tsx and rummy-mobile-fit.css.
+     */
+    function shortLandscapeVariant({ addVariant }) {
+      addVariant("short-land", "@media (orientation: landscape) and (max-height: 520px)");
+    },
+  ],
 };

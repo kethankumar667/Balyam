@@ -200,6 +200,36 @@ export function measureControls(selector) {
       }
     }
 
+    /*
+     * An invisible `::before` / `::after` that stretches a control's hit area is a real, tappable part of
+     * the control — it is how a 20px icon gets a 44px target without moving the layout around it. The
+     * element's own rect does not include it, so a correctly built control was reported as too small.
+     * Only an absolutely positioned pseudo-element counts, and its size is scaled by whatever transform
+     * the control sits under (a seat drawn at 0.65 scale has a 0.65-scale hit area too).
+     */
+    {
+      const scale = el.offsetWidth ? rect.width / el.offsetWidth : 1;
+      let l = effective.left;
+      let r = effective.right;
+      let t = rect.top;
+      let b = rect.bottom;
+      for (const pseudo of ["::before", "::after"]) {
+        const ps = getComputedStyle(el, pseudo);
+        if (ps.content === "none" || ps.position !== "absolute") continue;
+        const w = parseFloat(ps.width);
+        const h = parseFloat(ps.height);
+        const pt = parseFloat(ps.top);
+        const pl = parseFloat(ps.left);
+        if ([w, h, pt, pl].some(Number.isNaN)) continue;
+        l = Math.min(l, rect.left + pl * scale);
+        t = Math.min(t, rect.top + pt * scale);
+        r = Math.max(r, rect.left + pl * scale + w * scale);
+        b = Math.max(b, rect.top + pt * scale + h * scale);
+      }
+      // `effective.height` — not `rect.height` — so a checkbox keeps the label-union height computed above.
+      effective = { ...effective, width: Math.max(effective.width, r - l), height: Math.max(effective.height, b - t) };
+    }
+
     out.push({
       selector: describeEl(el),
       label: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 60),

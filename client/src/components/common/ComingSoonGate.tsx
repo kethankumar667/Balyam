@@ -58,7 +58,7 @@ export default function ComingSoonGate({
   return (
     <AppLayout>
       <div
-        className="min-h-[85vh] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-none overflow-hidden"
+        className="min-h-[85vh] py-8 sm:py-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-none overflow-x-clip"
         style={{ perspective: 1200 }}
       >
         {/* Ambient Backlight Aura */}

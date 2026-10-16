@@ -20,7 +20,8 @@ export default function NokiaCricketPage() {
   }, [setActiveGame]);
 
   return (
-    <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0D1322] overflow-hidden">
+    // `overflow-y-auto`: the handset is taller than a short phone, and hidden clipped the keypad unreachably.
+    <div className="w-full min-h-dvh-safe h-dvh-safe bg-[#0D1322] overflow-x-hidden overflow-y-auto">
       <h1 className="sr-only">Retro Cricket 2D — Classic Retro Handheld Cricket Game</h1>
       <NokiaCricketBoard onExit={() => navigate("/games")} />
     </div>

@@ -62,7 +62,7 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
       : `Coin balance: ${balance} coins. ${statusText}.${isInteractive ? " Click to open wallet." : ""}`;
 
   const baseStyles =
-    "inline-flex items-center min-h-[44px] px-3.5 py-1.5 rounded-full border border-amber-600/30 dark:border-amber-400/25 " +
+    "inline-flex items-center min-h-[44px] px-2.5 sm:px-3.5 py-1.5 rounded-full border border-amber-600/30 dark:border-amber-400/25 " +
     "bg-amber-50/80 dark:bg-[#131824]/90 backdrop-blur-md shadow-xs transition-all duration-200 " +
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0A0E17] " +
     (isInteractive
@@ -83,7 +83,7 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
           />
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <CoinAmount amount={balance} size="sm" />
           <span
             className={`w-1.5 h-1.5 rounded-full ${statusIndicator}`}

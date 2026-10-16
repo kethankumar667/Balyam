@@ -96,13 +96,14 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
   return (
     <div className="w-full min-h-screen bg-[#111827] text-white flex flex-col justify-between p-3 sm:p-4 lg:p-6 font-sans select-none">
       {/* Top Lounge Navigation Header */}
-      <header className="max-w-6xl w-full mx-auto flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
-        <div className="flex items-center gap-3">
+      {/* `flex-wrap`: Back + title + Pause + Sound is ~430px of header; as one row it pushed Sound off a 320px screen. */}
+      <header className="max-w-6xl w-full mx-auto flex flex-wrap items-center justify-between gap-y-2 border-b border-white/10 pb-2.5 mb-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {onExit ? (
             <button
               type="button"
               onClick={onExit}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 text-[12px] font-extrabold transition cursor-pointer"
+              className="flex min-h-[44px] items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 text-[12px] font-extrabold transition cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
@@ -110,7 +111,7 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
           ) : (
             <Link
               to="/games"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 text-[12px] font-extrabold transition cursor-pointer"
+              className="flex min-h-[44px] items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 text-[12px] font-extrabold transition cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Games Lounge</span>
@@ -130,7 +131,7 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
             type="button"
             onClick={togglePause}
             title="Pause Game (P / Esc)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-amber-300 text-[12px] font-bold transition cursor-pointer"
+            className="flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-amber-300 text-[12px] font-bold transition cursor-pointer"
           >
             <Pause className="w-4 h-4" />
             <span>{state.status === "paused" ? "Resume" : "Pause (P)"}</span>
@@ -140,7 +141,7 @@ export const BrickBreakoutGame: React.FC<BrickBreakoutGameProps> = ({ onExit }) 
             type="button"
             onClick={toggleSound}
             title="Toggle Sound (M / S)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 text-[12px] font-bold transition cursor-pointer"
+            className="flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 text-[12px] font-bold transition cursor-pointer"
           >
             {state.settings.soundEnabled ? (
               <Volume2 className="w-4 h-4 text-emerald-400" />

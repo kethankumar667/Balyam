@@ -443,12 +443,18 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
                   setCurrentStep(idx);
                 }}
                 aria-label={`Go to tutorial slide ${idx + 1}`}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  idx === currentStep
-                    ? "w-6 bg-cyan-400"
-                    : "w-2 bg-slate-700 hover:bg-slate-500"
-                }`}
-              />
+                // The button is the hit area (the footer is 44px tall anyway, so it costs no space); the
+                // visible dot is the span. The dot alone was 24×8px — below the WCAG 2.5.8 floor.
+                className="group flex h-11 items-center justify-center px-2 cursor-pointer"
+              >
+                <span
+                  className={`block h-2 rounded-full transition-all ${
+                    idx === currentStep
+                      ? "w-6 bg-cyan-400"
+                      : "w-2 bg-slate-700 group-hover:bg-slate-500"
+                  }`}
+                />
+              </button>
             ))}
           </div>
 

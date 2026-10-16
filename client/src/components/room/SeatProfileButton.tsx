@@ -76,7 +76,10 @@ export default function SeatProfileButton({
           e.stopPropagation();
           setOpen(true);
         }}
-        className={`${compact ? "h-8 w-8 flex-shrink-0" : "min-w-[44px] min-h-[44px]"} flex items-center justify-center ${/text-/.test(className) ? "" : "text-[#8A6D4B] hover:text-[#EA5A1F]"} transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] rounded-lg cursor-pointer ${className}`}
+        // `compact` keeps its 32px VISIBLE size but still gets a ~48px hit area from the invisible
+        // ::before. A seat drawn at 0.65 scale (UNO on a phone) shrank the bare 32px target to ~21px —
+        // below the WCAG 2.5.8 floor — and the stretch scales down with it, to ~31px.
+        className={`${compact ? "[&:not(.absolute)]:relative h-8 w-8 flex-shrink-0 before:absolute before:-inset-2 before:content-['']" : "min-w-[44px] min-h-[44px]"} flex items-center justify-center ${/text-/.test(className) ? "" : "text-[#8A6D4B] hover:text-[#EA5A1F]"} transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA5A1F] rounded-lg cursor-pointer ${className}`}
         title={label}
         aria-label={label}
       >
