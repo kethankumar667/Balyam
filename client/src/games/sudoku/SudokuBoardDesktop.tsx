@@ -410,6 +410,7 @@ function SudokuBoardDesktop({ game, onExit }: SudokuBoardDesktopProps) {
                 onUndo={game.undo}
                 onUseHint={game.useHint}
                 onAutoFillNotes={game.autoFillNotes}
+                digitGridClass="grid-cols-5 xl:grid-cols-9"
               />
             </div>
 

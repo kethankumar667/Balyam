@@ -50,7 +50,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
 
   return (
     <div
-      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe ${theme.bg} flex flex-col items-center justify-between p-2 sm:p-3 select-none overflow-hidden overscroll-none touch-none transition-colors duration-300 relative short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_auto_1fr] short-land:items-start short-land:gap-x-3 short-land:justify-start`}
+      className={`w-full min-h-dvh-safe h-dvh-safe max-h-dvh-safe ${theme.bg} flex flex-col items-center justify-between p-2 sm:p-3 select-none overflow-x-hidden overflow-y-auto overscroll-none touch-pan-y transition-colors duration-300 relative short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_auto_1fr] short-land:items-start short-land:gap-x-3 short-land:justify-start`}
     >
       {/* Phone held sideways: the board takes the left column at the largest square the height allows and the
           header / hint / keypad stack on the right. Portrait is the original single column. */}
@@ -295,7 +295,7 @@ function SudokuBoardMobile({ game, onExit }: SudokuBoardMobileProps) {
       <main className="w-full max-w-sm sm:max-w-md flex-1 flex flex-col items-center justify-center min-h-0 py-1 z-10 short-land:contents">
         <div className="w-full flex flex-col items-center gap-2 xs:gap-2.5 sm:gap-3 short-land:contents">
           {/* Matrix Grid Board */}
-          <div className="w-full flex items-center justify-center min-h-0 shrink-0 short-land:col-start-1 short-land:row-start-1 short-land:row-span-3 short-land:self-center short-land:w-auto">
+          <div className="w-full flex items-center justify-center min-h-0 shrink-0 short-land:col-start-1 short-land:row-start-1 short-land:row-span-3 short-land:self-center short-land:w-[min(50vw,calc(100dvh-20px))]">
             <SudokuGrid
               cells={game.cells}
               selectedCellIndex={game.selectedCellIndex}

@@ -39,7 +39,9 @@ function SudokuGrid({
     >
       {/* Thematic Masthead Banner */}
       {theme.masthead && (
-        <div className={`w-full flex items-center justify-between px-1.5 ${theme.masthead.style}`}>
+        // Dropped on a phone held sideways: the board is a fixed square there, and this banner took ~40px of it,
+        // squeezing the 81 cells to ~21×18px (below the WCAG 24px floor, overlapping each other's tap areas).
+        <div className={`w-full flex items-center justify-between px-1.5 short-land:hidden ${theme.masthead.style}`}>
           <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate">
             {theme.masthead.title}
           </span>

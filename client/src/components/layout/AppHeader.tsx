@@ -253,9 +253,10 @@ export default function AppHeader({
                     ? `Profile — ${displayName} (${unreadCount} unread notifications)`
                     : `Profile — ${displayName}`
                 }
-                // The name + chevron appear from `lg`, not `md`: at 768px (tablet portrait) the expanded pill
-                // pushed the header past the screen edge and the avatar was cut off.
-                className="relative min-h-[44px] min-w-[44px] w-11 lg:w-auto flex items-center gap-0 lg:gap-2.5 px-0 lg:px-3
+                // The name + chevron appear from 1400px. At `md` (768px) the expanded pill pushed the header past
+                // the screen edge; at `lg` it still did for a signed-in member (the free-coins chip is the sixth
+                // control), clipping the dark-mode toggle at 1024px (iPad landscape) and 1280px (a laptop).
+                className="relative min-h-[44px] min-w-[44px] w-11 min-[1400px]:w-auto flex items-center gap-0 min-[1400px]:gap-2.5 px-0 min-[1400px]:px-3
                            justify-center rounded-full border transition-colors cursor-pointer flex-shrink-0
                            bg-[var(--chrome-control)] border-[var(--chrome-border)] text-[var(--chrome-ink)]
                            hover:bg-[var(--chrome-control-hi)] focus-visible:outline-hidden focus-visible:ring-2
@@ -284,10 +285,10 @@ export default function AppHeader({
                   )}
                 </AnimatePresence>
                 {/* Phone: the name and badge are hidden, so the level rides on the avatar itself. */}
-                <span aria-hidden="true" className="lg:hidden absolute -bottom-1.5 -right-1.5">
+                <span aria-hidden="true" className="min-[1400px]:hidden absolute -bottom-1.5 -right-1.5">
                   <MiniclipLevelBadge level={playerLevel} size="xs" showTooltip={false} />
                 </span>
-                <div className="hidden lg:flex items-center gap-1.5 min-w-0">
+                <div className="hidden min-[1400px]:flex items-center gap-1.5 min-w-0">
                   <span className="text-[13px] font-bold tracking-tight max-w-[130px] truncate">
                     {displayName}
                   </span>
@@ -300,7 +301,7 @@ export default function AppHeader({
                     />
                   )}
                 </div>
-                <ChevronDown className="hidden lg:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
+                <ChevronDown className="hidden min-[1400px]:block w-3.5 h-3.5 text-[var(--chrome-ink-soft)] flex-shrink-0" />
               </motion.button>
             </Tooltip>
 

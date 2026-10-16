@@ -17,9 +17,16 @@ export interface SudokuKeypadProps {
   onUndo: () => void;
   onUseHint: () => void;
   onAutoFillNotes: () => void;
+  /**
+   * How the nine digits are laid out. The default is one row of nine, right for a phone's full width. The
+   * desktop board puts the keypad in a ~300px side panel from 768px, where nine columns were 22px-wide keys —
+   * it passes `grid-cols-5 xl:grid-cols-9` so they wrap to two rows of five until the panel has room.
+   */
+  digitGridClass?: string;
 }
 
 function SudokuKeypad({
+  digitGridClass = "grid-cols-9",
   digitCounts,
   selectedDigit,
   notesMode,
@@ -124,7 +131,7 @@ function SudokuKeypad({
 
       {/* 1-9 Number Row / Touch Grid */}
       {/* Nine digits across a ~300px column would be ~33px keys; sideways they wrap to 5 + 4 at full size. */}
-      <div className="grid grid-cols-9 short-land:grid-cols-5 gap-1 sm:gap-1.5 w-full">
+      <div className={`grid ${digitGridClass} short-land:grid-cols-5 gap-1 sm:gap-1.5 w-full`}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => {
           const placedCount = digitCounts[digit] || 0;
           const isComplete = placedCount >= 9;
