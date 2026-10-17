@@ -42,24 +42,24 @@ export default function BrainVitaResultModal({ open, result, seconds, newPersona
       onClose={onReview}
       initialFocusRef={playAgainRef}
       ariaLabelledBy="brainvita-result-title"
-      panelClassName="w-full max-w-sm rounded-3xl border border-amber-300/30 bg-[#24130a] p-6 text-amber-50 shadow-2xl"
+      panelClassName="w-full max-w-sm rounded-3xl border border-[#E4B128]/45 bg-gradient-to-b from-[#5c3517] to-[#2a160a] p-6 text-amber-50 shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
     >
       <div className="flex flex-col items-center gap-3 text-center">
         <Trophy className="h-9 w-9 text-amber-300" aria-hidden />
-        <h2 id="brainvita-result-title" className="text-2xl font-black tracking-wide">
+        <h2 id="brainvita-result-title" className="font-display text-3xl font-black tracking-wide text-[#F6D57A]">
           {headline}
         </h2>
         <p className="text-base text-amber-100/90">{detail}</p>
         <dl className="grid w-full grid-cols-3 gap-2 text-center">
-          <div className="rounded-xl bg-white/5 px-2 py-2">
+          <div className="rounded-xl border border-[#E4B128]/25 bg-black/25 px-2 py-2">
             <dt className="text-[11px] uppercase tracking-wider text-amber-100/70">Left</dt>
             <dd className="text-xl font-bold tabular-nums">{result.marblesLeft}</dd>
           </div>
-          <div className="rounded-xl bg-white/5 px-2 py-2">
+          <div className="rounded-xl border border-[#E4B128]/25 bg-black/25 px-2 py-2">
             <dt className="text-[11px] uppercase tracking-wider text-amber-100/70">Jumps</dt>
             <dd className="text-xl font-bold tabular-nums">{result.moves}</dd>
           </div>
-          <div className="rounded-xl bg-white/5 px-2 py-2">
+          <div className="rounded-xl border border-[#E4B128]/25 bg-black/25 px-2 py-2">
             <dt className="text-[11px] uppercase tracking-wider text-amber-100/70">Time</dt>
             <dd className="text-xl font-bold tabular-nums">{formatClock(seconds)}</dd>
           </div>
@@ -69,10 +69,10 @@ export default function BrainVitaResultModal({ open, result, seconds, newPersona
           <p className="text-sm text-amber-100/80">You used a hint or undo, so this game is for practice and is not posted to the leaderboard.</p>
         )}
         <div className="mt-2 flex w-full gap-2">
-          <button type="button" ref={playAgainRef} onClick={onPlayAgain} className={`${BUTTON} bg-amber-400 text-[#2b1606] hover:bg-amber-300`}>
+          <button type="button" ref={playAgainRef} onClick={onPlayAgain} className={`${BUTTON} bg-[#E4B128] text-[#2b1606] hover:bg-[#f0c243]`}>
             Play again
           </button>
-          <button type="button" onClick={onReview} className={`${BUTTON} bg-white/10 hover:bg-white/15`}>
+          <button type="button" onClick={onReview} className={`${BUTTON} border border-[#E4B128]/40 bg-black/25 hover:bg-black/35`}>
             See board
           </button>
         </div>

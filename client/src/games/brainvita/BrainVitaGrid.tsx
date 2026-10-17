@@ -1,11 +1,12 @@
 import { memo, useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { useFitBox, type FitSize } from "../vamanaguntalu/useFitBox";
-import { CENTRE_HOLE, GRID_SIZE, cellOf, holeAt, type Board, type Move } from "./brainvitaRules";
+import { BrainVitaProps } from "./BrainVitaProps";
+import { CENTRE_HOLE, cellOf, holeAt, type Board, type Move } from "./brainvitaRules";
+import { ARM_START, GOLD, GRID_UNITS, MAX_FRAME, SPRIG_MIN_FRAME, boardFit, crossOutlinePath, grooveInset } from "./brainvitaTheme";
 
-const BOARD_WOOD = "linear-gradient(145deg, #9a6531 0%, #6d4323 48%, #4a2c15 100%)";
-const HOLE_WELL = "radial-gradient(circle at 36% 30%, #3a2210 0%, #1b0e05 65%, #0f0702 100%)";
-const MARBLE_FILL = "radial-gradient(circle at 32% 28%, #f2fdff 0%, #6fd0ea 20%, #2285b3 60%, #0b3b5c 100%)";
-const GOLD = "#E4B128";
+const HOLE_WELL = "radial-gradient(circle at 38% 30%, #4a2a12 0%, #24120a 62%, #130a04 100%)";
+const HOLE_RIM = "inset 0 4px 7px rgba(0,0,0,0.8), 0 1px 0 rgba(255,222,165,0.5), 0 -1px 0 rgba(60,28,8,0.45)";
+const MARBLE_FILL = "radial-gradient(circle at 34% 27%, #f4feff 0%, #7fd9ef 17%, #2aa0dd 46%, #146cb4 74%, #0a3f78 100%)";
 const HINT_BLUE = "#7DD3FC";
 
 /** How an arrow key moves between holes: [rows, columns]. */
@@ -21,7 +22,7 @@ export function neighbourHole(from: number, step: readonly [number, number]): nu
   const { row, col } = cellOf(from);
   let nextRow = row + step[0];
   let nextCol = col + step[1];
-  while (nextRow >= 0 && nextRow < GRID_SIZE && nextCol >= 0 && nextCol < GRID_SIZE) {
+  while (nextRow >= 0 && nextRow < GRID_UNITS && nextCol >= 0 && nextCol < GRID_UNITS) {
     const hole = holeAt(nextRow, nextCol);
     if (hole !== null) return hole;
     nextRow += step[0];
@@ -41,6 +42,73 @@ export function describeHole(
   if (state.isHintFrom) parts.push("hint: move this marble");
   if (state.isHintTo) parts.push("hint: land here");
   return parts.join(", ");
+}
+
+/** A carved sprig of five leaves on a curved stem, drawn about its own centre, one hole wide and a little over. */
+function Sprig({ transform }: { transform: string }) {
+  return (
+    <g transform={transform}>
+      {[0.8, 0].map((layer) => (
+        <g key={layer} transform={`translate(${layer * 0.012} ${layer * 0.012})`} fill={layer ? "rgba(255,230,180,0.42)" : "rgba(86,44,14,0.6)"} stroke="none">
+          <path d="M-0.62 0.06 C -0.3 -0.1 0.22 -0.1 0.62 0.05 L 0.62 0.075 C 0.22 -0.07 -0.3 -0.07 -0.62 0.09 Z" />
+          {[-0.42, -0.16, 0.1, 0.34].map((x, index) => (
+            <g key={x} transform={`translate(${x} ${0.02 - index * 0.004})`}>
+              <path d="M0 0 C 0.02 -0.12 0.14 -0.2 0.26 -0.19 C 0.24 -0.07 0.14 0.01 0 0 Z" />
+              <path d="M0.02 0.04 C 0.04 0.14 0.14 0.2 0.24 0.2 C 0.22 0.1 0.14 0.03 0.02 0.04 Z" />
+            </g>
+          ))}
+          <path d="M0.58 0.05 C 0.66 -0.02 0.74 -0.04 0.8 -0.02 C 0.74 0.03 0.66 0.06 0.58 0.05 Z" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** The carved wooden cross: shadow edge, honey top with grain, a groove near the rim, and carved sprigs. */
+function BoardSurface({ frame }: { frame: number }) {
+  const span = GRID_UNITS + 2 * frame;
+  const outer = crossOutlinePath(frame);
+  const groove = crossOutlinePath(frame, grooveInset(frame));
+  const sprigScale = Math.min(1, frame / MAX_FRAME);
+  const stripCentre = ARM_START - frame / 2;
+  const shoulderCentre = (ARM_START - frame) / 2 + 0.05;
+  const mirror = GRID_UNITS - shoulderCentre;
+  const mirrorY = GRID_UNITS - stripCentre;
+  return (
+    <svg
+      aria-hidden
+      viewBox={`${-frame} ${-frame} ${span} ${span}`}
+      className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+      style={{ filter: "drop-shadow(0 14px 16px rgba(0,0,0,0.5))" }}
+    >
+      <defs>
+        <linearGradient id="bv-wood" x1="0.1" y1="0" x2="0.7" y2="1">
+          <stop offset="0%" stopColor="#e6a965" />
+          <stop offset="48%" stopColor="#cb8745" />
+          <stop offset="100%" stopColor="#a96629" />
+        </linearGradient>
+        <pattern id="bv-grain" patternUnits="userSpaceOnUse" width="4" height="0.5" patternTransform="rotate(-2)">
+          <path d="M0 0.08 C 1 0.02 2 0.14 4 0.07" stroke="rgba(92,46,12,0.17)" strokeWidth="0.018" fill="none" />
+          <path d="M0 0.27 C 1.2 0.33 2.4 0.2 4 0.3" stroke="rgba(92,46,12,0.13)" strokeWidth="0.014" fill="none" />
+          <path d="M0 0.43 C 1 0.4 3 0.47 4 0.42" stroke="rgba(255,228,175,0.12)" strokeWidth="0.016" fill="none" />
+        </pattern>
+      </defs>
+      <path d={outer} fill="#74401a" transform="translate(0 0.17)" />
+      <path d={outer} fill="url(#bv-wood)" />
+      <path d={outer} fill="url(#bv-grain)" />
+      <path d={outer} fill="none" stroke="rgba(255,238,196,0.55)" strokeWidth="0.035" />
+      <path d={groove} fill="none" stroke="rgba(84,42,12,0.6)" strokeWidth="0.04" />
+      <path d={groove} fill="none" stroke="rgba(255,232,184,0.5)" strokeWidth="0.026" transform="translate(0.018 0.026)" />
+      {frame >= SPRIG_MIN_FRAME && (
+        <>
+          <Sprig transform={`translate(${shoulderCentre} ${stripCentre}) rotate(-8) scale(${sprigScale})`} />
+          <Sprig transform={`translate(${mirror} ${stripCentre}) scale(-1 1) rotate(-8) scale(${sprigScale})`} />
+          <Sprig transform={`translate(${shoulderCentre} ${mirrorY}) scale(1 -1) rotate(-8) scale(${sprigScale})`} />
+          <Sprig transform={`translate(${mirror} ${mirrorY}) scale(-1 -1) rotate(-8) scale(${sprigScale})`} />
+        </>
+      )}
+    </svg>
+  );
 }
 
 interface HoleButtonProps {
@@ -75,33 +143,34 @@ const HoleButton = memo(function HoleButton(props: HoleButtonProps) {
       onFocus={() => onFocusHole(hole)}
       className="relative block aspect-square w-full cursor-pointer rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-[#E4B128]"
     >
-      <span aria-hidden className="absolute inset-[8%] rounded-full" style={{ background: HOLE_WELL, boxShadow: "inset 0 3px 6px rgba(0,0,0,0.75)" }} />
+      <span aria-hidden className="absolute inset-[5%] rounded-full" style={{ background: HOLE_WELL, boxShadow: HOLE_RIM }} />
       {isTarget && (
         <span
           aria-hidden
-          className="absolute inset-[24%] rounded-full motion-safe:animate-pulse"
-          style={{ border: `3px solid ${GOLD}`, background: "rgba(228,177,40,0.25)" }}
+          className="absolute inset-[22%] rounded-full motion-safe:animate-pulse"
+          style={{ border: `3px solid ${GOLD}`, background: "rgba(228,177,40,0.28)", boxShadow: "0 0 14px rgba(228,177,40,0.55)" }}
         />
       )}
-      {isHintTo && (
-        <span aria-hidden className="absolute inset-[14%] rounded-full" style={{ border: `3px dashed ${HINT_BLUE}` }} />
-      )}
+      {isHintTo && <span aria-hidden className="absolute inset-[12%] rounded-full" style={{ border: `3px dashed ${HINT_BLUE}` }} />}
       {hasMarble && (
         <span
           aria-hidden
-          className="absolute inset-[13%] rounded-full motion-safe:transition-transform motion-safe:duration-150"
+          className="absolute inset-[9%] rounded-full motion-safe:transition-transform motion-safe:duration-150"
           style={{
             background: MARBLE_FILL,
             transform: isSelected ? "translateY(-8%) scale(1.06)" : undefined,
             boxShadow: isSelected
-              ? `0 0 0 3px ${GOLD}, 0 8px 10px rgba(0,0,0,0.5)`
+              ? `0 0 0 3px ${GOLD}, 0 10px 12px rgba(0,0,0,0.5), inset 0 -5px 9px rgba(0,50,110,0.5)`
               : isHintFrom
-                ? `0 0 0 3px ${HINT_BLUE}, 0 3px 5px rgba(0,0,0,0.5)`
-                : "0 3px 5px rgba(0,0,0,0.55)",
+                ? `0 0 0 3px ${HINT_BLUE}, 0 4px 6px rgba(0,0,0,0.5), inset 0 -5px 9px rgba(0,50,110,0.5)`
+                : "0 4px 6px rgba(0,0,0,0.55), inset 0 -5px 9px rgba(0,50,110,0.5)",
             outline: isHintFrom ? `2px dashed ${HINT_BLUE}` : undefined,
             outlineOffset: isHintFrom ? "3px" : undefined,
           }}
-        />
+        >
+          <span aria-hidden className="absolute left-[19%] top-[12%] h-[24%] w-[34%] -rotate-[28deg] rounded-full bg-white/85 blur-[1.2px]" />
+          <span aria-hidden className="absolute bottom-[10%] right-[16%] h-[10%] w-[20%] rotate-[-28deg] rounded-full bg-sky-100/40 blur-[1.5px]" />
+        </span>
       )}
     </button>
   );
@@ -118,9 +187,13 @@ export interface BrainVitaGridProps {
   onTap: (hole: number) => void;
   /** The exact box to draw in (see `useFitBox`). Without it the board fills its width. */
   size?: FitSize | null;
+  /** The rim of wood round the holes, in hole widths. */
+  frame?: number;
+  /** The sack, notepad and leaves lying in the board's empty corners. A cramped screen leaves them out. */
+  hasProps?: boolean;
 }
 
-export function BrainVitaGrid({ board, selected, targets, hint, disabled, onTap, size = null }: BrainVitaGridProps) {
+export function BrainVitaGrid({ board, selected, targets, hint, disabled, onTap, size = null, frame = MAX_FRAME, hasProps = true }: BrainVitaGridProps) {
   const buttons = useRef(new Map<number, HTMLButtonElement>());
   const [tabStop, setTabStop] = useState<number>(CENTRE_HOLE);
 
@@ -141,8 +214,8 @@ export function BrainVitaGrid({ board, selected, targets, hint, disabled, onTap,
   };
 
   const cells = [];
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
+  for (let row = 0; row < GRID_UNITS; row++) {
+    for (let col = 0; col < GRID_UNITS; col++) {
       const hole = holeAt(row, col);
       if (hole === null) {
         cells.push(<div key={`${row}-${col}`} aria-hidden />);
@@ -169,33 +242,42 @@ export function BrainVitaGrid({ board, selected, targets, hint, disabled, onTap,
     }
   }
 
+  const insetPercent = (frame / (GRID_UNITS + 2 * frame)) * 100;
+
   return (
     <div
       role="group"
       aria-label="Brain Vita board"
       onKeyDown={onKeyDown}
-      className="rounded-[1.5rem] p-[1.5%] shadow-[0_18px_40px_rgba(0,0,0,0.55)]"
-      style={{
-        background: BOARD_WOOD,
-        ...(size ? { width: size.width, height: size.height } : { width: "100%", aspectRatio: "1 / 1" }),
-        display: "grid",
-        gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-        gap: "0.5%",
-        border: "2px solid rgba(228, 177, 40, 0.35)",
-      }}
+      className="relative"
+      style={size ? { width: size.width, height: size.height } : { width: "100%", aspectRatio: "1 / 1" }}
     >
-      {cells}
+      {hasProps && <BrainVitaProps />}
+      <BoardSurface frame={frame} />
+      <div
+        className="absolute grid"
+        style={{
+          inset: `${insetPercent}%`,
+          gridTemplateColumns: `repeat(${GRID_UNITS}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${GRID_UNITS}, minmax(0, 1fr))`,
+        }}
+      >
+        {cells}
+      </div>
     </div>
   );
 }
 
-/** The board, drawn as large as the space around it allows while staying square. */
-export function BrainVitaFitGrid(props: Omit<BrainVitaGridProps, "size">) {
+/**
+ * The board, drawn as large as the space around it allows while staying square. The rim of wood thins
+ * on a narrow or short screen so a hole never drops under the 44px a thumb needs.
+ */
+export function BrainVitaFitGrid(props: Omit<BrainVitaGridProps, "size" | "frame">) {
   const { ref, size } = useFitBox(1);
+  const fit = size ? boardFit(Math.min(size.width, size.height)) : null;
   return (
     <div ref={ref} className="flex h-full min-h-0 w-full min-w-0 items-center justify-center">
-      <BrainVitaGrid {...props} size={size} />
+      <BrainVitaGrid {...props} size={fit ? { width: fit.side, height: fit.side } : null} frame={fit?.frame ?? MAX_FRAME} />
     </div>
   );
 }
