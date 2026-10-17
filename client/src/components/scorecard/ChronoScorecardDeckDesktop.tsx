@@ -64,6 +64,7 @@ function getGameLaunchRoute(game: AllGameSlug): string {
     nokiacricket: "/nokiacricket",
     "2048": "/2048",
     sudoku: "/sudoku",
+    brainvita: "/brainvita",
     brickracer: "/brickracer",
     bricktetris: "/bricktetris",
     brickbreakout: "/brickbreakout",

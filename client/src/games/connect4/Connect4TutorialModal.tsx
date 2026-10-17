@@ -416,7 +416,9 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
         </div>
 
         {/* Bottom Action Footer */}
-        <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-800/80">
+        {/* Wraps on a narrow screen: Previous + dots + Next need ~390px and a 320px phone offers ~280, which
+            pushed Next off the edge. The dots drop to their own row there and sit between the buttons from 420px. */}
+        <div className="flex flex-wrap items-center justify-between gap-y-1 pt-4 mt-2 border-t border-slate-800/80">
           <button
             type="button"
             onClick={handlePrev}
@@ -432,7 +434,7 @@ export const Connect4TutorialModal = memo(function Connect4TutorialModal({
           </button>
 
           {/* Dots Indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="order-last w-full flex items-center justify-center gap-1.5 min-[420px]:order-none min-[420px]:w-auto">
             {SLIDES.map((s, idx) => (
               <button
                 key={s.id}

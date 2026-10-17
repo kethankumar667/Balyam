@@ -50,6 +50,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import TestimonialsPage from "./pages/TestimonialsPage";
 import Game2048Page from "./pages/Game2048Page";
 import SudokuPage from "./pages/SudokuPage";
+import BrainVitaPage from "./pages/BrainVitaPage";
 
 const ssrComponents: RouteComponents = {
   GamesPage,
@@ -85,6 +86,7 @@ const ssrComponents: RouteComponents = {
   TestimonialsPage,
   Game2048Page,
   SudokuPage,
+  BrainVitaPage,
 };
 
 export function render(url: string) {

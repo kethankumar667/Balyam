@@ -195,7 +195,13 @@ export function ChessBoardGrid({
   selectedSquare,
   legalTargets = [],
   pieceSet = "neo",
+  sizeCapClassName = "max-w-[600px]",
 }: {
+  /**
+   * The board is square and sized by width, so a short screen (a 1280×720 laptop) cuts its bottom rank off.
+   * A layout that shares the screen with other rows passes a height-aware cap here.
+   */
+  sizeCapClassName?: string;
   fen: string;
   boardTheme?: ChessBoardTheme;
   /** Which drawn set to render. Previously accepted nowhere, so the picker
@@ -254,7 +260,7 @@ export function ChessBoardGrid({
   return (
     <div
       id="game-board-container"
-      className="relative w-full aspect-square max-w-[600px] max-h-full mx-auto select-none rounded-3xl overflow-hidden p-2.5 bg-gradient-to-br from-[#6A4724] via-[#4A3016] to-[#2B1B0C] border-4 border-[#3D2514] shadow-[0_15px_30px_rgba(40,25,10,0.6)]"
+      className={`relative w-full aspect-square ${sizeCapClassName} max-h-full mx-auto select-none rounded-3xl overflow-hidden p-2.5 bg-gradient-to-br from-[#6A4724] via-[#4A3016] to-[#2B1B0C] border-4 border-[#3D2514] shadow-[0_15px_30px_rgba(40,25,10,0.6)]`}
     >
       <div
         className="w-full h-full grid grid-cols-8 grid-rows-8 rounded-2xl overflow-hidden shadow-inner border"

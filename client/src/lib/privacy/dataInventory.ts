@@ -80,6 +80,7 @@ const ACADEMY_GAMES: ReadonlyArray<readonly [slug: string, name: string]> = [
   ["tictactoe", "Tic Tac Toe"],
   ["connect4", "Four in a Row"],
   ["vamanaguntalu", "Vamana Guntalu"],
+  ["brainvita", "Brain Vita"],
   ["sudoku", "Sudoku"],
   ["2048", "2048"],
   ["snake", "Snake"],
@@ -373,6 +374,20 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     label: "Vamana Guntalu sound off",
     description: "Whether you muted the Vamana Guntalu sound effects on this device.",
     purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.brainvita.muted",
+    label: "Brain Vita sound off",
+    description: "Whether you muted the Brain Vita sound effects on this device.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "brainvita.tutorial.completed.v1",
+    label: "Brain Vita tutorial seen",
+    description: "Whether you have seen the Brain Vita tutorial, so it stops opening by itself.",
+    purpose: "progress",
     isPersonalData: false,
   },
   {

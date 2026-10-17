@@ -297,7 +297,7 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
         {/* Close button */}
         <button
           onClick={done}
-          className="absolute top-3 right-3 text-emerald-200/70 hover:text-white text-xl"
+          className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center text-emerald-200/70 hover:text-white text-xl"
           aria-label="Close tutorial"
         >
           ✕
@@ -309,13 +309,18 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
             <button
               key={i}
               onClick={() => setStep(i)}
-              className="w-2 h-2 rounded-full transition"
-              style={{
-                background: i === step ? "#fbbf24" : i < step ? "#10b981" : "rgba(255,255,255,0.2)",
-                transform: i === step ? "scale(1.4)" : "scale(1)",
-              }}
+              // The button is the 24px hit area (WCAG 2.5.8); the visible dot is the span inside it.
+              className="flex h-6 w-6 items-center justify-center"
               aria-label={`Go to slide ${i + 1}`}
-            />
+            >
+              <span
+                className="block h-2 w-2 rounded-full transition"
+                style={{
+                  background: i === step ? "#fbbf24" : i < step ? "#10b981" : "rgba(255,255,255,0.2)",
+                  transform: i === step ? "scale(1.4)" : "scale(1)",
+                }}
+              />
+            </button>
           ))}
         </div>
 

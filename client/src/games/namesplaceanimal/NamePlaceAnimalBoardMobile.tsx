@@ -183,7 +183,7 @@ export default function NamePlaceAnimalBoardMobile({
             )}
             <button
               onClick={() => setShowClues(!showClues)}
-              className={`px-2.5 py-0.5 rounded-full font-bold cursor-pointer text-[11px] ${
+              className={`relative before:absolute before:-inset-y-1 before:inset-x-0 min-h-[24px] px-2.5 py-0.5 rounded-full font-bold cursor-pointer text-[11px] ${
                 isNeon
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
                   : "bg-amber-500/20 text-amber-700 dark:text-amber-300"

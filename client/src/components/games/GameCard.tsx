@@ -32,6 +32,7 @@ import {
   TicTacToeGlyph,
   Connect4Glyph,
   VamanaGuntaluGlyph,
+  BrainVitaGlyph,
 } from "../bhalyam/icons";
 
 export interface GameCardProps {
@@ -67,6 +68,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   tictactoe: TicTacToeGlyph,
   connect4: Connect4Glyph,
   vamanaguntalu: VamanaGuntaluGlyph,
+  brainvita: BrainVitaGlyph,
 };
 
 const TILE_ART: Record<BhalyamGameSlug, string> = {
@@ -95,6 +97,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
   vamanaguntalu: "/VamanaGuntaluTile.png",
+  brainvita: "/BrainVitaTile.png",
 };
 
 export default function GameCard({
@@ -113,7 +116,7 @@ export default function GameCard({
   const accent = getGameAccent(game);
   const Glyph = GAME_GLYPHS[game.slug] || StarGameGlyph;
 
-  const isSolo = ["snake", "roadrash", "brickblocks", "tetris", "breakout", "spacewar", "nokiacricket", "2048", "sudoku"].includes(game.slug);
+  const isSolo = ["snake", "roadrash", "brickblocks", "tetris", "breakout", "spacewar", "nokiacricket", "2048", "sudoku", "brainvita"].includes(game.slug);
 
   /**
    * The category chip must not repeat the mode badge.

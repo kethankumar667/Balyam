@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import WordBuildingTutorialModal from "./TutorialModal";
 import InlineRoomRail from "../../components/InlineRoomRail";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
@@ -31,16 +31,38 @@ import {
 } from "../dotsboxes/dotsboxes-theme";
 import { Trophy, HelpCircle, Maximize, Minimize, LogOut } from "lucide-react";
 
-function desktopCellPx(size: number): number {
-  if (size === 8) return 58;
-  if (size === 10) return 46;
-  return 32; // 15x15
+/** Everything in the centre column that is not the grid: frame, title bar, subject line, letter pad, gaps. */
+const NON_GRID_HEIGHT_PX = 384;
+/** The play surface is `h-[96vh]`, so that is the height the grid and its chrome actually share. */
+const FRAME_HEIGHT_RATIO = 0.96;
+
+/**
+ * Cell size that fits the window. The old fixed 46px cells made a 10×10 grid ~500px tall, which a 720px-tall
+ * laptop cannot hold next to the letter pad: the bottom rows ended up under the pad, unreachable. Cells shrink to
+ * fit down to a floor that is still above the WCAG 24px target size, and the grid area scrolls past that.
+ */
+function desktopCellPx(size: number, windowHeight: number): number {
+  const cap = size === 8 ? 58 : size === 10 ? 46 : 32; // 15x15
+  const floor = size === 15 ? 24 : 28;
+  const fit = Math.floor((windowHeight * FRAME_HEIGHT_RATIO - NON_GRID_HEIGHT_PX) / size);
+  return Math.max(floor, Math.min(cap, fit));
+}
+
+function useWindowHeight(): number {
+  const [height, setHeight] = useState(() => (typeof window === "undefined" ? 1080 : window.innerHeight));
+  useEffect(() => {
+    const onResize = () => setHeight(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return height;
 }
 
 export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) {
   const { state, selfId, roomCode, players, messages, roomPhase, onLeave } = props;
   const m = useWordBuildingBoard(props);
-  const cellPx = desktopCellPx(m.size);
+  const windowHeight = useWindowHeight();
+  const cellPx = desktopCellPx(m.size, windowHeight);
   const reactions = useSeatReactions(selfId);
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle();
 
@@ -457,19 +479,23 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
               </div>
 
               {/* Center Elevated Grid Card (Pure Crisp White in Neon, Lined in Notebook) */}
-              <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1 overflow-hidden">
-                <Grid
-                  board={state.board}
-                  size={m.size}
-                  cellPx={cellPx}
-                  selected={m.selected}
-                  canPlay={m.isClaimant ? true : m.canPlay}
-                  cellOverlays={m.cellOverlays}
-                  inkOf={m.inkOf}
-                  activePulse={m.activePulse}
-                  onPickCell={m.isClaimant ? m.tapClaimCell : m.pickCell}
-                  isNeon={m.isNeon}
-                />
+              {/* Scrolls instead of clipping when even the smallest cell size does not fit (a 15×15 grid on a short
+                  screen); `m-auto` centres it without cutting the top off, which `items-center` would. */}
+              <div className="flex-1 w-full flex min-h-0 py-1 overflow-auto">
+                <div className="m-auto">
+                  <Grid
+                    board={state.board}
+                    size={m.size}
+                    cellPx={cellPx}
+                    selected={m.selected}
+                    canPlay={m.isClaimant ? true : m.canPlay}
+                    cellOverlays={m.cellOverlays}
+                    inkOf={m.inkOf}
+                    activePulse={m.activePulse}
+                    onPickCell={m.isClaimant ? m.tapClaimCell : m.pickCell}
+                    isNeon={m.isNeon}
+                  />
+                </div>
               </div>
 
               {/* Always-Open Desktop Letter Pad (Keyboard) — hidden while a word claim is being identified or voted on. */}

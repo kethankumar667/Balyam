@@ -9,7 +9,10 @@ export type BhalyamGameSlug =
   // Client-only solo arcade game — never opens a server room, same as the
   // three retro titles above. See client/src/pages/Game2048Page.tsx.
   | "2048"
-  | "sudoku";
+  | "sudoku"
+  // Client-only solo puzzle (peg solitaire) — never opens a server room, same as 2048 and Sudoku.
+  // See client/src/pages/BrainVitaPage.tsx.
+  | "brainvita";
 
 export interface GameLimitSpec {
   min: number;
@@ -157,6 +160,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   roadrash: "portrait",
   "2048": "portrait",
   sudoku: "portrait",
+  brainvita: "portrait",
   tictactoe: "portrait",
   connect4: "portrait",
   vamanaguntalu: "portrait",

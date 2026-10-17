@@ -481,6 +481,31 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       },
     ],
   },
+  brainvita: {
+    game: "brainvita",
+    primaryRankMetric: {
+      key: "bestScore",
+      label: "Fewest Marbles Left",
+      shortLabel: "Marbles Left",
+      description: "Fewest marbles remaining on the board when no jump was left (1 is a perfect game)",
+      format: "raw_number",
+      direction: "LOWER_IS_BETTER",
+      importance: "PRIMARY",
+      icon: "Crown",
+    },
+    secondaryMetrics: [
+      {
+        key: "seconds",
+        label: "Time Taken",
+        shortLabel: "Time",
+        description: "Seconds from the first jump to the last",
+        format: "duration_seconds",
+        direction: "LOWER_IS_BETTER",
+        importance: "SECONDARY",
+        icon: "Clock",
+      },
+    ],
+  },
   vamanaguntalu: {
     game: "vamanaguntalu",
     primaryRankMetric: {

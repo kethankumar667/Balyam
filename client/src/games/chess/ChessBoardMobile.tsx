@@ -122,9 +122,12 @@ export default function ChessBoardMobile({
   }, [state.history]);
 
   return (
-    <div className="h-full min-h-0 overflow-hidden flex flex-col bg-[#EEDCB9] text-[#3D2514] p-2 select-none justify-between gap-1.5 font-sans pb-16">
+    // Scrolls rather than clips: a 320×568 phone cannot hold header, clocks, a SQUARE board, turn bar and cards, and
+    // `overflow-hidden` used to resolve that by squashing the board. On a short landscape phone it becomes two
+    // columns (board left, everything else right) so the board keeps the full height.
+    <div className="h-full min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y flex flex-col bg-[#EEDCB9] text-[#3D2514] p-2 select-none justify-between gap-1.5 font-sans pb-16 short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:content-start short-land:justify-start short-land:gap-x-2 short-land:pb-2">
       {/* ──────────────── 1. Top Parchment Header Card ──────────────── */}
-      <div className="rounded-2xl bg-gradient-to-b from-[#F9EEDD] via-[#F2DFBF] to-[#E5CB9E] p-2 border-2 border-[#B8966B] shadow-md space-y-1.5 shrink-0">
+      <div className="rounded-2xl bg-gradient-to-b from-[#F9EEDD] via-[#F2DFBF] to-[#E5CB9E] p-2 border-2 border-[#B8966B] shadow-md space-y-1.5 shrink-0 short-land:col-start-2 short-land:row-start-1">
         {/* Header Title Row */}
         <div className="flex items-center justify-between border-b border-[#B8966B]/30 pb-1">
           {/* Back Button */}
@@ -243,7 +246,9 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 2. Main 8x8 Chess Board ──────────────── */}
-      <div className="flex-1 flex items-center justify-center min-h-0 my-0.5 max-h-[44vh]">
+      {/* A true square: the width is the smaller of the row and 44vh, so a short screen scrolls instead of squashing it
+          (it was `flex-1 min-h-0 max-h-[44vh]`, and the board's own `max-h-full` then crushed it out of square). */}
+      <div className="flex-none self-center w-[min(100%,44vh)] my-0.5 short-land:col-start-1 short-land:row-start-1 short-land:row-span-4 short-land:self-start short-land:my-0 short-land:w-[min(calc(100dvh-16px),48vw)]">
         <ChessBoardGrid
           fen={state.fen}
           boardTheme={localTheme}
@@ -259,7 +264,7 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 3. Under Board Action Control Bar ──────────────── */}
-      <div className="p-2 rounded-xl bg-[#2A1D16] text-[#F5E6D3] border border-[#5C3D26] shadow-md flex items-center justify-between gap-2 shrink-0">
+      <div className="p-2 rounded-xl bg-[#2A1D16] text-[#F5E6D3] border border-[#5C3D26] shadow-md flex items-center justify-between gap-2 shrink-0 short-land:col-start-2 short-land:row-start-2">
         {/* Turn Indicator */}
         <div className="flex items-center gap-1.5 min-w-0">
           <span
@@ -312,7 +317,7 @@ export default function ChessBoardMobile({
       </div>
 
       {/* ──────────────── 4. Middle 2-Column Dashboard Cards ──────────────── */}
-      <div className="grid grid-cols-2 gap-2 shrink-0">
+      <div className="grid grid-cols-2 gap-2 shrink-0 short-land:col-start-2 short-land:row-start-3">
         {/* Left Card: Move History */}
         <div className="p-2 rounded-xl bg-[#F5E8D3] border-2 border-[#D9C4A5] shadow-sm flex flex-col max-h-24">
           <div className="flex items-center justify-between border-b border-[#D9C4A5] pb-1 mb-1">
@@ -396,7 +401,7 @@ export default function ChessBoardMobile({
           pattern as Ludo mobile — so EMOJI opens the real, game-themed
           (♟️👑🧠😏🔥😂) targeted reaction tray and PLAYERS opens the panel
           whose tap-a-player row pre-targets it. */}
-      <div className="fixed bottom-1 left-1.5 right-1.5 z-40 max-w-lg mx-auto p-1.5 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
+      <div className="fixed bottom-1 left-1.5 right-1.5 z-40 max-w-lg mx-auto short-land:static short-land:col-start-2 short-land:row-start-4 short-land:max-w-none short-land:mx-0 p-1.5 rounded-2xl bg-gradient-to-r from-[#F5E6D3] via-[#EADBCE] to-[#F5E6D3] border-2 border-[#8B5A2B] shadow-2xl flex items-center justify-around text-[#3D2514]">
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("bhalyam:open-room-panel", { detail: { panel: "chat" } }))}

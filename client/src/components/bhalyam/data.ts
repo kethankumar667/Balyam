@@ -41,7 +41,8 @@ export type BhalyamGameSlug =
   | "sudoku"
   | "tictactoe"
   | "connect4"
-  | "vamanaguntalu";
+  | "vamanaguntalu"
+  | "brainvita";
 
 /**
  * Game filters.
@@ -565,5 +566,21 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
       "Futuristic Cyber-Matrix Sudoku powered by sudoku-gen. 4 cyber themes, Quantum Pencil candidate notes with auto-clearing, Neural Laser Hint scanner, and personal best tracking across 4 difficulty tiers.",
     accent: { from: "#818CF8", to: "#4F46E5" },
     tileImage: "/Sudoku Game Tile.png",
+  },
+  {
+    slug: "brainvita",
+    tags: ["solo", "board"],
+    title: "Brain Vita",
+    badge: "Classic",
+    nostalgiaQuote: "Thirty-two marbles, one empty hole, and a lot of thinking.",
+    playerRange: "1 Player",
+    duration: "5–15 min",
+    paperBg: "linear-gradient(155deg, #0B2A3F 0%, #07182A 45%, #030B14 100%)",
+    paperBorder: "rgba(56, 189, 248, 0.6)",
+    btnGradient: { from: "#0EA5E9", to: "#0369A1", shadow: "#0C4A6E" },
+    blurb:
+      "The classic marble puzzle. Jump one marble over another into an empty hole to take it off the board, and try to finish with just one marble left. Hints and undo are there for practice; an unassisted game can post to the leaderboard.",
+    accent: { from: "#38BDF8", to: "#0369A1" },
+    tileImage: "/BrainVitaTile.png",
   },
 ];

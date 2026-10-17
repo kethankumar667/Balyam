@@ -187,6 +187,11 @@
   color: var(--rm-ink-mid);
 }
 .rm-meta__dot { opacity: 0.45; }
+/* The headcount is the least useful segment ("am I in the right room" is answered by the code). It is dropped,
+   whole, where the top bar's left track cannot hold it, instead of being cut in half by `overflow: hidden`. */
+@media (max-width: 1399px) {
+  .rm-meta__extra { display: none; }
+}
 
 /* The turn pill. One object holding two facts — whose turn, how long left —
    because they are read together and were previously two separate chips at
@@ -709,6 +714,7 @@
 .rm-meld {
   --rm-card-w: var(--rm-card-w-lg);
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -736,8 +742,16 @@
 }
 .rm-meld__ungroup {
   position: absolute;
+  /* Above the cards (they carry their own z-index and sat on top of this, so the control could never be
+     clicked). Safe to be this high: `.rm-meld` isolates its stacking context, so it cannot leak above menus. */
+  z-index: 50;
   top: 0;
   right: var(--rm-space-2xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: 0;
   padding: 2px 4px;

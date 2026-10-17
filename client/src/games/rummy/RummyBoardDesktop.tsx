@@ -987,8 +987,8 @@ export default function RummyBoardDesktop({
             )}
             <span className="rm-meta__dot">•</span>
             <span>{variantLabel}</span>
-            <span className="rm-meta__dot">•</span>
-            <span>{state.playerOrder.length} Players</span>
+            <span className="rm-meta__dot rm-meta__extra">•</span>
+            <span className="rm-meta__extra">{state.playerOrder.length} Players</span>
           </div>
           {showQrModal && roomCode && (
             <QrCodeModal open={true} code={roomCode} onClose={() => setShowQrModal(false)} />

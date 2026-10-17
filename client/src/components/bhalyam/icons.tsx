@@ -334,6 +334,19 @@ export const VamanaGuntaluGlyph = makeIcon(
   </>,
 );
 
+export const BrainVitaGlyph = makeIcon(
+  <>
+    {/* The cross-shaped board */}
+    <path d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5z" strokeWidth="1.6" strokeLinejoin="round" />
+    {/* Marbles in the holes, one hole left empty in the centre */}
+    <circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="6" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.1" strokeWidth="1.2" />
+  </>,
+);
+
 export const UsersIcon = makeIcon(
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

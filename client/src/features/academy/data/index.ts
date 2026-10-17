@@ -7,6 +7,7 @@ import {
 } from "./boardGames";
 import { CONNECT4_ACADEMY } from "./connect4";
 import { VAMANAGUNTALU_ACADEMY } from "./vamanaguntalu";
+import { BRAINVITA_ACADEMY } from "./brainvita";
 import { RUMMY_ACADEMY, UNO_ACADEMY } from "./cardGames";
 import {
   HANDCRICKET_ACADEMY,
@@ -36,6 +37,7 @@ export const GAME_ACADEMY_CATALOG: Record<string, GameAcademySpec> = {
   dotsboxes: DOTSBOXES_ACADEMY,
   connect4: CONNECT4_ACADEMY,
   vamanaguntalu: VAMANAGUNTALU_ACADEMY,
+  brainvita: BRAINVITA_ACADEMY,
   chess: CHESS_ACADEMY,
   rummy: RUMMY_ACADEMY,
   uno: UNO_ACADEMY,

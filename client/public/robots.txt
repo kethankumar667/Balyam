@@ -44,6 +44,7 @@ Allow: /brick-breakout
 Allow: /blockbreakout
 Allow: /2048
 Allow: /sudoku
+Allow: /brainvita
 
 # Disallow administrative consoles, private rooms, dynamic sessions, and user profiles
 Disallow: /admin

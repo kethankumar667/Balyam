@@ -298,6 +298,25 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
       { modeId: "expert", displayName: "Quantum Singularity (Expert)", description: "Extreme complexity for sudoku masters", scoringDirection: "LOWER_IS_BETTER", unit: "s", minPlausibleScore: 60, maxPlausibleScore: 86_400 },
     ],
   },
+  brainvita: {
+    game: "brainvita",
+    displayName: "Brain Vita",
+    category: "retro_arcade",
+    defaultModeId: "classic",
+    strictModes: true,
+    modes: [
+      {
+        modeId: "classic",
+        displayName: "Classic English board",
+        description: "33 holes, 32 marbles, centre empty. Fewer marbles left is better; one is a perfect game. Played without hints or undo.",
+        scoringDirection: "LOWER_IS_BETTER",
+        unit: "marbles",
+        isDefault: true,
+        minPlausibleScore: 1,
+        maxPlausibleScore: 31,
+      },
+    ],
+  },
   tictactoe: {
     game: "tictactoe",
     displayName: "Tic Tac Toe",

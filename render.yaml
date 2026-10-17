@@ -181,6 +181,9 @@ services:
       - type: rewrite
         source: /sudoku
         destination: /sudoku/index.html
+      - type: rewrite
+        source: /brainvita
+        destination: /brainvita/index.html
 
       # Single Page Application (SPA) catch-all rewrite for deep links &
       # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,

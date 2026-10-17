@@ -122,6 +122,7 @@ const GAME_TIPS: Record<string, string> = {
   breakout: "Angles make all the difference. Try hitting the corners for better control!",
   "2048": "Prioritize building your highest tile in a dedicated corner and never swipe against your anchor direction.",
   sudoku: "Look for rows, columns, and 3x3 boxes with 7 or 8 clues already locked in to trigger chain reactions!",
+  brainvita: "Clear the outer arms of the cross first and keep marbles together in the middle. A lone marble in a corner can never jump.",
   nokiasnake: "Hug the perimeter early on to keep the center grid open for food pickups!",
   nokiacricket: "Watch bowler variations carefully — timing aggressive shots on short balls pays off!",
   roadrash: "Look two cars ahead on the highway to weave smoothly without clipping bumpers!",
@@ -208,6 +209,8 @@ function getGameRoute(game: AllGameSlug, modeId?: string): string {
       return modeId ? `/2048?mode=${modeId}` : "/2048";
     case "sudoku":
       return modeId ? `/sudoku?diff=${modeId}` : "/sudoku";
+    case "brainvita":
+      return "/brainvita";
     case "nokiasnake":
       return "/games/nokiasnake";
     case "nokiacricket":
@@ -268,6 +271,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "spacewar", label: "Space War", icon: "🚀" },
   { id: "blockblast", label: "Block Blast", icon: "💥" },
   { id: "sudoku", label: "Sudoku Cyber-Matrix", icon: "🧩" },
+  { id: "brainvita", label: "Brain Vita", icon: "🔮" },
   { id: "connect4", label: "Four in a Row", icon: "🟡" },
   { id: "vamanaguntalu", label: "Vamana Guntalu", icon: "🌰" },
 ];
@@ -297,6 +301,7 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   blockblast: "/BlockBlast Game Tile.png",
   tambola: "/Tambola.png",
   sudoku: "/Sudoku Game Tile.png",
+  brainvita: "/BrainVitaTile.png",
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
   vamanaguntalu: "/VamanaGuntaluTile.png",

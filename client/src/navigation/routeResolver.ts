@@ -26,6 +26,7 @@ const RETRO_GAME_ROUTES = new Set([
   "/blockbreakout",
   "/2048",
   "/sudoku",
+  "/brainvita",
 ]);
 
 /**

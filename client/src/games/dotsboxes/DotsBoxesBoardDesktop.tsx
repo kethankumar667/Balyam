@@ -279,7 +279,9 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
               themeOf={themeOf}
               nameOf={nameOf}
               onDrawLine={drawLine}
-              className="max-h-[520px]"
+              // Square and sized by width, so on a 720px-tall laptop the card ran over the bottom bar and hid
+              // Leave. Cap the width by the window height; the floor keeps it playable on a landscape phone.
+              className="!max-w-[min(540px,max(240px,calc(100dvh-280px)))]"
             />
           </div>
 

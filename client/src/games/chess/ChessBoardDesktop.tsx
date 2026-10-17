@@ -307,6 +307,9 @@ export default function ChessBoardDesktop({
           legalTargets={legalTargets}
           pieceSet={localPieceSet}
             onSquareClick={handleSquareClick}
+            // The title, both clocks and the status bar share this column; without a height cap the board's
+            // bottom rank falls off a 720px-tall laptop. The floor keeps it playable on a landscape phone.
+            sizeCapClassName="max-w-[min(600px,max(240px,calc(100dvh-250px)))]"
           />
 
           {/* Under Board Turn Status Bar */}

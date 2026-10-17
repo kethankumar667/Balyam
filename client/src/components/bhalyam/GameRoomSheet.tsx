@@ -69,6 +69,7 @@ import {
   TicTacToeGlyph,
   Connect4Glyph,
   VamanaGuntaluGlyph,
+  BrainVitaGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   tictactoe: TicTacToeGlyph,
   connect4: Connect4Glyph,
   vamanaguntalu: VamanaGuntaluGlyph,
+  brainvita: BrainVitaGlyph,
 };
 
 /**
@@ -148,7 +150,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4", "vamanaguntalu",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4", "vamanaguntalu", "brainvita",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -162,6 +164,7 @@ const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
   // retro titles above. See client/src/pages/Game2048Page.tsx.
   "2048": "/2048",
   sudoku: "/sudoku",
+  brainvita: "/brainvita",
 };
 
 const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
@@ -174,6 +177,7 @@ const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "nokiacricket",
   "2048",
   "sudoku",
+  "brainvita",
 ]);
 
 function asGameKind(slug: BhalyamGameSlug): GameKind {

@@ -73,7 +73,7 @@ export default function FullscreenGatePrompt({
           type="button"
           onClick={onEnterFullscreen}
           aria-label="Play fullscreen"
-          className="cursor-pointer text-xs font-bold uppercase tracking-wider text-amber-200 hover:text-amber-100"
+          className="inline-flex min-h-[32px] cursor-pointer items-center text-xs font-bold uppercase tracking-wider text-amber-200 hover:text-amber-100"
         >
           <span className="[@media(orientation:landscape)_and_(max-height:520px)]:hidden">Play fullscreen</span>
           <span aria-hidden className="hidden text-base leading-none [@media(orientation:landscape)_and_(max-height:520px)]:inline">

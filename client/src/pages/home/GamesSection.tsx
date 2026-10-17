@@ -38,6 +38,7 @@ import {
   TicTacToeGlyph,
   Connect4Glyph,
   VamanaGuntaluGlyph,
+  BrainVitaGlyph,
 } from "../../components/bhalyam/icons";
 import { TILE_ART_BY_GAME } from "./gameArt";
 
@@ -67,6 +68,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   tictactoe: TicTacToeGlyph,
   connect4: Connect4Glyph,
   vamanaguntalu: VamanaGuntaluGlyph,
+  brainvita: BrainVitaGlyph,
 };
 
 /** Tiles the home grid shows before deferring to /games. */

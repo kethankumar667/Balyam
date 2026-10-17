@@ -2158,7 +2158,7 @@ function TopStrip({
             onClick={() => setShowQrModal(true)}
             aria-label="Show QR Code"
             title="Show QR Code to join room"
-            className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/40 cursor-pointer"
+            className="relative before:absolute before:-inset-2 shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/40 cursor-pointer"
           >
             📱
           </button>
@@ -2842,7 +2842,7 @@ function GroupLane({
         </span>
         <button
           onClick={onUngroup}
-          className="text-[10px] text-rose-300 hover:text-rose-200 font-bold leading-none px-0.5"
+          className="relative before:absolute before:-inset-y-3 before:-inset-x-2 text-[10px] text-rose-300 hover:text-rose-200 font-bold leading-none px-0.5"
           title="Break this group"
         >
           ✕
@@ -3154,7 +3154,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={!enabled}
-      className={`px-1.5 sm:px-3 ${big ? "py-1.5 sm:py-2 text-xs sm:text-sm" : "py-1 sm:py-1.5 text-[10px] sm:text-xs"} rounded-md font-extrabold uppercase tracking-wider transition flex items-center gap-1 select-none whitespace-nowrap flex-shrink-0`}
+      className={`relative before:absolute before:-inset-y-0.5 before:inset-x-0 min-h-[28px] px-1.5 sm:px-3 ${big ? "py-1.5 sm:py-2 text-xs sm:text-sm" : "py-1 sm:py-1.5 text-[10px] sm:text-xs"} rounded-md font-extrabold uppercase tracking-wider transition flex items-center gap-1 select-none whitespace-nowrap flex-shrink-0`}
       style={{
         background: enabled
           ? `linear-gradient(180deg, ${color} 0%, ${shade(color, -0.25)} 100%)`

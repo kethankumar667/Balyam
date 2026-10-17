@@ -1254,8 +1254,9 @@ export function HcNotebookHeader({
           </div>
         </div>
 
-        {/* Row 2: Badges + Room code (compact) */}
-        <div className="flex items-center justify-between gap-1.5 w-full">
+        {/* Row 2: Badges + Room code (compact). Wraps: on a 320px phone the two did not fit side by side and the
+            room-code chip ran off the right edge. */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 w-full">
           {renderBadges()}
           {renderRoomCodeStamp()}
         </div>

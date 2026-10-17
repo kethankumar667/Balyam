@@ -28,6 +28,7 @@ import {
   BlockBlastGlyph,
   Connect4Glyph,
   VamanaGuntaluGlyph,
+  BrainVitaGlyph,
   GamepadGlyph,
 } from "./icons";
 
@@ -84,6 +85,8 @@ function GameGlyph({ id, className = "w-12 h-12" }: { id: string; className?: st
       return <Connect4Glyph className={className} />;
     case "vamanaguntalu":
       return <VamanaGuntaluGlyph className={className} />;
+    case "brainvita":
+      return <BrainVitaGlyph className={className} />;
     default:
       return <GamepadGlyph className={className} />;
   }
