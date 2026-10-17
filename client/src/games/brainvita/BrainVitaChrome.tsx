@@ -1,26 +1,36 @@
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Crown, Footprints, Timer } from "lucide-react";
-import { GOLD, GOLD_SOFT, PLANK_BACKGROUND, PLANK_BORDER, PLANK_SHADOW, TABLE_BACKGROUND } from "./brainvitaTheme";
+import { useSkinTokens } from "./BrainVitaSkinContext";
 
-/** The pieces round the board: the table, the hanging sign, the stats plank and the action pills. */
+/** The pieces round the board: the table, the hanging sign, the stats plank, the action pills and the header buttons. */
 
-const MARBLE_DOT = "radial-gradient(circle at 34% 27%, #f4feff 0%, #7fd9ef 17%, #2aa0dd 46%, #146cb4 74%, #0a3f78 100%)";
 const TABLE_PLANKS =
   "repeating-linear-gradient(90deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 188px, rgba(0,0,0,0.3) 188px, rgba(0,0,0,0.3) 190px), " +
   "repeating-linear-gradient(90deg, rgba(255,214,150,0.04) 0px, rgba(255,214,150,0.04) 1px, transparent 1px, transparent 6px)";
+/** The holo table's floor: a faint lattice that fades towards the top, so the board seems to float above it. */
+const HOLO_FLOOR =
+  "linear-gradient(rgba(34,211,238,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.07) 1px, transparent 1px)";
+const HOLO_FLOOR_MASK = "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 55%, #000 100%)";
 
-/** The walnut tabletop. Pure decoration: hidden from assistive tech and never in the way of a tap. */
+/** The tabletop. Pure decoration: hidden from assistive tech and never in the way of a tap. */
 export function BrainVitaScene() {
+  const skin = useSkinTokens();
+  const isHolo = skin.surface === "holo";
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden" style={{ background: TABLE_BACKGROUND }}>
-      <div className="absolute inset-0" style={{ backgroundImage: TABLE_PLANKS }} />
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden" style={{ background: skin.tableBackground }}>
+      {isHolo ? (
+        <div className="absolute inset-0" style={{ backgroundImage: HOLO_FLOOR, backgroundSize: "56px 56px", WebkitMaskImage: HOLO_FLOOR_MASK, maskImage: HOLO_FLOOR_MASK }} />
+      ) : (
+        <div className="absolute inset-0" style={{ backgroundImage: TABLE_PLANKS }} />
+      )}
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.55) 100%)" }} />
     </div>
   );
 }
 
 function Marble({ className }: { className: string }) {
-  return <span aria-hidden className={`absolute rounded-full shadow-[0_2px_3px_rgba(0,0,0,0.5)] ${className}`} style={{ background: MARBLE_DOT }} />;
+  const skin = useSkinTokens();
+  return <span aria-hidden className={`absolute rounded-full shadow-[0_2px_3px_rgba(0,0,0,0.5)] ${className}`} style={{ background: skin.marbleFill }} />;
 }
 
 function Sprig({ className }: { className: string }) {
@@ -38,34 +48,36 @@ export interface BrainVitaSignProps {
   className?: string;
 }
 
-/** The game's name in gold lettering on a hanging wooden board, with a crown and two marbles perched on it. */
+/** The game's name in lettering on a hanging board, with a crown and two marbles perched on it. */
 export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainVitaSignProps) {
+  const skin = useSkinTokens();
+  const isWood = skin.surface === "wood";
   return (
     <div className={`relative flex flex-col items-center ${className}`}>
-      {!isCompact && <Crown aria-hidden className="absolute -top-4 left-1/2 h-7 w-7 -translate-x-1/2 md:-top-5 md:h-9 md:w-9" style={{ color: GOLD }} fill="currentColor" />}
+      {!isCompact && <Crown aria-hidden className="absolute -top-4 left-1/2 h-7 w-7 -translate-x-1/2 md:-top-5 md:h-9 md:w-9" style={{ color: skin.accent }} fill="currentColor" />}
       <div
         className={`relative rounded-xl text-center ${isCompact ? "px-3 py-0.5" : "px-5 py-1.5 min-[360px]:px-7 md:px-10 md:py-2"}`}
-        style={{
-          background: "linear-gradient(180deg, #8a5629 0%, #5f3615 100%)",
-          border: "2px solid #c99a4a",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,226,170,0.35)",
-        }}
+        style={{ background: skin.signBackground, border: skin.signBorder, boxShadow: skin.signShadow }}
       >
         {!isCompact && (
           <>
             <Marble className="-left-2 -top-3 h-5 w-5 md:h-6 md:w-6" />
             <Marble className="-right-2 -top-3 h-5 w-5 md:h-6 md:w-6" />
-            <Sprig className="absolute -left-5 -top-2 hidden h-6 w-9 min-[360px]:block md:-left-7 md:h-8 md:w-12" />
-            <Sprig className="absolute -right-5 -top-2 hidden h-6 w-9 -scale-x-100 min-[360px]:block md:-right-7 md:h-8 md:w-12" />
+            {isWood && (
+              <>
+                <Sprig className="absolute -left-5 -top-2 hidden h-6 w-9 min-[360px]:block md:-left-7 md:h-8 md:w-12" />
+                <Sprig className="absolute -right-5 -top-2 hidden h-6 w-9 -scale-x-100 min-[360px]:block md:-right-7 md:h-8 md:w-12" />
+              </>
+            )}
           </>
         )}
         <h1
           className="font-display font-black uppercase leading-none tracking-wide"
           style={{
-            color: GOLD_SOFT,
+            color: skin.titleColor,
             fontSize: isCompact ? "1rem" : "clamp(1.25rem, 6.2vw, 2.2rem)",
-            textShadow: "0 2px 0 #4a2608, 0 3px 8px rgba(0,0,0,0.55)",
-            WebkitTextStroke: "0.6px #5a3210",
+            textShadow: skin.titleShadow,
+            WebkitTextStroke: skin.titleStroke,
           }}
         >
           Brain Vita
@@ -76,7 +88,8 @@ export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainV
 }
 
 function MarbleIcon({ className }: { className: string }) {
-  return <span aria-hidden className={`inline-block flex-shrink-0 rounded-full shadow-[0_2px_3px_rgba(0,0,0,0.5)] ${className}`} style={{ background: MARBLE_DOT }} />;
+  const skin = useSkinTokens();
+  return <span aria-hidden className={`inline-block flex-shrink-0 rounded-full ${className}`} style={{ background: skin.marbleFill, boxShadow: skin.marbleShadow }} />;
 }
 
 export interface BrainVitaStatsProps {
@@ -91,15 +104,16 @@ export interface BrainVitaStatsProps {
   className?: string;
 }
 
-/** Marbles left, jumps made, and time, on one wooden plank. The labels are real text, shown small and capitalised. */
+/** Marbles left, jumps made, and time, on one plank. The labels are real text, shown small and capitalised. */
 export function BrainVitaStats({ marbles, jumps, time, layout, isCompact = false, className = "" }: BrainVitaStatsProps) {
+  const skin = useSkinTokens();
   const iconSize = isCompact ? "h-5 w-5" : "h-7 w-7 md:h-9 md:w-9";
   const items: { key: string; label: string; value: string | number; icon: ReactNode }[] = [
     { key: "marbles", label: "Marbles", value: marbles, icon: <MarbleIcon className={iconSize} /> },
-    { key: "jumps", label: "Jumps", value: jumps, icon: <Footprints aria-hidden className={`flex-shrink-0 ${iconSize}`} style={{ color: GOLD }} /> },
-    { key: "time", label: "Time", value: time, icon: <Timer aria-hidden className={`flex-shrink-0 ${iconSize}`} style={{ color: GOLD }} /> },
+    { key: "jumps", label: "Jumps", value: jumps, icon: <Footprints aria-hidden className={`flex-shrink-0 ${iconSize}`} style={{ color: skin.accent }} /> },
+    { key: "time", label: "Time", value: time, icon: <Timer aria-hidden className={`flex-shrink-0 ${iconSize}`} style={{ color: skin.accent }} /> },
   ];
-  const plank = { background: PLANK_BACKGROUND, border: PLANK_BORDER, boxShadow: PLANK_SHADOW };
+  const plank = { background: skin.plankBackground, border: skin.plankBorder, boxShadow: skin.plankShadow };
 
   if (layout === "list") {
     return (
@@ -118,7 +132,7 @@ export function BrainVitaStats({ marbles, jumps, time, layout, isCompact = false
   return (
     <dl className={`flex items-stretch rounded-2xl ${isCompact ? "px-2 py-1.5" : "px-3 py-2.5 md:px-6 md:py-3.5"} ${className}`} style={plank}>
       {items.map((item, index) => (
-        <div key={item.key} className={`flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-3 ${index > 0 ? "border-l border-[#E4B128]/20" : ""}`}>
+        <div key={item.key} className="flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-3" style={index > 0 ? { borderLeft: `1px solid ${skin.accent}33` } : undefined}>
           {item.icon}
           <div className="min-w-0 leading-tight">
             <dt className="text-[10px] font-semibold uppercase tracking-wider text-amber-100/80 md:text-xs">{item.label}</dt>
@@ -138,7 +152,7 @@ export interface BrainVitaPillProps {
   onClick: () => void;
   /** Dimmed, and a tap does nothing, but it stays in the tab order so its state can be heard. */
   isDisabled?: boolean;
-  /** The gold-edged one: the action a player most wants. */
+  /** The accent-edged one: the action a player most wants. */
   isPrimary?: boolean;
   /** Icon beside the caption instead of above it, for a stacked column of pills. */
   isInline?: boolean;
@@ -146,6 +160,11 @@ export interface BrainVitaPillProps {
 
 /** One wide pill of the action dock, icon over caption as in the design. */
 export function BrainVitaPill({ label, ariaLabel, icon, onClick, isDisabled = false, isPrimary = false, isInline = false }: BrainVitaPillProps) {
+  const skin = useSkinTokens();
+  const primaryBackground =
+    skin.surface === "holo"
+      ? "linear-gradient(180deg, rgba(20,84,128,0.92) 0%, rgba(6,32,62,0.95) 100%)"
+      : "linear-gradient(180deg, rgba(120,78,24,0.95) 0%, rgba(70,42,12,0.96) 100%)";
   return (
     <button
       type="button"
@@ -158,12 +177,12 @@ export function BrainVitaPill({ label, ariaLabel, icon, onClick, isDisabled = fa
         isInline ? "min-h-[44px] flex-row gap-2 text-sm" : "min-h-[52px] flex-col gap-0.5 text-sm md:min-h-[64px] md:gap-1 md:text-base"
       }`}
       style={{
-        background: isPrimary ? "linear-gradient(180deg, rgba(120,78,24,0.95) 0%, rgba(70,42,12,0.96) 100%)" : PLANK_BACKGROUND,
-        border: isPrimary ? `1.5px solid ${GOLD}` : PLANK_BORDER,
-        boxShadow: PLANK_SHADOW,
+        background: isPrimary ? primaryBackground : skin.plankBackground,
+        border: isPrimary ? `1.5px solid ${skin.accent}` : skin.plankBorder,
+        boxShadow: skin.plankShadow,
       }}
     >
-      <span className="flex items-center justify-center" style={{ color: isPrimary ? GOLD_SOFT : "rgba(255,244,214,0.85)" }}>
+      <span className="flex items-center justify-center" style={{ color: isPrimary ? skin.accentSoft : "rgba(255,244,214,0.85)" }}>
         {icon}
       </span>
       <span>{label}</span>
@@ -174,4 +193,39 @@ export function BrainVitaPill({ label, ariaLabel, icon, onClick, isDisabled = fa
 /** The action dock: three pills side by side, or one above another. */
 export function BrainVitaDock({ children, isStacked = false, className = "" }: { children: ReactNode; isStacked?: boolean; className?: string }) {
   return <div className={`flex gap-2 md:gap-3 ${isStacked ? "flex-col" : "items-stretch"} ${className}`}>{children}</div>;
+}
+
+type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "type"> & { children: ReactNode };
+
+const CHIP_BASE =
+  "flex cursor-pointer items-center justify-center text-amber-50 shadow-[0_4px_10px_rgba(0,0,0,0.45)] transition-[filter] hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128]";
+
+/** A round header button: back, guide, sound, theme. 44px, 48 on a tablet. */
+export function BrainVitaRoundButton({ children, className = "", ...rest }: ChipProps) {
+  const skin = useSkinTokens();
+  return (
+    <button
+      type="button"
+      {...rest}
+      className={`${CHIP_BASE} h-11 w-11 flex-shrink-0 rounded-full md:h-12 md:w-12 ${className}`}
+      style={{ background: skin.chipBackground, border: skin.chipBorder }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A pill header button with a caption, for a wide screen. */
+export function BrainVitaHeaderButton({ children, className = "", ...rest }: ChipProps) {
+  const skin = useSkinTokens();
+  return (
+    <button
+      type="button"
+      {...rest}
+      className={`${CHIP_BASE} min-h-[44px] min-w-[44px] gap-1.5 rounded-full px-4 py-2 text-sm font-semibold ${className}`}
+      style={{ background: skin.chipBackground, border: skin.chipBorder }}
+    >
+      {children}
+    </button>
+  );
 }

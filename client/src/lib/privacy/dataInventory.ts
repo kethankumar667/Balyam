@@ -384,6 +384,27 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.brainvita.skin",
+    label: "Brain Vita board theme",
+    description: "Which board theme you chose for Brain Vita on this device.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.brainvita.unlocked",
+    label: "Brain Vita themes earned",
+    description: "Which Brain Vita board themes you have earned by playing, so they stay unlocked on this device.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.brainvita.tilt",
+    label: "Brain Vita board tilt",
+    description: "Whether you turned on the board leaning with your phone or mouse in Brain Vita.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
     key: "brainvita.tutorial.completed.v1",
     label: "Brain Vita tutorial seen",
     description: "Whether you have seen the Brain Vita tutorial, so it stops opening by itself.",

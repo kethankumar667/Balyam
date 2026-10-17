@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useTutorialGate } from "../../components/GameTutorial";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore } from "../../store/scorecardStore";
 import { brainvitaAudio } from "./brainvitaAudio";
-import { solveFrom, type Move } from "./brainvitaRules";
+import { marbleCount, solveFrom, type Move } from "./brainvitaRules";
+import { earnsHolo, loadSkin, loadTilt, loadUnlocked, saveSkin, saveTilt, saveUnlocked, type SkinId } from "./brainvitaSkins";
+import { requestMotionPermission } from "./useParallax";
+import { useJumpFlight } from "./useJumpFlight";
 import { createGameState, gameResult, isFinished, reduceGame, targetsOf, type GameResult } from "./brainvitaGame";
 
 /** The Game Academy is found by the first segment of this key; the rest is the seen-it flag. */
@@ -25,6 +29,59 @@ export function useBrainVita() {
   const finished = isFinished(state);
   const result: GameResult | null = useMemo(() => (finished ? gameResult(state) : null), [finished, state]);
   const lastMove: Move | null = state.moves.length > 0 ? state.moves[state.moves.length - 1] : null;
+  const marbles = marbleCount(state.board);
+
+  // ── motion: the jump animation and the tilt both stand down for anyone who asked for less movement ──
+  const isReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const { flight, burst } = useJumpFlight(state.moves, !isReducedMotion);
+
+  // ── looks: the wood table is always there; the holo table is earned ───────────────────────────
+  const [unlocked, setUnlocked] = useState<readonly SkinId[]>(loadUnlocked);
+  const [skin, setSkin] = useState<SkinId>(loadSkin);
+  const [justUnlocked, setJustUnlocked] = useState<SkinId | null>(null);
+  const unlockedRef = useRef(unlocked);
+  unlockedRef.current = unlocked;
+
+  const selectSkin = useCallback((next: SkinId) => {
+    if (!unlockedRef.current.includes(next)) return;
+    setSkin(next);
+    saveSkin(next);
+  }, []);
+  const dismissUnlock = useCallback(() => setJustUnlocked(null), []);
+
+  const [isTiltPreferred, setIsTiltPreferred] = useState(loadTilt);
+  const [tiltNote, setTiltNote] = useState<string | null>(null);
+  const tiltRef = useRef(isTiltPreferred);
+  tiltRef.current = isTiltPreferred;
+
+  const toggleTilt = useCallback(async () => {
+    if (tiltRef.current) {
+      setIsTiltPreferred(false);
+      saveTilt(false);
+      setTiltNote(null);
+      return;
+    }
+    // iOS only asks when a tap asks, so this has to run straight from the switch.
+    const permission = await requestMotionPermission();
+    if (permission === "denied") {
+      setTiltNote("Motion access was refused, so the board cannot follow your phone.");
+      return;
+    }
+    if (permission === "unsupported") {
+      setTiltNote("This device has no motion sensor.");
+      return;
+    }
+    setIsTiltPreferred(true);
+    saveTilt(true);
+    setTiltNote(null);
+  }, []);
+
+  // ── the drone under the game: thins with every marble, resolves at the end, silent between games ───
+  useEffect(() => {
+    if (state.moves.length === 0) brainvitaAudio.stopAmbient();
+    else if (!finished) brainvitaAudio.setAmbient(marbles);
+  }, [state.moves.length, finished, marbles]);
+  useEffect(() => () => brainvitaAudio.stopAmbient(), []);
 
   // ── the clock: from the first jump to the last ────────────────────────────────────────────────
   const [seconds, setSeconds] = useState(0);
@@ -80,9 +137,19 @@ export function useBrainVita() {
     setResultOpen(true);
     if (result.marblesLeft === 1) {
       brainvitaAudio.playWin();
+      brainvitaAudio.resolveAmbient(true);
       HapticsManager.getInstance().win();
     } else {
       brainvitaAudio.playStuck();
+      brainvitaAudio.resolveAmbient(false);
+    }
+
+    // The holo table is the reward for a clean, strong game. Help forfeits it, as it forfeits the leaderboard.
+    if (earnsHolo(result) && !unlockedRef.current.includes("holo")) {
+      const next: readonly SkinId[] = [...unlockedRef.current, "holo"];
+      saveUnlocked(next);
+      setUnlocked(next);
+      setJustUnlocked("holo");
     }
 
     // A hint or an undo hands over (part of) the answer, so that result is for practice and never posted;
@@ -121,13 +188,20 @@ export function useBrainVita() {
     gameId.current += 1;
     setNewPersonalBest(false);
     setHintNote(null);
+    setJustUnlocked(null);
     dispatch({ type: "restart" });
   }, []);
 
   const closeResult = useCallback(() => setResultOpen(false), []);
 
   const [isMuted, setIsMuted] = useState(brainvitaAudio.isMuted());
-  const toggleMute = useCallback(() => setIsMuted(brainvitaAudio.toggleMute()), []);
+  const toggleMute = useCallback(() => {
+    const muted = brainvitaAudio.toggleMute();
+    setIsMuted(muted);
+    // Unmuting mid-game brings the drone back at the right thickness for the board as it stands.
+    const now = stateRef.current;
+    if (!muted && now.moves.length > 0 && !isFinished(now)) brainvitaAudio.setAmbient(marbleCount(now.board));
+  }, []);
 
   // Auto-open the lesson once, but never mid-game.
   const tutorial = useTutorialGate(BRAINVITA_TUTORIAL_KEY, jumps === 0);
@@ -144,6 +218,17 @@ export function useBrainVita() {
     newPersonalBest,
     isMuted,
     tutorial,
+    flight,
+    burst,
+    skin,
+    unlockedSkins: unlocked,
+    selectSkin,
+    justUnlocked,
+    dismissUnlock,
+    isTiltAvailable: !isReducedMotion,
+    isTiltOn: isTiltPreferred && !isReducedMotion,
+    tiltNote,
+    toggleTilt,
     canUndo: jumps > 0,
     tap,
     undo,

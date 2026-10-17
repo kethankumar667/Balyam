@@ -4,12 +4,14 @@
  * AudioManager mute; the switch below is this game's own, separate toggle.
  */
 import { AudioManager } from "../../services/AudioManager";
+import { AmbientEngine } from "./brainvitaAmbient";
 
 export const BRAINVITA_MUTE_STORAGE_KEY = "bhalyam.brainvita.muted";
 
 class BrainVitaAudioEngine {
   private ctx: AudioContext | null = null;
   private muted = false;
+  private ambient: AmbientEngine | null = null;
 
   constructor() {
     try {
@@ -17,6 +19,33 @@ class BrainVitaAudioEngine {
     } catch {
       // Private browsing can refuse storage reads; sound simply starts on.
     }
+    // A drone must not keep playing under a tab nobody is looking at.
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => {
+        if (!this.ctx || !this.ambient?.isRunning) return;
+        (document.hidden ? this.ctx.suspend() : this.ctx.resume()).catch(() => {});
+      });
+    }
+  }
+
+  /** Starts the drone if it is not sounding, and sets it for the marbles now on the board. */
+  setAmbient(marblesLeft: number): void {
+    const ctx = this.getContext();
+    if (!ctx) {
+      this.ambient?.stop();
+      return;
+    }
+    if (!this.ambient) this.ambient = new AmbientEngine(ctx);
+    this.ambient.start(marblesLeft);
+  }
+
+  /** Lets the drone resolve into a closing chord. */
+  resolveAmbient(isPerfect: boolean): void {
+    this.ambient?.resolve(isPerfect);
+  }
+
+  stopAmbient(): void {
+    this.ambient?.stop();
   }
 
   private getContext(): AudioContext | null {
@@ -37,6 +66,7 @@ class BrainVitaAudioEngine {
 
   toggleMute(): boolean {
     this.muted = !this.muted;
+    if (this.muted) this.stopAmbient();
     try {
       localStorage.setItem(BRAINVITA_MUTE_STORAGE_KEY, String(this.muted));
     } catch {
