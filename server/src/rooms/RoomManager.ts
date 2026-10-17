@@ -36,6 +36,7 @@ import type {
   SpaceWarOptions,
   TicTacToeOptions,
   Connect4Options,
+  VamanaOptions,
   OperationalRoomSummary,
   DisconnectedSeatSummary,
   OperationalRecoverySummary,
@@ -64,6 +65,7 @@ import {
   DEFAULT_SPACEWAR_OPTIONS,
   sanitizeTicTacToeOptions,
   sanitizeConnect4Options,
+  sanitizeVamanaOptions,
   StartBlockReason,
   StartPreflightPayload,
   StartAcknowledgementPayload,
@@ -147,6 +149,7 @@ import {
   scoreTicTacToeWin,
 } from "../games/tictactoe/TicTacToeEngine.js";
 import { Connect4Engine, scoreConnect4Win } from "../games/connect4/Connect4Engine.js";
+import { VamanaEngine, scoreVamanaWin } from "../games/vamanaguntalu/VamanaEngine.js";
 import type { EconomyService, SettleMatchEconomyRequest } from "../economy/EconomyService.js";
 import { EconomyServiceError } from "../economy/EconomyService.js";
 import {
@@ -333,6 +336,7 @@ const BOT_NAMES_BY_GAME: Record<GameKind, ReadonlyArray<string>> = {
   spacewar: ["Ace", "Blaster", "Cosmo", "Defender", "Nova", "Starlight", "Galaxy", "Pulsar"],
   tictactoe: ["NEXUS-9", "CYBER-AI", "VORTEX", "AURA-7", "SYNTH-X", "QUANTUM-0", "NEON-BLADE", "GLITCH"],
   connect4: ["Stacker", "Dropper", "Gravity", "Checker", "Fourth", "Column-7", "Blocker", "Diagonal"],
+  vamanaguntalu: ["Gunta", "Ammamma", "Sower", "Relay", "Vamana", "Pallu", "Chintha", "Gavva"],
 };
 
 /**
@@ -551,6 +555,7 @@ export interface Room {
   spaceWarOptions: SpaceWarOptions;
   ticTacToeOptions: TicTacToeOptions;
   connect4Options: Connect4Options;
+  vamanaOptions: VamanaOptions;
   /** Idempotency action registry: actionKey -> timestamp */
   processedActionIds: Map<string, number>;
   /**
@@ -870,6 +875,7 @@ export class RoomManager {
       spaceWarOptions: room.spaceWarOptions,
       ticTacToeOptions: room.ticTacToeOptions,
       connect4Options: room.connect4Options,
+      vamanaOptions: room.vamanaOptions,
     };
 
     const now = Date.now();
@@ -985,6 +991,7 @@ export class RoomManager {
       spaceWarOptions: typeof opts.spaceWarOptions === "object" && opts.spaceWarOptions !== null ? { ...DEFAULT_SPACEWAR_OPTIONS, ...opts.spaceWarOptions } : { ...DEFAULT_SPACEWAR_OPTIONS },
       ticTacToeOptions: sanitizeTicTacToeOptions(typeof opts.ticTacToeOptions === "object" && opts.ticTacToeOptions !== null ? opts.ticTacToeOptions as Partial<TicTacToeOptions> : {}),
       connect4Options: sanitizeConnect4Options(typeof opts.connect4Options === "object" && opts.connect4Options !== null ? opts.connect4Options as Partial<Connect4Options> : {}),
+      vamanaOptions: sanitizeVamanaOptions(typeof opts.vamanaOptions === "object" && opts.vamanaOptions !== null ? opts.vamanaOptions as Partial<VamanaOptions> : {}),
       processedActionIds: new Map<string, number>(),
       currentMatchId: snapshot.currentMatchId,
       departedThisMatch: departedMap,
@@ -1796,6 +1803,7 @@ export class RoomManager {
     spaceWarOptions?: Partial<SpaceWarOptions>,
     ticTacToeOptions?: Partial<TicTacToeOptions>,
     connect4Options?: Partial<Connect4Options>,
+    vamanaOptions?: Partial<VamanaOptions>,
     /**
      * Appended here, rather than sitting next to `name` where it belongs,
      * on purpose. Every option parameter above is a `Partial<…>`, and two
@@ -1941,6 +1949,7 @@ export class RoomManager {
       // Client-controlled payload: sanitised, never spread (see the helper's doc).
       ticTacToeOptions: sanitizeTicTacToeOptions(ticTacToeOptions),
       connect4Options: sanitizeConnect4Options(connect4Options),
+      vamanaOptions: sanitizeVamanaOptions(vamanaOptions),
       processedActionIds: new Map(),
       currentMatchId: null,
       departedThisMatch: new Map(),
@@ -2433,16 +2442,17 @@ export class RoomManager {
       room.game !== "wordbuilding" &&
       room.game !== "dotsboxes" &&
       room.game !== "tictactoe" &&
-      room.game !== "connect4"
+      room.game !== "connect4" &&
+      room.game !== "vamanaguntalu"
     ) {
       // Pass & Play is fair only for open-information games — everyone
       // looks at the same board state, no private hands. Word Building,
-      // Dots & Boxes, Tic Tac Toe and Four in a Row all qualify (every move is visible to
+      // Dots & Boxes, Tic Tac Toe, Four in a Row and Vamana Guntalu all qualify (every move is visible to
       // everyone). Rummy / UNO etc. would leak hidden information to
       // the wrong player on a shared device.
       this.io.sockets.sockets.get(socketId)?.emit(
         "room:error",
-        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, Tic Tac Toe, and Four in a Row"
+        "Pass & Play is only available for Ludo, Snakes & Ladders, Word Building, Dots & Boxes, Tic Tac Toe, Four in a Row, and Vamana Guntalu"
       );
       return;
     }
@@ -3605,6 +3615,9 @@ export class RoomManager {
       if (engine instanceof Connect4Engine) {
         engine.setOptions(room.connect4Options);
       }
+      if (engine instanceof VamanaEngine) {
+        engine.setOptions(room.vamanaOptions);
+      }
       engine.init(playersList);
       room.engine = engine;
       room.phase = "playing";
@@ -4020,6 +4033,21 @@ export class RoomManager {
           return {};
         }
         return { score: scoreConnect4Win(discs), secondaryMetrics: { discs } };
+      }
+
+      // Vamana Guntalu: only a genuine win on seeds by a HUMAN against another human is scored, by the
+      // seeds the winner finished with. A loss, a draw, a walkover (the opponent left), a table with a
+      // bot seat (practice) and Pass & Play (one person on both sides) all return nothing, so none of
+      // them can reach a scorecard — beating an easy bot would otherwise be a free, repeatable score.
+      if (room.game === "vamanaguntalu") {
+        const hasBotOrLocalSeat = Array.from(room.players.values()).some((p) => p.isBot === true || p.isLocal === true);
+        const captured = publicState.captured as Record<string, number> | undefined;
+        const seeds = captured?.[playerId];
+        if (hasBotOrLocalSeat || publicState.winnerId !== playerId || publicState.endReason !== "seeds" || typeof seeds !== "number") {
+          return {};
+        }
+        const rivalSeeds = Math.max(0, ...Object.entries(captured ?? {}).filter(([id]) => id !== playerId).map(([, count]) => count));
+        return { score: scoreVamanaWin(seeds), secondaryMetrics: { margin: Math.max(0, seeds - rivalSeeds) } };
       }
 
       // Generic single numeric score if present
@@ -5999,9 +6027,9 @@ export class RoomManager {
       this.armTurnTimer(room, ms);
       return;
     }
-    // Tic Tac Toe and Four in a Row share the same clock contract: a public `turnDeadline`, and
+    // Tic Tac Toe, Four in a Row and Vamana Guntalu share the same clock contract: a public `turnDeadline`, and
     // `restartTurnClock()` to open a fresh window when a timeout was deliberately withheld.
-    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine) {
+    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine || room.engine instanceof VamanaEngine) {
       const engine = room.engine;
       const pub = engine.getPublicState();
       if (!pub.turnDeadline) {
@@ -6038,7 +6066,7 @@ export class RoomManager {
     // Before the engine resolves this turn for them, note WHO let it lapse —
     // afterwards the engine has moved on and that information is gone.
     this.recordTurnTimeout(room);
-    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine) {
+    if (room.engine instanceof TicTacToeEngine || room.engine instanceof Connect4Engine || room.engine instanceof VamanaEngine) {
       const engine = room.engine;
       const state = engine.getPublicState();
       if (state.phase !== "playing") return;

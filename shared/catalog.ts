@@ -44,6 +44,7 @@ export const GAME_LIMITS: Record<GameKind, GameLimitSpec> = {
   roadrash: { min: 1, max: 4 },
   tictactoe: { min: 2, max: 2 },
   connect4: { min: 2, max: 2 },
+  vamanaguntalu: { min: 2, max: 2 },
 };
 
 export const NO_BOT_GAMES: ReadonlySet<GameKind> = new Set<GameKind>([
@@ -104,6 +105,7 @@ export const GAME_START_REQUIREMENTS: Record<GameKind, GameStartRequirements> = 
   roadrash: { requiresOrientation: null, orientationPromptTiers: [] },
   tictactoe: { requiresOrientation: null, orientationPromptTiers: [] },
   connect4: { requiresOrientation: null, orientationPromptTiers: [] },
+  vamanaguntalu: { requiresOrientation: null, orientationPromptTiers: [] },
 };
 
 export function getGameOrientationRequirement(game: GameKind): "landscape" | "portrait" | null {
@@ -157,6 +159,7 @@ export const GAME_PREFERRED_ORIENTATION: Record<BhalyamGameSlug, "landscape" | "
   sudoku: "portrait",
   tictactoe: "portrait",
   connect4: "portrait",
+  vamanaguntalu: "portrait",
 
   // Browser-only retro titles — all modelled on portrait handhelds.
   nokiacricket: "portrait",
@@ -538,6 +541,39 @@ export const BHALYAM_GAME_CATALOGUE: readonly GameCatalogueItem[] = [
     ],
   },
   {
+    id: "vamanaguntalu",
+    name: "Vamana Guntalu",
+    teluguName: "వామన గుంటలు",
+    tagline: "Sow the seeds, keep the relay going",
+    shortDescription: "The Telugu seed-sowing classic. Sow a pit round the board, keep going while the next pit is full, and capture after an empty one.",
+    description:
+      "A two-player game of seeds and pits. Lift a pit from your row and sow it one seed at a time, counter-clockwise. If the pit after your last seed is full, lift that one too and keep sowing. When it is empty, you capture the pit beyond it. When a player has nothing left to sow, everyone keeps the seeds on their own row, and the bigger pile wins.",
+    nostalgiaQuote: "\"Count the seeds out loud, Amma is watching your last pit.\"",
+    minPlayers: 2,
+    maxPlayers: 2,
+    playTime: "10–15 min",
+    playTimeCategory: "quick",
+    difficulty: "medium",
+    genre: "board",
+    tags: ["vamana-guntalu", "mancala", "seeds", "two-player", "traditional", "telugu"],
+    nostalgiaWorlds: ["sunday_afternoon", "friends_adda"],
+    supportedModes: ["online_multiplayer", "pass_and_play", "vs_bots"],
+    supportsBots: true,
+    isPopular: false,
+    isClassic: true,
+    availability: "playable",
+    accent: { from: "#B45309", to: "#78350F" },
+    thumbnail: "/games/thumbnails/vamanaguntalu.svg",
+    heroAsset: "/games/heroes/vamanaguntalu-hero.svg",
+    howToPlay: [
+      { stepNumber: 1, title: "Pick a Pit", instruction: "On your turn, choose any pit on your own row that still has seeds." },
+      { stepNumber: 2, title: "Sow the Seeds", instruction: "Its seeds go one by one into the pits that follow, counter-clockwise round the board." },
+      { stepNumber: 3, title: "Keep the Relay", instruction: "If the pit after your last seed has seeds, lift them all and keep sowing from there." },
+      { stepNumber: 4, title: "Capture", instruction: "When the next pit is empty, you capture the seeds in the pit just beyond it and your turn ends." },
+      { stepNumber: 5, title: "Count Up", instruction: "When a player has nothing to sow, each player keeps the seeds left on their own row. The bigger pile wins." },
+    ],
+  },
+  {
     id: "wordbuilding",
     name: "Word Building",
     teluguName: "వర్డ్ బిల్డింగ్",
@@ -900,4 +936,5 @@ export const GAME_DISPLAY_NAMES: Record<GameKind, string> = {
   spacewar: "Space War 🚀",
   tictactoe: "Tic Tac Toe ✔️",
   connect4: "Four in a Row",
+  vamanaguntalu: "Vamana Guntalu",
 };

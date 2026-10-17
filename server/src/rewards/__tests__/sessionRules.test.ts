@@ -12,7 +12,7 @@ import { REASON } from "../types.js";
 describe("match duration rule", () => {
   it("has a floor for every game, and none is shorter than ten seconds", () => {
     const floors = Object.values(MIN_MATCH_DURATION_MS);
-    expect(floors).toHaveLength(19);
+    expect(floors).toHaveLength(20);
     expect(Math.min(...floors)).toBeGreaterThanOrEqual(10_000);
   });
 

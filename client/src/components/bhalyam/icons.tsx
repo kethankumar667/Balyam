@@ -313,6 +313,27 @@ export const Connect4Glyph = makeIcon(
   </>,
 );
 
+export const VamanaGuntaluGlyph = makeIcon(
+  <>
+    {/* The board: two rows of pits */}
+    <rect x="2" y="6" width="20" height="12" rx="3" strokeWidth="1.6" />
+    <circle cx="5" cy="9.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="8.5" cy="9.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="12" cy="9.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="15.5" cy="9.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="19" cy="9.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="5" cy="14.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="8.5" cy="14.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="12" cy="14.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="15.5" cy="14.5" r="1.2" strokeWidth="1.2" />
+    <circle cx="19" cy="14.5" r="1.2" strokeWidth="1.2" />
+    {/* Seeds sitting in a few of the pits */}
+    <circle cx="8.5" cy="14.5" r="0.55" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="14.5" r="0.55" fill="currentColor" stroke="none" />
+    <circle cx="15.5" cy="9.5" r="0.55" fill="currentColor" stroke="none" />
+  </>,
+);
+
 export const UsersIcon = makeIcon(
   <>
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

@@ -146,6 +146,9 @@ export function measureControls(selector) {
 
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
+    // A visually-hidden control (`sr-only`: 1x1, clipped) is a screen-reader and keyboard alternative, not a tap
+    // target. Snake and Space War carry four of these (Up/Right/Down/Left) beside their on-screen wheel.
+    if (rect.width <= 1 && rect.height <= 1) continue;
     // Off-screen by design: closed drawers, collapsed menus, the panel for a
     // tab that is not selected. Reporting these would drown the real findings.
     if (rect.bottom < 0 || rect.top > height * 3) continue;

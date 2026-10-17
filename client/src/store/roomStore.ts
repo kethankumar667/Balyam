@@ -21,6 +21,7 @@ import type {
   SpaceWarPublicState,
   TicTacToePublicState,
   Connect4PublicState,
+  VamanaPublicState,
 } from "@shared/types";
 
 /**
@@ -44,6 +45,7 @@ export interface GameStateMap {
   spacewar: SpaceWarPublicState;
   tictactoe: TicTacToePublicState;
   connect4: Connect4PublicState;
+  vamanaguntalu: VamanaPublicState;
   roadrash: unknown;
   blockblast: unknown;
 }

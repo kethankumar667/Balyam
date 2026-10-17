@@ -31,6 +31,7 @@ import {
   BingoGlyph,
   TicTacToeGlyph,
   Connect4Glyph,
+  VamanaGuntaluGlyph,
 } from "../bhalyam/icons";
 
 export interface GameCardProps {
@@ -65,6 +66,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   sudoku: StarGameGlyph,
   tictactoe: TicTacToeGlyph,
   connect4: Connect4Glyph,
+  vamanaguntalu: VamanaGuntaluGlyph,
 };
 
 const TILE_ART: Record<BhalyamGameSlug, string> = {
@@ -92,6 +94,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   sudoku: "/Sudoku Game Tile.png",
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
+  vamanaguntalu: "/VamanaGuntaluTile.png",
 };
 
 export default function GameCard({

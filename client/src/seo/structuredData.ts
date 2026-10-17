@@ -116,6 +116,15 @@ export const STRUCTURED_DATA_GAMES = [
     genre: ["Board Game", "Strategy", "Multiplayer", "Classroom"],
   },
   {
+    slug: "vamanaguntalu",
+    name: "Vamana Guntalu",
+    description: "The Telugu seed-sowing game: sow the seeds of a pit round two rows of pits, keep the relay going, and capture after an empty pit.",
+    image: `${BASE_URL}/VamanaGuntaluTile.png`,
+    minPlayers: 2,
+    maxPlayers: 2,
+    genre: ["Board Game", "Strategy", "Traditional", "Multiplayer"],
+  },
+  {
     slug: "chess",
     name: "Chess Grandmaster",
     description: "Classic 2-player strategy board game of kings, queens, tactics, and checkmates.",

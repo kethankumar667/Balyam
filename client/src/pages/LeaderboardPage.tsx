@@ -113,6 +113,9 @@ const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
   connect4: {
     classic: 18,
   },
+  vamanaguntalu: {
+    classic: 50,
+  },
 };
 
 const GAME_TIPS: Record<string, string> = {
@@ -131,6 +134,7 @@ const GAME_TIPS: Record<string, string> = {
   chess: "Control the center squares early to maximize piece mobility!",
   tictactoe: "In Quantum Flux, remember your 4th placement evaporates your 1st — plan rotations ahead to trap your opponent!",
   connect4: "Claim the center column early to give your discs multiple horizontal, vertical, and diagonal win paths!",
+  vamanaguntalu: "Leave an empty pit just before a full one — a relay that ends there captures the pit beyond it!",
 };
 
 /**
@@ -265,6 +269,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "blockblast", label: "Block Blast", icon: "💥" },
   { id: "sudoku", label: "Sudoku Cyber-Matrix", icon: "🧩" },
   { id: "connect4", label: "Four in a Row", icon: "🟡" },
+  { id: "vamanaguntalu", label: "Vamana Guntalu", icon: "🌰" },
 ];
 
 const GAME_TILE_IMAGES: Record<string, string> = {
@@ -294,6 +299,7 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   sudoku: "/Sudoku Game Tile.png",
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
+  vamanaguntalu: "/VamanaGuntaluTile.png",
 };
 
 function getModeIcon(modeId: string): string {

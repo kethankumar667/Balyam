@@ -122,13 +122,13 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
             </span>
             <button
               onClick={() => onMove("togglePause")}
-              className="px-2 py-0.5 rounded-lg bg-[#2e1065] text-[#f0abfc] border border-[#7e22ce] text-[9px] font-black uppercase shadow-[0_0_8px_rgba(192,132,252,0.4)]"
+              className="relative before:absolute before:-inset-y-2 before:inset-x-0 px-2 py-0.5 rounded-lg bg-[#2e1065] text-[#f0abfc] border border-[#7e22ce] text-[9px] font-black uppercase shadow-[0_0_8px_rgba(192,132,252,0.4)]"
             >
               {state.isPaused ? "▶ RESUME" : "⏸ PAUSE"}
             </button>
             <button
               onClick={() => rulesTut.setOpen(true)}
-              className="px-2 py-0.5 rounded-lg bg-[#181a28] text-[#8e9ab5] border border-[#2e344e] text-[9px] font-bold uppercase"
+              className="relative before:absolute before:-inset-y-2 before:inset-x-0 px-2 py-0.5 rounded-lg bg-[#181a28] text-[#8e9ab5] border border-[#2e344e] text-[9px] font-bold uppercase"
             >
               RULES
             </button>

@@ -228,7 +228,7 @@ export default function SpaceWarBoardMobile({
             {/* Power-up Info / Guide button */}
             <button
               onClick={() => setShowPowerGuide(true)}
-              className="px-1.5 py-0.5 rounded bg-[#1e2540] hover:bg-[#2b355c] border border-[#00f0ff]/40 text-[#00f0ff] font-bold text-[9px] flex items-center gap-0.5 transition"
+              className="relative before:absolute before:-inset-y-2 before:inset-x-0 px-1.5 py-0.5 rounded bg-[#1e2540] hover:bg-[#2b355c] border border-[#00f0ff]/40 text-[#00f0ff] font-bold text-[9px] flex items-center gap-0.5 transition"
               title="Special Powers & Weapons Guide"
             >
               <span>ℹ️ POWERS</span>
@@ -463,7 +463,7 @@ export default function SpaceWarBoardMobile({
                 <button
                   key={t.id}
                   onClick={() => onMove("set_theme", t.id)}
-                  className={`px-2 py-0.5 rounded-lg font-bold text-[10px] transition ${
+                  className={`relative before:absolute before:-inset-y-2 before:inset-x-0 px-2 py-0.5 rounded-lg font-bold text-[10px] transition ${
                     (state.theme || "cyberpunk") === t.id
                       ? "bg-[#00f0ff] text-black shadow-[0_0_8px_#00f0ff]"
                       : "text-[#8e9bb4] hover:text-white bg-[#181a28]"

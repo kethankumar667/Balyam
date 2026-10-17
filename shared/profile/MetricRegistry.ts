@@ -481,6 +481,33 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       },
     ],
   },
+  vamanaguntalu: {
+    game: "vamanaguntalu",
+    primaryRankMetric: {
+      key: "bestScore",
+      label: "Most Seeds in a Win",
+      shortLabel: "Max Seeds",
+      description: "Most seeds you finished a winning match with",
+      format: "raw_number",
+      direction: "HIGHER_IS_BETTER",
+      importance: "PRIMARY",
+      icon: "Crown",
+    },
+    // `margin` is the only key RoomManager's extractParticipantScoreAndMetrics emits for
+    // vamanaguntalu, so it must stay first: the statistics page shows secondaryMetrics[0].
+    secondaryMetrics: [
+      {
+        key: "margin",
+        label: "Winning Margin",
+        shortLabel: "Margin",
+        description: "Seeds by which you out-collected your opponent in a win",
+        format: "raw_number",
+        direction: "HIGHER_IS_BETTER",
+        importance: "SECONDARY",
+        icon: "Target",
+      },
+    ],
+  },
   tictactoe: {
     game: "tictactoe",
     primaryRankMetric: {

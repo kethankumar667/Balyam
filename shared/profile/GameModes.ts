@@ -1,5 +1,5 @@
 import type { AllGameSlug, ScoringDirection, FoilTier, QuantumPerformanceRadar } from "./Scorecard.js";
-import { CONNECT4_SCORE_MAX, CONNECT4_SCORE_MIN } from "../types.js";
+import { CONNECT4_SCORE_MAX, CONNECT4_SCORE_MIN, VAMANA_SCORE_MAX, VAMANA_SCORE_MIN } from "../types.js";
 
 export interface ModeDefinition {
   modeId: string;
@@ -327,6 +327,27 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
         isDefault: true,
         minPlausibleScore: CONNECT4_SCORE_MIN,
         maxPlausibleScore: CONNECT4_SCORE_MAX,
+      },
+    ],
+  },
+  vamanaguntalu: {
+    game: "vamanaguntalu",
+    displayName: "Vamana Guntalu",
+    category: "board",
+    defaultModeId: "classic",
+    // The server scores the match (only a genuine win on seeds by a human against another human);
+    // a client-reported score for this game is refused.
+    serverScored: true,
+    modes: [
+      {
+        modeId: "classic",
+        displayName: "Classic 7x2",
+        description: "Seven pits a side, five seeds each, human against human. A win is scored by the seeds you finished with (36 to 70).",
+        scoringDirection: "HIGHER_IS_BETTER",
+        unit: "seeds",
+        isDefault: true,
+        minPlausibleScore: VAMANA_SCORE_MIN,
+        maxPlausibleScore: VAMANA_SCORE_MAX,
       },
     ],
   },

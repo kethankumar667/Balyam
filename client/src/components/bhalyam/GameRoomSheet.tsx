@@ -68,6 +68,7 @@ import {
   BingoGlyph,
   TicTacToeGlyph,
   Connect4Glyph,
+  VamanaGuntaluGlyph,
 } from "./icons";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -134,6 +135,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   sudoku: StarGameGlyph,
   tictactoe: TicTacToeGlyph,
   connect4: Connect4Glyph,
+  vamanaguntalu: VamanaGuntaluGlyph,
 };
 
 /**
@@ -146,7 +148,7 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
  const PLAYABLE_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "handcricket", "snl", "ludo", "rummy", "rps", "uno", "wordbuilding", "dotsboxes", "stargame", "bingo",
   "namesplaceanimal", "tambola", "snake", "roadrash", "chess",
-  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4",
+  "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4", "vamanaguntalu",
  ]);
 
 const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
@@ -406,6 +408,19 @@ const CONNECT4_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string;
   { id: "pro",    label: "Master",   blurb: "Looks 4 plies ahead, traps and wins." },
 ];
 
+const VAMANA_TURN_TIMERS: { id: "15" | "25" | "40" | "60"; label: string; blurb: string }[] = [
+  { id: "15", label: "Fast (15s)",     blurb: "Quick turns, little time to count." },
+  { id: "25", label: "Standard (25s)", blurb: "The default: time to count the relay." },
+  { id: "40", label: "Relaxed (40s)",  blurb: "Room to plan a long relay." },
+  { id: "60", label: "Easygoing (60s)", blurb: "Plenty of time for a family game." },
+];
+
+const VAMANA_BOT_DIFFICULTIES: { id: "easy" | "medium" | "pro"; label: string; blurb: string }[] = [
+  { id: "easy",   label: "Casual",   blurb: "Picks a pit at random." },
+  { id: "medium", label: "Tactical", blurb: "Looks a few turns ahead for captures." },
+  { id: "pro",    label: "Master",   blurb: "Looks several relays ahead." },
+];
+
 export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameRoomSheetProps) {
   const navigate = useNavigate();
   const { playerName, setPlayerName, setPlayerId, rememberSeat, seatFor, avatarId } =
@@ -473,6 +488,8 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
   const [tttTurnTimer, setTttTurnTimer] = useState<"10" | "15" | "30" | "0">("15");
   const [connect4TurnTimer, setConnect4TurnTimer] = useState<"10" | "15" | "20" | "30" | "45">("20");
   const [connect4BotDifficulty, setConnect4BotDifficulty] = useState<"easy" | "medium" | "pro">("medium");
+  const [vamanaTurnTimer, setVamanaTurnTimer] = useState<"15" | "25" | "40" | "60">("25");
+  const [vamanaBotDifficulty, setVamanaBotDifficulty] = useState<"easy" | "medium" | "pro">("medium");
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [mobileTab, setMobileTab] = useState<"create" | "join">("create");
@@ -572,6 +589,9 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
     if (game === "connect4") {
       return `${connect4TurnTimer}s turns · Bot ${connect4BotDifficulty.charAt(0).toUpperCase() + connect4BotDifficulty.slice(1)}`;
     }
+    if (game === "vamanaguntalu") {
+      return `${vamanaTurnTimer}s turns · Bot ${vamanaBotDifficulty.charAt(0).toUpperCase() + vamanaBotDifficulty.slice(1)}`;
+    }
     return meta?.playerRange ? `${meta.playerRange}` : "Standard Match";
   }, [
     game,
@@ -600,6 +620,8 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
     tttTurnTimer,
     connect4TurnTimer,
     connect4BotDifficulty,
+    vamanaTurnTimer,
+    vamanaBotDifficulty,
   ]);
 
   // Reset transient state every time a new game opens.
@@ -629,6 +651,8 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
       setTttTurnTimer("15");
       setConnect4TurnTimer("20");
       setConnect4BotDifficulty("medium");
+      setVamanaTurnTimer("25");
+      setVamanaBotDifficulty("medium");
     }
   }, [game]);
 
@@ -797,6 +821,13 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                   botDifficulty: connect4BotDifficulty,
                 }
               : undefined,
+          vamanaOptions:
+            game === "vamanaguntalu"
+              ? {
+                  turnTimerSeconds: Number(vamanaTurnTimer),
+                  botDifficulty: vamanaBotDifficulty,
+                }
+              : undefined,
         },
         (res: { ok: boolean; code?: string; playerId?: string; seatToken?: string; state?: RoomPublicState; error?: string }) => {
           if (activeAttemptRef.current !== attemptId) return;
@@ -955,6 +986,13 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
             ? {
                 turnTimerSeconds: Number(connect4TurnTimer),
                 botDifficulty: connect4BotDifficulty,
+              }
+            : undefined,
+        vamanaOptions:
+          game === "vamanaguntalu"
+            ? {
+                turnTimerSeconds: Number(vamanaTurnTimer),
+                botDifficulty: vamanaBotDifficulty,
               }
             : undefined,
       },
@@ -1271,14 +1309,14 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
             <div className={mobileTab === "join" ? "hidden md:block md:space-y-4" : "space-y-4"}>
 
             {/* Pass & Play toggle */}
-            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "tictactoe" || game === "connect4") && (
+            {(game === "ludo" || game === "snl" || game === "wordbuilding" || game === "dotsboxes" || game === "tictactoe" || game === "connect4" || game === "vamanaguntalu") && (
               <PassPlayBlock
                 on={passPlay}
                 onToggle={() => setPassPlay((v) => !v)}
                 names={localNames}
                 onNamesChange={setLocalNames}
                 maxExtraSeats={
-                  game === "tictactoe" || game === "connect4"
+                  game === "tictactoe" || game === "connect4" || game === "vamanaguntalu"
                     ? 1
                     : game === "ludo"
                     ? 3
@@ -1780,6 +1818,28 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                     items={CONNECT4_BOT_DIFFICULTIES}
                     value={connect4BotDifficulty}
                     onChange={(v) => setConnect4BotDifficulty(v as "easy" | "medium" | "pro")}
+                    cols={3}
+                  />
+                </Field>
+              </>
+            )}
+
+            {game === "vamanaguntalu" && (
+              <>
+                <Field label="Turn Timer">
+                  <OptionGrid
+                    items={VAMANA_TURN_TIMERS}
+                    value={vamanaTurnTimer}
+                    onChange={(v) => setVamanaTurnTimer(v as "15" | "25" | "40" | "60")}
+                    cols={2}
+                  />
+                </Field>
+
+                <Field label="Bot Difficulty">
+                  <OptionGrid
+                    items={VAMANA_BOT_DIFFICULTIES}
+                    value={vamanaBotDifficulty}
+                    onChange={(v) => setVamanaBotDifficulty(v as "easy" | "medium" | "pro")}
                     cols={3}
                   />
                 </Field>

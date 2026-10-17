@@ -146,7 +146,7 @@ const NOT_COVERED = [
 const GAME_MIN = {
   rps: 2, rummy: 2, ludo: 2, snl: 2, handcricket: 2, uno: 2, wordbuilding: 2, dotsboxes: 2, stargame: 2,
   bingo: 1, namesplaceanimal: 2, tambola: 1, snake: 1, chess: 2, blockblast: 1, spacewar: 1, roadrash: 1,
-  tictactoe: 2, connect4: 2,
+  tictactoe: 2, connect4: 2, vamanaguntalu: 2,
 };
 /** A full table lays out differently from a two-seat one; check a busy one for the games that scale. */
 const BUSY_TABLE = { rummy: 4, ludo: 4, uno: 4, snl: 4, dotsboxes: 4, wordbuilding: 4, stargame: 4, bingo: 4 };
@@ -269,6 +269,11 @@ async function startMatch(page) {
   await page.waitForLoadState("domcontentloaded");
   // The lobby needs a moment to attach the seat after the socket connects.
   await page.getByRole("button", { name: /start game/i }).first().waitFor({ timeout: 20_000 }).catch(() => {});
+  // A solo game (Snake, Space War) starts itself from the lobby, so there may be no Start button left to press.
+  // The lobby gives way to the board without it; the tutorial/board checks that follow will show if it did not.
+  if (!(await page.getByRole("button", { name: /start game/i }).count()) && !(await page.getByRole("button", { name: /ready/i }).count())) {
+    return null;
+  }
   // Ready only if not already: the host of a solo-capable game is readied automatically, and the button
   // then reads "Ready (Cancel)" — clicking it UN-readies and leaves Start disabled.
   await page
@@ -281,7 +286,12 @@ async function startMatch(page) {
   // Start is disabled until every seat is ready and the server has confirmed it; give that a real chance
   // before concluding there is no button (it read "Start Game disabled" for Road Rash, Word Building…).
   const startBtn = page.getByRole("button", { name: /start game/i }).first();
-  for (let i = 0; i < 20 && !(await startBtn.isEnabled().catch(() => false)); i += 1) await sleep(500);
+  for (let i = 0; i < 20 && !(await startBtn.isEnabled({ timeout: 500 }).catch(() => false)); i += 1) {
+    // A solo game starts itself while we wait: the button is then gone, which is a started match, not a missing one.
+    if (!(await page.getByRole("button", { name: /start game/i }).count())) return null;
+    await sleep(500);
+  }
+  if (!(await page.getByRole("button", { name: /start game/i }).count())) return null;
   if (!(await clickIfPresent(page, /start game/i, 4000))) return "no enabled Start Game button";
   const started = await page
     .waitForFunction(() => !/start game/i.test(document.body.innerText), null, { timeout: 25_000 })

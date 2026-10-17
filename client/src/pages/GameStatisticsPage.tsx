@@ -46,6 +46,7 @@ const GAME_BREAKDOWNS: GameBreakdown[] = [
   { game: "snl", label: "Snakes & Ladders", icon: "🐍", tagline: "Climb ladders, dodge the snakes", specialStat: "LADDERS CLIMBED" },
   { game: "dotsboxes", label: "Dots & Boxes", icon: "⏹", tagline: "Corner the grid and own boxes", specialStat: "BOXES CAPTURED" },
   { game: "connect4", label: "Four in a Row", icon: "🟡", tagline: "Drop discs & connect four in a row", specialStat: "LINES CONNECTED" },
+  { game: "vamanaguntalu", label: "Vamana Guntalu", icon: "🌰", tagline: "Sow the seeds, keep the relay going", specialStat: "WINNING MARGIN" },
 ];
 
 /**

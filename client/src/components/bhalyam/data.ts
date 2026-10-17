@@ -40,7 +40,8 @@ export type BhalyamGameSlug =
   | "2048"
   | "sudoku"
   | "tictactoe"
-  | "connect4";
+  | "connect4"
+  | "vamanaguntalu";
 
 /**
  * Game filters.
@@ -309,6 +310,23 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
       "Take turns dropping discs into a seven-column grid. Line up four across, up and down, or diagonally before the board fills. Quick to learn, tricky to win.",
     accent: { from: "#3B82F6", to: "#1D4ED8" },
     tileImage: "/Connect4Tile.png",
+  },
+  {
+    slug: "vamanaguntalu",
+    tags: ["multiplayer", "board"],
+    title: "Vamana Guntalu",
+    teluguTitle: "వామన గుంటలు",
+    badge: "Classic",
+    nostalgiaQuote: "Sow, relay, capture.",
+    playerRange: "2 Players",
+    duration: "10–15 min",
+    paperBg: "linear-gradient(155deg, #3A1F0C 0%, #26130A 45%, #140A04 100%)",
+    paperBorder: "rgba(228, 177, 40, 0.65)",
+    btnGradient: { from: "#D97706", to: "#92400E", shadow: "#451A03" },
+    blurb:
+      "The Telugu seed-sowing classic. Lift a pit, sow its seeds round the board, keep going while the next pit is full, and capture the pit beyond an empty one.",
+    accent: { from: "#D97706", to: "#92400E" },
+    tileImage: "/VamanaGuntaluTile.png",
   },
   {
     slug: "bingo",

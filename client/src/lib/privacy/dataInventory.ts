@@ -79,6 +79,7 @@ const ACADEMY_GAMES: ReadonlyArray<readonly [slug: string, name: string]> = [
   ["namesplaceanimal", "Names, Place, Animal"],
   ["tictactoe", "Tic Tac Toe"],
   ["connect4", "Four in a Row"],
+  ["vamanaguntalu", "Vamana Guntalu"],
   ["sudoku", "Sudoku"],
   ["2048", "2048"],
   ["snake", "Snake"],
@@ -365,6 +366,20 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     label: "Four in a Row visual theme",
     description: "The cosmetic board skin you chose for Four in a Row on this device.",
     purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "bhalyam.vamanaguntalu.muted",
+    label: "Vamana Guntalu sound off",
+    description: "Whether you muted the Vamana Guntalu sound effects on this device.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
+    key: "vamanaguntalu.tutorial.completed.v1",
+    label: "Vamana Guntalu tutorial seen",
+    description: "Whether you have seen the Vamana Guntalu tutorial, so it stops opening by itself.",
+    purpose: "progress",
     isPersonalData: false,
   },
   {

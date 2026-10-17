@@ -66,7 +66,7 @@ import type { GameKind, Player, RoomPublicState, ChatMessage, RpsState, RummyPla
 import type { StarPlayerView, NamePlaceAnimalPlayerState, TambolaPlayerState } from "@shared/types";
 import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
-import type { SnakePublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState } from "@shared/types";
+import type { SnakePublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState, VamanaPublicState } from "@shared/types";
 
 import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
 
@@ -88,6 +88,7 @@ const ChessBoard = lazy(() => import("../games/chess/ChessBoard"));
 const SpaceWarBoard = lazy(() => import("../games/spacewar/SpaceWarBoard"));
 const TicTacToeBoard = lazy(() => import("../games/tictactoe/TicTacToeBoard"));
 const Connect4Board = lazy(() => import("../games/connect4/Connect4Board"));
+const VamanaBoard = lazy(() => import("../games/vamanaguntalu/VamanaBoard"));
 
 // ── Lazy-loaded modals & conditional overlays (code-split) ──
 const BhalyamResultModal = lazy(() => import("../components/BhalyamResultModal"));
@@ -313,6 +314,7 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   // mode rules — were clipped ~48px below the fold on a 390x844 phone.
   "tictactoe",
   "connect4",
+  "vamanaguntalu",
 ]);
 
 /**
@@ -589,6 +591,48 @@ function Connect4BoardContainer({
   return (
     <PassPhoneGate activePlayerId={activePid} players={players} isHost={isHost}>
       <Connect4Board
+        state={gameState}
+        players={players}
+        selfId={effectiveSelfId || ""}
+        messages={messages}
+        roomCode={roomState.code}
+        roomPhase={roomState.phase}
+        onLeave={requestLeaveConfirmation}
+        onScorecardClose={handleScorecardClose}
+      />
+    </PassPhoneGate>
+  );
+}
+
+/**
+ * Vamana Guntalu supports Pass & Play like Four in a Row: the host's socket plays the local seat's
+ * turn, so the board is told the ACTIVE seat as "self" (and turns to face whoever is on turn).
+ */
+function VamanaBoardContainer({
+  gameState,
+  roomState,
+  effectivePlayers,
+  playerId,
+  messages,
+  requestLeaveConfirmation,
+  handleScorecardClose,
+}: {
+  gameState: VamanaPublicState;
+  roomState: RoomPublicState;
+  effectivePlayers?: Player[];
+  playerId: string | null;
+  messages: ChatMessage[];
+  requestLeaveConfirmation: () => void;
+  handleScorecardClose: () => void;
+}) {
+  const isHost = roomState.hostId === playerId;
+  const activePid = gameState.turnPlayerId;
+  const players: Player[] = effectivePlayers ?? roomState.players ?? [];
+  const activeP = players.find((p: Player) => p.id === activePid);
+  const effectiveSelfId = isHost && activeP?.isLocal ? activePid : playerId;
+  return (
+    <PassPhoneGate activePlayerId={activePid} players={players} isHost={isHost}>
+      <VamanaBoard
         state={gameState}
         players={players}
         selfId={effectiveSelfId || ""}
@@ -1858,6 +1902,7 @@ export default function Room() {
     tambola: "Tambola (Housie)",
     tictactoe: "Tic Tac Toe",
     connect4: "Four in a Row",
+    vamanaguntalu: "Vamana Guntalu",
   };
   const gameOverGameName = roomState
     ? (FRIENDLY_GAME_NAMES[roomState.game] ?? roomState.game)
@@ -2324,6 +2369,18 @@ export default function Room() {
               {roomState.game === "connect4" && gameState != null && (
                 <Connect4BoardContainer
                   gameState={gameState as Connect4PublicState}
+                  roomState={roomState}
+                  effectivePlayers={effectiveMatchPlayers}
+                  playerId={playerId}
+                  messages={messages}
+                  requestLeaveConfirmation={requestLeaveConfirmation}
+                  handleScorecardClose={handleScorecardClose}
+                />
+              )}
+
+              {roomState.game === "vamanaguntalu" && gameState != null && (
+                <VamanaBoardContainer
+                  gameState={gameState as VamanaPublicState}
                   roomState={roomState}
                   effectivePlayers={effectiveMatchPlayers}
                   playerId={playerId}

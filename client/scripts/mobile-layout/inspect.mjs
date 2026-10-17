@@ -153,6 +153,8 @@ export async function inspectPage(page, viewport, options = {}) {
         try {
           const box = await handle.boundingBox();
           if (!box || box.width === 0 || box.height === 0) continue;
+          // `sr-only` keyboard alternatives (1x1, clipped) are not meant to be tapped where they sit.
+          if (box.width <= 1 && box.height <= 1) continue;
           if (box.y + box.height < 0 || box.y > viewport.height) continue;
           // An item inside a horizontal scroller (a category chip strip, a carousel) that has been scrolled
           // out of its visible window is reached by swiping, not tapping where it is drawn — the layout

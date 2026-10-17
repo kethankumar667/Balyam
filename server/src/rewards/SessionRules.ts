@@ -28,6 +28,7 @@ export const MIN_MATCH_DURATION_MS: MinDurationTable = {
   rps: 20 * SECOND,
   snake: 20 * SECOND,
   connect4: 30 * SECOND,
+  vamanaguntalu: 30 * SECOND,
   blockblast: 30 * SECOND,
   spacewar: 30 * SECOND,
   roadrash: 30 * SECOND,

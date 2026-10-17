@@ -15,6 +15,7 @@ const AVAILABLE_GAMES: Array<{ key: GameKind | "all"; label: string }> = [
   { key: "stargame", label: "Star Game" },
   { key: "bingo", label: "Bingo" },
   { key: "connect4", label: "Four in a Row" },
+  { key: "vamanaguntalu", label: "Vamana Guntalu" },
   { key: "namesplaceanimal", label: "Name Place Animal" },
   { key: "tambola", label: "Tambola" },
   { key: "chess", label: "Chess" },

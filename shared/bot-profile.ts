@@ -219,6 +219,14 @@ export const BOT_TAGLINES_BY_GAME: Record<GameKind, readonly string[]> = {
     "Patient columns, sudden wins",
     "Plays the middle column first",
   ],
+  vamanaguntalu: [
+    "Counts the seeds before sowing",
+    "Always eyeing the long relay",
+    "Leaves one empty pit as a trap",
+    "Sows slow, captures big",
+    "Never skips the last pit",
+    "Learned it from Ammamma",
+  ],
 };
 
 /** Cities the bots call home, mixed so a table does not feel like one street. */

@@ -121,6 +121,7 @@ export function registerSocketHandlers(
         payload.spaceWarOptions,
         payload.ticTacToeOptions,
         payload.connect4Options,
+        payload.vamanaOptions,
         payload.avatar,
         hostKind,
         identityId,

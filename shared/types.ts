@@ -1,6 +1,6 @@
 import type { BotProfile } from "./bot-profile.js";
 
-export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4";
+export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4" | "vamanaguntalu";
 
 /**
  * What a player is: somebody with an account, or somebody who just started
@@ -1708,6 +1708,136 @@ export interface Connect4DropMove {
 
 export type Connect4Move = Connect4DropMove;
 
+// ---- VAMANA GUNTALU ----
+
+/**
+ * Vamana Guntalu is the Telugu seed-sowing (mancala) game: two rows of seven pits, five seeds in
+ * each. Geometry and the seed count are fixed constants, deliberately NOT options — an option is
+ * client-controlled input, and a different board is a different game.
+ *
+ * Pits are numbered 0..13 in the direction seeds travel (counter-clockwise). The seat that moves
+ * first owns pits 0..6, the second seat owns 7..13.
+ */
+export const VAMANA_PITS_PER_SIDE = 7;
+export const VAMANA_PIT_COUNT = VAMANA_PITS_PER_SIDE * 2;
+export const VAMANA_SEEDS_PER_PIT = 5;
+export const VAMANA_TOTAL_SEEDS = VAMANA_PIT_COUNT * VAMANA_SEEDS_PER_PIT;
+
+/**
+ * A single turn lifts a pit, sows it, and keeps going while the pit after the last seed is
+ * occupied. This caps how many pits one turn may lift, so a pathological position can never spin the
+ * server forever. When the cap is hit the turn simply ends with no capture (`truncated`).
+ */
+export const VAMANA_MAX_LIFTS_PER_TURN = 200;
+
+export const VAMANA_BOT_DIFFICULTIES = ["easy", "medium", "pro"] as const;
+export type VamanaBotDifficulty = (typeof VAMANA_BOT_DIFFICULTIES)[number];
+
+export interface VamanaOptions {
+  /** Seconds per turn. There is deliberately no "off": an untimed paid match could be stalled forever. */
+  turnTimerSeconds: number;
+  /** Only used by a bot seat. */
+  botDifficulty: VamanaBotDifficulty;
+}
+
+export const DEFAULT_VAMANA_OPTIONS: VamanaOptions = {
+  turnTimerSeconds: 25,
+  botDifficulty: "medium",
+};
+
+/** Same 5 s floor every other timed game applies. */
+export const VAMANA_MIN_TURN_SECONDS = 5;
+/** The real reason for a cap is the 32-bit `setTimeout` limit (see TICTACTOE_MAX_TURN_SECONDS). */
+export const VAMANA_MAX_TURN_SECONDS = 120;
+
+/**
+ * A win is scored by the seeds the winner finished with. More than half of the 70 seeds wins, so a
+ * genuine win is always 36..70; the bounds are published so the leaderboard's plausibility check can
+ * reject anything else.
+ */
+export const VAMANA_SCORE_MIN = Math.floor(VAMANA_TOTAL_SEEDS / 2) + 1;
+export const VAMANA_SCORE_MAX = VAMANA_TOTAL_SEEDS;
+
+/**
+ * The room-create payload is client-controlled, so options are never trusted.
+ *
+ *   - timer not a finite number, or <= 0  -> default (there is no untimed mode)
+ *   - any other timer                     -> whole seconds, clamped to [min, max]
+ *   - difficulty outside the closed set   -> default (matching is exact and case-sensitive)
+ *   - every other key                     -> dropped
+ */
+export function sanitizeVamanaOptions(input: unknown): VamanaOptions {
+  const raw = input !== null && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
+
+  const t = raw.turnTimerSeconds;
+  const turnTimerSeconds =
+    typeof t === "number" && Number.isFinite(t) && t > 0
+      ? Math.min(VAMANA_MAX_TURN_SECONDS, Math.max(VAMANA_MIN_TURN_SECONDS, Math.round(t)))
+      : DEFAULT_VAMANA_OPTIONS.turnTimerSeconds;
+
+  const botDifficulty =
+    VAMANA_BOT_DIFFICULTIES.find((level) => level === raw.botDifficulty) ?? DEFAULT_VAMANA_OPTIONS.botDifficulty;
+
+  return { turnTimerSeconds, botDifficulty };
+}
+
+/** `seeds` (one side ran out and the board was settled), `draw` (equal totals) or `forfeit` (opponent left). */
+export type VamanaEndReason = "seeds" | "draw" | "forfeit";
+
+/** One pit lifted during a turn, with how many seeds it held. Replaying these in order reproduces the turn. */
+export interface VamanaLift {
+  pit: number;
+  seeds: number;
+}
+
+/** What a turn captured: the pit that was emptied and how many seeds went to the mover. */
+export interface VamanaCapture {
+  pit: number;
+  seeds: number;
+}
+
+/**
+ * Everything the client needs to animate the last turn WITHOUT deciding anything: the lifts in
+ * order (each one sows counter-clockwise from the pit after it) and the capture, all computed on
+ * the server.
+ */
+export interface VamanaLastMove {
+  playerId: string;
+  lifts: VamanaLift[];
+  capture: VamanaCapture | null;
+  /** True when the turn hit VAMANA_MAX_LIFTS_PER_TURN and was ended without a capture. */
+  truncated: boolean;
+}
+
+export interface VamanaPublicState {
+  kind: "vamanaguntalu";
+  phase: "playing" | "finished";
+  options: VamanaOptions;
+  playerOrder: string[]; // [first mover (pits 0..6), second mover (pits 7..13)]
+  turnPlayerId: string;
+  /** Seeds in each of the 14 pits. There is no hidden information in this game. */
+  pits: number[];
+  /** Seeds each player has captured. After the game ends this includes the seeds left on their own row. */
+  captured: Record<string, number>;
+  /** Seeds each player collected from their own row when the game ended (all zero while playing). */
+  swept: Record<string, number>;
+  /** Winner's player id; null while playing and on a draw. */
+  winnerId: string | null;
+  isDraw: boolean;
+  endReason: VamanaEndReason | null;
+  moveCount: number;
+  lastMove: VamanaLastMove | null;
+  turnDeadline: number | null;
+}
+
+export interface VamanaSowMove {
+  type: "sow";
+  /** Absolute pit number 0..13; must be a non-empty pit on the mover's own row. */
+  pit: number;
+}
+
+export type VamanaMove = VamanaSowMove;
+
 // ---- UNO ----
 
 export type UnoColor = "R" | "G" | "B" | "Y"; // Red, Green, Blue, Yellow
@@ -2789,6 +2919,7 @@ export interface CreateRoomPayload {
   spaceWarOptions?: Partial<SpaceWarOptions>;
   ticTacToeOptions?: Partial<TicTacToeOptions>;
   connect4Options?: Partial<Connect4Options>;
+  vamanaOptions?: Partial<VamanaOptions>;
   /**
    * What the creator claims to be. Only an explicit `"guest"` seals the room;
    * absent leaves it open, so a caller that has not been taught this field

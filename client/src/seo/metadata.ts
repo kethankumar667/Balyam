@@ -1304,6 +1304,17 @@ export const GAME_SOCIAL_METADATA: Record<string, GameSocialShareData> = {
     imageType: "image/jpeg",
     imageAlt: "Four in a Row Vertical Disc Grid",
   },
+  vamanaguntalu: {
+    game: "vamanaguntalu",
+    name: "Vamana Guntalu",
+    shareTitle: "Vamana Guntalu | The Telugu Seed-Sowing Classic — BHALYAM",
+    shareDescription: "Sow seeds round the pits, keep the relay going, and capture the pit after an empty one. A two-player game you can play with friends.",
+    imageUrl: `${BASE_URL}/og/vamanaguntalu.jpg`,
+    imageWidth: "800",
+    imageHeight: "533",
+    imageType: "image/jpeg",
+    imageAlt: "Vamana Guntalu board with two rows of seven pits holding seeds",
+  },
   stargame: {
     game: "stargame",
     name: "Star Game",

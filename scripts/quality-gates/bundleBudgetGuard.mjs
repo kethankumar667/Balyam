@@ -42,6 +42,7 @@ const BUNDLE_BUDGETS = {
   "NokiaCricketPage-*.js": 60,
   "DotsBoxesBoard-*.js": 50,
   "Connect4Board-*.js": 70,
+  "VamanaBoard-*.js": 60,
   "BrickRacerPage-*.js": 50,
   "NokiaSnakePage-*.js": 50,
   "BrickBreakoutPage-*.js": 50,

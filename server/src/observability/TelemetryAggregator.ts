@@ -147,6 +147,7 @@ export class TelemetryAggregator {
       "blockblast",
       "tictactoe",
       "connect4",
+      "vamanaguntalu",
     ];
 
     return games.map((game) => {

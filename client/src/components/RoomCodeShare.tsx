@@ -50,6 +50,7 @@ export default function RoomCodeShare({
     stargame: "Star Game",
     bingo: "Bingo",
     connect4: "Four in a Row",
+    vamanaguntalu: "Vamana Guntalu",
     namesplaceanimal: "Name Place Animal Thing",
     tambola: "Tambola (Housie)",
     snake: "Snake",

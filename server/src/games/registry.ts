@@ -18,6 +18,7 @@ import { BlockBlastEngine } from "./blockblast/BlockBlastEngine.js";
 import { SpaceWarEngine } from "./spacewar/SpaceWarEngine.js";
 import { TicTacToeEngine } from "./tictactoe/TicTacToeEngine.js";
 import { Connect4Engine } from "./connect4/Connect4Engine.js";
+import { VamanaEngine } from "./vamanaguntalu/VamanaEngine.js";
 
 export function createEngine(kind: GameKind): GameEngine {
   switch (kind) {
@@ -57,6 +58,8 @@ export function createEngine(kind: GameKind): GameEngine {
       return new TicTacToeEngine();
     case "connect4":
       return new Connect4Engine();
+    case "vamanaguntalu":
+      return new VamanaEngine();
     default:
       throw new Error(`Game not implemented yet: ${kind}`);
   }
