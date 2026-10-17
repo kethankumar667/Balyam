@@ -5,15 +5,27 @@
  * mute; the switch below is this game's own, separate toggle.
  */
 import { AudioManager } from "../../services/AudioManager";
-import { AmbientEngine } from "./brainvitaAmbient";
-import { jumpSound, pickSound, playStrikes, refuseSound, stuckSound, winSound, type Strike } from "./brainvitaFoley";
+import { AmbientEngine, type AmbientFlavour } from "./brainvitaAmbient";
+import { VOICES, applyVoice, jumpSound, pickSound, playStrikes, refuseSound, stuckSound, winSound, type Strike } from "./brainvitaFoley";
+import type { VoiceId } from "./brainvitaSkinKit";
 
 export const BRAINVITA_MUTE_STORAGE_KEY = "bhalyam.brainvita.muted";
+
+/** How each voice colours the drone under it. */
+const AMBIENT_FLAVOURS: Readonly<Record<VoiceId, AmbientFlavour>> = {
+  wood: { scale: 1, wave: "triangle" },
+  synth: { scale: 1.5, wave: "triangle" },
+  stone: { scale: 0.75, wave: "sine" },
+  water: { scale: 0.9, wave: "sine" },
+  toy: { scale: 1.5, wave: "triangle" },
+  bell: { scale: 1.25, wave: "sine" },
+};
 
 class BrainVitaAudioEngine {
   private ctx: AudioContext | null = null;
   private muted = false;
   private ambient: AmbientEngine | null = null;
+  private voice: VoiceId = "wood";
 
   constructor() {
     try {
@@ -30,6 +42,14 @@ class BrainVitaAudioEngine {
     }
   }
 
+  /** Chooses what the sounds are made of (see `VOICES`). Changing it lets the drone go, so it returns in the new voice. */
+  setVoice(voice: VoiceId): void {
+    if (voice === this.voice) return;
+    this.voice = voice;
+    this.ambient?.stop();
+    this.ambient = null;
+  }
+
   /** Starts the drone if it is not sounding, and sets it for the marbles now on the board. */
   setAmbient(marblesLeft: number): void {
     const ctx = this.getContext();
@@ -37,7 +57,7 @@ class BrainVitaAudioEngine {
       this.ambient?.stop();
       return;
     }
-    if (!this.ambient) this.ambient = new AmbientEngine(ctx);
+    if (!this.ambient) this.ambient = new AmbientEngine(ctx, AMBIENT_FLAVOURS[this.voice]);
     this.ambient.start(marblesLeft);
   }
 
@@ -82,7 +102,7 @@ class BrainVitaAudioEngine {
     const ctx = this.getContext();
     if (!ctx) return;
     try {
-      playStrikes(ctx, strikes);
+      playStrikes(ctx, applyVoice(strikes, VOICES[this.voice]));
     } catch {
       // See above.
     }

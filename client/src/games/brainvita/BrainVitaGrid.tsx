@@ -1,15 +1,15 @@
 import { memo, useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { Palette } from "lucide-react";
 import { useFitBox, type FitSize } from "../vamanaguntalu/useFitBox";
-import { HoloProps, HoloSurface } from "./BrainVitaHolo";
 import { BrainVitaJumpLayer } from "./BrainVitaJumpLayer";
-import { BrainVitaProps } from "./BrainVitaProps";
+import { MarbleBody } from "./BrainVitaMarble";
 import { useSkinTokens } from "./BrainVitaSkinContext";
 import { CENTRE_HOLE, cellOf, holeAt, type Board, type Move } from "./brainvitaRules";
 import { holeCentre } from "./brainvitaDrag";
-import { ARM_START, GRID_UNITS, MAX_FRAME, SPRIG_MIN_FRAME, boardFit, crossOutlinePath, grooveInset } from "./brainvitaTheme";
+import { GRID_UNITS, MAX_FRAME, boardFit } from "./brainvitaTheme";
 import { useMarbleDrag } from "./useMarbleDrag";
 import type { JumpFlight } from "./useJumpFlight";
+import { BoardArt, PropsArt } from "./worlds";
 
 const HINT_BLUE = "#7DD3FC";
 const CELL_PERCENT = 100 / GRID_UNITS;
@@ -49,74 +49,6 @@ export function describeHole(
   return parts.join(", ");
 }
 
-/** A carved sprig of five leaves on a curved stem, drawn about its own centre, one hole wide and a little over. */
-function Sprig({ transform, dark, light }: { transform: string; dark: string; light: string }) {
-  return (
-    <g transform={transform}>
-      {[0.8, 0].map((layer) => (
-        <g key={layer} transform={`translate(${layer * 0.012} ${layer * 0.012})`} fill={layer ? light : dark} stroke="none">
-          <path d="M-0.62 0.06 C -0.3 -0.1 0.22 -0.1 0.62 0.05 L 0.62 0.075 C 0.22 -0.07 -0.3 -0.07 -0.62 0.09 Z" />
-          {[-0.42, -0.16, 0.1, 0.34].map((x, index) => (
-            <g key={x} transform={`translate(${x} ${0.02 - index * 0.004})`}>
-              <path d="M0 0 C 0.02 -0.12 0.14 -0.2 0.26 -0.19 C 0.24 -0.07 0.14 0.01 0 0 Z" />
-              <path d="M0.02 0.04 C 0.04 0.14 0.14 0.2 0.24 0.2 C 0.22 0.1 0.14 0.03 0.02 0.04 Z" />
-            </g>
-          ))}
-          <path d="M0.58 0.05 C 0.66 -0.02 0.74 -0.04 0.8 -0.02 C 0.74 0.03 0.66 0.06 0.58 0.05 Z" />
-        </g>
-      ))}
-    </g>
-  );
-}
-
-/** The carved wooden cross: shadow edge, honey top with grain, a groove near the rim, and carved sprigs. */
-export function WoodSurface({ frame }: { frame: number }) {
-  const palette = useSkinTokens().board as NonNullable<ReturnType<typeof useSkinTokens>["board"]>;
-  const span = GRID_UNITS + 2 * frame;
-  const outer = crossOutlinePath(frame);
-  const groove = crossOutlinePath(frame, grooveInset(frame));
-  const sprigScale = Math.min(1, frame / MAX_FRAME);
-  const stripCentre = ARM_START - frame / 2;
-  const shoulderCentre = (ARM_START - frame) / 2 + 0.05;
-  const mirror = GRID_UNITS - shoulderCentre;
-  const mirrorY = GRID_UNITS - stripCentre;
-  return (
-    <svg
-      aria-hidden
-      viewBox={`${-frame} ${-frame} ${span} ${span}`}
-      className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-      style={{ filter: "drop-shadow(0 14px 16px rgba(0,0,0,0.5))" }}
-    >
-      <defs>
-        <linearGradient id="bv-wood" x1="0.1" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor={palette.stops[0]} />
-          <stop offset="48%" stopColor={palette.stops[1]} />
-          <stop offset="100%" stopColor={palette.stops[2]} />
-        </linearGradient>
-        <pattern id="bv-grain" patternUnits="userSpaceOnUse" width="4" height="0.5" patternTransform="rotate(-2)">
-          <path d="M0 0.08 C 1 0.02 2 0.14 4 0.07" stroke={palette.grainDark} strokeWidth="0.018" fill="none" />
-          <path d="M0 0.27 C 1.2 0.33 2.4 0.2 4 0.3" stroke={palette.grainDark} strokeWidth="0.014" fill="none" opacity="0.8" />
-          <path d="M0 0.43 C 1 0.4 3 0.47 4 0.42" stroke={palette.grainLight} strokeWidth="0.016" fill="none" />
-        </pattern>
-      </defs>
-      <path d={outer} fill={palette.side} transform="translate(0 0.17)" />
-      <path d={outer} fill="url(#bv-wood)" />
-      <path d={outer} fill="url(#bv-grain)" />
-      <path d={outer} fill="none" stroke={palette.edge} strokeWidth="0.035" />
-      <path d={groove} fill="none" stroke={palette.grooveDark} strokeWidth="0.04" />
-      <path d={groove} fill="none" stroke={palette.grooveLight} strokeWidth="0.026" transform="translate(0.018 0.026)" />
-      {frame >= SPRIG_MIN_FRAME && (
-        <>
-          <Sprig transform={`translate(${shoulderCentre} ${stripCentre}) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
-          <Sprig transform={`translate(${mirror} ${stripCentre}) scale(-1 1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
-          <Sprig transform={`translate(${shoulderCentre} ${mirrorY}) scale(1 -1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
-          <Sprig transform={`translate(${mirror} ${mirrorY}) scale(-1 -1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
-        </>
-      )}
-    </svg>
-  );
-}
-
 interface HoleButtonProps {
   hole: number;
   hasMarble: boolean;
@@ -141,7 +73,6 @@ const HoleButton = memo(function HoleButton(props: HoleButtonProps) {
   const { hole, hasMarble, isSelected, isTarget, isHintFrom, isHintTo, isActionable, isTabStop, isHidden, isDragSource, isSnapTarget, onTap, onFocusHole, register } = props;
   const skin = useSkinTokens();
   const label = describeHole(hole, { hasMarble, isSelected, isTarget, isHintFrom, isHintTo });
-  const ring = isSelected ? `0 0 0 3px ${skin.accent}, ${skin.marbleSelectedShadow}` : isHintFrom ? `0 0 0 3px ${HINT_BLUE}, ${skin.marbleShadow}` : skin.marbleShadow;
 
   return (
     <button
@@ -169,18 +100,22 @@ const HoleButton = memo(function HoleButton(props: HoleButtonProps) {
       {hasMarble && (
         <span
           aria-hidden
-          className="absolute inset-[9%] rounded-full motion-safe:transition-transform motion-safe:duration-150"
+          className="absolute inset-[9%] motion-safe:transition-transform motion-safe:duration-150"
           style={{
-            background: skin.marbleFill,
             opacity: isHidden ? 0 : isDragSource ? 0.22 : 1,
             transform: isSelected && !isDragSource ? "translateY(-8%) scale(1.06)" : undefined,
-            boxShadow: ring,
-            outline: isHintFrom ? `2px dashed ${HINT_BLUE}` : undefined,
-            outlineOffset: isHintFrom ? "3px" : undefined,
           }}
         >
-          <span aria-hidden className="absolute left-[19%] top-[12%] h-[24%] w-[34%] -rotate-[28deg] rounded-full bg-white/85 blur-[1.2px]" />
-          <span aria-hidden className="absolute bottom-[10%] right-[16%] h-[10%] w-[20%] rotate-[-28deg] rounded-full bg-sky-100/40 blur-[1.5px]" />
+          <MarbleBody isLifted={isSelected && !isDragSource} seed={hole} />
+          {(isSelected || isHintFrom) && (
+            <span
+              className="absolute -inset-[3px] rounded-full"
+              style={{
+                border: `3px ${isSelected ? "solid" : "dashed"} ${isSelected ? skin.accent : HINT_BLUE}`,
+                boxShadow: isSelected ? `0 0 14px ${skin.accent}99` : undefined,
+              }}
+            />
+          )}
         </span>
       )}
     </button>
@@ -205,7 +140,7 @@ export interface BrainVitaGridProps {
   /** The jump just made: the marble in the air, and the captured one dissolving. Both null when motion is off. */
   flight?: JumpFlight | null;
   burst?: JumpFlight | null;
-  /** When given, a round button sits in the board's empty bottom-right corner to open the look-and-feel dialog. */
+  /** When given, a round button sits in the board's empty bottom-right corner to open the world picker. */
   onOpenLook?: () => void;
   /** Marks that button when there is a new theme to try. */
   hasLookBadge?: boolean;
@@ -283,7 +218,6 @@ export function BrainVitaGrid({
 
   const insetPercent = (frame / (GRID_UNITS + 2 * frame)) * 100;
   const held = drag ? (drag.snap !== null ? holeCentre(drag.snap) : drag.point) : null;
-  const isHolo = skin.surface === "holo";
 
   return (
     <div
@@ -296,9 +230,11 @@ export function BrainVitaGrid({
       }}
     >
       {hasProps && (
-        <div className="absolute inset-0">{isHolo ? <HoloProps /> : <BrainVitaProps />}</div>
+        <div className="absolute inset-0">
+          <PropsArt />
+        </div>
       )}
-      {isHolo ? <HoloSurface frame={frame} /> : <WoodSurface frame={frame} />}
+      <BoardArt frame={frame} />
       <div
         ref={gridRef}
         className="absolute grid"
@@ -316,7 +252,7 @@ export function BrainVitaGrid({
           <button
             type="button"
             onClick={onOpenLook}
-            aria-label={hasLookBadge ? "Change board theme, a new theme is ready" : "Change board theme"}
+            aria-label={hasLookBadge ? "Choose a world, a new world is ready" : "Choose a world"}
             className="absolute z-[9] flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-amber-50 shadow-[0_4px_10px_rgba(0,0,0,0.45)] transition-[filter] hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128] md:h-12 md:w-12"
             style={{ left: "85.7%", top: "85.7%", transform: "translate(-50%, -50%)", background: skin.chipBackground, border: skin.chipBorder }}
           >
@@ -336,7 +272,10 @@ export function BrainVitaGrid({
               transition: drag?.snap !== null ? "transform 90ms ease-out" : "none",
             }}
           >
-            <span className="absolute inset-[9%] rounded-full" style={{ background: skin.marbleFill, boxShadow: `0 0 0 3px ${skin.accent}, ${skin.marbleSelectedShadow}` }} />
+            <span className="absolute inset-[9%]">
+              <MarbleBody isLifted />
+              <span className="absolute -inset-[3px] rounded-full" style={{ border: `3px solid ${skin.accent}`, boxShadow: `0 0 14px ${skin.accent}99` }} />
+            </span>
           </span>
         )}
       </div>

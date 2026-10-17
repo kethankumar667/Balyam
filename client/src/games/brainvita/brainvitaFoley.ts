@@ -1,4 +1,5 @@
 import { JUMP_DURATION_MS } from "./brainvitaJump";
+import type { VoiceId } from "./brainvitaSkinKit";
 
 /**
  * Marble sounds, built the way the real ones are made. A struck object does not play a note: it rings with
@@ -18,6 +19,10 @@ export interface Overtone {
   decay: number;
   /** Relative loudness within the strike. */
   gain: number;
+  /** The waveform; a sine unless a world's voice says otherwise. */
+  wave?: OscillatorType;
+  /** When set, the pitch glides to this frequency over the overtone's life: a bubble's rise, a toy's boing. */
+  glideTo?: number;
 }
 
 export interface Contact {
@@ -150,6 +155,57 @@ export function stuckSound(random: Random = Math.random): Strike[] {
   return [knock(0, 1), knock(0.24, 0.9)];
 }
 
+/**
+ * What the marbles are knocking against, which is the main thing that tells one world's sounds from another's.
+ * A voice does not change when anything happens, only how it sounds: a river stone is lower and drier than
+ * glass on wood, a bubble rises as it speaks, a toy boings, a brass bell goes on ringing.
+ */
+export interface Voice {
+  /** Multiplies every frequency. */
+  pitch: number;
+  /** Multiplies how long every overtone rings. */
+  decay: number;
+  /** Multiplies the loudness of the noise of contact: a stone clacks, a pane barely touches. */
+  noise: number;
+  wave: OscillatorType;
+  /** The ratio an overtone's pitch glides by over its life, or null for none. */
+  glide: number | null;
+  /** Adds the inharmonic partials of struck metal above each low overtone. */
+  hasBellPartials: boolean;
+}
+
+export const VOICES: Readonly<Record<VoiceId, Voice>> = {
+  wood: { pitch: 1, decay: 1, noise: 1, wave: "sine", glide: null, hasBellPartials: false },
+  synth: { pitch: 1.6, decay: 1.7, noise: 0.15, wave: "triangle", glide: null, hasBellPartials: false },
+  stone: { pitch: 0.62, decay: 0.55, noise: 1.8, wave: "sine", glide: null, hasBellPartials: false },
+  water: { pitch: 0.55, decay: 1.25, noise: 0.45, wave: "sine", glide: 1.9, hasBellPartials: false },
+  toy: { pitch: 1.35, decay: 0.7, noise: 0.6, wave: "triangle", glide: 1.5, hasBellPartials: false },
+  bell: { pitch: 1.05, decay: 3, noise: 0.35, wave: "sine", glide: null, hasBellPartials: true },
+};
+
+/** No overtone rings longer than this, however long a voice would like to. */
+const MAX_RING_SECONDS = 1.2;
+/** Struck metal's partials sit at these multiples of the fundamental, not at the whole numbers a string has. */
+const BELL_PARTIALS = [{ ratio: 2.76, decay: 0.6, gain: 0.45 }, { ratio: 5.4, decay: 0.4, gain: 0.25 }] as const;
+/** Only the low overtones are given partials; a high tick already sits above where they would be. */
+const BELL_PARTIAL_CEILING_HZ = 1700;
+
+/** The same strikes, voiced. Pure: the recipes above stay what a glass marble on wood does. */
+export function applyVoice(strikes: readonly Strike[], voice: Voice): Strike[] {
+  return strikes.map((strike) => ({
+    ...strike,
+    overtones: strike.overtones.flatMap((overtone) => {
+      const frequency = overtone.frequency * voice.pitch;
+      const decay = Math.min(MAX_RING_SECONDS, overtone.decay * voice.decay);
+      const main: Overtone = { frequency, decay, gain: overtone.gain, wave: voice.wave, ...(voice.glide ? { glideTo: frequency * voice.glide } : {}) };
+      if (!voice.hasBellPartials || overtone.frequency > BELL_PARTIAL_CEILING_HZ) return [main];
+      const partials = BELL_PARTIALS.map((partial) => ({ frequency: frequency * partial.ratio, decay: Math.min(MAX_RING_SECONDS, decay * partial.decay), gain: overtone.gain * partial.gain, wave: voice.wave }));
+      return [main, ...partials];
+    }),
+    contact: strike.contact ? { ...strike.contact, frequency: strike.contact.frequency * voice.pitch, gain: strike.contact.gain * voice.noise } : null,
+  }));
+}
+
 const noiseBuffers = new WeakMap<object, AudioBuffer>();
 
 /** One second of white noise, made once per audio context and reused by every contact. */
@@ -183,8 +239,9 @@ export function playStrikes(ctx: AudioContext, strikes: readonly Strike[], volum
       gain.gain.exponentialRampToValueAtTime(0.0001, when + overtone.decay * 3);
       gain.connect(out);
       const oscillator = ctx.createOscillator();
-      oscillator.type = "sine";
+      oscillator.type = overtone.wave ?? "sine";
       oscillator.frequency.setValueAtTime(overtone.frequency, when);
+      if (overtone.glideTo) oscillator.frequency.exponentialRampToValueAtTime(overtone.glideTo, when + overtone.decay * 3);
       oscillator.connect(gain);
       oscillator.start(when);
       oscillator.stop(when + overtone.decay * 3 + 0.02);

@@ -1,38 +1,31 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Crown, Footprints, Timer } from "lucide-react";
+import { Blocks, Crown, Footprints, Leaf, Orbit, Shell, Timer } from "lucide-react";
+import { MarbleBody } from "./BrainVitaMarble";
 import { useSkinTokens } from "./BrainVitaSkinContext";
-import { rgba } from "./brainvitaSkins";
+import { rgba, type SignIcon } from "./brainvitaSkins";
+import { SceneArt } from "./worlds";
 
 /** The pieces round the board: the table, the hanging sign, the stats plank, the action pills and the header buttons. */
-
-const TABLE_PLANKS =
-  "repeating-linear-gradient(90deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 188px, rgba(0,0,0,0.3) 188px, rgba(0,0,0,0.3) 190px), " +
-  "repeating-linear-gradient(90deg, rgba(255,214,150,0.04) 0px, rgba(255,214,150,0.04) 1px, transparent 1px, transparent 6px)";
-/** The holo table's floor: a faint lattice that fades towards the top, so the board seems to float above it. */
-const HOLO_FLOOR =
-  "linear-gradient(rgba(34,211,238,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.07) 1px, transparent 1px)";
-const HOLO_FLOOR_MASK = "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 55%, #000 100%)";
 
 /** The tabletop. Pure decoration: hidden from assistive tech and never in the way of a tap. */
 export function BrainVitaScene() {
   const skin = useSkinTokens();
-  const isHolo = skin.surface === "holo";
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden" style={{ background: skin.tableBackground }}>
-      {isHolo ? (
-        <div className="absolute inset-0" style={{ backgroundImage: HOLO_FLOOR, backgroundSize: "56px 56px", WebkitMaskImage: HOLO_FLOOR_MASK, maskImage: HOLO_FLOOR_MASK }} />
-      ) : (
-        <div className="absolute inset-0" style={{ backgroundImage: TABLE_PLANKS }} />
-      )}
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0,0,0,0.55) 100%)" }} />
+      <SceneArt />
     </div>
   );
 }
 
 function Marble({ className }: { className: string }) {
-  const skin = useSkinTokens();
-  return <span aria-hidden className={`absolute rounded-full shadow-[0_2px_3px_rgba(0,0,0,0.5)] ${className}`} style={{ background: skin.marbleFill }} />;
+  return (
+    <span aria-hidden className={`absolute ${className}`}>
+      <MarbleBody />
+    </span>
+  );
 }
+
+const SIGN_ICONS: Readonly<Record<SignIcon, typeof Crown>> = { crown: Crown, orbit: Orbit, leaf: Leaf, shell: Shell, blocks: Blocks };
 
 function Sprig({ className }: { className: string }) {
   return (
@@ -53,12 +46,13 @@ export interface BrainVitaSignProps {
 export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainVitaSignProps) {
   const skin = useSkinTokens();
   const isWood = skin.surface === "wood";
+  const Icon = SIGN_ICONS[skin.signIcon];
   return (
     <div className={`relative flex flex-col items-center ${className}`}>
-      {!isCompact && <Crown aria-hidden className="absolute -top-4 left-1/2 h-7 w-7 -translate-x-1/2 md:-top-5 md:h-9 md:w-9" style={{ color: skin.accent }} fill="currentColor" />}
+      {!isCompact && <Icon aria-hidden className="absolute -top-4 left-1/2 h-7 w-7 -translate-x-1/2 md:-top-5 md:h-9 md:w-9" style={{ color: skin.accent }} fill={skin.signIcon === "crown" ? "currentColor" : "none"} />}
       <div
-        className={`relative rounded-xl text-center ${isCompact ? "px-3 py-0.5" : "px-5 py-1.5 min-[360px]:px-7 md:px-10 md:py-2"}`}
-        style={{ background: skin.signBackground, border: skin.signBorder, boxShadow: skin.signShadow }}
+        className={`relative text-center ${isCompact ? "px-3 py-0.5" : "px-5 py-1.5 min-[360px]:px-7 md:px-10 md:py-2"}`}
+        style={{ background: skin.signBackground, border: skin.signBorder, boxShadow: skin.signShadow, borderRadius: skin.signRadius }}
       >
         {!isCompact && (
           <>
@@ -73,15 +67,27 @@ export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainV
           </>
         )}
         <h1
-          className="font-display font-black uppercase leading-none tracking-wide"
+          aria-label="Brain Vita"
+          className="uppercase leading-none"
           style={{
             color: skin.titleColor,
-            fontSize: isCompact ? "1rem" : "clamp(1.25rem, 6.2vw, 2.2rem)",
+            fontFamily: skin.titleFont,
+            fontWeight: skin.titleWeight,
+            letterSpacing: skin.titleSpacing,
+            fontSize: isCompact ? "1rem" : skin.titleSize,
             textShadow: skin.titleShadow,
             WebkitTextStroke: skin.titleStroke,
           }}
         >
-          Brain Vita
+          {skin.titleLetters ? (
+            Array.from("Brain Vita").map((letter, index) => (
+              <span key={index} aria-hidden style={{ color: letter === " " ? undefined : skin.titleLetters?.[index % skin.titleLetters.length] }}>
+                {letter === " " ? " " : letter}
+              </span>
+            ))
+          ) : (
+            "Brain Vita"
+          )}
         </h1>
       </div>
     </div>

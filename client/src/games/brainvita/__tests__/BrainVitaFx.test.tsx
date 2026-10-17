@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
@@ -6,6 +6,7 @@ const audio = vi.hoisted(() => ({
   setAmbient: vi.fn(),
   resolveAmbient: vi.fn(),
   stopAmbient: vi.fn(),
+  setVoice: vi.fn(),
   playPick: vi.fn(),
   playJump: vi.fn(),
   playRefuse: vi.fn(),
@@ -21,14 +22,15 @@ vi.mock("../../../store/scorecardStore", () => ({ recordSoloScore: (...args: unk
 
 import { BrainVitaGrid } from "../BrainVitaGrid";
 import { BrainVitaJumpLayer } from "../BrainVitaJumpLayer";
-import { BrainVitaThemeDialog } from "../BrainVitaThemeDialog";
+import { MarbleBody } from "../BrainVitaMarble";
+import { BrainVitaThemeDialog, WORLD_BLURBS } from "../BrainVitaThemeDialog";
 import BrainVitaResultModal from "../BrainVitaResultModal";
 import { BrainVitaSkinContext } from "../BrainVitaSkinContext";
 import { useBrainVita, BRAINVITA_TUTORIAL_KEY } from "../useBrainVita";
 import { useJumpFlight } from "../useJumpFlight";
 import { CENTRE_HOLE, applyMove, createBoard, holeAt, legalMoves, marbleCount, solveFrom, type Move } from "../brainvitaRules";
 import { DISSOLVE_DURATION_MS, JUMP_DURATION_MS } from "../brainvitaJump";
-import { ORDER_STORAGE_KEY, SKINS, SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, parseOrder, requirementText, skinsEarnedBy, type EarnedSkinId } from "../brainvitaSkins";
+import { ORDER_STORAGE_KEY, SKINS, SKIN_IDS, SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, parseOrder, requirementText, skinsEarnedBy, type EarnedSkinId, type SkinId } from "../brainvitaSkins";
 import type { GameResult } from "../brainvitaGame";
 
 const hole = (row: number, col: number): number => holeAt(row, col) as number;
@@ -92,7 +94,7 @@ describe("useJumpFlight", () => {
 });
 
 /** A player's ladder, fixed so the tests know which theme sits on which rung. */
-const LADDER: readonly EarnedSkinId[] = ["holo", "aurora", "ebony", "jade", "copper"];
+const LADDER: readonly EarnedSkinId[] = ["holo", "zen", "reef", "toy", "palace"];
 
 /** A full game of random legal jumps played until nothing can move, found by trying seeds until it leaves the wanted number of marbles. */
 function strandedLine(wanted: number): Move[] {
@@ -215,18 +217,18 @@ describe("useBrainVita: themes and the drone", () => {
     expect(result.current.justUnlocked).toEqual([]);
     act(() => result.current.restart());
     play(result, strandedLine(4));
-    expect(result.current.justUnlocked).toEqual(["aurora"]);
-    expect(result.current.unlockedSkins).toEqual(["wood", "holo", "aurora"]);
+    expect(result.current.justUnlocked).toEqual(["zen"]);
+    expect(result.current.unlockedSkins).toEqual(["wood", "holo", "zen"]);
   });
 
   it("will not select a theme that has not been earned, and does once it has", () => {
     const { result } = renderHook(() => useBrainVita());
-    act(() => result.current.selectSkin("jade"));
+    act(() => result.current.selectSkin("toy"));
     expect(result.current.skin).toBe("wood");
     play(result, solution());
-    act(() => result.current.selectSkin("jade"));
-    expect(result.current.skin).toBe("jade");
-    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("jade");
+    act(() => result.current.selectSkin("toy"));
+    expect(result.current.skin).toBe("toy");
+    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("toy");
   });
 
   it("clears the new-theme marker when a new game starts", () => {
@@ -237,10 +239,10 @@ describe("useBrainVita: themes and the drone", () => {
   });
 
   it("restores an earned, chosen theme on the next visit", () => {
-    localStorage.setItem(UNLOCKED_STORAGE_KEY, "wood,copper");
-    localStorage.setItem(SKIN_STORAGE_KEY, "copper");
+    localStorage.setItem(UNLOCKED_STORAGE_KEY, "wood,palace");
+    localStorage.setItem(SKIN_STORAGE_KEY, "palace");
     const { result } = renderHook(() => useBrainVita());
-    expect(result.current.skin).toBe("copper");
+    expect(result.current.skin).toBe("palace");
   });
 
   it("starts the drone on the first jump and thins it as marbles go", () => {
@@ -423,15 +425,15 @@ describe("the holo skin on the board", () => {
   const grid = (props: Partial<Parameters<typeof BrainVitaGrid>[0]> = {}) =>
     render(<BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} {...props} />);
 
-  it("draws the glass board and datapad instead of the wood and the notepad", () => {
+  it("draws the glass board and datapad instead of the wood and the notepad", async () => {
     const view = render(
       <BrainVitaSkinContext.Provider value={SKINS.holo}>
         <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
       </BrainVitaSkinContext.Provider>,
     );
-    expect(view.container.querySelector("#bh-glass")).not.toBeNull();
+    await waitFor(() => expect(view.container.querySelector("#bh-glass")).not.toBeNull());
     expect(view.container.querySelector("#bv-wood")).toBeNull();
-    expect(view.container.textContent).toContain("LEAVE ONE.");
+    await waitFor(() => expect(view.container.textContent).toContain("LEAVE ONE."));
     expect(screen.getAllByRole("button")).toHaveLength(33);
   });
 
@@ -444,42 +446,104 @@ describe("the holo skin on the board", () => {
   it("adds a Look button in the empty corner only when asked, as one more control", () => {
     const onOpenLook = vi.fn();
     grid({ onOpenLook });
-    fireEvent.click(screen.getByRole("button", { name: "Change board theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose a world" }));
     expect(onOpenLook).toHaveBeenCalledTimes(1);
     expect(screen.getAllByRole("button")).toHaveLength(34);
   });
 
-  it("says in words when a new theme is ready", () => {
+  it("says in words when a new world is ready", () => {
     grid({ onOpenLook: vi.fn(), hasLookBadge: true });
-    expect(screen.getByRole("button", { name: "Change board theme, a new theme is ready" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a world, a new world is ready" })).toBeInTheDocument();
   });
 
-  it("paints a solid board from the skin's own palette", () => {
+  it("paints the wooden board from the skin's own palette", () => {
     const view = render(
-      <BrainVitaSkinContext.Provider value={SKINS.ebony}>
+      <BrainVitaSkinContext.Provider value={SKINS.wood}>
         <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
       </BrainVitaSkinContext.Provider>,
     );
     const stops = [...view.container.querySelectorAll("#bv-wood stop")].map((stop) => stop.getAttribute("stop-color"));
-    expect(stops).toEqual([...(SKINS.ebony.board as NonNullable<typeof SKINS.ebony.board>).stops]);
+    expect(stops).toEqual([...(SKINS.wood.board as NonNullable<typeof SKINS.wood.board>).stops]);
   });
 
-  it("paints a glass board in the skin's own light, so Aurora is not Holo", () => {
-    const markup = (skin: typeof SKINS.holo): string => {
+  it("draws a different board in each world, not the same board in another colour", async () => {
+    const BOARD_MARK: Record<SkinId, string> = { wood: "#bv-wood", holo: "#bh-glass", zen: "#bz-slate", reef: "#br-pearl", toy: "#bt-plastic", palace: "#bp-marble" };
+    for (const id of SKIN_IDS) {
       const view = render(
-        <BrainVitaSkinContext.Provider value={skin}>
+        <BrainVitaSkinContext.Provider value={SKINS[id]}>
           <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
+        </BrainVitaSkinContext.Provider>,
+      );
+      // Every world but the wood is fetched the first time it is shown.
+      await waitFor(() => expect(view.container.querySelector(BOARD_MARK[id])).not.toBeNull());
+      for (const [other, mark] of Object.entries(BOARD_MARK)) {
+        expect(view.container.querySelector(mark) !== null, `${id} draws ${other}'s board`).toBe(other === id);
+      }
+      expect(screen.getAllByRole("button"), id).toHaveLength(33);
+      view.unmount();
+    }
+  });
+
+  it("draws each world's own props in the corners", async () => {
+    const PROP_MARK: Record<SkinId, string> = { wood: "bvp-marble", holo: "REMOVE ALL", zen: "bz-bamboo", reef: "#9b4fc9", toy: ">C<", palace: "bp-brass" };
+    for (const id of SKIN_IDS) {
+      const view = render(
+        <BrainVitaSkinContext.Provider value={SKINS[id]}>
+          <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
+        </BrainVitaSkinContext.Provider>,
+      );
+      await waitFor(() => expect(view.container.innerHTML).toContain(PROP_MARK[id]));
+      view.unmount();
+    }
+  });
+
+  it("keeps the board's holes and marbles in place while a world's drawing is still arriving", () => {
+    render(
+      <BrainVitaSkinContext.Provider value={SKINS.palace}>
+        <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
+      </BrainVitaSkinContext.Provider>,
+    );
+    expect(screen.getAllByRole("button")).toHaveLength(33);
+  });
+});
+
+describe("the marble in each world", () => {
+  const marble = (id: SkinId) => {
+    const view = render(
+      <BrainVitaSkinContext.Provider value={SKINS[id]}>
+        <div style={{ position: "relative" }}>
+          <MarbleBody />
+        </div>
+      </BrainVitaSkinContext.Provider>,
+    );
+    const html = view.container.innerHTML;
+    view.unmount();
+    return html;
+  };
+
+  it("has its own form in each world: no two worlds draw the same marble", () => {
+    const forms = SKIN_IDS.map((id) => marble(id));
+    expect(new Set(forms).size).toBe(SKIN_IDS.length);
+  });
+
+  it("cuts a gem as an octagon and a pebble off-round, where the others are round", () => {
+    expect(marble("palace")).toContain("clip-path");
+    expect(marble("zen")).toContain("border-radius: 54% 46%");
+    expect(marble("wood")).not.toContain("clip-path");
+  });
+
+  it("turns one pebble differently from the next", () => {
+    const turned = (seed: number) => {
+      const view = render(
+        <BrainVitaSkinContext.Provider value={SKINS.zen}>
+          <MarbleBody seed={seed} />
         </BrainVitaSkinContext.Provider>,
       );
       const html = view.container.innerHTML;
       view.unmount();
       return html;
     };
-    const holo = markup(SKINS.holo);
-    const aurora = markup(SKINS.aurora);
-    expect(holo).toContain(SKINS.holo.accent);
-    expect(aurora).toContain(SKINS.aurora.accent);
-    expect(aurora).not.toContain(SKINS.holo.accent);
+    expect(turned(1)).not.toEqual(turned(2));
   });
 });
 
@@ -498,47 +562,53 @@ describe("BrainVitaThemeDialog", () => {
     return props;
   };
 
-  it("names the dialog and offers the wood and all five earned themes as a radio group", () => {
+  it("names the dialog and offers the wood and all five earned worlds as a radio group", () => {
     dialog();
-    const group = screen.getByRole("radiogroup", { name: "Board theme" });
+    const group = screen.getByRole("radiogroup", { name: "World" });
     expect(within(group).getAllByRole("radio")).toHaveLength(6);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("lists the themes in this player's own ladder order, after the classic wood", () => {
-    const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+    const mine: readonly EarnedSkinId[] = ["palace", "toy", "holo", "reef", "zen"];
     dialog({ order: mine });
-    const names = within(screen.getByRole("radiogroup", { name: "Board theme" })).getAllByRole("radio").map((radio) => radio.querySelector("span.text-sm")?.textContent);
+    const names = within(screen.getByRole("radiogroup", { name: "World" })).getAllByRole("radio").map((radio) => radio.querySelector("span.text-sm")?.textContent);
     expect(names).toEqual(["Classic wood", ...mine.map((id) => SKINS[id].name)]);
   });
 
   it("tells each locked theme's rung from the player's own ladder, not a fixed one", () => {
-    const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+    const mine: readonly EarnedSkinId[] = ["palace", "toy", "holo", "reef", "zen"];
     dialog({ order: mine });
-    expect(screen.getByText(requirementText(mine, "copper"))).toBeInTheDocument();
-    expect(screen.getByText(requirementText(mine, "aurora"))).toBeInTheDocument();
+    expect(screen.getByText(requirementText(mine, "palace"))).toBeInTheDocument();
+    expect(screen.getByText(requirementText(mine, "zen"))).toBeInTheDocument();
     expect(screen.getByText("Finish a game with 3 or fewer marbles left, without a hint or undo.")).toBeInTheDocument();
   });
 
   it("will not pick a locked theme", () => {
     const props = dialog();
-    const holo = screen.getByRole("radio", { name: /Holo/ });
+    const holo = screen.getByRole("radio", { name: /Neon deck/ });
     expect(holo).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(holo);
     expect(props.onSelectSkin).not.toHaveBeenCalled();
   });
 
-  it("picks an earned theme, marks the chosen one, and says it was earned", () => {
-    const props = dialog({ unlocked: ["wood", "holo", "jade"], skin: "wood" });
+  it("picks an earned world, marks the chosen one, and stops asking for what it already has", () => {
+    const props = dialog({ unlocked: ["wood", "holo", "toy"], skin: "wood" });
     expect(screen.getByRole("radio", { name: /Classic wood/ })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getAllByText("Earned by playing")).toHaveLength(2);
-    fireEvent.click(screen.getByRole("radio", { name: /Jade/ }));
-    expect(props.onSelectSkin).toHaveBeenCalledWith("jade");
+    expect(screen.queryByText(requirementText(LADDER, "holo"))).not.toBeInTheDocument();
+    expect(screen.getByText(requirementText(LADDER, "zen"))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /Toy box/ }));
+    expect(props.onSelectSkin).toHaveBeenCalledWith("toy");
   });
 
   it("has no tilt switch any more", () => {
     dialog();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  it("says in a line what each world is, locked or not", () => {
+    dialog();
+    for (const id of SKIN_IDS) expect(screen.getByText(WORLD_BLURBS[id])).toBeInTheDocument();
   });
 
   it("closes from its own button", () => {
@@ -548,26 +618,26 @@ describe("BrainVitaThemeDialog", () => {
   });
 });
 
-describe("the results dialog and new themes", () => {
+describe("the results dialog and new worlds", () => {
   const result = { marblesLeft: 1, moves: 31, lastInCentre: true, usedHelp: false, rating: { title: "Genius", isPerfect: true } } as unknown as GameResult;
   const modal = (extra: Partial<Parameters<typeof BrainVitaResultModal>[0]> = {}) =>
     render(<BrainVitaResultModal open result={result} seconds={12} newPersonalBest={false} onPlayAgain={vi.fn()} onReview={vi.fn()} onLeave={vi.fn()} {...extra} />);
 
-  it("says nothing about themes unless some were just earned", () => {
+  it("says nothing about worlds unless some were just earned", () => {
     modal();
-    expect(screen.queryByText(/theme/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/world/i)).not.toBeInTheDocument();
   });
 
-  it("announces one theme earned and offers to try it", () => {
+  it("announces one world earned and offers to try it", () => {
     const onTryTheme = vi.fn();
-    modal({ unlockedSkinNames: ["Holo"], onTryTheme });
-    expect(screen.getByText("New theme unlocked: Holo")).toBeInTheDocument();
+    modal({ unlockedSkinNames: ["Neon deck"], onTryTheme });
+    expect(screen.getByText("New world unlocked: Neon deck")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try it" }));
     expect(onTryTheme).toHaveBeenCalledTimes(1);
   });
 
-  it("names every theme a strong game earned at once", () => {
-    modal({ unlockedSkinNames: ["Holo", "Aurora", "Jade"], onTryTheme: vi.fn() });
-    expect(screen.getByText("New themes unlocked: Holo, Aurora, Jade")).toBeInTheDocument();
+  it("names every world a strong game earned at once", () => {
+    modal({ unlockedSkinNames: ["Neon deck", "Zen garden", "Toy box"], onTryTheme: vi.fn() });
+    expect(screen.getByText("New worlds unlocked: Neon deck, Zen garden, Toy box")).toBeInTheDocument();
   });
 });

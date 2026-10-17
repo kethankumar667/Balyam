@@ -1,5 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
+import { MarbleBody } from "./BrainVitaMarble";
 import { useSkinTokens } from "./BrainVitaSkinContext";
+import { particleLook } from "./brainvitaParticles";
 import {
   DISSOLVE_DURATION_MS,
   JUMP_DURATION_MS,
@@ -66,13 +68,14 @@ function FlyingMarble({ flight, index }: { flight: JumpFlight; index: number }) 
         filter: isTrail ? `blur(${index * 0.8}px)` : undefined,
       }}
     >
-      <span className="absolute inset-[9%] rounded-full" style={{ background: skin.marbleFill, boxShadow: isTrail ? `0 0 12px ${skin.accent}` : skin.marbleSelectedShadow }} />
+      <span className="absolute inset-[9%]" style={{ filter: isTrail ? `drop-shadow(0 0 6px ${skin.accent})` : undefined }}>
+        <MarbleBody isLifted />
+      </span>
     </span>
   );
 }
 
 function Dissolve({ burst }: { burst: JumpFlight }) {
-  const skin = useSkinTokens();
   const { over } = jumpGeometry(burst.move);
   const ref = useAnimation(
     [
@@ -84,7 +87,9 @@ function Dissolve({ burst }: { burst: JumpFlight }) {
   );
   return (
     <span ref={ref} aria-hidden className="absolute rounded-full" style={{ ...cellBox(over.x, over.y), zIndex: 3 }}>
-      <span className="absolute inset-[9%] rounded-full" style={{ background: skin.marbleFill, boxShadow: skin.marbleShadow }} />
+      <span className="absolute inset-[9%]">
+        <MarbleBody />
+      </span>
     </span>
   );
 }
@@ -92,19 +97,19 @@ function Dissolve({ burst }: { burst: JumpFlight }) {
 function Particle({ burst, angle, index }: { burst: JumpFlight; angle: number; index: number }) {
   const skin = useSkinTokens();
   const { over } = jumpGeometry(burst.move);
-  const dx = Math.cos(angle) * PARTICLE_REACH * (0.7 + (index % 3) * 0.2);
-  const dy = Math.sin(angle) * PARTICLE_REACH * (0.7 + (index % 3) * 0.2);
+  const spread = PARTICLE_REACH * (0.7 + (index % 3) * 0.2);
+  const look = particleLook(skin.particleKind, index, Math.cos(angle) * spread, Math.sin(angle) * spread, skin.particleColors);
   const ref = useAnimation(
     [
-      { opacity: 0.95, transform: "translate(0%, 0%) scale(1)" },
-      { opacity: 0, transform: `translate(${dx * 100}%, ${dy * 100}%) scale(0.2)` },
+      { opacity: look.opacityFrom, transform: look.from },
+      { opacity: 0, transform: look.to },
     ],
     { duration: DISSOLVE_DURATION_MS, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)", fill: "both" },
     burst.id,
   );
   return (
     <span ref={ref} aria-hidden className="absolute flex items-center justify-center" style={{ ...cellBox(over.x, over.y), zIndex: 6 }}>
-      <span className="block rounded-full" style={{ width: "13%", height: "13%", background: skin.accentSoft, boxShadow: `0 0 8px ${skin.accent}` }} />
+      <span className="block" style={look.style} />
     </span>
   );
 }

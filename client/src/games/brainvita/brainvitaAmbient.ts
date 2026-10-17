@@ -26,6 +26,14 @@ export function ambientVoiceCount(marblesLeft: number): number {
   return Math.min(AMBIENT_VOICES.length, Math.max(1, wanted));
 }
 
+/** How a world colours the drone: how high it sits and what its second oscillator is made of. */
+export interface AmbientFlavour {
+  scale: number;
+  wave: OscillatorType;
+}
+
+export const DEFAULT_FLAVOUR: AmbientFlavour = { scale: 1, wave: "triangle" };
+
 export interface ResolutionChord {
   frequencies: readonly number[];
   type: OscillatorType;
@@ -49,7 +57,10 @@ export class AmbientEngine {
   private master: GainNode | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly ctx: AudioContext) {}
+  constructor(
+    private readonly ctx: AudioContext,
+    private readonly flavour: AmbientFlavour = DEFAULT_FLAVOUR,
+  ) {}
 
   get isRunning(): boolean {
     return this.master !== null;
@@ -72,8 +83,8 @@ export class AmbientEngine {
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
         gain.connect(master);
         const oscillators = [
-          this.makeOscillator("sine", frequency, gain),
-          this.makeOscillator("triangle", frequency * DETUNE_RATIO, gain),
+          this.makeOscillator("sine", frequency * this.flavour.scale, gain),
+          this.makeOscillator(this.flavour.wave, frequency * this.flavour.scale * DETUNE_RATIO, gain),
         ];
         return { oscillators, gain };
       });
@@ -118,7 +129,7 @@ export class AmbientEngine {
         gain.connect(this.master as GainNode);
         const oscillator = this.ctx.createOscillator();
         oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, start);
+        oscillator.frequency.setValueAtTime(frequency * this.flavour.scale, start);
         oscillator.connect(gain);
         oscillator.start(start);
         oscillator.stop(start + RESOLVE_TAIL_SECONDS + 0.05);

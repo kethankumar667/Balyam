@@ -15,9 +15,9 @@ export interface BrainVitaResultModalProps {
   seconds: number;
   /** True only when the scorecard confirmed it. */
   newPersonalBest: boolean;
-  /** The names of the themes this game just earned, if any. */
+  /** The names of the worlds this game just earned, if any. */
   unlockedSkinNames?: readonly string[];
-  /** Switches to the newest theme earned and closes this dialog. */
+  /** Switches to the newest world earned and closes this dialog. */
   onTryTheme?: () => void;
   onPlayAgain: () => void;
   /** Close the dialog and look at the final board. */
@@ -71,7 +71,7 @@ export default function BrainVitaResultModal({ open, result, seconds, newPersona
         {newPersonalBest && <p className="rounded-full bg-amber-300/20 px-3 py-1 text-sm font-semibold text-amber-200">New personal best</p>}
         {unlockedSkinNames.length > 0 && (
           <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#E4B128]/40 bg-black/25 px-3 py-2 text-left">
-            <p className="text-sm font-semibold text-amber-50">{unlockedSkinNames.length === 1 ? "New theme unlocked" : "New themes unlocked"}: {unlockedSkinNames.join(", ")}</p>
+            <p className="text-sm font-semibold text-amber-50">{unlockedSkinNames.length === 1 ? "New world unlocked" : "New worlds unlocked"}: {unlockedSkinNames.join(", ")}</p>
             {onTryTheme && (
               <button type="button" onClick={onTryTheme} className="min-h-[44px] flex-shrink-0 cursor-pointer rounded-lg px-3 text-sm font-bold text-[#E4B128] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E4B128]">
                 Try it

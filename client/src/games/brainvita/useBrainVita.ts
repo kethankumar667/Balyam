@@ -5,7 +5,7 @@ import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore } from "../../store/scorecardStore";
 import { brainvitaAudio } from "./brainvitaAudio";
 import { marbleCount, solveFrom, type Move } from "./brainvitaRules";
-import { loadSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
+import { SKINS, loadSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
 import { useJumpFlight } from "./useJumpFlight";
 import { createGameState, gameResult, isFinished, reduceGame, targetsOf, type GameResult } from "./brainvitaGame";
 
@@ -48,6 +48,14 @@ export function useBrainVita() {
     saveSkin(next);
   }, []);
   const dismissUnlock = useCallback(() => setJustUnlocked([]), []);
+
+  // ── each world has its own voice: what the marbles knock against, and the colour of the drone ──────
+  useEffect(() => {
+    brainvitaAudio.setVoice(SKINS[skin].voice);
+    // Changing the voice lets the drone go; a game under way gets it back, in the new voice.
+    const now = stateRef.current;
+    if (now.moves.length > 0 && !isFinished(now)) brainvitaAudio.setAmbient(marbleCount(now.board));
+  }, [skin]);
 
   // ── the drone under the game: thins with every marble, resolves at the end, silent between games ───
   useEffect(() => {

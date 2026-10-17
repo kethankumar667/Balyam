@@ -82,7 +82,11 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
         </main>
 
         <footer className="relative z-20 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1 short-land:col-start-1 short-land:row-start-3 short-land:px-2 short-land:pb-1">
-          {game.hintNote && <p className="mb-1.5 text-center text-xs font-medium text-amber-200">{game.hintNote}</p>}
+          {game.hintNote && (
+            <p className="mx-auto mb-1.5 w-fit max-w-full rounded-full px-3 py-1 text-center text-xs font-semibold text-amber-100" style={{ background: SKINS[game.skin].plankBackground, border: SKINS[game.skin].plankBorder }}>
+              {game.hintNote}
+            </p>
+          )}
           <BrainVitaDock isStacked={isShortLandscape} className="mx-auto max-w-[640px]">
             <BrainVitaPill label="Undo" ariaLabel="Undo the last jump" icon={<Undo2 className="h-6 w-6" />} onClick={game.undo} isDisabled={!game.canUndo} isInline={isShortLandscape} />
             <BrainVitaPill label="Hint" ariaLabel="Show a hint" icon={<Lightbulb className="h-6 w-6" />} onClick={game.requestHint} isDisabled={game.finished} isPrimary isInline={isShortLandscape} />

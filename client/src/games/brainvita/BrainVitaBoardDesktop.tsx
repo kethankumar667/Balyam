@@ -92,9 +92,9 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
             <div className="flex items-center justify-end gap-2">
               {guideButton}
               {muteButton}
-              <BrainVitaHeaderButton onClick={openLook} aria-label={game.justUnlocked.length > 0 ? "Change board theme, a new theme is ready" : "Change board theme"}>
+              <BrainVitaHeaderButton onClick={openLook} aria-label={game.justUnlocked.length > 0 ? "Choose a world, a new world is ready" : "Choose a world"}>
                 <Palette className="h-4 w-4" style={{ color: skin.accentSoft }} />
-                <span>Theme</span>
+                <span>World</span>
                 {game.justUnlocked.length > 0 && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: skin.accentAlt }} />}
               </BrainVitaHeaderButton>
             </div>

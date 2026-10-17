@@ -5,8 +5,7 @@ import { ARM_END, ARM_START, GRID_UNITS, SPRIG_MIN_FRAME, crossOutlinePath, groo
 /**
  * The glass boards' surface and props: a pane of glowing glass cut in the same cross, a lattice of light
  * running through the holes, and a datapad, a few orbs and a slow HUD ring in the corners where the solid
- * boards keep their sack and notepad. Every colour comes from the skin, so Holo (cyan) and Aurora (violet)
- * are one drawing in two lights.
+ * boards keep their sack and notepad. Every colour comes from the skin.
  */
 
 /** The centres of the holes along each row and column, so the lattice runs exactly through them. */
