@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useTutorialGate } from "../../components/GameTutorial";
+import { useAuthStore } from "../../store/authStore";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore } from "../../store/scorecardStore";
 import { brainvitaAudio } from "./brainvitaAudio";
 import { marbleCount, solveFrom, type Move } from "./brainvitaRules";
-import { SKINS, loadSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
+import { SKINS, SKIN_IDS, loadChosenSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
 import { useJumpFlight } from "./useJumpFlight";
 import { createGameState, gameResult, isFinished, reduceGame, targetsOf, type GameResult } from "./brainvitaGame";
 
@@ -35,12 +36,19 @@ export function useBrainVita() {
   const { flight, burst } = useJumpFlight(state.moves, !isReducedMotion);
 
   // ── looks: the wood table is where everyone starts; five more are earned, in an order that is each player's own ──
-  const [unlocked, setUnlocked] = useState<readonly SkinId[]>(loadUnlocked);
-  const [skin, setSkin] = useState<SkinId>(loadSkin);
+  const [earnedSkins, setUnlocked] = useState<readonly SkinId[]>(loadUnlocked);
+  const [chosenSkin, setSkin] = useState<SkinId>(loadChosenSkin);
+  // An account that can unlock everything (an admin, to test and review) sees every world open. That is shown, never
+  // stored: the worlds the player has really earned stay as they were, and a normal account on this device is unaffected.
+  const isAllOpen = useAuthStore((state) => state.capabilities.unlockAllFeatures);
+  const unlocked: readonly SkinId[] = isAllOpen ? SKIN_IDS : earnedSkins;
+  const skin: SkinId = unlocked.includes(chosenSkin) ? chosenSkin : "wood";
   const [themeOrder] = useState<readonly EarnedSkinId[]>(() => loadThemeOrder());
   const [justUnlocked, setJustUnlocked] = useState<readonly SkinId[]>([]);
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
+  const earnedRef = useRef(earnedSkins);
+  earnedRef.current = earnedSkins;
 
   const selectSkin = useCallback((next: SkinId) => {
     if (!unlockedRef.current.includes(next)) return;
@@ -127,9 +135,9 @@ export function useBrainVita() {
 
     // Themes are the reward for a clean, strong game, one rung of the ladder per marble fewer. Help forfeits
     // them, as it forfeits the leaderboard. One game can climb several rungs at once.
-    const earned = skinsEarnedBy(result, themeOrder).filter((id) => !unlockedRef.current.includes(id));
+    const earned = skinsEarnedBy(result, themeOrder).filter((id) => !earnedRef.current.includes(id));
     if (earned.length > 0) {
-      const next: readonly SkinId[] = [...unlockedRef.current, ...earned];
+      const next: readonly SkinId[] = [...earnedRef.current, ...earned];
       saveUnlocked(next);
       setUnlocked(next);
       setJustUnlocked(earned);
@@ -205,6 +213,7 @@ export function useBrainVita() {
     burst,
     skin,
     unlockedSkins: unlocked,
+    isAllOpen,
     selectSkin,
     themeOrder,
     justUnlocked,

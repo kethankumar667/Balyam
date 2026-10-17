@@ -104,6 +104,11 @@ function write(key: string, value: string): void {
 
 export const loadUnlocked = (): readonly SkinId[] => parseUnlocked(read(UNLOCKED_STORAGE_KEY));
 export const loadSkin = (): SkinId => resolveSkin(read(SKIN_STORAGE_KEY), loadUnlocked());
+/** The stored choice as it was made, with no check that it was earned. The screen applies that check against what is open to this account right now. */
+export const loadChosenSkin = (): SkinId => {
+  const stored = read(SKIN_STORAGE_KEY);
+  return isSkinId(stored) ? stored : "wood";
+};
 export const saveSkin = (skin: SkinId): void => write(SKIN_STORAGE_KEY, skin);
 export const saveUnlocked = (unlocked: readonly SkinId[]): void => write(UNLOCKED_STORAGE_KEY, unlocked.join(","));
 export const saveOrder = (order: readonly EarnedSkinId[]): void => write(ORDER_STORAGE_KEY, order.join(","));

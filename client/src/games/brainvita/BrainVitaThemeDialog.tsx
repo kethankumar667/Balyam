@@ -13,6 +13,8 @@ export interface BrainVitaThemeDialogProps {
   /** This player's ladder: the earned themes in the order they are won, the first for the most marbles left. */
   order: readonly EarnedSkinId[];
   onSelectSkin: (skin: SkinId) => void;
+  /** This account can open every world without earning it (an admin, to test and review them). */
+  isAllOpen?: boolean;
 }
 
 /** One line on what each world is, so a locked one says what it would be like to play in. */
@@ -49,7 +51,7 @@ function WorldSwatch({ tokens, isDimmed }: { tokens: SkinTokens; isDimmed: boole
  * the order this player will win them, each saying what it is, and what it asks for until it has been earned.
  * None can be picked before then.
  */
-export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onSelectSkin }: BrainVitaThemeDialogProps) {
+export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onSelectSkin, isAllOpen = false }: BrainVitaThemeDialogProps) {
   const current = useSkinTokens();
   const closeRef = useRef<HTMLButtonElement>(null);
   const rows: SkinId[] = ["wood", ...order];
@@ -78,6 +80,7 @@ export function BrainVitaThemeDialog({ open, onClose, skin, unlocked, order, onS
             </button>
           </div>
 
+          {isAllOpen && <p className="text-xs leading-snug text-amber-100/80">Every world is open on this account so it can be tested and reviewed. Nothing here is saved as earned.</p>}
           <div role="radiogroup" aria-label="World" className="max-h-[60dvh] space-y-2 overflow-y-auto pr-1">
             {rows.map((id) => {
               const tokens = SKINS[id];

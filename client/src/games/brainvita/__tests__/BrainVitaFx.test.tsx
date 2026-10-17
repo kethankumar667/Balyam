@@ -32,6 +32,8 @@ import { CENTRE_HOLE, applyMove, createBoard, holeAt, legalMoves, marbleCount, s
 import { DISSOLVE_DURATION_MS, JUMP_DURATION_MS } from "../brainvitaJump";
 import { ORDER_STORAGE_KEY, SKINS, SKIN_IDS, SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, parseOrder, requirementText, skinsEarnedBy, type EarnedSkinId, type SkinId } from "../brainvitaSkins";
 import type { GameResult } from "../brainvitaGame";
+import { capabilitiesFor } from "@shared/permissions";
+import { useAuthStore } from "../../../store/authStore";
 
 const hole = (row: number, col: number): number => holeAt(row, col) as number;
 const firstJump: Move = { from: hole(1, 3), over: hole(2, 3), to: CENTRE_HOLE };
@@ -639,5 +641,87 @@ describe("the results dialog and new worlds", () => {
   it("names every world a strong game earned at once", () => {
     modal({ unlockedSkinNames: ["Neon deck", "Zen garden", "Toy box"], onTryTheme: vi.fn() });
     expect(screen.getByText("New worlds unlocked: Neon deck, Zen garden, Toy box")).toBeInTheDocument();
+  });
+});
+
+describe("worlds for an account that can unlock everything", () => {
+  const asAdmin = () => useAuthStore.setState({ capabilities: capabilitiesFor("super_admin") });
+  const asPlayer = () => useAuthStore.setState({ capabilities: capabilitiesFor("guest") });
+
+  const play = (result: { current: ReturnType<typeof useBrainVita> }, moves: readonly Move[]): void => {
+    for (const move of moves) {
+      act(() => result.current.tap(move.from));
+      act(() => result.current.tap(move.to));
+    }
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    localStorage.setItem(BRAINVITA_TUTORIAL_KEY, "1");
+    localStorage.setItem(ORDER_STORAGE_KEY, LADDER.join(","));
+    recordSoloScore.mockReset();
+    recordSoloScore.mockResolvedValue({ isNewPersonalBest: false });
+    asPlayer();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    asPlayer();
+  });
+
+  it("opens all six worlds, and picks any of them", () => {
+    asAdmin();
+    const { result } = renderHook(() => useBrainVita());
+    expect(result.current.isAllOpen).toBe(true);
+    expect(result.current.unlockedSkins).toEqual(SKIN_IDS);
+    act(() => result.current.selectSkin("palace"));
+    expect(result.current.skin).toBe("palace");
+  });
+
+  it("shows the open worlds without saving them as earned", () => {
+    asAdmin();
+    const { result } = renderHook(() => useBrainVita());
+    act(() => result.current.selectSkin("reef"));
+    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("reef");
+    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toBeNull();
+  });
+
+  it("leaves an ordinary account with only what it has earned", () => {
+    const { result } = renderHook(() => useBrainVita());
+    expect(result.current.isAllOpen).toBe(false);
+    expect(result.current.unlockedSkins).toEqual(["wood"]);
+    act(() => result.current.selectSkin("palace"));
+    expect(result.current.skin).toBe("wood");
+  });
+
+  it("shows the world an admin chose last time, even though it was never earned", () => {
+    localStorage.setItem(SKIN_STORAGE_KEY, "toy");
+    asAdmin();
+    const { result } = renderHook(() => useBrainVita());
+    expect(result.current.skin).toBe("toy");
+  });
+
+  it("falls back to the wood when the account stops being able to unlock everything", () => {
+    localStorage.setItem(SKIN_STORAGE_KEY, "toy");
+    asAdmin();
+    const { result } = renderHook(() => useBrainVita());
+    expect(result.current.skin).toBe("toy");
+    act(() => asPlayer());
+    expect(result.current.skin).toBe("wood");
+    expect(result.current.unlockedSkins).toEqual(["wood"]);
+  });
+
+  it("still earns worlds the ordinary way while everything is open", () => {
+    asAdmin();
+    const { result } = renderHook(() => useBrainVita());
+    play(result, strandedLine(4));
+    expect(result.current.justUnlocked.length).toBeGreaterThan(0);
+    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toContain("holo");
+  });
+
+  it("tells the picker that everything is open, and says so in words", () => {
+    render(<BrainVitaThemeDialog open onClose={vi.fn()} skin="wood" unlocked={SKIN_IDS} order={LADDER} onSelectSkin={vi.fn()} isAllOpen />);
+    expect(screen.getByText(/Every world is open on this account/)).toBeInTheDocument();
+    expect(screen.queryAllByText(/Finish a game with/)).toHaveLength(0);
   });
 });

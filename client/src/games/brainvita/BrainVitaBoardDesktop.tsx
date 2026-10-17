@@ -173,6 +173,7 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
           unlocked={game.unlockedSkins}
           onSelectSkin={game.selectSkin}
           order={game.themeOrder}
+          isAllOpen={game.isAllOpen}
         />
 
         <BrainVitaResultModal
