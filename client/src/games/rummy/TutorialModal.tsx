@@ -310,7 +310,7 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
               key={i}
               onClick={() => setStep(i)}
               // The button is the 24px hit area (WCAG 2.5.8); the visible dot is the span inside it.
-              className="flex h-6 w-6 items-center justify-center"
+              className="flex h-6 w-6 shrink-0 items-center justify-center"
               aria-label={`Go to slide ${i + 1}`}
             >
               <span
@@ -361,7 +361,7 @@ export default function TutorialModal({ onClose }: { onClose: () => void }) {
           <div className="text-center">
             <button
               onClick={done}
-              className="text-[11px] text-emerald-400/70 hover:text-emerald-200 underline"
+              className="min-h-[28px] px-2 text-[11px] text-emerald-400/70 hover:text-emerald-200 underline"
             >
               Skip tutorial
             </button>

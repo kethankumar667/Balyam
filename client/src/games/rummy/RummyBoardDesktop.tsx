@@ -980,7 +980,7 @@ export default function RummyBoardDesktop({
                 type="button"
                 onClick={() => setShowQrModal(true)}
                 title="Show QR Code to join room"
-                className="ml-1 px-1 py-0.5 rounded text-amber-300 hover:text-amber-200 bg-white/10 text-xs transition cursor-pointer"
+                className="ml-1 min-h-[24px] px-1 py-0.5 rounded text-amber-300 hover:text-amber-200 bg-white/10 text-xs transition cursor-pointer"
               >
                 📱 QR
               </button>

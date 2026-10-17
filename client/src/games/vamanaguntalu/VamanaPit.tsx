@@ -1,29 +1,28 @@
 import { memo } from "react";
+import { CAPTURE_ORANGE, GOLD, GOLD_BRIGHT } from "./vamanaTheme";
 
-/** A pit shows at most this many seed dots; the count badge always carries the true number. */
+/** A pit shows at most this many seeds; the count badge always carries the true number. */
 const MAX_VISIBLE_SEEDS = 12;
 const GOLDEN_ANGLE = 2.399963;
-const SEED_SPREAD_PERCENT = 31;
+const SEED_SPREAD_PERCENT = 29;
 
-const PIT_HOLE = "radial-gradient(circle at 36% 30%, #3a2210 0%, #1b0e05 62%, #0f0702 100%)";
-const PIT_RIM = "linear-gradient(145deg, #a9743f 0%, #6d4323 55%, #4a2c15 100%)";
-const SEED_FILL = "radial-gradient(circle at 35% 30%, #fff1d0 0%, #e8c98e 55%, #b98f4b 100%)";
-const BADGE_BG = "rgba(18, 9, 3, 0.86)";
-const BADGE_INK = "#F7E8C4";
-const GOLD = "#E4B128";
-const CAPTURE_ORANGE = "#F97316";
+const PIT_HOLE = "radial-gradient(circle at 38% 30%, #5a3519 0%, #2a160a 58%, #170b04 100%)";
+const PIT_RIM = "linear-gradient(145deg, #e2a463 0%, #b97a3d 52%, #8a5528 100%)";
+const SEED_FILL = "radial-gradient(ellipse at 34% 28%, #fffdf4 0%, #f1dcab 52%, #c9a461 100%)";
+const BADGE_BG = "radial-gradient(circle at 35% 30%, #2c1a0d 0%, #0e0703 100%)";
 
 interface SeedPosition {
   left: number;
   top: number;
+  tilt: number;
 }
 
-/** Seed dots for 0..12 seeds, laid out on a sunflower spiral so they look scattered, not gridded. */
+/** Seeds for 0..12, laid out on a sunflower spiral so they look scattered, each tilted like a loose bean. */
 const SEED_LAYOUTS: readonly (readonly SeedPosition[])[] = Array.from({ length: MAX_VISIBLE_SEEDS + 1 }, (_, count) =>
   Array.from({ length: count }, (__, index) => {
     const radius = SEED_SPREAD_PERCENT * Math.sqrt((index + 0.5) / MAX_VISIBLE_SEEDS);
     const angle = index * GOLDEN_ANGLE;
-    return { left: 50 + radius * Math.cos(angle), top: 50 + radius * Math.sin(angle) };
+    return { left: 50 + radius * Math.cos(angle), top: 49 + radius * Math.sin(angle), tilt: (index * 67 + 20) % 180 };
   }),
 );
 
@@ -46,10 +45,10 @@ export interface VamanaPitProps {
 }
 
 function ringFor({ canSow, isActive, isCaptureNow }: Pick<VamanaPitProps, "canSow" | "isActive" | "isCaptureNow">): string {
-  if (isCaptureNow) return `0 0 0 3px ${CAPTURE_ORANGE}, 0 0 18px ${CAPTURE_ORANGE}`;
-  if (isActive) return `0 0 0 3px #fff1b8, 0 0 14px ${GOLD}`;
-  if (canSow) return `0 0 0 2px ${GOLD}`;
-  return "0 2px 4px rgba(0, 0, 0, 0.45)";
+  if (isCaptureNow) return `0 0 0 3px ${CAPTURE_ORANGE}, 0 0 20px 3px ${CAPTURE_ORANGE}`;
+  if (isActive) return `0 0 0 3px #fff1b8, 0 0 16px 2px ${GOLD}`;
+  if (canSow) return `0 0 0 3px ${GOLD_BRIGHT}, 0 0 0 6px rgba(255,210,94,0.22), 0 0 18px 4px rgba(255,200,60,0.5)`;
+  return "0 3px 5px rgba(40,18,4,0.5)";
 }
 
 function VamanaPitView(props: VamanaPitProps) {
@@ -59,8 +58,11 @@ function VamanaPitView(props: VamanaPitProps) {
   const style = {
     background: PIT_RIM,
     boxShadow: ringFor(props),
+    containerType: "inline-size" as const,
+    // A pit is a circle: the smaller side of its cell sets its size, so it never spills into a neighbour.
+    width: "min(100cqw, 100cqh)",
     outline: isLastCapture ? `2px dashed ${CAPTURE_ORANGE}` : undefined,
-    outlineOffset: isLastCapture ? "2px" : undefined,
+    outlineOffset: isLastCapture ? "3px" : undefined,
   };
   const className =
     "relative block aspect-square w-full rounded-full motion-safe:transition-shadow motion-safe:duration-150 " +
@@ -68,7 +70,7 @@ function VamanaPitView(props: VamanaPitProps) {
 
   const content = (
     <>
-      <span aria-hidden className="absolute inset-[9%] rounded-full" style={{ background: PIT_HOLE, boxShadow: "inset 0 3px 6px rgba(0,0,0,0.7)" }} />
+      <span aria-hidden className="absolute inset-[8%] rounded-full" style={{ background: PIT_HOLE, boxShadow: "inset 0 4px 8px rgba(0,0,0,0.75), inset 0 -2px 3px rgba(255,200,120,0.12)" }} />
       {seeds.map((seed, index) => (
         <span
           aria-hidden
@@ -77,18 +79,18 @@ function VamanaPitView(props: VamanaPitProps) {
           style={{
             left: `${seed.left}%`,
             top: `${seed.top}%`,
-            width: "17%",
-            height: "17%",
-            transform: "translate(-50%, -50%)",
+            width: "21%",
+            height: "13.5%",
+            transform: `translate(-50%, -50%) rotate(${seed.tilt}deg)`,
             background: SEED_FILL,
-            boxShadow: "0 1px 2px rgba(0,0,0,0.6)",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.65)",
           }}
         />
       ))}
       <span
         aria-hidden
-        className="absolute bottom-[4%] right-[6%] min-w-[1.4rem] rounded-full px-1 text-center text-[11px] font-bold leading-5 tabular-nums"
-        style={{ background: BADGE_BG, color: BADGE_INK }}
+        className="absolute bottom-[1%] right-[1%] flex aspect-square min-w-[20px] items-center justify-center rounded-full text-[11px] font-extrabold leading-none tabular-nums text-white"
+        style={{ width: "31%", background: BADGE_BG, border: "1px solid rgba(255,226,170,0.35)", fontSize: "max(11px, 16cqw)", boxShadow: "0 2px 4px rgba(0,0,0,0.5)" }}
       >
         {count}
       </span>

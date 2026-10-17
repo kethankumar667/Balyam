@@ -568,6 +568,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--rm-space-2xs);
+  min-height: 24px; /* WCAG 2.5.8: it measured 20.5px */
   padding: 1px var(--rm-space-xs);
   border: var(--rm-rule) solid transparent;
   border-radius: var(--rm-radius-card);

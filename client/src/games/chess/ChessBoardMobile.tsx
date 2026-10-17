@@ -379,7 +379,7 @@ export default function ChessBoardMobile({
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-[#EAD6B8] border border-[#C5A880] rounded-lg px-1.5 py-0.5 text-[10px] text-[#2B1909] placeholder-[#78593A] focus:outline-none"
+              className="flex-1 min-h-[28px] bg-[#EAD6B8] border border-[#C5A880] rounded-lg px-1.5 py-0.5 text-[10px] text-[#2B1909] placeholder-[#78593A] focus:outline-none"
             />
             {/* It was an unlabelled emoji at 20×20px. Now a labelled 44px target; `-my-2` keeps the row as tall as it was. */}
             <button

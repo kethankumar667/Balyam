@@ -1,26 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, BookOpen, MessageCircle, Trophy, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Flag, Lightbulb, LogOut, MessageCircle, Volume2, VolumeX, X } from "lucide-react";
 import Chat from "../../components/Chat";
 import GameTutorial from "../../components/GameTutorial";
 import Modal from "../../components/Modal";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useMediaQuery } from "../../lib/useMediaQuery";
+import { VamanaDock, VamanaDockButton, VamanaMoveNote } from "./VamanaDock";
 import { VamanaFitBoard } from "./VamanaFitBoard";
+import { VamanaScene } from "./VamanaScene";
 import { VamanaScoreCard } from "./VamanaScoreCard";
+import { VamanaTitleSign } from "./VamanaTitleSign";
+import { VamanaOutcomeBar, VamanaTurnBar } from "./VamanaTurnBar";
 import { VAMANA_TUTORIAL_KEY, useVamanaBoard } from "./useVamanaBoard";
 import type { VamanaBoardProps } from "./VamanaBoardProps";
 
-const ROOM_BACKGROUND = "radial-gradient(ellipse at 50% -10%, #4a2c15 0%, #24130a 52%, #140a05 100%)";
-
 /** A phone held sideways has too little height for the upright board, so it gets the wide one. */
 const SHORT_LANDSCAPE = "(orientation: landscape) and (max-height: 520px)";
+/** Below this the carved ends and the recap pill cost the board more than they are worth. */
+const TIGHT_HEIGHT = "(max-height: 740px)";
+/** Below this the round action dock goes too, and its controls move up to the header. */
+const CRAMPED_HEIGHT = "(max-height: 600px)";
 
-const ICON_BUTTON =
-  "flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 p-2 text-amber-50/90 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128]";
+const ROUND_BUTTON =
+  "flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E4B128]/40 bg-[#2a160a]/85 text-amber-50 shadow-[0_4px_10px_rgba(0,0,0,0.45)] transition-colors hover:bg-[#3b2210] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128] md:h-12 md:w-12";
 
+/**
+ * The upright table: phones, and tablets held upright. The board stands on its end between the two
+ * score cards above it and the round controls below, as in the design. A phone held sideways (or too
+ * short to spare the room) drops the extras and lays the board flat beside a single column.
+ */
 export default function VamanaBoardMobile({ state, players, selfId, messages, onLeave }: VamanaBoardProps) {
   const board = useVamanaBoard({ state, players, selfId });
   const isShortLandscape = useMediaQuery(SHORT_LANDSCAPE);
+  const isTight = useMediaQuery(TIGHT_HEIGHT);
+  const isCramped = useMediaQuery(CRAMPED_HEIGHT);
   const orientation = isShortLandscape ? "horizontal" : "vertical";
 
   const [chatOpen, setChatOpen] = useState(false);
@@ -31,56 +44,57 @@ export default function VamanaBoardMobile({ state, players, selfId, messages, on
   }, [chatOpen, messages.length]);
 
   const setTutorialOpen = board.tutorial.setOpen;
+  const openTutorial = useCallback(() => setTutorialOpen(true), [setTutorialOpen]);
   const closeTutorial = useCallback(() => setTutorialOpen(false), [setTutorialOpen]);
   const lastCapturePit = state.lastMove?.capture?.pit ?? null;
   const { replay, mine, rival, mineId, rivalId } = board;
 
-  const status = board.isOver
-    ? board.showOutcome
-      ? board.outcome.announcement
-      : ""
-    : board.isMyTurn
-      ? `Your turn. ${board.secondsLeft > 0 ? `${board.secondsLeft} seconds left.` : ""}`
-      : `${board.nameOf(state.turnPlayerId)}'s turn.`;
+  const isGivingUp = board.isPlayer && !board.isOver;
+  const swept = state.swept[board.isPlayer ? selfId : mineId] ?? 0;
+  const noteText =
+    board.showOutcome && swept > 0
+      ? `${board.isPlayer ? "You keep" : `${mine?.name ?? "They"} keeps`} ${swept} seeds left on ${board.isPlayer ? "your" : "their"} row.`
+      : board.lastMoveText || "Pick a pit on your row to sow its seeds.";
 
   return (
     <div
-      className="relative flex h-[100dvh] w-full flex-col overflow-hidden font-sans text-amber-50 short-land:grid short-land:grid-cols-[minmax(0,30%)_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto]"
-      style={{ background: ROOM_BACKGROUND }}
+      className="relative flex h-dvh-safe max-h-dvh-safe w-full flex-col overflow-hidden font-sans text-amber-50 short-land:grid short-land:grid-cols-[minmax(0,30%)_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto]"
     >
+      <VamanaScene isCompact={isTight} />
       <TurnTimeWarning deadline={state.turnDeadline} active={board.isMyTurn} />
       <div role="status" aria-live="polite" className="sr-only">
-        {status} {board.lastMoveText}
+        {board.statusText} {board.lastMoveText}
       </div>
 
-      <header className="z-20 flex flex-wrap items-center justify-between gap-y-1 border-b border-white/10 bg-black/40 px-3 py-2 backdrop-blur-xl [@media(max-height:640px)]:py-1 short-land:col-start-1 short-land:row-start-1">
-        <button type="button" onClick={onLeave} className={ICON_BUTTON} aria-label="Leave match">
-          <ArrowLeft className="h-4 w-4" />
+      <header className="relative z-20 flex items-center justify-between gap-1 px-2 pb-1 pt-2 min-[360px]:gap-2 min-[360px]:px-3 short-land:col-span-2 short-land:row-start-1 short-land:px-2 short-land:pt-1">
+        <button type="button" onClick={onLeave} className={ROUND_BUTTON} aria-label="Leave match">
+          <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="min-w-0 truncate px-2 text-xs font-bold uppercase tracking-wider text-amber-50">Vamana Guntalu</h1>
-        <div className="flex items-center gap-1.5">
-          <button type="button" onClick={() => board.tutorial.setOpen(true)} className={ICON_BUTTON} aria-label="How to play">
-            <BookOpen className="h-4 w-4" />
+        <VamanaTitleSign isStacked className="short-land:hidden" />
+        <div className="flex items-center gap-1 min-[360px]:gap-2">
+          <button type="button" onClick={openTutorial} className={`${ROUND_BUTTON} hidden [@media(max-height:600px)]:flex`} aria-label="How to play">
+            <BookOpen className="h-5 w-5" />
           </button>
-          <button type="button" onClick={board.handleMuteToggle} className={ICON_BUTTON} aria-label={board.isMuted ? "Unmute sounds" : "Mute sounds"}>
-            {board.isMuted ? <VolumeX className="h-4 w-4 text-rose-300" /> : <Volume2 className="h-4 w-4 text-emerald-300" />}
+          <button type="button" onClick={board.handleMuteToggle} className={ROUND_BUTTON} aria-label={board.isMuted ? "Unmute sounds" : "Mute sounds"}>
+            {board.isMuted ? <VolumeX className="h-5 w-5 text-rose-300" /> : <Volume2 className="h-5 w-5 text-emerald-300" />}
           </button>
           <button
             type="button"
             onClick={() => setChatOpen(true)}
-            className={`relative ${ICON_BUTTON}`}
+            className={`relative ${ROUND_BUTTON}`}
             aria-label={hasUnreadChat ? "Open chat, unread messages" : "Open chat"}
           >
-            <MessageCircle className="h-4 w-4" />
-            {hasUnreadChat && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-black/40" />}
+            <MessageCircle className="h-5 w-5" />
+            {hasUnreadChat && <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-[#2a160a]" />}
           </button>
         </div>
       </header>
 
-      <section className="z-10 px-3 py-2 [@media(max-height:640px)]:py-1 short-land:col-start-1 short-land:row-start-2 short-land:self-center">
-        <div className="mx-auto grid max-w-[520px] grid-cols-2 gap-2">
+      <section className="relative z-10 px-3 pt-1 short-land:col-start-1 short-land:row-start-2 short-land:self-start short-land:px-2">
+        <div className="mx-auto grid max-w-[560px] grid-cols-2 gap-2 md:max-w-[700px] md:gap-3 short-land:grid-cols-1">
           <VamanaScoreCard
-            compact
+            compact={isCramped}
+            isAvatarHidden={isShortLandscape}
             name={rival?.name ?? "Opponent"}
             avatar={rival?.avatar}
             isSelf={false}
@@ -88,9 +102,12 @@ export default function VamanaBoardMobile({ state, players, selfId, messages, on
             captured={replay.captured[rivalId] ?? 0}
             onRow={board.onRow(rivalId)}
             isActiveTurn={!board.isOver && state.turnPlayerId === rivalId}
+            isLeading={board.leaderId === rivalId}
+            turnFraction={board.turnFraction}
           />
           <VamanaScoreCard
-            compact
+            compact={isCramped}
+            isAvatarHidden={isShortLandscape}
             name={mine?.name ?? "You"}
             avatar={mine?.avatar}
             isSelf={board.isPlayer}
@@ -98,19 +115,31 @@ export default function VamanaBoardMobile({ state, players, selfId, messages, on
             captured={replay.captured[mineId] ?? 0}
             onRow={board.onRow(mineId)}
             isActiveTurn={!board.isOver && state.turnPlayerId === mineId}
+            isLeading={board.leaderId === mineId}
+            turnFraction={board.turnFraction}
           />
         </div>
-        {!board.isOver && (
-          <p className="mt-1.5 text-center text-xs text-amber-100/85">
-            {board.isMyTurn ? "Your turn — tap a pit on your row" : `Waiting for ${board.nameOf(state.turnPlayerId)}`}
-            {state.turnDeadline ? <span className={`ml-2 font-bold tabular-nums ${board.isTimerCritical ? "text-rose-300" : "text-amber-50"}`}>{board.secondsLeft}s</span> : null}
-          </p>
-        )}
+        <div className="mx-auto mt-2 max-w-[560px] md:max-w-[700px]">
+          {board.showOutcome ? (
+            <VamanaOutcomeBar headline={board.outcome.headline} isCompact={isCramped} />
+          ) : (
+            !board.isOver && (
+              <VamanaTurnBar
+                text={isCramped && board.isMyTurn ? "Your turn" : board.turnText("touch")}
+                secondsLeft={board.clockSeconds}
+                totalSeconds={board.turnTotalSeconds}
+                isCritical={board.isTimerCritical}
+                isCompact={isTight}
+              />
+            )
+          )}
+        </div>
       </section>
 
-      <main className="z-10 flex min-h-0 flex-1 items-stretch justify-center px-3 py-1 short-land:col-start-2 short-land:px-2 short-land:row-span-3 short-land:row-start-1">
+      <main className="relative z-10 flex min-h-0 flex-1 items-stretch justify-center px-3 py-2 [@media(max-height:740px)]:py-1 short-land:col-start-2 short-land:row-span-2 short-land:row-start-2 short-land:px-2">
         <VamanaFitBoard
           orientation={orientation}
+          hasOrnaments={!isTight}
           seat={board.seat}
           pits={replay.pits}
           isPlayer={board.isPlayer && !board.isOver}
@@ -122,28 +151,25 @@ export default function VamanaBoardMobile({ state, players, selfId, messages, on
         />
       </main>
 
-      <footer
-        className={`z-20 border-t border-white/10 bg-black/55 px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur-xl short-land:col-start-1 short-land:row-start-3 ${
-          board.showOutcome ? "" : "[@media(max-height:640px)]:hidden"
-        }`}
-      >
-        {board.showOutcome ? (
-          <div className="mx-auto flex max-w-[420px] flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-300" />
-              <span className="text-sm font-bold uppercase tracking-wider">{board.outcome.headline}</span>
-            </div>
-            {(state.swept[board.isPlayer ? selfId : mineId] ?? 0) > 0 && (
-              <p className="text-center text-xs text-amber-100/85">
-                {board.isPlayer ? "You keep" : `${mine?.name ?? "They"} keeps`} {state.swept[board.isPlayer ? selfId : mineId]} seeds left on {board.isPlayer ? "your" : "their"} row.
-              </p>
-            )}
-            <button type="button" onClick={onLeave} className="min-h-[46px] w-full cursor-pointer rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white/15">
+      <footer className="relative z-20 flex flex-col items-center gap-2 px-3 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 short-land:col-start-1 short-land:row-start-3 short-land:px-2">
+        {!isTight && <VamanaMoveNote text={noteText} className="w-full max-w-[560px] md:max-w-[700px]" />}
+        {isCramped ? (
+          board.showOutcome && (
+            <button type="button" onClick={onLeave} className="min-h-[44px] w-full cursor-pointer rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-amber-50 transition-colors hover:bg-white/15">
               Leave
             </button>
-          </div>
+          )
         ) : (
-          <p className="text-center text-xs text-amber-100/80">{board.lastMoveText || "Pick a pit on your row to sow its seeds."}</p>
+          <VamanaDock>
+            <VamanaDockButton label="How to Play" ariaLabel="How to play" icon={<Lightbulb className="h-6 w-6" />} onClick={openTutorial} />
+            <VamanaDockButton
+              label={isGivingUp ? "Give Up" : "Leave"}
+              ariaLabel={isGivingUp ? "Give up and leave the match" : "Leave the table"}
+              icon={isGivingUp ? <Flag className="h-6 w-6" /> : <LogOut className="h-6 w-6" />}
+              onClick={onLeave}
+              isDanger={isGivingUp}
+            />
+          </VamanaDock>
         )}
       </footer>
 

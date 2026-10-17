@@ -61,6 +61,31 @@ export function useVamanaBoard({ state, players, selfId }: BoardHookProps) {
   const isTimerCritical =
     state.phase === "playing" && state.turnDeadline != null && secondsLeft > 0 && secondsLeft <= TIMER_CRITICAL_SECONDS;
 
+  const hasTurnClock = state.phase === "playing" && state.turnDeadline != null;
+  const turnTotalSeconds = state.options.turnTimerSeconds;
+  const clockSeconds = hasTurnClock ? secondsLeft : null;
+  const turnFraction = hasTurnClock && turnTotalSeconds > 0 ? Math.min(1, secondsLeft / turnTotalSeconds) : null;
+
+  const capturedBy = (id: string | undefined): number => (id === undefined ? 0 : (replay.captured[id] ?? 0));
+  const mineCaptured = capturedBy(mineId);
+  const rivalCaptured = capturedBy(rivalId);
+  const leaderId = mineCaptured === rivalCaptured ? null : mineCaptured > rivalCaptured ? mineId : rivalId;
+
+  /** The sentence on the turn bar. A mouse can be told about the keyboard; a finger just needs to be told where to tap. */
+  const turnText = (pointer: "touch" | "mouse"): string => {
+    if (!isMyTurn) return `Waiting for ${nameOf(state.turnPlayerId)}`;
+    return pointer === "touch" ? "Your turn — tap a pit on your row" : "Your turn — click a pit on your row, or use the arrow keys and Enter";
+  };
+
+  /** What the board's polite live region says: the result once it is on screen, otherwise whose turn it is. */
+  const statusText = isOver
+    ? showOutcome
+      ? outcome.announcement
+      : ""
+    : isMyTurn
+      ? `Your turn. ${secondsLeft > 0 ? `${secondsLeft} seconds left.` : ""}`
+      : `${nameOf(state.turnPlayerId)}'s turn.`;
+
   // Auto-open the how-to-play once, but never over the player's own running turn clock.
   const tutorial = useTutorialGate(VAMANA_TUTORIAL_KEY, !isMyTurn);
 
@@ -106,6 +131,12 @@ export function useVamanaBoard({ state, players, selfId }: BoardHookProps) {
     showOutcome,
     lastMoveText,
     secondsLeft,
+    clockSeconds,
+    turnTotalSeconds,
+    turnFraction,
+    leaderId,
+    turnText,
+    statusText,
     isTimerCritical,
     isMuted,
     handleMuteToggle,

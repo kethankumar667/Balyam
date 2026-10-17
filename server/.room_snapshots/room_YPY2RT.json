@@ -1,0 +1,167 @@
+{
+  "code": "YPY2RT",
+  "game": "vamanaguntalu",
+  "phase": "playing",
+  "lifecycleState": "PAUSED",
+  "roomRevision": 3,
+  "createdAt": 1792221604509,
+  "matchStartedAt": 1792221608383,
+  "hostId": "p_1792221604509_zzhy72",
+  "name": null,
+  "entryStakeCoins": 100,
+  "currentMatchId": null,
+  "lastMatchId": null,
+  "committedCostPerSeat": null,
+  "committedTotalPot": null,
+  "sealed": false,
+  "gameOptions": {
+    "ludoOptions": {
+      "mandatoryCapture": true,
+      "noSafeSquares": false,
+      "turnTimerSeconds": 20
+    },
+    "snlOptions": {
+      "difficulty": "medium"
+    },
+    "rummyOptions": {
+      "turnTimerSeconds": 30,
+      "drawTimerSeconds": 30,
+      "discardTimerSeconds": 15,
+      "mode": "single"
+    },
+    "hcOptions": {
+      "mode": "single",
+      "format": "t20",
+      "category": "international"
+    },
+    "wordBuildingOptions": {
+      "boardSize": 10,
+      "turnTimerSeconds": 30,
+      "minWordLength": 3,
+      "dictionaryMode": "common",
+      "claimToScoreMode": false
+    },
+    "dotsBoxesOptions": {
+      "boardSize": 7,
+      "turnTimerSeconds": 30
+    },
+    "starGameOptions": {
+      "themeId": "colors",
+      "totalRounds": 5,
+      "passSpeed": "normal"
+    },
+    "unoOptions": {
+      "turnTimerSeconds": 20,
+      "stackDrawCards": false,
+      "jumpIn": false,
+      "sevenSwap": false,
+      "zeroRotate": false,
+      "keepDrawing": false,
+      "forcePlay": false,
+      "targetScore": null
+    },
+    "bingoOptions": {
+      "callIntervalMs": 4000,
+      "stopOnFirstWin": true
+    },
+    "namesplaceanimalOptions": {
+      "totalRounds": 5,
+      "roundSeconds": 30,
+      "difficulty": "medium",
+      "themePack": "classic"
+    },
+    "tambolaOptions": {
+      "callIntervalMs": 5000
+    },
+    "chessOptions": {
+      "timeControl": "blitz_3_2",
+      "initialSeconds": 180,
+      "incrementSeconds": 2,
+      "boardTheme": "emerald",
+      "pieceSet": "neo",
+      "botDifficulty": "medium"
+    },
+    "snakeOptions": {
+      "speedMs": 120,
+      "gridSize": 20,
+      "wallMode": "wrap",
+      "theme": "nokia-monochrome",
+      "speedProgression": true
+    },
+    "blockBlastOptions": {
+      "raceSeconds": 120
+    },
+    "spaceWarOptions": {
+      "startingLives": 4,
+      "theme": "cyberpunk"
+    },
+    "ticTacToeOptions": {
+      "mode": "quantum",
+      "turnTimerSeconds": 15
+    },
+    "connect4Options": {
+      "turnTimerSeconds": 20,
+      "botDifficulty": "medium"
+    },
+    "vamanaOptions": {
+      "turnTimerSeconds": 25,
+      "botDifficulty": "medium"
+    }
+  },
+  "players": [
+    {
+      "id": "p_1792221604509_zzhy72",
+      "name": "LayoutProbe",
+      "isHost": true,
+      "isReady": true,
+      "isConnected": false,
+      "connectionGeneration": 4,
+      "level": 1,
+      "isGuest": true,
+      "identityId": "guest_6ea13f93f6707e33b65ee64e059d4f22",
+      "cosmetics": {
+        "tokenSkin": "token_classic_pawn",
+        "diceSkin": "dice_classic_ivory"
+      },
+      "awaySince": 1792221623306,
+      "awayUntil": 1792222223306
+    },
+    {
+      "id": "bot_mvc2gwil_3log",
+      "name": "Gunta",
+      "isHost": false,
+      "isReady": true,
+      "isConnected": true,
+      "isBot": true,
+      "level": 4,
+      "bingoDifficulty": "medium",
+      "avatar": "file_00000000c1f48208810e59b5535e2d15_2.jpg",
+      "botProfile": {
+        "tagline": "Sows slow, captures big",
+        "hometown": "Visakhapatnam",
+        "playStyle": "Balanced",
+        "styleIsReal": false,
+        "stats": {
+          "matches": 92,
+          "wins": 38,
+          "bestStreak": 6
+        }
+      },
+      "cosmetics": {
+        "avatarAura": "aura_radiant_vanguard",
+        "podiumTitle": "title_grandmaster"
+      }
+    }
+  ],
+  "departedThisMatch": [],
+  "history": [],
+  "unoHistory": [],
+  "bingoHistory": [],
+  "ludoHistory": [],
+  "engineState": null,
+  "terminalStatus": "IDLE",
+  "terminalOutcome": null,
+  "terminalPayload": null,
+  "savedAt": 1792221623307,
+  "expiresAt": 1792228823307
+}

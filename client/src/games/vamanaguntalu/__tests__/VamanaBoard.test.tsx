@@ -248,6 +248,49 @@ describe.each([
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("offers Give Up during a match, and it leaves through the same door as the back button", () => {
+    renderBoard(makeState());
+    fireEvent.click(screen.getByRole("button", { name: "Give up and leave the match" }));
+    expect(baseProps.onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Leave, not Give Up, once the match is over", () => {
+    const finished = makeState({ phase: "finished", pits: Array(14).fill(0), captured: { p1: 41, p2: 29 }, winnerId: "p1", endReason: "seeds", turnDeadline: null });
+    renderBoard(finished);
+    expect(screen.queryByRole("button", { name: "Give up and leave the match" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Leave the table" }));
+    expect(baseProps.onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer Give Up to someone only watching", () => {
+    renderBoard(makeState(), "watcher");
+    expect(screen.queryByRole("button", { name: "Give up and leave the match" })).not.toBeInTheDocument();
+  });
+
+  it("tells you where to act on your turn and who it is waiting for otherwise", () => {
+    const mine = renderBoard(makeState());
+    expect(screen.getByText(/^Your turn — (tap|click) a pit on your row/)).toBeInTheDocument();
+    mine.unmount();
+    renderBoard(makeState({ turnPlayerId: "p2" }));
+    expect(screen.getByText("Waiting for Bob")).toBeInTheDocument();
+  });
+
+  it("shows the turn clock on the turn bar and none once the match is over", () => {
+    const live = renderBoard(makeState({ turnDeadline: Date.now() + 25_000 }));
+    expect(screen.getByTestId("vamana-turn-clock")).toHaveTextContent(/^\d+s$/);
+    live.unmount();
+    renderBoard(makeState({ phase: "finished", pits: Array(14).fill(0), captured: { p1: 41, p2: 29 }, winnerId: "p1", endReason: "seeds", turnDeadline: null }));
+    expect(screen.queryByTestId("vamana-turn-clock")).not.toBeInTheDocument();
+  });
+
+  it("puts a crown on whoever has captured more, and on nobody when it is level", () => {
+    const ahead = renderBoard(makeState({ captured: { p1: 9, p2: 4 } }));
+    expect(document.querySelectorAll("svg.lucide-crown")).toHaveLength(1);
+    ahead.unmount();
+    renderBoard(makeState({ captured: { p1: 6, p2: 6 } }));
+    expect(document.querySelectorAll("svg.lucide-crown")).toHaveLength(0);
+  });
+
   it("describes the last turn in words", () => {
     const state = makeState({
       turnPlayerId: "p2",
