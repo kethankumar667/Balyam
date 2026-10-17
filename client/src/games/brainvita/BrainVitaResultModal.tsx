@@ -15,9 +15,9 @@ export interface BrainVitaResultModalProps {
   seconds: number;
   /** True only when the scorecard confirmed it. */
   newPersonalBest: boolean;
-  /** The name of a theme this game just earned, if any. */
-  unlockedSkinName?: string | null;
-  /** Switches to the theme just earned and closes this dialog. */
+  /** The names of the themes this game just earned, if any. */
+  unlockedSkinNames?: readonly string[];
+  /** Switches to the newest theme earned and closes this dialog. */
   onTryTheme?: () => void;
   onPlayAgain: () => void;
   /** Close the dialog and look at the final board. */
@@ -28,7 +28,7 @@ export interface BrainVitaResultModalProps {
 const BUTTON =
   "min-h-[48px] flex-1 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E4B128]";
 
-export default function BrainVitaResultModal({ open, result, seconds, newPersonalBest, unlockedSkinName = null, onTryTheme, onPlayAgain, onReview, onLeave }: BrainVitaResultModalProps) {
+export default function BrainVitaResultModal({ open, result, seconds, newPersonalBest, unlockedSkinNames = [], onTryTheme, onPlayAgain, onReview, onLeave }: BrainVitaResultModalProps) {
   const playAgainRef = useRef<HTMLButtonElement>(null);
   if (!result) return null;
 
@@ -69,9 +69,9 @@ export default function BrainVitaResultModal({ open, result, seconds, newPersona
           </div>
         </dl>
         {newPersonalBest && <p className="rounded-full bg-amber-300/20 px-3 py-1 text-sm font-semibold text-amber-200">New personal best</p>}
-        {unlockedSkinName && (
+        {unlockedSkinNames.length > 0 && (
           <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#E4B128]/40 bg-black/25 px-3 py-2 text-left">
-            <p className="text-sm font-semibold text-amber-50">New theme unlocked: {unlockedSkinName}</p>
+            <p className="text-sm font-semibold text-amber-50">{unlockedSkinNames.length === 1 ? "New theme unlocked" : "New themes unlocked"}: {unlockedSkinNames.join(", ")}</p>
             {onTryTheme && (
               <button type="button" onClick={onTryTheme} className="min-h-[44px] flex-shrink-0 cursor-pointer rounded-lg px-3 text-sm font-bold text-[#E4B128] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E4B128]">
                 Try it

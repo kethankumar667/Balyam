@@ -5,8 +5,7 @@ import { HapticsManager } from "../../services/HapticsManager";
 import { recordSoloScore } from "../../store/scorecardStore";
 import { brainvitaAudio } from "./brainvitaAudio";
 import { marbleCount, solveFrom, type Move } from "./brainvitaRules";
-import { earnsHolo, loadSkin, loadTilt, loadUnlocked, saveSkin, saveTilt, saveUnlocked, type SkinId } from "./brainvitaSkins";
-import { requestMotionPermission } from "./useParallax";
+import { loadSkin, loadThemeOrder, loadUnlocked, saveSkin, saveUnlocked, skinsEarnedBy, type EarnedSkinId, type SkinId } from "./brainvitaSkins";
 import { useJumpFlight } from "./useJumpFlight";
 import { createGameState, gameResult, isFinished, reduceGame, targetsOf, type GameResult } from "./brainvitaGame";
 
@@ -31,14 +30,15 @@ export function useBrainVita() {
   const lastMove: Move | null = state.moves.length > 0 ? state.moves[state.moves.length - 1] : null;
   const marbles = marbleCount(state.board);
 
-  // ── motion: the jump animation and the tilt both stand down for anyone who asked for less movement ──
+  // ── motion: the jump animation stands down for anyone who asked for less movement ──
   const isReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const { flight, burst } = useJumpFlight(state.moves, !isReducedMotion);
 
-  // ── looks: the wood table is always there; the holo table is earned ───────────────────────────
+  // ── looks: the wood table is where everyone starts; five more are earned, in an order that is each player's own ──
   const [unlocked, setUnlocked] = useState<readonly SkinId[]>(loadUnlocked);
   const [skin, setSkin] = useState<SkinId>(loadSkin);
-  const [justUnlocked, setJustUnlocked] = useState<SkinId | null>(null);
+  const [themeOrder] = useState<readonly EarnedSkinId[]>(() => loadThemeOrder());
+  const [justUnlocked, setJustUnlocked] = useState<readonly SkinId[]>([]);
   const unlockedRef = useRef(unlocked);
   unlockedRef.current = unlocked;
 
@@ -47,34 +47,7 @@ export function useBrainVita() {
     setSkin(next);
     saveSkin(next);
   }, []);
-  const dismissUnlock = useCallback(() => setJustUnlocked(null), []);
-
-  const [isTiltPreferred, setIsTiltPreferred] = useState(loadTilt);
-  const [tiltNote, setTiltNote] = useState<string | null>(null);
-  const tiltRef = useRef(isTiltPreferred);
-  tiltRef.current = isTiltPreferred;
-
-  const toggleTilt = useCallback(async () => {
-    if (tiltRef.current) {
-      setIsTiltPreferred(false);
-      saveTilt(false);
-      setTiltNote(null);
-      return;
-    }
-    // iOS only asks when a tap asks, so this has to run straight from the switch.
-    const permission = await requestMotionPermission();
-    if (permission === "denied") {
-      setTiltNote("Motion access was refused, so the board cannot follow your phone.");
-      return;
-    }
-    if (permission === "unsupported") {
-      setTiltNote("This device has no motion sensor.");
-      return;
-    }
-    setIsTiltPreferred(true);
-    saveTilt(true);
-    setTiltNote(null);
-  }, []);
+  const dismissUnlock = useCallback(() => setJustUnlocked([]), []);
 
   // ── the drone under the game: thins with every marble, resolves at the end, silent between games ───
   useEffect(() => {
@@ -144,12 +117,14 @@ export function useBrainVita() {
       brainvitaAudio.resolveAmbient(false);
     }
 
-    // The holo table is the reward for a clean, strong game. Help forfeits it, as it forfeits the leaderboard.
-    if (earnsHolo(result) && !unlockedRef.current.includes("holo")) {
-      const next: readonly SkinId[] = [...unlockedRef.current, "holo"];
+    // Themes are the reward for a clean, strong game, one rung of the ladder per marble fewer. Help forfeits
+    // them, as it forfeits the leaderboard. One game can climb several rungs at once.
+    const earned = skinsEarnedBy(result, themeOrder).filter((id) => !unlockedRef.current.includes(id));
+    if (earned.length > 0) {
+      const next: readonly SkinId[] = [...unlockedRef.current, ...earned];
       saveUnlocked(next);
       setUnlocked(next);
-      setJustUnlocked("holo");
+      setJustUnlocked(earned);
     }
 
     // A hint or an undo hands over (part of) the answer, so that result is for practice and never posted;
@@ -188,7 +163,7 @@ export function useBrainVita() {
     gameId.current += 1;
     setNewPersonalBest(false);
     setHintNote(null);
-    setJustUnlocked(null);
+    setJustUnlocked([]);
     dispatch({ type: "restart" });
   }, []);
 
@@ -223,12 +198,9 @@ export function useBrainVita() {
     skin,
     unlockedSkins: unlocked,
     selectSkin,
+    themeOrder,
     justUnlocked,
     dismissUnlock,
-    isTiltAvailable: !isReducedMotion,
-    isTiltOn: isTiltPreferred && !isReducedMotion,
-    tiltNote,
-    toggleTilt,
     canUndo: jumps > 0,
     tap,
     undo,

@@ -19,6 +19,8 @@ export const RETIRED_STORAGE_KEYS: readonly string[] = [
   "bhalyam.auto_start",
   // The Carrom academy lesson's saved progress. Carrom is gone, and with it the lesson that wrote this.
   "bhalyam.academy.carrom.v2",
+  // Brain Vita's "tilt the board" switch. The feature was removed, so a device that held its choice should forget it.
+  "bhalyam.brainvita.tilt",
 ];
 
 /** Remove every retired key from both kinds of storage. Safe to call on every start; never throws. */

@@ -9,7 +9,6 @@ import { CENTRE_HOLE, cellOf, holeAt, type Board, type Move } from "./brainvitaR
 import { holeCentre } from "./brainvitaDrag";
 import { ARM_START, GRID_UNITS, MAX_FRAME, SPRIG_MIN_FRAME, boardFit, crossOutlinePath, grooveInset } from "./brainvitaTheme";
 import { useMarbleDrag } from "./useMarbleDrag";
-import { useParallax } from "./useParallax";
 import type { JumpFlight } from "./useJumpFlight";
 
 const HINT_BLUE = "#7DD3FC";
@@ -51,11 +50,11 @@ export function describeHole(
 }
 
 /** A carved sprig of five leaves on a curved stem, drawn about its own centre, one hole wide and a little over. */
-function Sprig({ transform }: { transform: string }) {
+function Sprig({ transform, dark, light }: { transform: string; dark: string; light: string }) {
   return (
     <g transform={transform}>
       {[0.8, 0].map((layer) => (
-        <g key={layer} transform={`translate(${layer * 0.012} ${layer * 0.012})`} fill={layer ? "rgba(255,230,180,0.42)" : "rgba(86,44,14,0.6)"} stroke="none">
+        <g key={layer} transform={`translate(${layer * 0.012} ${layer * 0.012})`} fill={layer ? light : dark} stroke="none">
           <path d="M-0.62 0.06 C -0.3 -0.1 0.22 -0.1 0.62 0.05 L 0.62 0.075 C 0.22 -0.07 -0.3 -0.07 -0.62 0.09 Z" />
           {[-0.42, -0.16, 0.1, 0.34].map((x, index) => (
             <g key={x} transform={`translate(${x} ${0.02 - index * 0.004})`}>
@@ -72,6 +71,7 @@ function Sprig({ transform }: { transform: string }) {
 
 /** The carved wooden cross: shadow edge, honey top with grain, a groove near the rim, and carved sprigs. */
 export function WoodSurface({ frame }: { frame: number }) {
+  const palette = useSkinTokens().board as NonNullable<ReturnType<typeof useSkinTokens>["board"]>;
   const span = GRID_UNITS + 2 * frame;
   const outer = crossOutlinePath(frame);
   const groove = crossOutlinePath(frame, grooveInset(frame));
@@ -89,28 +89,28 @@ export function WoodSurface({ frame }: { frame: number }) {
     >
       <defs>
         <linearGradient id="bv-wood" x1="0.1" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="#e6a965" />
-          <stop offset="48%" stopColor="#cb8745" />
-          <stop offset="100%" stopColor="#a96629" />
+          <stop offset="0%" stopColor={palette.stops[0]} />
+          <stop offset="48%" stopColor={palette.stops[1]} />
+          <stop offset="100%" stopColor={palette.stops[2]} />
         </linearGradient>
         <pattern id="bv-grain" patternUnits="userSpaceOnUse" width="4" height="0.5" patternTransform="rotate(-2)">
-          <path d="M0 0.08 C 1 0.02 2 0.14 4 0.07" stroke="rgba(92,46,12,0.17)" strokeWidth="0.018" fill="none" />
-          <path d="M0 0.27 C 1.2 0.33 2.4 0.2 4 0.3" stroke="rgba(92,46,12,0.13)" strokeWidth="0.014" fill="none" />
-          <path d="M0 0.43 C 1 0.4 3 0.47 4 0.42" stroke="rgba(255,228,175,0.12)" strokeWidth="0.016" fill="none" />
+          <path d="M0 0.08 C 1 0.02 2 0.14 4 0.07" stroke={palette.grainDark} strokeWidth="0.018" fill="none" />
+          <path d="M0 0.27 C 1.2 0.33 2.4 0.2 4 0.3" stroke={palette.grainDark} strokeWidth="0.014" fill="none" opacity="0.8" />
+          <path d="M0 0.43 C 1 0.4 3 0.47 4 0.42" stroke={palette.grainLight} strokeWidth="0.016" fill="none" />
         </pattern>
       </defs>
-      <path d={outer} fill="#74401a" transform="translate(0 0.17)" />
+      <path d={outer} fill={palette.side} transform="translate(0 0.17)" />
       <path d={outer} fill="url(#bv-wood)" />
       <path d={outer} fill="url(#bv-grain)" />
-      <path d={outer} fill="none" stroke="rgba(255,238,196,0.55)" strokeWidth="0.035" />
-      <path d={groove} fill="none" stroke="rgba(84,42,12,0.6)" strokeWidth="0.04" />
-      <path d={groove} fill="none" stroke="rgba(255,232,184,0.5)" strokeWidth="0.026" transform="translate(0.018 0.026)" />
+      <path d={outer} fill="none" stroke={palette.edge} strokeWidth="0.035" />
+      <path d={groove} fill="none" stroke={palette.grooveDark} strokeWidth="0.04" />
+      <path d={groove} fill="none" stroke={palette.grooveLight} strokeWidth="0.026" transform="translate(0.018 0.026)" />
       {frame >= SPRIG_MIN_FRAME && (
         <>
-          <Sprig transform={`translate(${shoulderCentre} ${stripCentre}) rotate(-8) scale(${sprigScale})`} />
-          <Sprig transform={`translate(${mirror} ${stripCentre}) scale(-1 1) rotate(-8) scale(${sprigScale})`} />
-          <Sprig transform={`translate(${shoulderCentre} ${mirrorY}) scale(1 -1) rotate(-8) scale(${sprigScale})`} />
-          <Sprig transform={`translate(${mirror} ${mirrorY}) scale(-1 -1) rotate(-8) scale(${sprigScale})`} />
+          <Sprig transform={`translate(${shoulderCentre} ${stripCentre}) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
+          <Sprig transform={`translate(${mirror} ${stripCentre}) scale(-1 1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
+          <Sprig transform={`translate(${shoulderCentre} ${mirrorY}) scale(1 -1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
+          <Sprig transform={`translate(${mirror} ${mirrorY}) scale(-1 -1) rotate(-8) scale(${sprigScale})`} dark={palette.sprigDark} light={palette.sprigLight} />
         </>
       )}
     </svg>
@@ -205,8 +205,6 @@ export interface BrainVitaGridProps {
   /** The jump just made: the marble in the air, and the captured one dissolving. Both null when motion is off. */
   flight?: JumpFlight | null;
   burst?: JumpFlight | null;
-  /** Lean the board with the phone or the mouse. */
-  isTiltOn?: boolean;
   /** When given, a round button sits in the board's empty bottom-right corner to open the look-and-feel dialog. */
   onOpenLook?: () => void;
   /** Marks that button when there is a new theme to try. */
@@ -225,17 +223,14 @@ export function BrainVitaGrid({
   hasProps = true,
   flight = null,
   burst = null,
-  isTiltOn = false,
   onOpenLook,
   hasLookBadge = false,
 }: BrainVitaGridProps) {
   const skin = useSkinTokens();
   const buttons = useRef(new Map<number, HTMLButtonElement>());
-  const groupRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [tabStop, setTabStop] = useState<number>(CENTRE_HOLE);
   const { drag, handlers } = useMarbleDrag({ board, selected, isDisabled: disabled, onTap, gridRef });
-  useParallax(groupRef, isTiltOn, drag !== null);
 
   const register = useCallback((hole: number, element: HTMLButtonElement | null) => {
     if (element) buttons.current.set(hole, element);
@@ -292,21 +287,16 @@ export function BrainVitaGrid({
 
   return (
     <div
-      ref={groupRef}
       role="group"
       aria-label="Brain Vita board"
       onKeyDown={onKeyDown}
       className="relative"
       style={{
         ...(size ? { width: size.width, height: size.height } : { width: "100%", aspectRatio: "1 / 1" }),
-        transform: isTiltOn ? "perspective(1000px) rotateX(calc(var(--ty, 0) * -5deg)) rotateY(calc(var(--tx, 0) * 6deg))" : undefined,
-        willChange: isTiltOn ? "transform" : undefined,
       }}
     >
       {hasProps && (
-        <div className="absolute inset-0" style={isTiltOn ? { transform: "translate3d(calc(var(--tx, 0) * -22px), calc(var(--ty, 0) * -16px), 0)" } : undefined}>
-          {isHolo ? <HoloProps /> : <BrainVitaProps />}
-        </div>
+        <div className="absolute inset-0">{isHolo ? <HoloProps /> : <BrainVitaProps />}</div>
       )}
       {isHolo ? <HoloSurface frame={frame} /> : <WoodSurface frame={frame} />}
       <div

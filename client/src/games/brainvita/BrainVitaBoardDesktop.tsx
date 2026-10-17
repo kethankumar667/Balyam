@@ -92,10 +92,10 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
             <div className="flex items-center justify-end gap-2">
               {guideButton}
               {muteButton}
-              <BrainVitaHeaderButton onClick={openLook} aria-label={game.justUnlocked ? "Change board theme, a new theme is ready" : "Change board theme"}>
+              <BrainVitaHeaderButton onClick={openLook} aria-label={game.justUnlocked.length > 0 ? "Change board theme, a new theme is ready" : "Change board theme"}>
                 <Palette className="h-4 w-4" style={{ color: skin.accentSoft }} />
                 <span>Theme</span>
-                {game.justUnlocked && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: skin.accentAlt }} />}
+                {game.justUnlocked.length > 0 && <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: skin.accentAlt }} />}
               </BrainVitaHeaderButton>
             </div>
           </header>
@@ -114,9 +114,8 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
                 hasProps={!isShort}
                 flight={game.flight}
                 burst={game.burst}
-                isTiltOn={game.isTiltOn}
-                onOpenLook={isShort ? openLook : undefined}
-                hasLookBadge={game.justUnlocked !== null}
+                                onOpenLook={isShort ? openLook : undefined}
+                hasLookBadge={game.justUnlocked.length > 0}
               />
             </div>
           </main>
@@ -173,10 +172,7 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
           skin={game.skin}
           unlocked={game.unlockedSkins}
           onSelectSkin={game.selectSkin}
-          isTiltAvailable={game.isTiltAvailable}
-          isTiltOn={game.isTiltOn}
-          onToggleTilt={game.toggleTilt}
-          tiltNote={game.tiltNote}
+          order={game.themeOrder}
         />
 
         <BrainVitaResultModal
@@ -184,9 +180,11 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
           result={game.result}
           seconds={game.seconds}
           newPersonalBest={game.newPersonalBest}
-          unlockedSkinName={game.justUnlocked ? SKINS[game.justUnlocked].name : null}
+          unlockedSkinNames={game.justUnlocked.map((id) => SKINS[id].name)}
           onTryTheme={() => {
-            if (game.justUnlocked) game.selectSkin(game.justUnlocked);
+            // The last one earned is the hardest won, so that is the one to show off.
+            const newest = game.justUnlocked[game.justUnlocked.length - 1];
+            if (newest) game.selectSkin(newest);
             game.dismissUnlock();
             game.closeResult();
           }}

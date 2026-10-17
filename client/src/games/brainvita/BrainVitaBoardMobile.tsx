@@ -76,9 +76,8 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
             hasProps={!isShortLandscape}
             flight={game.flight}
             burst={game.burst}
-            isTiltOn={game.isTiltOn}
-            onOpenLook={openLook}
-            hasLookBadge={game.justUnlocked !== null}
+                        onOpenLook={openLook}
+            hasLookBadge={game.justUnlocked.length > 0}
           />
         </main>
 
@@ -99,10 +98,7 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
           skin={game.skin}
           unlocked={game.unlockedSkins}
           onSelectSkin={game.selectSkin}
-          isTiltAvailable={game.isTiltAvailable}
-          isTiltOn={game.isTiltOn}
-          onToggleTilt={game.toggleTilt}
-          tiltNote={game.tiltNote}
+          order={game.themeOrder}
         />
 
         <BrainVitaResultModal
@@ -110,9 +106,11 @@ export default function BrainVitaBoardMobile({ onExit }: BrainVitaBoardProps) {
           result={game.result}
           seconds={game.seconds}
           newPersonalBest={game.newPersonalBest}
-          unlockedSkinName={game.justUnlocked ? SKINS[game.justUnlocked].name : null}
+          unlockedSkinNames={game.justUnlocked.map((id) => SKINS[id].name)}
           onTryTheme={() => {
-            if (game.justUnlocked) game.selectSkin(game.justUnlocked);
+            // The last one earned is the hardest won, so that is the one to show off.
+            const newest = game.justUnlocked[game.justUnlocked.length - 1];
+            if (newest) game.selectSkin(newest);
             game.dismissUnlock();
             game.closeResult();
           }}

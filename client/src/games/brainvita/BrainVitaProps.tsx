@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useSkinTokens } from "./BrainVitaSkinContext";
 import { ARM_END, ARM_START, GRID_UNITS, crossOutlinePath } from "./brainvitaTheme";
 
 /**
@@ -18,14 +19,16 @@ const SKETCH_HOLES = Array.from({ length: GRID_UNITS * GRID_UNITS }, (_, index) 
 );
 
 function SharedDefs() {
+  const { marbleStops } = useSkinTokens();
   return (
     <svg width="0" height="0" aria-hidden className="absolute">
       <defs>
         <radialGradient id={MARBLE_GRADIENT_ID} cx="0.34" cy="0.28" r="0.8">
-          <stop offset="0%" stopColor="#f2fdff" />
-          <stop offset="22%" stopColor="#6fd0ea" />
-          <stop offset="62%" stopColor="#1f86c4" />
-          <stop offset="100%" stopColor="#0a3f78" />
+          <stop offset="0%" stopColor={marbleStops[0]} />
+          <stop offset="17%" stopColor={marbleStops[1]} />
+          <stop offset="46%" stopColor={marbleStops[2]} />
+          <stop offset="74%" stopColor={marbleStops[3]} />
+          <stop offset="100%" stopColor={marbleStops[4]} />
         </radialGradient>
         <linearGradient id={LEAF_GRADIENT_ID} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#6cb852" />

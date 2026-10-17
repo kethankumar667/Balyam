@@ -26,10 +26,9 @@ import BrainVitaResultModal from "../BrainVitaResultModal";
 import { BrainVitaSkinContext } from "../BrainVitaSkinContext";
 import { useBrainVita, BRAINVITA_TUTORIAL_KEY } from "../useBrainVita";
 import { useJumpFlight } from "../useJumpFlight";
-import { requestMotionPermission, tiltFromOrientation, tiltFromPointer, TILT_RANGE_DEGREES } from "../useParallax";
-import { CENTRE_HOLE, createBoard, holeAt, solveFrom, type Move } from "../brainvitaRules";
+import { CENTRE_HOLE, applyMove, createBoard, holeAt, legalMoves, marbleCount, solveFrom, type Move } from "../brainvitaRules";
 import { DISSOLVE_DURATION_MS, JUMP_DURATION_MS } from "../brainvitaJump";
-import { HOLO_UNLOCK_MAX_MARBLES, SKINS, SKIN_STORAGE_KEY, TILT_STORAGE_KEY, UNLOCKED_STORAGE_KEY } from "../brainvitaSkins";
+import { ORDER_STORAGE_KEY, SKINS, SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, parseOrder, requirementText, skinsEarnedBy, type EarnedSkinId } from "../brainvitaSkins";
 import type { GameResult } from "../brainvitaGame";
 
 const hole = (row: number, col: number): number => holeAt(row, col) as number;
@@ -92,11 +91,37 @@ describe("useJumpFlight", () => {
   });
 });
 
-describe("useBrainVita: themes, tilt and the drone", () => {
+/** A player's ladder, fixed so the tests know which theme sits on which rung. */
+const LADDER: readonly EarnedSkinId[] = ["holo", "aurora", "ebony", "jade", "copper"];
+
+/** A full game of random legal jumps played until nothing can move, found by trying seeds until it leaves the wanted number of marbles. */
+function strandedLine(wanted: number): Move[] {
+  for (let seed = 1; seed < 20000; seed += 1) {
+    let state = seed;
+    const random = (): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
+    let board: boolean[] = createBoard();
+    const line: Move[] = [];
+    for (;;) {
+      const moves = legalMoves(board);
+      if (moves.length === 0) break;
+      const move = moves[Math.floor(random() * moves.length)];
+      board = applyMove(board, move) as boolean[];
+      line.push(move);
+    }
+    if (marbleCount(board) === wanted) return line;
+  }
+  throw new Error("no game found that ends with " + wanted + " marbles");
+}
+
+describe("useBrainVita: themes and the drone", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
     localStorage.setItem(BRAINVITA_TUTORIAL_KEY, "1");
+    localStorage.setItem(ORDER_STORAGE_KEY, LADDER.join(","));
     recordSoloScore.mockReset();
     recordSoloScore.mockResolvedValue({ isNewPersonalBest: false });
     Object.values(audio).forEach((fn) => fn.mockClear());
@@ -117,49 +142,105 @@ describe("useBrainVita: themes, tilt and the drone", () => {
     const { result } = renderHook(() => useBrainVita());
     expect(result.current.skin).toBe("wood");
     expect(result.current.unlockedSkins).toEqual(["wood"]);
-    expect(result.current.justUnlocked).toBeNull();
+    expect(result.current.justUnlocked).toEqual([]);
   });
 
-  it("earns the holo table from a clean one-marble game, and remembers it", () => {
+  it("uses this player's stored ladder", () => {
+    const { result } = renderHook(() => useBrainVita());
+    expect(result.current.themeOrder).toEqual(LADDER);
+  });
+
+  it("draws a ladder for a new player the first time, and keeps it", () => {
+    localStorage.removeItem(ORDER_STORAGE_KEY);
+    const first = renderHook(() => useBrainVita());
+    const drawn = first.result.current.themeOrder;
+    expect([...drawn].sort()).toEqual([...LADDER].sort());
+    expect(parseOrder(localStorage.getItem(ORDER_STORAGE_KEY))).toEqual(drawn);
+    first.unmount();
+    expect(renderHook(() => useBrainVita()).result.current.themeOrder).toEqual(drawn);
+  });
+
+  it("earns every theme from a clean one-marble game, and remembers them", () => {
     const { result } = renderHook(() => useBrainVita());
     play(result, solution());
-    expect(result.current.justUnlocked).toBe("holo");
-    expect(result.current.unlockedSkins).toContain("holo");
-    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toBe("wood,holo");
+    expect(result.current.justUnlocked).toEqual(LADDER);
+    expect(result.current.unlockedSkins).toEqual(["wood", ...LADDER]);
+    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toBe("wood," + LADDER.join(","));
   });
 
-  it("does not earn it from a game that used undo", () => {
+  it("earns only the rungs a game reached: 5 marbles left earns the first theme and nothing more", () => {
     const { result } = renderHook(() => useBrainVita());
-    play(result, [firstJump]);
+    play(result, strandedLine(5));
+    expect(result.current.result?.marblesLeft).toBe(5);
+    expect(result.current.justUnlocked).toEqual(["holo"]);
+    expect(result.current.unlockedSkins).toEqual(["wood", "holo"]);
+  });
+
+  it("earns the rungs the ending really reached, whatever that was", () => {
+    for (const left of [3, 4]) {
+      localStorage.removeItem(UNLOCKED_STORAGE_KEY);
+      const { result, unmount } = renderHook(() => useBrainVita());
+      play(result, strandedLine(left));
+      const expected = skinsEarnedBy({ marblesLeft: left, usedHelp: false }, LADDER);
+      expect(expected).toHaveLength(6 - left);
+      expect(result.current.justUnlocked).toEqual(expected);
+      unmount();
+    }
+  });
+
+  it("earns nothing from a game that ended with more than 5 marbles", () => {
+    const { result } = renderHook(() => useBrainVita());
+    play(result, strandedLine(8));
+    expect(result.current.finished).toBe(true);
+    expect(result.current.justUnlocked).toEqual([]);
+    expect(result.current.unlockedSkins).toEqual(["wood"]);
+  });
+
+  it("does not earn from a game that used undo, even a perfect one", () => {
+    const { result } = renderHook(() => useBrainVita());
+    play(result, [solution()[0]]);
     act(() => result.current.undo());
     play(result, solution());
     expect(result.current.result?.marblesLeft).toBe(1);
     expect(result.current.unlockedSkins).toEqual(["wood"]);
-    expect(result.current.justUnlocked).toBeNull();
+    expect(result.current.justUnlocked).toEqual([]);
+  });
+
+  it("keeps what was earned when a later game goes worse, and announces only what is new", () => {
+    const { result } = renderHook(() => useBrainVita());
+    play(result, strandedLine(5));
+    act(() => result.current.restart());
+    play(result, strandedLine(8));
+    expect(result.current.unlockedSkins).toEqual(["wood", "holo"]);
+    expect(result.current.justUnlocked).toEqual([]);
+    act(() => result.current.restart());
+    play(result, strandedLine(4));
+    expect(result.current.justUnlocked).toEqual(["aurora"]);
+    expect(result.current.unlockedSkins).toEqual(["wood", "holo", "aurora"]);
   });
 
   it("will not select a theme that has not been earned, and does once it has", () => {
     const { result } = renderHook(() => useBrainVita());
-    act(() => result.current.selectSkin("holo"));
+    act(() => result.current.selectSkin("jade"));
     expect(result.current.skin).toBe("wood");
     play(result, solution());
-    act(() => result.current.selectSkin("holo"));
-    expect(result.current.skin).toBe("holo");
-    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("holo");
+    act(() => result.current.selectSkin("jade"));
+    expect(result.current.skin).toBe("jade");
+    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("jade");
   });
 
   it("clears the new-theme marker when a new game starts", () => {
     const { result } = renderHook(() => useBrainVita());
     play(result, solution());
     act(() => result.current.restart());
-    expect(result.current.justUnlocked).toBeNull();
+    expect(result.current.justUnlocked).toEqual([]);
   });
 
   it("restores an earned, chosen theme on the next visit", () => {
-    localStorage.setItem(UNLOCKED_STORAGE_KEY, "wood,holo");
-    localStorage.setItem(SKIN_STORAGE_KEY, "holo");
+    localStorage.setItem(UNLOCKED_STORAGE_KEY, "wood,copper");
+    localStorage.setItem(SKIN_STORAGE_KEY, "copper");
     const { result } = renderHook(() => useBrainVita());
-    expect(result.current.skin).toBe("holo");
+    expect(result.current.skin).toBe("copper");
   });
 
   it("starts the drone on the first jump and thins it as marbles go", () => {
@@ -195,64 +276,6 @@ describe("useBrainVita: themes, tilt and the drone", () => {
     audio.toggleMute.mockReturnValueOnce(false);
     act(() => result.current.toggleMute());
     expect(audio.setAmbient).toHaveBeenCalledWith(31);
-  });
-
-  it("turns tilt on and remembers it, off again, and says so when motion access is refused", async () => {
-    vi.useRealTimers();
-    const { result } = renderHook(() => useBrainVita());
-    expect(result.current.isTiltOn).toBe(false);
-    await act(async () => {
-      await result.current.toggleTilt();
-    });
-    expect(result.current.isTiltOn).toBe(true);
-    expect(localStorage.getItem(TILT_STORAGE_KEY)).toBe("true");
-    await act(async () => {
-      await result.current.toggleTilt();
-    });
-    expect(result.current.isTiltOn).toBe(false);
-    expect(localStorage.getItem(TILT_STORAGE_KEY)).toBe("false");
-
-    const ask = vi.fn().mockResolvedValue("denied");
-    vi.stubGlobal("DeviceOrientationEvent", { requestPermission: ask });
-    await act(async () => {
-      await result.current.toggleTilt();
-    });
-    expect(ask).toHaveBeenCalled();
-    expect(result.current.isTiltOn).toBe(false);
-    expect(result.current.tiltNote).toMatch(/refused/i);
-    vi.unstubAllGlobals();
-  });
-});
-
-describe("motion helpers", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("leans a phone by how far it was tipped from where it was first held, up to a limit", () => {
-    const base = { beta: 40, gamma: 0 };
-    expect(tiltFromOrientation(base, base)).toEqual({ x: 0, y: 0 });
-    expect(tiltFromOrientation(base, { beta: 40, gamma: TILT_RANGE_DEGREES / 2 }).x).toBeCloseTo(0.5, 10);
-    expect(tiltFromOrientation(base, { beta: 40 - 500, gamma: 500 })).toEqual({ x: 1, y: -1 });
-  });
-
-  it("leans for a mouse from the middle of the window to its edges", () => {
-    expect(tiltFromPointer(500, 400, 1000, 800)).toEqual({ x: 0, y: 0 });
-    expect(tiltFromPointer(0, 800, 1000, 800)).toEqual({ x: -1, y: 1 });
-    expect(tiltFromPointer(5, 5, 0, 0)).toEqual({ x: 0, y: 0 });
-  });
-
-  it("asks for motion access only where the platform makes you, and reports the answer", async () => {
-    vi.stubGlobal("DeviceOrientationEvent", undefined);
-    expect(await requestMotionPermission()).toBe("unsupported");
-    vi.stubGlobal("DeviceOrientationEvent", class {});
-    expect(await requestMotionPermission()).toBe("granted");
-    vi.stubGlobal("DeviceOrientationEvent", { requestPermission: () => Promise.resolve("granted") });
-    expect(await requestMotionPermission()).toBe("granted");
-    vi.stubGlobal("DeviceOrientationEvent", { requestPermission: () => Promise.resolve("denied") });
-    expect(await requestMotionPermission()).toBe("denied");
-    vi.stubGlobal("DeviceOrientationEvent", { requestPermission: () => Promise.reject(new Error("no")) });
-    expect(await requestMotionPermission()).toBe("denied");
   });
 });
 
@@ -431,12 +454,32 @@ describe("the holo skin on the board", () => {
     expect(screen.getByRole("button", { name: "Change board theme, a new theme is ready" })).toBeInTheDocument();
   });
 
-  it("leans only when tilt is on", () => {
-    const off = grid();
-    expect((off.container.querySelector('[role="group"]') as HTMLElement).style.transform).toBe("");
-    off.unmount();
-    const on = grid({ isTiltOn: true });
-    expect((on.container.querySelector('[role="group"]') as HTMLElement).style.transform).toContain("perspective");
+  it("paints a solid board from the skin's own palette", () => {
+    const view = render(
+      <BrainVitaSkinContext.Provider value={SKINS.ebony}>
+        <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
+      </BrainVitaSkinContext.Provider>,
+    );
+    const stops = [...view.container.querySelectorAll("#bv-wood stop")].map((stop) => stop.getAttribute("stop-color"));
+    expect(stops).toEqual([...(SKINS.ebony.board as NonNullable<typeof SKINS.ebony.board>).stops]);
+  });
+
+  it("paints a glass board in the skin's own light, so Aurora is not Holo", () => {
+    const markup = (skin: typeof SKINS.holo): string => {
+      const view = render(
+        <BrainVitaSkinContext.Provider value={skin}>
+          <BrainVitaGrid board={createBoard()} selected={null} targets={[]} hint={null} disabled={false} onTap={vi.fn()} />
+        </BrainVitaSkinContext.Provider>,
+      );
+      const html = view.container.innerHTML;
+      view.unmount();
+      return html;
+    };
+    const holo = markup(SKINS.holo);
+    const aurora = markup(SKINS.aurora);
+    expect(holo).toContain(SKINS.holo.accent);
+    expect(aurora).toContain(SKINS.aurora.accent);
+    expect(aurora).not.toContain(SKINS.holo.accent);
   });
 });
 
@@ -447,56 +490,55 @@ describe("BrainVitaThemeDialog", () => {
       onClose: vi.fn(),
       skin: "wood" as const,
       unlocked: ["wood"] as const,
+      order: LADDER,
       onSelectSkin: vi.fn(),
-      isTiltAvailable: true,
-      isTiltOn: false,
-      onToggleTilt: vi.fn(),
-      tiltNote: null,
       ...overrides,
     };
     render(<BrainVitaThemeDialog {...props} />);
     return props;
   };
 
-  it("names the dialog and offers both themes as a radio group", () => {
+  it("names the dialog and offers the wood and all five earned themes as a radio group", () => {
     dialog();
     const group = screen.getByRole("radiogroup", { name: "Board theme" });
-    expect(within(group).getAllByRole("radio")).toHaveLength(2);
+    expect(within(group).getAllByRole("radio")).toHaveLength(6);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("shows what the locked theme asks for, and will not pick it", () => {
+  it("lists the themes in this player's own ladder order, after the classic wood", () => {
+    const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+    dialog({ order: mine });
+    const names = within(screen.getByRole("radiogroup", { name: "Board theme" })).getAllByRole("radio").map((radio) => radio.querySelector("span.text-sm")?.textContent);
+    expect(names).toEqual(["Classic wood", ...mine.map((id) => SKINS[id].name)]);
+  });
+
+  it("tells each locked theme's rung from the player's own ladder, not a fixed one", () => {
+    const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+    dialog({ order: mine });
+    expect(screen.getByText(requirementText(mine, "copper"))).toBeInTheDocument();
+    expect(screen.getByText(requirementText(mine, "aurora"))).toBeInTheDocument();
+    expect(screen.getByText("Finish a game with 3 or fewer marbles left, without a hint or undo.")).toBeInTheDocument();
+  });
+
+  it("will not pick a locked theme", () => {
     const props = dialog();
     const holo = screen.getByRole("radio", { name: /Holo/ });
     expect(holo).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByText(new RegExp(`${HOLO_UNLOCK_MAX_MARBLES} or fewer marbles`))).toBeInTheDocument();
     fireEvent.click(holo);
     expect(props.onSelectSkin).not.toHaveBeenCalled();
   });
 
-  it("picks an earned theme, and marks the chosen one", () => {
-    const props = dialog({ unlocked: ["wood", "holo"], skin: "wood" });
+  it("picks an earned theme, marks the chosen one, and says it was earned", () => {
+    const props = dialog({ unlocked: ["wood", "holo", "jade"], skin: "wood" });
     expect(screen.getByRole("radio", { name: /Classic wood/ })).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(screen.getByRole("radio", { name: /Holo/ }));
-    expect(props.onSelectSkin).toHaveBeenCalledWith("holo");
+    expect(screen.getAllByText("Earned by playing")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("radio", { name: /Jade/ }));
+    expect(props.onSelectSkin).toHaveBeenCalledWith("jade");
   });
 
-  it("offers a tilt switch that reflects and changes the setting", () => {
-    const props = dialog({ isTiltOn: true });
-    const toggle = screen.getByRole("switch", { name: /Tilt the board/ });
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(toggle);
-    expect(props.onToggleTilt).toHaveBeenCalledTimes(1);
-  });
-
-  it("hides the tilt switch where there is nothing to follow, and shows why tilt failed", () => {
-    const off = render(
-      <BrainVitaThemeDialog open onClose={vi.fn()} skin="wood" unlocked={["wood"]} onSelectSkin={vi.fn()} isTiltAvailable={false} isTiltOn={false} onToggleTilt={vi.fn()} tiltNote={null} />,
-    );
+  it("has no tilt switch any more", () => {
+    dialog();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
-    off.unmount();
-    dialog({ tiltNote: "Motion access was refused, so the board cannot follow your phone." });
-    expect(screen.getByText(/refused/)).toBeInTheDocument();
   });
 
   it("closes from its own button", () => {
@@ -506,21 +548,26 @@ describe("BrainVitaThemeDialog", () => {
   });
 });
 
-describe("the results dialog and a new theme", () => {
+describe("the results dialog and new themes", () => {
   const result = { marblesLeft: 1, moves: 31, lastInCentre: true, usedHelp: false, rating: { title: "Genius", isPerfect: true } } as unknown as GameResult;
   const modal = (extra: Partial<Parameters<typeof BrainVitaResultModal>[0]> = {}) =>
     render(<BrainVitaResultModal open result={result} seconds={12} newPersonalBest={false} onPlayAgain={vi.fn()} onReview={vi.fn()} onLeave={vi.fn()} {...extra} />);
 
-  it("says nothing about themes unless one was just earned", () => {
+  it("says nothing about themes unless some were just earned", () => {
     modal();
-    expect(screen.queryByText(/New theme unlocked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/theme/i)).not.toBeInTheDocument();
   });
 
-  it("announces the theme earned and offers to try it", () => {
+  it("announces one theme earned and offers to try it", () => {
     const onTryTheme = vi.fn();
-    modal({ unlockedSkinName: "Holo", onTryTheme });
+    modal({ unlockedSkinNames: ["Holo"], onTryTheme });
     expect(screen.getByText("New theme unlocked: Holo")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try it" }));
     expect(onTryTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it("names every theme a strong game earned at once", () => {
+    modal({ unlockedSkinNames: ["Holo", "Aurora", "Jade"], onTryTheme: vi.fn() });
+    expect(screen.getByText("New themes unlocked: Holo, Aurora, Jade")).toBeInTheDocument();
   });
 });

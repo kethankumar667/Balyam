@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Crown, Footprints, Timer } from "lucide-react";
 import { useSkinTokens } from "./BrainVitaSkinContext";
+import { rgba } from "./brainvitaSkins";
 
 /** The pieces round the board: the table, the hanging sign, the stats plank, the action pills and the header buttons. */
 
@@ -161,10 +162,8 @@ export interface BrainVitaPillProps {
 /** One wide pill of the action dock, icon over caption as in the design. */
 export function BrainVitaPill({ label, ariaLabel, icon, onClick, isDisabled = false, isPrimary = false, isInline = false }: BrainVitaPillProps) {
   const skin = useSkinTokens();
-  const primaryBackground =
-    skin.surface === "holo"
-      ? "linear-gradient(180deg, rgba(20,84,128,0.92) 0%, rgba(6,32,62,0.95) 100%)"
-      : "linear-gradient(180deg, rgba(120,78,24,0.95) 0%, rgba(70,42,12,0.96) 100%)";
+  // The favoured pill is the plank with a wash of the theme's own accent over it, so it matches whatever theme is on.
+  const primaryBackground = `linear-gradient(180deg, ${rgba(skin.accent, 0.34)} 0%, ${rgba(skin.accent, 0.1)} 100%), ${skin.plankBackground}`;
   return (
     <button
       type="button"

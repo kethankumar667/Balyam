@@ -1,19 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  HOLO_UNLOCK_MAX_MARBLES,
+  EARNED_SKINS,
+  ORDER_STORAGE_KEY,
   SKINS,
+  SKIN_IDS,
   SKIN_STORAGE_KEY,
-  TILT_STORAGE_KEY,
+  TIER_MARBLES,
   UNLOCKED_STORAGE_KEY,
-  earnsHolo,
   loadSkin,
-  loadTilt,
+  loadThemeOrder,
   loadUnlocked,
+  marblesNeeded,
+  parseOrder,
   parseUnlocked,
+  requirementText,
   resolveSkin,
+  rgba,
   saveSkin,
-  saveTilt,
   saveUnlocked,
+  shuffleThemes,
+  skinsEarnedBy,
+  type EarnedSkinId,
 } from "../brainvitaSkins";
 import { ARC_HEIGHT, PARTICLE_COUNT, flightKeyframes, jumpGeometry, particleAngles } from "../brainvitaJump";
 import { DRAG_START_PX, SNAP_RADIUS, clampToBoard, hasDragged, holeCentre, pointerToCells, snapTarget } from "../brainvitaDrag";
@@ -22,54 +29,143 @@ import { CENTRE_HOLE, holeAt } from "../brainvitaRules";
 
 const hole = (row: number, col: number): number => holeAt(row, col) as number;
 
+const LADDER: readonly EarnedSkinId[] = ["holo", "aurora", "ebony", "jade", "copper"];
+
+/** A random source that walks through fixed numbers, so a shuffle can be pinned. */
+const sequence = (...values: number[]) => {
+  let i = 0;
+  return () => values[i++ % values.length];
+};
+
 describe("skins", () => {
   beforeEach(() => localStorage.clear());
 
-  it("gives every skin the same set of paint, and a way to earn the one that is not free", () => {
-    expect(Object.keys(SKINS.wood).sort()).toEqual(Object.keys(SKINS.holo).sort());
-    expect(SKINS.wood.unlockHint).toBeNull();
-    expect(SKINS.holo.unlockHint).toContain(String(HOLO_UNLOCK_MAX_MARBLES));
+  it("has the classic wood and five earned themes, each with the same set of paint and its own name", () => {
+    expect(SKIN_IDS).toHaveLength(6);
+    expect(EARNED_SKINS).toHaveLength(5);
+    for (const id of SKIN_IDS) expect(Object.keys(SKINS[id]).sort()).toEqual(Object.keys(SKINS.wood).sort());
+    expect(new Set(SKIN_IDS.map((id) => SKINS[id].name)).size).toBe(6);
+    expect(new Set(SKIN_IDS.map((id) => SKINS[id].marbleFill)).size).toBe(6);
   });
 
-  it("earns the holo table only from an unassisted game with few enough marbles left", () => {
-    expect(earnsHolo({ marblesLeft: 1, usedHelp: false })).toBe(true);
-    expect(earnsHolo({ marblesLeft: HOLO_UNLOCK_MAX_MARBLES, usedHelp: false })).toBe(true);
-    expect(earnsHolo({ marblesLeft: HOLO_UNLOCK_MAX_MARBLES + 1, usedHelp: false })).toBe(false);
-    expect(earnsHolo({ marblesLeft: 1, usedHelp: true })).toBe(false);
+  it("gives a solid board its palette and a glass board its glass, and never both", () => {
+    for (const id of SKIN_IDS) {
+      const skin = SKINS[id];
+      expect(skin.surface === "wood" ? skin.board : skin.glass).not.toBeNull();
+      expect(skin.surface === "wood" ? skin.glass : skin.board).toBeNull();
+    }
+  });
+
+  it("asks for 5, 4, 3, 2 and 1 marbles on the five rungs", () => {
+    expect(TIER_MARBLES).toEqual([5, 4, 3, 2, 1]);
+  });
+
+  it("turns a hex colour into rgba", () => {
+    expect(rgba("#ff8000", 0.5)).toBe("rgba(255, 128, 0, 0.5)");
+  });
+
+  describe("the shuffled ladder", () => {
+    it("is always each of the five themes exactly once", () => {
+      for (let i = 0; i < 50; i += 1) expect([...shuffleThemes()].sort()).toEqual([...EARNED_SKINS].sort());
+    });
+
+    it("follows the random numbers it is given, so it can be pinned", () => {
+      expect(shuffleThemes(sequence(0, 0, 0, 0))).toEqual(["aurora", "ebony", "jade", "copper", "holo"]);
+      expect(shuffleThemes(sequence(0.99, 0.99, 0.99, 0.99))).toEqual([...EARNED_SKINS]);
+    });
+
+    it("puts every theme on every rung for some player, so the order is not fixed for everyone", () => {
+      const seen = EARNED_SKINS.map(() => new Set<string>());
+      for (let i = 0; i < 600; i += 1) shuffleThemes().forEach((id, tier) => seen[tier].add(id));
+      for (const rung of seen) expect(rung.size).toBe(5);
+    });
+
+    it("gives two players different ladders when their luck differs", () => {
+      expect(shuffleThemes(sequence(0.1, 0.9, 0.3, 0.7))).not.toEqual(shuffleThemes(sequence(0.9, 0.1, 0.7, 0.3)));
+    });
+
+    it("reads back only a ladder that names each theme once", () => {
+      expect(parseOrder(LADDER.join(","))).toEqual(LADDER);
+      expect(parseOrder(null)).toBeNull();
+      expect(parseOrder("")).toBeNull();
+      expect(parseOrder("holo,aurora,ebony,jade")).toBeNull();
+      expect(parseOrder("holo,holo,ebony,jade,copper")).toBeNull();
+      expect(parseOrder("holo,aurora,ebony,jade,wood")).toBeNull();
+      expect(parseOrder("holo,aurora,ebony,jade,copper,extra")).toBeNull();
+    });
+
+    it("is chosen once on a new device and kept ever after", () => {
+      const first = loadThemeOrder(sequence(0, 0, 0, 0));
+      expect(localStorage.getItem(ORDER_STORAGE_KEY)).toBe(first.join(","));
+      expect(loadThemeOrder(sequence(0.99))).toEqual(first);
+    });
+
+    it("replaces a damaged stored ladder instead of trusting it", () => {
+      localStorage.setItem(ORDER_STORAGE_KEY, "holo,holo,holo,holo,holo");
+      const fixed = loadThemeOrder();
+      expect([...fixed].sort()).toEqual([...EARNED_SKINS].sort());
+      expect(parseOrder(localStorage.getItem(ORDER_STORAGE_KEY))).toEqual(fixed);
+    });
+  });
+
+  describe("earning themes", () => {
+    it("earns the first rung at 5 marbles, and one more for each marble fewer", () => {
+      expect(skinsEarnedBy({ marblesLeft: 6, usedHelp: false }, LADDER)).toEqual([]);
+      expect(skinsEarnedBy({ marblesLeft: 5, usedHelp: false }, LADDER)).toEqual(["holo"]);
+      expect(skinsEarnedBy({ marblesLeft: 4, usedHelp: false }, LADDER)).toEqual(["holo", "aurora"]);
+      expect(skinsEarnedBy({ marblesLeft: 3, usedHelp: false }, LADDER)).toEqual(["holo", "aurora", "ebony"]);
+      expect(skinsEarnedBy({ marblesLeft: 2, usedHelp: false }, LADDER)).toEqual(["holo", "aurora", "ebony", "jade"]);
+      expect(skinsEarnedBy({ marblesLeft: 1, usedHelp: false }, LADDER)).toEqual(LADDER);
+    });
+
+    it("earns nothing from a game that used a hint or undo, however well it ended", () => {
+      expect(skinsEarnedBy({ marblesLeft: 1, usedHelp: true }, LADDER)).toEqual([]);
+    });
+
+    it("earns the themes in the order of the player's own ladder", () => {
+      const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+      expect(skinsEarnedBy({ marblesLeft: 5, usedHelp: false }, mine)).toEqual(["copper"]);
+      expect(skinsEarnedBy({ marblesLeft: 3, usedHelp: false }, mine)).toEqual(["copper", "jade", "holo"]);
+    });
+
+    it("says how many marbles each theme asks for on this player's ladder", () => {
+      const mine: readonly EarnedSkinId[] = ["copper", "jade", "holo", "ebony", "aurora"];
+      expect(marblesNeeded(mine, "copper")).toBe(5);
+      expect(marblesNeeded(mine, "holo")).toBe(3);
+      expect(marblesNeeded(mine, "aurora")).toBe(1);
+    });
+
+    it("words the requirement for one marble, and for several, without hint or undo", () => {
+      expect(requirementText(LADDER, "copper")).toBe("Finish a game with one marble left, without a hint or undo.");
+      expect(requirementText(LADDER, "ebony")).toBe("Finish a game with 3 or fewer marbles left, without a hint or undo.");
+    });
   });
 
   it("always has the wood skin, and ignores anything it does not recognise", () => {
     expect(parseUnlocked(null)).toEqual(["wood"]);
     expect(parseUnlocked("holo")).toEqual(["wood", "holo"]);
-    expect(parseUnlocked("holo, gold,  ,wood,holo")).toEqual(["wood", "holo"]);
+    expect(parseUnlocked("holo, gold,  ,wood,jade,holo")).toEqual(["wood", "holo", "jade"]);
   });
 
   it("will not show a skin that has not been earned, even if storage says so", () => {
-    expect(resolveSkin("holo", ["wood"])).toBe("wood");
-    expect(resolveSkin("holo", ["wood", "holo"])).toBe("holo");
+    expect(resolveSkin("jade", ["wood"])).toBe("wood");
+    expect(resolveSkin("jade", ["wood", "jade"])).toBe("jade");
     expect(resolveSkin("nonsense", ["wood", "holo"])).toBe("wood");
     expect(resolveSkin(null, ["wood", "holo"])).toBe("wood");
   });
 
-  it("remembers the unlock and the choice across loads", () => {
-    saveUnlocked(["wood", "holo"]);
-    saveSkin("holo");
-    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toBe("wood,holo");
-    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("holo");
-    expect(loadUnlocked()).toEqual(["wood", "holo"]);
-    expect(loadSkin()).toBe("holo");
+  it("remembers the unlocks and the choice across loads", () => {
+    saveUnlocked(["wood", "holo", "copper"]);
+    saveSkin("copper");
+    expect(localStorage.getItem(UNLOCKED_STORAGE_KEY)).toBe("wood,holo,copper");
+    expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe("copper");
+    expect(loadUnlocked()).toEqual(["wood", "holo", "copper"]);
+    expect(loadSkin()).toBe("copper");
   });
 
   it("falls back to wood when a hand-edited choice was never earned", () => {
-    localStorage.setItem(SKIN_STORAGE_KEY, "holo");
+    localStorage.setItem(SKIN_STORAGE_KEY, "ebony");
     expect(loadSkin()).toBe("wood");
-  });
-
-  it("remembers the tilt choice, off by default", () => {
-    expect(loadTilt()).toBe(false);
-    saveTilt(true);
-    expect(localStorage.getItem(TILT_STORAGE_KEY)).toBe("true");
-    expect(loadTilt()).toBe(true);
   });
 
   it("never lets unavailable storage break playing", () => {
@@ -80,7 +176,7 @@ describe("skins", () => {
       throw new Error("blocked");
     });
     expect(loadSkin()).toBe("wood");
-    expect(loadTilt()).toBe(false);
+    expect([...loadThemeOrder()].sort()).toEqual([...EARNED_SKINS].sort());
     expect(() => saveSkin("wood")).not.toThrow();
     expect(() => saveUnlocked(["wood"])).not.toThrow();
     failing.mockRestore();

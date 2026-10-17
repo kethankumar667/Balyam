@@ -17,10 +17,11 @@ describe("purgeRetiredStorage", () => {
     window.sessionStorage.clear();
   });
 
-  it("names the keys the removed voucher, rematch and Carrom features used", () => {
+  it("names the keys the removed voucher, rematch, Carrom and Brain Vita tilt features used", () => {
     expect([...RETIRED_STORAGE_KEYS].sort()).toEqual([
       "bhalyam.academy.carrom.v2",
       "bhalyam.auto_start",
+      "bhalyam.brainvita.tilt",
       "bhalyam.pending_voucher_amount",
       "bhalyam.pending_voucher_code",
       "bhalyam.pending_vouchers",

@@ -398,10 +398,10 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
-    key: "bhalyam.brainvita.tilt",
-    label: "Brain Vita board tilt",
-    description: "Whether you turned on the board leaning with your phone or mouse in Brain Vita.",
-    purpose: "preference",
+    key: "bhalyam.brainvita.themeorder",
+    label: "Brain Vita theme order",
+    description: "The random order in which the Brain Vita board themes are won on this device, chosen once and kept.",
+    purpose: "progress",
     isPersonalData: false,
   },
   {

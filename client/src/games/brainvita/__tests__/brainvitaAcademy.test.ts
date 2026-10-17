@@ -4,7 +4,7 @@ import { DATA_INVENTORY } from "../../../lib/privacy/dataInventory";
 import { getGameModeConfig } from "@shared/profile/GameModes.js";
 import { BRAINVITA_TUTORIAL_KEY } from "../useBrainVita";
 import { BRAINVITA_MUTE_STORAGE_KEY } from "../brainvitaAudio";
-import { SKIN_STORAGE_KEY, TILT_STORAGE_KEY, UNLOCKED_STORAGE_KEY } from "../brainvitaSkins";
+import { ORDER_STORAGE_KEY, SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY } from "../brainvitaSkins";
 import { CENTRE_HOLE, HOLE_COUNT, createBoard, marbleCount, rateResult } from "../brainvitaRules";
 
 /** The lesson is where a first-time player learns the rules, so each fact it states is pinned to the game. */
@@ -66,7 +66,7 @@ describe("Brain Vita academy lesson", () => {
 describe("Brain Vita storage keys", () => {
   const declared = new Map(DATA_INVENTORY.map((entry) => [entry.key, entry]));
 
-  it.each([BRAINVITA_TUTORIAL_KEY, BRAINVITA_MUTE_STORAGE_KEY, "bhalyam.academy.brainvita.v2", SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, TILT_STORAGE_KEY])(
+  it.each([BRAINVITA_TUTORIAL_KEY, BRAINVITA_MUTE_STORAGE_KEY, "bhalyam.academy.brainvita.v2", SKIN_STORAGE_KEY, UNLOCKED_STORAGE_KEY, ORDER_STORAGE_KEY])(
     "declares %s in the privacy inventory, as non-personal on-device data",
     (key) => {
       const entry = declared.get(key);
