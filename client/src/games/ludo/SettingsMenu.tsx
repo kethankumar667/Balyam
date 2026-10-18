@@ -1,9 +1,4 @@
-import {
-  LUDO_THEMES,
-  LUDO_THEME_LABELS,
-  LUDO_THEME_SWATCH,
-  useLudoSettings,
-} from "./settings";
+import { useLudoSettings } from "./settings";
 
 export default function SettingsMenu({ onClose }: { onClose: () => void }) {
   const [s, update] = useLudoSettings();
@@ -18,36 +13,9 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
         </div>
 
-        <Section title="Board theme">
-          <div className="grid grid-cols-3 gap-2">
-            {LUDO_THEMES.map((t) => {
-              const [field, ink] = LUDO_THEME_SWATCH[t];
-              const active = s.theme === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => update({ theme: t })}
-                  aria-pressed={active}
-                  className={`rounded-lg overflow-hidden text-sm font-semibold transition border ${
-                    active
-                      ? "ring-2 ring-amber-400 scale-105 border-amber-400"
-                      : "border-slate-600 hover:border-slate-400"
-                  }`}
-                >
-                  {/* Swatch shows the actual field colour with a grid-ink bar,
-                      so the tile previews the board rather than just naming it. */}
-                  <span className="block h-8 w-full" style={{ background: field }}>
-                    <span className="block h-2 w-full" style={{ background: ink }} />
-                  </span>
-                  <span className="block py-1.5 bg-slate-900/80 text-slate-100">
-                    {LUDO_THEME_LABELS[t]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
+        <p className="rounded-lg bg-slate-900/60 px-3 py-2 text-xs leading-snug text-slate-300">
+          The look of the table is chosen by the host, in the lobby, and everyone at the table sees it.
+        </p>
 
         <Toggle
           label="Color-blind shapes"

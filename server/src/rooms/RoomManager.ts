@@ -167,6 +167,7 @@ import { tickPeriodMs } from "./simulationClock.js";
 import { isRetiredGame } from "@shared/retiredGames.js";
 import { operationalAuthConfig, getUserRole } from "../security/operationalAuth.js";
 import type { RoomSnapshot, RoomSnapshotRepository } from "./durability/types.js";
+import { DEFAULT_WORLD, isWorldOf, sanitizeWorld, type WorldId } from "@shared/worlds.js";
 import { roomSnapshotStore } from "./durability/index.js";
 
 const GRACE_PERIOD_MS = 90_000;
@@ -451,6 +452,8 @@ export interface Room {
   hostId: string;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set via room:setName. */
   name: string | null;
+  /** The look of the table (shared/worlds.ts), set by the host in the lobby via room:setWorld. */
+  world: WorldId;
   /** Finished rounds this room has played, oldest first (Rummy only). docs/rummy/roadmap.md B.1. */
   history: RummyRoundRecap[];
   /** UNO's own finished-round history, oldest first — separate array,
@@ -891,6 +894,7 @@ export class RoomManager {
       matchStartedAt: room.matchStartedAt,
       hostId: room.hostId,
       name: room.name,
+      world: room.world,
       entryStakeCoins: room.entryStakeCoins,
       currentMatchId: room.currentMatchId,
       lastMatchId: room.lastMatchId,
@@ -953,6 +957,7 @@ export class RoomManager {
       matchStartedAt: snapshot.matchStartedAt,
       hostId: snapshot.hostId,
       name: snapshot.name,
+      world: sanitizeWorld(snapshot.game, snapshot.world),
       history: [...(snapshot.history || [])],
       unoHistory: [...(snapshot.unoHistory || [])],
       bingoHistory: [...(snapshot.bingoHistory || [])],
@@ -1642,6 +1647,7 @@ export class RoomManager {
       hostId: room.hostId,
       maxPlayers: max,
       name: room.name,
+      world: room.world,
       history: room.history,
       champion: room.name ? this.champions.get(room.name) ?? null : null,
       unoHistory: room.unoHistory,
@@ -1910,6 +1916,7 @@ export class RoomManager {
       matchStartedAt: null,
       hostId: playerId,
       name: null,
+      world: DEFAULT_WORLD,
       history: [],
       unoHistory: [],
       bingoHistory: [],
@@ -2575,6 +2582,25 @@ export class RoomManager {
     const cleaned = name.trim().slice(0, 40);
     room.name = cleaned.length > 0 ? cleaned : null;
     this.broadcastRoomState(room);
+  }
+
+  /**
+   * Host-only, lobby only. Chooses the table's world. Nothing is trusted: the value must be exactly one of the
+   * worlds this game offers (it is re-broadcast to every other player's page), and the match must not have
+   * begun, so the place never changes under the players. Whether the host has EARNED the world is not checked
+   * here: a world is only a look, it is not sold, and it gives no advantage.
+   */
+  setWorld(socketId: string, world: string): { ok: boolean; error?: string; world?: WorldId } {
+    const { room, player } = this.lookup(socketId);
+    if (!room || !player) return { ok: false, error: "Room or player not found" };
+    if (player.id !== room.hostId) return { ok: false, error: "Only the host can choose the table's world" };
+    if (room.phase !== "lobby") return { ok: false, error: "The world can only be chosen before the match starts" };
+    if (!isWorldOf(room.game, world)) return { ok: false, error: "That world is not available for this game" };
+    if (room.world !== world) {
+      room.world = world;
+      this.broadcastRoomState(room);
+    }
+    return { ok: true, world };
   }
 
   /**

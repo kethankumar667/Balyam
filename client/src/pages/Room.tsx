@@ -55,6 +55,8 @@ import { connectionStateManager } from "../core/recovery/ConnectionStateManager"
 import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
 import { LobbyPrizePool, UnsupportedSeatCountCard } from "../components/economy";
+import { LobbyWorld } from "../components/worlds/LobbyWorld";
+import { useCountWorldWin } from "../lib/worlds/useWorldProgress";
 import { useCheckoutQuote } from "../hooks/useEconomy";
 import type { MatchCheckoutQuote } from "../lib/economyApi";
 import { useCosmeticsStore } from "../store/cosmeticsStore";
@@ -68,7 +70,7 @@ import type { BingoPlayerState } from "@shared/types";
 import GameErrorBoundary from "../components/GameErrorBoundary";
 import type { SnakePublicState, ChessPublicState, SpaceWarPublicState, TicTacToePublicState, Connect4PublicState, VamanaPublicState } from "@shared/types";
 
-import { useLudoSettings, syncDocumentTheme } from "../games/ludo/settings";
+import { drawnWorld } from "../lib/worlds/worldArt";
 
 // ── Lazy-loaded game boards (code-split per game) ──
 const RpsBoard = lazy(() => import("../games/rps/RpsBoard"));
@@ -397,6 +399,7 @@ function LudoBoardContainer({
         roomPhase={roomState.phase}
         onLeave={requestLeaveConfirmation}
         onScorecardClose={handleScorecardClose}
+        world={roomState.world}
       />
     </PassPhoneGate>
   );
@@ -1788,6 +1791,17 @@ export default function Room() {
     return rankMatchPlayers(effectiveMatchPlayers, gameOverWinnerId);
   }, [roomState, effectiveMatchPlayers, gameOverWinnerId]);
 
+  // A match I won against other people counts toward the worlds I can host in this game (see lib/worlds). A room is
+  // counted once, so running on every render of the finished screen is safe.
+  useCountWorldWin({
+    game: roomState?.game ?? "rps",
+    phase: roomState?.phase ?? "lobby",
+    winnerId: gameOverWinnerId,
+    selfId: playerId,
+    players: effectiveMatchPlayers,
+    roomCode: roomState?.code ?? "",
+  });
+
   // The winner is credited a beat after the last move. The result screen watches for
   // that itself, but it can be dismissed before the payout lands — and then nothing
   // would reload the wallet, leaving the balance chip on the debited figure. The room
@@ -1806,13 +1820,9 @@ export default function Room() {
   // Ludo in play is viewport-locked (its shell is sized off `100svh`), so it
   // needs the same "no inline banners, no extra padding" treatment Rummy gets.
   const ludoInPlay = roomState?.game === "ludo" && roomState?.phase !== "lobby" && !isGameStartingCeremony;
-  const [ludoSettings] = useLudoSettings();
-
-  useEffect(() => {
-    if (ludoInPlay) {
-      syncDocumentTheme(ludoSettings.theme);
-    }
-  }, [ludoInPlay, ludoSettings.theme]);
+  // The table's world dresses the Ludo screen. It never switches the app between light and dark: that is the player's
+  // own choice, and a world chosen by the host must not change it for everyone else.
+  const ludoWorld = drawnWorld("ludo", roomState?.world);
 
   // Two ways to land here without being seated yet:
   //   1. No name at all — a shared link opened in a fresh browser, or storage
@@ -1944,7 +1954,7 @@ export default function Room() {
           FULL_BLEED_GAMES.has(roomState.game) && !isLobbyLike
             ? "bhalyam-font bhalyam-paper h-full overflow-x-hidden overflow-y-auto p-0"
             : ludoInPlay
-              ? `theme-${ludoSettings.theme} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
+              ? `theme-${ludoWorld} bhalyam-font min-h-screen p-1 pb-[max(1rem,env(safe-area-inset-bottom))]`
               : isLobbyLike || isGameStartingCeremony
                 ? "bhalyam-font bhalyam-paper min-h-screen px-3.5 sm:px-6 overflow-x-hidden"
                 : "bhalyam-font bhalyam-paper min-h-screen px-3.5 py-3 sm:px-6 sm:py-5 pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]"
@@ -2129,6 +2139,8 @@ export default function Room() {
                 isHost={selfIsHost}
               />
             )}
+
+            <LobbyWorld game={roomState.game} world={roomState.world} isHost={selfIsHost} />
 
             {viewModel.colorPickerKind && (
               <CompactColorSelector

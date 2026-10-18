@@ -13,6 +13,8 @@ import { getSocket } from "../../lib/socket";
 import { useHaptics, useTurnHaptics } from "../../hooks/useHaptics";
 import { type RemoteCursor } from "./CursorLayer";
 import { useLudoSettings, prefersReducedMotion, type LudoSettings } from "./settings";
+import type { WorldId } from "@shared/worlds";
+import { drawnWorld } from "../../lib/worlds/worldArt";
 import { predictDestination } from "./predict";
 import { sfx, setSoundEnabled, isSoundEnabled } from "./sound";
 import { computeStepPath, isSameTokenState } from "./animation";
@@ -48,6 +50,8 @@ export interface LudoBoardProps {
    * this to `handleScorecardClose`, returning the player cleanly to the table/lobby.
    */
   onScorecardClose?: () => void;
+  /** The table's world, chosen by the host. Drawn as the classic table if Ludo has no art for it (see lib/worlds/worldArt). */
+  world?: WorldId;
 }
 
 export type LudoToast = { text: string; emoji: string; color?: string };
@@ -108,6 +112,8 @@ export interface LudoBoardModel {
   setShowSettings: (v: boolean) => void;
   settings: LudoSettings;
   updateSettings: (patch: Partial<LudoSettings>) => void;
+  /** The world this table is drawn in: always one Ludo has art for. */
+  world: WorldId;
   reduceMotion: boolean;
   soundOn: boolean;
   toggleSound: () => void;
@@ -197,8 +203,10 @@ export function useLudoBoard({
   selfId,
   onLeave,
   onScorecardClose,
+  world: tableWorld,
   // messages/roomCode/roomPhase are forwarded to InlineRoomRail by the shells.
 }: LudoBoardProps): LudoBoardModel {
+  const world = drawnWorld("ludo", tableWorld);
   /**
    * The board ARM a player sits on — the key for ALL geometry (track start,
    * home stretch, yard slots, token ids, board rotation). Distinct from
@@ -1273,6 +1281,7 @@ export function useLudoBoard({
     setShowSettings,
     settings,
     updateSettings,
+    world,
     reduceMotion,
     soundOn,
     toggleSound,

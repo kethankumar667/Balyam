@@ -384,6 +384,14 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.worlds.wins",
+    label: "Ludo and Rummy worlds earned",
+    description:
+      "How many Ludo and Rummy matches you have won against other people on this device, which decides which table worlds you can choose, and the codes of the rooms already counted so that a match is counted once.",
+    purpose: "progress",
+    isPersonalData: false,
+  },
+  {
     key: "bhalyam.brainvita.skin",
     label: "Brain Vita board theme",
     description: "Which board theme you chose for Brain Vita on this device.",

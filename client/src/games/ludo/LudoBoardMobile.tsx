@@ -11,6 +11,7 @@ import {
   LudoRollTray,
   useLudoTableImpact,
 } from "./ludo-board-composites";
+import { LudoWorldScene } from "./LudoWorldScene";
 
 /** The board is never allowed past this, matching the desktop shell. */
 const MAX_BOARD = 620;
@@ -78,7 +79,7 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
   return (
     <div
       ref={camera.cameraRef}
-      className={`theme-${m.settings.theme} bhalyam-font rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto] short-land:gap-x-3 short-land:gap-y-1 short-land:overflow-y-auto`}
+      className={`theme-${m.world} bhalyam-font relative z-0 rounded-2xl p-1.5 sm:p-4 shadow-2xl flex flex-col gap-2 h-[calc(100svh-0.5rem)] overflow-hidden short-land:grid short-land:grid-cols-[auto_minmax(0,1fr)] short-land:grid-rows-[auto_1fr_auto] short-land:gap-x-3 short-land:gap-y-1 short-land:overflow-y-auto`}
       style={
         {
           background: "var(--ludo-screen-bg)",
@@ -89,6 +90,8 @@ export default function LudoBoardMobile(props: LudoBoardProps) {
         } as CSSProperties
       }
     >
+      <LudoWorldScene world={m.world} />
+
       {/* Sideways: right column, top. The wrapper is a plain block in portrait, so nothing moves there. */}
       <div className="short-land:col-start-2 short-land:row-start-1">
         <LudoStatusBar m={m} state={state} />

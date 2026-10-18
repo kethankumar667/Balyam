@@ -1372,11 +1372,9 @@ body, #root, .bhalyam-paper {
    own overflow, so an outer glow here would be invisible; inset shadows
    paint inside the box regardless. */
 .ludo-board.theme-classic  { background: var(--ludo-paper); box-shadow: inset 0 0 70px rgba(232,114,12,0.12); }
-.ludo-board.theme-paper    { background: var(--ludo-paper); box-shadow: inset 0 0 80px rgba(107,86,60,0.20); }
-.ludo-board.theme-neon     { background: var(--ludo-paper); box-shadow: inset 0 0 55px rgba(139,92,246,0.35), inset 0 0 110px rgba(139,92,246,0.18); }
-.ludo-board.theme-emerald  { background: var(--ludo-paper); box-shadow: inset 0 0 80px rgba(4,26,20,0.45); }
-.ludo-board.theme-midnight { background: var(--ludo-paper); box-shadow: inset 0 0 70px rgba(10,13,21,0.55); }
-.ludo-board.theme-sunset   { background: var(--ludo-paper); box-shadow: inset 0 0 60px rgba(226,124,90,0.25); }
+/* Toy box: a moulded blue plastic frame, a white edge, soft light. Palace: a gold frame over ivory marble. */
+.ludo-board.theme-toy      { background: var(--ludo-paper); border-color: #2F6FE8; box-shadow: inset 0 0 0 3px #FFFFFF, inset 0 0 50px rgba(47,111,232,0.16), 0 24px 50px rgba(120,80,0,0.35); }
+.ludo-board.theme-palace   { background: var(--ludo-paper); border-color: #E8B84A; box-shadow: inset 0 0 0 2px rgba(232,184,74,0.7), inset 0 0 70px rgba(124,31,45,0.22), 0 24px 60px rgba(10,0,4,0.6); }
 
 /* Classic — the reference print board. Same values as the defaults above;
    spelled out so the set reads as one comparable table. */
@@ -1411,147 +1409,62 @@ body, #root, .bhalyam-paper {
   --ludo-nav-text: #6B3F1D;
 }
 
-/* Paper — aged newsprint, the boards these games were printed on. Same
-   gradient/glass treatment as Classic (screen + card get depth, chip + nav
-   turn translucent so the chrome's `backdrop-filter: blur()` has something
-   to blur) so switching themes is never a downgrade in richness. */
-.theme-paper {
-  --ludo-bg: #EFE4CF; --ludo-paper: #F6EFE0; --ludo-cell: #FBF6EA;
-  --ludo-ink: #6B563C; --ludo-star: #FFFDF6; --ludo-hub: #F6EFE0;
-  --ludo-label: #5A462F;
-  --ludo-font: 'Kalam', 'Patrick Hand', 'Poppins', sans-serif;
+/* TOY BOX — a playroom. Light, bright and chunky: cream floor, a blue plastic tray with white glossy tiles, thick blue
+   lines, sunshine stars. The tiles are a gradient (see LudoWorldDefs), which is why --ludo-cell is a url() here: it is
+   only ever used as an SVG fill. Seat colours are not touched. */
+.theme-toy {
+  --ludo-bg: #FFE9A8; --ludo-paper: #FFF6DA; --ludo-cell: url(#lw-toy-tile);
+  --ludo-ink: #1E3FA8; --ludo-star: #FFD23F; --ludo-hub: #FFF0B8;
+  --ludo-label: #1E3FA8;
+  --ludo-font: 'Fredoka', 'Nunito', sans-serif;
 
-  --ludo-screen-bg: linear-gradient(160deg, #F8F1E1 0%, #EFE0BE 45%, #D8BD87 100%);
-  --ludo-screen-border: #6D4323;
-  --ludo-card-bg: linear-gradient(160deg, #FFFDF6 0%, #F3E7CE 100%);
-  --ludo-card-border: #D8C7A8;
-  --ludo-card-text: #5A462F;
-  --ludo-card-subtext: #8C7355;
-  --ludo-chip-bg: rgba(251, 246, 234, 0.85);
-  --ludo-chip-border: #6D4323;
-  --ludo-chip-text: #5A462F;
-  --ludo-panel-bg: #FBF6EA;
-  --ludo-panel-border: #D8C7A8;
-  --ludo-panel-text: #5A462F;
-  --ludo-feed-bg: #F6EFE0;
-  --ludo-feed-border: #D8C7A8;
-  --ludo-feed-text: #5A462F;
-  --ludo-nav-bg: rgba(251, 246, 234, 0.9);
-  --ludo-nav-border: #6D4323;
-  --ludo-nav-text: #5A462F;
+  --ludo-screen-bg: linear-gradient(160deg, #FFF3CF 0%, #FFD98A 50%, #F6B04F 100%);
+  --ludo-screen-border: #2F6FE8;
+  --ludo-card-bg: linear-gradient(160deg, #FFFFFF 0%, #FFF1C9 100%);
+  --ludo-card-border: #2F6FE8;
+  --ludo-card-text: #1B2F7A;
+  --ludo-card-subtext: #3E5BB8;
+  --ludo-chip-bg: rgba(255, 255, 255, 0.92);
+  --ludo-chip-border: #2F6FE8;
+  --ludo-chip-text: #1B2F7A;
+  --ludo-panel-bg: #FFFBEF;
+  --ludo-panel-border: #2F6FE8;
+  --ludo-panel-text: #1B2F7A;
+  --ludo-feed-bg: #FFF6DA;
+  --ludo-feed-border: #F2B94B;
+  --ludo-feed-text: #1B2F7A;
+  --ludo-nav-bg: rgba(255, 255, 255, 0.94);
+  --ludo-nav-border: #2F6FE8;
+  --ludo-nav-text: #1B2F7A;
 }
 
-/* Neon — dark arcade. Seat colours read hot against the violet grid; the
-   chrome now gets the same lift, a deep-indigo-to-vivid-violet gradient
-   behind glassy translucent chips instead of flat panels. */
-.theme-neon {
-  --ludo-bg: #0B0824; --ludo-paper: #14103A; --ludo-cell: #1B1650;
-  --ludo-ink: #6D28D9; --ludo-star: #F0ABFC; --ludo-hub: #241C6B;
-  --ludo-label: #C4B5FD;
-  --ludo-font: 'JetBrains Mono', 'Poppins', monospace;
+/* ROYAL PALACE — a hall at night. A crimson screen, ivory marble tiles outlined in dark gold, a gold medallion at the
+   hub, gold on maroon for every piece of text. */
+.theme-palace {
+  --ludo-bg: #3A0D1A; --ludo-paper: #F3E9D2; --ludo-cell: url(#lw-palace-tile);
+  --ludo-ink: #9C6F17; --ludo-star: #FCE7A8; --ludo-hub: #E8B84A;
+  --ludo-label: #5A1324;
+  --ludo-font: 'Poppins', 'Nunito', sans-serif;
+  --ludo-name-lift: 62%; /* seat names on a maroon card are lifted toward white (see nameInk) */
 
-  --ludo-screen-bg: linear-gradient(160deg, #180E42 0%, #3B1670 45%, #6D28D9 100%);
-  --ludo-screen-border: #A78BFA;
-  --ludo-card-bg: linear-gradient(160deg, #201755 0%, #130E38 100%);
-  --ludo-card-border: #7C3AED;
-  --ludo-card-text: #F3E8FF;
-  --ludo-card-subtext: #C4B5FD;
-  --ludo-chip-bg: rgba(24, 18, 66, 0.72);
-  --ludo-chip-border: #A78BFA;
-  --ludo-chip-text: #F5F3FF;
-  --ludo-panel-bg: #130E38;
-  --ludo-panel-border: #3B2D78;
-  --ludo-panel-text: #F3E8FF;
-  --ludo-feed-bg: #100C30;
-  --ludo-feed-border: #2E2260;
-  --ludo-feed-text: #DDD6FE;
-  --ludo-nav-bg: rgba(24, 18, 66, 0.85);
-  --ludo-nav-border: #A78BFA;
-  --ludo-nav-text: #F5F3FF;
-}
-
-/* Emerald — card-table felt, deep green with a gold-green glow. */
-.theme-emerald {
-  --ludo-bg: #072B20; --ludo-paper: #0E4534; --ludo-cell: #14624A;
-  --ludo-ink: #08301F; --ludo-star: #ECFDF5; --ludo-hub: #0E4534;
-  --ludo-label: #A7F3D0;
-  --ludo-font: 'Playfair Display', 'Poppins', serif;
-
-  --ludo-screen-bg: linear-gradient(160deg, #0A3B2C 0%, #0E4534 45%, #065F46 100%);
-  --ludo-screen-border: #34D399;
-  --ludo-card-bg: linear-gradient(160deg, #0F5039 0%, #083326 100%);
-  --ludo-card-border: #10B981;
-  --ludo-card-text: #ECFDF5;
-  --ludo-card-subtext: #A7F3D0;
-  --ludo-chip-bg: rgba(14, 69, 52, 0.75);
-  --ludo-chip-border: #34D399;
-  --ludo-chip-text: #ECFDF5;
-  --ludo-panel-bg: #083326;
-  --ludo-panel-border: #0D5C43;
-  --ludo-panel-text: #ECFDF5;
-  --ludo-feed-bg: #06261C;
-  --ludo-feed-border: #0B4A36;
-  --ludo-feed-text: #D1FAE5;
-  --ludo-nav-bg: rgba(14, 69, 52, 0.85);
-  --ludo-nav-border: #34D399;
-  --ludo-nav-text: #ECFDF5;
-}
-
-/* Midnight — neutral dark, for players who want low glare without a hue.
-   Kept the least saturated of the dark set on purpose; the gradient adds
-   depth without introducing a colour cast. */
-.theme-midnight {
-  --ludo-bg: #10141F; --ludo-paper: #1B2130; --ludo-cell: #253044;
-  --ludo-ink: #0B0F18; --ludo-star: #E2E8F0; --ludo-hub: #1B2130;
-  --ludo-label: #94A3B8;
-  --ludo-font: 'Nunito', 'Poppins', sans-serif;
-
-  --ludo-screen-bg: linear-gradient(160deg, #0D111C 0%, #131A29 45%, #1E293B 100%);
-  --ludo-screen-border: #64748B;
-  --ludo-card-bg: linear-gradient(160deg, #182136 0%, #101623 100%);
-  --ludo-card-border: #475569;
-  --ludo-card-text: #F1F5F9;
-  --ludo-card-subtext: #94A3B8;
-  --ludo-chip-bg: rgba(27, 33, 48, 0.75);
-  --ludo-chip-border: #64748B;
-  --ludo-chip-text: #F8FAFC;
-  --ludo-panel-bg: #131A29;
-  --ludo-panel-border: #232D42;
-  --ludo-panel-text: #F1F5F9;
-  --ludo-feed-bg: #0F1522;
-  --ludo-feed-border: #1E273A;
-  --ludo-feed-text: #CBD5E1;
-  --ludo-nav-bg: rgba(27, 33, 48, 0.85);
-  --ludo-nav-border: #64748B;
-  --ludo-nav-text: #F8FAFC;
-}
-
-/* Sunset — warm terracotta, the brightest of the light themes; the gradient
-   now actually reads as a dusk sky (peach → apricot → dusky rose). */
-.theme-sunset {
-  --ludo-bg: #F6D9B8; --ludo-paper: #FFF1E0; --ludo-cell: #FFE3C4;
-  --ludo-ink: #9A4B23; --ludo-star: #FFFFFF; --ludo-hub: #FFF1E0;
-  --ludo-label: #7C3A18;
-  --ludo-font: 'Fredoka', 'Poppins', sans-serif;
-
-  --ludo-screen-bg: linear-gradient(160deg, #FFE9C7 0%, #F8B48A 50%, #E37B6B 100%);
-  --ludo-screen-border: #C2603A;
-  --ludo-card-bg: linear-gradient(160deg, #FFF8EC 0%, #FCE3C7 100%);
-  --ludo-card-border: #E8B98C;
-  --ludo-card-text: #5A2A10;
-  --ludo-card-subtext: #8C4D26;
-  --ludo-chip-bg: rgba(255, 241, 224, 0.85);
-  --ludo-chip-border: #9A4B23;
-  --ludo-chip-text: #5A2A10;
-  --ludo-panel-bg: #FFF5EA;
-  --ludo-panel-border: #E8B98C;
-  --ludo-panel-text: #5A2A10;
-  --ludo-feed-bg: #FFF1E0;
-  --ludo-feed-border: #E8B98C;
-  --ludo-feed-text: #5A2A10;
-  --ludo-nav-bg: rgba(255, 241, 224, 0.9);
-  --ludo-nav-border: #9A4B23;
-  --ludo-nav-text: #5A2A10;
+  --ludo-screen-bg: linear-gradient(160deg, #5A1324 0%, #3B0D1A 50%, #1F0710 100%);
+  --ludo-screen-border: #E8B84A;
+  --ludo-card-bg: linear-gradient(160deg, #6E1A2E 0%, #3A0D1B 100%);
+  --ludo-card-border: #E8B84A;
+  --ludo-card-text: #FCE7A8;
+  --ludo-card-subtext: #E8C77A;
+  --ludo-chip-bg: rgba(58, 13, 27, 0.88);
+  --ludo-chip-border: #E8B84A;
+  --ludo-chip-text: #FCE7A8;
+  --ludo-panel-bg: #3A0D1B;
+  --ludo-panel-border: #8C6A1E;
+  --ludo-panel-text: #FCE7A8;
+  --ludo-feed-bg: #2A0912;
+  --ludo-feed-border: #7A5A18;
+  --ludo-feed-text: #F3DFA6;
+  --ludo-nav-bg: rgba(58, 13, 27, 0.92);
+  --ludo-nav-border: #E8B84A;
+  --ludo-nav-text: #FCE7A8;
 }
 
 /* Per-theme UI font, sourced from each theme's own `--ludo-font` (defined
@@ -1570,11 +1483,8 @@ body, #root, .bhalyam-paper {
    (Poppins) — no override needed, `--ludo-font` matches it anyway. All
    fonts here are already loaded by the page for other UI, so this adds no
    new network requests. */
-.theme-paper.bhalyam-font,
-.theme-neon.bhalyam-font,
-.theme-emerald.bhalyam-font,
-.theme-midnight.bhalyam-font,
-.theme-sunset.bhalyam-font { font-family: var(--ludo-font); }
+.theme-toy.bhalyam-font,
+.theme-palace.bhalyam-font { font-family: var(--ludo-font); }
 
 /* Color-blind: shape patterns layered on top of token bodies */
 .cb-pattern-red    { background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.45) 5px 7px); }

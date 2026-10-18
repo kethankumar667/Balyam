@@ -25,6 +25,8 @@ export interface RoomSnapshot {
   matchStartedAt: number | null;
   hostId: string;
   name: string | null;
+  /** The table's world. Absent in a snapshot written before worlds existed; read through sanitizeWorld. */
+  world?: string;
   entryStakeCoins: number;
   currentMatchId: string | null;
   lastMatchId: string | null;

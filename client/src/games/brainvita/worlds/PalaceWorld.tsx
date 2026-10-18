@@ -143,7 +143,7 @@ export function PalaceSurface({ frame }: { frame: number }) {
   );
 }
 
-function Diya({ className, delay = 0 }: { className: string; delay?: number }) {
+export function Diya({ className, delay = 0 }: { className: string; delay?: number }) {
   return (
     <svg aria-hidden viewBox="0 0 140 130" className={className}>
       <defs>
@@ -184,7 +184,7 @@ function Marigold({ x, y, size }: { x: number; y: number; size: number }) {
   );
 }
 
-function MarigoldBunch({ className }: { className: string }) {
+export function MarigoldBunch({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 170 130" className={className}>
       {[[30, 100, 10], [64, 106, 8]].map(([x, y, r]) => (

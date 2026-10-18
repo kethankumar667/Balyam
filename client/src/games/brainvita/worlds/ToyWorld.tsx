@@ -108,7 +108,7 @@ function Block({ x, y, front, top, side, letter, turn = 0 }: BlockSpec) {
   );
 }
 
-function Blocks({ className }: { className: string }) {
+export function Blocks({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 190 170" className={className}>
       <ellipse cx="95" cy="160" rx="84" ry="8" fill="rgba(80,50,0,0.22)" />
@@ -119,7 +119,7 @@ function Blocks({ className }: { className: string }) {
   );
 }
 
-function Duck({ className }: { className: string }) {
+export function Duck({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 150 120" className={className}>
       <ellipse cx="72" cy="110" rx="50" ry="7" fill="rgba(80,50,0,0.22)" />
@@ -135,7 +135,7 @@ function Duck({ className }: { className: string }) {
   );
 }
 
-function Crayons({ className }: { className: string }) {
+export function Crayons({ className }: { className: string }) {
   const crayons = [
     { turn: -24, body: "#ef4444", dark: "#b91c1c" },
     { turn: -4, body: "#3b82f6", dark: "#1d4ed8" },

@@ -1,4 +1,5 @@
 import type { BotProfile } from "./bot-profile.js";
+import type { WorldId } from "./worlds.js";
 
 export type GameKind = "rps" | "rummy" | "ludo" | "snl" | "handcricket" | "uno" | "wordbuilding" | "dotsboxes" | "stargame" | "bingo" | "namesplaceanimal" | "tambola" | "snake" | "roadrash" | "chess" | "blockblast" | "spacewar" | "tictactoe" | "connect4" | "vamanaguntalu";
 
@@ -235,6 +236,13 @@ export interface RoomPublicState {
   maxPlayers: number;
   /** Host-chosen table name ("Friday Rummy Nights") — null until set. Persists for the room's lifetime; not game-specific. */
   name: string | null;
+  /**
+   * The look of the table, chosen by the host in the lobby and seen by everyone at it (Ludo and Rummy; always
+   * "classic" for a game with no worlds). Closed list: see shared/worlds.ts. Purely visual. Optional on the
+   * wire because the client and the server are deployed separately: a state from a server that predates worlds
+   * has none, and the client reads that as the classic world.
+   */
+  world?: WorldId;
   /** Last finished rounds this room has played, oldest first (Rummy only — empty elsewhere). docs/rummy/roadmap.md B.1. */
   history: RummyRoundRecap[];
   /** "House Champion" of this room's table name, if a pool match has been won under it (Rummy only). Keyed by name, not room code, so it survives room collapse and resurfaces if the same gang reconvenes under the same name. docs/rummy/roadmap.md B.3. */
@@ -2914,7 +2922,7 @@ export interface CreateRoomPayload {
   bingoOptions?: Partial<BingoGameOptions>;
   namesplaceanimalOptions?: Partial<NamePlaceAnimalOptions>;
   tambolaOptions?: Partial<TambolaOptions>;
-  snakeOptions?: Partial<SnakeOptions>;  chessOptions?: Partial<ChessOptions>;
+  snakeOptions?: Partial<SnakeOptions>;  chessOptions?: Partial<ChessOptions>;
   blockBlastOptions?: Partial<BlockBlastOptions>;
   spaceWarOptions?: Partial<SpaceWarOptions>;
   ticTacToeOptions?: Partial<TicTacToeOptions>;
@@ -3280,6 +3288,11 @@ export interface ClientToServerEvents {
   "room:setOrientation": (needsRotation: boolean) => void;
   /** Host-only. Names (or renames) the room — "Friday Rummy Nights" etc. Trimmed/capped server-side. */
   "room:setName": (name: string) => void;
+  /**
+   * Host-only, lobby only. Chooses the table's world (see shared/worlds.ts). Anything that is not one of that
+   * game's worlds is refused, never echoed to the other players.
+   */
+  "room:setWorld": (world: string, ack?: (response: { ok: boolean; error?: string; world?: WorldId }) => void) => void;
   /** Host-only. Changes the room's per-seat entry stake in the lobby before any other human player has readied up. */
   "room:setEntryStake": (
     stakeCoins: number,

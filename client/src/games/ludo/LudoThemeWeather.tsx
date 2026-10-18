@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "framer-motion";
-import type { LudoTheme } from "./settings";
+import type { WorldId } from "@shared/worlds";
 
 /**
  * Ambient falling motif behind the desktop board, themed per `LudoTheme` —
@@ -38,7 +38,8 @@ interface ThemeWeatherPreset {
   speed?: number;
 }
 
-const PRESETS: Record<LudoTheme, ThemeWeatherPreset> = {
+/** Only the classic table has falling weather. Every other world draws its own scene (see LudoWorldScene). */
+const PRESETS: Partial<Record<WorldId, ThemeWeatherPreset>> = {
   // Warm pink/gold petals — the same "spring breeze" feel the marketing
   // pages use, which already fits Classic's own warm gold palette.
   classic: {
@@ -49,41 +50,6 @@ const PRESETS: Record<LudoTheme, ThemeWeatherPreset> = {
       leaf: ["#A7D8A0", "#BEE3B8", "#8FCB92", "#CDE8C6"],
     },
     count: 34,
-  },
-  // Falling autumn leaves in sepia/tan — the notebook/aged-paper feel.
-  paper: {
-    kinds: ["leaf"],
-    palette: { leaf: ["#B08D57", "#C9A66B", "#8C6D46", "#D8C29D", "#A9895A"] },
-    count: 24,
-  },
-  // Neon sparkle drift — violet/magenta/cyan, matching the board's own glow.
-  neon: {
-    kinds: ["star"],
-    palette: { star: ["#C4B5FD", "#F0ABFC", "#67E8F9", "#A78BFA", "#F5D0FE"] },
-    count: 28,
-  },
-  // Small gold coins drifting down over the felt — a casino-table wink.
-  emerald: {
-    kinds: ["coin"],
-    palette: { coin: ["#FDE68A", "#F5C542", "#D4AF37", "#FCD34D"] },
-    count: 20,
-  },
-  // Cool white/blue stars, sparse and slow — "low glare" carries into the
-  // weather too, so this stays a whisper, not a light show.
-  midnight: {
-    kinds: ["star"],
-    palette: { star: ["#E2E8F0", "#94A3B8", "#CBD5E1", "#F1F5F9"] },
-    count: 14,
-    speed: 1.5,
-  },
-  // Warm embers drifting up the dusk gradient, with a few petals for variety.
-  sunset: {
-    kinds: ["ember", "petal"],
-    palette: {
-      ember: ["#FDBA74", "#FB923C", "#F472B6", "#FCA5A5"],
-      petal: ["#FDBA74", "#F9A8C9", "#FCA5A5", "#FFE9C7"],
-    },
-    count: 26,
   },
 };
 
@@ -203,7 +169,7 @@ function ItemShape({ kind, size, color }: { kind: ShapeKind; size: number; color
   }
 }
 
-export default function LudoThemeWeather({ theme }: { theme: LudoTheme }) {
+export default function LudoThemeWeather({ world }: { world: WorldId }) {
   const reduce = useReducedMotion();
   // Deferred to a post-mount effect, same reasoning as FallingPetals.tsx:
   // this component is purely decorative (aria-hidden, pointer-events-none),
@@ -212,8 +178,9 @@ export default function LudoThemeWeather({ theme }: { theme: LudoTheme }) {
   const [items, setItems] = useState<WeatherItem[] | null>(null);
 
   useEffect(() => {
-    setItems(makeItems(PRESETS[theme]));
-  }, [theme]);
+    const preset = PRESETS[world];
+    setItems(preset ? makeItems(preset) : null);
+  }, [world]);
 
   if (reduce || !items) return null;
 

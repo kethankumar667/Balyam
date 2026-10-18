@@ -226,6 +226,11 @@ export function registerSocketHandlers(
     rooms.setRoomName(socket.id, name);
   });
 
+  socket.on("room:setWorld", (world, ack) => {
+    const result = rooms.setWorld(socket.id, world);
+    if (typeof ack === "function") ack(result);
+  });
+
   socket.on("room:setEntryStake", (stakeCoins, ack) => {
     const result = rooms.setEntryStake(socket.id, stakeCoins);
     if (typeof ack === "function") {

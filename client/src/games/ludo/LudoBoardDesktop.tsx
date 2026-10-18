@@ -12,6 +12,7 @@ import {
   useLudoTableImpact,
 } from "./ludo-board-composites";
 import LudoThemeWeather from "./LudoThemeWeather";
+import { LudoWorldScene } from "./LudoWorldScene";
 
 /**
  * Ludo — desktop shell (BHALYAM notebook theme).
@@ -54,13 +55,14 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
   return (
     <div
       ref={camera.cameraRef}
-      className={`theme-${m.settings.theme} bhalyam-font rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-0.5rem)] overflow-hidden`}
+      className={`theme-${m.world} bhalyam-font relative z-0 rounded-2xl p-4 lg:p-5 shadow-2xl flex flex-col gap-3 h-[calc(100svh-0.5rem)] overflow-hidden`}
       style={{
         background: "var(--ludo-screen-bg)",
         border: "3px solid var(--ludo-screen-border)",
         color: "var(--ludo-card-text)",
       }}
     >
+      <LudoWorldScene world={m.world} isDesktop />
       <LudoStatusBar
         m={m}
         state={state}
@@ -94,8 +96,8 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
           which could be far above this row — instead of just sitting
           behind these three columns. */}
       <div className="relative z-0 flex-1 min-h-0 flex items-stretch justify-center gap-4 lg:gap-6">
-        <LudoDecorBackdrop />
-        <LudoThemeWeather theme={m.settings.theme} />
+        {m.world === "classic" && <LudoDecorBackdrop />}
+        <LudoThemeWeather world={m.world} />
         <div className="w-[clamp(10rem,17vw,17rem)] flex-shrink-0 overflow-y-auto pt-1">
           <LudoPlayerCards state={state} players={players} row="all" orientation="col" selfId={selfId} registerCard={m.registerPlayerCard} onTarget={m.targetPlayer} />
         </div>

@@ -1,0 +1,494 @@
+{
+  "code": "HEZ6SK",
+  "game": "ludo",
+  "phase": "playing",
+  "lifecycleState": "PAUSED",
+  "roomRevision": 3,
+  "createdAt": 1792263677738,
+  "matchStartedAt": 1792263681163,
+  "hostId": "p_1792263677738_l3efux",
+  "name": null,
+  "world": "classic",
+  "entryStakeCoins": 100,
+  "currentMatchId": null,
+  "lastMatchId": null,
+  "committedCostPerSeat": null,
+  "committedTotalPot": null,
+  "sealed": false,
+  "gameOptions": {
+    "ludoOptions": {
+      "mandatoryCapture": true,
+      "noSafeSquares": false,
+      "turnTimerSeconds": 20
+    },
+    "snlOptions": {
+      "difficulty": "medium"
+    },
+    "rummyOptions": {
+      "turnTimerSeconds": 30,
+      "drawTimerSeconds": 30,
+      "discardTimerSeconds": 15,
+      "mode": "single"
+    },
+    "hcOptions": {
+      "mode": "single",
+      "format": "t20",
+      "category": "international"
+    },
+    "wordBuildingOptions": {
+      "boardSize": 10,
+      "turnTimerSeconds": 30,
+      "minWordLength": 3,
+      "dictionaryMode": "common",
+      "claimToScoreMode": false
+    },
+    "dotsBoxesOptions": {
+      "boardSize": 7,
+      "turnTimerSeconds": 30
+    },
+    "starGameOptions": {
+      "themeId": "colors",
+      "totalRounds": 5,
+      "passSpeed": "normal"
+    },
+    "unoOptions": {
+      "turnTimerSeconds": 20,
+      "stackDrawCards": false,
+      "jumpIn": false,
+      "sevenSwap": false,
+      "zeroRotate": false,
+      "keepDrawing": false,
+      "forcePlay": false,
+      "targetScore": null
+    },
+    "bingoOptions": {
+      "callIntervalMs": 4000,
+      "stopOnFirstWin": true
+    },
+    "namesplaceanimalOptions": {
+      "totalRounds": 5,
+      "roundSeconds": 30,
+      "difficulty": "medium",
+      "themePack": "classic"
+    },
+    "tambolaOptions": {
+      "callIntervalMs": 5000
+    },
+    "chessOptions": {
+      "timeControl": "blitz_3_2",
+      "initialSeconds": 180,
+      "incrementSeconds": 2,
+      "boardTheme": "emerald",
+      "pieceSet": "neo",
+      "botDifficulty": "medium"
+    },
+    "snakeOptions": {
+      "speedMs": 120,
+      "gridSize": 20,
+      "wallMode": "wrap",
+      "theme": "nokia-monochrome",
+      "speedProgression": true
+    },
+    "blockBlastOptions": {
+      "raceSeconds": 120
+    },
+    "spaceWarOptions": {
+      "startingLives": 4,
+      "theme": "cyberpunk"
+    },
+    "ticTacToeOptions": {
+      "mode": "quantum",
+      "turnTimerSeconds": 15
+    },
+    "connect4Options": {
+      "turnTimerSeconds": 20,
+      "botDifficulty": "medium"
+    },
+    "vamanaOptions": {
+      "turnTimerSeconds": 25,
+      "botDifficulty": "medium"
+    }
+  },
+  "players": [
+    {
+      "id": "p_1792263677738_l3efux",
+      "name": "Hosty",
+      "isHost": true,
+      "isReady": true,
+      "isConnected": false,
+      "connectionGeneration": 4,
+      "level": 1,
+      "identityId": null,
+      "cosmetics": {},
+      "awaySince": 1792263691043,
+      "awayUntil": 1792264291043
+    },
+    {
+      "id": "bot_mvcrioff_5bvo",
+      "name": "Pintu",
+      "isHost": false,
+      "isReady": true,
+      "isConnected": true,
+      "isBot": true,
+      "level": 4,
+      "bingoDifficulty": "medium",
+      "avatar": "file_0000000084c48208b1f893419d784cf2_8.jpg",
+      "botProfile": {
+        "tagline": "Never forgives a capture",
+        "hometown": "Bengaluru",
+        "playStyle": "Cautious",
+        "styleIsReal": false,
+        "stats": {
+          "matches": 91,
+          "wins": 36,
+          "bestStreak": 3
+        }
+      },
+      "cosmetics": {
+        "avatarAura": "aura_ludo_king",
+        "podiumTitle": "title_table_master",
+        "tokenSkin": "token_theme_cyber_bot",
+        "diceSkin": "dice_crystal_clear"
+      }
+    },
+    {
+      "id": "bot_mvcriofg_sgst",
+      "name": "Chintu",
+      "isHost": false,
+      "isReady": true,
+      "isConnected": true,
+      "isBot": true,
+      "level": 8,
+      "bingoDifficulty": "medium",
+      "avatar": "file_00000000b39c8211b590a4382a7e3fc3_9.jpg",
+      "botProfile": {
+        "tagline": "Always needs just one more six",
+        "hometown": "Mumbai",
+        "playStyle": "Cautious",
+        "styleIsReal": false,
+        "stats": {
+          "matches": 166,
+          "wins": 85,
+          "bestStreak": 7
+        }
+      },
+      "cosmetics": {
+        "avatarAura": "aura_ludo_king",
+        "podiumTitle": "title_grandmaster",
+        "tokenSkin": "token_finish_veined_marble",
+        "diceSkin": "dice_dragon_scale"
+      }
+    },
+    {
+      "id": "bot_mvcriofg_b98u",
+      "name": "Bunty",
+      "isHost": false,
+      "isReady": true,
+      "isConnected": true,
+      "isBot": true,
+      "level": 6,
+      "bingoDifficulty": "medium",
+      "avatar": "file_0000000094008208a20f77270605d0d5_1.jpg",
+      "botProfile": {
+        "tagline": "Rolls a six when it matters",
+        "hometown": "Karimnagar",
+        "playStyle": "Balanced",
+        "styleIsReal": false,
+        "stats": {
+          "matches": 125,
+          "wins": 48,
+          "bestStreak": 8
+        }
+      },
+      "cosmetics": {
+        "avatarAura": "aura_rummy_maestro",
+        "podiumTitle": "title_table_master",
+        "tokenSkin": "token_theme_vampire_count",
+        "diceSkin": "dice_golden_ember"
+      }
+    }
+  ],
+  "departedThisMatch": [],
+  "history": [],
+  "unoHistory": [],
+  "bingoHistory": [],
+  "ludoHistory": [],
+  "engineState": {
+    "phase": "playing",
+    "turnIndex": 0,
+    "turnPhase": "rolling",
+    "diceValue": null,
+    "consecutiveSixes": 0,
+    "movableTokenIds": [],
+    "tokens": [
+      [
+        "p_1792263677738_l3efux",
+        [
+          {
+            "id": "blue-0",
+            "color": "blue",
+            "state": "yard"
+          },
+          {
+            "id": "blue-1",
+            "color": "blue",
+            "state": "yard"
+          },
+          {
+            "id": "blue-2",
+            "color": "blue",
+            "state": "yard"
+          },
+          {
+            "id": "blue-3",
+            "color": "blue",
+            "state": "yard"
+          }
+        ]
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        [
+          {
+            "id": "green-0",
+            "color": "green",
+            "state": "yard"
+          },
+          {
+            "id": "green-1",
+            "color": "green",
+            "state": "yard"
+          },
+          {
+            "id": "green-2",
+            "color": "green",
+            "state": "yard"
+          },
+          {
+            "id": "green-3",
+            "color": "green",
+            "state": "yard"
+          }
+        ]
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        [
+          {
+            "id": "yellow-0",
+            "color": "yellow",
+            "state": "yard"
+          },
+          {
+            "id": "yellow-1",
+            "color": "yellow",
+            "state": "yard"
+          },
+          {
+            "id": "yellow-2",
+            "color": "yellow",
+            "state": "yard"
+          },
+          {
+            "id": "yellow-3",
+            "color": "yellow",
+            "state": "yard"
+          }
+        ]
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        [
+          {
+            "id": "red-0",
+            "color": "red",
+            "state": "yard"
+          },
+          {
+            "id": "red-1",
+            "color": "red",
+            "state": "yard"
+          },
+          {
+            "id": "red-2",
+            "color": "red",
+            "state": "yard"
+          },
+          {
+            "id": "red-3",
+            "color": "red",
+            "state": "yard"
+          }
+        ]
+      ]
+    ],
+    "colorOf": [
+      [
+        "p_1792263677738_l3efux",
+        "blue"
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        "green"
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        "yellow"
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        "red"
+      ]
+    ],
+    "paintOf": [
+      [
+        "p_1792263677738_l3efux",
+        "blue"
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        "green"
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        "yellow"
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        "red"
+      ]
+    ],
+    "playerOrder": [
+      "p_1792263677738_l3efux",
+      "bot_mvcrioff_5bvo",
+      "bot_mvcriofg_sgst",
+      "bot_mvcriofg_b98u"
+    ],
+    "finishedCount": [
+      [
+        "p_1792263677738_l3efux",
+        0
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        0
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        0
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        0
+      ]
+    ],
+    "finishOrder": [],
+    "quitPlayers": [],
+    "winnerId": null,
+    "hasCaptured": [
+      [
+        "p_1792263677738_l3efux",
+        false
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        false
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        false
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        false
+      ]
+    ],
+    "lastEvent": null,
+    "rollCount": [
+      [
+        "p_1792263677738_l3efux",
+        0
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        0
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        0
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        0
+      ]
+    ],
+    "captureCount": [
+      [
+        "p_1792263677738_l3efux",
+        0
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        0
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        0
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        0
+      ]
+    ],
+    "sixCount": [
+      [
+        "p_1792263677738_l3efux",
+        0
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        0
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        0
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        0
+      ]
+    ],
+    "biggestStreak": [
+      [
+        "p_1792263677738_l3efux",
+        0
+      ],
+      [
+        "bot_mvcrioff_5bvo",
+        0
+      ],
+      [
+        "bot_mvcriofg_sgst",
+        0
+      ],
+      [
+        "bot_mvcriofg_b98u",
+        0
+      ]
+    ],
+    "startedAt": 1792263681163,
+    "endedAt": null,
+    "turnDeadline": 1792263701164,
+    "options": {
+      "mandatoryCapture": true,
+      "noSafeSquares": false,
+      "turnTimerSeconds": 20
+    },
+    "pendingAnimMs": 0
+  },
+  "terminalStatus": "IDLE",
+  "terminalOutcome": null,
+  "terminalPayload": null,
+  "savedAt": 1792263691043,
+  "expiresAt": 1792270891043
+}

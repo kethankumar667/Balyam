@@ -29,7 +29,6 @@ import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
-import { LUDO_THEMES, LUDO_THEME_LABELS, type LudoTheme } from "./settings";
 import {
   MenuIcon,
   SpeakerIcon,
@@ -194,26 +193,15 @@ function LudoLogo() {
 
 /** Paper header: menu · LUDO logo · turn banner · sound · Rules · Leave.
  *  `rightSlot` lets the desktop shell dock the room rail inline. */
-/** Theme accent shown as a small swatch dot on the theme-toggle chip — one
- *  representative hue per theme, reusing colors the theme blocks already
- *  define instead of new ones. Cycles through all of `LUDO_THEMES` (the same
- *  order the Display Settings picker shows), not just a subset — this used
- *  to hardcode a 3-way classic/neon/paper flip that silently stranded
- *  players on whichever of neon/paper they last picked, since emerald,
- *  midnight and sunset were never reachable from the header at all. */
-const THEME_SWATCH: Record<LudoTheme, string> = {
-  classic: "#E8720C",
-  paper: "#6D4323",
-  neon: "#A78BFA",
-  emerald: "#34D399",
-  midnight: "#64748B",
-  sunset: "#C2603A",
-};
-
-function nextLudoTheme(current: LudoTheme): LudoTheme {
-  const i = LUDO_THEMES.indexOf(current);
-  return LUDO_THEMES[(i + 1) % LUDO_THEMES.length];
-}
+/**
+ * A seat's name on its card, in the seat's own dark colour. A world with a dark card (the palace) lifts that colour toward
+ * white by its own `--ludo-name-lift`, so a dark blue name is still readable on a maroon card; the light worlds leave it
+ * as it was (0%). Only a card that wears the world's own background is lifted: the active seat and the winner stand on a
+ * light card, where the plain dark colour is already the readable one. The hue stays the seat's, which is what lets a
+ * player find themselves at a glance.
+ */
+const nameInk = (seatDark: string, isOnCardBackground: boolean): string =>
+  isOnCardBackground ? `color-mix(in srgb, white var(--ludo-name-lift, 0%), ${seatDark})` : seatDark;
 
 export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; state: LudoState; rightSlot?: ReactNode }) {
   const finished = state.phase === "finished";
@@ -232,7 +220,6 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
   // Icon chip that grows to hold a text label from sm+ (phones stay compact).
   const labelChip =
     "flex-shrink-0 h-9 px-3 rounded-full flex items-center gap-1.5 justify-center text-sm font-bold active:scale-95 transition";
-  const themeLabel = LUDO_THEME_LABELS[m.settings.theme];
   // Fullscreen toggle — self-contained (no other game state needs it).
   const { isFullscreen: isFs, toggleFullscreen } = useFullscreenToggle();
   // Mirrors TurnTimeWarning's own trigger so the two can't disagree about
@@ -249,7 +236,7 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
       <button
         onClick={() => m.setShowSettings(true)}
         aria-label="Settings"
-        title="Settings (theme, color-blind, hover preview)"
+        title="Settings (color-blind, hover preview)"
         className={iconChip}
         style={chipStyle}
       >
@@ -273,21 +260,6 @@ export function LudoStatusBar({ m, state, rightSlot }: { m: LudoBoardModel; stat
           </button>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => m.updateSettings({ theme: nextLudoTheme(m.settings.theme) })}
-        className={labelChip}
-        style={chipStyle}
-        title={`Current theme: ${m.settings.theme}. Click to switch theme.`}
-        aria-label="Toggle board theme"
-      >
-        <span
-          aria-hidden
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ background: THEME_SWATCH[m.settings.theme], boxShadow: "0 0 4px currentColor" }}
-        />
-        <span className="hidden sm:inline short-land:!hidden">{themeLabel}</span>
-      </button>
       <button onClick={m.toggleSound} className={iconChip} style={chipStyle} title={m.soundOn ? "Mute" : "Unmute"} aria-label="Toggle sound">
         {m.soundOn ? <SpeakerIcon size={16} /> : <SpeakerMutedIcon size={16} />}
       </button>
@@ -614,7 +586,7 @@ function LudoPlayerCard({
           <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
             <span
               className="truncate font-extrabold uppercase text-[10.5px] leading-tight text-stone-900 max-w-full"
-              style={{ color: rim }}
+              style={{ color: nameInk(rim, !seat.active && !seat.isWinner) }}
               title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
             >
               {seat.name}
@@ -737,7 +709,7 @@ function LudoPlayerCard({
             )}
             <span
               className="truncate font-extrabold uppercase tracking-tight text-xs sm:text-[13px] text-stone-900"
-              style={{ color: rim }}
+              style={{ color: nameInk(rim, !seat.active && !seat.isWinner) }}
               title={`${seat.name}${seat.isBot ? " (bot)" : ""}`}
             >
               {seat.name}
@@ -1545,7 +1517,7 @@ export function LudoBoardArea({
       // `overflow-hidden` keeps the ROTATED board art inside the rounded card
       // — without it the spun background square's corners hang outside it.
       id="game-board-container"
-      className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl overflow-hidden border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.settings.theme} ${m.settings.highContrast ? "hc" : ""}`}
+      className={`ludo-board relative w-full mx-auto aspect-square select-none rounded-2xl overflow-hidden border-4 border-slate-950 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] theme-${m.world} ${m.settings.highContrast ? "hc" : ""}`}
       style={{ maxWidth }}
     >
       {/* EGOCENTRIC ORIENTATION. The board spins so the local player's own
