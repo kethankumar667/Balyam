@@ -169,7 +169,7 @@ export interface BrainVitaPillProps {
 export function BrainVitaPill({ label, ariaLabel, icon, onClick, isDisabled = false, isPrimary = false, isInline = false }: BrainVitaPillProps) {
   const skin = useSkinTokens();
   // The favoured pill is the plank with a wash of the theme's own accent over it, so it matches whatever theme is on.
-  const primaryBackground = `linear-gradient(180deg, ${rgba(skin.accent, 0.34)} 0%, ${rgba(skin.accent, 0.1)} 100%), ${skin.plankBackground}`;
+  const primaryBackground = `linear-gradient(180deg, ${rgba(skin.accent, skin.hintWash)} 0%, ${rgba(skin.accent, skin.hintWash * 0.3)} 100%), ${skin.plankBackground}`;
   return (
     <button
       type="button"

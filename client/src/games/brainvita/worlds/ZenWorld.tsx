@@ -4,12 +4,14 @@ import { WorldMotion, motion } from "./WorldMotion";
 
 /**
  * Zen garden. The table is raked sand, with ripples spreading out from the board as if it were a great flat
- * stone set in the garden; the board is a slab of slate, speckled and chiselled, with a hand-brushed circle
- * in each notch and moss in the corners; the marbles are river pebbles. Round it stand a stone lantern, a
- * stand of bamboo and a small cairn. Nothing glows and nothing is glossy: it is the quiet world.
+ * stone set in the garden; the board is a thick slab of pale sandstone, raked like the sand round it, with a
+ * bronze ring set round every hole, a hand-brushed circle in each notch and moss in the corners; the marbles
+ * are ivory river pebbles. Round it stand a stone lantern with a small warm light, a stand of bamboo and
+ * fern, and a cairn. Nothing else glows and nothing is glossy: it is the quiet world.
  */
 
 const RIPPLES = Array.from({ length: 15 }, (_, index) => 20 + index * 5.2);
+const SLAB_RAKES = Array.from({ length: 9 }, (_, index) => 0.55 + index * 0.84);
 
 /** The sand: raked rings spreading from the board, each with a thin bright ridge beside its furrow. */
 export function ZenScene() {
@@ -18,12 +20,12 @@ export function ZenScene() {
       <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
         {RIPPLES.map((radius) => (
           <g key={radius} fill="none">
-            <circle cx="50" cy="46" r={radius} stroke="rgba(92,78,48,0.2)" strokeWidth="0.3" />
-            <circle cx="50" cy="46" r={radius + 0.55} stroke="rgba(255,252,238,0.5)" strokeWidth="0.22" />
+            <circle cx="50" cy="46" r={radius} stroke="rgba(80,66,38,0.3)" strokeWidth="0.32" />
+            <circle cx="50" cy="46" r={radius + 0.55} stroke="rgba(255,250,232,0.42)" strokeWidth="0.22" />
           </g>
         ))}
       </svg>
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(70,58,32,0.42) 100%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 46%, transparent 44%, rgba(58,46,24,0.55) 100%)" }} />
     </>
   );
 }
@@ -43,12 +45,12 @@ function Moss({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** A hand-brushed circle, left open as a brush leaves it. */
+/** A hand-brushed circle, left open as a brush leaves it, in dark ink pressed into the pale stone. */
 function Enso({ x, y, flipX, flipY }: { x: number; y: number; flipX: number; flipY: number }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${flipX} ${flipY})`} fill="none" strokeLinecap="round">
-      <path d="M0.2 -0.2 A0.28 0.28 0 1 1 -0.2 -0.16" stroke="rgba(0,0,0,0.5)" strokeWidth="0.075" transform="translate(0.01 0.012)" />
-      <path d="M0.2 -0.2 A0.28 0.28 0 1 1 -0.2 -0.16" stroke="rgba(231,238,220,0.62)" strokeWidth="0.06" />
+      <path d="M0.2 -0.2 A0.28 0.28 0 1 1 -0.2 -0.16" stroke="rgba(255,252,238,0.5)" strokeWidth="0.075" transform="translate(0.01 0.014)" />
+      <path d="M0.2 -0.2 A0.28 0.28 0 1 1 -0.2 -0.16" stroke="rgba(62,50,34,0.75)" strokeWidth="0.06" />
     </g>
   );
 }
@@ -59,36 +61,50 @@ export function StoneSurface({ frame }: { frame: number }) {
   const near = ARM_START - frame;
   const far = ARM_END + frame;
   return (
-    <BoardSvg frame={frame} shadow="drop-shadow(0 14px 14px rgba(45,36,16,0.5))">
+    <BoardSvg frame={frame} shadow="drop-shadow(0 16px 14px rgba(40,30,12,0.55))">
       <defs>
         <linearGradient id="bz-slate" x1="0.1" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="#707980" />
-          <stop offset="50%" stopColor="#4d565d" />
-          <stop offset="100%" stopColor="#333a40" />
+          <stop offset="0%" stopColor="#d6ccb4" />
+          <stop offset="48%" stopColor="#bdb298" />
+          <stop offset="100%" stopColor="#9a8f75" />
+        </linearGradient>
+        <linearGradient id="bz-rim" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(255,250,232,0.55)" />
+          <stop offset="100%" stopColor="rgba(60,48,28,0.25)" />
         </linearGradient>
         <clipPath id="bz-slab">
           <path d={outer} />
         </clipPath>
       </defs>
-      <path d={outer} fill="#1f262b" transform="translate(0 0.17)" />
+      <path d={outer} fill="#5f5540" transform="translate(0 0.22)" />
+      <path d={outer} fill="#7a6f56" transform="translate(0 0.1)" />
       <path d={outer} fill="url(#bz-slate)" />
       <g clipPath="url(#bz-slab)">
-        {SLAB_SPECKS.map(({ x, y, r }, index) => (
-          <circle key={index} cx={x * span - frame} cy={y * span - frame} r={0.01 + r * 0.028} fill={r > 0.5 ? "#c5ccd1" : "#1a2024"} opacity={r > 0.5 ? 0.26 : 0.32} />
+        {SLAB_RAKES.map((y, index) => (
+          <path
+            key={y}
+            d={`M-0.6 ${y} C 1.6 ${y - 0.22} 2.8 ${y + 0.24} 4.2 ${y} S 6.6 ${y - 0.2} 8 ${y + 0.1}`}
+            stroke={index % 2 === 0 ? "rgba(70,56,32,0.16)" : "rgba(255,250,232,0.32)"}
+            strokeWidth="0.04"
+            fill="none"
+          />
         ))}
-        <path d="M-0.4 2.7 C 1.4 2.2 2.4 3.4 4.2 2.9 S 6.4 3.2 7.6 2.6" stroke="rgba(255,255,255,0.1)" strokeWidth="0.05" fill="none" />
-        <path d="M2.6 -0.4 C 3.2 1.2 2.6 2.4 3.2 3.9 S 3.6 5.8 3.1 7.4" stroke="rgba(0,0,0,0.16)" strokeWidth="0.04" fill="none" />
+        {SLAB_SPECKS.map(({ x, y, r }, index) => (
+          <circle key={index} cx={x * span - frame} cy={y * span - frame} r={0.01 + r * 0.026} fill={r > 0.5 ? "#fffaf0" : "#4a3f2a"} opacity={r > 0.5 ? 0.34 : 0.22} />
+        ))}
         {[[near, near], [far, near], [near, far], [far, far]].map(([x, y]) => (
           <Moss key={`${x}-${y}`} x={x} y={y} />
         ))}
       </g>
-      <path d={outer} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.03" />
-      <path d={groove} fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="0.04" />
-      <path d={groove} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.022" transform="translate(0.018 0.026)" />
+      <path d={outer} fill="none" stroke="url(#bz-rim)" strokeWidth="0.08" />
+      <path d={outer} fill="none" stroke="rgba(255,252,238,0.55)" strokeWidth="0.03" />
+      <path d={groove} fill="none" stroke="rgba(58,46,26,0.55)" strokeWidth="0.04" />
+      <path d={groove} fill="none" stroke="rgba(255,250,232,0.5)" strokeWidth="0.022" transform="translate(0.018 0.026)" />
       {HOLE_CENTRES.map(({ hole, cx, cy }) => (
         <g key={hole}>
-          <circle cx={cx} cy={cy} r="0.54" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="0.03" />
-          <circle cx={cx} cy={cy} r="0.575" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.02" />
+          <circle cx={cx} cy={cy} r="0.56" fill="none" stroke="rgba(70,52,26,0.5)" strokeWidth="0.05" />
+          <circle cx={cx} cy={cy} r="0.53" fill="none" stroke="#b08f55" strokeWidth="0.035" />
+          <circle cx={cx} cy={cy} r="0.6" fill="none" stroke="rgba(255,250,232,0.5)" strokeWidth="0.022" />
         </g>
       ))}
       {frame >= SPRIG_MIN_FRAME && spots.map(({ key, x, y, flipX, flipY }) => <Enso key={key} x={x} y={y} flipX={flipX} flipY={flipY} />)}
@@ -174,14 +190,60 @@ export function Cairn({ className }: { className: string }) {
   );
 }
 
+/** A cluster of fern fronds arching out from one point, each a spine with paired leaflets. */
+export function Fern({ className }: { className: string }) {
+  const fronds = [-62, -34, -8, 20, 48];
+  return (
+    <svg aria-hidden viewBox="0 0 160 120" className={className}>
+      {fronds.map((turn, index) => (
+        <g key={turn} transform={`translate(80 116) rotate(${turn})`}>
+          <path d="M0 0 C 2 -34 0 -66 -3 -92" stroke="#3f6b32" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+          {Array.from({ length: 9 }, (_, leaf) => {
+            const y = -12 - leaf * 9;
+            const length = 24 - leaf * 2 - (index % 2) * 2;
+            return (
+              <g key={leaf}>
+                <path d={`M0 ${y} Q ${length * 0.5} ${y - 6} ${length} ${y - 2} Q ${length * 0.5} ${y - 1} 0 ${y}`} fill={leaf % 2 === 0 ? "#5d8c42" : "#6fa04c"} />
+                <path d={`M0 ${y} Q ${-length * 0.5} ${y - 6} ${-length} ${y - 2} Q ${-length * 0.5} ${y - 1} 0 ${y}`} fill={leaf % 2 === 0 ? "#6fa04c" : "#5d8c42"} />
+              </g>
+            );
+          })}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** Two river rocks, one leaning on the other, with moss on the shoulder of the larger. */
+export function Rocks({ className }: { className: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 150 100" className={className}>
+      <ellipse cx="72" cy="92" rx="62" ry="7" fill="rgba(0,0,0,0.25)" />
+      <path d="M14 88 C 6 62 26 34 56 30 C 84 26 108 44 112 70 C 114 82 108 90 100 90 Z" fill="#7a8286" />
+      <path d="M20 80 C 16 62 32 44 56 40 C 76 38 94 50 100 66 C 84 56 54 54 20 80 Z" fill="#9aa2a6" />
+      <path d="M90 90 C 88 70 104 54 124 56 C 142 58 148 76 140 90 Z" fill="#6c7478" />
+      <path d="M96 78 C 100 66 112 60 124 62 C 114 66 106 72 102 80 Z" fill="#8a9296" />
+      <ellipse cx="46" cy="36" rx="16" ry="6" fill="#6c8a55" opacity="0.92" />
+      <ellipse cx="54" cy="34" rx="9" ry="3.4" fill="#85a468" opacity="0.9" />
+    </svg>
+  );
+}
+
 /** The garden's furnishings, in the four corners the cross leaves empty. */
 export function ZenProps() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       <WorldMotion />
+      <Fern className="absolute -left-[4%] -top-[22%] w-[26%] drop-shadow-[0_8px_8px_rgba(40,30,10,0.35)]" />
+      <span
+        data-bvw
+        className="absolute -left-[7%] -top-[14%] h-[24%] w-[24%] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(255,196,107,0.55) 0%, rgba(255,196,107,0) 68%)", animation: motion("flicker", 3.2, { timing: "ease-in-out" }) }}
+      />
       <Lantern className="absolute -left-[9%] -top-[17%] w-[24%] drop-shadow-[0_10px_10px_rgba(40,30,10,0.4)]" />
       <Bamboo className="absolute -right-[10%] -top-[22%] h-[44%] w-auto -rotate-[4deg] drop-shadow-[0_8px_8px_rgba(40,30,10,0.35)]" />
       <Cairn className="absolute -bottom-[11%] -left-[11%] w-[32%] drop-shadow-[0_8px_8px_rgba(40,30,10,0.4)]" />
+      <Rocks className="absolute -bottom-[9%] -right-[10%] w-[26%] drop-shadow-[0_8px_8px_rgba(40,30,10,0.4)]" />
     </div>
   );
 }

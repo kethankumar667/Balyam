@@ -3,10 +3,11 @@ import { BoardSvg, HOLE_CENTRES, boardOutline, ornamentSpots } from "./boardKit"
 import { WorldMotion, motion } from "./WorldMotion";
 
 /**
- * Coral reef. The table is the sea: light falling through the water in slow shafts, a net of caustic light
- * drifting over everything, bubbles rising, seaweed swaying on the sand below. The board is one great
- * scallop shell, pearly and ribbed, with a small scalloped cup for every marble and a branch of coral
- * growing in each notch; the marbles are pearls. A starfish, a sea fan and a shell lie round it.
+ * Coral reef. The table is the deep sea: light falling through the water in slow shafts, a net of caustic
+ * light drifting over everything, bubbles rising, seaweed swaying on a floor of sand below. The board is a
+ * slab of frosted glass tinted aqua, with a bevelled pale rim, light caught inside it and a deep well for every
+ * marble, and a branch of coral growing in each notch; the marbles are pearls. A starfish, a sea fan, a shell
+ * and a coral head lie round it, and the water's haze softens them so they sit behind the board.
  */
 
 const RAYS = [
@@ -98,16 +99,19 @@ export function ReefScene() {
           }}
         />
       ))}
-      <div className="absolute inset-x-0 bottom-0 h-[11vh]" style={{ background: "linear-gradient(180deg, transparent 0%, rgba(238,214,160,0.34) 100%)" }} />
+      <div className="absolute inset-x-0 bottom-0 h-[15vh]" style={{ background: "linear-gradient(180deg, transparent 0%, rgba(226,200,150,0.3) 55%, rgba(214,184,128,0.5) 100%)" }} />
+      <div
+        className="absolute inset-x-0 bottom-0 h-[15vh] opacity-60"
+        style={{ backgroundImage: "radial-gradient(ellipse at 20% 80%, rgba(255,244,214,0.35) 0 1.5%, transparent 2.2%), radial-gradient(ellipse at 64% 62%, rgba(255,244,214,0.3) 0 1.2%, transparent 2%), radial-gradient(ellipse at 88% 88%, rgba(255,244,214,0.3) 0 1.6%, transparent 2.4%)" }}
+      />
       {WEEDS.map((weed) => (
         <Weed key={weed.left} {...weed} />
       ))}
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 50%, rgba(2,24,44,0.55) 100%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 42%, rgba(1,14,36,0.7) 100%)" }} />
     </>
   );
 }
 
-const RIBS = Array.from({ length: 44 }, (_, index) => (index / 44) * Math.PI * 2);
 const CUP_RIDGES = Array.from({ length: 12 }, (_, index) => (index / 12) * Math.PI * 2);
 
 function Coral({ x, y, flipX, flipY }: { x: number; y: number; flipX: number; flipY: number }) {
@@ -122,48 +126,51 @@ function Coral({ x, y, flipX, flipY }: { x: number; y: number; flipX: number; fl
   );
 }
 
-/** The scallop: pearly, ribbed from its hinge, with a cup for each marble. */
+/** The slab: frosted aqua glass, thick enough to show a darker green-blue at its edge, with a pale bevel and a well for each marble. */
 export function ShellSurface({ frame }: { frame: number }) {
   const { outer, groove } = boardOutline(frame);
   const spots = ornamentSpots(frame);
   return (
-    <BoardSvg frame={frame} shadow="drop-shadow(0 14px 16px rgba(0,25,50,0.55))">
+    <BoardSvg frame={frame} shadow="drop-shadow(0 16px 16px rgba(0,14,40,0.6))">
       <defs>
         <linearGradient id="br-pearl" x1="0.1" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stopColor="#fff7f1" />
-          <stop offset="50%" stopColor="#f7dcd5" />
-          <stop offset="100%" stopColor="#d6e9ee" />
+          <stop offset="0%" stopColor="#b8f1fa" />
+          <stop offset="46%" stopColor="#62cde6" />
+          <stop offset="100%" stopColor="#2a9cc8" />
         </linearGradient>
         <linearGradient id="br-iris" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="rgba(255,170,220,0.32)" />
-          <stop offset="50%" stopColor="rgba(160,230,255,0.22)" />
-          <stop offset="100%" stopColor="rgba(200,255,220,0.28)" />
+          <stop offset="0%" stopColor="rgba(255,255,255,0.42)" />
+          <stop offset="38%" stopColor="rgba(255,255,255,0)" />
+          <stop offset="100%" stopColor="rgba(10,70,130,0.3)" />
         </linearGradient>
         <clipPath id="br-slab">
           <path d={outer} />
         </clipPath>
         <g id="br-cup">
-          <circle r="0.55" fill="none" stroke="rgba(176,104,122,0.6)" strokeWidth="0.045" />
-          <circle r="0.585" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="0.02" />
+          <circle r="0.55" fill="none" stroke="rgba(8,70,120,0.55)" strokeWidth="0.07" />
+          <circle r="0.6" fill="none" stroke="rgba(236,254,255,0.85)" strokeWidth="0.026" />
           {CUP_RIDGES.map((angle) => (
-            <path key={angle} d={`M${Math.cos(angle) * 0.48} ${Math.sin(angle) * 0.48} L${Math.cos(angle) * 0.57} ${Math.sin(angle) * 0.57}`} stroke="rgba(176,104,122,0.55)" strokeWidth="0.035" strokeLinecap="round" />
+            <circle key={angle} cx={Math.cos(angle) * 0.66} cy={Math.sin(angle) * 0.66} r="0.016" fill="rgba(255,255,255,0.55)" />
           ))}
         </g>
       </defs>
-      <path d={outer} fill="#a97881" transform="translate(0 0.17)" />
+      <path d={outer} fill="#0b4f86" transform="translate(0 0.24)" />
+      <path d={outer} fill="#1c7db3" transform="translate(0 0.12)" />
       <path d={outer} fill="url(#br-pearl)" />
       <g clipPath="url(#br-slab)">
         <path d={outer} fill="url(#br-iris)" />
-        {RIBS.map((angle) => (
-          <path key={angle} d={`M3.5 7.9 L${3.5 + Math.cos(angle) * 12} ${7.9 + Math.sin(angle) * 12}`} stroke="rgba(176,104,122,0.17)" strokeWidth="0.035" />
+        {[[1.3, 2.0, 0.34], [5.9, 1.2, 0.22], [2.7, 6.4, 0.26], [6.2, 5.8, 0.3]].map(([x, y, r]) => (
+          <g key={`${x}-${y}`}>
+            <circle cx={x} cy={y} r={r} fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.03" />
+            <circle cx={x - r * 0.3} cy={y - r * 0.3} r={r * 0.18} fill="rgba(255,255,255,0.7)" />
+          </g>
         ))}
-        {[3, 4.4, 5.8, 7.2, 8.6].map((radius) => (
-          <circle key={radius} cx="3.5" cy="7.9" r={radius} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.03" />
-        ))}
-        <ellipse cx="1.4" cy="0.6" rx="2.6" ry="1.1" fill="rgba(255,255,255,0.28)" transform="rotate(-24 1.4 0.6)" />
+        <path d="M-0.5 3.4 C 1.5 2.8 2.7 4.1 4.2 3.5 S 6.6 3.0 8 3.7" stroke="rgba(255,255,255,0.3)" strokeWidth="0.05" fill="none" />
+        <ellipse cx="1.4" cy="0.6" rx="2.8" ry="1" fill="rgba(255,255,255,0.3)" transform="rotate(-24 1.4 0.6)" />
       </g>
-      <path d={outer} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.04" />
-      <path d={groove} fill="none" stroke="rgba(176,104,122,0.42)" strokeWidth="0.03" strokeDasharray="0.14 0.1" />
+      <path d={outer} fill="none" stroke="rgba(240,255,255,0.9)" strokeWidth="0.05" />
+      <path d={groove} fill="none" stroke="rgba(8,70,120,0.4)" strokeWidth="0.03" />
+      <path d={groove} fill="none" stroke="rgba(236,254,255,0.55)" strokeWidth="0.02" transform="translate(0.016 0.022)" />
       {HOLE_CENTRES.map(({ hole, cx, cy }) => (
         <use key={hole} href="#br-cup" x={cx} y={cy} />
       ))}
@@ -222,13 +229,39 @@ export function Scallop({ className }: { className: string }) {
   );
 }
 
-/** The sea's furnishings, in the four corners the cross leaves empty. */
+/** A head of coral: a mound of rounded lobes in orange and pink, with pits across them. */
+export function CoralHead({ className }: { className: string }) {
+  const lobes = [
+    { x: 40, y: 78, r: 30, tone: "#f07a5a" },
+    { x: 84, y: 70, r: 34, tone: "#f2926e" },
+    { x: 118, y: 88, r: 24, tone: "#e0587e" },
+    { x: 62, y: 46, r: 22, tone: "#f59e7c" },
+  ];
+  return (
+    <svg aria-hidden viewBox="0 0 150 120" className={className}>
+      <ellipse cx="76" cy="112" rx="62" ry="7" fill="rgba(0,16,40,0.35)" />
+      {lobes.map(({ x, y, r, tone }) => (
+        <g key={`${x}-${y}`}>
+          <circle cx={x} cy={y} r={r} fill={tone} />
+          <circle cx={x - r * 0.25} cy={y - r * 0.28} r={r * 0.62} fill="rgba(255,236,214,0.28)" />
+          {[[-0.32, -0.1], [0.12, -0.38], [0.3, 0.14], [-0.1, 0.3]].map(([dx, dy]) => (
+            <circle key={`${dx}${dy}`} cx={x + dx * r} cy={y + dy * r} r={r * 0.09} fill="rgba(120,30,40,0.5)" />
+          ))}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** The sea's furnishings, in the four corners the cross leaves empty. The water's haze softens them and takes a little of their colour. */
 export function ReefProps() {
+  const sea = "saturate-[0.88] brightness-[0.94] drop-shadow-[0_8px_8px_rgba(0,16,44,0.5)]";
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
-      <Starfish className="absolute -left-[9%] -top-[12%] w-[27%] -rotate-[14deg] drop-shadow-[0_8px_8px_rgba(0,25,50,0.45)]" />
-      <SeaFan className="absolute -right-[10%] -top-[9%] w-[28%] rotate-[6deg] drop-shadow-[0_8px_8px_rgba(0,25,50,0.45)]" />
-      <Scallop className="absolute -bottom-[11%] -left-[11%] w-[30%] -rotate-[10deg] drop-shadow-[0_8px_8px_rgba(0,25,50,0.45)]" />
+      <Starfish className={`absolute -left-[9%] -top-[12%] w-[27%] -rotate-[14deg] ${sea}`} />
+      <SeaFan className={`absolute -right-[10%] -top-[9%] w-[28%] rotate-[6deg] blur-[0.6px] ${sea}`} />
+      <Scallop className={`absolute -bottom-[11%] -left-[11%] w-[30%] -rotate-[10deg] ${sea}`} />
+      <CoralHead className={`absolute -bottom-[10%] -right-[11%] w-[27%] ${sea}`} />
     </div>
   );
 }

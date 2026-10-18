@@ -2,32 +2,42 @@ import { SPRIG_MIN_FRAME } from "../brainvitaTheme";
 import { BoardSvg, HOLE_CENTRES, boardOutline, ornamentSpots } from "./boardKit";
 
 /**
- * Toy box. A playroom floor with a bright play mat; a thick moulded plastic game tray with a ring of
- * colour round every hole and a sticker in each notch; cartoon balls for marbles. Beside it lie a stack of
- * lettered blocks, a rubber duck and a fan of crayons. It is the loud, friendly world, and the only light one.
+ * Toy box. A playroom at lamp-light: a floor of wooden boards, with a few gold stars dropped on it; a thick
+ * moulded plastic game tray in glossy blue with one deep well for every marble and a sticker in each notch;
+ * glossy red balls for marbles. Beside it lie a stack of lettered blocks, a rubber duck, a fan of crayons and a
+ * star. The toys keep their bright colours, but the room round them is warm and dim, so they stand out of it.
  */
 
-const RING_COLOURS = ["#ff4d6d", "#ffc21a", "#2ee59d", "#a855f7", "#ff8a1f"] as const;
+const PLANK_COUNT = 12;
+const PLANK_TONES = ["#84552a", "#7a4d25", "#8c5b2e", "#76491f", "#80522a", "#8a592c"] as const;
+const FLOOR_STARS = [
+  { x: 12, y: 12, size: 2.4, turn: -12 },
+  { x: 90, y: 41, size: 1.8, turn: 14 },
+  { x: 8, y: 63, size: 1.5, turn: 20 },
+  { x: 93, y: 88, size: 2.2, turn: -8 },
+] as const;
 
-/** The play mat: soft shapes in primary colours on the floor, and a scatter of white dots over them. */
+const STAR_POINTS = "0,-1 0.26,-0.36 0.95,-0.31 0.42,0.14 0.59,0.81 0,0.45 -0.59,0.81 -0.42,0.14 -0.95,-0.31 -0.26,-0.36";
+
+/** The floor: boards laid across, each with its own tone, a dark seam and a little grain; a few stars lie on it. */
 export function ToyScene() {
+  const plankHeight = 100 / PLANK_COUNT;
   return (
     <>
       <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
-        <defs>
-          <pattern id="bt-dots" width="6" height="6" patternUnits="userSpaceOnUse">
-            <circle cx="3" cy="3" r="0.7" fill="rgba(255,255,255,0.55)" />
-          </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#bt-dots)" />
-        <circle cx="10" cy="20" r="15" fill="#ff8fab" opacity="0.34" />
-        <polygon points="86,6 99,30 73,30" fill="#6ec1ff" opacity="0.4" />
-        <path d="M4 52 q 6 -8 12 0 t 12 0 t 12 0" stroke="#59cf7a" strokeWidth="2.2" fill="none" strokeLinecap="round" opacity="0.5" />
-        <rect x="78" y="62" width="15" height="15" rx="2" fill="#ffd23f" opacity="0.55" transform="rotate(14 85 70)" />
-        <circle cx="18" cy="86" r="11" fill="#b794f6" opacity="0.36" />
-        <path d="M66 94 q 6 -8 12 0 t 12 0" stroke="#ff7a3d" strokeWidth="2.2" fill="none" strokeLinecap="round" opacity="0.45" />
+        {Array.from({ length: PLANK_COUNT }, (_, index) => (
+          <g key={index}>
+            <rect y={index * plankHeight} width="100" height={plankHeight} fill={PLANK_TONES[index % PLANK_TONES.length]} opacity="0.55" />
+            <path d={`M0 ${index * plankHeight + plankHeight * 0.34} C 24 ${index * plankHeight + plankHeight * 0.2} 52 ${index * plankHeight + plankHeight * 0.52} 100 ${index * plankHeight + plankHeight * 0.3}`} stroke="rgba(40,18,4,0.22)" strokeWidth="0.18" fill="none" />
+            <path d={`M0 ${index * plankHeight + plankHeight * 0.72} C 30 ${index * plankHeight + plankHeight * 0.62} 64 ${index * plankHeight + plankHeight * 0.84} 100 ${index * plankHeight + plankHeight * 0.7}`} stroke="rgba(255,210,150,0.1)" strokeWidth="0.16" fill="none" />
+            <rect y={index * plankHeight} width="100" height="0.28" fill="rgba(25,10,0,0.5)" />
+          </g>
+        ))}
+        {FLOOR_STARS.map(({ x, y, size, turn }) => (
+          <polygon key={`${x}-${y}`} points={STAR_POINTS} transform={`translate(${x} ${y}) rotate(${turn}) scale(${size})`} fill="#ffc21a" stroke="#fff0b3" strokeWidth="0.08" opacity="0.8" />
+        ))}
       </svg>
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 44%, transparent 56%, rgba(150,96,10,0.3) 100%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 44%, transparent 38%, rgba(18,8,0,0.6) 100%)" }} />
     </>
   );
 }
@@ -46,39 +56,36 @@ function Sticker({ index, x, y }: { index: number; x: number; y: number }) {
   );
 }
 
-/** The tray: moulded plastic with a thick edge, a gloss across its top, and a ring of colour round each hole. */
+/** The tray: moulded plastic with a thick navy edge, a gloss across its top, and one deep well for each marble. */
 export function ToySurface({ frame }: { frame: number }) {
   const { outer, groove } = boardOutline(frame);
   const spots = ornamentSpots(frame);
   return (
-    <BoardSvg frame={frame} shadow="drop-shadow(0 14px 12px rgba(80,50,0,0.4))">
+    <BoardSvg frame={frame} shadow="drop-shadow(0 16px 12px rgba(0,0,0,0.55))">
       <defs>
         <linearGradient id="bt-plastic" x1="0.1" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="#5b96ff" />
-          <stop offset="55%" stopColor="#2f6fe8" />
-          <stop offset="100%" stopColor="#2352c2" />
+          <stop offset="0%" stopColor="#4a86f5" />
+          <stop offset="55%" stopColor="#2a62dc" />
+          <stop offset="100%" stopColor="#1d47b0" />
         </linearGradient>
         <linearGradient id="bt-gloss" x1="0" y1="0" x2="0.9" y2="0.9">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
-          <stop offset="34%" stopColor="rgba(255,255,255,0)" />
+          <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
+          <stop offset="30%" stopColor="rgba(255,255,255,0)" />
         </linearGradient>
       </defs>
-      <path d={outer} fill="#173f94" transform="translate(0 0.21)" />
+      <path d={outer} fill="#0a1f5a" transform="translate(0 0.26)" />
+      <path d={outer} fill="#12306f" transform="translate(0 0.13)" />
       <path d={outer} fill="url(#bt-plastic)" />
       <path d={outer} fill="url(#bt-gloss)" />
-      <path d={outer} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="0.045" />
-      <path d={groove} fill="none" stroke="rgba(15,45,120,0.55)" strokeWidth="0.04" />
-      <path d={groove} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.022" transform="translate(0.018 0.026)" />
-      {HOLE_CENTRES.map(({ hole, cx, cy }) => {
-        const colour = RING_COLOURS[(Math.floor(cy) + Math.floor(cx)) % RING_COLOURS.length];
-        return (
-          <g key={hole}>
-            <circle cx={cx} cy={cy} r="0.53" fill="none" stroke="rgba(15,45,120,0.5)" strokeWidth="0.12" />
-            <circle cx={cx} cy={cy} r="0.52" fill="none" stroke={colour} strokeWidth="0.1" />
-            <circle cx={cx} cy={cy} r="0.565" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="0.02" />
-          </g>
-        );
-      })}
+      <path d={outer} fill="none" stroke="rgba(190,215,255,0.75)" strokeWidth="0.04" />
+      <path d={groove} fill="none" stroke="rgba(8,28,92,0.6)" strokeWidth="0.045" />
+      <path d={groove} fill="none" stroke="rgba(170,205,255,0.4)" strokeWidth="0.022" transform="translate(0.018 0.026)" />
+      {HOLE_CENTRES.map(({ hole, cx, cy }) => (
+        <g key={hole}>
+          <circle cx={cx} cy={cy} r="0.54" fill="none" stroke="rgba(6,22,80,0.6)" strokeWidth="0.09" />
+          <circle cx={cx} cy={cy} r="0.585" fill="none" stroke="rgba(170,205,255,0.45)" strokeWidth="0.022" />
+        </g>
+      ))}
       {frame >= SPRIG_MIN_FRAME && spots.map(({ key, x, y }, index) => <Sticker key={key} index={index} x={x} y={y} />)}
     </BoardSvg>
   );
@@ -157,13 +164,26 @@ export function Crayons({ className }: { className: string }) {
   );
 }
 
+/** A fat toy star, with a light face and a darker edge, lying on its side. */
+export function ToyStar({ className }: { className: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 120 120" className={className}>
+      <ellipse cx="62" cy="112" rx="40" ry="6" fill="rgba(0,0,0,0.35)" />
+      <polygon points="60,6 75,42 114,46 84,72 93,110 60,90 27,110 36,72 6,46 45,42" fill="#d98a00" stroke="#d98a00" strokeWidth="10" strokeLinejoin="round" />
+      <polygon points="60,6 75,42 114,46 84,72 93,110 60,90 27,110 36,72 6,46 45,42" fill="#ffc21a" stroke="#ffc21a" strokeWidth="6" strokeLinejoin="round" />
+      <polygon points="60,22 70,46 96,49 76,66 82,92 60,78" fill="rgba(255,240,170,0.55)" />
+    </svg>
+  );
+}
+
 /** The playroom's clutter, in the four corners the cross leaves empty. */
 export function ToyProps() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
-      <Blocks className="absolute -left-[11%] -top-[16%] w-[33%] drop-shadow-[0_8px_6px_rgba(80,50,0,0.25)]" />
-      <Duck className="absolute -right-[8%] top-[1%] w-[27%] rotate-[6deg] drop-shadow-[0_8px_6px_rgba(80,50,0,0.25)]" />
-      <Crayons className="absolute -bottom-[14%] -left-[10%] w-[30%] drop-shadow-[0_8px_6px_rgba(80,50,0,0.25)]" />
+      <Blocks className="absolute -left-[11%] -top-[16%] w-[33%] drop-shadow-[0_8px_6px_rgba(0,0,0,0.4)]" />
+      <Duck className="absolute -right-[8%] top-[1%] w-[27%] rotate-[6deg] drop-shadow-[0_8px_6px_rgba(0,0,0,0.4)]" />
+      <Crayons className="absolute -bottom-[14%] -left-[10%] w-[30%] drop-shadow-[0_8px_6px_rgba(0,0,0,0.4)]" />
+      <ToyStar className="absolute -bottom-[9%] right-0 w-[16%] rotate-[14deg] drop-shadow-[0_8px_6px_rgba(0,0,0,0.4)]" />
     </div>
   );
 }

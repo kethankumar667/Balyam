@@ -4,10 +4,11 @@ import { BoardSvg, HOLE_CENTRES, boardOutline, ornamentSpots } from "./boardKit"
 import { WorldMotion, motion } from "./WorldMotion";
 
 /**
- * Royal palace. The table is a crimson carpet worked with a gold lattice, under a row of lit arches, with
- * marigold petals drifting down. The board is a slab of ivory marble veined with brown and bordered in gold,
- * every hole wearing a beaded gold rim and a small jewel set at each crossing; the marbles are cut
- * emeralds. Brass lamps burn beside it, and a bunch of marigolds lies on the carpet.
+ * Royal palace. The table is a deep crimson carpet with a faint gold lattice worked into it, under a row of
+ * dim arches, with marigold petals drifting down. The board is a slab of burnished copper, engraved with
+ * filigree and bordered in thick gold, every hole wearing a beaded gold rim and a small garnet set at each
+ * crossing; the marbles are cut emeralds. Brass lamps burn beside it, and a bunch of marigolds lies on the
+ * carpet. The carpet is kept quiet so the copper and the emeralds are what the eye finds.
  */
 
 const GOLD = "#e8b84a";
@@ -39,23 +40,23 @@ export function PalaceScene() {
             <circle cx="26" cy="26" r="1.1" fill={GOLD} opacity="0.35" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#bp-carpet)" opacity="0.5" />
+        <rect width="100%" height="100%" fill="url(#bp-carpet)" opacity="0.2" />
       </svg>
       <svg aria-hidden viewBox="0 0 100 26" preserveAspectRatio="xMidYMin slice" className="absolute inset-x-0 top-0 h-[22vh] w-full">
         <defs>
           <linearGradient id="bp-glow" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#ffb44a" stopOpacity="0.85" />
-            <stop offset="100%" stopColor="#7a1f2d" stopOpacity="0.5" />
+            <stop offset="0%" stopColor="#ffb44a" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#7a1f2d" stopOpacity="0.3" />
           </linearGradient>
         </defs>
-        <rect width="100" height="26" fill="#1b060c" opacity="0.82" />
+        <rect width="100" height="26" fill="#1b060c" opacity="0.6" />
         {[20, 50, 80].map((m) => (
           <g key={m}>
             <path d={arch(m)} fill="url(#bp-glow)" />
-            <path d={arch(m)} fill="none" stroke={GOLD} strokeWidth="0.5" opacity="0.8" />
+            <path d={arch(m)} fill="none" stroke={GOLD} strokeWidth="0.4" opacity="0.5" />
           </g>
         ))}
-        <rect y="24.6" width="100" height="1.4" fill={GOLD} opacity="0.7" />
+        <rect y="24.8" width="100" height="1.2" fill={GOLD} opacity="0.45" />
       </svg>
       {PETALS.map((petal) => (
         <span
@@ -101,13 +102,17 @@ export function PalaceSurface({ frame }: { frame: number }) {
   const { outer, groove } = boardOutline(frame);
   const spots = ornamentSpots(frame);
   return (
-    <BoardSvg frame={frame} shadow="drop-shadow(0 14px 16px rgba(10,0,4,0.65))">
+    <BoardSvg frame={frame} shadow="drop-shadow(0 16px 16px rgba(10,0,4,0.7))">
       <defs>
         <linearGradient id="bp-marble" x1="0.1" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="#fdf8ea" />
-          <stop offset="50%" stopColor="#ece1c6" />
-          <stop offset="100%" stopColor="#d3c29b" />
+          <stop offset="0%" stopColor="#f2b56a" />
+          <stop offset="48%" stopColor="#d88b40" />
+          <stop offset="100%" stopColor="#a85b23" />
         </linearGradient>
+        <pattern id="bp-filigree" width="0.62" height="0.62" patternUnits="userSpaceOnUse">
+          <path d="M0.31 0.04 L0.58 0.31 L0.31 0.58 L0.04 0.31 Z" fill="none" stroke="rgba(92,42,8,0.3)" strokeWidth="0.022" />
+          <circle cx="0.31" cy="0.31" r="0.035" fill="rgba(255,226,160,0.4)" />
+        </pattern>
         <clipPath id="bp-slab">
           <path d={outer} />
         </clipPath>
@@ -119,21 +124,23 @@ export function PalaceSurface({ frame }: { frame: number }) {
           ))}
         </g>
       </defs>
-      <path d={outer} fill="#8f7a55" transform="translate(0 0.17)" />
+      <path d={outer} fill="#4a2408" transform="translate(0 0.24)" />
+      <path d={outer} fill="#7a3f12" transform="translate(0 0.12)" />
       <path d={outer} fill="url(#bp-marble)" />
       <g clipPath="url(#bp-slab)" fill="none" strokeLinecap="round">
-        <path d="M-0.4 1.6 C 1.2 1.1 2.1 2.4 3.6 1.9 S 5.9 1.1 7.4 1.8" stroke="rgba(120,96,64,0.26)" strokeWidth="0.04" />
-        <path d="M-0.4 4.9 C 1.6 5.6 2.6 4.4 4.1 5.1 S 6.2 5.8 7.4 5.0" stroke="rgba(120,96,64,0.22)" strokeWidth="0.035" />
-        <path d="M2.2 -0.4 C 2.8 1.4 2.2 2.8 3 4.2 S 3.4 6 2.9 7.4" stroke="rgba(120,96,64,0.18)" strokeWidth="0.03" />
-        <path d="M4.8 -0.4 C 4.2 1.6 4.9 2.9 4.3 4.4 S 4.6 6.2 5.2 7.4" stroke="rgba(120,96,64,0.16)" strokeWidth="0.028" />
-        <path d="M-0.4 3.3 C 1.4 3.0 2.6 3.7 3.9 3.4 S 6.1 3.0 7.4 3.5" stroke="rgba(255,255,255,0.55)" strokeWidth="0.03" />
+        <rect x={-frame} y={-frame} width="12" height="12" fill="url(#bp-filigree)" />
+        <path d="M-0.4 1.6 C 1.2 1.1 2.1 2.4 3.6 1.9 S 5.9 1.1 7.4 1.8" stroke="rgba(110,52,10,0.28)" strokeWidth="0.04" />
+        <path d="M-0.4 4.9 C 1.6 5.6 2.6 4.4 4.1 5.1 S 6.2 5.8 7.4 5.0" stroke="rgba(110,52,10,0.24)" strokeWidth="0.035" />
+        <path d="M-0.4 3.3 C 1.4 3.0 2.6 3.7 3.9 3.4 S 6.1 3.0 7.4 3.5" stroke="rgba(255,226,170,0.5)" strokeWidth="0.03" />
+        <ellipse cx="1.8" cy="0.5" rx="2.8" ry="1" fill="rgba(255,236,190,0.2)" transform="rotate(-24 1.8 0.5)" />
       </g>
-      <path d={outer} fill="none" stroke="rgba(80,50,0,0.5)" strokeWidth="0.1" />
-      <path d={outer} fill="none" stroke={GOLD} strokeWidth="0.06" />
-      <path d={groove} fill="none" stroke={GOLD_DARK} strokeWidth="0.03" />
-      <path d={groove} fill="none" stroke={GOLD} strokeWidth="0.014" transform="translate(0.012 0.016)" />
+      <path d={outer} fill="none" stroke="rgba(60,28,4,0.6)" strokeWidth="0.12" />
+      <path d={outer} fill="none" stroke={GOLD} strokeWidth="0.07" />
+      <path d={outer} fill="none" stroke="rgba(255,244,200,0.7)" strokeWidth="0.018" transform="translate(0 -0.02)" />
+      <path d={groove} fill="none" stroke={GOLD_DARK} strokeWidth="0.035" />
+      <path d={groove} fill="none" stroke={GOLD} strokeWidth="0.016" transform="translate(0.012 0.016)" />
       {CROSSINGS.map(({ row, col }) => (
-        <path key={`${row}-${col}`} d={`M${col} ${row - 0.11} L${col + 0.11} ${row} L${col} ${row + 0.11} L${col - 0.11} ${row} Z`} fill="#9a1f33" stroke={GOLD} strokeWidth="0.025" />
+        <path key={`${row}-${col}`} d={`M${col} ${row - 0.11} L${col + 0.11} ${row} L${col} ${row + 0.11} L${col - 0.11} ${row} Z`} fill="#7a1426" stroke={GOLD} strokeWidth="0.025" />
       ))}
       {HOLE_CENTRES.map(({ hole, cx, cy }) => (
         <use key={hole} href="#bp-rim" x={cx} y={cy} />

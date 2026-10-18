@@ -97,9 +97,9 @@ const HOLO: SkinTokens = {
   swatchBoard: "#0a2c52",
 };
 
-const PEBBLE_STOPS = ["#fdfcf7", "#ece8dc", "#d6d0bf", "#aaa38f", "#7b7564"] as const;
+const PEBBLE_STOPS = ["#fffdf6", "#f3ecda", "#dcd0b4", "#b4a684", "#7d7156"] as const;
 
-/** A raked sand garden: a slab of slate, river pebbles, a stone lantern and bamboo. Quiet, matte, no light of its own. */
+/** A raked sand garden: a slab of pale sandstone, ivory river pebbles, a stone lantern, bamboo and fern. Quiet, with one lantern's glow. */
 const ZEN: SkinTokens = {
   id: "zen",
   name: "Zen garden",
@@ -109,32 +109,32 @@ const ZEN: SkinTokens = {
   particleColors: ["#8f8566", "#a89d7c", "#6f664b"],
   board: null,
   glass: null,
-  accent: "#A9BF93",
-  accentSoft: "#E7EEDC",
-  accentAlt: "#C9B37E",
+  accent: "#8FC06A",
+  accentSoft: "#E2F0CE",
+  accentAlt: "#D2B77A",
   marbleStops: PEBBLE_STOPS,
-  tableBackground: "radial-gradient(ellipse at 50% 22%, #e7e0cb 0%, #cfc5a8 52%, #a59a76 100%)",
-  ...chrome({ accent: "#A9BF93", accentSoft: "#E7EEDC", plankTop: "#3e464b", plankBottom: "#23292c", tableEdge: "#2a2f2b", panelAlpha: 0.9 }),
-  signBackground: "linear-gradient(180deg, #4d565c 0%, #2f363b 100%)",
-  signBorder: "2px solid #8a9487",
-  signShadow: "0 6px 12px rgba(0,0,0,0.45), inset 0 2px 3px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.14)",
-  signRadius: "0.4rem",
+  tableBackground: "radial-gradient(ellipse at 50% 26%, #dcd2b6 0%, #bdb292 54%, #8a7f62 100%)",
+  ...chrome({ accent: "#8FC06A", accentSoft: "#E2F0CE", plankTop: "#34403c", plankBottom: "#161d1b", tableEdge: "#232a26", panelAlpha: 0.9, hintWash: 0.55 }),
+  signBackground: "linear-gradient(180deg, #3d4742 0%, #1f2724 100%)",
+  signBorder: "2px solid #b99a5b",
+  signShadow: "0 6px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,236,190,0.25), inset 0 -2px 4px rgba(0,0,0,0.4)",
+  signRadius: "0.6rem",
   signIcon: "leaf",
-  titleColor: "#E7EEDC",
-  titleShadow: "0 -1px 0 rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.16)",
+  titleColor: "#F1E6C6",
+  titleShadow: "0 -1px 0 rgba(0,0,0,0.8), 0 1px 0 rgba(255,236,190,0.18)",
   titleStroke: "0px transparent",
   titleFont: FONT_QUIET,
   titleSize: "clamp(0.95rem, 4.6vw, 1.7rem)",
   titleWeight: 600,
   titleSpacing: "0.2em",
   titleLetters: null,
-  holeWell: "radial-gradient(circle at 40% 32%, #232a2d 0%, #13181a 70%, #0b0e0f 100%)",
-  holeRim: "inset 0 4px 7px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.2)",
+  holeWell: "radial-gradient(circle at 40% 30%, #3b2f26 0%, #1d1611 68%, #0d0906 100%)",
+  holeRim: "inset 0 5px 8px rgba(0,0,0,0.78), 0 1px 0 rgba(255,246,222,0.5)",
   marbleFill: marbleGradient(PEBBLE_STOPS),
-  marbleShadow: "0 3px 5px rgba(0,0,0,0.42)",
-  marbleSelectedShadow: "0 9px 10px rgba(0,0,0,0.4)",
+  marbleShadow: "0 4px 6px rgba(40,28,10,0.5)",
+  marbleSelectedShadow: "0 10px 11px rgba(40,28,10,0.45)",
   voice: "stone",
-  swatchBoard: "#4a5258",
+  swatchBoard: "#b9ad90",
 };
 
 const PEARL_STOPS = ["#ffffff", "#fff1f7", "#e8eefc", "#c9c3f0", "#8fb7e6"] as const;
@@ -153,11 +153,11 @@ const REEF: SkinTokens = {
   accentSoft: "#D1FAF4",
   accentAlt: "#F9A8D4",
   marbleStops: PEARL_STOPS,
-  tableBackground: "linear-gradient(180deg, #1291a6 0%, #0a5878 38%, #052b49 100%)",
-  ...chrome({ accent: "#5EEAD4", accentSoft: "#D1FAF4", plankTop: "#0d5a70", plankBottom: "#06344a", tableEdge: "#042338" }),
-  signBackground: "linear-gradient(180deg, #17a6b6 0%, #0b6d86 100%)",
+  tableBackground: "linear-gradient(180deg, #0f86a8 0%, #0a5a86 30%, #07366a 66%, #041d3d 100%)",
+  ...chrome({ accent: "#4FE3EA", accentSoft: "#CFFAFE", plankTop: "#0c5280", plankBottom: "#062c50", tableEdge: "#041d3d", hintWash: 0.5 }),
+  signBackground: "linear-gradient(180deg, #1aa9c8 0%, #0b6a9c 100%)",
   signBorder: "2px solid #c9f6f0",
-  signShadow: "0 6px 14px rgba(0,30,50,0.5), inset 0 2px 6px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,60,80,0.35)",
+  signShadow: "0 6px 14px rgba(0,20,50,0.55), inset 0 2px 6px rgba(255,255,255,0.4), inset 0 -4px 8px rgba(0,50,90,0.4)",
   signRadius: "999px",
   signIcon: "shell",
   titleColor: "#F0FFFC",
@@ -168,19 +168,19 @@ const REEF: SkinTokens = {
   titleWeight: 700,
   titleSpacing: "0.05em",
   titleLetters: null,
-  holeWell: "radial-gradient(circle at 50% 36%, #a58792 0%, #6c4b5c 60%, #432a3a 100%)",
-  holeRim: "inset 0 4px 7px rgba(52,20,44,0.7), 0 1px 0 rgba(255,255,255,0.7)",
+  holeWell: "radial-gradient(circle at 50% 34%, #0e3258 0%, #07192f 62%, #030b1a 100%)",
+  holeRim: "inset 0 5px 8px rgba(0,8,28,0.88), 0 1px 0 rgba(210,250,255,0.85)",
   marbleFill: marbleGradient(PEARL_STOPS),
-  marbleShadow: "0 4px 6px rgba(20,40,70,0.5), 0 0 10px rgba(255,255,255,0.35)",
-  marbleSelectedShadow: "0 10px 12px rgba(20,40,70,0.45), 0 0 14px rgba(249,168,212,0.8)",
+  marbleShadow: "0 5px 7px rgba(0,20,50,0.6), 0 0 10px rgba(190,240,255,0.35)",
+  marbleSelectedShadow: "0 11px 12px rgba(0,20,50,0.5), 0 0 16px rgba(79,227,234,0.85)",
   voice: "water",
-  swatchBoard: "#f6dcd6",
+  swatchBoard: "#6fd0e6",
 };
 
 const CANDY_STOPS = ["#ffe3e3", "#ff8a8a", "#f23d4f", "#b8142c", "#6f0a1c"] as const;
-export const TOY_LETTER_COLOURS = ["#e11d48", "#2563eb", "#15803d", "#7c3aed", "#c2410c"] as const;
+export const TOY_LETTER_COLOURS = ["#ff5a5a", "#ffb41f", "#3fdc8c", "#4aa8ff", "#c98cff"] as const;
 
-/** A playroom: a plastic game tray with a ring of colour round every hole, cartoon balls, blocks and a duck. */
+/** A playroom at lamp-light: a glossy blue game tray on a wooden floor, red marbles, blocks, a duck and crayons. */
 const TOY: SkinTokens = {
   id: "toy",
   name: "Toy box",
@@ -194,33 +194,33 @@ const TOY: SkinTokens = {
   accentSoft: "#FFF0B3",
   accentAlt: "#FF5C8A",
   marbleStops: CANDY_STOPS,
-  tableBackground: "radial-gradient(ellipse at 50% 18%, #fff6dd 0%, #ffe6ae 52%, #f2bf68 100%)",
-  ...chrome({ accent: "#FFC21A", accentSoft: "#FFF0B3", plankTop: "#3f78f2", plankBottom: "#2349c4", tableEdge: "#2349c4", panelAlpha: 0.92 }),
-  signBackground: "linear-gradient(180deg, #fffdf6 0%, #ffefc4 100%)",
-  signBorder: "3px solid #2f7df6",
-  signShadow: "0 5px 0 #1b4fb8, 0 9px 14px rgba(40,30,0,0.28)",
-  signRadius: "1.15rem",
+  tableBackground: "radial-gradient(ellipse at 50% 22%, #8d5a2b 0%, #5f3b1b 52%, #2e190a 100%)",
+  ...chrome({ accent: "#FFC21A", accentSoft: "#FFE79A", plankTop: "#5c391a", plankBottom: "#2c180a", tableEdge: "#2a1608", panelAlpha: 0.78, hintWash: 0.28 }),
+  signBackground: "linear-gradient(180deg, #8f5b2b 0%, #5d3516 100%)",
+  signBorder: "3px solid #e0b150",
+  signShadow: "0 5px 0 #3c200a, 0 9px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,226,160,0.4)",
+  signRadius: "1rem",
   signIcon: "blocks",
-  titleColor: "#e11d48",
-  titleShadow: "0 2px 0 rgba(255,255,255,0.9)",
-  titleStroke: "0px transparent",
+  titleColor: "#ffb41f",
+  titleShadow: "0 2px 0 rgba(36,14,0,0.9), 0 3px 6px rgba(0,0,0,0.45)",
+  titleStroke: "1.1px #2a1204",
   titleFont: FONT_ROUND,
   titleSize: "clamp(1.25rem, 6.2vw, 2.2rem)",
   titleWeight: 700,
   titleSpacing: "0.06em",
   titleLetters: TOY_LETTER_COLOURS,
-  holeWell: "radial-gradient(circle at 40% 30%, #223a8f 0%, #0f1e5c 70%, #091344 100%)",
-  holeRim: "inset 0 4px 6px rgba(0,0,30,0.7), 0 1px 0 rgba(255,255,255,0.45)",
+  holeWell: "radial-gradient(circle at 40% 30%, #16327f 0%, #0a1c55 68%, #050e33 100%)",
+  holeRim: "inset 0 5px 7px rgba(0,0,24,0.85), 0 1px 0 rgba(170,205,255,0.5)",
   marbleFill: marbleGradient(CANDY_STOPS),
-  marbleShadow: "0 5px 6px rgba(0,0,40,0.4)",
-  marbleSelectedShadow: "0 11px 12px rgba(0,0,40,0.38)",
+  marbleShadow: "0 5px 7px rgba(0,0,30,0.55)",
+  marbleSelectedShadow: "0 11px 12px rgba(0,0,30,0.5)",
   voice: "toy",
   swatchBoard: "#2f7df6",
 };
 
 const GEM_STOPS = ["#e9fff4", "#6ee7b7", "#10b981", "#047857", "#064e3b"] as const;
 
-/** A palace at night: an ivory marble slab inlaid with gold, cut emeralds for marbles, brass lamps and marigolds. */
+/** A palace at night: a carved copper-and-gold slab on a maroon rug, cut emeralds for marbles, brass lamps and marigolds. */
 const PALACE: SkinTokens = {
   id: "palace",
   name: "Royal palace",
@@ -235,10 +235,10 @@ const PALACE: SkinTokens = {
   accentAlt: "#F97316",
   marbleStops: GEM_STOPS,
   tableBackground: "radial-gradient(ellipse at 50% 20%, #7c1f2d 0%, #4d1120 50%, #260811 100%)",
-  ...chrome({ accent: "#E8B84A", accentSoft: "#FCE7A8", plankTop: "#5d1524", plankBottom: "#2d0911", tableEdge: "#260811" }),
-  signBackground: "linear-gradient(180deg, #8c1d2e 0%, #4f0f1b 100%)",
+  ...chrome({ accent: "#E8B84A", accentSoft: "#FCE7A8", plankTop: "#52141f", plankBottom: "#26080f", tableEdge: "#210710", hintWash: 0.3 }),
+  signBackground: "linear-gradient(180deg, #7e1b2a 0%, #45101a 100%)",
   signBorder: "2px solid #E8B84A",
-  signShadow: "0 0 0 3px #4f0f1b, 0 0 0 4.5px rgba(232,184,74,0.85), 0 8px 16px rgba(0,0,0,0.5)",
+  signShadow: "0 0 0 2px #45101a, 0 0 0 3px rgba(232,184,74,0.8), 0 6px 12px rgba(0,0,0,0.45)",
   signRadius: "1.4rem 1.4rem 0.5rem 0.5rem",
   signIcon: "crown",
   titleColor: "#FCE7A8",
@@ -249,13 +249,13 @@ const PALACE: SkinTokens = {
   titleWeight: 400,
   titleSpacing: "0.08em",
   titleLetters: null,
-  holeWell: "radial-gradient(circle at 40% 30%, #4d1a20 0%, #2b0b10 70%, #170508 100%)",
-  holeRim: `inset 0 4px 7px rgba(0,0,0,0.78), 0 0 0 1.5px ${rgba("#E8B84A", 0.8)}`,
+  holeWell: "radial-gradient(circle at 40% 30%, #3d1d10 0%, #200f07 68%, #100603 100%)",
+  holeRim: `inset 0 5px 8px rgba(0,0,0,0.82), 0 0 0 1.5px ${rgba("#E8B84A", 0.85)}`,
   marbleFill: marbleGradient(GEM_STOPS),
-  marbleShadow: "0 4px 4px rgba(0,0,0,0.6)",
-  marbleSelectedShadow: "0 10px 8px rgba(0,0,0,0.5)",
+  marbleShadow: "0 5px 5px rgba(0,0,0,0.6)",
+  marbleSelectedShadow: "0 11px 9px rgba(0,0,0,0.5)",
   voice: "bell",
-  swatchBoard: "#eadfc4",
+  swatchBoard: "#c9782e",
 };
 
 export const SKINS: Readonly<Record<SkinId, SkinTokens>> = { wood: WOOD, holo: HOLO, zen: ZEN, reef: REEF, toy: TOY, palace: PALACE };

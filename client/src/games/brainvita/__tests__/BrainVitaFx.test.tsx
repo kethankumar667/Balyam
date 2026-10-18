@@ -528,7 +528,7 @@ describe("the marble in each world", () => {
     expect(new Set(forms).size).toBe(SKIN_IDS.length);
   });
 
-  it("cuts a gem as an octagon and a pebble off-round, where the others are round", () => {
+  it("cuts a gem as a many-sided stone and a pebble off-round, where the others are round", () => {
     expect(marble("palace")).toContain("clip-path");
     expect(marble("zen")).toContain("border-radius: 54% 46%");
     expect(marble("wood")).not.toContain("clip-path");

@@ -64,6 +64,8 @@ export interface SkinTokens {
   /** Round and pill buttons in the header. */
   chipBackground: string;
   chipBorder: string;
+  /** The accent's strength (0-1) over the favoured action's plank. */
+  hintWash: number;
   /** The side panel on a wide screen. */
   panelBackground: string;
   panelBorder: string;
@@ -117,14 +119,17 @@ export interface ChromeSpec {
   glow?: number;
   /** How solid the side panel is. A light table needs it nearly opaque for the text on it to be read. */
   panelAlpha?: number;
+  /** How strongly the favoured action (Hint) is washed with the accent. Some worlds fill it, others only outline it. */
+  hintWash?: number;
 }
 
-type Chrome = Pick<SkinTokens, "plankBackground" | "plankBorder" | "plankShadow" | "chipBackground" | "chipBorder" | "panelBackground" | "panelBorder">;
+type Chrome = Pick<SkinTokens, "plankBackground" | "plankBorder" | "plankShadow" | "chipBackground" | "chipBorder" | "panelBackground" | "panelBorder" | "hintWash">;
 
 /** The stats plank, header buttons and side panel: one formula, so the chrome of every world sits on its table the same way. */
 export function chrome(spec: ChromeSpec): Chrome {
-  const { accent, accentSoft, plankTop, plankBottom, tableEdge, glow = 0, panelAlpha = 0.62 } = spec;
+  const { accent, accentSoft, plankTop, plankBottom, tableEdge, glow = 0, panelAlpha = 0.62, hintWash = 0.34 } = spec;
   return {
+    hintWash,
     plankBackground: `linear-gradient(180deg, ${rgba(plankTop, 0.93)} 0%, ${rgba(plankBottom, 0.95)} 100%)`,
     plankBorder: `1px solid ${rgba(accent, glow > 0 ? 0.5 : 0.38)}`,
     plankShadow: `${glow > 0 ? `0 0 18px ${rgba(accent, glow)}, ` : ""}0 6px 14px rgba(0,0,0,0.42), inset 0 1px 0 ${rgba(accentSoft, 0.18)}`,

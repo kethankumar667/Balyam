@@ -12,8 +12,12 @@ import { rgba } from "./brainvitaSkins";
 
 const FILL = "absolute inset-0";
 
-/** A cut gem's outline: an octagon, as a stone is cut. */
-const OCTAGON = "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)";
+/** A cut gem's outline: sixteen sides, so it reads as a round brilliant-cut stone rather than a plate. */
+const GEM_SIDES = 16;
+const OUTLINE = `polygon(${Array.from({ length: GEM_SIDES }, (_, index) => {
+  const angle = (index / GEM_SIDES) * Math.PI * 2;
+  return `${(50 + Math.sin(angle) * 50).toFixed(2)}% ${(50 - Math.cos(angle) * 50).toFixed(2)}%`;
+}).join(", ")})`;
 const PEBBLE_RADIUS = "54% 46% 52% 48% / 50% 54% 46% 50%";
 const PEBBLE_TURN_DEGREES = 37;
 
@@ -47,7 +51,7 @@ function Orb({ isLifted }: MarbleBodyProps) {
   );
 }
 
-/** A smooth river stone: matte, a little off-round, with a few flecks and only a soft sheen. */
+/** A smooth ivory river stone: nearly round, polished enough to hold a soft window of light, ringed in bronze where it sits. */
 function Pebble({ isLifted, seed = 0 }: MarbleBodyProps) {
   const skin = useSkinTokens();
   const [light, soft, mid, , dark] = skin.marbleStops;
@@ -59,19 +63,21 @@ function Pebble({ isLifted, seed = 0 }: MarbleBodyProps) {
         style={{
           borderRadius: PEBBLE_RADIUS,
           transform: `rotate(${(seed * PEBBLE_TURN_DEGREES) % 360}deg)`,
-          background: `radial-gradient(ellipse at 38% 30%, ${light} 0%, ${soft} 30%, ${mid} 62%, ${dark} 100%)`,
-          boxShadow: `${isLifted ? skin.marbleSelectedShadow : skin.marbleShadow}, inset 0 -4px 7px rgba(70,60,40,0.32)`,
+          background: `radial-gradient(ellipse at 36% 28%, ${light} 0%, ${soft} 26%, ${mid} 60%, ${dark} 100%)`,
+          border: `1.5px solid ${rgba("#9c7a3c", 0.7)}`,
+          boxShadow: `${isLifted ? skin.marbleSelectedShadow : skin.marbleShadow}, inset 0 -5px 8px rgba(86,66,30,0.38), inset 0 2px 3px rgba(255,255,255,0.5)`,
         }}
       />
       <span
         aria-hidden
-        className={`${FILL} rounded-full opacity-60`}
+        className={`${FILL} rounded-full opacity-35`}
         style={{
           backgroundImage:
-            "radial-gradient(circle at 62% 66%, rgba(90,80,60,0.5) 0 4%, transparent 5%), radial-gradient(circle at 30% 70%, rgba(90,80,60,0.4) 0 3%, transparent 4%), radial-gradient(circle at 68% 30%, rgba(90,80,60,0.35) 0 2.5%, transparent 3.5%)",
+            "radial-gradient(circle at 62% 66%, rgba(110,90,60,0.5) 0 3%, transparent 4%), radial-gradient(circle at 34% 72%, rgba(110,90,60,0.4) 0 2.5%, transparent 3.5%)",
         }}
       />
-      <span aria-hidden className="absolute left-[24%] top-[17%] h-[22%] w-[30%] -rotate-[25deg] rounded-full bg-white/40 blur-[3px]" />
+      <span aria-hidden className="absolute left-[20%] top-[13%] h-[26%] w-[36%] -rotate-[25deg] rounded-full bg-white/70 blur-[2px]" />
+      <span aria-hidden className="absolute left-[29%] top-[21%] h-[8%] w-[11%] rounded-full bg-white/95" />
     </>
   );
 }
@@ -85,7 +91,7 @@ function Pearl({ isLifted }: MarbleBodyProps) {
       <span
         aria-hidden
         className={`${FILL} rounded-full opacity-60`}
-        style={{ background: "conic-gradient(from 205deg, rgba(255,170,222,0.7), rgba(150,226,255,0.65), rgba(190,255,214,0.55), rgba(255,214,160,0.55), rgba(255,170,222,0.7))" }}
+        style={{ background: "conic-gradient(from 205deg, rgba(255,190,230,0.55), rgba(150,226,255,0.55), rgba(190,255,214,0.4), rgba(255,226,180,0.4), rgba(255,190,230,0.55))" }}
       />
       <span aria-hidden className="absolute left-[16%] top-[11%] h-[32%] w-[44%] -rotate-[24deg] rounded-full bg-white/75 blur-[2px]" />
       <span aria-hidden className="absolute left-[27%] top-[19%] h-[9%] w-[13%] rounded-full bg-white" />
@@ -93,7 +99,7 @@ function Pearl({ isLifted }: MarbleBodyProps) {
   );
 }
 
-/** A cartoon ball: a solid colour, a dark outline, a hard crescent of shade and a flat white shine. */
+/** A glossy red ball: deep colour at the edge, light bleeding through at the bottom, a window of light and a small glint on top. */
 function Candy({ isLifted }: MarbleBodyProps) {
   const skin = useSkinTokens();
   return (
@@ -103,29 +109,36 @@ function Candy({ isLifted }: MarbleBodyProps) {
         className={`${FILL} rounded-full`}
         style={{
           background: skin.marbleFill,
-          border: `3px solid ${skin.marbleStops[4]}`,
-          boxShadow: `${isLifted ? skin.marbleSelectedShadow : skin.marbleShadow}, inset -5px -6px 0 rgba(0,0,0,0.2)`,
+          boxShadow: `${isLifted ? skin.marbleSelectedShadow : skin.marbleShadow}, inset -4px -7px 9px rgba(70,0,12,0.55), inset 3px 3px 5px rgba(255,190,190,0.28)`,
         }}
       />
-      <span aria-hidden className="absolute left-[21%] top-[15%] h-[22%] w-[32%] -rotate-[32deg] rounded-full bg-white/95" />
-      <span aria-hidden className="absolute left-[59%] top-[25%] h-[9%] w-[9%] rounded-full bg-white/90" />
+      <span aria-hidden className="absolute bottom-[9%] right-[15%] h-[14%] w-[30%] -rotate-[30deg] rounded-full bg-rose-200/40 blur-[2px]" />
+      <span aria-hidden className="absolute left-[17%] top-[11%] h-[26%] w-[40%] -rotate-[30deg] rounded-full bg-white/80 blur-[1.5px]" />
+      <span aria-hidden className="absolute left-[27%] top-[19%] h-[9%] w-[13%] rounded-full bg-white" />
     </>
   );
 }
 
-/** A cut stone: an octagon with facets running out from the middle, a lighter table on top and a glint. */
+/** A cut stone: a round brilliant with sixteen facets running out from the middle, a lighter table on top and a star-shaped glint. */
 function Gem({ isLifted }: MarbleBodyProps) {
   const skin = useSkinTokens();
-  const clip: CSSProperties = { clipPath: OCTAGON };
+  const clip: CSSProperties = { clipPath: OUTLINE };
   return (
     <span aria-hidden className={FILL} style={{ filter: `drop-shadow(${isLifted ? skin.marbleSelectedShadow : skin.marbleShadow})` }}>
       <span className={FILL} style={{ ...clip, background: skin.marbleFill }} />
       <span
         className={FILL}
-        style={{ ...clip, background: "repeating-conic-gradient(from 22.5deg at 50% 50%, rgba(255,255,255,0.3) 0deg 22.5deg, rgba(0,0,0,0.24) 22.5deg 45deg)" }}
+        style={{ ...clip, background: "repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.34) 0deg 22.5deg, rgba(0,20,10,0.3) 22.5deg 45deg)" }}
       />
-      <span className="absolute inset-[24%]" style={{ ...clip, background: "linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.06))" }} />
-      <span className="absolute left-[20%] top-[16%] h-[11%] w-[11%] rotate-45 bg-white/95" />
+      <span
+        className="absolute inset-[18%]"
+        style={{ ...clip, background: "repeating-conic-gradient(from 11.25deg at 50% 50%, rgba(255,255,255,0.3) 0deg 22.5deg, rgba(0,0,0,0.12) 22.5deg 45deg)" }}
+      />
+      <span className="absolute inset-[34%]" style={{ ...clip, background: "radial-gradient(circle at 36% 30%, rgba(255,255,255,0.75), rgba(255,255,255,0.06) 78%)" }} />
+      <span
+        className="absolute left-[17%] top-[11%] h-[18%] w-[18%] bg-white"
+        style={{ clipPath: "polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%)" }}
+      />
     </span>
   );
 }
