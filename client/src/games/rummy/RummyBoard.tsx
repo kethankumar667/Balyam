@@ -9,6 +9,8 @@ import type {
 import type { WorldId } from "@shared/worlds";
 import RummyBoardMobile from "./RummyBoardMobile";
 import RummyBoardDesktop from "./RummyBoardDesktop";
+import { drawnWorld } from "../../lib/worlds/worldArt";
+import { setRummySoundWorld } from "./sound";
 
 /**
  * Rummy table entry point.
@@ -57,6 +59,12 @@ export default function RummyBoard(props: {
   // Re-check on resize so opening devtools, rotating an iPad, or dragging the
   // window across monitors flips us to the correct layout.
   const [isDesktop, setIsDesktop] = useState<boolean>(() => isDesktopRummy());
+  // The table's world decides what the cues sound like; leaving the table puts the classic voice back.
+  const soundWorld = drawnWorld("rummy", props.world);
+  useEffect(() => {
+    setRummySoundWorld(soundWorld);
+    return () => setRummySoundWorld("classic");
+  }, [soundWorld]);
   useEffect(() => {
     const onResize = () => setIsDesktop(isDesktopRummy());
     window.addEventListener("resize", onResize);

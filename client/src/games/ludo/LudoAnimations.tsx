@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import ComicBurstText from "../../animations/comic/ComicBurstText";
 import { fireComicDustBurst, fireStarSparkleBurst, fireFireworksBurst } from "../../animations/particles/comicBursts";
+import { fireWorldCheer, fireWorldImpact } from "../../animations/particles/worldBursts";
+import type { WorldId } from "@shared/worlds";
 import { COLOR_HEX } from "./board-layout";
 import type { LudoColor } from "@shared/types";
 
@@ -16,6 +18,7 @@ export function GotchaCaptureOverlay({
   attackerColor,
   left,
   top,
+  world = "classic",
   onComplete,
 }: {
   victimName: string;
@@ -23,18 +26,20 @@ export function GotchaCaptureOverlay({
   attackerColor: LudoColor;
   left: number;
   top: number;
+  /** The table's world: what the cut throws up is made of its material (the classic table: comic dust). */
+  world?: WorldId;
   onComplete?: () => void;
 }) {
   const hex = COLOR_HEX[attackerColor] || "#E4572E";
 
   useEffect(() => {
-    // Fire comic dust particles at impact point
-    fireComicDustBurst({ left: `${left}%`, top: `${top}%` });
+    // Fire the world's particles at the impact point
+    fireWorldImpact(world, { left: `${left}%`, top: `${top}%` });
     const timer = setTimeout(() => {
       onComplete?.();
     }, 1200);
     return () => clearTimeout(timer);
-  }, [left, top, onComplete]);
+  }, [left, top, world, onComplete]);
 
   return (
     <div
@@ -163,20 +168,23 @@ export function HomeEntryBurst({
   left,
   top,
   color,
+  world = "classic",
   onComplete,
 }: {
   left: number;
   top: number;
   color: LudoColor;
+  /** The table's world: what a token coming home is cheered with (the classic table: star sparkle). */
+  world?: WorldId;
   onComplete?: () => void;
 }) {
   useEffect(() => {
-    fireStarSparkleBurst({ left: `${left}%`, top: `${top}%` }, { intensity: 0.8 });
+    fireWorldCheer(world, { left: `${left}%`, top: `${top}%` }, { intensity: 0.8 });
     const timer = setTimeout(() => {
       onComplete?.();
     }, 1100);
     return () => clearTimeout(timer);
-  }, [left, top, onComplete]);
+  }, [left, top, world, onComplete]);
 
   return (
     <div

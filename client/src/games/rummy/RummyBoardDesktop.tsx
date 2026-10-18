@@ -1400,7 +1400,7 @@ export default function RummyBoardDesktop({
         <RummyInvalidDeclareOverlay />
       )}
       {state.phase === "finished" && state.winnerId && !scorecardDismissed && (
-        <RummyWinnerCelebration winnerName={players.find((p) => p.id === state.winnerId)?.name ?? "Winner"} />
+        <RummyWinnerCelebration winnerName={players.find((p) => p.id === state.winnerId)?.name ?? "Winner"} world={world} />
       )}
 
       {/* End-of-round scorecard — desktop version. Mobile uses a full

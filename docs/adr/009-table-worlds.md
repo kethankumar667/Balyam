@@ -43,7 +43,7 @@ the whole table.
 
 - Ludo's six colour themes are gone (built 2026-10-18 with the Toy box and Royal palace worlds): the per-player theme
   setting, the header theme button, the falling weather of the non-classic themes and the app-wide light/dark sync were
-  removed, and a world is now `.theme-<id>` variables plus a lazy scene. Rummy got the same worlds (2026-10-18) as token blocks on the desktop room and two variables on the phone table. The Neon deck, Zen garden and Coral reef followed the same day, so both games now draw all six; what is still missing is a capture effect and a sound voice per world.
+  removed, and a world is now `.theme-<id>` variables plus a lazy scene. Rummy got the same worlds (2026-10-18) as token blocks on the desktop room and two variables on the phone table. The Neon deck, Zen garden and Coral reef followed the same day, so both games now draw all six. Each world also has a burst material and a sound voice (2026-10-19), reusing Brain Vita's particle looks and voices; the classic table keeps its own bursts and cues. What is still missing: props beside the Rummy table (the desktop table has no free corner, unlike Ludo's).
   The four table felts in the cosmetics shop are untouched and are not read by either game's worlds. A game with no art for a world draws its classic table, and
   the picker offers only what a game can draw (`worldArt.ts`).
 - Each world's art is loaded only when that world is shown, so the classic table's bundle does not grow.

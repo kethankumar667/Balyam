@@ -2,8 +2,18 @@
  * Lightweight Web Audio sound effects — no asset files, just synthesised tones.
  * The first user interaction unlocks the AudioContext per browser policy.
  */
+import type { WorldId } from "@shared/worlds";
+import type { Voice } from "../brainvita/brainvitaFoley";
+import { voiceOfWorld, voicedTone } from "../../lib/worlds/worldVoice";
+
 let ctx: AudioContext | null = null;
 let enabled = false;
+/** What the table's world makes every cue out of (null on the classic table: the cues as they always were). */
+let voice: Voice | null = null;
+
+export function setLudoSoundWorld(world: WorldId): void {
+  voice = voiceOfWorld(world);
+}
 
 function getCtx(): AudioContext | null {
   if (!enabled) return null;
@@ -27,16 +37,19 @@ export function isSoundEnabled(): boolean {
 function tone(freq: number, durMs: number, type: OscillatorType = "sine", gain = 0.18): void {
   const c = getCtx();
   if (!c) return;
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  g.gain.setValueAtTime(gain, c.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + durMs / 1000);
-  osc.connect(g);
-  g.connect(c.destination);
-  osc.start();
-  osc.stop(c.currentTime + durMs / 1000);
+  for (const shape of voicedTone(voice, freq, durMs, type, gain)) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = shape.type;
+    osc.frequency.setValueAtTime(shape.frequency, c.currentTime);
+    if (shape.glideTo) osc.frequency.exponentialRampToValueAtTime(shape.glideTo, c.currentTime + shape.durMs / 1000);
+    g.gain.setValueAtTime(shape.gain, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + shape.durMs / 1000);
+    osc.connect(g);
+    g.connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime + shape.durMs / 1000);
+  }
 }
 
 export const sfx = {

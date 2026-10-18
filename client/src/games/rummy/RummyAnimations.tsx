@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import ComicBurstText from "../../animations/comic/ComicBurstText";
-import { fireStarSparkleBurst, fireFireworksBurst } from "../../animations/particles/comicBursts";
+import { fireStarSparkleBurst } from "../../animations/particles/comicBursts";
+import { fireWorldFireworks } from "../../animations/particles/worldBursts";
+import type { WorldId } from "@shared/worlds";
 
 /**
  * Pure Sequence — Gold & Emerald sequence highlight animation.
@@ -112,11 +114,14 @@ export function RummyDeclareFlourish({
  */
 export function RummyWinnerCelebration({
   winnerName,
+  world = "classic",
 }: {
   winnerName: string;
+  /** The table's world: the finale is thrown in its material (the classic table: the usual fireworks). */
+  world?: WorldId;
 }) {
   useEffect(() => {
-    fireFireworksBurst({ intensity: 0.9 });
+    fireWorldFireworks(world, { intensity: 0.9 });
     // Bounded — an unbounded interval kept firing bursts (and the idle
     // bounce/pulse below kept looping) for as long as this stayed mounted.
     // Six more bursts (~5s) reads as a proper fireworks finale, not a
@@ -128,12 +133,12 @@ export function RummyWinnerCelebration({
     let burstCount = 0;
     const maxBursts = 6;
     const interval = setInterval(() => {
-      fireFireworksBurst({ intensity: 0.7 });
+      fireWorldFireworks(world, { intensity: 0.7 });
       burstCount += 1;
       if (burstCount >= maxBursts) clearInterval(interval);
     }, 850);
     return () => clearInterval(interval);
-  }, []);
+  }, [world]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">

@@ -1653,6 +1653,7 @@ export function LudoBoardArea({
           attackerColor={m.activeCapture.attackerColor}
           left={m.activeCapture.left}
           top={m.activeCapture.top}
+          world={m.world}
         />
       )}
 
@@ -1668,7 +1669,7 @@ export function LudoBoardArea({
 
       {/* GAL: Home Entry Badges */}
       {m.activeHomeEntries.map((he) => (
-        <HomeEntryBurst key={he.id} left={he.left} top={he.top} color={he.color} />
+        <HomeEntryBurst key={he.id} left={he.left} top={he.top} color={he.color} world={m.world} />
       ))}
 
       {/* Per-home mini confetti bursts */}

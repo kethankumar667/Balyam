@@ -1477,7 +1477,7 @@ export default function RummyBoardMobile({
         <RummyInvalidDeclareOverlay />
       )}
       {state.phase === "finished" && state.winnerId && !resultDismissed && (
-        <RummyWinnerCelebration winnerName={players.find((p) => p.id === state.winnerId)?.name ?? "Winner"} />
+        <RummyWinnerCelebration winnerName={players.find((p) => p.id === state.winnerId)?.name ?? "Winner"} world={world} />
       )}
 
       {/* End-of-round / end-of-match cards render as dismissable modal overlays

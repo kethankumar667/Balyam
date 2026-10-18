@@ -7,9 +7,18 @@
  * separate UI state for this game's own sound switch.
  */
 import { AudioManager } from "../../services/AudioManager";
+import type { WorldId } from "@shared/worlds";
+import type { Voice } from "../brainvita/brainvitaFoley";
+import { voiceOfWorld, voicedNoiseGain, voicedTone } from "../../lib/worlds/worldVoice";
 
 let ctx: AudioContext | null = null;
 let enabled = false;
+/** What the table's world makes every cue out of (null on the classic table: the cues as they always were). */
+let voice: Voice | null = null;
+
+export function setRummySoundWorld(world: WorldId): void {
+  voice = voiceOfWorld(world);
+}
 
 function getCtx(): AudioContext | null {
   if (!enabled || AudioManager.getInstance().getSettings().isMuted) return null;
@@ -36,21 +45,25 @@ function tone(freq: number, durMs: number, type: OscillatorType = "sine", gain =
   const c = getCtx();
   if (!c) return;
   const start = c.currentTime + delay / 1000;
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, start);
-  g.gain.setValueAtTime(gain, start);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + durMs / 1000);
-  osc.connect(g);
-  g.connect(c.destination);
-  osc.start(start);
-  osc.stop(start + durMs / 1000);
+  for (const shape of voicedTone(voice, freq, durMs, type, gain)) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = shape.type;
+    osc.frequency.setValueAtTime(shape.frequency, start);
+    if (shape.glideTo) osc.frequency.exponentialRampToValueAtTime(shape.glideTo, start + shape.durMs / 1000);
+    g.gain.setValueAtTime(shape.gain, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + shape.durMs / 1000);
+    osc.connect(g);
+    g.connect(c.destination);
+    osc.start(start);
+    osc.stop(start + shape.durMs / 1000);
+  }
 }
 
-function noise(durMs: number, gain = 0.06, delay = 0): void {
+function noise(durMs: number, baseGain = 0.06, delay = 0): void {
   const c = getCtx();
   if (!c) return;
+  const gain = voicedNoiseGain(voice, baseGain);
   const buf = c.createBuffer(1, Math.max(1, Math.floor((durMs / 1000) * c.sampleRate)), c.sampleRate);
   const data = buf.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
