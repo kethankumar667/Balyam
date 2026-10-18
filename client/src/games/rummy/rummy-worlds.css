@@ -1,0 +1,99 @@
+/**
+ * RUMMY WORLDS — the look of the table, chosen by the host and seen by everyone sitting at it (shared/worlds.ts).
+ *
+ * The desktop table is built from the tokens in rummy-tokens.css and re-declared on .rm-room in rummy-table.css, so a
+ * world is a block of those tokens on the room: the felt, the panels, the brass, the ink. The phone table is not
+ * tokenised (its table is a hard-coded wooden gradient with a gold frame), so a world sets two variables the phone
+ * root reads, --rm-m-table and --rm-m-frame, and the root falls back to the old wooden values when they are not set.
+ * That is why the classic table is untouched.
+ *
+ * What a world must NOT touch: a printed card is the same printed card in every world, so no suit colour (--rm-suit-*),
+ * no court-card artwork (--rm-art-*) and no card back (--rm-card-back*) is set here. The scene behind the table and
+ * the things lying beside it are drawn by RummyWorldScene.
+ *
+ * Every pair of ink on felt below was chosen to clear 4.5:1 on all the felt depths of its own world.
+ */
+
+/* ── TOY BOX — a playroom. Saturated toy blue, white ink, sunshine-yellow rails. ─────────────────────────────── */
+.rm-room.rm-world-toy {
+  --rm-room-bg:     #1B3590;
+  --rm-felt-deep:   #1F3FB0;
+  --rm-felt:        #2850D0;
+  --rm-felt-lit:    #3362E0;
+  --rm-panel:       #1B36A0;
+  --rm-panel-lit:   #2646C0;
+  --rm-edge:        #7FA6FF;
+  --rm-edge-strong: #CFE0FF;
+  --rm-edge-quiet:  #4A6FD6;
+  --rm-surface-highlight: #FFFFFF26;
+  --rm-surface-shade: #0B1E6E59;
+  --rm-felt-thread: #FFFFFF0A;
+  --rm-felt-weave:  #00000010;
+
+  --rm-brass:       #FFC21A;
+  --rm-brass-dim:   #D99C00;
+  --rm-brass-glow:  #FFE07A;
+
+  --rm-ink:         #FFFFFF;
+  --rm-ink-mid:     #E6EEFF;
+  --rm-ink-low:     #D8E5FF;
+
+  --rm-danger:      #FFC2C2;
+  --rm-valid:       #8DF5C0;
+}
+
+.rm-world-toy {
+  --rm-m-table: linear-gradient(160deg, #3F78F2 0%, #2850D0 55%, #1B36A0 100%);
+  --rm-m-frame:
+    0 0 0 1px #0B1E6E inset,
+    0 0 0 7px #FFFFFF inset,
+    0 0 0 9px #FFC21A inset,
+    0 0 0 11px #FFFFFF inset,
+    0 0 0 13px #2F6FE8 inset,
+    0 0 40px rgba(10, 20, 90, 0.45) inset,
+    0 12px 48px rgba(0, 0, 0, 0.45);
+}
+
+/* ── ROYAL PALACE — a hall at night. Crimson velvet, ivory ink, gold rails. ──────────────────────────────────── */
+.rm-room.rm-world-palace {
+  --rm-room-bg:     #170509;
+  --rm-felt-deep:   #4A0F1F;
+  --rm-felt:        #5A1425;
+  --rm-felt-lit:    #6F1B30;
+  --rm-panel:       #2A0A13;
+  --rm-panel-lit:   #3B1220;
+  --rm-edge:        #8A6A22;
+  --rm-edge-strong: #C9A23C;
+  --rm-edge-quiet:  #5C4516;
+  --rm-surface-highlight: #FFE9B00D;
+  --rm-surface-shade: #11041059;
+  --rm-felt-thread: #FFE9B004;
+  --rm-felt-weave:  #00000014;
+
+  --rm-brass:       #E8B84A;
+  --rm-brass-dim:   #B08A2C;
+  --rm-brass-glow:  #F6D98A;
+
+  --rm-ink:         #FBF1DC;
+  --rm-ink-mid:     #E8D6A8;
+  --rm-ink-low:     #DCC794;
+}
+
+.rm-world-palace {
+  --rm-m-table: linear-gradient(160deg, #6E1A2E 0%, #4A0F1F 55%, #2A0812 100%);
+  --rm-m-frame:
+    0 0 0 1px #2A0812 inset,
+    0 0 0 7px #E8B84A inset,
+    0 0 0 9px #8A6A22 inset,
+    0 0 0 11px #E8B84A inset,
+    0 0 0 13px #5C4516 inset,
+    0 0 40px rgba(0, 0, 0, 0.55) inset,
+    0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* A world that draws a scene behind the table needs the room to be its own stacking context, so the scene (z-index
+   -10) paints above the room's own background and below everything on the table. */
+.rm-world-toy,
+.rm-world-palace {
+  isolation: isolate;
+}

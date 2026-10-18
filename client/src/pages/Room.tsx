@@ -2208,6 +2208,7 @@ export default function Room() {
                   history={roomState.history}
                   champion={roomState.champion}
                   onScorecardClose={handleScorecardClose}
+                  world={roomState.world}
                 />
               )}
 

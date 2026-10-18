@@ -9,7 +9,7 @@ import { DEFAULT_WORLD, WORLD_IDS, worldsFor, type WorldId } from "@shared/world
  */
 const DRAWN: Readonly<Partial<Record<GameKind, readonly WorldId[]>>> = {
   ludo: ["classic", "toy", "palace"],
-  rummy: ["classic"],
+  rummy: ["classic", "toy", "palace"],
 };
 
 /** The worlds this game has art for, in the order of the shared list. Empty for a game with no worlds. */

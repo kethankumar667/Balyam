@@ -6,6 +6,7 @@ import type {
   RummyPlayerState,
   RummyRoundRecap,
 } from "@shared/types";
+import type { WorldId } from "@shared/worlds";
 import RummyBoardMobile from "./RummyBoardMobile";
 import RummyBoardDesktop from "./RummyBoardDesktop";
 
@@ -50,6 +51,8 @@ export default function RummyBoard(props: {
    * dismissals (the game continues) — only for true session endings.
    */
   onScorecardClose?: () => void;
+  /** The table's world, chosen by the host. Drawn as the classic table if Rummy has no art for it (see lib/worlds/worldArt). */
+  world?: WorldId;
 }) {
   // Re-check on resize so opening devtools, rotating an iPad, or dragging the
   // window across monitors flips us to the correct layout.

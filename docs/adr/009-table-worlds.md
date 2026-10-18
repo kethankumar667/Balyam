@@ -43,8 +43,8 @@ the whole table.
 
 - Ludo's six colour themes are gone (built 2026-10-18 with the Toy box and Royal palace worlds): the per-player theme
   setting, the header theme button, the falling weather of the non-classic themes and the app-wide light/dark sync were
-  removed, and a world is now `.theme-<id>` variables plus a lazy scene. The four table felts in the cosmetics shop are
-  untouched and are superseded for Rummy when its art lands. A game with no art for a world draws its classic table, and
+  removed, and a world is now `.theme-<id>` variables plus a lazy scene. Rummy got the same two worlds (2026-10-18) as token blocks on the desktop room and two variables on the phone table.
+  The four table felts in the cosmetics shop are untouched and are not read by either game's worlds. A game with no art for a world draws its classic table, and
   the picker offers only what a game can draw (`worldArt.ts`).
 - Each world's art is loaded only when that world is shown, so the classic table's bundle does not grow.
 - A player who has not earned a world still sees it when they sit at a host's table that uses it. That is a deliberate

@@ -32,6 +32,10 @@ import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../compone
 import Chat from "../../components/Chat";
 import Avatar from "./Avatar";
 import "./rummy-mobile-fit.css";
+import "./rummy-worlds.css";
+import { RummyWorldScene } from "./RummyWorldScene";
+import type { WorldId } from "@shared/worlds";
+import { drawnWorld } from "../../lib/worlds/worldArt";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
@@ -333,6 +337,7 @@ export default function RummyBoardMobile({
   history,
   champion,
   onScorecardClose,
+  world: tableWorld,
 }: {
   state: RummyPlayerState;
   players: Player[];
@@ -344,7 +349,10 @@ export default function RummyBoardMobile({
   champion: RummyChampion | null;
   /** Called when the final scorecard/result is dismissed — see RummyBoard.tsx for contract. */
   onScorecardClose?: () => void;
+  /** The table's world, chosen by the host (drawn as the classic table if Rummy has no art for it). */
+  world?: WorldId;
 }) {
+  const world = drawnWorld("rummy", tableWorld);
   const isArranging = state.phase === "arranging";
   const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
@@ -1253,9 +1261,10 @@ export default function RummyBoardMobile({
     <CoachHighlightProvider ids={coach.highlight}>
     <div
       id="rummy-table-container"
-      className="rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden"
+      className={`rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden rm-world-${world}`}
       style={{
-        background: "linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%)",
+        // The wooden table is the fallback: a world sets --rm-m-table and --rm-m-frame (rummy-worlds.css).
+        background: "var(--rm-m-table, linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%))",
         // Bottom padding has to clear the OS gesture bar / nav buttons on
         // real phones — without this, the ACTION row (DROP/SORT/…/FINISH)
         // sits flush with the bottom edge and the lower half of each button
@@ -1264,7 +1273,7 @@ export default function RummyBoardMobile({
         // iOS/modern-Android-aware; the `max(...)` floor keeps a sensible
         // gap on devices that report 0 inset (older Chrome/Firefox).
         paddingBottom: "max(env(safe-area-inset-bottom, 0px) + 6px, 18px)",
-        boxShadow: [
+        boxShadow: "var(--rm-m-frame, " + [
           "0 0 0 1px #1a0f00 inset",
           "0 0 0 7px #d4a85a inset",
           "0 0 0 9px #8b6914 inset",
@@ -1272,9 +1281,10 @@ export default function RummyBoardMobile({
           "0 0 0 13px #5a4a14 inset",
           "0 0 40px rgba(0,0,0,0.55) inset",
           "0 12px 48px rgba(0,0,0,0.6)",
-        ].join(", "),
+        ].join(", ") + ")",
       }}
     >
+      <RummyWorldScene world={world} />
       {(gate.stage === "shuffle" || gate.stage === "deal") && (
         <RummyDealOverlay stage={gate.stage} playerCount={state.playerOrder.length} />
       )}

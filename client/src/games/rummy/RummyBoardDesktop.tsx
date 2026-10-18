@@ -21,6 +21,10 @@ import { PlayingCard, FaceDownCard } from "./Card";
 import CardTracker from "./CardTracker";
 import QrCodeModal from "../../components/QrCodeModal";
 import "./rummy-table.css";
+import "./rummy-worlds.css";
+import { RummyWorldScene } from "./RummyWorldScene";
+import type { WorldId } from "@shared/worlds";
+import { drawnWorld } from "../../lib/worlds/worldArt";
 import TutorialModal from "./TutorialModal";
 import {
   classifyMeld,
@@ -179,6 +183,8 @@ interface BoardProps {
   champion: RummyChampion | null;
   /** Called when the final scorecard is dismissed — see RummyBoard.tsx for contract. */
   onScorecardClose?: () => void;
+  /** The table's world, chosen by the host (drawn as the classic table if Rummy has no art for it). */
+  world?: WorldId;
 }
 
 type RightTab = "chat" | "voice" | "players" | "points" | "history";
@@ -193,7 +199,9 @@ export default function RummyBoardDesktop({
   history,
   champion,
   onScorecardClose,
+  world: tableWorld,
 }: BoardProps) {
+  const world = drawnWorld("rummy", tableWorld);
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
   const coach = useCoach();
@@ -922,7 +930,8 @@ export default function RummyBoardDesktop({
 
   return (
     <CoachHighlightProvider ids={coach.highlight}>
-    <div id="rummy-table-container" className="rm-room">
+    <div id="rummy-table-container" className={`rm-room rm-world-${world}`}>
+      <RummyWorldScene world={world} />
       {/* The desk clutter (paperclip, notebook, coffee cup), the corner suit
           watermarks and the background doodle are deliberately NOT rendered
           any more. They were pure decoration competing for attention on a

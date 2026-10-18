@@ -32,21 +32,22 @@ describe("which worlds a game can draw", () => {
     expect(artWorldsFor("ludo")).toEqual(["classic", "toy", "palace"]);
   });
 
-  it("has no Rummy art yet, so Rummy offers only its classic table", () => {
-    expect(artWorldsFor("rummy")).toEqual(["classic"]);
+  it("draws the same two worlds in Rummy as in Ludo", () => {
+    expect(artWorldsFor("rummy")).toEqual(["classic", "toy", "palace"]);
   });
 });
 
 describe("drawnWorld", () => {
   it("gives back a world the game can draw", () => {
     expect(drawnWorld("ludo", "palace")).toBe("palace");
+    expect(drawnWorld("rummy", "toy")).toBe("toy");
     expect(drawnWorld("ludo", "toy")).toBe("toy");
     expect(drawnWorld("ludo", "classic")).toBe("classic");
   });
 
   it("falls back to the classic world for one the game has no art for", () => {
     expect(drawnWorld("ludo", "reef")).toBe("classic");
-    expect(drawnWorld("rummy", "palace")).toBe("classic");
+    expect(drawnWorld("rummy", "zen")).toBe("classic");
   });
 
   it("falls back to the classic world for a missing or unknown value", () => {

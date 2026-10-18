@@ -125,9 +125,11 @@ describe("the table's world in the lobby", () => {
     expect(localStorage.getItem(WORLD_WINS_STORAGE_KEY)).toBeNull();
   });
 
-  it("renders nothing for Rummy while it has only its classic table", () => {
-    const { container } = render(<LobbyWorld game="rummy" world="classic" isHost />);
-    expect(container).toBeEmptyDOMElement();
+  it("shows Rummy's table world too, with the same worlds to choose from", () => {
+    render(<LobbyWorld game="rummy" world="palace" isHost />);
+    expect(screen.getByText(WORLD_META.palace.name)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /change world/i }));
+    expect(within(screen.getByRole("radiogroup", { name: /world/i })).getAllByRole("radio")).toHaveLength(artWorldsFor("rummy").length);
   });
 
   it("renders nothing for a game that has no worlds", () => {
