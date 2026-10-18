@@ -2585,16 +2585,17 @@ export class RoomManager {
   }
 
   /**
-   * Host-only, lobby only. Chooses the table's world. Nothing is trusted: the value must be exactly one of the
-   * worlds this game offers (it is re-broadcast to every other player's page), and the match must not have
-   * begun, so the place never changes under the players. Whether the host has EARNED the world is not checked
-   * here: a world is only a look, it is not sold, and it gives no advantage.
+   * Host-only. Chooses the table's world, in the lobby or while the match is under way (the host may change the look of
+   * the table mid-game and everyone's table follows at once; a finished table is not changed). Nothing is trusted: the
+   * value must be exactly one of the worlds this game offers (it is re-broadcast to every other player's page). Whether
+   * the host has EARNED the world is not checked here: a world is only a look, it is not sold, and it gives no advantage.
+   * No engine reads it, so changing it mid-match cannot touch a rule, a seat's colour or a piece of state.
    */
   setWorld(socketId: string, world: string): { ok: boolean; error?: string; world?: WorldId } {
     const { room, player } = this.lookup(socketId);
     if (!room || !player) return { ok: false, error: "Room or player not found" };
     if (player.id !== room.hostId) return { ok: false, error: "Only the host can choose the table's world" };
-    if (room.phase !== "lobby") return { ok: false, error: "The world can only be chosen before the match starts" };
+    if (room.phase !== "lobby" && room.phase !== "playing") return { ok: false, error: "The world cannot be changed once the match is over" };
     if (!isWorldOf(room.game, world)) return { ok: false, error: "That world is not available for this game" };
     if (room.world !== world) {
       room.world = world;

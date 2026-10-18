@@ -24,6 +24,7 @@ import "./rummy-table.css";
 import "./rummy-worlds.css";
 import { RummyWorldScene } from "./RummyWorldScene";
 import type { WorldId } from "@shared/worlds";
+import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 import { drawnWorld } from "../../lib/worlds/worldArt";
 import TutorialModal from "./TutorialModal";
 import {
@@ -1012,6 +1013,7 @@ export default function RummyBoardDesktop({
         />
 
         <div className="rm-topbar__right">
+          <TableWorldControl game="rummy" variant="chip" className="rm-chip" />
           <button onClick={() => setTutorialOpen(true)} className="rm-chip" title="How to play">
             Rules
           </button>

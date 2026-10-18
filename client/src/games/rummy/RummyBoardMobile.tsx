@@ -35,6 +35,7 @@ import "./rummy-mobile-fit.css";
 import "./rummy-worlds.css";
 import { RummyWorldScene } from "./RummyWorldScene";
 import type { WorldId } from "@shared/worlds";
+import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 import { drawnWorld } from "../../lib/worlds/worldArt";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import RummyResultModal from "./RummyResultModal";
@@ -1561,6 +1562,7 @@ export default function RummyBoardMobile({
       {menuOpen && (
         <RummyModal title="Menu" onClose={() => setMenuOpen(false)}>
           <div className="grid grid-cols-1 gap-1.5">
+            <TableWorldControl game="rummy" variant="row" className="text-nostalgia-paper bg-black/25 border border-amber-500/20" onChanged={() => setMenuOpen(false)} />
             <MenuRow emoji="👥" label="Players" onClick={() => { setMenuOpen(false); setPlayersOpen(true); }} />
             <MenuRow
               emoji="🙂"

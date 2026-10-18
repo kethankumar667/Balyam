@@ -237,7 +237,7 @@ export interface RoomPublicState {
   /** Host-chosen table name ("Friday Rummy Nights") — null until set. Persists for the room's lifetime; not game-specific. */
   name: string | null;
   /**
-   * The look of the table, chosen by the host in the lobby and seen by everyone at it (Ludo and Rummy; always
+   * The look of the table, chosen by the host in the lobby or during the match and seen by everyone at it (Ludo and Rummy; always
    * "classic" for a game with no worlds). Closed list: see shared/worlds.ts. Purely visual. Optional on the
    * wire because the client and the server are deployed separately: a state from a server that predates worlds
    * has none, and the client reads that as the classic world.

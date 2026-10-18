@@ -12,7 +12,7 @@ the whole table.
 
 ## Decision
 
-1. **A world is the look of the whole table.** The host picks it in the lobby; every player, watcher and Party Mode
+1. **A world is the look of the whole table.** The host picks it in the lobby, and may change it during the match; every player, watcher and Party Mode
    screen sees the host's choice. It is room state, like the table's name.
 2. **A closed list, six names**, shared by both games and by the Brain Vita family of worlds so a name means one
    place: `classic` (the default, the look the game always had), `neon`, `toy`, `zen`, `reef`, `palace`
@@ -30,7 +30,7 @@ the whole table.
 
 ## How it is wired
 
-- `room:setWorld` (host only, lobby only) on the server, `RoomManager.setWorld`, `Room.world`, `RoomPublicState.world`.
+- `room:setWorld` (host only; lobby or live match, not a finished table) on the server, `RoomManager.setWorld`, `Room.world`, `RoomPublicState.world`.
   It is **not** a new parameter of `createRoom`, whose positional list is already about 24 long. The value is
   validated against the list (`isWorldOf`), never trusted, and stored in the room snapshot (read back through
   `sanitizeWorld`, so an old or damaged snapshot opens as the classic world).

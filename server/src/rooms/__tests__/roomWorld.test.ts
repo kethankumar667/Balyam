@@ -9,8 +9,8 @@ import type { ClientToServerEvents, RoomPublicState, ServerToClientEvents } from
 
 /**
  * A WORLD is the look of a whole table: the scene, the board's material, the props. The host picks it in the
- * lobby and everyone at the table sees it, so it is room state like the table's name. These tests pin the rules
- * that keep it honest: only the host, only in the lobby, only a world this game really has, and only a name from
+ * lobby or during the match and everyone at the table sees it, so it is room state like the table's name. These tests
+ * pin the rules that keep it honest: only the host, never on a finished table, only a world this game really has, and only a name from
  * the closed list, because the value is re-broadcast to every other player's page.
  */
 
@@ -116,14 +116,32 @@ describe("RoomManager.setWorld", () => {
     }
   });
 
-  it("refuses once the match has begun, so the place does not change under the players", () => {
-    const { rooms, code } = openLudo();
+  it("lets the host change it while the match is under way, and tells everyone", () => {
+    const { rooms, states, code } = openLudo();
     peek(rooms, code).phase = "playing";
+    expect(rooms.setWorld("host-socket", "toy")).toEqual({ ok: true, world: "toy" });
+    expect(peek(rooms, code).world).toBe("toy");
+    expect(states[states.length - 1].world).toBe("toy");
+    expect(rooms.setWorld("host-socket", "classic").ok).toBe(true);
+    expect(peek(rooms, code).world).toBe("classic");
+  });
+
+  it("still refuses anyone but the host while the match is under way", () => {
+    const { rooms, code } = openLudo();
+    joinRoomAs(rooms, "guest-socket", "Guest", code, "member", MEMBER_GUEST);
+    peek(rooms, code).phase = "playing";
+    const result = rooms.setWorld("guest-socket", "toy");
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/host/i);
+    expect(peek(rooms, code).world).toBe("classic");
+  });
+
+  it("refuses once the match is over, so a finished table is left as it was", () => {
+    const { rooms, code } = openLudo();
+    peek(rooms, code).phase = "finished";
     const result = rooms.setWorld("host-socket", "toy");
     expect(result.ok).toBe(false);
     expect(peek(rooms, code).world).toBe("classic");
-    peek(rooms, code).phase = "finished";
-    expect(rooms.setWorld("host-socket", "toy").ok).toBe(false);
   });
 
   it("refuses a game that has no worlds", () => {

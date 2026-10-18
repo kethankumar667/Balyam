@@ -1,10 +1,7 @@
-import { useState } from "react";
 import type { GameKind } from "@shared/types";
-import { DEFAULT_WORLD, type WorldId } from "@shared/worlds";
-import { getSocket } from "../../lib/socket";
-import { artWorldsFor, drawnWorld } from "../../lib/worlds/worldArt";
+import type { WorldId } from "@shared/worlds";
 import { WORLD_META } from "../../lib/worlds/worldMeta";
-import { useWorldProgress } from "../../lib/worlds/useWorldProgress";
+import { useWorldChoice } from "../../lib/worlds/useWorldChoice";
 import { WorldPickerDialog } from "./WorldPickerDialog";
 import { WorldSwatch } from "./WorldSwatch";
 
@@ -17,30 +14,16 @@ export interface LobbyWorldProps {
 
 /**
  * The lobby's line about the table's world. Everyone sees which world the table is in; the host also gets the button
- * that opens the choices. The choice goes to the server, which decides (host only, lobby only, a world this game has),
- * and the card shows what the server says back, never what was merely asked for.
+ * that opens the choices. The choice goes to the server, which decides (host only, a world this game has), and the card
+ * shows what the server says back, never what was merely asked for. While the match is under way the host changes it
+ * from the game's own menu instead (`TableWorldControl`).
  */
 export function LobbyWorld({ game, world, isHost }: LobbyWorldProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const progress = useWorldProgress(game);
+  const { canChoose, current, isOpen, open, close, error, choose, progress } = useWorldChoice(game, world);
   // Offered only when there is more than the classic table to choose, and only the worlds this game can draw.
-  if (artWorldsFor(game).length < 2) return null;
+  if (!canChoose) return null;
 
-  const current = drawnWorld(game, world ?? DEFAULT_WORLD);
   const meta = WORLD_META[current];
-
-  const choose = (next: WorldId): void => {
-    setError(null);
-    if (next === current) {
-      setIsOpen(false);
-      return;
-    }
-    getSocket().emit("room:setWorld", next, (response) => {
-      if (response?.ok) setIsOpen(false);
-      else setError(response?.error ?? "The world could not be changed.");
-    });
-  };
 
   return (
     <section aria-label="Table world" className="flex items-center gap-3 rounded-2xl border border-stone-200/70 bg-stone-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/60 sm:p-3.5">
@@ -54,16 +37,13 @@ export function LobbyWorld({ game, world, isHost }: LobbyWorldProps) {
       {isHost && (
         <button
           type="button"
-          onClick={() => {
-            setError(null);
-            setIsOpen(true);
-          }}
+          onClick={open}
           className="inline-flex min-h-[44px] flex-shrink-0 cursor-pointer items-center rounded-full border border-amber-300/70 bg-amber-100 px-4 text-xs font-bold text-amber-900 transition hover:bg-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 active:scale-95 dark:border-amber-700/60 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
         >
           Change world
         </button>
       )}
-      {isHost && <WorldPickerDialog open={isOpen} onClose={() => setIsOpen(false)} game={game} current={current} unlocked={progress.unlocked} isAllOpen={progress.isAllOpen} onChoose={choose} error={error} />}
+      {isHost && <WorldPickerDialog open={isOpen} onClose={close} game={game} current={current} unlocked={progress.unlocked} isAllOpen={progress.isAllOpen} onChoose={choose} error={error} />}
     </section>
   );
 }
