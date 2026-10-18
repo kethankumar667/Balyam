@@ -14,6 +14,117 @@
  * Every pair of ink on felt below was chosen to clear 4.5:1 on all the felt depths of its own world.
  */
 
+/* ── NEON DECK — a night on the glass. Deep navy felt, cyan rails, pale-cyan ink. ─────────────────────────────── */
+.rm-room.rm-world-neon {
+  --rm-room-bg:     #030814;
+  --rm-felt-deep:   #07162E;
+  --rm-felt:        #0B2447;
+  --rm-felt-lit:    #10305A;
+  --rm-panel:       #081A36;
+  --rm-panel-lit:   #0E2A4A;
+  --rm-edge:        #1F8FA8;
+  --rm-edge-strong: #22D3EE;
+  --rm-edge-quiet:  #115A70;
+  --rm-surface-highlight: #A5F3FC14;
+  --rm-surface-shade: #00000066;
+  --rm-felt-thread: #22D3EE08;
+  --rm-felt-weave:  #00000014;
+
+  --rm-brass:       #22D3EE;
+  --rm-brass-dim:   #0E9AB5;
+  --rm-brass-glow:  #A5F3FC;
+
+  --rm-ink:         #E8FBFF;
+  --rm-ink-mid:     #BDEFFA;
+  --rm-ink-low:     #A5DDEB;
+}
+
+.rm-world-neon {
+  --rm-m-table: linear-gradient(160deg, #123A68 0%, #0B2447 55%, #050F22 100%);
+  --rm-m-frame:
+    0 0 0 1px #020610 inset,
+    0 0 0 7px #0A1B38 inset,
+    0 0 0 9px #22D3EE inset,
+    0 0 0 11px #0A1B38 inset,
+    0 0 0 13px #0E7490 inset,
+    0 0 40px rgba(34, 211, 238, 0.18) inset,
+    0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* ── ZEN GARDEN — a garden at dusk. Slate felt, moss and sand rails, pale lichen ink. ────────────────────── */
+.rm-room.rm-world-zen {
+  --rm-room-bg:     #2B322D;
+  --rm-felt-deep:   #363E43;
+  --rm-felt:        #444D52;
+  --rm-felt-lit:    #515B61;
+  --rm-panel:       #2A3135;
+  --rm-panel-lit:   #363E43;
+  --rm-edge:        #7C877F;
+  --rm-edge-strong: #B5C2A5;
+  --rm-edge-quiet:  #566057;
+  --rm-surface-highlight: #FFFFFF14;
+  --rm-surface-shade: #0000005C;
+  --rm-felt-thread: #FFFFFF08;
+  --rm-felt-weave:  #00000012;
+
+  --rm-brass:       #C9B37E;
+  --rm-brass-dim:   #9C8A55;
+  --rm-brass-glow:  #E3D3A3;
+
+  --rm-ink:         #F4F6EC;
+  --rm-ink-mid:     #E6EBDC;
+  --rm-ink-low:     #DDE4CF;
+}
+
+.rm-world-zen {
+  --rm-m-table: linear-gradient(160deg, #5A646A 0%, #444D52 55%, #2E3539 100%);
+  --rm-m-frame:
+    0 0 0 1px #1B2023 inset,
+    0 0 0 7px #8A9487 inset,
+    0 0 0 9px #566057 inset,
+    0 0 0 11px #8A9487 inset,
+    0 0 0 13px #3E464B inset,
+    0 0 40px rgba(0, 0, 0, 0.4) inset,
+    0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* ── CORAL REEF — the sea floor. Deep teal felt, pearl-pink rails, white-aqua ink. ───────────────────────── */
+.rm-room.rm-world-reef {
+  --rm-room-bg:     #052B49;
+  --rm-felt-deep:   #08425F;
+  --rm-felt:        #0B5578;
+  --rm-felt-lit:    #0E668C;
+  --rm-panel:       #06344A;
+  --rm-panel-lit:   #0A4660;
+  --rm-edge:        #3FB8B0;
+  --rm-edge-strong: #9FF0E4;
+  --rm-edge-quiet:  #1F7F8C;
+  --rm-surface-highlight: #D1FAF41F;
+  --rm-surface-shade: #02182B59;
+  --rm-felt-thread: #FFFFFF08;
+  --rm-felt-weave:  #00000010;
+
+  --rm-brass:       #F9A8D4;
+  --rm-brass-dim:   #D977AA;
+  --rm-brass-glow:  #FCD0E8;
+
+  --rm-ink:         #F0FFFC;
+  --rm-ink-mid:     #E0F7F3;
+  --rm-ink-low:     #D3F1EC;
+}
+
+.rm-world-reef {
+  --rm-m-table: linear-gradient(160deg, #1291A6 0%, #0B5578 55%, #052B49 100%);
+  --rm-m-frame:
+    0 0 0 1px #021A2E inset,
+    0 0 0 7px #D1FAF4 inset,
+    0 0 0 9px #5EEAD4 inset,
+    0 0 0 11px #D1FAF4 inset,
+    0 0 0 13px #0D5A70 inset,
+    0 0 40px rgba(2, 30, 60, 0.45) inset,
+    0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
 /* ── TOY BOX — a playroom. Saturated toy blue, white ink, sunshine-yellow rails. ─────────────────────────────── */
 .rm-room.rm-world-toy {
   --rm-room-bg:     #1B3590;
@@ -93,7 +204,10 @@
 
 /* A world that draws a scene behind the table needs the room to be its own stacking context, so the scene (z-index
    -10) paints above the room's own background and below everything on the table. */
+.rm-world-neon,
 .rm-world-toy,
+.rm-world-zen,
+.rm-world-reef,
 .rm-world-palace {
   isolation: isolate;
 }

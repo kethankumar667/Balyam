@@ -27,6 +27,15 @@ import type { WorldId } from "@shared/worlds";
 
 const LUDO_WORLDS: readonly WorldId[] = artWorldsFor("ludo");
 
+/** The scene component each world draws behind the table. */
+const SCENE_COMPONENT: Readonly<Record<Exclude<WorldId, "classic">, string>> = {
+  neon: "HoloScene",
+  toy: "ToyScene",
+  zen: "ZenScene",
+  reef: "ReefScene",
+  palace: "PalaceScene",
+};
+
 /** Custom properties every world's block must define for the board surface. */
 const BOARD_VARS = ["--ludo-bg", "--ludo-paper", "--ludo-cell", "--ludo-ink", "--ludo-star", "--ludo-hub", "--ludo-label"] as const;
 
@@ -68,8 +77,8 @@ function worldBlock(id: WorldId): string | null {
 }
 
 describe("the worlds Ludo can draw", () => {
-  it("includes the classic table and has a name for every world", () => {
-    expect(LUDO_WORLDS).toContain("classic");
+  it("includes the classic table and all five others, each with a name", () => {
+    expect(LUDO_WORLDS).toEqual(["classic", "neon", "toy", "zen", "reef", "palace"]);
     for (const id of LUDO_WORLDS) expect(WORLD_META[id].name, `name for ${id}`).toBeTruthy();
   });
 
@@ -77,7 +86,6 @@ describe("the worlds Ludo can draw", () => {
     for (const old of ["paper", "emerald", "midnight", "sunset"]) {
       expect(CSS, `.theme-${old} should be gone`).not.toMatch(new RegExp(`^\\.theme-${old}\\s*\\{`, "m"));
     }
-    expect(CSS).not.toMatch(/^\.theme-neon\s*\{/m);
   });
 });
 
@@ -112,7 +120,7 @@ describe("every world reaches real pixels", () => {
     expect(own.length).toBeGreaterThan(0);
     for (const id of own) {
       expect(worldBlock(id) ?? "", `.theme-${id} should paint its tiles`).toMatch(/--ludo-cell:\s*url\(#lw-/);
-      expect(SCENE, `LudoWorldScene should draw ${id}`).toContain(id === "toy" ? "ToyScene" : "PalaceScene");
+      expect(SCENE, `LudoWorldScene should draw ${id}`).toContain(SCENE_COMPONENT[id as Exclude<WorldId, "classic">]);
     }
   });
 

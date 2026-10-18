@@ -172,7 +172,7 @@ export function ShellSurface({ frame }: { frame: number }) {
   );
 }
 
-function Starfish({ className }: { className: string }) {
+export function Starfish({ className }: { className: string }) {
   const points = Array.from({ length: 10 }, (_, index) => {
     const radius = index % 2 === 0 ? 62 : 26;
     const angle = (index / 10) * Math.PI * 2 - Math.PI / 2;
@@ -193,7 +193,7 @@ function Starfish({ className }: { className: string }) {
   );
 }
 
-function SeaFan({ className }: { className: string }) {
+export function SeaFan({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 160 170" className={className}>
       <path d="M80 168 L 74 120 C 20 100 6 40 24 14 C 52 30 66 6 80 0 C 94 6 108 30 136 14 C 154 40 140 100 86 120 Z" fill="#9b4fc9" opacity="0.92" />
@@ -208,7 +208,7 @@ function SeaFan({ className }: { className: string }) {
   );
 }
 
-function Scallop({ className }: { className: string }) {
+export function Scallop({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 150 130" className={className}>
       <ellipse cx="75" cy="122" rx="52" ry="6" fill="rgba(0,20,40,0.3)" />

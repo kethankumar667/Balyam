@@ -8,8 +8,8 @@ import { DEFAULT_WORLD, WORLD_IDS, worldsFor, type WorldId } from "@shared/world
  * board all read it, so none of them can offer or show a world that has no drawing behind it.
  */
 const DRAWN: Readonly<Partial<Record<GameKind, readonly WorldId[]>>> = {
-  ludo: ["classic", "toy", "palace"],
-  rummy: ["classic", "toy", "palace"],
+  ludo: ["classic", "neon", "toy", "zen", "reef", "palace"],
+  rummy: ["classic", "neon", "toy", "zen", "reef", "palace"],
 };
 
 /** The worlds this game has art for, in the order of the shared list. Empty for a game with no worlds. */

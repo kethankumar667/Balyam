@@ -53,8 +53,8 @@ function block(selector: string): string | null {
 }
 
 describe("the worlds Rummy can draw", () => {
-  it("includes the toy box and the palace", () => {
-    expect(RUMMY_WORLDS).toEqual(["toy", "palace"]);
+  it("includes every world but the classic table", () => {
+    expect(RUMMY_WORLDS).toEqual(["neon", "toy", "zen", "reef", "palace"]);
   });
 
   it("sets the table tokens on the desktop room for each world", () => {
@@ -116,8 +116,8 @@ describe("RummyWorldScene", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("draws nothing for a world Rummy has no art for", () => {
-    const { container } = render(<RummyWorldScene world="reef" />);
+  it("draws nothing for something that is not a world", () => {
+    const { container } = render(<RummyWorldScene world={"lava" as never} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -129,10 +129,11 @@ describe("RummyWorldScene", () => {
   });
 
   it("draws each world's own scene once it has arrived", async () => {
-    const toy = render(<RummyWorldScene world="toy" />);
-    await waitFor(() => expect(toy.container.innerHTML).toContain("bt-dots"));
-    toy.unmount();
-    const palace = render(<RummyWorldScene world="palace" />);
-    await waitFor(() => expect(palace.container.innerHTML).toContain("bp-carpet"));
+    const MARK: Record<string, string> = { neon: "bvw-twinkle", toy: "bt-dots", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
+    for (const id of RUMMY_WORLDS) {
+      const view = render(<RummyWorldScene world={id} />);
+      await waitFor(() => expect(view.container.innerHTML, id).toContain(MARK[id]));
+      view.unmount();
+    }
   });
 });

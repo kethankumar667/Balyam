@@ -15,13 +15,22 @@ import type { WorldId } from "@shared/worlds";
 
 const ToyScene = lazy(() => import("../brainvita/worlds/ToyWorld").then((m) => ({ default: m.ToyScene })));
 const PalaceScene = lazy(() => import("../brainvita/worlds/PalaceWorld").then((m) => ({ default: m.PalaceScene })));
+const HoloScene = lazy(() => import("../brainvita/worlds/ClassicWorlds").then((m) => ({ default: m.HoloScene })));
+const ZenScene = lazy(() => import("../brainvita/worlds/ZenWorld").then((m) => ({ default: m.ZenScene })));
+const ReefScene = lazy(() => import("../brainvita/worlds/ReefWorld").then((m) => ({ default: m.ReefScene })));
+
+/** Every world but the classic table draws a scene. */
+const SCENE_WORLDS: readonly WorldId[] = ["neon", "toy", "zen", "reef", "palace"];
 
 export function RummyWorldScene({ world }: { world: WorldId }) {
-  if (world !== "toy" && world !== "palace") return null;
+  if (!SCENE_WORLDS.includes(world)) return null;
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 select-none overflow-hidden opacity-50">
       <Suspense fallback={null}>
+        {world === "neon" && <HoloScene />}
         {world === "toy" && <ToyScene />}
+        {world === "zen" && <ZenScene />}
+        {world === "reef" && <ReefScene />}
         {world === "palace" && <PalaceScene />}
       </Suspense>
     </div>

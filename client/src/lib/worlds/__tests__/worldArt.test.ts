@@ -28,12 +28,12 @@ describe("which worlds a game can draw", () => {
     expect(ludo).toEqual(WORLD_IDS.filter((id) => ludo.includes(id)));
   });
 
-  it("draws Royal palace and Toy box in Ludo first", () => {
-    expect(artWorldsFor("ludo")).toEqual(["classic", "toy", "palace"]);
+  it("draws every world on the list in Ludo", () => {
+    expect(artWorldsFor("ludo")).toEqual([...WORLD_IDS]);
   });
 
-  it("draws the same two worlds in Rummy as in Ludo", () => {
-    expect(artWorldsFor("rummy")).toEqual(["classic", "toy", "palace"]);
+  it("draws every world on the list in Rummy too, so the two games offer the same six", () => {
+    expect(artWorldsFor("rummy")).toEqual([...WORLD_IDS]);
   });
 });
 
@@ -45,9 +45,11 @@ describe("drawnWorld", () => {
     expect(drawnWorld("ludo", "classic")).toBe("classic");
   });
 
-  it("falls back to the classic world for one the game has no art for", () => {
-    expect(drawnWorld("ludo", "reef")).toBe("classic");
-    expect(drawnWorld("rummy", "zen")).toBe("classic");
+  it("gives back each world as itself in both games", () => {
+    for (const id of WORLD_IDS) {
+      expect(drawnWorld("ludo", id), `ludo ${id}`).toBe(id);
+      expect(drawnWorld("rummy", id), `rummy ${id}`).toBe(id);
+    }
   });
 
   it("falls back to the classic world for a missing or unknown value", () => {

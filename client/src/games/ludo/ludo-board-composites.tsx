@@ -181,7 +181,7 @@ function LudoLogo() {
           </span>
         ))}
       </div>
-      <span className="hidden lg:flex flex-col leading-tight pb-0.5 font-script text-[13px] -rotate-2" style={{ color: "var(--ludo-card-subtext, #8C7355)" }}>
+      <span className="hidden lg:flex flex-col leading-tight pb-0.5 font-script text-[13px] -rotate-2" style={{ color: "var(--ludo-tagline, var(--ludo-card-subtext, #8C7355))" }}>
         <span>Good Friends</span>
         <span className="inline-flex items-center gap-1">
           Greater Games <span aria-hidden style={{ color: "#EF4444" }}>♥</span>

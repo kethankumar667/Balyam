@@ -75,15 +75,17 @@ describe("the table's world in the lobby", () => {
     expect(screen.getByRole("radio", { name: /Toy box/ })).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("offers only the worlds the game can draw, however many the server would accept", () => {
-    render(<LobbyWorld game="ludo" world="classic" isHost />);
-    fireEvent.click(screen.getByRole("button", { name: /change world/i }));
-    expect(screen.queryByRole("radio", { name: /Coral reef/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /Zen garden/ })).not.toBeInTheDocument();
+  it("offers all six worlds in each game that has worlds", () => {
+    for (const game of ["ludo", "rummy"] as const) {
+      const view = render(<LobbyWorld game={game} world="classic" isHost />);
+      fireEvent.click(screen.getByRole("button", { name: /change world/i }));
+      expect(screen.getAllByRole("radio")).toHaveLength(6);
+      view.unmount();
+    }
   });
 
-  it("draws the classic world for a table that names a world the game has no art for", () => {
-    render(<LobbyWorld game="ludo" world="reef" isHost={false} />);
+  it("draws the classic world for a table that names something that is not a world", () => {
+    render(<LobbyWorld game="ludo" world={"lava" as never} isHost={false} />);
     expect(screen.getByText(WORLD_META.classic.name)).toBeInTheDocument();
   });
 

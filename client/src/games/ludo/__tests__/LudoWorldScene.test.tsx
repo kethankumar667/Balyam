@@ -14,9 +14,18 @@ describe("LudoWorldScene", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("draws nothing for a world Ludo has no art for", () => {
-    const { container } = render(<LudoWorldScene world="reef" />);
+  it("draws nothing for something that is not a world", () => {
+    const { container } = render(<LudoWorldScene world={"lava" as never} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("draws each of the five other worlds' own scene once it has arrived", async () => {
+    const MARK: Record<string, string> = { neon: "bvw-twinkle", toy: "bt-dots", zen: "cy=\"46\"", reef: "rgba(220,255,250,0.55)", palace: "bp-carpet" };
+    for (const id of ["neon", "toy", "zen", "reef", "palace"] as const) {
+      const view = render(<LudoWorldScene world={id} />);
+      await waitFor(() => expect(view.container.innerHTML, id).toContain(MARK[id]));
+      view.unmount();
+    }
   });
 
   it("is decoration only: hidden from assistive tech and never in the way of a tap", () => {
@@ -69,6 +78,6 @@ describe("LudoWorldDefs", () => {
     const svg = container.querySelector("svg") as SVGElement;
     expect(svg).toHaveAttribute("width", "0");
     expect(svg).toHaveAttribute("height", "0");
-    for (const id of ["lw-toy-tile", "lw-palace-tile"]) expect(container.querySelector(`#${id}`), id).not.toBeNull();
+    for (const id of ["lw-neon-tile", "lw-toy-tile", "lw-zen-tile", "lw-reef-tile", "lw-palace-tile"]) expect(container.querySelector(`#${id}`), id).not.toBeNull();
   });
 });

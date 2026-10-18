@@ -96,7 +96,7 @@ export function StoneSurface({ frame }: { frame: number }) {
   );
 }
 
-function Lantern({ className }: { className: string }) {
+export function Lantern({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 120 190" className={className}>
       <ellipse cx="60" cy="182" rx="40" ry="6" fill="rgba(0,0,0,0.25)" />
@@ -119,7 +119,7 @@ function Lantern({ className }: { className: string }) {
   );
 }
 
-function Bamboo({ className }: { className: string }) {
+export function Bamboo({ className }: { className: string }) {
   const stalks = [
     { x: 30, lean: -3, height: 290, shade: "#86a85d" },
     { x: 62, lean: 2, height: 250, shade: "#76984f" },
@@ -154,7 +154,7 @@ function Bamboo({ className }: { className: string }) {
   );
 }
 
-function Cairn({ className }: { className: string }) {
+export function Cairn({ className }: { className: string }) {
   return (
     <svg aria-hidden viewBox="0 0 150 120" className={className}>
       <ellipse cx="62" cy="110" rx="52" ry="7" fill="rgba(0,0,0,0.25)" />
