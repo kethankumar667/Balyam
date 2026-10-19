@@ -11,6 +11,7 @@ import FallingPetals from "../animations/app/FallingPetals";
 import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSection";
 import { Hero } from "./home/Hero";
 import { PlayYourWaySection } from "./home/PlayYourWaySection";
+import { usePlayWay } from "./home/usePlayWay";
 import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
@@ -40,6 +41,7 @@ import { FaucetClaimRow } from "../components/faucet/FaucetClaimRow";
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [way, setWay] = usePlayWay();
   const isMember = useAuthStore((s) => s.isMember);
   const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
   // The welcome tour opens by itself at most once per visit, and never over
@@ -71,15 +73,9 @@ export default function BhalyamHome() {
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
           />
-          <PlayYourWaySection
-            onPlayFriends={() => setJoinOpen(true)}
-            onPlayBots={() => {
-              const gamesElem = document.getElementById("games-section");
-              if (gamesElem) gamesElem.scrollIntoView({ behavior: "smooth" });
-            }}
-          />
+          <PlayYourWaySection way={way} onChangeWay={setWay} />
           <div id="games-section">
-            <GamesSection onSelect={setSheetGame} />
+            <GamesSection onSelect={setSheetGame} way={way} onClearWay={() => setWay(null)} />
           </div>
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}

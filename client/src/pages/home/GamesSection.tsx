@@ -41,6 +41,7 @@ import {
   BrainVitaGlyph,
 } from "../../components/bhalyam/icons";
 import { TILE_ART_BY_GAME } from "./gameArt";
+import { gamesForWay, type PlayWay } from "./playWay";
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
@@ -74,12 +75,27 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
 /** Tiles the home grid shows before deferring to /games. */
 const HOME_TILE_CAP = 6;
 
-export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) => void }) {
+/**
+ * `way` is the "Who's around?" choice from `PlayYourWaySection`. It narrows the
+ * list BEFORE the category filter's cap is applied, so "Showing 6 of 9" counts
+ * games that actually fit rather than the whole catalogue.
+ */
+export function GamesSection({
+  onSelect,
+  way = null,
+  onClearWay,
+}: {
+  onSelect: (slug: BhalyamGameSlug) => void;
+  way?: PlayWay | null;
+  /** Lets the empty state undo the way as well as the category. */
+  onClearWay?: () => void;
+}) {
   const [filter, setFilter] = useState<GameFilter>({ category: "all" });
   const { favourites } = useFavourites();
-  const matches = filterGames(filter, false);
+  const matches = gamesForWay(filterGames(filter, false), way);
   const shown = filter.category === "favourites" ? matches : matches.slice(0, HOME_TILE_CAP);
-  const filtered = filter.category !== "all";
+  const narrowed = filter.category !== "all";
+  const filtered = narrowed || way !== null;
 
   return (
     <section className="pb-12 sm:pb-14">
@@ -149,20 +165,25 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
           </h3>
           <p className="text-xs text-ink-lo dark:text-text-lo max-w-sm mx-auto">
             {filter.category === "favourites"
-              ? "Tap the heart icon on any game card below to add your favorite childhood classics to your shortlist for quick access."
+              ? favourites.length > 0 && way !== null
+                ? "Your favourites do not fit this way of playing. Show all games to see them."
+                : "Tap the heart icon on any game card below to add your favorite childhood classics to your shortlist for quick access."
               : "Try switching to another category or explore all childhood classics."}
           </p>
           <button
             type="button"
-            onClick={() => setFilter({ category: "all" })}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+            onClick={() => {
+              setFilter({ category: "all" });
+              onClearWay?.();
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             Show All Games
           </button>
         </div>
       ) : (
         <RevealOnScroll
-          key={filter.category}
+          key={`${way ?? "any"}-${filter.category}`}
           as="ul"
           staggerChildren
           amount={0.08}
@@ -186,7 +207,7 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
       {/* "View all games" overflow link */}
       <div className="mt-4 sm:mt-5 flex justify-center">
         <Link
-          to={filtered ? `/games?c=${filter.category}` : "/games"}
+          to={narrowed ? `/games?c=${filter.category}` : "/games"}
           className="inline-flex items-center gap-2 rounded-full px-6 py-3 min-h-[44px]
                      bg-[#FFFDF7] dark:bg-[#1E2739] border border-[#ECD9BA] dark:border-[#66799A] text-[var(--chrome-ink)] font-extrabold text-[14px]
                      hover:bg-[#FAF2DF] dark:hover:bg-[#27324A] active:translate-y-px
@@ -194,11 +215,13 @@ export function GamesSection({ onSelect }: { onSelect: (slug: BhalyamGameSlug) =
                      shadow-[0_4px_10px_-3px_rgba(74,44,22,0.35)]
                      transition-all duration-200"
         >
-          {filtered
+          {narrowed
             ? filter.category === "favourites"
               ? "View all favourites"
               : "View all in this filter"
-            : "View all games"}
+            : way !== null
+              ? "Browse every game"
+              : "View all games"}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

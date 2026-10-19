@@ -243,6 +243,14 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.playway",
+    label: "How you like to play",
+    description:
+      "Whether you last chose to play with friends or play solo, so the home page shows the games that fit.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
     key: "bhalyam.theme",
     label: "Theme",
     description: "Light or dark appearance.",
