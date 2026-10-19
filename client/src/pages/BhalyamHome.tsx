@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore, useCapabilities } from "../store/authStore";
 import { WelcomeModal, WelcomeTourPrompt, useWelcomeTour } from "../features/onboarding";
 import { type BhalyamGameSlug } from "../components/bhalyam/data";
 import { getSocket } from "../lib/socket";
@@ -12,6 +12,10 @@ import WhatAreWePlayingSection from "../components/bhalyam/WhatAreWePlayingSecti
 import { Hero } from "./home/Hero";
 import { PlayYourWaySection } from "./home/PlayYourWaySection";
 import { usePlayWay } from "./home/usePlayWay";
+import { NO_FIT, type TableFit } from "./home/tableFit";
+import { AroundNowStrip } from "./home/AroundNowStrip";
+import { useAroundNow } from "./home/useAroundNow";
+import type { PlayWay } from "./home/playWay";
 import { GamesSection } from "./home/GamesSection";
 import { PlayerJourneyDashboard } from "./home/PlayerJourneyDashboard";
 import { Footer } from "./home/Footer";
@@ -41,7 +45,16 @@ import { FaucetClaimRow } from "../components/faucet/FaucetClaimRow";
 export default function BhalyamHome() {
   const [sheetGame, setSheetGame] = useState<BhalyamGameSlug | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  // Friends who are here now. Members only: a guest belongs to no Mandali, so nothing is asked for them.
+  const around = useAroundNow(useCapabilities().viewSocial);
   const [way, setWay] = usePlayWay();
+  // Tonight's table, not a preference: never stored, and cleared with the way so
+  // "Show all games" really does show all of them.
+  const [fit, setFit] = useState<TableFit>(NO_FIT);
+  const changeWay = (next: PlayWay | null) => {
+    setWay(next);
+    if (next === null) setFit(NO_FIT);
+  };
   const isMember = useAuthStore((s) => s.isMember);
   const hasMemberAccount = useAuthStore((s) => s.isMember || s.kind === "member" || s.kind === "admin" || s.kind === "super_admin");
   // The welcome tour opens by itself at most once per visit, and never over
@@ -73,9 +86,15 @@ export default function BhalyamHome() {
             onPlayFeatured={() => setSheetGame("uno")}
             onOpenJoin={() => setJoinOpen(true)}
           />
-          <PlayYourWaySection way={way} onChangeWay={setWay} />
+          <PlayYourWaySection
+            way={way}
+            onChangeWay={changeWay}
+            fit={fit}
+            onChangeFit={setFit}
+            aroundSlot={<AroundNowStrip people={around} />}
+          />
           <div id="games-section">
-            <GamesSection onSelect={setSheetGame} way={way} onClearWay={() => setWay(null)} />
+            <GamesSection onSelect={setSheetGame} way={way} fit={fit} onClearWay={() => changeWay(null)} />
           </div>
           <WhatAreWePlayingSection
             onSelectGame={setSheetGame}

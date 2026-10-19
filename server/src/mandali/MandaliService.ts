@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import type {
   Mandali,
   MandaliMember,
+  MandaliAroundPerson,
   MandaliChannel,
   MandaliMessage,
   MandaliEvent,
@@ -39,6 +40,14 @@ export interface MandaliPresenceSources {
   /** For each of those people, the room code an audience can join, when their room takes one. */
   watchRooms?(): ReadonlyMap<string, string>;
 }
+
+/** Most people the home page's "who's around" list ever receives. More than this is a crowd, not a nudge. */
+export const AROUND_NOW_MAX = 12;
+/** Most of a person's Mandalis one "around" read looks through, so a very social account cannot make it costly. */
+const AROUND_NOW_MAX_MANDALIS = 10;
+
+/** Free to talk before mid-match: the order the home page lists faces in. */
+const AROUND_ORDER: Record<MandaliAroundPerson["presence"], number> = { online: 0, "in-game": 1, idle: 2 };
 
 /** What a member's dot says. "Away" is not worked out: nothing here can tell idle from engaged. */
 interface MandaliPresence {
@@ -457,6 +466,36 @@ export class MandaliService {
     return this.repository.isDurable()
       ? this.repository.getPlayerMandalisDurable(playerId)
       : this.repository.getPlayerMandalis(playerId);
+  }
+
+  /**
+   * Everyone in any of this person's Mandalis who is here right now, for the home page.
+   *
+   * Built from `getMembers`, which already carries live presence, so this list and the Mandali's own
+   * People list can never disagree. Only ACTIVE members of Mandalis the caller is an ACTIVE member of
+   * (that is what `getPlayerMandalis` returns), never the caller, never anyone who is not here. A friend
+   * who shares two Mandalis appears once. The result is a thin projection: no role, score or Mandali id.
+   */
+  public async getAroundNow(playerId: string): Promise<MandaliAroundPerson[]> {
+    const mandalis = (await this.getPlayerMandalis(playerId)).slice(0, AROUND_NOW_MAX_MANDALIS);
+    const found = new Map<string, MandaliAroundPerson>();
+    for (const mandali of mandalis) {
+      for (const member of await this.getMembers(mandali.id)) {
+        if (member.state !== "ACTIVE" || member.playerId === playerId || member.presence === "offline") continue;
+        if (found.has(member.playerId)) continue;
+        found.set(member.playerId, {
+          playerId: member.playerId,
+          displayName: member.displayName,
+          avatar: member.avatar,
+          presence: member.presence,
+          ...(member.activeGame ? { activeGame: member.activeGame } : {}),
+          ...(member.watchCode ? { watchCode: member.watchCode } : {}),
+        });
+      }
+    }
+    return [...found.values()]
+      .sort((a, b) => AROUND_ORDER[a.presence] - AROUND_ORDER[b.presence])
+      .slice(0, AROUND_NOW_MAX);
   }
 
   public async applyToMandali(

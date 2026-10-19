@@ -1,11 +1,13 @@
-import { useId, useMemo, useRef, type KeyboardEvent } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useId, useMemo, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Check, User, Users, type LucideIcon } from "lucide-react";
 import { useTheme } from "../../lib/useTheme";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { BHALYAM_GAMES, isLocked } from "../../components/bhalyam/data";
 import { gamesForWay, type PlayWay } from "./playWay";
+import { TableFitControls } from "./TableFitControls";
+import { fitForWay, gamesFittingTable, type TableFit as TableFitValue } from "./tableFit";
 
 /**
  * "Who's around today?" — the first question a returning player is asked.
@@ -97,16 +99,32 @@ function gamesLabel(count: number): string {
   return `${count} game${count === 1 ? "" : "s"}`;
 }
 
-function panelCopy(way: PlayWay | null, count: number): { lead: string; detail: string } {
-  if (way === "friends") {
+/** "in 20 min or less" tail, when the time question is answered. */
+function withinClause(fit: TableFitValue): string {
+  return fit.minutes === null ? "" : `, done in ${fit.minutes} min or less`;
+}
+
+function panelCopy(
+  way: PlayWay | null,
+  count: number,
+  fit: TableFitValue,
+): { lead: string; detail: string } {
+  if (way !== null && count === 0) {
     return {
-      lead: `${gamesLabel(count)} for a table`,
+      lead: "No game fits that table",
+      detail: fit.people !== null ? "Try fewer people or more time." : "Try more time.",
+    };
+  }
+  if (way === "friends") {
+    const who = fit.people === null ? "a table" : `a table of ${fit.people}`;
+    return {
+      lead: `${gamesLabel(count)} for ${who}${withinClause(fit)}`,
       detail: "Host a room and share its code. Add bots in the lobby if nobody is free.",
     };
   }
   if (way === "solo") {
     return {
-      lead: `${gamesLabel(count)} for one`,
+      lead: `${gamesLabel(count)} for one${withinClause(fit)}`,
       detail: "Start right away. No room, no waiting.",
     };
   }
@@ -119,9 +137,16 @@ function panelCopy(way: PlayWay | null, count: number): { lead: string; detail: 
 export function PlayYourWaySection({
   way,
   onChangeWay,
+  fit,
+  onChangeFit,
+  aroundSlot,
 }: {
   way: PlayWay | null;
   onChangeWay: (next: PlayWay | null) => void;
+  fit: TableFitValue;
+  onChangeFit: (next: TableFitValue) => void;
+  /** Who is actually around, drawn between the question and the answers. Owned by the page; this section only gives it a place. */
+  aroundSlot?: ReactNode;
 }) {
   const { play } = useAudio();
   const [theme] = useTheme();
@@ -130,13 +155,12 @@ export function PlayYourWaySection({
   const headingId = useId();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const counts = useMemo(() => {
-    const playable = BHALYAM_GAMES.filter((g) => !isLocked(g));
-    return {
-      friends: gamesForWay(playable, "friends").length,
-      solo: gamesForWay(playable, "solo").length,
-    } satisfies Record<PlayWay, number>;
-  }, []);
+  const playable = useMemo(() => BHALYAM_GAMES.filter((g) => !isLocked(g)), []);
+  // Same call GamesSection makes, so the panel's count is the grid's count.
+  const count =
+    way === null
+      ? 0
+      : gamesFittingTable(gamesForWay(playable, way), fitForWay(way, fit)).length;
 
   const activeIndex = way === null ? -1 : WAY_OPTIONS.findIndex((o) => o.id === way);
 
@@ -173,7 +197,7 @@ export function PlayYourWaySection({
     optionRefs.current[next]?.focus();
   }
 
-  const copy = panelCopy(way, way === null ? 0 : counts[way]);
+  const copy = panelCopy(way, count, fitForWay(way, fit));
 
   return (
     <section className="mb-8 sm:mb-10" aria-labelledby={headingId}>
@@ -185,11 +209,17 @@ export function PlayYourWaySection({
         Who&apos;s around today?
       </h2>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)]">
+      {aroundSlot}
+
+      {/* Desktop: the cards stack in a narrow column at their natural height and the
+          panel gets the wide one, so its controls lie in a row. Letting the cards
+          share a row with a tall panel stretched them into boxes with a label
+          floating in the middle. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div
           role="radiogroup"
           aria-labelledby={headingId}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          className="grid grid-cols-1 gap-3 self-start sm:grid-cols-2 lg:grid-cols-1"
         >
           {WAY_OPTIONS.map((option, index) => {
             const selected = option.id === way;
@@ -277,31 +307,34 @@ export function PlayYourWaySection({
           }`}
         >
           <div aria-live="polite" aria-atomic="true">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={way ?? "none"}
-                initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
+            {/* Keyed on the text and fade-in only. An exit-then-enter swap kept the
+                FIRST tap's snapshot when a second tap landed mid-exit, so the
+                panel could claim "9 games, 20 min" while the chip said 10 min and
+                the grid showed 5. A fresh mount always carries current values. */}
+            <motion.div
+              key={`${way ?? "none"}|${copy.lead}`}
+              initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
+            >
+              <p
+                className={`text-[15px] font-bold leading-snug tabular-nums ${
+                  isDark ? "text-white" : "text-[#1D2C4A]"
+                }`}
               >
-                <p
-                  className={`text-[15px] font-bold leading-snug tabular-nums ${
-                    isDark ? "text-white" : "text-[#1D2C4A]"
-                  }`}
-                >
-                  {copy.lead}
-                </p>
-                <p
-                  className={`mt-0.5 text-[13px] font-medium leading-snug ${
-                    isDark ? "text-zinc-300" : "text-[#6B5E52]"
-                  }`}
-                >
-                  {copy.detail}
-                </p>
-              </motion.div>
-            </AnimatePresence>
+                {copy.lead}
+              </p>
+              <p
+                className={`mt-0.5 text-[13px] font-medium leading-snug ${
+                  isDark ? "text-zinc-300" : "text-[#6B5E52]"
+                }`}
+              >
+                {copy.detail}
+              </p>
+            </motion.div>
           </div>
+
+          {way !== null && <TableFitControls way={way} fit={fit} onChange={onChangeFit} />}
 
           {way !== null && (
             <button

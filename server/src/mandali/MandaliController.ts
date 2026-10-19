@@ -188,6 +188,21 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
   });
 
   /**
+   * GET /around — friends who are here right now, across every Mandali the
+   * caller belongs to, for the home page. Read-only and answered only from the
+   * caller's own memberships (see `MandaliService.getAroundNow`). Must be
+   * registered BEFORE /:handleOrId.
+   */
+  router.get("/around", async (req, res) => {
+    if (!req.player) {
+      res.json({ success: true, around: [] });
+      return;
+    }
+    const around = await mandaliService.getAroundNow(req.player.playerId);
+    res.json({ success: true, around });
+  });
+
+  /**
    * GET /room-invites/status?codes=ABC234,XYZ789 — where shared rooms stand
    * right now (open / full / in progress / closed). A GET on purpose: cards
    * poll it, and the mutation rate limiter must not be spent on reads. Only
