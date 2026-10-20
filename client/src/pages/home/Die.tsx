@@ -49,6 +49,37 @@ export function wayForFace(face: number): PlayWay {
   return face % 2 === 0 ? "friends" : "solo";
 }
 
+/**
+ * The face "Roll to decide" settles on: dealt, not thrown.
+ *
+ * A fair die is NOT the problem. Over 60 real rolls in the browser it sent the
+ * pawn together 30 times and alone 30 times. But fair randomness makes runs: the
+ * same 60 rolls contained five "together" in a row, and a run of five on a button
+ * that is meant to decide for you reads as "it always picks multiplayer". So the
+ * outcomes come from a shuffled pair, one of each, then another pair. Over time it
+ * is exactly 50/50, and the same answer can come up at most twice running.
+ *
+ * The printed rule still holds (even plays together, odd plays alone): the pair
+ * picks the OUTCOME, and the face is then a random one of that parity. The
+ * leftover half-pair lives in this module, so it carries across visits to the
+ * page within a session, and nothing about it is stored.
+ */
+let pendingOutcomes: PlayWay[] = [];
+
+export function dealFace(random: () => number = Math.random): DieFace {
+  if (pendingOutcomes.length === 0) {
+    pendingOutcomes = random() < 0.5 ? ["friends", "solo"] : ["solo", "friends"];
+  }
+  const outcome = pendingOutcomes.shift() ?? "solo";
+  const faces: readonly DieFace[] = outcome === "friends" ? [2, 4, 6] : [1, 3, 5];
+  return faces[Math.min(faces.length - 1, Math.floor(random() * faces.length))];
+}
+
+/** For tests: forget the half-dealt pair. */
+export function resetDeal(): void {
+  pendingOutcomes = [];
+}
+
 export function Die({
   face,
   tumbling,

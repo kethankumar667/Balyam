@@ -30,6 +30,17 @@ export const PLAY_WAY_QUERY_PARAM = "way";
 type ReadableStorage = Pick<Storage, "getItem">;
 type WritableStorage = Pick<Storage, "setItem" | "removeItem">;
 
+/**
+ * Where each way leads: the games page, already filtered to the matching
+ * category. `solo` and `multiplayer` are the "Solo Play" and "Multiplayer"
+ * category tags the page has always had, which are the same two sets the way
+ * cards count, so the number on a box is the number the player lands on.
+ * `playWay.test.ts` pins both facts.
+ */
+export function gamesPathFor(way: PlayWay): string {
+  return way === "friends" ? "/games?c=multiplayer" : "/games?c=solo";
+}
+
 export function isPlayWay(value: unknown): value is PlayWay {
   return value === "friends" || value === "solo";
 }

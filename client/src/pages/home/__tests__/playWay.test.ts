@@ -3,12 +3,14 @@ import {
   PLAY_WAY_STORAGE_KEY,
   gameFitsWay,
   gamesForWay,
+  gamesPathFor,
   isPlayWay,
   readStoredWay,
   resolveInitialWay,
   storeWay,
 } from "../playWay";
-import { BHALYAM_GAMES } from "../../../components/bhalyam/data";
+import { BHALYAM_GAMES, isLocked, type GameTag } from "../../../components/bhalyam/data";
+import { filterGames } from "../../../components/bhalyam/CategoryFilter";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const store = { ...initial };
@@ -90,6 +92,32 @@ describe("gameFitsWay", () => {
       (g) => !gameFitsWay(g, "friends") && !gameFitsWay(g, "solo"),
     ).map((g) => g.slug);
     expect(orphans).toEqual([]);
+  });
+});
+
+describe("gamesPathFor", () => {
+  it("sends each way to the games page, filtered to its category", () => {
+    expect(gamesPathFor("solo")).toBe("/games?c=solo");
+    expect(gamesPathFor("friends")).toBe("/games?c=multiplayer");
+  });
+
+  it("uses categories the games page accepts, holding exactly the games the box counts", () => {
+    (["solo", "friends"] as const).forEach((way) => {
+      const category = new URL(gamesPathFor(way), "https://example.test").searchParams.get("c") as GameTag;
+
+      // The games page only honours a category some game actually carries.
+      expect(BHALYAM_GAMES.some((g) => g.tags.includes(category))).toBe(true);
+
+      // What the player lands on, and what the box promised, are the same games.
+      const onThatPage = filterGames({ category }, true).map((g) => g.slug).sort();
+      const onTheBox = gamesForWay(
+        BHALYAM_GAMES.filter((g) => !isLocked(g)),
+        way,
+      )
+        .map((g) => g.slug)
+        .sort();
+      expect(onThatPage).toEqual(onTheBox);
+    });
   });
 });
 

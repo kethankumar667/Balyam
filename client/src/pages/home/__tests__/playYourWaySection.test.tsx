@@ -1,19 +1,28 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { PlayYourWaySection } from "../PlayYourWaySection";
+import { PlayYourWaySection, PAWN_HOP_MS } from "../PlayYourWaySection";
 import { GamesSection } from "../GamesSection";
-import { Die, ROLL_MS, wayForFace, type DieFace } from "../Die";
+import { Die, ROLL_MS, dealFace, resetDeal, wayForFace, type DieFace } from "../Die";
 import { BHALYAM_GAMES, isLocked } from "../../../components/bhalyam/data";
 import { gamesForWay, type PlayWay } from "../playWay";
+
+beforeEach(() => {
+  resetDeal();
+});
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 
-/** Holds the choice the way the home page does, so a click re-renders the section. */
+function LocationProbe() {
+  const { pathname, search } = useLocation();
+  return <output data-testid="location">{pathname + search}</output>;
+}
+
+/** Holds the choice the way the home page does, inside a router so the boxes can really go somewhere. */
 function Harness({
   initial = null,
   onChange,
@@ -25,16 +34,30 @@ function Harness({
 }) {
   const [way, setWay] = useState<PlayWay | null>(initial);
   return (
-    <PlayYourWaySection
-      way={way}
-      rollFace={rollFace}
-      onChangeWay={(next) => {
-        onChange?.(next);
-        setWay(next);
-      }}
-    />
+    <MemoryRouter initialEntries={["/"]}>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PlayYourWaySection
+              way={way}
+              rollFace={rollFace}
+              onChangeWay={(next) => {
+                onChange?.(next);
+                setWay(next);
+              }}
+            />
+          }
+        />
+        <Route path="/games" element={<p>The games page</p>} />
+      </Routes>
+      <LocationProbe />
+    </MemoryRouter>
   );
 }
+
+const where = () => screen.getByTestId("location").textContent;
+const box = (name: RegExp) => screen.getByRole("link", { name });
 
 /** Lets a roll finish: shuffling faces for `ROLL_MS`, then the die settles. */
 async function finishRoll() {
@@ -43,32 +66,33 @@ async function finishRoll() {
   });
 }
 
+/** Lets the pawn land, after which the page changes. */
+async function finishHop() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PAWN_HOP_MS + 50);
+  });
+}
+
 const playableCount = (way: PlayWay) =>
   gamesForWay(BHALYAM_GAMES.filter((g) => !isLocked(g)), way).length;
 
 describe("PlayYourWaySection", () => {
-  it("offers two radios under one labelled group, with none chosen", () => {
+  it("offers two links under one labelled group, each going to its own shelf of games", () => {
     render(<Harness />);
 
-    const group = screen.getByRole("radiogroup", { name: /who.s around today/i });
-    expect(group).not.toBeNull();
+    expect(screen.getByRole("group", { name: /who.s around today/i })).not.toBeNull();
 
-    const radios = screen.getAllByRole("radio");
-    expect(radios).toHaveLength(2);
-    radios.forEach((radio) => expect(radio.getAttribute("aria-checked")).toBe("false"));
-  });
-
-  it("makes the first radio the single tab stop until something is chosen", () => {
-    render(<Harness />);
-    const [friends, solo] = screen.getAllByRole("radio");
-    expect(friends.getAttribute("tabindex")).toBe("0");
-    expect(solo.getAttribute("tabindex")).toBe("-1");
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(box(/play together/i).getAttribute("href")).toBe("/games?c=multiplayer");
+    expect(box(/play alone/i).getAttribute("href")).toBe("/games?c=solo");
+    links.forEach((link) => expect(link.getAttribute("aria-current")).toBeNull());
   });
 
   it("keeps every box a generous touch target", () => {
     render(<Harness />);
-    screen.getAllByRole("radio").forEach((radio) => {
-      expect(radio.className).toContain("min-h-[132px]");
+    screen.getAllByRole("link").forEach((link) => {
+      expect(link.className).toContain("min-h-[132px]");
     });
   });
 
@@ -92,12 +116,100 @@ describe("PlayYourWaySection", () => {
     sources.forEach((srcset) => expect(srcset).not.toMatch(/\s/));
   });
 
+  describe("going to the games page", () => {
+    it("takes Play alone to the Solo Play shelf, after the pawn has taken its seat", async () => {
+      vi.useFakeTimers();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+
+      fireEvent.click(box(/play alone/i));
+
+      // The pawn is in the box at once; the page waits for the hop to land.
+      expect(onChange).toHaveBeenCalledWith("solo");
+      expect(where()).toBe("/");
+      await finishHop();
+      expect(where()).toBe("/games?c=solo");
+    });
+
+    it("takes Play together to the Multiplayer shelf", async () => {
+      vi.useFakeTimers();
+      render(<Harness />);
+
+      fireEvent.click(box(/play together/i));
+      await finishHop();
+
+      expect(where()).toBe("/games?c=multiplayer");
+    });
+
+    it("marks the box the pawn is in as the current one", () => {
+      render(<Harness />);
+      fireEvent.click(box(/play alone/i));
+      expect(box(/play alone/i).getAttribute("aria-current")).toBe("true");
+      expect(box(/play together/i).getAttribute("aria-current")).toBeNull();
+    });
+
+    it("still goes when the box that is already remembered is tapped", async () => {
+      vi.useFakeTimers();
+      render(<Harness initial="friends" />);
+
+      fireEvent.click(box(/play together/i));
+      await finishHop();
+
+      expect(where()).toBe("/games?c=multiplayer");
+    });
+
+    it("cannot go twice from a double tap", async () => {
+      vi.useFakeTimers();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+
+      fireEvent.click(box(/play alone/i));
+      fireEvent.click(box(/play alone/i));
+      await finishHop();
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(where()).toBe("/games?c=solo");
+    });
+
+    it("can go again when the page was never torn down, as when Back is pressed during a slow load", async () => {
+      vi.useFakeTimers();
+      // Rendered OUTSIDE the routes, so changing the URL leaves it mounted, like a
+      // games page that is still loading while the player hits Back.
+      render(
+        <MemoryRouter initialEntries={["/"]}>
+          <PlayYourWaySection way={null} onChangeWay={() => {}} />
+          <LocationProbe />
+        </MemoryRouter>,
+      );
+
+      fireEvent.click(box(/play alone/i));
+      await finishHop();
+      expect(where()).toBe("/games?c=solo");
+
+      fireEvent.click(box(/play together/i));
+      await finishHop();
+      expect(where()).toBe("/games?c=multiplayer");
+    });
+
+    it("leaves a ctrl-click to the browser, so the box can open in a new tab", async () => {
+      vi.useFakeTimers();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+
+      fireEvent.click(box(/play alone/i), { ctrlKey: true });
+      await finishHop();
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(where()).toBe("/");
+    });
+  });
+
   describe("the handheld on the Play alone box", () => {
     it("is drawn inside Play alone and nowhere else", () => {
       const { container } = render(<Harness />);
       const handhelds = container.querySelectorAll("[data-handheld]");
       expect(handhelds).toHaveLength(1);
-      expect(handhelds[0].closest('[role="radio"]')).toBe(screen.getByRole("radio", { name: /play alone/i }));
+      expect(handhelds[0].closest("a")).toBe(box(/play alone/i));
     });
 
     it("is decoration, hidden from assistive technology", () => {
@@ -116,105 +228,64 @@ describe("PlayYourWaySection", () => {
       expect(parts.reduce((sum, n) => sum + n, 0)).toBeCloseTo(160, 5);
     });
 
-    it("renders without error when the box is chosen, focused or left", () => {
+    it("renders without error when the box is focused, left or pointed at", () => {
       render(<Harness />);
-      const alone = screen.getByRole("radio", { name: /play alone/i });
+      const alone = box(/play alone/i);
       fireEvent.focus(alone);
-      fireEvent.click(alone);
+      fireEvent.pointerEnter(alone);
+      fireEvent.pointerLeave(alone);
       fireEvent.blur(alone);
-      expect(alone.getAttribute("aria-checked")).toBe("true");
+      expect(alone.getAttribute("href")).toBe("/games?c=solo");
     });
   });
 
   describe("the pawn", () => {
-    const radioHoldingPawn = (container: HTMLElement) =>
-      container.querySelector("[data-way-pawn]")?.closest('[role="radio"]') ?? null;
+    const boxHoldingPawn = (container: HTMLElement) =>
+      container.querySelector("[data-way-pawn]")?.closest("a") ?? null;
 
     it("waits in the caption until a way is chosen", () => {
       const { container } = render(<Harness />);
       expect(container.querySelector("[data-way-pawn]")).not.toBeNull();
-      expect(radioHoldingPawn(container)).toBeNull();
+      expect(boxHoldingPawn(container)).toBeNull();
     });
 
     it("stands in the box that was chosen", () => {
       const { container } = render(<Harness />);
-      fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
+      fireEvent.click(box(/play alone/i));
       expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
-      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play alone/i }));
+      expect(boxHoldingPawn(container)).toBe(box(/play alone/i));
     });
 
-    it("moves to the other box when the choice changes", () => {
+    it("is already in the remembered box when the page is opened", () => {
       const { container } = render(<Harness initial="friends" />);
-      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play together/i }));
-
-      fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
-
-      expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
-      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play alone/i }));
+      expect(boxHoldingPawn(container)).toBe(box(/play together/i));
     });
 
     it("goes home to the caption when the choice is cleared", () => {
       const { container } = render(<Harness initial="solo" />);
       fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
       expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
-      expect(radioHoldingPawn(container)).toBeNull();
+      expect(boxHoldingPawn(container)).toBeNull();
     });
   });
 
-  it("reports the choice and tells the player how many games fit", async () => {
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-
-    fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
-
-    expect(onChange).toHaveBeenCalledWith("solo");
-    expect(screen.getByRole("radio", { name: /play alone/i }).getAttribute("aria-checked")).toBe(
-      "true",
-    );
-    // The panel cross-fades, so the new line arrives after the old one leaves.
-    expect(
-      await screen.findByText(new RegExp(`${playableCount("solo")} games for one`)),
-    ).not.toBeNull();
+  it("tells the player how many games fit once a way is remembered", async () => {
+    render(<Harness initial="solo" />);
+    expect(await screen.findByText(new RegExp(`${playableCount("solo")} games for one`))).not.toBeNull();
   });
 
-  it("does not report a tap on the option that is already chosen", () => {
-    const onChange = vi.fn();
-    render(<Harness initial="friends" onChange={onChange} />);
-
-    fireEvent.click(screen.getByRole("radio", { name: /play together/i }));
-
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("moves the choice with the arrow keys", () => {
-    const onChange = vi.fn();
-    render(<Harness initial="friends" onChange={onChange} />);
-
-    fireEvent.keyDown(screen.getByRole("radio", { name: /play together/i }), {
-      key: "ArrowRight",
-    });
-
-    expect(onChange).toHaveBeenCalledWith("solo");
-  });
-
-  it("wraps from the last option back to the first", () => {
+  it("offers a way back to every game only while a way is remembered", () => {
     const onChange = vi.fn();
     render(<Harness initial="solo" onChange={onChange} />);
 
-    fireEvent.keyDown(screen.getByRole("radio", { name: /play alone/i }), { key: "ArrowRight" });
-
-    expect(onChange).toHaveBeenCalledWith("friends");
-  });
-
-  it("offers a way back to every game only once something is chosen", () => {
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-    expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
-
-    fireEvent.click(screen.getByRole("radio", { name: /play together/i }));
     fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
 
     expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
+  });
+
+  it("does not offer that way back when nothing is remembered", () => {
+    render(<Harness />);
     expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
   });
 });
@@ -224,7 +295,7 @@ describe("the table on the Play together box", () => {
     const { container } = render(<Harness />);
     const scenes = container.querySelectorAll("[data-table-scene]");
     expect(scenes).toHaveLength(1);
-    expect(scenes[0].closest('[role="radio"]')).toBe(screen.getByRole("radio", { name: /play together/i }));
+    expect(scenes[0].closest("a")).toBe(box(/play together/i));
   });
 
   it("seats four pawns round a die, and is hidden from assistive technology", () => {
@@ -262,25 +333,81 @@ describe("the die", () => {
   });
 });
 
+describe("dealing the die", () => {
+  /** A small deterministic random source, so the long runs below are repeatable. */
+  function seeded(seed: number) {
+    let state = seed >>> 0;
+    return () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 2 ** 32;
+    };
+  }
+
+  const dealt = (count: number, seed: number) => {
+    const random = seeded(seed);
+    return Array.from({ length: count }, () => wayForFace(dealFace(random)));
+  };
+
+  it("keeps the printed rule: every face dealt is a real face, even for together and odd for alone", () => {
+    const random = seeded(7);
+    for (let i = 0; i < 500; i += 1) {
+      const face = dealFace(random);
+      expect([1, 2, 3, 4, 5, 6]).toContain(face);
+    }
+  });
+
+  it("is exactly 50/50 over time", () => {
+    const outcomes = dealt(2000, 1);
+    expect(outcomes.filter((o) => o === "friends")).toHaveLength(1000);
+  });
+
+  it("gives one of each in every pair of rolls", () => {
+    const outcomes = dealt(1000, 2);
+    for (let i = 0; i < outcomes.length; i += 2) {
+      expect(new Set([outcomes[i], outcomes[i + 1]]).size).toBe(2);
+    }
+  });
+
+  it("never gives the same answer more than twice running, where a plain fair die often gave five", () => {
+    const outcomes = dealt(5000, 3);
+    let longest = 1;
+    let run = 1;
+    for (let i = 1; i < outcomes.length; i += 1) {
+      run = outcomes[i] === outcomes[i - 1] ? run + 1 : 1;
+      longest = Math.max(longest, run);
+    }
+    expect(longest).toBeLessThanOrEqual(2);
+  });
+
+  it("can start either way, so the first roll is not predictable", () => {
+    const firsts = new Set<string>();
+    for (let i = 1; i <= 40; i += 1) {
+      resetDeal();
+      // Spread the seeds out: a simple generator gives near-identical first values for 1, 2, 3...
+      firsts.add(dealt(1, i * 1_000_003)[0]);
+    }
+    expect(firsts.size).toBe(2);
+  });
+});
+
 describe("Roll to decide", () => {
   const rollButton = () => screen.getByRole("button", { name: /roll the die to pick for me/i });
 
-  it("is offered while nothing is chosen, with the rule printed beside it", () => {
+  it("is offered while nothing is remembered, with the rule printed beside it", () => {
     render(<Harness />);
     expect(rollButton()).not.toBeNull();
     expect(screen.getByText(/even plays together, odd plays alone/i)).not.toBeNull();
   });
 
-  it("is gone once a way is chosen, and comes back when it is cleared", () => {
-    render(<Harness />);
-    fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
+  it("is gone while a way is remembered, and comes back when it is cleared", () => {
+    render(<Harness initial="solo" />);
     expect(screen.queryByRole("button", { name: /roll the die/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
     expect(rollButton()).not.toBeNull();
   });
 
-  it("sends the pawn to Play together when the die lands on an even face", async () => {
+  it("sends the pawn to Play together, and the page to the Multiplayer shelf, on an even face", async () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
     render(<Harness onChange={onChange} rollFace={() => 4} />);
@@ -290,10 +417,12 @@ describe("Roll to decide", () => {
     await finishRoll();
 
     expect(onChange).toHaveBeenCalledWith("friends");
-    expect(screen.getByRole("radio", { name: /play together/i }).getAttribute("aria-checked")).toBe("true");
+    expect(box(/play together/i).getAttribute("aria-current")).toBe("true");
+    await finishHop();
+    expect(where()).toBe("/games?c=multiplayer");
   });
 
-  it("sends the pawn to Play alone when the die lands on an odd face", async () => {
+  it("sends the pawn to Play alone, and the page to the Solo Play shelf, on an odd face", async () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
     render(<Harness onChange={onChange} rollFace={() => 3} />);
@@ -302,6 +431,8 @@ describe("Roll to decide", () => {
     await finishRoll();
 
     expect(onChange).toHaveBeenCalledWith("solo");
+    await finishHop();
+    expect(where()).toBe("/games?c=solo");
   });
 
   it("says it is rolling while the die is in the air", async () => {
@@ -312,6 +443,7 @@ describe("Roll to decide", () => {
 
     expect(screen.getByText("Rolling the die")).not.toBeNull();
     await finishRoll();
+    await finishHop();
   });
 
   it("cannot choose twice from a double tap", async () => {
@@ -322,6 +454,7 @@ describe("Roll to decide", () => {
     fireEvent.click(rollButton());
     fireEvent.click(rollButton());
     await finishRoll();
+    await finishHop();
 
     expect(onChange).toHaveBeenCalledTimes(1);
   });

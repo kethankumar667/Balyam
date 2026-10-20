@@ -1,20 +1,23 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTheme } from "../../lib/useTheme";
 import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { BHALYAM_GAMES, isLocked } from "../../components/bhalyam/data";
-import { gamesForWay, type PlayWay } from "./playWay";
+import { gamesForWay, gamesPathFor, type PlayWay } from "./playWay";
 import { Pawn, WayArt } from "./WayArt";
-import { Die, useDieRoller, wayForFace, type DieFace } from "./Die";
+import { Die, dealFace, useDieRoller, wayForFace, type DieFace } from "./Die";
 
 /**
  * "Who's around today?" — the first question a returning player is asked.
  *
  * Two choices, not a menu, and never a gate: the page below is fully usable
- * with neither chosen. Picking one narrows the game grid to what fits (see
- * `playWay.ts`) and the choice is remembered, so someone who always plays
- * alone lands on the right list.
+ * without touching either. Choosing one takes you to the games page already
+ * filtered to it (`/games?c=solo` or `/games?c=multiplayer`, the Solo Play and
+ * Multiplayer categories that page has always had), and the choice is
+ * remembered: come back and the pawn is still in that box and the list below
+ * is narrowed to match.
  *
  * ── The idea: two game-box lids and one pawn ──────────────────────────
  * Each choice is the lid of a game box, drawn with the real game art it will
@@ -24,19 +27,24 @@ import { Die, useDieRoller, wayForFace, type DieFace } from "./Die";
  * pawn is what marks the choice, so selection is a shape arriving, not only a
  * colour change.
  *
- * ── Semantics ─────────────────────────────────────────────────────────
- * `radiogroup`, same reasoning as `CategoryFilter`: the choices are mutually
- * exclusive, and a radio group brings the keyboard contract people expect (one
- * tab stop, arrows to move and select). A radio cannot be un-picked, so the way
- * back to the full list is the explicit "Show all games" button, not a second
- * tap on the chosen card. All the art is decorative and hidden from assistive
- * tech; the text names the choice and `aria-checked` carries the state.
+ * ── Semantics: links, not radios ──────────────────────────────────────
+ * The boxes go to another page, so they are links. They began as radios (they
+ * narrowed the list in place), but a radio that changes the page is a surprise to
+ * a screen-reader user, and a radio group's arrow keys SELECT, which here would
+ * mean every arrow press leaves the page. Links tab normally, announce as links,
+ * open in a new tab on ctrl or middle click, and `aria-current` marks the box the
+ * pawn is in. A plain click lets the pawn hop into the box first, then goes
+ * (at once under reduced motion). All the art is decorative and hidden from
+ * assistive tech; the text names the destination.
  *
  * ── Why no "Join with a code" button here ─────────────────────────────
  * The hero directly above already carries it. Two buttons with one intent
- * within a screen of each other is noise; this section only changes what the
- * grid shows.
+ * within a screen of each other is noise; this section only sends people to the
+ * right shelf of games.
  */
+
+/** How long the pawn's hop takes to land, so the page changes after it, not during it. */
+export const PAWN_HOP_MS = 480;
 
 interface WayTone {
   /** Border + fill of the chosen box. */
@@ -193,11 +201,20 @@ export function PlayYourWaySection({
   const isDark = theme === "dark";
   const reduceMotion = useReducedMotion();
   const headingId = useId();
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const navigate = useNavigate();
   // Which box is being pointed at or focused. Its moving parts run, so the box
   // answers a hand (or a keyboard) and not only a click.
   const [peeked, setPeeked] = useState<PlayWay | null>(null);
-  const roller = useDieRoller(rollFace);
+  // `dealFace`, not a plain random face: see its note on why the die is dealt.
+  const roller = useDieRoller(rollFace ?? dealFace);
+  /** The pending "go to the games page" timer: set once, so a double tap cannot go twice, and cleared if the page is left first. */
+  const leaving = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (leaving.current !== null) window.clearTimeout(leaving.current);
+    },
+    [],
+  );
 
   const counts = useMemo(() => {
     const playable = BHALYAM_GAMES.filter((g) => !isLocked(g));
@@ -207,47 +224,45 @@ export function PlayYourWaySection({
     } satisfies Record<PlayWay, number>;
   }, []);
 
-  const activeIndex = way === null ? -1 : WAY_OPTIONS.findIndex((o) => o.id === way);
-
-  function choose(next: PlayWay) {
-    if (next === way) return;
+  /**
+   * Take the seat, then go. The pawn hops into the box first (that hop is the
+   * point of the box), so the page changes after it lands; reduced motion goes at
+   * once. A second tap during the hop is ignored.
+   *
+   * The "leaving" marker is cleared the moment the page change is issued, not left
+   * for unmount to clear. This page is not always torn down right away (the games
+   * page can still be loading), and someone who hit Back in that gap came home to
+   * the SAME page with the marker still set, so every box and the die did nothing
+   * until a reload. The marker only has to cover the hop.
+   */
+  function go(next: PlayWay) {
+    if (leaving.current !== null) return;
     play(AUDIO.UI_TOGGLE);
     onChangeWay(next);
+    leaving.current = window.setTimeout(
+      () => {
+        leaving.current = null;
+        navigate(gamesPathFor(next));
+      },
+      reduceMotion ? 0 : PAWN_HOP_MS,
+    );
   }
 
-  /** "Roll to decide": the die lands, and the pawn goes to the box the face names. */
+  /** A plain click goes via `go`; new-tab, new-window and other modified clicks are the browser's. */
+  function onBoxClick(event: MouseEvent<HTMLAnchorElement>, next: PlayWay) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    event.preventDefault();
+    go(next);
+  }
+
+  /** "Roll to decide": the die lands, the pawn goes to the box the face names, and the page follows. */
   async function decide() {
     play(AUDIO.UI_CLICK);
     const face = await roller.roll();
     if (face === null) return; // a roll was already running
-    onChangeWay(wayForFace(face));
-  }
-
-  /** Arrow keys move focus and selection together, as a radio group should. */
-  function onKeyDown(event: KeyboardEvent, index: number) {
-    const last = WAY_OPTIONS.length - 1;
-    let next: number;
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        next = index === last ? 0 : index + 1;
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        next = index === 0 ? last : index - 1;
-        break;
-      case "Home":
-        next = 0;
-        break;
-      case "End":
-        next = last;
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    choose(WAY_OPTIONS[next].id);
-    optionRefs.current[next]?.focus();
+    go(wayForFace(face));
   }
 
   const copy = panelCopy(way, way === null ? 0 : counts[way], roller.rolling);
@@ -265,25 +280,17 @@ export function PlayYourWaySection({
         Pick a seat and we&apos;ll set the board.
       </p>
 
-      <div role="radiogroup" aria-labelledby={headingId} className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        {WAY_OPTIONS.map((option, index) => {
+      <div role="group" aria-labelledby={headingId} className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {WAY_OPTIONS.map((option) => {
           const selected = option.id === way;
           const dimmed = way !== null && !selected;
           const tone = isDark ? option.dark : option.light;
           return (
-            <button
+            <Link
               key={option.id}
-              ref={(el) => {
-                optionRefs.current[index] = el;
-              }}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              // Roving tabindex: one tab stop for the group. With nothing
-              // chosen yet, the first option takes it.
-              tabIndex={selected || (activeIndex === -1 && index === 0) ? 0 : -1}
-              onClick={() => choose(option.id)}
-              onKeyDown={(e) => onKeyDown(e, index)}
+              to={gamesPathFor(option.id)}
+              aria-current={selected ? "true" : undefined}
+              onClick={(e) => onBoxClick(e, option.id)}
               onPointerEnter={() => setPeeked(option.id)}
               onPointerLeave={() => setPeeked(null)}
               onFocus={() => setPeeked(option.id)}
@@ -350,7 +357,7 @@ export function PlayYourWaySection({
                 isDark={isDark}
                 className="absolute right-3 top-3 z-20 h-10 w-9 sm:right-4 sm:top-4"
               />
-            </button>
+            </Link>
           );
         })}
       </div>
