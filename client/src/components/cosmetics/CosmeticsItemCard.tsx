@@ -51,6 +51,9 @@ import {
 } from "../../lib/cosmeticsResolver";
 import { PawnGlyph } from "../../games/ludo/PawnGlyph";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
+import SeatAvatar from "../profile/SeatAvatar";
+import { useRoomStore } from "../../store/roomStore";
+import { isFrameId } from "./frames/frameDesigns";
 
 /** No real seat exists at shop-browse time — every token thumbnail/preview
  *  shows this one fixed "showcase" seat color so a purchased finish's own
@@ -247,6 +250,21 @@ export function CosmeticsItemCard({
 // material registries the live game boards render from.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * A frame as the shopper would wear it: their own avatar inside it, so every card shows the same face and the
+ * only thing that changes from card to card is the frame. The overlay reaches 12% past the circle, so the box
+ * is a little bigger than the avatar.
+ */
+function FrameThumbnail({ frameId }: { frameId: string }) {
+  const avatarId = useRoomStore((state) => state.avatarId);
+  const playerName = useRoomStore((state) => state.playerName);
+  return (
+    <div className="relative flex h-[60px] w-[60px] shrink-0 items-center justify-center">
+      <SeatAvatar avatar={avatarId || undefined} aura={frameId} name={playerName || "You"} className="h-11 w-11" textClassName="text-sm" />
+    </div>
+  );
+}
+
 export function CollectibleThumbnail({
   item,
   category,
@@ -259,6 +277,10 @@ export function CollectibleThumbnail({
   rarity: CosmeticCatalogItem["rarity"];
 }) {
   const rarity = getRarityTokensAdaptive(rarityKey);
+
+  if (category === "AVATAR_AURA" && isFrameId(item.id)) {
+    return <FrameThumbnail frameId={item.id} />;
+  }
 
   if (category === "AVATAR_AURA") {
     const aura = getAvatarAuraConfig(item.id);

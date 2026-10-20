@@ -31,6 +31,7 @@ import {
   RotateCcw,
   Eye,
   Lock,
+  Orbit,
 } from "lucide-react";
 import {
   type CosmeticCategory,
@@ -67,6 +68,7 @@ const CATEGORY_TABS: Array<{
   { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
   { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
   { category: "CARD_BACK", label: "Cards", icon: Layers },
+  { category: "AVATAR_AURA", label: "Frames", icon: Orbit },
 ];
 
 export interface CosmeticsStoreMobileProps {
@@ -392,7 +394,13 @@ export function CosmeticsStoreMobile({
       <div className="flex-1 overflow-y-auto px-3.5 pt-2.5 pb-28 min-h-0 relative z-10">
         <div className="flex items-center justify-between mb-2.5 px-0.5">
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-500 dark:text-zinc-400">
-            {selectedCategory === "DICE_SKIN" ? "Dice skins" : selectedCategory === "TOKEN_SKIN" ? "Token finishes" : "Card designs"}
+            {selectedCategory === "DICE_SKIN"
+              ? "Dice skins"
+              : selectedCategory === "TOKEN_SKIN"
+                ? "Token finishes"
+                : selectedCategory === "AVATAR_AURA"
+                  ? "Avatar frames"
+                  : "Card designs"}
           </span>
           <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-bold">
             Tap to preview

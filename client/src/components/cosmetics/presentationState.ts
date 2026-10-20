@@ -71,7 +71,8 @@ export function resolveCosmeticPresentationState(params: {
   const progressText = `${safeBalance.toLocaleString()} / ${priceCoins.toLocaleString()}`;
 
   const isCurrentAction = isSubmitting && activeActionId === item.id;
-  const categoryLabel = item.category.replace("_", " ");
+  // The slot is still called AVATAR_AURA in the registry, but a shopper is buying a frame.
+  const categoryLabel = item.category === "AVATAR_AURA" ? "AVATAR FRAME" : item.category.replace("_", " ");
 
   // 1. Equipped state
   if (isEquipped) {

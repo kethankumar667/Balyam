@@ -31,6 +31,7 @@ import {
   getDefaultCosmetic,
 } from "@shared/cosmetics";
 import SeatAvatar from "../profile/SeatAvatar";
+import { isFrameId } from "./frames/frameDesigns";
 import { useRoomStore } from "../../store/roomStore";
 import { bhalyamSpring } from "../../lib/motion";
 import {
@@ -348,7 +349,7 @@ export function CosmeticsPreviewStage({
             <span
               className={`text-[10px] font-black uppercase tracking-wider ${rarityTheme.accent}`}
             >
-              {rarity} • {category.replace("_", " ")}
+              {rarity} • {category === "AVATAR_AURA" ? "AVATAR FRAME" : category.replace("_", " ")}
             </span>
             <span className="text-[11px] text-amber-300 font-mono font-black">
               {previewItem.priceCoins > 0
@@ -794,6 +795,55 @@ function EnchantedDiceSkinPreview({
 // 2. ENCHANTED AVATAR AURA PREVIEW (Profile, Game Seat, Podium)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * An animated frame on the shopper's own avatar, in the three places it will be seen. `SeatAvatar` draws the
+ * frame, so what is previewed is exactly what a table will see.
+ */
+function FramePreview({
+  frameId,
+  mode,
+  displayName,
+  avatarId,
+}: {
+  frameId: string;
+  mode: PreviewMode;
+  displayName: string;
+  avatarId: string | null;
+}) {
+  const avatar = (size: string) => (
+    <SeatAvatar avatar={avatarId ?? undefined} aura={frameId} name={displayName} className={`${size} rounded-full shadow-lg`} />
+  );
+
+  if (mode === "GAME_SEAT") {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <div className="w-56 h-36 rounded-2xl bg-[#0b1220] border-2 border-zinc-700/80 relative flex flex-col items-center justify-center p-3 shadow-xl">
+          <div className="absolute top-2 left-3 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 motion-safe:animate-ping" />
+            <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase">Seat 1</span>
+          </div>
+          {avatar("w-14 h-14")}
+          <span className="text-xs font-bold text-white mt-2">{displayName}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "PODIUM") {
+    return (
+      <div className="flex flex-col items-center justify-center pt-5">
+        {avatar("w-20 h-20")}
+        <div className="w-32 py-1.5 mt-3 rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-400 text-black text-center font-black text-xs shadow-lg shadow-amber-500/30">
+          #1 WINNER
+        </div>
+        <div className="w-40 h-2 bg-amber-800 rounded-b-md shadow-md" />
+      </div>
+    );
+  }
+
+  return <div className="flex items-center justify-center w-44 h-44">{avatar("w-28 h-28")}</div>;
+}
+
 function EnchantedAvatarAuraPreview({
   auraId,
   mode,
@@ -805,6 +855,10 @@ function EnchantedAvatarAuraPreview({
   displayName: string;
   avatarId: string | null;
 }) {
+  if (isFrameId(auraId)) {
+    return <FramePreview frameId={auraId} mode={mode} displayName={displayName} avatarId={avatarId} />;
+  }
+
   const getAuraStyle = (id: string) => {
     switch (id) {
       case "aura_radiant_vanguard":

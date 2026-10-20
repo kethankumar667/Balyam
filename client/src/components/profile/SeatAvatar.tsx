@@ -3,6 +3,8 @@ import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { getLevelTier } from "@shared/progression/MiniclipProgression";
+import AvatarFrameOverlay from "../cosmetics/frames/AvatarFrameOverlay";
+import { isFrameId } from "../cosmetics/frames/frameDesigns";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -55,7 +57,7 @@ function initialOf(name: string): string {
 export interface SeatAvatarProps {
   /** The seat's chosen avatar filename, from server state. */
   avatar?: string;
-  /** Cosmetic avatar aura identifier (e.g. aura_radiant_vanguard, aura_ludo_king) */
+  /** Cosmetic avatar aura identifier: an animated frame (frame_royal_crown, …) or a legacy ring (aura_ludo_king). */
   aura?: string;
   /** Player's progression level for Miniclip-style corner badge */
   level?: number;
@@ -123,7 +125,8 @@ export default function SeatAvatar({
             }}
           />
         )}
-        {auraConfig && auraConfig.className && (
+        {isFrameId(aura) && <AvatarFrameOverlay frameId={aura} />}
+        {!isFrameId(aura) && auraConfig && auraConfig.className && (
           <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
         {node}

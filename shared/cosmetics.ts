@@ -675,6 +675,31 @@ export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
     isDefault: false,
   },
 
+  // ── Avatar Frames (20, added 2026-10-20) ──
+  // Drawn by client/src/components/cosmetics/frames/ (one SVG design each; the bundled key is the design's
+  // file-less name). They share the AVATAR_AURA slot with the legacy rings above, so a seat's public loadout,
+  // the equip endpoint and the ownership check needed no new category.
+  { id: "frame_marigold_garland", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-marigold-garland", isDefault: false },
+  { id: "frame_diya_glow", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-diya-glow", isDefault: false },
+  { id: "frame_rangoli_mandala", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-rangoli-mandala", isDefault: false },
+  { id: "frame_peacock_plume", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-peacock-plume", isDefault: false },
+  { id: "frame_cricket_seam", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-cricket-seam", isDefault: false },
+  { id: "frame_blaze_ring", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-blaze-ring", isDefault: false },
+  { id: "frame_frost_crystals", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-frost-crystals", isDefault: false },
+  { id: "frame_storm_arc", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-storm-arc", isDefault: false },
+  { id: "frame_tidal_waves", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-tidal-waves", isDefault: false },
+  { id: "frame_bubble_float", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-bubble-float", isDefault: false },
+  { id: "frame_star_orbit", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-star-orbit", isDefault: false },
+  { id: "frame_galaxy_portal", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-galaxy-portal", isDefault: false },
+  { id: "frame_neon_tube", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-neon-tube", isDefault: false },
+  { id: "frame_pixel_arcade", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-pixel-arcade", isDefault: false },
+  { id: "frame_clockwork_gears", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-clockwork-gears", isDefault: false },
+  { id: "frame_victory_laurel", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-victory-laurel", isDefault: false },
+  { id: "frame_royal_crown", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-royal-crown", isDefault: false },
+  { id: "frame_dragon_coil", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-dragon-coil", isDefault: false },
+  { id: "frame_cuddly_cat_ears", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-cuddly-cat-ears", isDefault: false },
+  { id: "frame_prism_spinner", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "frame-prism-spinner", isDefault: false },
+
   // ── Podium Titles ──
   {
     id: "title_none",

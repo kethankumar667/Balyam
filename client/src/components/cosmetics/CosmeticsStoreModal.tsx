@@ -32,6 +32,7 @@ import {
   CircleDot,
   Crown,
   Info,
+  Orbit,
 } from "lucide-react";
 import Modal from "../Modal";
 import { useCosmeticsStore } from "../../store/cosmeticsStore";
@@ -58,10 +59,11 @@ import { useTheme } from "../../lib/useTheme";
 import { useViewport } from "../../lib/useViewport";
 import { CosmeticsStoreMobile } from "./CosmeticsStoreMobile";
 
-// Tables, Auras, and Titles are removed from the shop (2026-09-10) — their
-// catalog rows are deactivated server-side (see InMemoryCosmeticsRepository's
-// SEED_CATALOG / the matching Supabase migration), and simply not listed
-// here so the shop UI never offers a tab with nothing purchasable behind it.
+// Tables and Titles are removed from the shop (2026-09-10) — their catalog rows
+// are deactivated server-side (see InMemoryCosmeticsRepository's SEED_CATALOG /
+// the matching Supabase migration), and simply not listed here so the shop UI
+// never offers a tab with nothing purchasable behind it. Avatar auras came back
+// as Frames (2026-10-20): twenty animated designs in the same AVATAR_AURA slot.
 const CATEGORY_TABS: Array<{
   category: CosmeticCategory;
   label: string;
@@ -70,6 +72,7 @@ const CATEGORY_TABS: Array<{
   { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
   { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
   { category: "CARD_BACK", label: "Cards", icon: Layers },
+  { category: "AVATAR_AURA", label: "Frames", icon: Orbit },
 ];
 
 export function CosmeticsStoreModal() {
@@ -244,7 +247,7 @@ export function CosmeticsStoreModal() {
       case "CARD_BACK":
         return "CARD BACKS";
       case "AVATAR_AURA":
-        return "AURA COLLECTION";
+        return "AVATAR FRAMES";
       case "PODIUM_TITLE":
         return "PODIUM TITLES";
       default:
@@ -332,7 +335,7 @@ export function CosmeticsStoreModal() {
               )}
             </h3>
             <p className="text-xs text-stone-500 dark:text-zinc-400 truncate font-semibold">
-              {isAdminUser ? "All finishes unlocked for free" : "Curated collectible finishes for dice, cards & tokens."}
+              {isAdminUser ? "All finishes unlocked for free" : "Curated collectible finishes for dice, cards, tokens & avatar frames."}
             </p>
           </div>
         </div>

@@ -1,0 +1,277 @@
+/*
+ * Motion for the avatar frames (see AvatarFrameOverlay). Every frame is an SVG laid over the avatar, and
+ * these classes are the only things that move it. Timing comes from two custom properties set per element:
+ * --af-d (duration) and --af-delay (offset), so one keyframe serves many pieces moving out of step.
+ *
+ * Two transform origins are in use. `view-box` + 50% 50% is the middle of the avatar, for anything that turns
+ * around it. `fill-box` is the element's own box, for things that turn or flicker about themselves (a gear, a
+ * flame, an ear).
+ */
+
+.af-svg {
+  position: absolute;
+  top: -12%;
+  left: -12%;
+  width: 124%;
+  height: 124%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.af-spin,
+.af-spin-rev {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: af-turn var(--af-d, 12s) linear infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+.af-spin-rev {
+  animation-direction: reverse;
+}
+
+.af-roll {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: af-turn var(--af-d, 8s) linear infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+.af-roll-rev {
+  animation-direction: reverse;
+}
+
+.af-sway {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: af-sway var(--af-d, 6s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-sway-base {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: af-sway-base var(--af-d, 4s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-pulse {
+  animation: af-pulse var(--af-d, 2.6s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-breathe {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: af-breathe var(--af-d, 3.4s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: af-flicker var(--af-d, 1.3s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-twinkle {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: af-twinkle var(--af-d, 2.4s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-float {
+  animation: af-float var(--af-d, 4s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-flash {
+  animation: af-flash var(--af-d, 3s) linear infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-blink {
+  animation: af-blink var(--af-d, 1.8s) steps(2, end) infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-neon {
+  animation: af-neon var(--af-d, 5s) linear infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+.af-slither {
+  animation: af-slither var(--af-d, 2.2s) linear infinite;
+}
+
+.af-wiggle {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: af-wiggle var(--af-d, 5s) ease-in-out infinite;
+  animation-delay: var(--af-delay, 0s);
+}
+
+@keyframes af-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes af-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes af-sway-base {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes af-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes af-breathe {
+  0%,
+  100% {
+    transform: scale(0.985);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+@keyframes af-flicker {
+  0%,
+  100% {
+    transform: scaleY(0.88) scaleX(1);
+    opacity: 0.85;
+  }
+  35% {
+    transform: scaleY(1.14) scaleX(0.92);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleY(0.96) scaleX(1.06);
+    opacity: 0.92;
+  }
+}
+
+@keyframes af-twinkle {
+  0%,
+  100% {
+    transform: scale(0.45);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes af-float {
+  0%,
+  100% {
+    transform: translateY(1.2px);
+  }
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+
+/* A lightning bolt: a dim trace almost always, then two quick strikes. */
+@keyframes af-flash {
+  0%,
+  86%,
+  100% {
+    opacity: 0.32;
+  }
+  88% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  93% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes af-blink {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+/* A neon sign that is not quite sound. */
+@keyframes af-neon {
+  0%,
+  18%,
+  22%,
+  62%,
+  100% {
+    opacity: 1;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  64% {
+    opacity: 0.7;
+  }
+  66% {
+    opacity: 1;
+  }
+}
+
+@keyframes af-slither {
+  to {
+    stroke-dashoffset: -4.2;
+  }
+}
+
+@keyframes af-wiggle {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0deg);
+  }
+  91% {
+    transform: rotate(-9deg);
+  }
+  94% {
+    transform: rotate(6deg);
+  }
+  97% {
+    transform: rotate(-3deg);
+  }
+}
+
+/* Anyone who has asked their system for less motion gets every frame standing still. */
+@media (prefers-reduced-motion: reduce) {
+  .af-svg,
+  .af-svg * {
+    animation: none !important;
+  }
+}

@@ -1,6 +1,7 @@
 import SeatAvatar from "./SeatAvatar";
 import { useRoomStore } from "../../store/roomStore";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
+import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 
 /**
  * The signed-in-ish player's own face, wherever the app shows their identity.
@@ -31,11 +32,14 @@ export default function SelfAvatar({
   const avatarId = useRoomStore((s) => s.avatarId);
   const playerName = useRoomStore((s) => s.playerName);
   const identity = useIdentityPresentation();
+  const { avatarAura } = useResolvedCosmetics();
   const displayName = playerName.trim() || identity.label;
 
   return (
     <SeatAvatar
       avatar={avatarId || undefined}
+      // The player's own equipped frame: someone who has just bought one should see it on themselves at once.
+      aura={avatarAura === "aura_none" ? undefined : avatarAura}
       name={displayName}
       className={className}
       textClassName={textClassName}

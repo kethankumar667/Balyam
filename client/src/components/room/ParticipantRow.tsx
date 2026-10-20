@@ -108,7 +108,7 @@ export default function ParticipantRow({
           >
             <SeatAvatar
               avatar={player.avatar}
-              aura={player.isBot ? player.cosmetics?.avatarAura : undefined}
+              aura={player.cosmetics?.avatarAura}
               level={player.isBot ? player.level : undefined}
               name={player.name}
               className="w-full h-full rounded-full object-cover"
@@ -264,7 +264,7 @@ export default function ParticipantRow({
         <div className="relative shrink-0">
           <SeatAvatar
             avatar={player.avatar}
-            aura={player.isBot ? player.cosmetics?.avatarAura : undefined}
+            aura={player.cosmetics?.avatarAura}
             level={player.isBot ? player.level : undefined}
             name={player.name}
             className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl shadow-xs"
