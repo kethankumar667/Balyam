@@ -68,6 +68,7 @@ const LazyPreviewLevelJourney = import.meta.env.DEV ? lazy(() => import("./pages
 const LazyPreviewAnimations3D = lazy(() => import("./pages/PreviewAnimations3D"));
 const LazyAdminDashboardPage = lazy(() => import("./pages/admin/dashboard"));
 const LazyAdminUsersPage = lazy(() => import("./pages/admin/users"));
+const LazyAdminUserDetailPage = lazy(() => import("./pages/admin/users/UserDetailPage"));
 const LazyAdminMatchesPage = lazy(() => import("./pages/admin/matches"));
 const LazyAdminFeatureFlagsPage = lazy(() => import("./pages/admin/feature-flags"));
 const LazyAdminAnnouncementsPage = lazy(() => import("./pages/admin/announcements"));
@@ -131,6 +132,7 @@ export interface RouteComponents {
   PreviewLudo?: React.ComponentType;
   AdminDashboardPage?: React.ComponentType;
   AdminUsersPage?: React.ComponentType;
+  AdminUserDetailPage?: React.ComponentType;
   AdminMatchesPage?: React.ComponentType;
   AdminFeatureFlagsPage?: React.ComponentType;
   AdminAnnouncementsPage?: React.ComponentType;
@@ -318,6 +320,7 @@ export default function App({ components = {} }: AppProps) {
   const PreviewLudo = components.PreviewLudo ?? LazyPreviewLudo;
   const AdminDashboardPage = components.AdminDashboardPage ?? LazyAdminDashboardPage;
   const AdminUsersPage = components.AdminUsersPage ?? LazyAdminUsersPage;
+  const AdminUserDetailPage = components.AdminUserDetailPage ?? LazyAdminUserDetailPage;
   const AdminMatchesPage = components.AdminMatchesPage ?? LazyAdminMatchesPage;
   const AdminFeatureFlagsPage = components.AdminFeatureFlagsPage ?? LazyAdminFeatureFlagsPage;
   const AdminAnnouncementsPage = components.AdminAnnouncementsPage ?? LazyAdminAnnouncementsPage;
@@ -522,6 +525,17 @@ export default function App({ components = {} }: AppProps) {
                 <ProtectedRoute>
                   <AdminRoute>
                     <AdminUsersPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            {/* One player, on a page of their own (it was a drawer over the list). Same two gates. */}
+            <Route
+              path="/admin/users/:userId"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminUserDetailPage />
                   </AdminRoute>
                 </ProtectedRoute>
               }

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 
 import AdminDashboardPage from "../dashboard";
 import AdminUsersPage from "../users";
+import AdminUserDetailPage from "../users/UserDetailPage";
 import AdminMatchesPage from "../matches";
 import AdminFeatureFlagsPage from "../feature-flags";
 import AdminAnnouncementsPage from "../announcements";
@@ -209,13 +210,21 @@ describe("Admin console — corrected action feedback (ADMIN-DATA-001)", () => {
       }),
     );
 
-    const { container } = renderRoute(<AdminUsersPage />);
+    // Inspecting a player opens that player's own page, so the list and that route are rendered together.
+    const { container } = render(
+      <MemoryRouter initialEntries={["/admin/users"]}>
+        <Routes>
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
     // Graduated out of `mockRoutes` above: this page now fetches
     // /api/admin/users, and the old MOCK_25_USERS padding cohort is gone.
     await waitFor(() => expect(screen.queryByText(/design preview.*mock data/i)).toBeNull());
     expect(screen.queryByText(/local demonstration only/i)).toBeNull();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Inspect Kethan Kumar" }));
     expect(await screen.findByText("Retained records only")).toBeDefined();
     expect(screen.queryByRole("button", { name: /ban account|mute player/i })).toBeNull();
     expectNoBannedClaims(container);

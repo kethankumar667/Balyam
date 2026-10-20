@@ -1,0 +1,332 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act, within, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate, type To } from "react-router-dom";
+import AdminUsersPage from "../users";
+import AdminUserDetailPage from "../users/UserDetailPage";
+import { useAuthStore } from "../../../store/authStore";
+import { jsonResponse, signInOperator, stubFetch, user } from "./adminUsersFixtures";
+
+/**
+ * Inspecting a player is a page of its own, `/admin/users/:userId`, not a drawer over the list.
+ * A page can be opened in a new tab, linked to, refreshed, and left with Back; these tests hold the
+ * flows the drawer used to carry (role change, suspension, retained records) to that page.
+ */
+
+type Entry = string | { pathname: string; state?: unknown };
+
+function renderApp(entry: Entry = "/admin/users/usr-real-001") {
+  return render(
+    <MemoryRouter initialEntries={[entry as To]}>
+      <Routes>
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+/** Opens the detail route with a details response carrying sections, by overriding the first fetch. */
+function renderWithDetails(details: unknown) {
+  stubFetch([user({ role: "member" })]);
+  vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, details) as Response);
+  return renderApp();
+}
+
+/** Two identities and a button that moves between them, standing in for following another link. */
+function renderWithSwitcher() {
+  function Switcher() {
+    const navigate = useNavigate();
+    return <button type="button" onClick={() => navigate("/admin/users/second")}>Open second</button>;
+  }
+  return render(
+    <MemoryRouter initialEntries={["/admin/users/usr-real-001"]}>
+      <Switcher />
+      <Routes>
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => signInOperator());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("Admin user page — opens from the address, so it can be linked and refreshed", () => {
+  it("loads the identity named in the URL and titles the page with its name", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+
+    expect(await screen.findByText("Legacy match associations unavailable")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 1, name: "Kethan Kumar" })).toBeDefined();
+    expect(screen.getByRole("navigation", { name: "Breadcrumbs" }).textContent).toContain("Users");
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toContain("/api/admin/users/usr-real-001");
+  });
+
+  it("says plainly when the server does not know the identity, and offers a retry", async () => {
+    stubFetch([user()]);
+    renderApp("/admin/users/does-not-exist");
+
+    expect(await screen.findByText(/User details unavailable/)).toBeDefined();
+    expect(screen.getByRole("button", { name: "Retry details" })).toBeDefined();
+  });
+
+  it("links back to the users list the admin came from, with its page and filters", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp({ pathname: "/admin/users/usr-real-001", state: { from: "?kind=guest&page=2" } });
+    await screen.findByText("Legacy match associations unavailable");
+
+    expect(screen.getByRole("link", { name: "Back to users" }).getAttribute("href")).toBe("/admin/users?kind=guest&page=2");
+  });
+
+  it("links back to the plain users list when opened directly", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+    await screen.findByText("Legacy match associations unavailable");
+
+    expect(screen.getByRole("link", { name: "Back to users" }).getAttribute("href")).toBe("/admin/users");
+  });
+});
+
+describe("Admin user page — role and wallet", () => {
+  it("promoting a role calls the real endpoint and reflects the result, not a local-only preview", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Admin" }));
+
+    await waitFor(() => expect(screen.getByText(/successfully updated/i)).toBeDefined());
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).includes("/api/admin/users/role"));
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ userId: "usr-real-001", role: "admin" });
+  });
+
+  it("does not offer suspension or role editing without superadmin UI access", async () => {
+    useAuthStore.setState({ isSuperAdmin: false });
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+
+    await screen.findByText("Legacy match associations unavailable");
+    expect(screen.queryByRole("button", { name: "Suspend identity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Admin" })).toBeNull();
+  });
+
+  it("offers the wallet investigation for this identity", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+
+    await screen.findByText("Legacy match associations unavailable");
+    expect(screen.getByRole("button", { name: /Top-Up Coins \/ Investigate Wallet/ })).toBeDefined();
+  });
+});
+
+describe("Admin user page — suspension", () => {
+  it("requires a reason and confirmed suspension, retaining state on server failure", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
+    expect((screen.getByRole("button", { name: "Confirm suspension" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Suspension reason"), { target: { value: "Repeated abuse" } });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementationOnce(async () => jsonResponse(409, { error: "Revision changed. Reload details." }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm suspension" }));
+    expect(await screen.findByText("Revision changed. Reload details.")).toBeDefined();
+    expect(screen.queryByText("Identity suspended.")).toBeNull();
+    const post = fetchMock.mock.calls.find(([, options]) => options?.method === "POST");
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ action: "suspend", reason: "Repeated abuse", expectedRevision: 0 });
+    fetchMock.mockImplementationOnce(async () => jsonResponse(200, {
+      suspension: { isSuspended: true, reason: "Repeated abuse", updatedAt: 123, revision: 1 },
+    }) as Response);
+    fetchMock.mockImplementationOnce(async () => jsonResponse(200, {
+      user: user({ role: "member", suspension: { isSuspended: true, reason: "Repeated abuse", updatedAt: 123, revision: 1 } }), sections: [], coverage: [],
+    }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm suspension" }));
+    expect(await screen.findByText("Identity suspended.")).toBeDefined();
+    expect(await screen.findByRole("button", { name: "Resume identity" })).toBeDefined();
+  });
+
+  it("validates trimmed reason boundaries and rejects control characters before posting", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
+    const reasonInput = screen.getByLabelText("Suspension reason") as HTMLTextAreaElement;
+    const confirm = screen.getByRole("button", { name: "Confirm suspension" }) as HTMLButtonElement;
+    for (const reason of ["", "   ", "ab", "  ab  ", "a".repeat(501), "Abuse\nreport", "Abuse\t", "Abuse\u0000", "Abuse\u007f"]) {
+      fireEvent.change(reasonInput, { target: { value: reason } });
+      expect(confirm.disabled, JSON.stringify(reason)).toBe(true);
+      fireEvent.submit(confirm.closest("form")!);
+    }
+    expect(vi.mocked(fetch).mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+    expect(reasonInput.minLength).toBe(3);
+    expect(reasonInput.maxLength).toBe(500);
+    for (const reason of ["abc", "  abc  ", "a".repeat(500)]) {
+      fireEvent.change(reasonInput, { target: { value: reason } });
+      expect(confirm.disabled).toBe(false);
+    }
+    fireEvent.change(reasonInput, { target: { value: "  Reviewed abuse  " } });
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(409, { error: "Revision changed. Reload details." }) as Response);
+    fireEvent.click(confirm);
+    expect(await screen.findByText("Revision changed. Reload details.")).toBeDefined();
+    const post = vi.mocked(fetch).mock.calls.find(([, options]) => options?.method === "POST");
+    expect(JSON.parse(String(post?.[1]?.body)).reason).toBe("Reviewed abuse");
+  });
+
+  it.each([{ role: "super_admin" }, { id: "operator", role: "member" }])("protects the operator and superadmin targets: %j", async (target) => {
+    stubFetch([user(target)]);
+    renderApp(`/admin/users/${(target as { id?: string }).id ?? "usr-real-001"}`);
+    await screen.findByText("Legacy match associations unavailable");
+    expect(screen.queryByRole("button", { name: "Suspend identity" })).toBeNull();
+  });
+
+  it("resumes only after a confirmed request using the recorded revision", async () => {
+    const suspension = { isSuspended: true, reason: "Previous abuse", updatedAt: 100, revision: 7 };
+    stubFetch([user({ role: "member", suspension })]);
+    renderApp();
+    fireEvent.click(await screen.findByRole("button", { name: "Resume identity" }));
+    fireEvent.change(screen.getByLabelText("Suspension reason"), { target: { value: "Reviewed appeal" } });
+    let resolvePost: (response: Response) => void = () => undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { resolvePost = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm resumption" }));
+    expect((screen.getByRole("button", { name: "Saving..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText("Identity resumed.")).toBeNull();
+    const call = vi.mocked(fetch).mock.calls.find(([, options]) => options?.method === "POST");
+    expect(String(call?.[0])).toContain("/api/admin/users/usr-real-001/suspension");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ action: "resume", reason: "Reviewed appeal", expectedRevision: 7 });
+    await act(async () => resolvePost(jsonResponse(200, { suspension: { ...suspension, isSuspended: false, revision: 8 } }) as Response));
+    expect(await screen.findByText("Identity resumed.")).toBeDefined();
+  });
+
+  it("moves focus to the required reason and restores it after cancelling confirmation", async () => {
+    stubFetch([user({ role: "member" })]);
+    renderApp();
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Suspension reason"));
+    fireEvent.change(screen.getByLabelText("Suspension reason"), { target: { value: "   " } });
+    expect((screen.getByRole("button", { name: "Confirm suspension" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Suspend identity" })));
+    expect(vi.mocked(fetch).mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+  });
+});
+
+describe("Admin user page — retained records", () => {
+  it("loads retained records and coverage, and requests the next section page", async () => {
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: ["Legacy match associations unavailable"],
+      sections: [{ key: "matches", title: "Matches", records: [{ game: "Rummy", score: 0 }], page: 1, pageSize: 20, total: null, hasMore: true }],
+    });
+    expect(await screen.findByText("Legacy match associations unavailable")).toBeDefined();
+    expect(screen.getByText("Rummy")).toBeDefined();
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, {
+      key: "matches", title: "Matches", records: [{ game: "UNO" }], page: 2, pageSize: 20, total: null, hasMore: false,
+    }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Next Matches records" }));
+    expect(await screen.findByText("UNO")).toBeDefined();
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(String(calls[calls.length - 1]?.[0])).toContain("/records/matches?page=2&pageSize=20");
+    expect((screen.getByRole("button", { name: "Next Matches records" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Previous Matches records" }));
+    expect(await screen.findByText("Rummy")).toBeDefined();
+    expect(screen.queryByText("UNO")).toBeNull();
+  });
+
+  it("shows unavailable sections distinctly from empty records and preserves zero and false fields", async () => {
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: ["Only retained records are included"],
+      sections: [
+        { key: "wallet", title: "Wallet", records: [{ balance: 0, vested: false, note: null }], page: 1, pageSize: 20, total: 1, hasMore: false },
+        { key: "matches", title: "Matches", records: [], page: 1, pageSize: 20, total: null, hasMore: false, unavailable: "Legacy identity associations unavailable" },
+      ],
+    });
+    expect(await screen.findByText("Legacy identity associations unavailable")).toBeDefined();
+    expect(screen.getByText("false")).toBeDefined();
+    expect(within(screen.getByRole("region", { name: "Wallet records" })).getByText("0")).toBeDefined();
+    expect(screen.queryByText("No retained records in this section.")).toBeNull();
+  });
+
+  it("keeps record errors distinct from empty data and retries the requested page", async () => {
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "matches", title: "Matches", records: [], page: 1, pageSize: 20, total: null, hasMore: true }],
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Next Matches records" }));
+    expect(screen.getByText("Loading Matches records")).toBeDefined();
+    await screen.findByText("Invalid recorded section response.");
+    expect(screen.queryByText("No retained records in this section.")).toBeNull();
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, {
+      key: "matches", title: "Matches", records: [{ game: "Recovered record" }], page: 2, pageSize: 20, total: null, hasMore: false,
+    }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Retry records" }));
+    expect(await screen.findByText("Recovered record")).toBeDefined();
+  });
+
+  it("rejects malformed details rather than displaying a false empty success and retries", async () => {
+    stubFetch([user({ role: "member" })]);
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, {}) as Response);
+    renderApp();
+    expect(await screen.findByText(/User details unavailable: Invalid/)).toBeDefined();
+    expect(screen.queryByText("No record sections supplied.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry details" }));
+    expect(await screen.findByText("Legacy match associations unavailable")).toBeDefined();
+  });
+});
+
+describe("Admin user page — moving between identities", () => {
+  it("ignores an old detail response after opening another identity", async () => {
+    stubFetch([user(), user({ id: "second", name: "Second Player", role: "member" })]);
+    let resolveFirst: (response: Response) => void = () => undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveFirst = resolve; }));
+    renderWithSwitcher();
+    fireEvent.click(screen.getByRole("button", { name: "Open second" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Second Player" })).toBeDefined();
+    await act(async () => resolveFirst(jsonResponse(200, { user: user(), sections: [], coverage: ["Wrong identity coverage"] }) as Response));
+    expect(screen.queryByText("Wrong identity coverage")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Second Player" })).toBeDefined();
+  });
+
+  it("does not apply a previous identity's late role update to the one now on screen", async () => {
+    stubFetch([user({ role: "member" }), user({ id: "second", name: "Second Player", role: "member" })]);
+    renderWithSwitcher();
+    await screen.findByRole("button", { name: "Admin" });
+    let resolveRole: (response: Response) => void = () => undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveRole = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Admin" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open second" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Second Player" })).toBeDefined();
+    await act(async () => resolveRole(jsonResponse(200, { success: true, role: "admin" }) as Response));
+    expect(screen.queryByText(/successfully updated/i)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Second Player" })).toBeDefined();
+    // The second identity is still a member: its own Admin button is still offered.
+    expect((screen.getByRole("button", { name: "Admin" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe("Admin user page — a moderation result that arrives after leaving", () => {
+  async function startSuspensionThenLeave() {
+    stubFetch([user({ role: "member" })]);
+    renderApp({ pathname: "/admin/users/usr-real-001", state: { from: "" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
+    fireEvent.change(screen.getByLabelText("Suspension reason"), { target: { value: "Reviewed abuse" } });
+    let resolvePost: (response: Response) => void = () => undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { resolvePost = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm suspension" }));
+    fireEvent.click(screen.getByRole("link", { name: "Back to users" }));
+    await screen.findByRole("button", { name: /Invite Moderator/ });
+    return (response: Response) => act(async () => resolvePost(response));
+  }
+
+  it("reports a deferred success on the users list", async () => {
+    const resolve = await startSuspensionThenLeave();
+    expect(screen.queryByText("Identity suspended.")).toBeNull();
+    await resolve(jsonResponse(200, { suspension: { isSuspended: true, reason: "Reviewed abuse", updatedAt: 123, revision: 1 } }) as Response);
+    expect(await screen.findByText("Identity suspended.")).toBeDefined();
+  });
+
+  it("reports a deferred failure on the users list, as an alert", async () => {
+    const resolve = await startSuspensionThenLeave();
+    await resolve(jsonResponse(409, { error: "Revision changed. Reload details." }) as Response);
+    expect((await screen.findByRole("alert")).textContent).toContain("Revision changed. Reload details.");
+  });
+});

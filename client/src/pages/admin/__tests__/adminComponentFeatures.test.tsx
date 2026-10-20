@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 
 import AdminDashboardPage from "../dashboard";
 import AdminUsersPage from "../users";
+import AdminUserDetailPage from "../users/UserDetailPage";
 import AdminMatchesPage from "../matches";
 import AdminFeatureFlagsPage from "../feature-flags";
 import AdminAnnouncementsPage from "../announcements";
@@ -36,6 +37,18 @@ function stubUsers() {
 
 function renderRoute(ui: React.ReactElement) {
   return render(<BrowserRouter>{ui}</BrowserRouter>);
+}
+
+/** The Users list and a player's own page (Inspect is a link to it), starting at `entry`. */
+function renderUsersApp(entry: string) {
+  return render(
+    <MemoryRouter initialEntries={[entry]}>
+      <Routes>
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe("Admin Console — Route Rendering (All 10 Admin Pages)", () => {
@@ -138,22 +151,22 @@ describe("Admin Console — Route Rendering (All 10 Admin Pages)", () => {
 });
 
 describe("Admin Console — Drawer Opening & Closing Lifecycle", () => {
-  it("Users: Inspect opens recorded details and Close drawer dismisses them", async () => {
+  it("Users: Inspect opens the player's page with the recorded details, and Back to users returns to the list", async () => {
     stubUsers();
-    renderRoute(<AdminUsersPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
+    renderUsersApp("/admin/users");
+    fireEvent.click(await screen.findByRole("link", { name: "Inspect Kethan Kumar" }));
 
-    // Detail drawer opens
+    // The player's own page opens, in place of the list rather than over it
     expect(await screen.findByText("Recorded Identity")).toBeDefined();
     expect(await screen.findByText("Recorded Statistics")).toBeDefined();
+    expect(screen.queryByRole("dialog")).toBeNull();
 
-    // Close drawer via aria-label="Close drawer" button
-    const closeBtn = screen.getByRole("button", { name: /close drawer/i });
-    fireEvent.click(closeBtn);
+    fireEvent.click(screen.getByRole("link", { name: "Back to users" }));
 
     await waitFor(() => {
       expect(screen.queryByText("Recorded Identity")).toBeNull();
     });
+    expect(await screen.findByRole("link", { name: "Inspect Kethan Kumar" })).toBeDefined();
     vi.unstubAllGlobals();
   });
 
@@ -291,8 +304,7 @@ describe("Admin Console — Toast / Alert Notification Feedback", () => {
     const previousAuth = useAuthStore.getState();
     useAuthStore.setState({ isSuperAdmin: true, userId: "operator", email: "operator@example.com" });
     stubUsers();
-    const { unmount } = renderRoute(<AdminUsersPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Inspect Kethan Kumar" }));
+    const { unmount } = renderUsersApp("/admin/users/usr-1");
     fireEvent.click(await screen.findByRole("button", { name: "Suspend identity" }));
     expect(screen.getByRole("button", { name: "Confirm suspension" })).toBeDefined();
     expect(screen.queryByText("Identity suspended.")).toBeNull();

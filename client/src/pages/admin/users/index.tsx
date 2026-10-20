@@ -1,19 +1,16 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type { AdminUserSummary, AdminUsersResponse } from "@shared/adminUsers";
 import ThemedSelect from "../../../components/ThemedSelect";
-import UserInspection, { type ModerationOutcome } from "./UserInspection";
-import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserCheck,
   ShieldAlert,
-  Crown,
-  Shield,
   Search,
   Filter,
-  Coins,
   RefreshCw,
   Plus,
+  X,
 } from "lucide-react";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
@@ -21,11 +18,11 @@ import StatCard from "../../../components/admin/stat-card";
 import DataTable, { type Column } from "../../../components/admin/data-table";
 import SearchBar from "../../../components/admin/search-bar";
 import FilterBar, { type FilterOption } from "../../../components/admin/filter-bar";
-import DetailDrawer from "../../../components/admin/detail-drawer";
 import LoadingState from "../../../components/admin/loading-state";
-import { operationalFetch, operationalPost, OperationalAuthError } from "../../../lib/operationalApi";
+import { operationalFetch } from "../../../lib/operationalApi";
 import { formatTimeAgo } from "../../../lib/formatTimeAgo";
-import { useAuthStore } from "../../../store/authStore";
+import { errorMessage } from "./errorMessage";
+import { useModerationOutcomeStore } from "./moderationOutcomeStore";
 
 export interface UserRow {
   id: string;
@@ -45,43 +42,93 @@ export interface UserRow {
   isMuted?: boolean;
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof OperationalAuthError) return "Not authorized for the operational API.";
-  if (err instanceof Error) return err.message;
-  return "Request failed.";
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+const KIND_VALUES = ["member", "guest"] as const;
+const ROLE_VALUES = ["super_admin", "admin", "member"] as const;
+
+function readPage(raw: string | null): number {
+  const page = Number(raw);
+  return Number.isInteger(page) && page >= 1 ? page : 1;
+}
+
+/** One of the values the list knows, or "all" for anything else a hand-edited address might carry. */
+function readChoice(raw: string | null, allowed: readonly string[]): string {
+  return allowed.find((value) => value === raw) ?? "all";
+}
+
+/** What a control changed. Anything other than a page move starts the list again from page 1. */
+interface ListQueryPatch {
+  page?: number;
+  kind?: string;
+  role?: string;
+  q?: string;
 }
 
 export default function AdminUsersPage() {
-  const navigate = useNavigate();
-  const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [kindFilter, setKindFilter] = useState("all");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get("q") ?? "");
   const [refreshKey, setRefreshKey] = useState(0);
   const [directory, setDirectory] = useState<AdminUsersResponse | null>(null);
-  const [page, setPage] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [actionAlert, setActionAlert] = useState<string | null>(null);
-  const [moderationOutcome, setModerationOutcome] = useState<ModerationOutcome | null>(null);
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
-  const [roleChangeReason, setRoleChangeReason] = useState("");
+  const moderationOutcome = useModerationOutcomeStore((state) => state.outcome);
+  const setModerationOutcome = useModerationOutcomeStore((state) => state.setOutcome);
+
+  // The page, search and filters live in the address, so Back from a player's page returns to the
+  // same view, and a view can be linked to.
+  const page = readPage(params.get("page"));
+  const kindFilter = readChoice(params.get("kind"), KIND_VALUES);
+  const roleFilter = readChoice(params.get("role"), ROLE_VALUES);
+  const urlSearch = (params.get("q") ?? "").trim();
+
+  const updateList = useCallback(
+    (patch: ListQueryPatch) => {
+      setParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          const write = (key: string, value: string, isDefault: boolean) => {
+            if (isDefault) next.delete(key);
+            else next.set(key, value);
+          };
+          if (patch.kind !== undefined) write("kind", patch.kind, patch.kind === "all");
+          if (patch.role !== undefined) write("role", patch.role, patch.role === "all");
+          if (patch.q !== undefined) write("q", patch.q, patch.q === "");
+          const nextPage = patch.page ?? 1;
+          write("page", String(nextPage), nextPage === 1);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
+
+  // A result reported here is shown once: it is cleared when the operator leaves the list.
+  useEffect(() => () => useModerationOutcomeStore.getState().setOutcome(null), []);
+
+  // The search box follows the address when it changes underneath it (Back, Forward, a pasted link).
+  useEffect(() => {
+    setSearch((current) => (current.trim() === urlSearch ? current : urlSearch));
+  }, [urlSearch]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const timer = setTimeout(() => {
+      const typed = search.trim();
+      if (typed !== urlSearch) updateList({ q: typed });
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, urlSearch, updateList]);
 
   useEffect(() => {
     let active = true;
     setIsLoading(true);
     setError(null);
-    if (search.trim() !== debouncedSearch) return () => { active = false; };
-    const query = new URLSearchParams({ page: String(page), pageSize: "10", search: debouncedSearch, kind: kindFilter, role: roleFilter });
+    if (search.trim() !== urlSearch) return () => { active = false; };
+    const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), search: urlSearch, kind: kindFilter, role: roleFilter });
     void operationalFetch<AdminUsersResponse>(`/api/admin/users?${query}`).then((response) => {
       if (!Array.isArray(response.users) || !Number.isFinite(response.total) || !response.page || !response.pageSize) throw new Error("Invalid user directory response.");
       if (active) {
@@ -94,56 +141,11 @@ export default function AdminUsersPage() {
       if (active) { setIsLoading(false); setIsRefreshing(false); }
     });
     return () => { active = false; };
-  }, [page, debouncedSearch, kindFilter, roleFilter, refreshKey, search]);
+  }, [page, urlSearch, kindFilter, roleFilter, refreshKey, search]);
 
   const usersList = users ?? [];
-  const pageSize = directory?.pageSize ?? 10;
+  const pageSize = directory?.pageSize ?? PAGE_SIZE;
   const totalPages = Math.ceil((directory?.total ?? 0) / pageSize);
-  const paginatedUsers = usersList;
-
-  // Super Admin feature: Promote/demote user roles from the UI — real, hits /api/admin/users/role.
-  const handleUpdateUserRole = async (user: UserRow, newRole: "super_admin" | "admin" | "member") => {
-    if (user.role === newRole || !isSuperAdmin || isUpdatingRole) return;
-    setIsUpdatingRole(true);
-    try {
-      const reason = roleChangeReason.trim() || `Role updated to ${newRole} from Admin Console UI`;
-      await operationalPost<{ success: boolean; role: string }>("/api/admin/users/role", {
-        userId: user.id,
-        role: newRole,
-        reason,
-      });
-
-      const updated = { ...user, role: newRole };
-      setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? updated : u)));
-      setSelectedUser((current) => current?.id === user.id ? updated : current);
-
-      // If modifying current logged-in user, immediately sync authStore in the browser
-      const auth = useAuthStore.getState();
-      if (
-        auth.userId === user.id ||
-        (auth.email && auth.email.toLowerCase() === user.email.toLowerCase())
-      ) {
-        if (newRole === "super_admin") {
-          auth.signInSuperAdmin();
-        } else if (newRole === "admin") {
-          auth.grantAdminAccess({ userId: user.id, email: user.email });
-        } else {
-          auth.setSuperAdmin(false);
-        }
-      }
-
-      setActionAlert(
-        `✓ Successfully updated ${user.name}'s role to ${newRole === "super_admin" ? "SUPER ADMIN" : newRole.toUpperCase()}!`,
-      );
-      setRoleChangeReason("");
-      setTimeout(() => setActionAlert(null), 4000);
-    } catch (err) {
-      setActionAlert(`Role update failed: ${errorMessage(err)}`);
-      setTimeout(() => setActionAlert(null), 4000);
-    } finally {
-      setIsUpdatingRole(false);
-    }
-  };
 
   const columns: Column<UserRow>[] = [
     {
@@ -221,7 +223,18 @@ export default function AdminUsersPage() {
     },
     {
       kind: "computed", key: "inspect", header: "Inspect",
-      render: (row) => <button type="button" aria-label={`Inspect ${row.name}`} onClick={() => setSelectedUser(row)} className="min-h-[44px] min-w-[44px] px-3 rounded-lg border border-[var(--chrome-border)] focus-visible:ring-2 focus-visible:ring-amber-500">Inspect</button>,
+      // A real link to the player's own page: it can be opened in a new tab, shared, and left with Back.
+      // The list's query string rides along so "Back to users" returns to the same page and filters.
+      render: (row) => (
+        <Link
+          to={`/admin/users/${encodeURIComponent(row.id)}`}
+          state={{ from: location.search }}
+          aria-label={`Inspect ${row.name}`}
+          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 rounded-lg border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        >
+          Inspect
+        </Link>
+      ),
     },
   ];
 
@@ -236,13 +249,13 @@ export default function AdminUsersPage() {
         { label: "Admin", value: "admin" },
         { label: "Member", value: "member" },
       ],
-      onChange: (value) => { setPage(1); setRoleFilter(value); },
+      onChange: (value) => updateList({ role: value }),
     },
   ];
 
   const isSearchActive = search.trim() !== "";
   const isFilterActive = roleFilter !== "all" || kindFilter !== "all";
-  const resetFilters = () => { setRoleFilter("all"); setKindFilter("all"); setPage(1); };
+  const resetFilters = () => updateList({ kind: "all", role: "all" });
 
   const emptyTitle = error
     ? "User data unavailable"
@@ -329,15 +342,20 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {actionAlert && (
-        <div role="status" className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-between">
-          <span>{actionAlert}</span>
-        </div>
-      )}
-
       {moderationOutcome && (
-        <div role={moderationOutcome.isError ? "alert" : "status"} className="mb-4 p-3 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] text-xs font-bold">
-          {moderationOutcome.message}
+        <div
+          role={moderationOutcome.isError ? "alert" : "status"}
+          className="mb-4 p-3 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] text-xs font-bold flex items-center justify-between gap-3"
+        >
+          <span>{moderationOutcome.message}</span>
+          <button
+            type="button"
+            onClick={() => setModerationOutcome(null)}
+            aria-label="Dismiss message"
+            className="shrink-0 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-[var(--chrome-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
       )}
 
@@ -367,12 +385,12 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
         <SearchBar
           value={search}
-          onChange={(value) => { setSearch(value); setPage(1); }}
+          onChange={setSearch}
           placeholder="Search by name, email, or favorite game..."
           ariaLabel="Search users"
         />
         <FilterBar onReset={resetFilters} activeCount={Number(roleFilter !== "all") + Number(kindFilter !== "all")}>
-          <ThemedSelect ariaLabel="Identity kind" variant="inline" value={kindFilter} options={[{ label: "All identities", value: "all" }, { label: "Members", value: "member" }, { label: "Guests", value: "guest" }]} onChange={(value) => { setKindFilter(value); setPage(1); }} />
+          <ThemedSelect ariaLabel="Identity kind" variant="inline" value={kindFilter} options={[{ label: "All identities", value: "all" }, { label: "Members", value: "member" }, { label: "Guests", value: "guest" }]} onChange={(value) => updateList({ kind: value })} />
           <ThemedSelect ariaLabel="Filter by Role" variant="inline" value={roleFilter} options={filters[0].options} onChange={filters[0].onChange} />
         </FilterBar>
       </div>
@@ -383,7 +401,7 @@ export default function AdminUsersPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={paginatedUsers}
+          data={usersList}
           emptyMessage={emptyTitle}
           emptyDescription={emptyDesc}
           emptyIcon={emptyIcon}
@@ -393,123 +411,10 @@ export default function AdminUsersPage() {
             totalPages: totalPages || 1,
             pageSize: pageSize,
             totalItems: directory?.total ?? 0,
-            onPageChange: setPage,
+            onPageChange: (next) => updateList({ page: next }),
           }}
         />
       )}
-
-      {/* User Detail Slide-Over Drawer */}
-      <DetailDrawer
-        isOpen={Boolean(selectedUser)}
-        onClose={() => setSelectedUser(null)}
-        title={selectedUser?.name ?? "User Profile"}
-        subtitle={selectedUser?.email}
-        width="xl"
-      >
-        {selectedUser && (
-          <UserInspection key={selectedUser.id} userId={selectedUser.id} role={selectedUser.role} onUpdate={(updated) => {
-            setSelectedUser((current) => current?.id === updated.id ? updated : current);
-            setUsers((current) => current?.map((user) => user.id === updated.id ? updated : user) ?? null);
-          }} onOutcome={setModerationOutcome}>
-            {/* Super Admin Feature: Role Management from UI — real, hits /api/admin/users/role */}
-            {isSuperAdmin && <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 space-y-3.5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                  <Crown className="w-4 h-4 text-amber-500" />
-                  <span>Super Admin Role Elevation</span>
-                </h4>
-                <span className="text-[10px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-900 dark:text-amber-200 font-extrabold border border-amber-500/30">
-                  Current: {selectedUser.role.toUpperCase()}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
-                Super Admins can grant or revoke administrative roles directly from this console. Permissions and console access take effect immediately.
-              </p>
-
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateUserRole(selectedUser, "super_admin")}
-                  disabled={selectedUser.role === "super_admin" || isUpdatingRole}
-                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                    selectedUser.role === "super_admin"
-                      ? "bg-amber-500 text-zinc-950 opacity-60 cursor-not-allowed shadow-inner"
-                      : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 active:scale-95"
-                  }`}
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  <span>Super Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpdateUserRole(selectedUser, "admin")}
-                  disabled={selectedUser.role === "admin" || isUpdatingRole}
-                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                    selectedUser.role === "admin"
-                      ? "bg-emerald-500 text-zinc-950 opacity-60 cursor-not-allowed shadow-inner"
-                      : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 active:scale-95"
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpdateUserRole(selectedUser, "member")}
-                  disabled={selectedUser.role === "member" || isUpdatingRole}
-                  className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                    selectedUser.role === "member"
-                      ? "bg-[var(--chrome-control)] text-[var(--chrome-ink)] opacity-60 cursor-not-allowed shadow-inner"
-                      : "bg-[var(--chrome-control)] hover:bg-[var(--chrome-control-hi)] text-[var(--chrome-ink)] border border-[var(--chrome-border)] active:scale-95"
-                  }`}
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>Member</span>
-                </button>
-              </div>
-
-              <div className="pt-1">
-                <label htmlFor="role-change-reason" className="block text-[11px] font-bold text-[var(--chrome-ink-soft)] mb-1">
-                  Elevation Reason / Audit Note (Optional)
-                </label>
-                <input
-                  id="role-change-reason"
-                  type="text"
-                  value={roleChangeReason}
-                  onChange={(e) => setRoleChangeReason(e.target.value)}
-                  placeholder="e.g. Approved operator elevation via console"
-                  className="w-full h-9 px-3 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                />
-              </div>
-            </div>}
-
-            {/* Player Economy & Coins Top-Up Action */}
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                  <Coins className="w-4 h-4" />
-                  Player Economy & Coins
-                </h4>
-              </div>
-              <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
-                Inspect this player's live coin wallet balance, audit transaction ledger history, or manually top up virtual coins.
-              </p>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(`/admin/economy?tab=player&identityId=${encodeURIComponent(selectedUser.id)}`)
-                }
-                className="w-full min-h-[44px] mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-              >
-                <Coins className="w-4 h-4" />
-                <span>Top-Up Coins / Investigate Wallet</span>
-              </button>
-            </div>
-          </UserInspection>
-        )}
-      </DetailDrawer>
     </AdminLayout>
   );
 }
