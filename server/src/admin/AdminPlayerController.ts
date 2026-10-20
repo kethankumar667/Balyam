@@ -1,7 +1,7 @@
 import type { Router, Request, Response, NextFunction } from "express";
 import type { AdminSuspensionRequest } from "@shared/adminUsers.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
-import { AdminPlayerError, adminPlayerService, type DirectoryQuery } from "./AdminPlayerService.js";
+import { AdminPlayerError, adminPlayerService, DEFAULT_RECORDS_PAGE_SIZE, type DirectoryQuery } from "./AdminPlayerService.js";
 
 function requireHumanSuperadmin(req: Request, res: Response, next: NextFunction): void {
   const principal = req.operationalPrincipal;
@@ -47,7 +47,7 @@ export function installAdminPlayerRoutes(router: Router): void {
   });
   router.get("/:id/records/:section", requireHumanSuperadmin, async (req, res) => {
     try { res.json(await adminPlayerService().records(req.params.id, req.params.section,
-      pageNumber(req.query.page, 1, 1000000), pageNumber(req.query.pageSize, 20, 100))); }
+      pageNumber(req.query.page, 1, 1000000), pageNumber(req.query.pageSize, DEFAULT_RECORDS_PAGE_SIZE, 100))); }
     catch (error) { fail(res, error); }
   });
   router.post("/:id/suspension", requireHumanSuperadmin, async (req, res) => {

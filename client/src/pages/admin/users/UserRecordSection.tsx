@@ -1,65 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AdminRecordSection } from "@shared/adminUsers";
 import Panel from "../../../components/admin/panel";
 import LoadingState from "../../../components/admin/loading-state";
 import { operationalFetch } from "../../../lib/operationalApi";
+import { useViewport } from "../../../lib/useViewport";
 import { errorMessage } from "./errorMessage";
-import { fieldLabel, flattenRecord, isEpochMoment, sectionTitle } from "./recordFormat";
+import { presentSection, type PresentedColumn } from "./recordColumns";
+import { formatText, sectionTitle } from "./recordFormat";
 
-const RECORDS_PAGE_SIZE = 20;
+/** Rows per page, for every record table on the player page. The server pages the same way. */
+export const RECORDS_PAGE_SIZE = 10;
 const NOT_RECORDED = "Not recorded";
-// A full ISO-8601 timestamp such as 2026-10-20T15:10:08.001Z: shown in the operator's own time zone.
-const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 const CONTROL =
   "min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--chrome-border)] px-3 text-sm text-[var(--chrome-ink)] transition-colors hover:bg-[var(--chrome-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50";
 
-function Cell({ field, value }: { field: string; value: unknown }) {
+function Cell({ column, value }: { column: PresentedColumn; value: unknown }) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-[var(--chrome-ink-soft)]">{NOT_RECORDED}</span>;
   }
-  if (isEpochMoment(field, value)) return <>{new Date(value).toLocaleString()}</>;
   if (typeof value === "object") {
-    return (
-      <code className="block max-h-24 max-w-xs overflow-auto break-all font-mono text-xs">{JSON.stringify(value)}</code>
-    );
+    return <code className="block max-h-24 max-w-xs overflow-auto break-all font-mono text-xs">{JSON.stringify(value)}</code>;
   }
-  if (typeof value === "string" && ISO_TIMESTAMP.test(value)) return <>{new Date(value).toLocaleString()}</>;
-  return <>{String(value)}</>;
+  const text = formatText(column.kind, column.field, value);
+  // A shortened id keeps the whole one one hover away.
+  return column.kind === "shortId" ? <span title={String(value)} className="font-mono text-xs">{text}</span> : <>{text}</>;
 }
 
-/** The fields the records carry, in the order they first appear: one column each. */
-function columnsOf(records: Record<string, unknown>[]): string[] {
-  const seen = new Set<string>();
-  for (const record of records) for (const field of Object.keys(record)) seen.add(field);
-  return [...seen];
-}
-
-function RecordsTable({ section }: { section: AdminRecordSection }) {
-  const records = section.records.map(flattenRecord);
-  const columns = columnsOf(records);
+function RecordsTable({ title, columns, rows, page }: { title: string; columns: PresentedColumn[]; rows: Record<string, unknown>[]; page: number }) {
   return (
-    // Focusable so a keyboard user can scroll a table that is wider than the panel.
-    <div className="overflow-x-auto" tabIndex={0}>
-      <table className="w-full min-w-max text-left text-sm">
-        <caption className="sr-only">
-          {sectionTitle(section.title)} records, page {section.page}
-        </caption>
+    // Focusable so a keyboard user can scroll a table that is wider than the panel, in the rare case one is.
+    <div className="relative overflow-x-auto" tabIndex={0}>
+      <table aria-label={`${title} table`} className="w-full text-left text-sm">
         <thead className="bg-[var(--chrome-control)]/50 text-xs text-[var(--chrome-ink-soft)]">
           <tr>
-            {columns.map((field) => (
-              <th key={field} scope="col" className="whitespace-nowrap px-4 py-2.5 font-semibold capitalize">
-                {fieldLabel(field)}
+            {columns.map((column) => (
+              <th key={column.field} scope="col" className="px-4 py-2.5 font-semibold">
+                {column.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--chrome-hairline)]">
-          {records.map((record, index) => (
-            <tr key={`${section.page}-${index}`}>
-              {columns.map((field) => (
-                <td key={field} className="px-4 py-2.5 align-top tabular-nums text-[var(--chrome-ink)]">
-                  <Cell field={field} value={record[field]} />
+          {rows.map((row, index) => (
+            <tr key={`${page}-${index}`}>
+              {columns.map((column) => (
+                <td key={column.field} className="break-words px-4 py-2.5 align-top tabular-nums text-[var(--chrome-ink)]">
+                  <Cell column={column} value={row[column.field]} />
                 </td>
               ))}
             </tr>
@@ -70,14 +57,61 @@ function RecordsTable({ section }: { section: AdminRecordSection }) {
   );
 }
 
+/** The phone's version of a table: one block per record, field name left and value right, nothing to scroll sideways. */
+function RecordCards({ columns, rows, page }: { columns: PresentedColumn[]; rows: Record<string, unknown>[]; page: number }) {
+  return (
+    <ul className="divide-y divide-[var(--chrome-hairline)]">
+      {rows.map((row, index) => (
+        <li key={`${page}-${index}`} className="px-4 py-3">
+          <dl className="space-y-1.5">
+            {columns.map((column) => (
+              <div key={column.field} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 text-sm">
+                <dt className="text-xs text-[var(--chrome-ink-soft)]">{column.label}</dt>
+                <dd className="min-w-0 break-words tabular-nums text-[var(--chrome-ink)]">
+                  <Cell column={column} value={row[column.field]} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One record about the player (profile, wallet) as labelled fields. */
+function RecordDetail({ columns, row }: { columns: PresentedColumn[]; row: Record<string, unknown> }) {
+  return (
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-2 xl:grid-cols-3">
+      {columns.map((column) => (
+        <div key={column.field} className="min-w-0">
+          <dt className="text-xs text-[var(--chrome-ink-soft)]">{column.label}</dt>
+          <dd className="mt-1 break-words text-sm font-medium tabular-nums text-[var(--chrome-ink)]">
+            <Cell column={column} value={row[column.field]} />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function pagerSummary(page: number, pageSize: number, shown: number, total: number | null): string {
+  if (total === null) return `Page ${page} - retained records`;
+  if (total === 0 || shown === 0) return `${total} recorded`;
+  const first = (page - 1) * pageSize + 1;
+  return `Showing ${first}-${first + shown - 1} of ${total}`;
+}
+
 /**
- * One kind of retained record (matches, wallet, …) as a paged table.
+ * One kind of retained record (matches, wallet, …) as a table of at most ten rows, with paging.
  *
  * The first page arrives with the player's details; later pages are fetched here. A failed page is an
- * error with a retry, never an empty table, and a section the server cannot supply says so.
+ * error with a retry, never an empty table, and a section the server cannot supply says so. On a phone
+ * the rows become stacked blocks; a section that is one record about the player becomes a field list.
  */
 export default function UserRecordSection({ userId, initial }: { userId: string; initial: AdminRecordSection }) {
   const title = sectionTitle(initial.title);
+  const isMobile = useViewport() === "mobile";
   const [section, setSection] = useState(initial);
   const [page, setPage] = useState(initial.page);
   const [retry, setRetry] = useState(0);
@@ -112,43 +146,45 @@ export default function UserRecordSection({ userId, initial }: { userId: string;
     };
   }, [userId, initial, page, retry]);
 
+  const presented = useMemo(() => presentSection(initial.key, section.records), [initial.key, section.records]);
+  const pageSize = section.pageSize || RECORDS_PAGE_SIZE;
+  const pageCount = section.total === null ? null : Math.max(1, Math.ceil(section.total / pageSize));
+  const hasPaging = page > 1 || section.hasMore;
+  const isSingleRecord = presented.layout === "detail" && !hasPaging;
+
   const pager = (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span role="status" className="text-xs text-[var(--chrome-ink-soft)]">
-        Page {page}
-        {section.total === null ? " - retained records" : ` - ${section.total} recorded`}
+        {pagerSummary(page, pageSize, section.records.length, section.total)}
+        {pageCount !== null && hasPaging ? ` - page ${page} of ${pageCount}` : ""}
       </span>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className={CONTROL}
-          aria-label={`Previous ${title} records`}
-          disabled={isLoading || page <= 1}
-          onClick={() => setPage((value) => value - 1)}
-        >
-          <ChevronLeft size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={CONTROL}
-          aria-label={`Next ${title} records`}
-          disabled={isLoading || Boolean(error) || Boolean(section.unavailable) || !section.hasMore}
-          onClick={() => setPage((value) => value + 1)}
-        >
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-      </div>
+      {hasPaging && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={CONTROL}
+            aria-label={`Previous ${title} records`}
+            disabled={isLoading || page <= 1}
+            onClick={() => setPage((value) => value - 1)}
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={CONTROL}
+            aria-label={`Next ${title} records`}
+            disabled={isLoading || Boolean(error) || Boolean(section.unavailable) || !section.hasMore}
+            onClick={() => setPage((value) => value + 1)}
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </div>
   );
 
   return (
-    <Panel
-      title={title}
-      label={`${title} records`}
-      busy={isLoading}
-      bodyClassName="p-0"
-      footer={pager}
-    >
+    <Panel title={title} label={`${title} records`} busy={isLoading} bodyClassName="p-0" footer={isSingleRecord ? undefined : pager}>
       {isLoading ? (
         <div className="p-5">
           <LoadingState label={`Loading ${title} records`} rows={3} />
@@ -166,8 +202,12 @@ export default function UserRecordSection({ userId, initial }: { userId: string;
         </p>
       ) : section.records.length === 0 ? (
         <p className="p-5 text-sm text-[var(--chrome-ink-soft)]">No retained records in this section.</p>
+      ) : presented.layout === "detail" && presented.rows.length === 1 ? (
+        <RecordDetail columns={presented.columns} row={presented.rows[0]!} />
+      ) : isMobile ? (
+        <RecordCards columns={presented.columns} rows={presented.rows} page={page} />
       ) : (
-        <RecordsTable section={section} />
+        <RecordsTable title={title} columns={presented.columns} rows={presented.rows} page={page} />
       )}
     </Panel>
   );

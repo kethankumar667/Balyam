@@ -225,7 +225,7 @@ describe("Admin user page — retained records", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next Matches records" }));
     expect(await screen.findByText("UNO")).toBeDefined();
     const calls = vi.mocked(fetch).mock.calls;
-    expect(String(calls[calls.length - 1]?.[0])).toContain("/records/matches?page=2&pageSize=20");
+    expect(String(calls[calls.length - 1]?.[0])).toContain("/records/matches?page=2&pageSize=10");
     expect((screen.getByRole("button", { name: "Next Matches records" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Previous Matches records" }));
     expect(await screen.findByText("Rummy")).toBeDefined();
@@ -260,6 +260,57 @@ describe("Admin user page — retained records", () => {
     }) as Response);
     fireEvent.click(screen.getByRole("button", { name: "Retry records" }));
     expect(await screen.findByText("Recovered record")).toBeDefined();
+  });
+
+  it("shows only the fields worth reading, formatted, and none of the row's internal ids", async () => {
+    const row = { id: "match-internal-id-0001", room_code: "ABC123", game: "rummy", started_at: "2026-10-20T10:00:00.000Z", finished_at: "2026-10-20T10:07:00.000Z", duration_ms: 420_000, winner_id: "winner-internal-id", winner_kind: "bot", participant_count: 3, recorded_at: "2026-10-20T10:07:01.000Z" };
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "matches", title: "matches", records: [row], page: 1, pageSize: 10, total: 1, hasMore: false }],
+    });
+    const table = await screen.findByRole("table", { name: "Matches table" });
+    expect(within(table).getByRole("columnheader", { name: "Game" })).toBeDefined();
+    expect(within(table).getByRole("columnheader", { name: "Duration" })).toBeDefined();
+    expect(within(table).queryByRole("columnheader", { name: /^id$/i })).toBeNull();
+    expect(within(table).getByText("Rummy")).toBeDefined();
+    expect(within(table).getByText("7m 0s")).toBeDefined();
+    expect(within(table).queryByText("match-internal-id-0001")).toBeNull();
+    expect(within(table).queryByText("winner-internal-id")).toBeNull();
+  });
+
+  it("pages ten rows at a time and says where the operator is in the whole", async () => {
+    const records = Array.from({ length: 10 }, (_, index) => ({ game: "ludo", room_code: `ROOM${index}`, finished_at: "2026-10-20T10:07:00.000Z", participant_count: 2 }));
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "matches", title: "matches", records, page: 1, pageSize: 10, total: 28, hasMore: true }],
+    });
+    expect(await screen.findByText(/Showing 1-10 of 28 - page 1 of 3/)).toBeDefined();
+    expect((screen.getByRole("button", { name: "Previous Matches records" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Next Matches records" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("lays a single record out as labelled fields rather than one very wide row", async () => {
+    const wallet = { identity_id: "wallet-internal-id", identity_kind: "member", balance: 5200, version: 14, lifetime_granted: 5000, lifetime_earned: 800, lifetime_spent: 600, lifetime_refunded: 0, is_frozen: false, created_at: "2026-08-01T10:00:00.000Z", updated_at: "2026-10-20T10:00:00.000Z" };
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "wallet", title: "wallet", records: [wallet], page: 1, pageSize: 10, total: 1, hasMore: false }],
+    });
+    const region = await screen.findByRole("region", { name: "Wallet records" });
+    expect(within(region).getByText("Balance")).toBeDefined();
+    expect(within(region).getByText("5,200")).toBeDefined();
+    expect(within(region).getByText("No")).toBeDefined();
+    expect(within(region).queryByRole("table")).toBeNull();
+    expect(within(region).queryByText("wallet-internal-id")).toBeNull();
+    expect(within(region).queryByText("Version")).toBeNull();
+  });
+
+  it("draws no table caption: an absolutely-positioned one escapes the layout and adds a second page scrollbar", async () => {
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "matches", title: "Matches", records: [{ game: "Rummy", score: 0 }], page: 1, pageSize: 10, total: 1, hasMore: false }],
+    });
+    await screen.findByText("Rummy");
+    expect(document.querySelector("caption")).toBeNull();
   });
 
   it("rejects malformed details rather than displaying a false empty success and retries", async () => {

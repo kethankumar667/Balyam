@@ -16,6 +16,8 @@ export interface DirectoryQuery {
   role: "all" | AdminUserSummary["role"];
 }
 
+/** Rows per page of every record table on the admin player page; the client asks for the same number. */
+export const DEFAULT_RECORDS_PAGE_SIZE = 10;
 const ACTIVE: AdminSuspensionState = { isSuspended: false, reason: null, updatedAt: null, revision: 0 };
 export const RECORD_SECTIONS = ["account", "profile", "matches", "participants", "xp", "achievements", "challenges", "progression", "wallet", "ledger", "rewards", "reward_audit", "friends", "friend_requests", "mandali", "moderation"] as const;
 type RecordKey = typeof RECORD_SECTIONS[number];
@@ -166,7 +168,7 @@ export class AdminPlayerService {
   async details(id: string): Promise<AdminUserDetails> {
     const user = await this.store.user(id);
     if (!user) throw new AdminPlayerError(404, "Identity not found.");
-    const sections = await Promise.all(RECORD_SECTIONS.map(key => this.store.records(id, key, 1, 20)));
+    const sections = await Promise.all(RECORD_SECTIONS.map(key => this.store.records(id, key, 1, DEFAULT_RECORDS_PAGE_SIZE)));
     return { user: { ...user, role: user.accountKind === "guest" ? "member" : this.roles()[id] ?? "member" }, sections,
       coverage: [this.store.durable ? "Recorded durable data only." : "Process-lifetime data only; not durable. Registered accounts never seen by this process are unavailable.",
         "Never-recorded or lost historical account-to-seat associations cannot be recreated.",
