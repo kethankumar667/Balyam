@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import type { AdminUserSummary } from "@shared/adminUsers";
+import type { AdminRecordSection, AdminUserSummary } from "@shared/adminUsers";
 import { RefreshCw } from "lucide-react";
 import LoadingState from "../../../components/admin/loading-state";
 import Panel from "../../../components/admin/panel";
 import ModerationPanel from "./ModerationPanel";
-import { CoveragePanel, PlayerIdentity, PlayerStats } from "./PlayerPanels";
+import { CoveragePanel, PlayerIdentity, PlayerStats, type PlayerStatsExtras } from "./PlayerPanels";
+import SectionNav from "./SectionNav";
 import QuietRecordSections, { isQuietSection } from "./QuietRecordSections";
 import UserRecordSection from "./UserRecordSection";
 import { useSuspensionFlow } from "./useSuspensionFlow";
@@ -14,6 +15,17 @@ const RETRY =
   "min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--chrome-border)] px-3 text-sm text-[var(--chrome-ink)] transition-colors hover:bg-[var(--chrome-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500";
 
 export type ModerationOutcome = { message: string; isError: boolean };
+
+/** A number out of a section's first record, when that section shipped one (profile level, wallet balance). */
+function firstNumber(sections: AdminRecordSection[], key: string, field: string): number | undefined {
+  const value = sections.find((section) => section.key === key)?.records[0]?.[field];
+  return typeof value === "number" ? value : undefined;
+}
+
+/** The extra figures for the statistics panel, read from sections the details already carry. */
+function statsExtras(sections: AdminRecordSection[]): PlayerStatsExtras {
+  return { level: firstNumber(sections, "profile", "level"), balance: firstNumber(sections, "wallet", "balance") };
+}
 
 type InspectionProps = {
   userId: string;
@@ -55,10 +67,12 @@ export default function UserInspection({ userId, role, onUpdate, onOutcome, chil
   if (!user || !details) return null;
 
   return (
-    // Source order is the phone order (figures, who and what to do, then the long tables); from `lg` the
-    // side column is pinned to the right and spans both rows.
+    <div className="space-y-6">
+    <SectionNav sections={details.sections} />
+    {/* Source order is the phone order (figures, who and what to do, then the long tables); from `lg` the
+        side column is pinned to the right and spans both rows. */}
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr] lg:items-start">
-      <PlayerStats user={user} />
+      <PlayerStats user={user} extras={statsExtras(details.sections)} />
       <div className="space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <PlayerIdentity user={user} />
         <ModerationPanel user={user} flow={flow} onReload={reload} />
@@ -81,6 +95,7 @@ export default function UserInspection({ userId, role, onUpdate, onOutcome, chil
           </Panel>
         )}
       </div>
+    </div>
     </div>
   );
 }

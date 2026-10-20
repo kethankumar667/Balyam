@@ -4,6 +4,8 @@ import { sectionTitle } from "./recordFormat";
 
 /** A section with nothing to page through: no rows, and no further pages to fetch. */
 export function isQuietSection(section: AdminRecordSection): boolean {
+  // A deferred section has no rows yet only because they have not been fetched; the server counted some.
+  if (section.deferred) return false;
   return section.records.length === 0 && !section.hasMore;
 }
 

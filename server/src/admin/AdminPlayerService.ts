@@ -3,6 +3,7 @@ import type { ProgressionRepository } from "../persistence/ProgressionRepository
 import { progressionRepository } from "../persistence/index.js";
 import { PostgrestClient, PostgrestError, readPostgrestConfig } from "../persistence/postgrest.js";
 import { operationalAuthConfig, listDynamicRoles } from "../security/operationalAuth.js";
+import { logger } from "../lib/logger.js";
 
 export class AdminPlayerError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -16,6 +17,8 @@ export interface DirectoryQuery {
   role: "all" | AdminUserSummary["role"];
 }
 
+/** Sections whose first page ships with the details; every other section is counted and loaded on demand. */
+const PRIMARY_SECTIONS: ReadonlySet<string> = new Set(["account", "profile", "matches", "wallet"]);
 /** Rows per page of every record table on the admin player page; the client asks for the same number. */
 export const DEFAULT_RECORDS_PAGE_SIZE = 10;
 const ACTIVE: AdminSuspensionState = { isSuspended: false, reason: null, updatedAt: null, revision: 0 };
@@ -168,11 +171,33 @@ export class AdminPlayerService {
   async details(id: string): Promise<AdminUserDetails> {
     const user = await this.store.user(id);
     if (!user) throw new AdminPlayerError(404, "Identity not found.");
-    const sections = await Promise.all(RECORD_SECTIONS.map(key => this.store.records(id, key, 1, DEFAULT_RECORDS_PAGE_SIZE)));
+    const sections = await Promise.all(RECORD_SECTIONS.map(key => this.section(id, key)));
     return { user: { ...user, role: user.accountKind === "guest" ? "member" : this.roles()[id] ?? "member" }, sections,
       coverage: [this.store.durable ? "Recorded durable data only." : "Process-lifetime data only; not durable. Registered accounts never seen by this process are unavailable.",
         "Never-recorded or lost historical account-to-seat associations cannot be recreated.",
         "Rating is derived from recorded wins and known losses; unrecorded recovery bonuses and unknown historical outcomes are excluded."] };
+  }
+  /**
+   * One section as the details page needs it. The primary ones ship their first page; the rest are only
+   * counted (one row asked for, none sent) and flagged `deferred`, so opening a player no longer reads and
+   * sends sixteen pages of which most are never looked at.
+   */
+  private async section(id: string, key: RecordKey): Promise<AdminRecordSection> {
+    if (PRIMARY_SECTIONS.has(key)) return this.store.records(id, key, 1, DEFAULT_RECORDS_PAGE_SIZE);
+    const counted = await this.store.records(id, key, 1, 1);
+    const base = { ...counted, records: [], pageSize: DEFAULT_RECORDS_PAGE_SIZE };
+    if (counted.unavailable || counted.total === null) return { ...base, hasMore: false };
+    return { ...base, hasMore: counted.total > DEFAULT_RECORDS_PAGE_SIZE, deferred: counted.total > 0 };
+  }
+  /**
+   * Personal data (email, birthday, …) is masked on the admin page until an operator asks to see it. The
+   * ask is made here so that it leaves a trace: who looked at whose data, and when. It is a structured log
+   * line, not a table; a durable audit row would need a migration of its own.
+   */
+  async recordPersonalDataAccess(actor: string, id: string): Promise<{ revealedAt: number }> {
+    if (!await this.store.user(id)) throw new AdminPlayerError(404, "Identity not found.");
+    logger.info({ message: `Personal data of ${id} shown to ${actor}`, module: "ADMIN_PLAYER_PII" });
+    return { revealedAt: Date.now() };
   }
   async records(id: string, key: string, page: number, pageSize: number): Promise<AdminRecordSection> {
     if (!RECORD_SECTIONS.includes(key as RecordKey)) throw new AdminPlayerError(404, "Unknown record section.");

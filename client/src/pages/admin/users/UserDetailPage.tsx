@@ -9,6 +9,7 @@ import StatusBadge from "../../../components/admin/status-badge";
 import UserInspection from "./UserInspection";
 import UserRoleElevation from "./UserRoleElevation";
 import { GuestBadge, RoleBadge } from "./UserBadges";
+import { maskEmail, PersonalDataProvider, usePersonalData } from "./personalData";
 import { useModerationOutcomeStore } from "./moderationOutcomeStore";
 
 const UNNAMED_PLAYER = "Unnamed player";
@@ -58,7 +59,8 @@ function WalletPanel({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-function UserDetailContent({ userId }: { userId: string }) {
+function UserDetailBody({ userId }: { userId: string }) {
+  const { isRevealed } = usePersonalData();
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<AdminUserSummary | null>(null);
@@ -74,7 +76,7 @@ function UserDetailContent({ userId }: { userId: string }) {
     <AdminLayout>
       <PageHeader
         title={displayName ?? "User profile"}
-        description={user ? user.email || "No email recorded" : undefined}
+        description={user ? (user.email ? (isRevealed ? user.email : maskEmail(user.email)) : "No email recorded") : undefined}
         leading={displayName ? <Avatar name={displayName} /> : undefined}
         badge={user ? <PlayerBadges user={user} /> : undefined}
         breadcrumbs={[
@@ -133,5 +135,9 @@ function UserDetailContent({ userId }: { userId: string }) {
  */
 export default function AdminUserDetailPage() {
   const { userId = "" } = useParams();
-  return <UserDetailContent key={userId} userId={userId} />;
+  return (
+    <PersonalDataProvider key={userId} userId={userId}>
+      <UserDetailBody userId={userId} />
+    </PersonalDataProvider>
+  );
 }

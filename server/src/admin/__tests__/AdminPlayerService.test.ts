@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryProgressionRepository } from "../../persistence/InMemoryProgressionRepository.js";
 import { AdminPlayerService, MemoryAdminPlayerStore } from "../AdminPlayerService.js";
 import { PostgrestError } from "../../persistence/postgrest.js";
+import { logger } from "../../lib/logger.js";
 
 describe("canonical admin player inspection", () => {
   let repo: InMemoryProgressionRepository;
@@ -35,6 +36,35 @@ describe("canonical admin player inspection", () => {
     expect(identityWrite).not.toHaveBeenCalled();
     expect(profileWrite).not.toHaveBeenCalled();
     await expect(service.details("missing")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("ships the primary sections whole and only counts the rest, flagging them for on-demand loading", async () => {
+    await repo.upsertIdentity({ playerId: "p1", kind: "member", authUserId: null, lastSeenAt: 1 });
+    for (let index = 0; index < 12; index++) {
+      await repo.appendXp({ playerId: "p1", amount: 10, reason: "match_played", sourceKind: "match", sourceId: `match-${index}`, createdAt: index + 1 });
+    }
+    const { sections } = await service.details("p1");
+    const xp = sections.find(section => section.key === "xp")!;
+    expect(xp).toMatchObject({ records: [], total: 12, pageSize: 10, hasMore: true, deferred: true });
+    const wallet = sections.find(section => section.key === "wallet")!;
+    expect(wallet.deferred).toBeUndefined();
+    const achievements = sections.find(section => section.key === "achievements")!;
+    expect(achievements).toMatchObject({ records: [], total: 0, deferred: false });
+    const unavailable = sections.find(section => section.key === "ledger")!;
+    expect(unavailable.unavailable).toBeTruthy();
+    expect(unavailable.deferred).toBeUndefined();
+    const page = await service.records("p1", "xp", 2, 10);
+    expect(page.records).toHaveLength(2);
+  });
+
+  it("records who looked at a player's personal data, and refuses an identity that does not exist", async () => {
+    await repo.upsertIdentity({ playerId: "p1", kind: "member", authUserId: null, lastSeenAt: 1 });
+    const info = vi.spyOn(logger, "info");
+    const result = await service.recordPersonalDataAccess("operator", "p1");
+    expect(result.revealedAt).toBeGreaterThan(0);
+    expect(info).toHaveBeenCalledWith(expect.objectContaining({ module: "ADMIN_PLAYER_PII", message: expect.stringContaining("p1") }));
+    expect(info.mock.calls.at(-1)?.[0]).toMatchObject({ message: expect.stringContaining("operator") });
+    await expect(service.recordPersonalDataAccess("operator", "missing")).rejects.toMatchObject({ status: 404 });
   });
 
   it("suspends and resumes with an atomic audit and revision check", async () => {

@@ -324,6 +324,116 @@ describe("Admin user page — retained records", () => {
   });
 });
 
+describe("Admin user page — personal data, deferred sections, navigation", () => {
+  const accountSection = {
+    key: "account", title: "account", page: 1, pageSize: 10, total: 1, hasMore: false,
+    records: [{ id: "x", email: "kethan@bhalyam.io", first_name: "Kethan", last_name: "Kumar", dob: "1997-08-28", created_at: "2026-08-01T10:00:00.000Z", updated_at: "2026-08-02T10:00:00.000Z" }],
+  };
+
+  it("hides the email and the account's personal fields until the operator asks, and the ask goes to the server", async () => {
+    renderWithDetails({ user: user({ role: "member" }), coverage: [], sections: [accountSection] });
+    expect((await screen.findAllByText("k•••••@bhalyam.io")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("kethan@bhalyam.io")).toBeNull();
+    expect(screen.queryByText("Kethan")).toBeNull();
+
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, { revealedAt: 1 }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Show personal data" }));
+
+    await waitFor(() => expect(screen.getAllByText("kethan@bhalyam.io").length).toBeGreaterThan(0));
+    expect(screen.getByText("Kethan")).toBeDefined();
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).includes("/api/admin/users/usr-real-001/personal-data-access"));
+    expect(call?.[1]?.method).toBe("POST");
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide personal data" }));
+    expect(screen.queryByText("kethan@bhalyam.io")).toBeNull();
+    expect(screen.queryByText("Kethan")).toBeNull();
+  });
+
+  it("keeps personal data hidden, and says so, when the server will not record the access", async () => {
+    renderWithDetails({ user: user({ role: "member" }), coverage: [], sections: [accountSection] });
+    await screen.findAllByText("k•••••@bhalyam.io");
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(403, { error: "Forbidden", message: "A verified human superadmin is required." }) as Response);
+    fireEvent.click(screen.getByRole("button", { name: "Show personal data" }));
+    expect(await screen.findByText(/Personal data stays hidden/)).toBeDefined();
+    expect(screen.queryByText("kethan@bhalyam.io")).toBeNull();
+    expect(screen.getByRole("button", { name: "Show personal data" })).toBeDefined();
+  });
+
+  it("fetches a deferred section only once it comes near the screen", async () => {
+    const callbacks: Array<(entries: { isIntersecting: boolean }[]) => void> = [];
+    class FakeObserver {
+      constructor(callback: (entries: { isIntersecting: boolean }[]) => void) { callbacks.push(callback); }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [{ key: "xp", title: "xp", records: [], page: 1, pageSize: 10, total: 12, hasMore: true, deferred: true }],
+    });
+    expect(await screen.findByRole("region", { name: "XP records" })).toBeDefined();
+    const xpCalls = () => vi.mocked(fetch).mock.calls.filter(([input]) => String(input).includes("/records/xp"));
+    expect(xpCalls()).toHaveLength(0);
+
+    vi.mocked(fetch).mockImplementationOnce(async () => jsonResponse(200, {
+      key: "xp", title: "xp", page: 1, pageSize: 10, total: 12, hasMore: true,
+      records: [{ amount: 40, reason: "match_played", source_kind: "match", created_at: "2026-10-20T10:00:00.000Z" }],
+    }) as Response);
+    act(() => { callbacks.forEach((callback) => callback([{ isIntersecting: true }])); });
+
+    expect(await screen.findByText("Match played")).toBeDefined();
+    expect(String(xpCalls()[0]?.[0])).toContain("/records/xp?page=1&pageSize=10");
+    expect(xpCalls()).toHaveLength(1);
+  });
+
+  it("offers a jump bar with row counts and leaves out sections with nothing in them", async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", { value: scrollIntoView, configurable: true, writable: true });
+    const rows = (count: number) => Array.from({ length: count }, (_, index) => ({ game: "ludo", room_code: `R${index}`, finished_at: "2026-10-20T10:00:00.000Z" }));
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [
+        { key: "matches", title: "matches", records: rows(3), page: 1, pageSize: 10, total: 3, hasMore: false },
+        { key: "xp", title: "xp", records: [{ amount: 5, reason: "match_played", source_kind: "match", created_at: "2026-10-20T10:00:00.000Z" }], page: 1, pageSize: 10, total: 1, hasMore: false },
+        { key: "challenges", title: "challenges", records: [{ challenge_id: "daily_win_1", period_key: "2026-10-20", xp_awarded: 50, claimed_at: "2026-10-20T10:00:00.000Z" }], page: 1, pageSize: 10, total: 1, hasMore: false },
+        { key: "achievements", title: "achievements", records: [], page: 1, pageSize: 10, total: 0, hasMore: false },
+      ],
+    });
+    const nav = await screen.findByRole("navigation", { name: "Record sections" });
+    expect(within(nav).getByRole("button", { name: /^Matches\s*3$/ })).toBeDefined();
+    expect(within(nav).getByRole("button", { name: /^XP\s*1$/ })).toBeDefined();
+    expect(within(nav).getByRole("button", { name: /^Challenges\s*1$/ })).toBeDefined();
+    expect(within(nav).queryByRole("button", { name: /Achievements/ })).toBeNull();
+    fireEvent.click(within(nav).getByRole("button", { name: /^XP\s*1$/ }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds the wallet balance and level to the statistics when those sections carry them", async () => {
+    renderWithDetails({
+      user: user({ role: "member" }), coverage: [],
+      sections: [
+        { key: "profile", title: "profile", records: [{ level: 7 }], page: 1, pageSize: 10, total: 1, hasMore: false },
+        { key: "wallet", title: "wallet", records: [{ balance: 5200 }], page: 1, pageSize: 10, total: 1, hasMore: false },
+      ],
+    });
+    const stats = await screen.findByRole("region", { name: "Recorded Statistics" });
+    expect(within(stats).getByText("Wallet balance")).toBeDefined();
+    expect(within(stats).getByText("5,200")).toBeDefined();
+    expect(within(stats).getByText("Level")).toBeDefined();
+    expect(within(stats).getByText("7")).toBeDefined();
+  });
+
+  it("copies the user id", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderWithDetails({ user: user({ role: "member" }), coverage: [], sections: [] });
+    fireEvent.click(await screen.findByRole("button", { name: "Copy user ID" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("usr-real-001"));
+    expect(await screen.findByText("Copied")).toBeDefined();
+  });
+});
+
 describe("Admin user page — moving between identities", () => {
   it("ignores an old detail response after opening another identity", async () => {
     stubFetch([user(), user({ id: "second", name: "Second Player", role: "member" })]);

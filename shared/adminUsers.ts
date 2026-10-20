@@ -37,6 +37,8 @@ export interface AdminRecordSection {
   total: number | null;
   hasMore: boolean;
   unavailable?: string;
+  /** Counted but not loaded: `records` is empty and the client fetches page 1 when the section is needed. */
+  deferred?: boolean;
 }
 
 export interface AdminUserDetails {

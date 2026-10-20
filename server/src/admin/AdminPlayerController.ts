@@ -50,6 +50,13 @@ export function installAdminPlayerRoutes(router: Router): void {
       pageNumber(req.query.page, 1, 1000000), pageNumber(req.query.pageSize, DEFAULT_RECORDS_PAGE_SIZE, 100))); }
     catch (error) { fail(res, error); }
   });
+  router.post("/:id/personal-data-access", requireHumanSuperadmin, async (req, res) => {
+    try {
+      const principal = req.operationalPrincipal;
+      if (principal?.kind !== "admin-user") throw new AdminPlayerError(403, "A verified human superadmin is required.");
+      res.json(await adminPlayerService().recordPersonalDataAccess(principal.userId, req.params.id));
+    } catch (error) { fail(res, error); }
+  });
   router.post("/:id/suspension", requireHumanSuperadmin, async (req, res) => {
     try {
       const principal = req.operationalPrincipal;
