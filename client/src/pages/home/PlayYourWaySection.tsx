@@ -6,6 +6,7 @@ import { AUDIO } from "../../constants/audio";
 import { BHALYAM_GAMES, isLocked } from "../../components/bhalyam/data";
 import { gamesForWay, type PlayWay } from "./playWay";
 import { Pawn, WayArt } from "./WayArt";
+import { Die, useDieRoller, wayForFace, type DieFace } from "./Die";
 
 /**
  * "Who's around today?" — the first question a returning player is asked.
@@ -105,7 +106,13 @@ function gamesLabel(count: number): string {
   return `${count} game${count === 1 ? "" : "s"}`;
 }
 
-function panelCopy(way: PlayWay | null, count: number): { lead: string; detail: string } {
+/** The rule is said out loud, so the die is a game and not a trick. */
+const DIE_RULE = "Even plays together, odd plays alone.";
+
+function panelCopy(way: PlayWay | null, count: number, rolling: boolean): { lead: string; detail: string } {
+  if (rolling) {
+    return { lead: "Rolling the die", detail: DIE_RULE };
+  }
   if (way === "friends") {
     return {
       lead: `${gamesLabel(count)} for a table`,
@@ -120,8 +127,39 @@ function panelCopy(way: PlayWay | null, count: number): { lead: string; detail: 
   }
   return {
     lead: "Not sure yet?",
-    detail: "Pick one and the games below narrow to fit.",
+    detail: `Pick a box, or roll the die. ${DIE_RULE}`,
   };
+}
+
+/**
+ * The pawn's home base, a corner of a Ludo board: four coloured spots with the
+ * piece waiting in the middle. When the pawn has gone to a box the spots light up,
+ * so an empty base is as clear a signal as an occupied one.
+ */
+const HOME_SPOTS = ["#E04A3F", "#F2C230", "#2E9E5B", "#3567C7"] as const;
+
+function HomeBase({ occupied, isDark }: { occupied: boolean; isDark: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`relative grid h-11 w-11 shrink-0 grid-cols-2 gap-1 rounded-xl border p-1.5 ${
+        isDark ? "border-white/15 bg-white/5" : "border-[#D9C7A8] bg-[#FFFDF7]"
+      }`}
+    >
+      {HOME_SPOTS.map((colour) => (
+        <span
+          key={colour}
+          className="rounded-full transition-opacity duration-300"
+          style={{ backgroundColor: colour, opacity: occupied ? 0.3 : 0.85 }}
+        />
+      ))}
+      {occupied && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Pawn />
+        </span>
+      )}
+    </span>
+  );
 }
 
 /** The empty "home" a pawn can stand in. Always drawn, so an empty box still invites a piece. */
@@ -143,9 +181,12 @@ function Slot({ occupied, isDark, className }: { occupied: boolean; isDark: bool
 export function PlayYourWaySection({
   way,
   onChangeWay,
+  rollFace,
 }: {
   way: PlayWay | null;
   onChangeWay: (next: PlayWay | null) => void;
+  /** Picks the die's outcome. Defaults to a fair random face; tests inject one. */
+  rollFace?: () => DieFace;
 }) {
   const { play } = useAudio();
   const [theme] = useTheme();
@@ -156,6 +197,7 @@ export function PlayYourWaySection({
   // Which box is being pointed at or focused. Its moving parts run, so the box
   // answers a hand (or a keyboard) and not only a click.
   const [peeked, setPeeked] = useState<PlayWay | null>(null);
+  const roller = useDieRoller(rollFace);
 
   const counts = useMemo(() => {
     const playable = BHALYAM_GAMES.filter((g) => !isLocked(g));
@@ -171,6 +213,14 @@ export function PlayYourWaySection({
     if (next === way) return;
     play(AUDIO.UI_TOGGLE);
     onChangeWay(next);
+  }
+
+  /** "Roll to decide": the die lands, and the pawn goes to the box the face names. */
+  async function decide() {
+    play(AUDIO.UI_CLICK);
+    const face = await roller.roll();
+    if (face === null) return; // a roll was already running
+    onChangeWay(wayForFace(face));
   }
 
   /** Arrow keys move focus and selection together, as a radio group should. */
@@ -200,7 +250,7 @@ export function PlayYourWaySection({
     optionRefs.current[next]?.focus();
   }
 
-  const copy = panelCopy(way, way === null ? 0 : counts[way]);
+  const copy = panelCopy(way, way === null ? 0 : counts[way], roller.rolling);
 
   return (
     <section className="mb-8 sm:mb-10" aria-labelledby={headingId}>
@@ -306,11 +356,14 @@ export function PlayYourWaySection({
       </div>
 
       <div
-        className={`mt-3 flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border px-3 py-2 sm:mt-4 ${
+        // The phone height is reserved: the caption's copy runs 1 to 3 lines across
+        // "not sure", "rolling" and each choice, and without a floor the page below
+        // jumped once when the die left the hand and again when it landed.
+        className={`mt-3 flex min-h-[124px] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border px-3 py-2 sm:mt-4 sm:min-h-[64px] ${
           isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
         }`}
       >
-        <Slot occupied={way === null} isDark={isDark} className="h-10 w-9 shrink-0" />
+        <HomeBase occupied={way === null} isDark={isDark} />
 
         {/* `min-w-[12rem]`: with the pawn and "Show all games" on the same row the
             text was left about 100px on a phone and wrapped to five lines. At this
@@ -342,6 +395,25 @@ export function PlayYourWaySection({
           </motion.div>
         </div>
 
+        {way === null && (
+          <button
+            type="button"
+            onClick={() => void decide()}
+            disabled={roller.rolling}
+            aria-label="Roll the die to pick for me"
+            className={`ml-14 flex min-h-[44px] items-center gap-2 rounded-full border px-3 pr-4 text-[13px] font-bold cursor-pointer sm:ml-0
+                        transition-[background-color,transform] duration-150 active:scale-95 motion-reduce:transform-none disabled:cursor-wait
+                        focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                          isDark
+                            ? "border-amber-300/60 text-amber-200 hover:bg-amber-300/10"
+                            : "border-[#1D2C4A]/40 text-[#1D2C4A] hover:bg-white/70"
+                        }`}
+          >
+            <Die face={roller.face} tumbling={roller.rolling} className="h-7 w-7" />
+            Roll to decide
+          </button>
+        )}
+
         {way !== null && (
           <button
             type="button"
@@ -349,7 +421,7 @@ export function PlayYourWaySection({
               play(AUDIO.UI_CLICK);
               onChangeWay(null);
             }}
-            className={`ml-12 min-h-[44px] rounded-lg px-2 text-[13px] font-bold underline underline-offset-4 cursor-pointer sm:ml-0
+            className={`ml-14 min-h-[44px] rounded-lg px-2 text-[13px] font-bold underline underline-offset-4 cursor-pointer sm:ml-0
                         focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500
                         ${isDark ? "text-amber-300 hover:text-amber-200" : "text-[#7B2F0E] hover:text-[#5A250B]"}`}
           >

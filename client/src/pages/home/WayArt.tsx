@@ -3,6 +3,7 @@ import { motion, useAnimationControls, useInView, useReducedMotion } from "frame
 import type { BhalyamGameSlug } from "../../components/bhalyam/data";
 import { TILE_ART_BY_GAME } from "./gameArt";
 import type { PlayWay } from "./playWay";
+import { Die, ROLL_MS, useDieRoller } from "./Die";
 
 /**
  * The picture on each "box lid" of the way cards, and the golden pawn that marks
@@ -12,7 +13,7 @@ import type { PlayWay } from "./playWay";
  * An icon in a tinted square says "people" or "person" and nothing else. The
  * game tiles the grid already shows say WHAT you will be playing, so the choice
  * previews its own result. The two cards are composed to mean different things:
- * a crowd (one clay Ludo board in front, Rummy and a clay bat and ball behind it) against
+ * a crowd (a game table where four pawns take turns round a die, Rummy tucked behind it) against
  * a quiet corner (a pocket handheld with a pixel snake on its screen, Brain Vita
  * tucked behind). Pieces fan out on
  * hover and on selection, so the card looks like it is inviting a hand.
@@ -34,7 +35,7 @@ type Art = { slug: BhalyamGameSlug; width: number; height: number };
 interface Piece {
   /** A picture from the tile art, or a drawn piece (`custom`). Exactly one of the two. */
   art?: Art;
-  custom?: "handheld";
+  custom?: "handheld" | "table";
   /** Position and size inside the art zone. */
   place: string;
   /** Resting pose, spread pose (chosen), and the same spread when hovered. */
@@ -50,24 +51,20 @@ const PIECES: Record<PlayWay, readonly Piece[]> = {
   friends: [
     {
       art: { slug: "rummy", width: 1536, height: 1024 },
-      place: "left-0 top-6 h-[52px] w-[78px] xl:h-[80px] xl:w-[120px]",
+      place: "left-0 top-3 h-[52px] w-[78px] xl:h-[80px] xl:w-[120px]",
       rest: "-rotate-6",
       spread: "-rotate-[15deg] -translate-x-1.5 -translate-y-1",
       hover: "group-hover:-rotate-[15deg] group-hover:-translate-x-1.5 group-hover:-translate-y-1",
     },
     {
-      art: { slug: "handcricket", width: 612, height: 408 },
-      place: "right-0 top-11 h-[48px] w-[72px] xl:h-[64px] xl:w-[96px]",
-      rest: "rotate-6",
-      spread: "rotate-[15deg] translate-x-1.5 -translate-y-1",
-      hover: "group-hover:rotate-[15deg] group-hover:translate-x-1.5 group-hover:-translate-y-1",
-    },
-    {
-      art: { slug: "ludo", width: 500, height: 500 },
-      place: "bottom-1 right-3 h-[104px] w-[104px] xl:h-[158px] xl:w-[158px]",
+      // The table: four pawns round a die, taking turns. Drawn so the die can
+      // really roll and each pawn can hop in order. Right-12 leaves the top-right
+      // corner to the pawn's slot.
+      custom: "table",
+      place: "bottom-1 right-12 h-[92px] w-[92px] xl:right-20 xl:h-[140px] xl:w-[140px]",
       rest: "rotate-0",
-      spread: "-rotate-3 scale-[1.07]",
-      hover: "group-hover:-rotate-3 group-hover:scale-[1.07]",
+      spread: "rotate-[6deg] scale-[1.06]",
+      hover: "group-hover:rotate-[6deg] group-hover:scale-[1.06]",
     },
   ],
   solo: [
@@ -243,6 +240,98 @@ function Handheld({ active }: { active: boolean }) {
   );
 }
 
+/** The four seats, one Ludo colour each, at the points of the compass. Clockwise from the top. */
+const SEATS = [
+  { x: 60, y: 11, fill: "#E04A3F", rim: "#8E2018" },
+  { x: 107, y: 58, fill: "#F2C230", rim: "#9A7410" },
+  { x: 60, y: 105, fill: "#2E9E5B", rim: "#17623A" },
+  { x: 13, y: 58, fill: "#3567C7", rim: "#1D3F80" },
+] as const;
+
+/** One full turn of play: the die rolls, then each pawn hops in order, then a breath. */
+const TABLE_TURN_MS = 3600;
+/** Gap between one pawn's hop and the next, in seconds. */
+const HOP_STAGGER = 0.42;
+
+/**
+ * The game table on the "Play together" box, seen from above: a wooden round
+ * table, green felt, four pawns in four Ludo colours, a die in the middle.
+ *
+ * It plays the way a table does, in turns. While the box is hovered or chosen
+ * (`active`) the die rolls, and once it lands each pawn hops in order, clockwise.
+ * It takes one turn the first time the section scrolls into view, then rests.
+ * Reduced motion shows the table still. Same rule as the handheld: nothing loops
+ * forever on its own.
+ */
+function Table({ active }: { active: boolean }) {
+  const reduceMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const seen = useInView(ref, { once: true, amount: 0.6 });
+  const { face, rolling, rolls, roll } = useDieRoller();
+
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    if (active) {
+      void roll();
+      const id = window.setInterval(() => void roll(), TABLE_TURN_MS);
+      return () => window.clearInterval(id);
+    }
+    if (seen) void roll();
+    return undefined;
+  }, [active, seen, reduceMotion, roll]);
+
+  return (
+    <div
+      ref={ref}
+      data-table-scene=""
+      aria-hidden="true"
+      className={`relative h-full w-full transition-[filter] duration-500 ${
+        active ? "drop-shadow-[0_0_10px_rgba(242,194,48,0.55)]" : "drop-shadow-[0_8px_8px_rgba(74,44,22,0.3)]"
+      }`}
+    >
+      <svg viewBox="0 0 120 120" focusable="false" className="absolute inset-0 h-full w-full overflow-visible">
+        <defs>
+          <radialGradient id="way-tb-wood" cx="0.4" cy="0.35" r="0.9">
+            <stop offset="0" stopColor="#D79A55" />
+            <stop offset="1" stopColor="#8A5A2B" />
+          </radialGradient>
+          <radialGradient id="way-tb-felt" cx="0.5" cy="0.4" r="0.8">
+            <stop offset="0" stopColor="#3E9A62" />
+            <stop offset="1" stopColor="#1F6B40" />
+          </radialGradient>
+        </defs>
+        <circle cx="60" cy="58" r="54" fill="url(#way-tb-wood)" />
+        <circle cx="60" cy="58" r="54" fill="none" stroke="#5B3A1E" strokeOpacity="0.5" strokeWidth="1.5" />
+        <circle cx="60" cy="58" r="41" fill="url(#way-tb-felt)" />
+        <circle cx="60" cy="58" r="41" fill="none" stroke="#F2C230" strokeOpacity="0.55" strokeWidth="1" strokeDasharray="2 3" />
+
+        {SEATS.map((seat, i) => (
+          <g key={seat.fill}>
+            <circle cx={seat.x} cy={seat.y} r="8.5" fill="#ffffff" opacity="0.18" />
+            {/* Keyed on the roll count so every roll starts the hops again. */}
+            <motion.g
+              key={`${seat.fill}-${rolls}`}
+              data-table-pawn=""
+              initial={{ y: 0 }}
+              animate={rolls > 0 && !reduceMotion ? { y: [0, -7, 0] } : { y: 0 }}
+              transition={{ duration: 0.4, delay: ROLL_MS / 1000 + i * HOP_STAGGER, ease: "easeOut" }}
+            >
+              <ellipse cx={seat.x} cy={seat.y + 2.4} rx="6.6" ry="2.8" fill="#000000" opacity="0.28" />
+              <circle cx={seat.x} cy={seat.y} r="6.2" fill={seat.fill} stroke={seat.rim} strokeWidth="1.2" />
+              <circle cx={seat.x - 2} cy={seat.y - 2.2} r="2" fill="#ffffff" opacity="0.5" />
+            </motion.g>
+          </g>
+        ))}
+      </svg>
+
+      {/* The die sits in a plain wrapper: framer owns `transform` on the die itself. */}
+      <span className="absolute left-1/2 top-1/2 h-[30%] w-[30%] -translate-x-1/2 -translate-y-1/2">
+        <Die face={face} tumbling={rolling} className="h-full w-full drop-shadow-[0_3px_3px_rgba(0,0,0,0.4)]" />
+      </span>
+    </div>
+  );
+}
+
 /**
  * The art zone of one card. Decorative: the card's own text names the choice, so
  * this is hidden from assistive tech and every image has an empty alt.
@@ -289,7 +378,13 @@ export function WayArt({
               selected ? piece.spread : piece.rest
             } ${piece.hover} ${piece.roundedIcon ? "overflow-hidden rounded-[22%]" : ""}`}
           >
-            {piece.custom === "handheld" ? <Handheld active={active} /> : piece.art ? <ArtImage art={piece.art} /> : null}
+            {piece.custom === "handheld" ? (
+              <Handheld active={active} />
+            ) : piece.custom === "table" ? (
+              <Table active={active} />
+            ) : piece.art ? (
+              <ArtImage art={piece.art} />
+            ) : null}
           </span>
         </motion.span>
       ))}

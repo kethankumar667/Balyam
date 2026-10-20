@@ -1,34 +1,46 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { useState } from "react";
 import { PlayYourWaySection } from "../PlayYourWaySection";
 import { GamesSection } from "../GamesSection";
+import { Die, ROLL_MS, wayForFace, type DieFace } from "../Die";
 import { BHALYAM_GAMES, isLocked } from "../../../components/bhalyam/data";
 import { gamesForWay, type PlayWay } from "../playWay";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 /** Holds the choice the way the home page does, so a click re-renders the section. */
 function Harness({
   initial = null,
   onChange,
+  rollFace,
 }: {
   initial?: PlayWay | null;
   onChange?: (next: PlayWay | null) => void;
+  rollFace?: () => DieFace;
 }) {
   const [way, setWay] = useState<PlayWay | null>(initial);
   return (
     <PlayYourWaySection
       way={way}
+      rollFace={rollFace}
       onChangeWay={(next) => {
         onChange?.(next);
         setWay(next);
       }}
     />
   );
+}
+
+/** Lets a roll finish: shuffling faces for `ROLL_MS`, then the die settles. */
+async function finishRoll() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ROLL_MS + 50);
+  });
 }
 
 const playableCount = (way: PlayWay) =>
@@ -204,6 +216,114 @@ describe("PlayYourWaySection", () => {
 
     expect(onChange).toHaveBeenLastCalledWith(null);
     expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
+  });
+});
+
+describe("the table on the Play together box", () => {
+  it("is drawn inside Play together and nowhere else", () => {
+    const { container } = render(<Harness />);
+    const scenes = container.querySelectorAll("[data-table-scene]");
+    expect(scenes).toHaveLength(1);
+    expect(scenes[0].closest('[role="radio"]')).toBe(screen.getByRole("radio", { name: /play together/i }));
+  });
+
+  it("seats four pawns round a die, and is hidden from assistive technology", () => {
+    const { container } = render(<Harness />);
+    const scene = container.querySelector("[data-table-scene]");
+    expect(scene?.getAttribute("aria-hidden")).toBe("true");
+    expect(scene?.querySelectorAll("[data-table-pawn]")).toHaveLength(4);
+    expect(scene?.querySelectorAll("[data-die]")).toHaveLength(1);
+  });
+
+  it("does not confuse its own pawns with the player's pawn", () => {
+    const { container } = render(<Harness />);
+    expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
+  });
+});
+
+describe("the die", () => {
+  it("shows as many pips as its face", () => {
+    ([1, 2, 3, 4, 5, 6] as const).forEach((face) => {
+      const { container, unmount } = render(<Die face={face} tumbling={false} />);
+      expect(container.querySelectorAll("[data-pip]")).toHaveLength(face);
+      unmount();
+    });
+  });
+
+  it("is decoration, hidden from assistive technology", () => {
+    const { container } = render(<Die face={3} tumbling={false} />);
+    expect(container.querySelector("[data-die]")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("sends even faces to Play together and odd faces to Play alone, at exactly even odds", () => {
+    const faces = [1, 2, 3, 4, 5, 6];
+    expect(faces.map(wayForFace)).toEqual(["solo", "friends", "solo", "friends", "solo", "friends"]);
+    expect(faces.filter((f) => wayForFace(f) === "friends")).toHaveLength(3);
+  });
+});
+
+describe("Roll to decide", () => {
+  const rollButton = () => screen.getByRole("button", { name: /roll the die to pick for me/i });
+
+  it("is offered while nothing is chosen, with the rule printed beside it", () => {
+    render(<Harness />);
+    expect(rollButton()).not.toBeNull();
+    expect(screen.getByText(/even plays together, odd plays alone/i)).not.toBeNull();
+  });
+
+  it("is gone once a way is chosen, and comes back when it is cleared", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
+    expect(screen.queryByRole("button", { name: /roll the die/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
+    expect(rollButton()).not.toBeNull();
+  });
+
+  it("sends the pawn to Play together when the die lands on an even face", async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} rollFace={() => 4} />);
+
+    fireEvent.click(rollButton());
+    expect(onChange).not.toHaveBeenCalled(); // still tumbling
+    await finishRoll();
+
+    expect(onChange).toHaveBeenCalledWith("friends");
+    expect(screen.getByRole("radio", { name: /play together/i }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("sends the pawn to Play alone when the die lands on an odd face", async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} rollFace={() => 3} />);
+
+    fireEvent.click(rollButton());
+    await finishRoll();
+
+    expect(onChange).toHaveBeenCalledWith("solo");
+  });
+
+  it("says it is rolling while the die is in the air", async () => {
+    vi.useFakeTimers();
+    render(<Harness rollFace={() => 2} />);
+
+    fireEvent.click(rollButton());
+
+    expect(screen.getByText("Rolling the die")).not.toBeNull();
+    await finishRoll();
+  });
+
+  it("cannot choose twice from a double tap", async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} rollFace={() => 6} />);
+
+    fireEvent.click(rollButton());
+    fireEvent.click(rollButton());
+    await finishRoll();
+
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });
 
