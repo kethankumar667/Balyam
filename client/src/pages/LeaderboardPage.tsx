@@ -35,6 +35,7 @@ import type { AllGameSlug, FoilTier } from "@shared/profile/Scorecard";
 import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
 import { formatGameMetricValue } from "../lib/metricFormatters";
 import { readModeBest } from "../lib/modeBests";
+import { launchLinkProps } from "../lib/gameLaunch";
 
 /**
  * Curated aspirational "Milestone Target" per mode — a designed goal to
@@ -199,34 +200,6 @@ function readLocalStoragePB(game: string, modeId: string): number | null {
     // Ignore storage parsing issues
   }
   return null;
-}
-
-function getGameRoute(game: AllGameSlug, modeId?: string): string {
-  switch (game) {
-    case "2048":
-      return modeId ? `/2048?mode=${modeId}` : "/2048";
-    case "sudoku":
-      return modeId ? `/sudoku?diff=${modeId}` : "/sudoku";
-    case "brainvita":
-      return "/brainvita";
-    case "nokiasnake":
-      return "/games/nokiasnake";
-    case "nokiacricket":
-      return "/games/nokiacricket";
-    case "roadrash":
-      return "/games/brickracer";
-    case "brickblocks":
-    case "tetris":
-      return "/games/bricktetris";
-    case "breakout":
-      return "/games/brickbreakout";
-    case "snake":
-      return "/?game=snake";
-    case "tictactoe":
-      return "/?game=tictactoe";
-    default:
-      return `/?game=${game}`;
-  }
 }
 
 interface PersonalScoreItem {
@@ -867,7 +840,7 @@ export default function LeaderboardPage() {
 
             {/* Direct Play CTA for Mobile */}
             <Link
-              to={getGameRoute(selectedGame, activeItem.modeId)}
+              {...launchLinkProps(selectedGame)}
               className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-xs sm:text-sm shadow-md shadow-amber-500/25 flex items-center justify-center gap-2 transition-all min-h-[44px] active:scale-[0.98] cursor-pointer self-start sm:self-auto shrink-0 mt-2 sm:mt-0"
             >
               <Play className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />

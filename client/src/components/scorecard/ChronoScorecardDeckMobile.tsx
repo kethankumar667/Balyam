@@ -28,6 +28,7 @@ import {
 import { formatGameMetricValue, calculateTrendMomentum } from "../../lib/metricFormatters";
 import QuantumRadarHexagon from "./QuantumRadarHexagon";
 import HoloPassShareModal from "./HoloPassShareModal";
+import { launchLinkProps } from "../../lib/gameLaunch";
 
 interface ChronoScorecardDeckMobileProps {
   archive: PlayerScorecardArchive;
@@ -54,23 +55,6 @@ function savePinnedGames(pinned: string[]): void {
   } catch {
     // Ignore storage quota
   }
-}
-
-function getGameLaunchRoute(game: AllGameSlug): string {
-  const directRoutes: Record<string, string> = {
-    snake: "/snake",
-    nokiasnake: "/nokiasnake",
-    nokiacricket: "/nokiacricket",
-    "2048": "/2048",
-    sudoku: "/sudoku",
-    brainvita: "/brainvita",
-    brickracer: "/brickracer",
-    bricktetris: "/bricktetris",
-    brickbreakout: "/brickbreakout",
-    cricket2d: "/cricket2d",
-    snake2d: "/snake2d",
-  };
-  return directRoutes[game] ?? `/games?game=${game}`;
 }
 
 export default function ChronoScorecardDeckMobile({
@@ -381,7 +365,7 @@ export default function ChronoScorecardDeckMobile({
                   </span>
 
                   <Link
-                    to={getGameLaunchRoute(selectedGame)}
+                    {...launchLinkProps(selectedGame)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs shadow-md min-h-[44px] transition-all cursor-pointer"
                   >
                     <Play className="w-3 h-3 fill-slate-950" />
@@ -623,7 +607,7 @@ export default function ChronoScorecardDeckMobile({
             Play a match of {modeDef.displayName} to forge your first personal record!
           </p>
           <Link
-            to={getGameLaunchRoute(selectedGame)}
+            {...launchLinkProps(selectedGame)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs shadow-md transition-all hover:bg-cyan-400 min-h-[44px]"
           >
             <Play className="w-3.5 h-3.5 fill-slate-950" />

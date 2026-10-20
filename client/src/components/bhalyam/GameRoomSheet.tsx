@@ -26,6 +26,7 @@ import {
 import { defaultEntryStakeFor } from "@shared/rummy-economy";
 import RummyRatePicker from "../economy/RummyRatePicker";
 import { getSocket } from "../../lib/socket";
+import { gameLaunch } from "../../lib/gameLaunch";
 import { NO_ECONOMY_GAMES } from "@shared/catalog";
 import { useRoomStore } from "../../store/roomStore";
 import { currentAccessToken, currentAccountKind, useCapabilities } from "../../store/authStore";
@@ -152,20 +153,6 @@ const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: str
   "namesplaceanimal", "tambola", "snake", "roadrash", "chess",
   "spacewar", "nokiacricket", "brickblocks", "tetris", "breakout", "2048", "sudoku", "tictactoe", "connect4", "vamanaguntalu", "brainvita",
  ]);
-
-const RETRO_ROUTES: Partial<Record<BhalyamGameSlug, string>> = {
-  nokiacricket: "/nokiacricket",
-  snake: "/snake",
-  roadrash: "/roadrash",
-  brickblocks: "/brickblocks",
-  tetris: "/brickblocks",
-  breakout: "/breakout",
-  // Client-only solo arcade page — never opens a server room, same as the
-  // retro titles above. See client/src/pages/Game2048Page.tsx.
-  "2048": "/2048",
-  sudoku: "/sudoku",
-  brainvita: "/brainvita",
-};
 
 const SOLO_GAME_SLUGS: ReadonlySet<BhalyamGameSlug> = new Set<BhalyamGameSlug>([
   "snake",
@@ -698,9 +685,12 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
       return;
     }
     if (!game) return;
-    if (RETRO_ROUTES[game]) {
+    // Browser-only games open their own page. The route table is shared with the leaderboard and
+    // scorecard decks (lib/gameLaunch.ts) so the same game cannot launch to two different places.
+    const launch = gameLaunch(game);
+    if (launch.kind === "page") {
       RecentlyPlayedManager.recordRecentlyPlayed(game);
-      navigate(RETRO_ROUTES[game]!);
+      navigate(launch.to);
       onClose();
       return;
     }
@@ -1973,7 +1963,7 @@ export default function GameRoomSheet({ game, onClose, shareToMandaliId }: GameR
                       <SparkIcon className="w-5 h-5" />
                       <span>Start Pass &amp; Play</span>
                     </>
-                  ) : RETRO_ROUTES[game] ? (
+                  ) : gameLaunch(game).kind === "page" ? (
                     <>
                       <SparkIcon className="w-5 h-5" />
                       <span>Launch Arcade Game</span>

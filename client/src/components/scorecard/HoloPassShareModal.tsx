@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Trophy, Zap, Share2, Copy, Check, X, QrCode } from "lucide-react";
 import type { ModeScorecard, AllGameSlug } from "@shared/profile/Scorecard";
 import { getGameModeConfig } from "@shared/profile/GameModes";
+import { gameLaunch } from "../../lib/gameLaunch";
 
 interface HoloPassShareModalProps {
   game: AllGameSlug;
@@ -22,7 +23,12 @@ export default function HoloPassShareModal({
   const cardRef = useRef<HTMLDivElement>(null);
 
   const gameConfig = getGameModeConfig(game);
-  const challengeUrl = `${window.location.origin}/games/${game}?challengeMode=${scorecard.modeId}&targetScore=${scorecard.bestScore}`;
+  // A link someone else opens must land on a page that exists. A browser-only game has its own page;
+  // a room game has no URL that opens its create-room sheet, so its link lands on the games page.
+  // (This used to be `/games/<slug>`, which is not a route, so every shared link was a 404.)
+  const launch = gameLaunch(game);
+  const landingPath = launch.kind === "room-sheet" ? "/games" : launch.to;
+  const challengeUrl = `${window.location.origin}${landingPath}?challengeMode=${encodeURIComponent(scorecard.modeId)}&targetScore=${scorecard.bestScore}`;
 
   const handleCopyLink = async () => {
     try {
