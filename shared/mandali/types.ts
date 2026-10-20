@@ -97,23 +97,6 @@ export interface MandaliMember {
   contributionScore: number;
 }
 
-/**
- * One friend who is here right now, as the HOME page shows them (`GET /api/mandali/around`).
- *
- * Deliberately a thin projection of `MandaliMember`: name, face, and what they are doing. No role,
- * no score, no Mandali id, so the home page cannot leak anything the member list would not.
- * Only ever people who share a Mandali with the caller.
- */
-export interface MandaliAroundPerson {
-  playerId: string;
-  displayName: string;
-  avatar: string;
-  presence: Exclude<MandaliMember["presence"], "offline">;
-  activeGame?: GameKind;
-  /** Present only while they are mid-match in a room that takes an audience. */
-  watchCode?: string;
-}
-
 export interface MandaliApplication {
   id: string;
   mandaliId: string;

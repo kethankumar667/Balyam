@@ -42,7 +42,6 @@ import {
 } from "../../components/bhalyam/icons";
 import { TILE_ART_BY_GAME } from "./gameArt";
 import { gamesForWay, type PlayWay } from "./playWay";
-import { NO_FIT, fitForWay, gamesFittingTable, type TableFit } from "./tableFit";
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
   handcricket: HandCricketGlyph,
@@ -84,22 +83,16 @@ const HOME_TILE_CAP = 6;
 export function GamesSection({
   onSelect,
   way = null,
-  fit = NO_FIT,
   onClearWay,
 }: {
   onSelect: (slug: BhalyamGameSlug) => void;
   way?: PlayWay | null;
-  /** The table builder's answers; applied through the same helper the panel's count uses. */
-  fit?: TableFit;
   /** Lets the empty state undo the way as well as the category. */
   onClearWay?: () => void;
 }) {
   const [filter, setFilter] = useState<GameFilter>({ category: "all" });
   const { favourites } = useFavourites();
-  const matches = gamesFittingTable(
-    gamesForWay(filterGames(filter, false), way),
-    way === null ? NO_FIT : fitForWay(way, fit),
-  );
+  const matches = gamesForWay(filterGames(filter, false), way);
   const shown = filter.category === "favourites" ? matches : matches.slice(0, HOME_TILE_CAP);
   const narrowed = filter.category !== "all";
   const filtered = narrowed || way !== null;
@@ -190,7 +183,7 @@ export function GamesSection({
         </div>
       ) : (
         <RevealOnScroll
-          key={`${way ?? "any"}-${filter.category}-${fit.people ?? "n"}-${fit.minutes ?? "t"}`}
+          key={`${way ?? "any"}-${filter.category}`}
           as="ul"
           staggerChildren
           amount={0.08}
