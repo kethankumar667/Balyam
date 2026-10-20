@@ -4,8 +4,11 @@ import { ArrowLeft, Coins } from "lucide-react";
 import type { AdminUserSummary } from "@shared/adminUsers";
 import AdminLayout from "../../../components/admin/admin-layout";
 import PageHeader from "../../../components/admin/page-header";
+import Panel from "../../../components/admin/panel";
+import StatusBadge from "../../../components/admin/status-badge";
 import UserInspection from "./UserInspection";
 import UserRoleElevation from "./UserRoleElevation";
+import { GuestBadge, RoleBadge } from "./UserBadges";
 import { useModerationOutcomeStore } from "./moderationOutcomeStore";
 
 /**
@@ -17,25 +20,39 @@ function listQueryFrom(state: unknown): string {
   return typeof from === "string" && from.startsWith("?") ? from : "";
 }
 
-function PlayerEconomyCard({ onOpen }: { onOpen: () => void }) {
+function Avatar({ name }: { name: string }) {
   return (
-    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-        <Coins className="w-4 h-4" />
-        Player Economy & Coins
-      </h4>
-      <p className="text-xs text-[var(--chrome-ink-soft)] leading-relaxed">
-        Inspect this player's live coin wallet balance, audit transaction ledger history, or manually top up virtual coins.
-      </p>
+    <span
+      aria-hidden="true"
+      className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-lg font-semibold uppercase text-[var(--chrome-ink)] sm:h-14 sm:w-14 sm:text-xl"
+    >
+      {Array.from(name.trim())[0] ?? "?"}
+    </span>
+  );
+}
+
+function PlayerBadges({ user }: { user: AdminUserSummary }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <RoleBadge role={user.role} />
+      {user.accountKind === "guest" && <GuestBadge />}
+      <StatusBadge status={user.suspension.isSuspended ? "critical" : "healthy"} label={user.suspension.isSuspended ? "Suspended" : "Active"} />
+    </div>
+  );
+}
+
+function WalletPanel({ onOpen }: { onOpen: () => void }) {
+  return (
+    <Panel title="Wallet" description="Live balance, ledger history and manual top-ups.">
       <button
         type="button"
         onClick={onOpen}
-        className="w-full min-h-[44px] mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold text-xs transition cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        className="min-h-[44px] w-full inline-flex items-center justify-center gap-2 rounded-xl border border-transparent bg-amber-500 px-4 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
       >
-        <Coins className="w-4 h-4" />
+        <Coins className="h-4 w-4" aria-hidden="true" />
         <span>Top-Up Coins / Investigate Wallet</span>
       </button>
-    </div>
+    </Panel>
   );
 }
 
@@ -54,6 +71,8 @@ function UserDetailContent({ userId }: { userId: string }) {
       <PageHeader
         title={user?.name ?? "User profile"}
         description={user ? user.email || "No email recorded" : undefined}
+        leading={user ? <Avatar name={user.name} /> : undefined}
+        badge={user ? <PlayerBadges user={user} /> : undefined}
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "Users", href: backTo },
@@ -62,9 +81,9 @@ function UserDetailContent({ userId }: { userId: string }) {
         actions={
           <Link
             to={backTo}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-[var(--chrome-ink)] font-bold text-xs hover:bg-[var(--chrome-control-hi)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="min-h-[44px] inline-flex items-center gap-1.5 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)] px-4 py-2 text-sm font-semibold text-[var(--chrome-ink)] transition-colors hover:bg-[var(--chrome-control-hi)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
-            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Back to users</span>
           </Link>
         }
@@ -73,31 +92,29 @@ function UserDetailContent({ userId }: { userId: string }) {
       {shownOutcome && (
         <div
           role={shownOutcome.isError ? "alert" : "status"}
-          className="mb-4 p-3 rounded-xl border border-[var(--chrome-border)] text-[var(--chrome-ink)] text-xs font-bold"
+          className="mb-6 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-panel)] px-4 py-3 text-sm font-medium text-[var(--chrome-ink)]"
         >
           {shownOutcome.message}
         </div>
       )}
 
-      <div className="max-w-3xl">
-        <UserInspection
-          userId={userId}
-          role={user?.role ?? "member"}
-          onUpdate={setUser}
-          onOutcome={(result) => setOutcome(result && { ...result, userId })}
-        >
-          {user && (
-            <UserRoleElevation
-              userId={userId}
-              name={user.name}
-              email={user.email}
-              role={user.role}
-              onRoleChanged={(role) => setUser((current) => (current ? { ...current, role } : current))}
-            />
-          )}
-          <PlayerEconomyCard onOpen={() => navigate(`/admin/economy?tab=player&identityId=${encodeURIComponent(userId)}`)} />
-        </UserInspection>
-      </div>
+      <UserInspection
+        userId={userId}
+        role={user?.role ?? "member"}
+        onUpdate={setUser}
+        onOutcome={(result) => setOutcome(result && { ...result, userId })}
+      >
+        {user && (
+          <UserRoleElevation
+            userId={userId}
+            name={user.name}
+            email={user.email}
+            role={user.role}
+            onRoleChanged={(role) => setUser((current) => (current ? { ...current, role } : current))}
+          />
+        )}
+        <WalletPanel onOpen={() => navigate(`/admin/economy?tab=player&identityId=${encodeURIComponent(userId)}`)} />
+      </UserInspection>
     </AdminLayout>
   );
 }

@@ -11,6 +11,8 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   badge?: ReactNode;
+  /** Shown before the title block, e.g. an avatar on a page about one person. */
+  leading?: ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   actions?: ReactNode;
   className?: string;
@@ -20,6 +22,7 @@ export default function PageHeader({
   title,
   description,
   badge,
+  leading,
   breadcrumbs,
   actions,
   className = "",
@@ -82,22 +85,25 @@ export default function PageHeader({
 
       {/* Main Title & Action Row */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              className="text-lg sm:text-2xl font-black tracking-tight text-[var(--chrome-ink)] break-words rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
-            >
-              {title}
-            </h1>
-            {badge && <div className="flex-shrink-0">{badge}</div>}
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          {leading && <div className="shrink-0">{leading}</div>}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+              <h1
+                ref={headingRef}
+                tabIndex={-1}
+                className="text-lg sm:text-2xl font-black tracking-tight text-[var(--chrome-ink)] break-words rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400"
+              >
+                {title}
+              </h1>
+              {badge && <div className="flex-shrink-0">{badge}</div>}
+            </div>
+            {description && (
+              <p className="text-xs sm:text-sm text-[var(--chrome-ink-soft)] mt-1 break-words leading-relaxed">
+                {description}
+              </p>
+            )}
           </div>
-          {description && (
-            <p className="text-xs sm:text-sm text-[var(--chrome-ink-soft)] mt-1 break-words leading-relaxed">
-              {description}
-            </p>
-          )}
         </div>
 
         {actions && (
