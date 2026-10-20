@@ -5,6 +5,7 @@ import LoadingState from "../../../components/admin/loading-state";
 import Panel from "../../../components/admin/panel";
 import ModerationPanel from "./ModerationPanel";
 import { CoveragePanel, PlayerIdentity, PlayerStats } from "./PlayerPanels";
+import QuietRecordSections, { isQuietSection } from "./QuietRecordSections";
 import UserRecordSection from "./UserRecordSection";
 import { useSuspensionFlow } from "./useSuspensionFlow";
 import { useUserDetails } from "./useUserDetails";
@@ -66,9 +67,14 @@ export default function UserInspection({ userId, role, onUpdate, onOutcome, chil
       </div>
       <div className="min-w-0 space-y-6 lg:col-start-1">
         {details.sections.length ? (
-          details.sections.map((section) => (
-            <UserRecordSection key={`${reloads}-${section.key}`} userId={userId} initial={section} />
-          ))
+          <>
+            {details.sections
+              .filter((section) => !isQuietSection(section))
+              .map((section) => (
+                <UserRecordSection key={`${reloads}-${section.key}`} userId={userId} initial={section} />
+              ))}
+            <QuietRecordSections sections={details.sections.filter(isQuietSection)} />
+          </>
         ) : (
           <Panel title="Retained records">
             <p className="text-sm text-[var(--chrome-ink-soft)]">No record sections supplied.</p>

@@ -11,6 +11,8 @@ import UserRoleElevation from "./UserRoleElevation";
 import { GuestBadge, RoleBadge } from "./UserBadges";
 import { useModerationOutcomeStore } from "./moderationOutcomeStore";
 
+const UNNAMED_PLAYER = "Unnamed player";
+
 /**
  * The list's query string, handed over by its Inspect link, so Back returns to the same page and
  * filters. Anything that is not a query string is ignored: the state is only a hint.
@@ -65,18 +67,20 @@ function UserDetailContent({ userId }: { userId: string }) {
 
   const backTo = `/admin/users${listQueryFrom(location.state)}`;
   const shownOutcome = outcome?.userId === userId ? outcome : null;
+  // A player who never set a display name is stored under their id; a 36-character id is no page title.
+  const displayName = user ? (user.name === user.id ? UNNAMED_PLAYER : user.name) : null;
 
   return (
     <AdminLayout>
       <PageHeader
-        title={user?.name ?? "User profile"}
+        title={displayName ?? "User profile"}
         description={user ? user.email || "No email recorded" : undefined}
-        leading={user ? <Avatar name={user.name} /> : undefined}
+        leading={displayName ? <Avatar name={displayName} /> : undefined}
         badge={user ? <PlayerBadges user={user} /> : undefined}
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "Users", href: backTo },
-          { label: user?.name ?? "Player" },
+          { label: displayName ?? "Player" },
         ]}
         actions={
           <Link

@@ -5,6 +5,7 @@ import Panel from "../../../components/admin/panel";
 import LoadingState from "../../../components/admin/loading-state";
 import { operationalFetch } from "../../../lib/operationalApi";
 import { errorMessage } from "./errorMessage";
+import { fieldLabel, flattenRecord, isEpochMoment, sectionTitle } from "./recordFormat";
 
 const RECORDS_PAGE_SIZE = 20;
 const NOT_RECORDED = "Not recorded";
@@ -13,15 +14,14 @@ const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:
 const CONTROL =
   "min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--chrome-border)] px-3 text-sm text-[var(--chrome-ink)] transition-colors hover:bg-[var(--chrome-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50";
 
-function Cell({ value }: { value: unknown }) {
+function Cell({ field, value }: { field: string; value: unknown }) {
   if (value === null || value === undefined || value === "") {
     return <span className="text-[var(--chrome-ink-soft)]">{NOT_RECORDED}</span>;
   }
+  if (isEpochMoment(field, value)) return <>{new Date(value).toLocaleString()}</>;
   if (typeof value === "object") {
     return (
-      <pre className="max-h-40 max-w-xs overflow-auto whitespace-pre-wrap break-all font-mono text-xs">
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <code className="block max-h-24 max-w-xs overflow-auto break-all font-mono text-xs">{JSON.stringify(value)}</code>
     );
   }
   if (typeof value === "string" && ISO_TIMESTAMP.test(value)) return <>{new Date(value).toLocaleString()}</>;
@@ -36,29 +36,30 @@ function columnsOf(records: Record<string, unknown>[]): string[] {
 }
 
 function RecordsTable({ section }: { section: AdminRecordSection }) {
-  const columns = columnsOf(section.records);
+  const records = section.records.map(flattenRecord);
+  const columns = columnsOf(records);
   return (
     // Focusable so a keyboard user can scroll a table that is wider than the panel.
     <div className="overflow-x-auto" tabIndex={0}>
       <table className="w-full min-w-max text-left text-sm">
         <caption className="sr-only">
-          {section.title} records, page {section.page}
+          {sectionTitle(section.title)} records, page {section.page}
         </caption>
         <thead className="bg-[var(--chrome-control)]/50 text-xs text-[var(--chrome-ink-soft)]">
           <tr>
             {columns.map((field) => (
               <th key={field} scope="col" className="whitespace-nowrap px-4 py-2.5 font-semibold capitalize">
-                {field.replace(/_/g, " ")}
+                {fieldLabel(field)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--chrome-hairline)]">
-          {section.records.map((record, index) => (
+          {records.map((record, index) => (
             <tr key={`${section.page}-${index}`}>
               {columns.map((field) => (
                 <td key={field} className="px-4 py-2.5 align-top tabular-nums text-[var(--chrome-ink)]">
-                  <Cell value={record[field]} />
+                  <Cell field={field} value={record[field]} />
                 </td>
               ))}
             </tr>
@@ -76,6 +77,7 @@ function RecordsTable({ section }: { section: AdminRecordSection }) {
  * error with a retry, never an empty table, and a section the server cannot supply says so.
  */
 export default function UserRecordSection({ userId, initial }: { userId: string; initial: AdminRecordSection }) {
+  const title = sectionTitle(initial.title);
   const [section, setSection] = useState(initial);
   const [page, setPage] = useState(initial.page);
   const [retry, setRetry] = useState(0);
@@ -120,7 +122,7 @@ export default function UserRecordSection({ userId, initial }: { userId: string;
         <button
           type="button"
           className={CONTROL}
-          aria-label={`Previous ${initial.title} records`}
+          aria-label={`Previous ${title} records`}
           disabled={isLoading || page <= 1}
           onClick={() => setPage((value) => value - 1)}
         >
@@ -129,7 +131,7 @@ export default function UserRecordSection({ userId, initial }: { userId: string;
         <button
           type="button"
           className={CONTROL}
-          aria-label={`Next ${initial.title} records`}
+          aria-label={`Next ${title} records`}
           disabled={isLoading || Boolean(error) || Boolean(section.unavailable) || !section.hasMore}
           onClick={() => setPage((value) => value + 1)}
         >
@@ -141,15 +143,15 @@ export default function UserRecordSection({ userId, initial }: { userId: string;
 
   return (
     <Panel
-      title={initial.title}
-      label={`${initial.title} records`}
+      title={title}
+      label={`${title} records`}
       busy={isLoading}
       bodyClassName="p-0"
       footer={pager}
     >
       {isLoading ? (
         <div className="p-5">
-          <LoadingState label={`Loading ${initial.title} records`} rows={3} />
+          <LoadingState label={`Loading ${title} records`} rows={3} />
         </div>
       ) : error ? (
         <div role="alert" className="space-y-3 p-5 text-sm text-[var(--chrome-ink)]">
