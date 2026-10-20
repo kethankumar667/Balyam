@@ -10,7 +10,6 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
-import { recordSoloScore } from "../../store/scorecardStore";
 
 export default function SnakeBoardDesktop({ state, selfId, onMove, players, messages, roomCode, roomPhase }: SnakeBoardProps) {
   // Auto-opens once per browser the first time this player reaches the
@@ -85,21 +84,18 @@ export default function SnakeBoardDesktop({ state, selfId, onMove, players, mess
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
 
-  // Haptic feedback + scorecard submission on game over finish. Submitting
-  // here (gated on the isOver transition, exactly once) mirrors
-  // SnakeBoardMobile.tsx's pattern — without it, recordSoloScore fired on
-  // every live score tick that beat the previous best, posting a new
-  // "match" to the server mid-round and corrupting timesPlayed/recentScores.
+  // Haptic feedback on game over finish. The scorecard is NOT posted from here: a Snake match is
+  // played in a room, so the server records it when the match ends — under the wall and speed the
+  // host chose, which the board cannot see (`state.speedMs` shrinks as the snake speeds up). Posting
+  // a second score from the board filed it under a hardcoded "classic_walled" and counted every
+  // match twice.
   const prevOverRef = useRef(false);
   useEffect(() => {
     if (state.isOver && !prevOverRef.current) {
       haptics.win();
-      if (myScore > 0) {
-        void recordSoloScore("snake", "classic_walled", myScore);
-      }
     }
     prevOverRef.current = !!state.isOver;
-  }, [state.isOver, haptics, myScore]);
+  }, [state.isOver, haptics]);
 
   // Avatar lookup: `state.players` is the engine's public DTO and has no
   // `avatar` field, so seats look their picture up from the full room roster.

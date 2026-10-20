@@ -17,6 +17,7 @@ import { RenderPipeline } from "../canvas/RenderPipeline";
 import { SPRITES } from "../canvas/SpriteSheet";
 import { StorageService } from "../utils/storage";
 import { recordSoloScore } from "../../../store/scorecardStore";
+import { nokiaCricketModeId } from "@shared/profile/GameModes";
 
 export class StateMachine {
   private state: GameState = "BOOT";
@@ -445,6 +446,11 @@ export class StateMachine {
         }
       }
 
+      // Filed by what was actually played: the match type and its overs, read from the match itself.
+      // This used to read the menu's over index and fold 1/2 overs into "2_overs" and 5/10 into
+      // "5_overs", with Classic and Chase sharing a row.
+      const modeId = nokiaCricketModeId(isChase ? "chase" : "classic", this.stats.targetOvers);
+
       StorageService.recordMatch(
         this.stats.score,
         this.stats.wickets,
@@ -452,13 +458,12 @@ export class StateMachine {
         this.stats.sixes,
         this.stats.fours,
         won,
-        isChase
+        isChase,
+        modeId
       );
       this.saveData = StorageService.load();
 
       // Sync score to Chrono-Scorecard & Leaderboard
-      const selectedOvers = this.overOptions[this.selectedOversIndex]?.overs ?? 5;
-      const modeId = selectedOvers >= 5 ? "5_overs" : "2_overs";
       void recordSoloScore("nokiacricket", modeId, this.stats.score, {
         wickets: this.stats.wickets,
         sixes: this.stats.sixes,

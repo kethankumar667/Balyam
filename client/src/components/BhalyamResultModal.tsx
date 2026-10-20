@@ -70,7 +70,11 @@ export default function BhalyamResultModal({
   const lastNewPB = useScorecardStore((s) => s.lastNewPB);
   const currentGame = roomState?.game;
   const myGameCard = currentGame ? scorecardArchive?.games[currentGame] : undefined;
-  const myPBScore = myGameCard ? Object.values(myGameCard.modes)[0]?.bestScore : undefined;
+  // The best for the mode THIS match was played in. It used to be the first mode on the card, so a
+  // Rummy Pool 201 result could show the personal best of Single Deal. No mode from the server (an
+  // older deploy) shows no PB rather than someone else's.
+  const playedModeId = roomState?.modeId;
+  const myPBScore = playedModeId ? myGameCard?.modes[playedModeId]?.bestScore : undefined;
 
   return (
     <Modal

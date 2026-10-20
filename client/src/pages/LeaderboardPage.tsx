@@ -34,6 +34,7 @@ import { GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes
 import type { AllGameSlug, FoilTier } from "@shared/profile/Scorecard";
 import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
 import { formatGameMetricValue } from "../lib/metricFormatters";
+import { readModeBest } from "../lib/modeBests";
 
 /**
  * Curated aspirational "Milestone Target" per mode — a designed goal to
@@ -47,9 +48,6 @@ import { formatGameMetricValue } from "../lib/metricFormatters";
 const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
   breakout: {
     classic: 2480,
-    moving_wall: 3120,
-    time_attack: 4200,
-    endless: 6180,
   },
   "2048": {
     daily: 3420,
@@ -60,20 +58,22 @@ const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
   },
   nokiasnake: {
     classic_walled: 84,
-    speed_rush: 68,
+    borderless_wrap: 96,
   },
   nokiacricket: {
-    "2_overs": 44,
-    "5_overs": 96,
+    classic_1: 14,
+    classic_2: 44,
+    classic_5: 96,
+    classic_10: 172,
+    chase_1: 16,
+    chase_2: 30,
+    chase_5: 68,
+    chase_10: 130,
   },
   roadrash: {
     circuit_rush: 450,
   },
   brickblocks: {
-    classic: 5400,
-    pentix: 3900,
-  },
-  tetris: {
     classic: 5400,
     pentix: 3900,
   },
@@ -83,13 +83,15 @@ const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
     speed_rush: 76,
   },
   handcricket: {
-    "2_overs": 52,
-    "1_over": 28,
-    "5_overs": 112,
+    t20: 184,
+    odi: 240,
+    test: 312,
+    galli_quick: 52,
+    galli_standard: 112,
+    galli_long: 196,
   },
   ludo: {
     classic_4token: 34,
-    quick_2token: 18,
   },
   rummy: {
     single: 0,
@@ -100,6 +102,7 @@ const MODE_MILESTONE_TARGETS: Record<string, Record<string, number>> = {
     single: 0,
     race_300: 85,
     race_500: 160,
+    race_1000: 320,
   },
   chess: {
     blitz_3m: 28,
@@ -165,18 +168,12 @@ function readLocalStoragePB(game: string, modeId: string): number | null {
         }
       }
     } else if (game === "nokiasnake") {
+      // Per mode: the overall `highScore` belongs to whichever mode set it, not to every mode.
       const raw = localStorage.getItem("bhalyam_retro_snake_v1");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed.highScore === "number" && parsed.highScore > 0) return parsed.highScore;
-      }
+      if (raw) return readModeBest(JSON.parse(raw).modeBestScores, modeId);
     } else if (game === "nokiacricket") {
       const raw = localStorage.getItem("bhalyam_nokia_cricket_data_v1");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed.highScore === "number" && parsed.highScore > 0) return parsed.highScore;
-        if (typeof parsed.stats?.highestScore === "number" && parsed.stats.highestScore > 0) return parsed.stats.highestScore;
-      }
+      if (raw) return readModeBest(JSON.parse(raw).modeBestScores, modeId);
     } else if (game === "roadrash") {
       const raw = localStorage.getItem("bhalyam_brick_racer_v1");
       if (raw) {
@@ -187,8 +184,9 @@ function readLocalStoragePB(game: string, modeId: string): number | null {
       const raw = localStorage.getItem("bhalyam_brick_tetris_save_v1");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (modeId === "pentix" && typeof parsed.bestPentixScore === "number" && parsed.bestPentixScore > 0) return parsed.bestPentixScore;
-        if (typeof parsed.bestClassicScore === "number" && parsed.bestClassicScore > 0) return parsed.bestClassicScore;
+        // Each mode reads its own best. Pentix used to fall through to the Classic score.
+        const best = modeId === "pentix" ? parsed.bestPentixScore : parsed.bestClassicScore;
+        if (typeof best === "number" && best > 0) return best;
       }
     } else if (game === "breakout") {
       const raw = localStorage.getItem("bhalyam_brick_breakout_v1");
@@ -255,6 +253,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "nokiacricket", label: "Retro Cricket", icon: "🏏" },
   { id: "roadrash", label: "Brick Racer", icon: "🏎️" },
   { id: "brickblocks", label: "Brick Tetris", icon: "🧱" },
+  { id: "breakout", label: "Brick Breakout", icon: "🧨" },
   { id: "ludo", label: "Ludo", icon: "🎲" },
   { id: "uno", label: "Color Cards", icon: "🃏" },
   { id: "chess", label: "Chess", icon: "♟️" },
@@ -308,6 +307,9 @@ const GAME_TILE_IMAGES: Record<string, string> = {
 };
 
 function getModeIcon(modeId: string): string {
+  // Retro Cricket's `classic_<overs>` / `chase_<overs>`.
+  if (modeId.startsWith("chase_")) return "🎯";
+  if (/^classic_\d+$/.test(modeId)) return "🏏";
   switch (modeId) {
     case "quantum":
       return "⚛️";

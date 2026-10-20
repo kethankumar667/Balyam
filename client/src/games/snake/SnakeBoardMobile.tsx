@@ -9,7 +9,6 @@ import InlineRoomRail from "../../components/InlineRoomRail";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
-import { recordSoloScore } from "../../store/scorecardStore";
 
 /** Same "seen" bookkeeping convention as every other game's tutorial gate. */
 export const SNAKE_RULES_KEY = "snake.tutorial.completed.v1";
@@ -93,18 +92,15 @@ export default function SnakeBoardMobile({ state, selfId, onMove, players, messa
   const onEat = useCallback(() => haptics.subtle(), [haptics]);
   const onDeath = useCallback(() => haptics.win(), [haptics]);
 
-  // Haptic feedback on game over finish
+  // Haptic feedback on game over finish. The scorecard is recorded by the server when the room's
+  // match ends, under the host's wall and speed choice (see SnakeBoardDesktop.tsx) — not from here.
   const prevOverRef = useRef(false);
   useEffect(() => {
     if (state.isOver && !prevOverRef.current) {
       haptics.win();
-      const me = state.players.find((p) => p.id === selfId);
-      if (me && me.score > 0) {
-        void recordSoloScore("snake", "classic_walled", me.score);
-      }
     }
     prevOverRef.current = !!state.isOver;
-  }, [state.isOver, haptics, selfId, state.players]);
+  }, [state.isOver, haptics]);
 
   const me = state.players.find((p) => p.id === selfId);
 

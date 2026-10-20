@@ -1,3 +1,5 @@
+import type { ModeBests } from "../../../lib/modeBests";
+
 export type GameState =
   | "BOOT"
   | "MENU"
@@ -123,6 +125,8 @@ export interface NokiaCricketSaveData {
   totalFours: number;
   bestStrikeRate: number;
   unlockedAchievements: string[];
+  /** Best runs per leaderboard mode (`classic_5`, `chase_2`, …); absent in saves from before modes were kept apart. */
+  modeBestScores?: ModeBests;
 }
 
 export interface Achievement {

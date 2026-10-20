@@ -1,4 +1,5 @@
 import type { NokiaCricketSaveData, Achievement } from "../types";
+import { withModeBest } from "../../../lib/modeBests";
 
 export const ACHIEVEMENTS: Achievement[] = [
   {
@@ -50,6 +51,7 @@ export const StorageService = {
       totalFours: 0,
       bestStrikeRate: 0,
       unlockedAchievements: [],
+      modeBestScores: {},
     };
   },
 
@@ -86,7 +88,8 @@ export const StorageService = {
     sixes: number,
     fours: number,
     won: boolean,
-    isChase: boolean = false
+    isChase: boolean = false,
+    modeId?: string
   ): { nextData: NokiaCricketSaveData; newAchievements: Achievement[] } {
     const data = this.load();
     const newAchievements: Achievement[] = [];
@@ -105,6 +108,7 @@ export const StorageService = {
       data.highScore = runs;
       data.bestWickets = wickets;
     }
+    if (modeId) data.modeBestScores = withModeBest(data.modeBestScores, modeId, runs);
 
     const sr = balls > 0 ? Math.round((runs / balls) * 100) : 0;
     if (sr > data.bestStrikeRate) {

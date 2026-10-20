@@ -15,6 +15,8 @@ import { RenderPipeline } from "../canvas/RenderPipeline";
 import { StorageService } from "../utils/storage";
 import { GRID_CONFIG, SPRITES } from "../utils/constants";
 import { recordSoloScore } from "../../../store/scorecardStore";
+import { withModeBest } from "../../../lib/modeBests";
+import { nokiaSnakeModeId } from "@shared/profile/GameModes";
 
 export class StateMachine {
   public state: GameState = "BOOT";
@@ -143,7 +145,11 @@ export class StateMachine {
     this.state = "GAME_OVER";
 
     const isNewHigh = this.score > this.saveData.highScore;
+    // Classic and Wrap Around are different boards: each keeps its own best, and the scorecard
+    // files them under their own rows (Wrap Around used to be filed as "Arcade Rush").
+    const modeId = nokiaSnakeModeId(this.gameMode);
     const nextData = StorageService.save({
+      modeBestScores: withModeBest(this.saveData.modeBestScores, modeId, this.score),
       highScore: Math.max(this.saveData.highScore, this.score),
       matchesPlayed: this.saveData.matchesPlayed + 1,
       totalFoodCollected: this.saveData.totalFoodCollected + this.foodEaten,
@@ -162,7 +168,6 @@ export class StateMachine {
     this.updateStats(isNewHigh);
 
     // Sync score to Chrono-Scorecard & Leaderboard
-    const modeId = this.gameMode === "WRAP_AROUND" ? "speed_rush" : "classic_walled";
     void recordSoloScore("nokiasnake", modeId, this.score, {
       level: this.level,
       length: this.snake.length,

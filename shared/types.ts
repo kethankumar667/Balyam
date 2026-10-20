@@ -243,6 +243,13 @@ export interface RoomPublicState {
    * has none, and the client reads that as the classic world.
    */
   world?: WorldId;
+  /**
+   * The leaderboard mode this room's match is filed under, from the options the host chose
+   * (`resolveModeId`). Lets a result screen show the personal best for the mode that was actually
+   * played rather than for whichever mode a player happens to have first. Optional on the wire for the
+   * same reason as `world`: a server that predates it sends none.
+   */
+  modeId?: string;
   /** Last finished rounds this room has played, oldest first (Rummy only — empty elsewhere). docs/rummy/roadmap.md B.1. */
   history: RummyRoundRecap[];
   /** "House Champion" of this room's table name, if a pool match has been won under it (Rummy only). Keyed by name, not room code, so it survives room collapse and resurfaces if the same gang reconvenes under the same name. docs/rummy/roadmap.md B.3. */

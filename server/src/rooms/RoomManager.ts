@@ -121,7 +121,7 @@ import { metricsCollector } from "../observability/MetricsCollector.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { profileService } from "../profile/ProfileService.js";
-import { resolveModeId } from "@shared/profile/GameModes.js";
+import { roomModeId } from "./roomModeId.js";
 import { rankingService } from "../ranking/RankingService.js";
 import { recentPlayersService } from "../ranking/RecentPlayersService.js";
 import { logger } from "../lib/logger.js";
@@ -1648,6 +1648,7 @@ export class RoomManager {
       maxPlayers: max,
       name: room.name,
       world: room.world,
+      modeId: roomModeId(room),
       history: room.history,
       champion: room.name ? this.champions.get(room.name) ?? null : null,
       unoHistory: room.unoHistory,
@@ -4131,10 +4132,7 @@ export class RoomManager {
         finishedAt,
         durationMs: Math.max(1000, finishedAt - startedAt),
         winnerId: winner && !winner.isBot && !winner.isLocal ? winner.identityId ?? winnerId : winnerId,
-        modeId: resolveModeId(
-          room.game,
-          room.game === "tictactoe" ? (room.ticTacToeOptions as unknown as Record<string, unknown>) : undefined
-        ),
+        modeId: roomModeId(room),
         participants: [...canonicalParticipants.values()],
       });
       recentPlayersService.recordMatch({

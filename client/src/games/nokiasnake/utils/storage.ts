@@ -58,6 +58,7 @@ export const StorageService = {
       bestLevel: 1,
       longestSnake: 4,
       achievements: [],
+      modeBestScores: {},
     };
   },
 

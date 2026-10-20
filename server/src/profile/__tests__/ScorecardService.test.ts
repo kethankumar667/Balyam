@@ -218,10 +218,13 @@ describe("ScorecardService", () => {
     expect(snakeRanks.length).toBeGreaterThanOrEqual(3);
     expect(snakeRanks[0]?.bestScore).toBe(84);
 
-    // Nokia Cricket
-    const cricketRanks = service.getModeLeaderboard("nokiacricket", "2_overs");
+    // Nokia Cricket: Classic and Chase each have their own board at every over length
+    const cricketRanks = service.getModeLeaderboard("nokiacricket", "classic_2");
     expect(cricketRanks.length).toBeGreaterThanOrEqual(3);
     expect(cricketRanks[0]?.bestScore).toBe(44);
+    const chaseRanks = service.getModeLeaderboard("nokiacricket", "chase_5");
+    expect(chaseRanks.length).toBeGreaterThanOrEqual(3);
+    expect(chaseRanks[0]?.bestScore).toBe(68);
 
     // Brick Racer
     const racerRanks = service.getModeLeaderboard("roadrash", "circuit_rush");

@@ -128,4 +128,27 @@ describe("Nokia Cricket - StorageService", () => {
     expect(result.nextData.chaseMatchesPlayed).toBeGreaterThanOrEqual(1);
     expect(result.nextData.chaseMatchesWon).toBeGreaterThanOrEqual(1);
   });
+
+  it("keeps a separate best for each leaderboard mode, not one overall high score", () => {
+    localStorage.removeItem("bhalyam_nokia_cricket_data_v1");
+    StorageService.save(StorageService.getDefaults());
+
+    StorageService.recordMatch(140, 3, 60, 6, 9, false, false, "classic_10");
+    StorageService.recordMatch(12, 0, 6, 1, 1, false, false, "classic_1");
+    const { nextData } = StorageService.recordMatch(48, 2, 30, 2, 4, true, true, "chase_5");
+
+    expect(nextData.modeBestScores).toEqual({ classic_10: 140, classic_1: 12, chase_5: 48 });
+    // The overall record still tracks the best of everything, for the in-game screens that show it.
+    expect(nextData.highScore).toBe(140);
+  });
+
+  it("only ever raises a mode's best", () => {
+    localStorage.removeItem("bhalyam_nokia_cricket_data_v1");
+    StorageService.save(StorageService.getDefaults());
+
+    StorageService.recordMatch(30, 1, 12, 2, 2, false, false, "classic_2");
+    const { nextData } = StorageService.recordMatch(18, 4, 12, 0, 1, false, false, "classic_2");
+
+    expect(nextData.modeBestScores?.classic_2).toBe(30);
+  });
 });

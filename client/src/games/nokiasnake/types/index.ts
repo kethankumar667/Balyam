@@ -1,3 +1,5 @@
+import type { ModeBests } from "../../../lib/modeBests";
+
 export type GameState =
   | "BOOT"
   | "MENU"
@@ -54,4 +56,6 @@ export interface NokiaSnakeSaveData {
   bestLevel: number;
   longestSnake: number;
   achievements: string[];
+  /** Best score per leaderboard mode (`classic_walled`, `borderless_wrap`); absent in older saves. */
+  modeBestScores?: ModeBests;
 }
