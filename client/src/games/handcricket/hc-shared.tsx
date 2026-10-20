@@ -1979,6 +1979,7 @@ export function TossPhase({
             <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
                 avatar={myAvatar}
+                playerId={me?.id}
                 name={myName}
                 className="w-full h-full object-cover rounded-full"
                 textClassName="text-[10px]"
@@ -2111,6 +2112,7 @@ export function TossPhase({
             <div style={{ width: 26, height: 26, flexShrink: 0 }}>
               <SeatAvatar
                 avatar={oppAvatar}
+                playerId={opponent?.id}
                 name={oppName}
                 className="w-full h-full object-cover rounded-full"
                 textClassName="text-[10px]"
@@ -3923,6 +3925,7 @@ export function CurrentPlayersBar({
         <div className="relative shrink-0">
           <SeatAvatar
             avatar={bowlingPlayer?.avatar}
+            playerId={bowlingPlayer?.id}
             name={bowlingPlayer?.name ?? "Bowler"}
             className="w-10 h-10 sm:w-11 sm:h-11 rounded-full ring-2 ring-rose-400/80 shadow-2xs"
           />
@@ -4051,7 +4054,7 @@ export function Scoreboard({
               <HcTeamCrest id={batterTeam.id} flag={batterTeam.flag} size={46} />
             </div>
             <div className="-ml-3 relative z-20 shrink-0">
-              <SeatAvatar avatar={batterPlayer?.avatar} name={batterTeam.playerName} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full ring-2 ring-white shadow-2xs" />
+              <SeatAvatar avatar={batterPlayer?.avatar} playerId={batterPlayer?.id} name={batterTeam.playerName} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full ring-2 ring-white shadow-2xs" />
             </div>
           </div>
 

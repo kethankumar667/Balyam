@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -9,6 +9,9 @@ import type { Player } from "@shared/types";
 import AvatarFrameOverlay from "../AvatarFrameOverlay";
 import { FRAME_DESIGNS, getFrameDesign, isFrameId } from "../frameDesigns";
 import SeatAvatar from "../../../profile/SeatAvatar";
+import SeatFrame from "../SeatFrame";
+import { AVATAR_RADIUS, CENTER, OVERLAY_SCALE } from "../frameGeometry";
+import { useRoomStore } from "../../../../store/roomStore";
 import ParticipantRow from "../../../room/ParticipantRow";
 
 const STYLESHEET = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "avatar-frames.css"), "utf8");
@@ -65,6 +68,72 @@ describe("avatar frame designs", () => {
 
   it("stands every frame still for anyone who has asked for less motion", () => {
     expect(STYLESHEET).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*animation: none !important/);
+  });
+});
+
+describe("frame alignment", () => {
+  // jsdom applies no stylesheet, so the geometry cannot be measured here; what can be held is the contract the
+  // stylesheet states. Measured in a real browser, a missing `max-width: none` (Tailwind caps every svg at 100%)
+  // left the overlay avatar-sized and shifted 12% to one side.
+  const rule = STYLESHEET.match(/\.af-svg\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  it("sizes the overlay to 124% of the avatar and starts it 12% before, so it is centred", () => {
+    expect(rule).toMatch(/top:\s*-12%/);
+    expect(rule).toMatch(/left:\s*-12%/);
+    expect(rule).toMatch(/width:\s*124%/);
+    expect(rule).toMatch(/height:\s*124%/);
+  });
+
+  it("opts the overlay out of the base layer's `max-width: 100%` for svg, which would shrink it", () => {
+    expect(rule).toMatch(/max-width:\s*none/);
+    expect(rule).toMatch(/max-height:\s*none/);
+  });
+
+  it("states the same oversize in the geometry that the stylesheet states in percent", () => {
+    expect(OVERLAY_SCALE).toBeCloseTo(1 + 2 * 0.12, 5);
+    expect(AVATAR_RADIUS).toBeCloseTo(CENTER / OVERLAY_SCALE, 5);
+  });
+
+  it("draws every frame on the 100-unit canvas the geometry (and its avatar radius) assumes", () => {
+    for (const { id } of FRAME_DESIGNS) {
+      const { container, unmount } = render(<AvatarFrameOverlay frameId={id} />);
+      expect(container.querySelector("svg")?.getAttribute("viewBox"), id).toBe("0 0 100 100");
+      unmount();
+    }
+  });
+});
+
+describe("a frame found by player id", () => {
+  const seat = (id: string, avatarAura?: string) => ({ id, name: id, isHost: false, isReady: true, isConnected: true, cosmetics: { avatarAura } });
+
+  beforeEach(() => {
+    useRoomStore.setState({
+      roomState: { players: [seat("p1", "frame_royal_crown"), seat("p2", "aura_ludo_king"), seat("p3")] } as never,
+    });
+  });
+  afterEach(() => useRoomStore.setState({ roomState: null as never }));
+
+  it("draws the frame the seat's player wears, for a board that knows only who sits there", () => {
+    const { container } = render(<SeatFrame playerId="p1" />);
+    expect(container.querySelector('svg[data-frame="frame_royal_crown"]')).not.toBeNull();
+  });
+
+  it("draws nothing for a legacy ring, for a player with no frame, for an unknown player or for no player", () => {
+    for (const playerId of ["p2", "p3", "nobody", undefined]) {
+      const { container, unmount } = render(<SeatFrame playerId={playerId} />);
+      expect(container, String(playerId)).toBeEmptyDOMElement();
+      unmount();
+    }
+  });
+
+  it("lets SeatAvatar find the frame from a player id, while an explicit aura still wins", () => {
+    const found = render(<SeatAvatar name="A" playerId="p1" className="w-8 h-8" />);
+    expect(found.container.querySelector('svg[data-frame="frame_royal_crown"]')).not.toBeNull();
+    found.unmount();
+
+    const explicit = render(<SeatAvatar name="A" playerId="p1" aura="frame_diya_glow" className="w-8 h-8" />);
+    expect(explicit.container.querySelector('svg[data-frame="frame_diya_glow"]')).not.toBeNull();
+    expect(explicit.container.querySelector('svg[data-frame="frame_royal_crown"]')).toBeNull();
   });
 });
 

@@ -1043,6 +1043,7 @@ export function HcProScoreBug({
           <TeamPlate team={bat} size={compact ? "md" : "lg"} />
           <SeatAvatar
             avatar={battingPlayer?.avatar}
+            playerId={battingPlayer?.id}
             name={bat.playerName}
             className={compact ? "w-7 h-7" : "w-8 h-8"}
             textClassName={compact ? "text-[10px]" : "text-[11px]"}

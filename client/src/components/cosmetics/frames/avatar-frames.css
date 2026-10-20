@@ -8,12 +8,20 @@
  * flame, an ear).
  */
 
+/*
+ * The overlay is 124% of the avatar and starts 12% before it, which centres it exactly. Tailwind's base layer
+ * gives every svg `max-width: 100%; height: auto`, which would cap the overlay at the avatar's own width and
+ * leave its -12% offset shifting it sideways; both are switched off here so the numbers above are the truth.
+ */
 .af-svg {
   position: absolute;
   top: -12%;
   left: -12%;
   width: 124%;
   height: 124%;
+  max-width: none;
+  max-height: none;
+  display: block;
   overflow: visible;
   pointer-events: none;
   z-index: 10;

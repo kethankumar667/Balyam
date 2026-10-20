@@ -17,6 +17,7 @@ import type {
 } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { findAvatar } from "../../lib/avatars";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { PlayingCard, FaceDownCard } from "./Card";
 import CardTracker from "./CardTracker";
 import QrCodeModal from "../../components/QrCodeModal";
@@ -2079,17 +2080,21 @@ function SeatCard({
         />
       )}
       <div className="rm-seat__top">
-        <span className="rm-seat__avatar" aria-hidden>
-          {showAvatarImg ? (
-            <img
-              src={avatarOption!.src}
-              alt=""
-              onError={() => setImgFailed(true)}
-              draggable={false}
-            />
-          ) : (
-            letter
-          )}
+        {/* The avatar clips its own picture, so the frame is a sibling inside a box the avatar's size. */}
+        <span className="relative inline-flex shrink-0">
+          <span className="rm-seat__avatar" aria-hidden>
+            {showAvatarImg ? (
+              <img
+                src={avatarOption!.src}
+                alt=""
+                onError={() => setImgFailed(true)}
+                draggable={false}
+              />
+            ) : (
+              letter
+            )}
+          </span>
+          <SeatFrame playerId={playerId} />
         </span>
         <span className="rm-seat__id">
           <span className="rm-seat__name" title={name}>

@@ -363,6 +363,7 @@ export function AllPlayerBoardsView({
               <span className="flex items-center gap-1.5">
                 <SeatAvatar
                   avatar={avatarById.get(p.id)}
+                  playerId={p.id}
                   name={p.name}
                   className="w-6 h-6"
                   textClassName="text-[9px]"

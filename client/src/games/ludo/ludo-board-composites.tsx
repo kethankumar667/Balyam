@@ -27,6 +27,7 @@ import { useRecovery } from "../../core/recovery/useRecovery";
 import { COLOR_HEX, COLOR_HEX_DARK, HOME_TOKEN_PCT, PLAYER_COLORS_ORDER } from "./board-layout";
 import { ordinal } from "@shared/ludo-rules";
 import { Avatar } from "./Avatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { BoardSVG, HoverPreviewMarker, MiniBurst, polygonTokenSize } from "./ludo-board-shared";
 import type { LudoBoardModel } from "./useLudoBoard";
 import {
@@ -414,7 +415,7 @@ function LudoSeatAvatar({
 }) {
   const ring = (
     <div
-      className={`rounded-full p-0.5 transition-all flex items-center justify-center ${
+      className={`relative rounded-full p-0.5 transition-all flex items-center justify-center ${
         seat.active ? "ring-2 ring-offset-1 ring-amber-400 dark:ring-amber-500 shadow-xs ludo-chip" : ""
       }`}
       style={seat.active ? chipVars(tint, rim) : { background: `${tint}35` }}
@@ -422,6 +423,7 @@ function LudoSeatAvatar({
       <div className="rounded-full overflow-hidden flex items-center justify-center bg-white shadow-inner">
         <Avatar name={seat.name} avatar={seat.avatar} color={seat.color} size={size} />
       </div>
+      <SeatFrame playerId={seat.player?.id} />
     </div>
   );
   if (!seat.player) return ring;

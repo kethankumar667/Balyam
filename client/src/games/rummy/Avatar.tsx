@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 
 /**
  * Premium player avatar: the player's chosen picture — or, when they haven't
@@ -63,6 +64,8 @@ export interface AvatarProps {
   isDealer?: boolean;
   /** Greyed out (e.g. a dropped or eliminated player). */
   dimmed?: boolean;
+  /** Who sits here, so the frame they wear is drawn round the avatar. */
+  playerId?: string;
 }
 
 export default function Avatar({
@@ -73,6 +76,7 @@ export default function Avatar({
   scoreBadge,
   isDealer,
   dimmed,
+  playerId,
 }: AvatarProps) {
   const initials = initialsOf(name);
   const [start, end] = paletteFor(name);
@@ -168,6 +172,14 @@ export default function Avatar({
         ) : (
           initials
         )}
+      </div>
+
+      {/* The frame this player wears: a box exactly the avatar disk's size, which the frame fills 124% of. */}
+      <div
+        className="absolute pointer-events-none"
+        style={{ left: ringStroke, top: ringStroke, width: size, height: size, opacity: dimmed ? 0.45 : 1 }}
+      >
+        <SeatFrame playerId={playerId} />
       </div>
 
       {/* Countdown number — sits on top of the ring at top-right */}

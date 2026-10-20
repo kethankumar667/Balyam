@@ -5,6 +5,7 @@ import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { getLevelTier } from "@shared/progression/MiniclipProgression";
 import AvatarFrameOverlay from "../cosmetics/frames/AvatarFrameOverlay";
 import { isFrameId } from "../cosmetics/frames/frameDesigns";
+import { useSeatFrame } from "../cosmetics/frames/SeatFrame";
 
 /**
  * Any player's face at the table — theirs as well as yours.
@@ -59,6 +60,11 @@ export interface SeatAvatarProps {
   avatar?: string;
   /** Cosmetic avatar aura identifier: an animated frame (frame_royal_crown, …) or a legacy ring (aura_ludo_king). */
   aura?: string;
+  /**
+   * Who sits here. With no explicit `aura`, the frame this player wears (from the live room state) is drawn.
+   * Game boards pass this so every seat shows its player's frame without each one resolving it.
+   */
+  playerId?: string;
   /** Player's progression level for Miniclip-style corner badge */
   level?: number;
   /** Used for the initial and for picking the fallback colour. */
@@ -79,6 +85,7 @@ export interface SeatAvatarProps {
 export default function SeatAvatar({
   avatar,
   aura,
+  playerId,
   level,
   name,
   className = "w-8 h-8",
@@ -88,7 +95,10 @@ export default function SeatAvatar({
 }: SeatAvatarProps) {
   const option = findAvatar(avatar);
   const [failed, setFailed] = useState(false);
-  const auraConfig = getAvatarAuraConfig(aura);
+  // An explicit `aura` wins; otherwise a caller that knows only who sits here gets that player's frame.
+  const seatFrame = useSeatFrame(aura === undefined ? playerId : undefined);
+  const effectiveAura = aura ?? seatFrame;
+  const auraConfig = getAvatarAuraConfig(effectiveAura);
 
   const isEmoji =
     avatar &&
@@ -125,8 +135,8 @@ export default function SeatAvatar({
             }}
           />
         )}
-        {isFrameId(aura) && <AvatarFrameOverlay frameId={aura} />}
-        {!isFrameId(aura) && auraConfig && auraConfig.className && (
+        {isFrameId(effectiveAura) && <AvatarFrameOverlay frameId={effectiveAura} />}
+        {!isFrameId(effectiveAura) && auraConfig && auraConfig.className && (
           <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
         {node}

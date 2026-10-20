@@ -15,6 +15,7 @@ import DotsBoxesDominanceBar from "./DotsBoxesDominanceBar";
 import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
@@ -238,6 +239,7 @@ export default function DotsBoxesNotebookMobile(props: DotsBoxesBoardProps) {
                         </span>
                       )}
                     </div>
+                    <SeatFrame playerId={pid} />
                   </div>
 
                   {/* 2-Digit Bold Score */}

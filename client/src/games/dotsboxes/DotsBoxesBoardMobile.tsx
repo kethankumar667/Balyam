@@ -8,6 +8,7 @@ import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Chat from "../../components/Chat";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
@@ -187,6 +188,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
                       </span>
                     )}
                   </div>
+                  <SeatFrame playerId={pid} />
                 </div>
 
                 {/* 2-Digit Bold Score */}
@@ -423,6 +425,7 @@ export default function DotsBoxesBoardMobile(props: DotsBoxesBoardProps) {
                         </span>
                       )}
                     </div>
+                    <SeatFrame playerId={pid} />
                   </div>
                   {idx < arr.length - 1 && (
                     <span className="text-slate-600 text-xs">&gt;</span>

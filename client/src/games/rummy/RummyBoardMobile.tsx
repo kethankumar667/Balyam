@@ -2336,6 +2336,7 @@ function OpponentRow({
               name={player?.name ?? "?"}
               avatar={player?.avatar}
               size={52}
+              playerId={id}
               countdown={isTurn && state.phase === "playing" ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
               scoreBadge={cumulative !== undefined ? cumulative : undefined}
               dimmed={isDropped}
@@ -2374,6 +2375,7 @@ function PlayerStrip({
         name={myName}
         avatar={avatar}
         size={compact ? 36 : 52}
+        playerId={selfId ?? undefined}
         countdown={myTurn ? { secondsLeft, totalSeconds: turnTotalSec } : undefined}
         scoreBadge={cumulative !== undefined ? cumulative : undefined}
       />

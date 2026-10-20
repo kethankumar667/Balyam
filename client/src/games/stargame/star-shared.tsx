@@ -7,6 +7,7 @@ import type {
   StarStanding,
 } from "@shared/types";
 import type { StarSeat } from "./useStarBoard";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { findAvatar } from "../../lib/avatars";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 
@@ -1024,6 +1025,7 @@ export function SeatTile({
             name.slice(0, 1).toUpperCase()
           )}
         </div>
+        <SeatFrame playerId={seat.player?.id} />
         <span
           aria-hidden
           className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"

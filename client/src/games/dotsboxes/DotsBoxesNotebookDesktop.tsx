@@ -19,6 +19,7 @@ import DotsBoxesDominanceBar from "./DotsBoxesDominanceBar";
 import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
@@ -234,7 +235,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                       <div className="flex items-center gap-2.5 min-w-0">
                         {/* Hand-Drawn Circled Initial Badge */}
                         <div
-                          className="w-10 h-10 rounded-full border-2 flex-shrink-0 flex items-center justify-center bg-white shadow-xs"
+                          className="relative w-10 h-10 rounded-full border-2 flex-shrink-0 flex items-center justify-center bg-white shadow-xs"
                           style={{
                             borderColor: theme.primary,
                             color: theme.primary,
@@ -242,6 +243,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                           }}
                         >
                           <span className="font-bold text-lg">{initials}</span>
+                          <SeatFrame playerId={pid} />
                         </div>
 
                         {/* Name & Status */}
@@ -405,7 +407,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Avatar */}
                   <div
-                    className="w-11 h-11 rounded-full border-2 p-0.5 flex-shrink-0 flex items-center justify-center bg-white"
+                    className="relative w-11 h-11 rounded-full border-2 p-0.5 flex-shrink-0 flex items-center justify-center bg-white"
                     style={{ borderColor: turnPlayerTheme.primary }}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden bg-stone-100 flex items-center justify-center">
@@ -423,6 +425,7 @@ export default function DotsBoxesNotebookDesktop(props: DotsBoxesBoardProps) {
                         </span>
                       )}
                     </div>
+                    <SeatFrame playerId={state.turnPlayerId ?? undefined} />
                   </div>
 
                   {/* Turn Text */}

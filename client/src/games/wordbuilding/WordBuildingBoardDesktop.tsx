@@ -14,6 +14,7 @@ import {
 } from "./wordbuilding-shared";
 import { ClaimBuilderBar, ClaimVotePrompt, ClaimWaitingBadge } from "./wordbuilding-claim";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import FloatingReactionsLayer from "../../components/reactions/FloatingReactionsLayer";
 import { useSeatReactions } from "../../components/reactions/useSeatReactions";
@@ -376,6 +377,7 @@ export default function WordBuildingBoardDesktop(props: WordBuildingBoardProps) 
                               </span>
                             )}
                           </div>
+                          <SeatFrame playerId={pid} />
                         </div>
 
                         {/* Name & Status */}

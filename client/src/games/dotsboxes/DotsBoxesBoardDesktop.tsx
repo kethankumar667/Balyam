@@ -7,6 +7,7 @@ import DotsBoxesDominanceBar from "./DotsBoxesDominanceBar";
 import DotsBoxesScorecardModal from "./DotsBoxesScorecardModal";
 import Modal from "../../components/Modal";
 import SeatAvatar from "../../components/profile/SeatAvatar";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { TurnTimeWarning } from "../../components/TurnTimeWarning";
 import { useTutorialGate, markSeen } from "../../components/GameTutorial";
 import { DOTSBOXES_TUTORIAL } from "../tutorials";
@@ -202,6 +203,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
                           </span>
                         )}
                       </div>
+                      <SeatFrame playerId={pid} />
                     </div>
 
                     {/* Name & Turn / Winner Status */}
@@ -388,6 +390,7 @@ export default function DotsBoxesBoardDesktop(props: DotsBoxesBoardProps) {
                       </span>
                     )}
                   </div>
+                  <SeatFrame playerId={state.turnPlayerId ?? undefined} />
                 </div>
 
                 <div className="flex-1 min-w-0">

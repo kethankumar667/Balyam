@@ -19,8 +19,13 @@ export const timing = (duration: number, delay = 0): CSSProperties =>
  */
 
 export const CENTER = 50;
-/** Radius of the avatar's own circle on the frame canvas. */
-export const AVATAR_RADIUS = 40;
+/**
+ * How much bigger than the avatar the overlay is (124%, from -12% to +112%; see `.af-svg` in avatar-frames.css).
+ * The two numbers there and this one are the same fact written twice, and a test holds them together.
+ */
+export const OVERLAY_SCALE = 1.24;
+/** Radius of the avatar's own circle on the frame canvas: half the canvas, shrunk by the overlay's oversize. */
+export const AVATAR_RADIUS = CENTER / OVERLAY_SCALE;
 
 const ROUNDING = 100;
 
