@@ -46,6 +46,27 @@ const STATUS_PRIORITY: Record<RecoveryStatus, number> = {
   REJOIN_ELIGIBLE: 4,
 };
 
+/** One figure on the summary strip: a label, its value, and an optional line of context under it. */
+function KpiTile({
+  label,
+  value,
+  valueClassName,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  valueClassName: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-xl border border-[var(--chrome-border)] bg-[var(--chrome-control)]/60 p-2.5">
+      <span className="text-xs font-semibold leading-tight text-[var(--chrome-ink-soft)]">{label}</span>
+      <span className={`text-sm font-extrabold sm:text-base ${valueClassName}`}>{value}</span>
+      {hint && <span className="text-[10px] leading-tight text-[var(--chrome-ink-soft)]">{hint}</span>}
+    </div>
+  );
+}
+
 export default function RecoverySentinel() {
   const recovery = useAdminLiveStore((s) => s.recovery);
   const platform = useAdminLiveStore((s) => s.platform);
@@ -171,13 +192,14 @@ export default function RecoverySentinel() {
 
   return (
     <div className="rounded-2xl bg-[var(--chrome-panel)] border border-[var(--chrome-border)] p-4 sm:p-5 shadow-xs flex flex-col space-y-4">
-      {/* Header */}
+      {/* Header. The panel sits in a one-third column on the dashboard, so nothing here may assume
+          the width of the screen: the title block shrinks and wraps, the count badge never does. */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--chrome-hairline)]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center">
             <UserX className="w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-sm font-bold text-[var(--chrome-ink)]">
               Advanced Recovery Sentinel
             </h2>
@@ -187,93 +209,66 @@ export default function RecoverySentinel() {
           </div>
         </div>
 
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+        <span className="shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
           {activeCount} Active
         </span>
       </div>
 
-      {/* Summary KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-            Active Recoveries
-          </span>
-          <span className="text-sm sm:text-base font-extrabold text-[var(--chrome-ink)]">
-            {activeCount}
-          </span>
-        </div>
-
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-              Success Rate
-            </span>
-          </div>
-          <span className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-            {recoverySuccessRate !== null ? `${recoverySuccessRate}%` : "N/A"}
-          </span>
-          <span className="text-[10px] text-[var(--chrome-ink-soft)] block">Since server start</span>
-        </div>
-
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-            Expiry Rate
-          </span>
-          <span className="text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400">
-            {recoveryExpiryRate !== null ? `${recoveryExpiryRate}%` : "N/A"}
-          </span>
-          <span className="text-[10px] text-[var(--chrome-ink-soft)] block">Since server start</span>
-        </div>
-
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-            Avg Remaining
-          </span>
-          <span className="text-sm sm:text-base font-extrabold font-mono text-amber-600 dark:text-amber-400">
-            {formatSeconds(avgRemainingGraceMs)}
-          </span>
-        </div>
-
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-            Longest Active
-          </span>
-          <span className="text-sm sm:text-base font-extrabold font-mono text-[var(--chrome-ink)]">
-            {formatSeconds(longestAwayDurationMs)}
-          </span>
-        </div>
-
-        <div className="p-2.5 rounded-xl bg-[var(--chrome-control)]/60 border border-[var(--chrome-border)]">
-          <span className="text-xs font-semibold text-[var(--chrome-ink-soft)] block">
-            Rejoin Eligible
-          </span>
-          <span className="text-sm sm:text-base font-extrabold text-sky-600 dark:text-sky-400">
-            {rejoinEligibleCount}
-          </span>
-        </div>
+      {/* Summary KPI Strip.
+          Columns follow the width of THIS panel, not the screen: a viewport breakpoint
+          (`lg:grid-cols-6`) put six tiles into a one-third dashboard column, ~60px each, with the
+          labels running into each other. Three across when each tile gets at least 7rem, two when
+          it does not, so six tiles always fill whole rows. The `_` in the class is a space. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(max(7rem,calc((100%_-_1rem)/3)),1fr))] gap-2">
+        <KpiTile label="Active Recoveries" value={activeCount} valueClassName="text-[var(--chrome-ink)]" />
+        <KpiTile
+          label="Success Rate"
+          value={recoverySuccessRate !== null ? `${recoverySuccessRate}%` : "N/A"}
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+          hint="Since server start"
+        />
+        <KpiTile
+          label="Expiry Rate"
+          value={recoveryExpiryRate !== null ? `${recoveryExpiryRate}%` : "N/A"}
+          valueClassName="text-rose-600 dark:text-rose-400"
+          hint="Since server start"
+        />
+        <KpiTile
+          label="Avg Remaining"
+          value={formatSeconds(avgRemainingGraceMs)}
+          valueClassName="font-mono text-amber-600 dark:text-amber-400"
+        />
+        <KpiTile
+          label="Longest Active"
+          value={formatSeconds(longestAwayDurationMs)}
+          valueClassName="font-mono text-[var(--chrome-ink)]"
+        />
+        <KpiTile label="Rejoin Eligible" value={rejoinEligibleCount} valueClassName="text-sky-600 dark:text-sky-400" />
       </div>
 
       {/* Interactive Controls & Filters */}
       <div className="space-y-2 pt-1">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--chrome-ink-soft)]" />
-            <input
-              type="text"
-              placeholder="Search player, room code..."
-              value={filters.searchQuery}
-              onChange={(e) => setRecoverySearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] placeholder-[var(--chrome-ink-soft)] focus:outline-hidden focus:ring-1 focus:ring-amber-500"
-              aria-label="Search recovery seats"
-            />
-          </div>
+        {/* Search has a row of its own so it can never be squeezed to an icon by the controls. */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--chrome-ink-soft)]" />
+          <input
+            type="text"
+            placeholder="Search player, room code..."
+            value={filters.searchQuery}
+            onChange={(e) => setRecoverySearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] placeholder-[var(--chrome-ink-soft)] focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+            aria-label="Search recovery seats"
+          />
+        </div>
 
+        {/* Filters and sort wrap onto as many rows as the panel's width needs, and each row's controls
+            stretch to fill it, so none is cut off and none is left stranded at half width. */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Game filter */}
           <select
             value={filters.gameFilter}
             onChange={(e) => setRecoveryGameFilter(e.target.value as GameKind | "all")}
-            className="px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
+            className="min-w-0 flex-1 basis-36 px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
             aria-label="Filter recoveries by game"
           >
             <option value="all">All Games</option>
@@ -296,7 +291,7 @@ export default function RecoverySentinel() {
           <select
             value={filters.statusFilter}
             onChange={(e) => setRecoveryStatusFilter(e.target.value as RecoveryStatus | "all")}
-            className="px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
+            className="min-w-0 flex-1 basis-36 px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
             aria-label="Filter recoveries by status"
           >
             <option value="all">All Statuses</option>
@@ -307,33 +302,34 @@ export default function RecoverySentinel() {
             <option value="EXPIRED">Expired</option>
           </select>
 
-          {/* Sort By */}
-          <select
-            value={filters.sortBy}
-            onChange={(e) =>
-              setRecoverySorting(
-                e.target.value as "urgency" | "grace" | "disconnectDuration" | "roomCode"
-              )
-            }
-            className="px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
-            aria-label="Sort recoveries"
-          >
-            <option value="urgency">Sort by Urgency</option>
-            <option value="grace">Least Grace Remaining</option>
-            <option value="disconnectDuration">Longest Disconnected</option>
-            <option value="roomCode">Room Code</option>
-          </select>
+          {/* Sort: the order button stays attached to the sort field it reverses. */}
+          <div className="flex min-w-0 flex-1 basis-36 items-center gap-1.5">
+            <select
+              value={filters.sortBy}
+              onChange={(e) =>
+                setRecoverySorting(
+                  e.target.value as "urgency" | "grace" | "disconnectDuration" | "roomCode"
+                )
+              }
+              className="min-w-0 flex-1 px-2.5 py-1.5 text-xs rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] focus:outline-hidden"
+              aria-label="Sort recoveries"
+            >
+              <option value="urgency">Sort by Urgency</option>
+              <option value="grace">Least Grace Remaining</option>
+              <option value="disconnectDuration">Longest Disconnected</option>
+              <option value="roomCode">Room Code</option>
+            </select>
 
-          {/* Sort Direction Toggle */}
-          <button
-            type="button"
-            onClick={() => setRecoverySorting(filters.sortBy)}
-            className="p-1.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-panel)] transition-colors"
-            title={`Toggle sort order (Current: ${filters.sortDirection.toUpperCase()})`}
-            aria-label="Toggle sort direction"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setRecoverySorting(filters.sortBy)}
+              className="shrink-0 p-1.5 rounded-xl bg-[var(--chrome-control)] border border-[var(--chrome-border)] text-[var(--chrome-ink)] hover:bg-[var(--chrome-panel)] transition-colors"
+              title={`Toggle sort order (Current: ${filters.sortDirection.toUpperCase()})`}
+              aria-label="Toggle sort direction"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Toggles Strip */}
@@ -432,9 +428,9 @@ export default function RecoverySentinel() {
               >
                 {/* Card Top: Player Info & Status Badges */}
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-xs text-[var(--chrome-ink)]">
+                      <span className="min-w-0 break-words font-bold text-xs text-[var(--chrome-ink)]">
                         {seat.playerName}
                       </span>
                       {seat.isHost && (
@@ -460,7 +456,7 @@ export default function RecoverySentinel() {
                   </div>
 
                   {/* Status Badge */}
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex shrink-0 flex-col items-end gap-1">
                     {status === "EXPIRED" && (
                       <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">
                         Expired
@@ -489,8 +485,9 @@ export default function RecoverySentinel() {
                   </div>
                 </div>
 
-                {/* Authoritative Recovery Timeline */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] p-2 rounded-lg bg-[var(--chrome-panel)]/80 border border-[var(--chrome-border)]">
+                {/* Authoritative Recovery Timeline: always two by two, so the four times stay readable in
+                    a narrow column instead of being cut to four ~70px strips by a viewport breakpoint. */}
+                <div className="grid grid-cols-2 gap-2 text-[10px] p-2 rounded-lg bg-[var(--chrome-panel)]/80 border border-[var(--chrome-border)]">
                   <div>
                     <span className="text-[var(--chrome-ink-soft)] block font-semibold">Disconnected</span>
                     <span className="font-mono text-[var(--chrome-ink)] font-bold">
