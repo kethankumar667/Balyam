@@ -3,20 +3,21 @@ import { motion, useAnimationControls, useInView, useReducedMotion } from "frame
 import type { BhalyamGameSlug } from "../../components/bhalyam/data";
 import { TILE_ART_BY_GAME } from "./gameArt";
 import type { PlayWay } from "./playWay";
-import { Die, ROLL_MS, useDieRoller } from "./Die";
+import { Chai, SeatRing, Table } from "./WayScenes";
 
 /**
- * The picture on each "box lid" of the way cards, and the golden pawn that marks
- * the choice.
+ * The picture on each "box lid" of the way cards.
  *
- * ── Why real game art, composed ───────────────────────────────────────
- * An icon in a tinted square says "people" or "person" and nothing else. The
- * game tiles the grid already shows say WHAT you will be playing, so the choice
- * previews its own result. The two cards are composed to mean different things:
- * a crowd (a game table where four pawns take turns round a die, Rummy tucked behind it) against
- * a quiet corner (a pocket handheld with a pixel snake on its screen, Brain Vita
- * tucked behind). Pieces fan out on
- * hover and on selection, so the card looks like it is inviting a hand.
+ * ── Why people, and why drawn scenes ──────────────────────────────────
+ * The first version was objects: a table, a handheld, pawns. It was neat and it
+ * left people cold, because BHALYAM is about people who already love each other
+ * and nobody was in it. So "together" is a table with smiling faces round it and
+ * a seat saved for you (see `WayScenes`), and "alone" is a quiet corner with a
+ * glass of chai and a handheld, its snake chasing a pixel heart. Drawn rather than
+ * photographed so they can move, and so they cost almost no bytes.
+ *
+ * Pieces fan out on hover and on selection, so the card looks like it is inviting
+ * a hand.
  *
  * ── Tailwind note ─────────────────────────────────────────────────────
  * Every class is written out in full, including the `group-hover:` twins. Built
@@ -24,10 +25,10 @@ import { Die, ROLL_MS, useDieRoller } from "./Die";
  * do nothing.
  *
  * ── Weight ────────────────────────────────────────────────────────────
- * AVIF first, then WebP, PNG last. The paths are `encodeURI`d because several
- * file names contain spaces, and an unencoded space ends a `srcset` URL: the
- * AVIF/WebP sources of "Snake Game Tile" would be silently skipped and the
- * browser would fall back to a 1.6 MB PNG.
+ * Tile pictures go AVIF first, then WebP, PNG last. The paths are `encodeURI`d
+ * because several file names contain spaces, and an unencoded space ends a
+ * `srcset` URL: the AVIF/WebP sources would be silently skipped and the browser
+ * would fall back to a 1.6 MB PNG.
  */
 
 type Art = { slug: BhalyamGameSlug; width: number; height: number };
@@ -35,7 +36,7 @@ type Art = { slug: BhalyamGameSlug; width: number; height: number };
 interface Piece {
   /** A picture from the tile art, or a drawn piece (`custom`). Exactly one of the two. */
   art?: Art;
-  custom?: "handheld" | "table";
+  custom?: "handheld" | "table" | "chai";
   /** Position and size inside the art zone. */
   place: string;
   /** Resting pose, spread pose (chosen), and the same spread when hovered. */
@@ -50,21 +51,12 @@ interface Piece {
 const PIECES: Record<PlayWay, readonly Piece[]> = {
   friends: [
     {
-      art: { slug: "rummy", width: 1536, height: 1024 },
-      place: "left-0 top-3 h-[52px] w-[78px] xl:h-[80px] xl:w-[120px]",
-      rest: "-rotate-6",
-      spread: "-rotate-[15deg] -translate-x-1.5 -translate-y-1",
-      hover: "group-hover:-rotate-[15deg] group-hover:-translate-x-1.5 group-hover:-translate-y-1",
-    },
-    {
-      // The table: four pawns round a die, taking turns. Drawn so the die can
-      // really roll and each pawn can hop in order. Right-12 leaves the top-right
-      // corner to the pawn's slot.
+      // The table: four friends round it and one seat saved for you.
       custom: "table",
-      place: "bottom-1 right-12 h-[92px] w-[92px] xl:right-20 xl:h-[140px] xl:w-[140px]",
+      place: "bottom-1 right-5 h-[112px] w-[112px] xl:right-12 xl:h-[160px] xl:w-[160px]",
       rest: "rotate-0",
-      spread: "rotate-[6deg] scale-[1.06]",
-      hover: "group-hover:rotate-[6deg] group-hover:scale-[1.06]",
+      spread: "rotate-[3deg] scale-[1.05]",
+      hover: "group-hover:rotate-[3deg] group-hover:scale-[1.05]",
     },
   ],
   solo: [
@@ -77,12 +69,19 @@ const PIECES: Record<PlayWay, readonly Piece[]> = {
       roundedIcon: true,
     },
     {
+      // A glass of chai, in front of the puzzle: somebody has made you tea.
+      custom: "chai",
+      place: "bottom-1 left-3 h-[44px] w-[33px] xl:left-6 xl:h-[64px] xl:w-[48px]",
+      rest: "rotate-0",
+      spread: "scale-[1.08]",
+      hover: "group-hover:scale-[1.08]",
+    },
+    {
       // The pocket handheld: the pixel snake on its screen is the "alone" idea,
       // a game of your own in your own corner. Drawn, not photographed, so the
       // snake can actually move.
       custom: "handheld",
-      // `right-14` leaves the top-right corner to the pawn's slot; at `right-5`
-      // the pawn stood on the handheld and covered a quarter of its screen.
+      // `right-14` leaves the corner to the pawn's cushion.
       place: "bottom-1 right-14 h-[104px] w-[62px] xl:right-20 xl:h-[150px] xl:w-[89px]",
       rest: "rotate-[5deg]",
       spread: "rotate-[2deg] scale-[1.07] -translate-y-1",
@@ -143,9 +142,16 @@ const SNAKE_DASH = (() => {
   return pattern.join(" ");
 })();
 
+/** The snake's food, as the pixel heart it would be on a real LCD: 5 by 4 pixels. */
+const HEART_ROWS = ["01010", "11111", "01110", "00100"] as const;
+const HEART_PIXEL = 1.6;
+const HEART_X = 9.8;
+const HEART_Y = 43.8;
+
 /**
  * The pocket handheld on the "Play alone" box: a dark body, an olive LCD with a
- * faint scanline, and a pixel snake working its way down the screen.
+ * faint scanline, and a pixel snake working its way down the screen toward a
+ * pixel heart.
  *
  * The snake is the invitation, so it moves when it matters: it crawls while the
  * box is hovered or chosen (`active`), and takes a single lap the first time the
@@ -172,6 +178,8 @@ function Handheld({ active }: { active: boolean }) {
     }
     return () => controls.stop();
   }, [active, seen, reduceMotion, controls]);
+
+  const beating = active && !reduceMotion;
 
   return (
     <svg
@@ -217,16 +225,27 @@ function Handheld({ active }: { active: boolean }) {
         initial={{ strokeDashoffset: 0 }}
         animate={controls}
       />
-      {/* The pixel of food the snake is heading for. */}
-      <motion.rect
-        x="11"
-        y="44.8"
-        width="2.4"
-        height="2.4"
-        fill="#26331A"
-        animate={active && !reduceMotion ? { opacity: [1, 0.15, 1] } : { opacity: 1 }}
-        transition={{ duration: 0.9, repeat: active && !reduceMotion ? Infinity : 0 }}
-      />
+      {/* What the snake is heading for: a pixel heart, which beats while the box is active. */}
+      <motion.g
+        data-pixel-heart=""
+        animate={beating ? { opacity: [1, 0.25, 1] } : { opacity: 1 }}
+        transition={{ duration: 0.9, repeat: beating ? Infinity : 0 }}
+      >
+        {HEART_ROWS.flatMap((row, r) =>
+          [...row].map((cell, c) =>
+            cell === "1" ? (
+              <rect
+                key={`${r}-${c}`}
+                x={HEART_X + c * HEART_PIXEL}
+                y={HEART_Y + r * HEART_PIXEL}
+                width={HEART_PIXEL}
+                height={HEART_PIXEL}
+                fill="#26331A"
+              />
+            ) : null,
+          ),
+        )}
+      </motion.g>
 
       <circle cx="32" cy="68" r="8" fill="#22345A" stroke="#4A6199" strokeOpacity="0.5" />
       <circle cx="32" cy="68" r="3.2" fill="#3C5287" />
@@ -240,101 +259,12 @@ function Handheld({ active }: { active: boolean }) {
   );
 }
 
-/** The four seats, one Ludo colour each, at the points of the compass. Clockwise from the top. */
-const SEATS = [
-  { x: 60, y: 11, fill: "#E04A3F", rim: "#8E2018" },
-  { x: 107, y: 58, fill: "#F2C230", rim: "#9A7410" },
-  { x: 60, y: 105, fill: "#2E9E5B", rim: "#17623A" },
-  { x: 13, y: 58, fill: "#3567C7", rim: "#1D3F80" },
-] as const;
-
-/** One full turn of play: the die rolls, then each pawn hops in order, then a breath. */
-const TABLE_TURN_MS = 3600;
-/** Gap between one pawn's hop and the next, in seconds. */
-const HOP_STAGGER = 0.42;
-
-/**
- * The game table on the "Play together" box, seen from above: a wooden round
- * table, green felt, four pawns in four Ludo colours, a die in the middle.
- *
- * It plays the way a table does, in turns. While the box is hovered or chosen
- * (`active`) the die rolls, and once it lands each pawn hops in order, clockwise.
- * It takes one turn the first time the section scrolls into view, then rests.
- * Reduced motion shows the table still. Same rule as the handheld: nothing loops
- * forever on its own.
- */
-function Table({ active }: { active: boolean }) {
-  const reduceMotion = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const seen = useInView(ref, { once: true, amount: 0.6 });
-  const { face, rolling, rolls, roll } = useDieRoller();
-
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-    if (active) {
-      void roll();
-      const id = window.setInterval(() => void roll(), TABLE_TURN_MS);
-      return () => window.clearInterval(id);
-    }
-    if (seen) void roll();
-    return undefined;
-  }, [active, seen, reduceMotion, roll]);
-
-  return (
-    <div
-      ref={ref}
-      data-table-scene=""
-      aria-hidden="true"
-      className={`relative h-full w-full transition-[filter] duration-500 ${
-        active ? "drop-shadow-[0_0_10px_rgba(242,194,48,0.55)]" : "drop-shadow-[0_8px_8px_rgba(74,44,22,0.3)]"
-      }`}
-    >
-      <svg viewBox="0 0 120 120" focusable="false" className="absolute inset-0 h-full w-full overflow-visible">
-        <defs>
-          <radialGradient id="way-tb-wood" cx="0.4" cy="0.35" r="0.9">
-            <stop offset="0" stopColor="#D79A55" />
-            <stop offset="1" stopColor="#8A5A2B" />
-          </radialGradient>
-          <radialGradient id="way-tb-felt" cx="0.5" cy="0.4" r="0.8">
-            <stop offset="0" stopColor="#3E9A62" />
-            <stop offset="1" stopColor="#1F6B40" />
-          </radialGradient>
-        </defs>
-        <circle cx="60" cy="58" r="54" fill="url(#way-tb-wood)" />
-        <circle cx="60" cy="58" r="54" fill="none" stroke="#5B3A1E" strokeOpacity="0.5" strokeWidth="1.5" />
-        <circle cx="60" cy="58" r="41" fill="url(#way-tb-felt)" />
-        <circle cx="60" cy="58" r="41" fill="none" stroke="#F2C230" strokeOpacity="0.55" strokeWidth="1" strokeDasharray="2 3" />
-
-        {SEATS.map((seat, i) => (
-          <g key={seat.fill}>
-            <circle cx={seat.x} cy={seat.y} r="8.5" fill="#ffffff" opacity="0.18" />
-            {/* Keyed on the roll count so every roll starts the hops again. */}
-            <motion.g
-              key={`${seat.fill}-${rolls}`}
-              data-table-pawn=""
-              initial={{ y: 0 }}
-              animate={rolls > 0 && !reduceMotion ? { y: [0, -7, 0] } : { y: 0 }}
-              transition={{ duration: 0.4, delay: ROLL_MS / 1000 + i * HOP_STAGGER, ease: "easeOut" }}
-            >
-              <ellipse cx={seat.x} cy={seat.y + 2.4} rx="6.6" ry="2.8" fill="#000000" opacity="0.28" />
-              <circle cx={seat.x} cy={seat.y} r="6.2" fill={seat.fill} stroke={seat.rim} strokeWidth="1.2" />
-              <circle cx={seat.x - 2} cy={seat.y - 2.2} r="2" fill="#ffffff" opacity="0.5" />
-            </motion.g>
-          </g>
-        ))}
-      </svg>
-
-      {/* The die sits in a plain wrapper: framer owns `transform` on the die itself. */}
-      <span className="absolute left-1/2 top-1/2 h-[30%] w-[30%] -translate-x-1/2 -translate-y-1/2">
-        <Die face={face} tumbling={rolling} className="h-full w-full drop-shadow-[0_3px_3px_rgba(0,0,0,0.4)]" />
-      </span>
-    </div>
-  );
-}
-
 /**
  * The art zone of one card. Decorative: the card's own text names the choice, so
  * this is hidden from assistive tech and every image has an empty alt.
+ *
+ * The player's pawn ends up INSIDE this zone: in the empty seat at the table, or
+ * on the cushion beside the handheld. `selected` is what seats it.
  */
 export function WayArt({
   way,
@@ -346,7 +276,7 @@ export function WayArt({
   selected: boolean;
   /** Another way is chosen: this one steps back a little, without disappearing. */
   dimmed: boolean;
-  /** Hovered or chosen: the moving parts (the handheld's snake) run. */
+  /** Hovered or chosen: the moving parts (the snake, the die, the steam) run. */
   active: boolean;
 }) {
   const reduceMotion = useReducedMotion();
@@ -381,58 +311,22 @@ export function WayArt({
             {piece.custom === "handheld" ? (
               <Handheld active={active} />
             ) : piece.custom === "table" ? (
-              <Table active={active} />
+              <Table active={active} pawnHere={selected} />
+            ) : piece.custom === "chai" ? (
+              <Chai active={active} />
             ) : piece.art ? (
               <ArtImage art={piece.art} />
             ) : null}
           </span>
         </motion.span>
       ))}
-    </div>
-  );
-}
 
-/**
- * The player's piece. One gold pawn, rendered in exactly one place at a time:
- * the caption while nothing is chosen, then the chosen card. `layoutId` makes it
- * travel between them, and the inner hop gives the move an arc, the way a pawn
- * is lifted and set down instead of slid.
- *
- * Its presence in a slot is the signal, so the choice never rests on colour
- * alone. Reduced motion keeps the pawn and drops the travel and the hop.
- */
-export function Pawn() {
-  const reduceMotion = useReducedMotion();
-  return (
-    <motion.span
-      layoutId="way-pawn"
-      data-way-pawn=""
-      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 26 }}
-      className="inline-flex"
-    >
-      <motion.span
-        initial={{ y: 0 }}
-        animate={reduceMotion ? { y: 0 } : { y: [0, -18, 0] }}
-        transition={{ duration: 0.55, times: [0, 0.42, 1], ease: "easeOut" }}
-        className="inline-flex"
-      >
-        <svg viewBox="0 0 28 36" className="h-9 w-7 drop-shadow-[0_3px_3px_rgba(74,44,22,0.35)]" aria-hidden="true">
-          <defs>
-            <radialGradient id="way-pawn-head" cx="0.35" cy="0.3" r="0.85">
-              <stop offset="0" stopColor="#FFE08A" />
-              <stop offset="1" stopColor="#E4B128" />
-            </radialGradient>
-            <linearGradient id="way-pawn-body" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0" stopColor="#F2C94C" />
-              <stop offset="1" stopColor="#B7791F" />
-            </linearGradient>
-          </defs>
-          <ellipse cx="14" cy="31.5" rx="11" ry="4" fill="#8A5A12" />
-          <path d="M5.5 31.5c0-7.5 4.2-9.6 5.4-15h6.2c1.2 5.4 5.4 7.5 5.4 15z" fill="url(#way-pawn-body)" />
-          <circle cx="14" cy="9.5" r="7" fill="url(#way-pawn-head)" />
-          <ellipse cx="11.5" cy="7" rx="2.3" ry="1.6" fill="#ffffff" opacity="0.45" />
-        </svg>
-      </motion.span>
-    </motion.span>
+      {/* "Alone" has no table, so the pawn's seat is a cushion beside the handheld. */}
+      {way === "solo" && (
+        <span className="absolute bottom-2 right-2 h-9 w-9 xl:bottom-3 xl:right-5 xl:h-12 xl:w-12">
+          <SeatRing occupied={selected} ringColor="#2E9E5B" fillClass="bg-emerald-500/10" className="h-full w-full" />
+        </span>
+      )}
+    </div>
   );
 }

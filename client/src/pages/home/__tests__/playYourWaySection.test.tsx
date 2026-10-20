@@ -2,6 +2,9 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { existsSync, statSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PlayYourWaySection, PAWN_HOP_MS } from "../PlayYourWaySection";
 import { GamesSection } from "../GamesSection";
 import { Die, ROLL_MS, dealFace, resetDeal, wayForFace, type DieFace } from "../Die";
@@ -16,6 +19,16 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+
+/**
+ * A file under `client/public`, from its URL (`/way-faces/face-1.webp`).
+ *
+ * Built with `resolve`, NOT `new URL(`...${src}`, import.meta.url)`: Vite rewrites
+ * that pattern into an asset import and, for a file in `public/`, hands back
+ * `undefined`, so the test reported real files as missing.
+ */
+const publicFile = (src: string) =>
+  resolve(dirname(fileURLToPath(import.meta.url)), "../../../../public", `.${src}`);
 
 function LocationProbe() {
   const { pathname, search } = useLocation();
@@ -51,6 +64,33 @@ function Harness({
         />
         <Route path="/games" element={<p>The games page</p>} />
       </Routes>
+      <LocationProbe />
+    </MemoryRouter>
+  );
+}
+
+/**
+ * The section rendered OUTSIDE the routes, so changing the URL leaves it mounted.
+ * Needed wherever a test clicks something that navigates (a way box, "Show all
+ * games") and then still wants to look at the section.
+ */
+function StayMounted({
+  initial = null,
+  onChange,
+}: {
+  initial?: PlayWay | null;
+  onChange?: (next: PlayWay | null) => void;
+}) {
+  const [way, setWay] = useState<PlayWay | null>(initial);
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <PlayYourWaySection
+        way={way}
+        onChangeWay={(next) => {
+          onChange?.(next);
+          setWay(next);
+        }}
+      />
       <LocationProbe />
     </MemoryRouter>
   );
@@ -228,6 +268,19 @@ describe("PlayYourWaySection", () => {
       expect(parts.reduce((sum, n) => sum + n, 0)).toBeCloseTo(160, 5);
     });
 
+    it("has the snake chasing a pixel heart", () => {
+      const { container } = render(<Harness />);
+      // The heart is 4 rows of pixels: 2 + 5 + 3 + 1.
+      expect(container.querySelectorAll("[data-handheld] [data-pixel-heart] rect")).toHaveLength(11);
+    });
+
+    it("keeps a glass of chai beside it, as decoration", () => {
+      const { container } = render(<Harness />);
+      const chai = container.querySelector("[data-chai]");
+      expect(chai?.closest("a")).toBe(box(/play alone/i));
+      expect(chai?.getAttribute("aria-hidden")).toBe("true");
+    });
+
     it("renders without error when the box is focused, left or pointed at", () => {
       render(<Harness />);
       const alone = box(/play alone/i);
@@ -262,10 +315,25 @@ describe("PlayYourWaySection", () => {
     });
 
     it("goes home to the caption when the choice is cleared", () => {
-      const { container } = render(<Harness initial="solo" />);
-      fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
+      const { container } = render(<StayMounted initial="solo" />);
+      fireEvent.click(screen.getByRole("link", { name: /show all games/i }));
       expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
       expect(boxHoldingPawn(container)).toBeNull();
+    });
+
+    it("sits in the seat saved for you at the table when Play together is chosen", () => {
+      const { container } = render(<StayMounted />);
+      fireEvent.click(box(/play together/i));
+      expect(container.querySelector("[data-table-seat] [data-way-pawn]")).not.toBeNull();
+    });
+
+    it("sits on the cushion beside the handheld when Play alone is chosen", () => {
+      const { container } = render(<StayMounted />);
+      fireEvent.click(box(/play alone/i));
+      const pawn = container.querySelector("[data-way-pawn]");
+      expect(pawn?.closest("[data-seat]")).not.toBeNull();
+      expect(pawn?.closest("[data-table-seat]")).toBeNull();
+      expect(pawn?.closest("a")).toBe(box(/play alone/i));
     });
   });
 
@@ -274,19 +342,40 @@ describe("PlayYourWaySection", () => {
     expect(await screen.findByText(new RegExp(`${playableCount("solo")} games for one`))).not.toBeNull();
   });
 
-  it("offers a way back to every game only while a way is remembered", () => {
-    const onChange = vi.fn();
-    render(<Harness initial="solo" onChange={onChange} />);
+  describe("Show all games", () => {
+    it("is a link to the games page with every game showing", () => {
+      render(<Harness initial="solo" />);
+      const link = screen.getByRole("link", { name: /show all games/i });
+      // No `?c=`: the games page reads that as "All Games".
+      expect(link.getAttribute("href")).toBe("/games");
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
+    it("forgets the remembered way and takes the player to the games page", () => {
+      const onChange = vi.fn();
+      render(<StayMounted initial="solo" onChange={onChange} />);
 
-    expect(onChange).toHaveBeenLastCalledWith(null);
-    expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
-  });
+      fireEvent.click(screen.getByRole("link", { name: /show all games/i }));
 
-  it("does not offer that way back when nothing is remembered", () => {
-    render(<Harness />);
-    expect(screen.queryByRole("button", { name: /show all games/i })).toBeNull();
+      expect(onChange).toHaveBeenLastCalledWith(null);
+      expect(where()).toBe("/games");
+      expect(screen.queryByRole("link", { name: /show all games/i })).toBeNull();
+    });
+
+    it("leaves a ctrl-click to the browser and forgets nothing on this page", () => {
+      const onChange = vi.fn();
+      render(<StayMounted initial="friends" onChange={onChange} />);
+
+      fireEvent.click(screen.getByRole("link", { name: /show all games/i }), { ctrlKey: true });
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(where()).toBe("/");
+      expect(box(/play together/i).getAttribute("aria-current")).toBe("true");
+    });
+
+    it("is not offered when nothing is remembered", () => {
+      render(<Harness />);
+      expect(screen.queryByRole("link", { name: /show all games/i })).toBeNull();
+    });
   });
 });
 
@@ -298,12 +387,31 @@ describe("the table on the Play together box", () => {
     expect(scenes[0].closest("a")).toBe(box(/play together/i));
   });
 
-  it("seats four pawns round a die, and is hidden from assistive technology", () => {
+  it("seats four friends round a die with one seat saved for you, hidden from assistive technology", () => {
     const { container } = render(<Harness />);
     const scene = container.querySelector("[data-table-scene]");
     expect(scene?.getAttribute("aria-hidden")).toBe("true");
-    expect(scene?.querySelectorAll("[data-table-pawn]")).toHaveLength(4);
+    expect(scene?.querySelectorAll("[data-table-face]")).toHaveLength(4);
+    expect(scene?.querySelectorAll("[data-table-seat]")).toHaveLength(1);
     expect(scene?.querySelectorAll("[data-die]")).toHaveLength(1);
+  });
+
+  it("draws every friend with a face the project actually ships", () => {
+    const { container } = render(<Harness />);
+    const sources = [...container.querySelectorAll("[data-table-face] img")].map((img) => img.getAttribute("src") ?? "");
+    expect(sources).toHaveLength(4);
+    sources.forEach((src) => {
+      expect(src).toMatch(/^\/way-faces\/face-\d\.webp$/);
+      expect(existsSync(publicFile(src)), `${src} is missing from client/public`).toBe(true);
+    });
+  });
+
+  it("keeps all four faces small enough to be cheap on a phone", () => {
+    const { container } = render(<Harness />);
+    const sources = [...container.querySelectorAll("[data-table-face] img")].map((img) => img.getAttribute("src") ?? "");
+    const total = sources.reduce((sum, src) => sum + statSync(publicFile(src)).size, 0);
+    // The avatar originals are ~150 KB each; the crops are ~4 KB. A budget keeps them honest.
+    expect(total).toBeLessThan(40 * 1024);
   });
 
   it("does not confuse its own pawns with the player's pawn", () => {
@@ -400,10 +508,10 @@ describe("Roll to decide", () => {
   });
 
   it("is gone while a way is remembered, and comes back when it is cleared", () => {
-    render(<Harness initial="solo" />);
+    render(<StayMounted initial="solo" />);
     expect(screen.queryByRole("button", { name: /roll the die/i })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
+    fireEvent.click(screen.getByRole("link", { name: /show all games/i }));
     expect(rollButton()).not.toBeNull();
   });
 

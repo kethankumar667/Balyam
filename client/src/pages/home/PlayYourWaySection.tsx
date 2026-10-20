@@ -6,7 +6,8 @@ import { useAudio } from "../../hooks/useAudio";
 import { AUDIO } from "../../constants/audio";
 import { BHALYAM_GAMES, isLocked } from "../../components/bhalyam/data";
 import { gamesForWay, gamesPathFor, type PlayWay } from "./playWay";
-import { Pawn, WayArt } from "./WayArt";
+import { Pawn } from "./Pawn";
+import { WayArt } from "./WayArt";
 import { Die, dealFace, useDieRoller, wayForFace, type DieFace } from "./Die";
 
 /**
@@ -19,13 +20,14 @@ import { Die, dealFace, useDieRoller, wayForFace, type DieFace } from "./Die";
  * remembered: come back and the pawn is still in that box and the list below
  * is narrowed to match.
  *
- * ── The idea: two game-box lids and one pawn ──────────────────────────
- * Each choice is the lid of a game box, drawn with the real game art it will
- * show (see `WayArt`): a crowd for "together", one quiet corner for "alone".
- * The player's piece is a gold pawn that waits in the caption until a choice is
- * made, then hops into that box's empty slot. "Show all games" sends it home. The
- * pawn is what marks the choice, so selection is a shape arriving, not only a
- * colour change.
+ * ── The idea: a seat saved for you ────────────────────────────────────
+ * Each choice is the lid of a game box with people (or tea) in it, drawn to feel
+ * like somebody is waiting (see `WayArt` and `WayScenes`): friends round a table
+ * with one seat left empty for you, or a quiet corner with a glass of chai. The
+ * player's piece is a gold pawn that waits in the caption's home base until a
+ * choice is made, then hops into that box's empty seat, and the friends cheer.
+ * "Show all games" sends it home. The pawn is what marks the choice, so selection
+ * is a shape arriving, not only a colour change.
  *
  * ── Semantics: links, not radios ──────────────────────────────────────
  * The boxes go to another page, so they are links. They began as radios (they
@@ -71,7 +73,7 @@ const WAY_OPTIONS: readonly WayOption[] = [
   {
     id: "friends",
     title: "Play together",
-    hint: "Friends, family or bots",
+    hint: "Your people, your table",
     light: {
       selected: "bg-amber-50 border-amber-600",
       hover: "hover:border-amber-500/60",
@@ -90,7 +92,7 @@ const WAY_OPTIONS: readonly WayOption[] = [
   {
     id: "solo",
     title: "Play alone",
-    hint: "One-player games",
+    hint: "A quiet game, just for you",
     light: {
       selected: "bg-emerald-50 border-emerald-700",
       hover: "hover:border-emerald-500/60",
@@ -170,22 +172,6 @@ function HomeBase({ occupied, isDark }: { occupied: boolean; isDark: boolean }) 
   );
 }
 
-/** The empty "home" a pawn can stand in. Always drawn, so an empty box still invites a piece. */
-function Slot({ occupied, isDark, className }: { occupied: boolean; isDark: boolean; className: string }) {
-  return (
-    <span className={`flex items-end justify-center ${className}`} aria-hidden="true">
-      <span className="relative flex h-full w-full items-end justify-center">
-        <span
-          className={`absolute bottom-0 h-8 w-8 rounded-full border-2 border-dashed transition-opacity duration-200 ${
-            isDark ? "border-white/30" : "border-[#C9B48F]"
-          } ${occupied ? "opacity-0" : "opacity-100"}`}
-        />
-        {occupied && <Pawn />}
-      </span>
-    </span>
-  );
-}
-
 export function PlayYourWaySection({
   way,
   onChangeWay,
@@ -257,6 +243,19 @@ export function PlayYourWaySection({
     go(next);
   }
 
+  /**
+   * "Show all games": forget the remembered way, then let the link carry the
+   * player to the full list. Modified clicks (new tab, new window) are the
+   * browser's, and must NOT clear anything here, since this page stays open.
+   */
+  function onShowAll(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    play(AUDIO.UI_CLICK);
+    onChangeWay(null);
+  }
+
   /** "Roll to decide": the die lands, the pawn goes to the box the face names, and the page follows. */
   async function decide() {
     play(AUDIO.UI_CLICK);
@@ -277,7 +276,7 @@ export function PlayYourWaySection({
         Who&apos;s around today?
       </h2>
       <p className={`font-script mb-3 mt-0.5 text-[20px] leading-snug sm:mb-4 sm:text-[22px] ${isDark ? "text-amber-300" : "text-[#7B2F0E]"}`}>
-        Pick a seat and we&apos;ll set the board.
+        Pull up a chair. We saved you a seat.
       </p>
 
       <div role="group" aria-labelledby={headingId} className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
@@ -350,13 +349,8 @@ export function PlayYourWaySection({
                 </span>
               </span>
 
+              {/* The pawn's seat is inside the art: at the table, or on the cushion by the handheld. */}
               <WayArt way={option.id} selected={selected} dimmed={dimmed} active={selected || peeked === option.id} />
-
-              <Slot
-                occupied={selected}
-                isDark={isDark}
-                className="absolute right-3 top-3 z-20 h-10 w-9 sm:right-4 sm:top-4"
-              />
             </Link>
           );
         })}
@@ -422,18 +416,18 @@ export function PlayYourWaySection({
         )}
 
         {way !== null && (
-          <button
-            type="button"
-            onClick={() => {
-              play(AUDIO.UI_CLICK);
-              onChangeWay(null);
-            }}
-            className={`ml-14 min-h-[44px] rounded-lg px-2 text-[13px] font-bold underline underline-offset-4 cursor-pointer sm:ml-0
+          // A link to the games page with every game showing (no `?c=`, which that
+          // page reads as "All Games"). The remembered choice is dropped on the way
+          // out, so coming back to the home page is not still narrowed.
+          <Link
+            to="/games"
+            onClick={onShowAll}
+            className={`ml-14 inline-flex min-h-[44px] items-center rounded-lg px-2 text-[13px] font-bold underline underline-offset-4 cursor-pointer sm:ml-0
                         focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500
                         ${isDark ? "text-amber-300 hover:text-amber-200" : "text-[#7B2F0E] hover:text-[#5A250B]"}`}
           >
             Show all games
-          </button>
+          </Link>
         )}
       </div>
     </section>
