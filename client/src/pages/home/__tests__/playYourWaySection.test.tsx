@@ -53,10 +53,99 @@ describe("PlayYourWaySection", () => {
     expect(solo.getAttribute("tabindex")).toBe("-1");
   });
 
-  it("keeps every radio at least 44px tall for thumbs", () => {
+  it("keeps every box a generous touch target", () => {
     render(<Harness />);
     screen.getAllByRole("radio").forEach((radio) => {
-      expect(radio.className).toContain("min-h-[76px]");
+      expect(radio.className).toContain("min-h-[132px]");
+    });
+  });
+
+  it("shows how many games each box holds before anything is chosen", () => {
+    render(<Harness />);
+    expect(screen.getByText(`${playableCount("friends")} games`)).not.toBeNull();
+    expect(screen.getByText(`${playableCount("solo")} games`)).not.toBeNull();
+  });
+
+  it("keeps the art out of the accessibility tree", () => {
+    const { container } = render(<Harness />);
+    const images = [...container.querySelectorAll("img")];
+    expect(images.length).toBeGreaterThan(0);
+    images.forEach((img) => expect(img.getAttribute("alt")).toBe(""));
+  });
+
+  it("never puts a space in an image source, which would silently skip the AVIF and WebP files", () => {
+    const { container } = render(<Harness />);
+    const sources = [...container.querySelectorAll("source")].map((s) => s.getAttribute("srcset") ?? "");
+    expect(sources.length).toBeGreaterThan(0);
+    sources.forEach((srcset) => expect(srcset).not.toMatch(/\s/));
+  });
+
+  describe("the handheld on the Play alone box", () => {
+    it("is drawn inside Play alone and nowhere else", () => {
+      const { container } = render(<Harness />);
+      const handhelds = container.querySelectorAll("[data-handheld]");
+      expect(handhelds).toHaveLength(1);
+      expect(handhelds[0].closest('[role="radio"]')).toBe(screen.getByRole("radio", { name: /play alone/i }));
+    });
+
+    it("is decoration, hidden from assistive technology", () => {
+      const { container } = render(<Harness />);
+      const handheld = container.querySelector("[data-handheld]");
+      expect(handheld?.getAttribute("aria-hidden")).toBe("true");
+      expect(handheld?.getAttribute("focusable")).toBe("false");
+    });
+
+    it("keeps its pixel snake as one segmented dash pattern the length of its route", () => {
+      const { container } = render(<Harness />);
+      const snake = [...container.querySelectorAll("[data-handheld] path")].find((p) => p.getAttribute("stroke-dasharray"));
+      const parts = (snake?.getAttribute("stroke-dasharray") ?? "").split(" ").map(Number);
+      expect(parts.length % 2).toBe(0);
+      // One lap of the route: the seven segments, their joints and the long gap add up to the 160-unit path.
+      expect(parts.reduce((sum, n) => sum + n, 0)).toBeCloseTo(160, 5);
+    });
+
+    it("renders without error when the box is chosen, focused or left", () => {
+      render(<Harness />);
+      const alone = screen.getByRole("radio", { name: /play alone/i });
+      fireEvent.focus(alone);
+      fireEvent.click(alone);
+      fireEvent.blur(alone);
+      expect(alone.getAttribute("aria-checked")).toBe("true");
+    });
+  });
+
+  describe("the pawn", () => {
+    const radioHoldingPawn = (container: HTMLElement) =>
+      container.querySelector("[data-way-pawn]")?.closest('[role="radio"]') ?? null;
+
+    it("waits in the caption until a way is chosen", () => {
+      const { container } = render(<Harness />);
+      expect(container.querySelector("[data-way-pawn]")).not.toBeNull();
+      expect(radioHoldingPawn(container)).toBeNull();
+    });
+
+    it("stands in the box that was chosen", () => {
+      const { container } = render(<Harness />);
+      fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
+      expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
+      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play alone/i }));
+    });
+
+    it("moves to the other box when the choice changes", () => {
+      const { container } = render(<Harness initial="friends" />);
+      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play together/i }));
+
+      fireEvent.click(screen.getByRole("radio", { name: /play alone/i }));
+
+      expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
+      expect(radioHoldingPawn(container)).toBe(screen.getByRole("radio", { name: /play alone/i }));
+    });
+
+    it("goes home to the caption when the choice is cleared", () => {
+      const { container } = render(<Harness initial="solo" />);
+      fireEvent.click(screen.getByRole("button", { name: /show all games/i }));
+      expect(container.querySelectorAll("[data-way-pawn]")).toHaveLength(1);
+      expect(radioHoldingPawn(container)).toBeNull();
     });
   });
 
