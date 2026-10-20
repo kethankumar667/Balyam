@@ -179,6 +179,24 @@ describe("Route Resolver & Context-Aware Navigation", () => {
       expect(home.items.some((i) => i.id === "home-recent" && i.fullHref === "/recently-played")).toBe(true);
       expect(home.items.some((i) => i.id === "home-favorites" && i.fullHref === "/favorites")).toBe(true);
     });
+
+    /**
+     * The Games Hub is where people look at scores of the games they browse, but it only listed the
+     * filters, Recently Played and Favorites: the Leaderboard was reachable from Home and nowhere in
+     * the hub. It must be on every page that shows the hub, for guests and members alike.
+     */
+    it.each(["/games", "/recently-played", "/favorites"])("exposes the Leaderboard in the Games Hub on %s", (pathname) => {
+      for (const isMember of [false, true]) {
+        const hub = resolveNavigation({ pathname, isMember });
+        expect(hub.id).toBe("games");
+        const leaderboard = hub.items.find((i) => i.id === "games-leaderboard");
+        expect(leaderboard?.fullHref).toBe("/leaderboard");
+        expect(leaderboard?.disabled).toBe(false);
+        expect(leaderboard?.badge?.text).toBe("Top");
+        // It is a destination, not a filter: no games page highlights it.
+        expect(leaderboard?.active).toBe(false);
+      }
+    });
   });
 
   describe("Admin Console footer entry", () => {

@@ -224,6 +224,17 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         path: "/favorites",
         isActive: (p) => p.startsWith("/favorites"),
       },
+      // A destination rather than a filter, so it sits apart from the list above. It is never the
+      // highlighted item here: opening it leaves the hub for the Hall of Fame section.
+      {
+        id: "games-leaderboard",
+        label: "Leaderboard",
+        icon: Trophy,
+        path: "/leaderboard",
+        badge: { text: "Top", variant: "amber" },
+        dividerBefore: true,
+        isActive: (p) => p.startsWith("/leaderboard"),
+      },
     ],
   },
 
