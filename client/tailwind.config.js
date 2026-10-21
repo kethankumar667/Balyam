@@ -564,6 +564,13 @@ export default {
      * with `SHORT_LANDSCAPE_QUERY` in games/rummy/RummyBoardMobile.tsx and rummy-mobile-fit.css.
      */
     function shortLandscapeVariant({ addVariant }) {
+      /**
+       * `roomy:` — the layout with room for side-by-side panes: 768px and wider, OR any phone held sideways.
+       * A landscape phone under 768px wide has the width for two columns but not the height for one stack, and
+       * `md:` alone would give it the stack. Registered BEFORE `short-land:` on purpose: variants later in this
+       * list win a tie, so where a rule needs both ("two columns, but tighter"), `short-land:` overrides `roomy:`.
+       */
+      addVariant("roomy", "@media (min-width: 768px), (orientation: landscape) and (max-height: 520px)");
       addVariant("short-land", "@media (orientation: landscape) and (max-height: 520px)");
     },
   ],

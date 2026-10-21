@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 import { motion } from "framer-motion";
+import { Crown, LogOut, Trophy, X } from "lucide-react";
 import type { Player, UnoPlayerState } from "@shared/types";
 import Modal from "../../components/Modal";
 import PrizeWonChip from "../../components/economy/PrizeWonChip";
-import { findAvatar } from "../../lib/avatars";
+import SeatAvatar from "../../components/profile/SeatAvatar";
 import BotResultNote from "../../components/room/BotResultNote";
 import { fireUnoWinConfetti } from "./uno-confetti";
 import { useAnimationConfig } from "../../animations/helpers/useAnimationConfig";
@@ -13,8 +14,28 @@ import type { FeltAnchor } from "../../animations/helpers/types";
 import { useRoomStore } from "../../store/roomStore";
 import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
 import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
+import { buildUnoStandings, describeSelfResult, describeWinnerPoints, type UnoStanding } from "./unoStandings";
 
 const VICTORY_DANCE_ANCHOR: FeltAnchor = { left: "50%", top: "32%" };
+
+/** The four card colours, as a stripe along the top edge: the one piece of UNO branding the screen carries. */
+const UNO_STRIPE = "linear-gradient(90deg,#E51E1E 0 25%,#FFD84D 25% 50%,#2EA44F 50% 75%,#1E5BD8 75% 100%)";
+const PANEL_BACKGROUND = "radial-gradient(120% 80% at 50% 0%, #7A1212 0%, #3A0A0A 60%, #220606 100%)";
+
+/**
+ * The dialog's width on a roomy screen: 768px, but never closer than a gutter to either edge, and clear of a notch.
+ * A landscape phone gets none of the page padding a wide screen does, so this is what keeps it off the glass.
+ */
+const ROOMY_PANEL_WIDTH =
+  "roomy:max-w-[min(768px,calc(100vw_-_max(16px,env(safe-area-inset-left))_-_max(16px,env(safe-area-inset-right))))] roomy:mx-auto";
+
+/** Medal colours for the first three places; everyone else gets a quiet disc. A numeral is always printed, so colour is never the only signal. */
+function rankBadgeClass(rank: number): string {
+  if (rank === 1) return "bg-[#FFD84D] text-[#3A2200]";
+  if (rank === 2) return "bg-[#D9DEE4] text-[#1F2933]";
+  if (rank === 3) return "bg-[#CD7F32] text-[#2B1400]";
+  return "bg-white/15 text-[#FFF3E0]";
+}
 
 export interface UnoResultModalProps {
   state: UnoPlayerState;
@@ -24,715 +45,237 @@ export interface UnoResultModalProps {
   onLeave?: () => void;
 }
 
-export default function UnoResultModal({
-  state,
-  players,
-  selfId,
-  onClose,
-  onLeave,
-}: UnoResultModalProps) {
+/**
+ * The end-of-round results.
+ *
+ * Built around the one thing people open it for — the standings — and nothing that competes with them. Header and
+ * actions are pinned and the list is the only region that scrolls, so a ten-seat table never pushes Continue off
+ * the screen and a four-seat one needs no scrolling at all. The viewer's own result sits in the header, so it is
+ * never below the fold either.
+ *
+ * Two layouts, chosen by the `roomy:` variant (768px and wider, or any phone held sideways — a landscape phone has
+ * the width for two columns and not the height for a stack):
+ *  - not roomy: a bottom sheet, stacked.
+ *  - roomy: a centred dialog in two panes, the winner and your result on the left, the standings and actions right.
+ * `short-land:` tightens either one for a phone on its side, and `max-[340px]:` for the narrowest phones (a folded
+ * Galaxy Fold is 280px).
+ *
+ * ── Skeleton in px, text in rem ────────────────────────────────────────
+ * A phone set to a larger system font makes `1rem` bigger, and anything sized in rem grows with it. Text should;
+ * avatars, badges, pane widths, padding and the number columns should not, or a 150% font turns a 360px phone into
+ * the equivalent of a 240px one and squeezes every name to nothing. So the skeleton is written in px and the numbers
+ * grow with their own digits (`min-w`), while names, headings and labels stay in rem and scale as they should.
+ */
+export default function UnoResultModal({ state, players, selfId, onClose, onLeave }: UnoResultModalProps) {
+  const titleId = useId();
+  const continueRef = useRef<HTMLButtonElement>(null);
+  const animConfig = useAnimationConfig();
+
   const winnerId = state.winnerId;
-  const winnerPlayer = players.find((p) => p.id === winnerId) ?? (winnerId ? useRoomStore.getState().knownPlayers[winnerId] : undefined);
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? useRoomStore.getState().knownPlayers[id]?.name ?? "?";
   const isSelfWinner = winnerId != null && winnerId === selfId;
-  const animConfig = useAnimationConfig();
 
   useEffect(() => {
     if (isSelfWinner) fireUnoWinConfetti();
   }, [isSelfWinner]);
 
-  const ranked = [...state.playerOrder].sort(
-    (a, b) => (state.scores[b] ?? 0) - (state.scores[a] ?? 0),
-  );
+  const standings = buildUnoStandings(state, players, selfId, nameOf);
+  const winnerRow = standings.find((row) => row.isWinner);
+  const selfRow = standings.find((row) => row.isSelf);
+  const winnerScore = winnerRow?.score ?? 0;
 
-  const winnerScore = winnerId ? (state.scores[winnerId] ?? 0) : 0;
-
-  // Real-money prize per placement, for a paid match only — see the hook's
-  // own doc comment for why this is a re-derivation of a real, authoritative
-  // amount (EconomyService's own math, shared verbatim) rather than a guess.
+  // Real-money prize per placement, for a paid match only — see the hook's own doc comment for why this is a
+  // re-derivation of a real, authoritative amount (EconomyService's own math, shared verbatim) rather than a guess.
   const roomState = useRoomStore((s) => s.roomState);
-  const matchId = deriveTerminalMatchId(roomState);
-  const { settlement } = useMatchSettlement(matchId);
+  const { settlement } = useMatchSettlement(deriveTerminalMatchId(roomState));
   const winnerPrizes = winnerPrizesFor(settlement);
+
+  const headline = isSelfWinner ? "You win!" : winnerId ? `${nameOf(winnerId)} wins!` : "Round over";
 
   return (
     <Modal
       open
       onClose={onClose}
-      ariaLabel="Match results"
-      mobileSheet={false}
-      panelClassName="w-full max-w-lg md:max-w-2xl max-h-[92dvh] flex flex-col rounded-[24px] sm:rounded-[32px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+      ariaLabelledBy={titleId}
+      initialFocusRef={continueRef}
+      mobileSheet
+      panelClassName={`w-full ${ROOMY_PANEL_WIDTH} roomy:my-auto max-h-[92dvh] roomy:max-h-[88dvh] short-land:max-h-[calc(100dvh_-_2rem)] flex flex-col overflow-hidden rounded-t-[28px] roomy:rounded-[28px] shadow-[0_25px_60px_rgba(0,0,0,0.6)]`}
     >
       {isSelfWinner && <WinnerCelebration config={animConfig} />}
       {isSelfWinner && <VictoryDance anchor={VICTORY_DANCE_ANCHOR} config={animConfig} />}
 
       <motion.div
-        className="relative flex flex-col h-full min-h-0 bg-[#F7F0E3] border-2 border-[#D8C7AA]"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, #F5ECDD 100%)",
-        }}
-        initial={animConfig.reducedMotion ? false : { scale: 0.94, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 360, damping: 26 }}
+        className="relative flex min-h-0 flex-1 flex-col border border-[#FFD84D]/25 text-[#FFF3E0] roomy:flex-row"
+        style={{ background: PANEL_BACKGROUND }}
+        initial={animConfig.reducedMotion ? false : { y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 360, damping: 30 }}
       >
-        {/* Left Spiral Binder Ring Holes */}
-        <div
-          className="absolute left-2 sm:left-3.5 top-4 bottom-4 flex flex-col justify-between items-center w-4 sm:w-5 pointer-events-none z-20"
-          aria-hidden
-        >
-          {Array.from({ length: 14 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#423223] shadow-[inset_0_2px_3px_rgba(0,0,0,0.65),0_1px_1px_rgba(255,255,255,0.7)] border border-[#2D2116]/80 relative"
-            >
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-white/20" />
-            </div>
-          ))}
-        </div>
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 z-20 h-1.5" style={{ background: UNO_STRIPE }} />
 
-        {/* Background Hand-Drawn Doodles */}
-        <DoodleBackground />
+        {/* The close button lives in this pane, at its top corner, so it follows the pane's width instead of
+            guessing it: stacked, the pane is the whole sheet and the button is the sheet's corner; roomy, it is the
+            left pane's corner and the pane starts below it (`pt-[56px]`). Narrower on a small landscape phone. */}
+        <header className="relative flex shrink-0 flex-col px-[16px] pb-[12px] pr-[64px] pt-[20px] [@media(orientation:portrait)_and_(max-height:700px)]:pb-[8px] [@media(orientation:portrait)_and_(max-height:700px)]:pt-[14px] roomy:w-[280px] roomy:overflow-y-auto roomy:border-r roomy:border-white/10 roomy:bg-black/20 roomy:px-[24px] roomy:pb-[24px] roomy:pr-[24px] roomy:pt-[56px] max-[720px]:roomy:w-[176px] max-[720px]:roomy:px-[12px] short-land:roomy:pb-[12px]">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-[10px] top-[12px] z-30 grid h-[44px] w-[44px] cursor-pointer place-items-center rounded-full border border-white/15 bg-black/30 text-[#FFF3E0] transition hover:bg-black/45 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FFD84D]"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
 
-        {/* Top Close '✕' Button — sits above the scroll area so it's always reachable */}
-        <button
-          onClick={onClose}
-          type="button"
-          aria-label="Close"
-          className="absolute top-3 right-3 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#EFE4D0] hover:bg-[#E2D5BD] active:scale-95 flex items-center justify-center text-[#6E553F] border border-[#D5C4A8] text-sm font-black transition z-30 shadow-xs cursor-pointer"
-        >
-          ✕
-        </button>
-
-        {/* Header (fixed at top, never scrolls) */}
-        <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pt-4 sm:pt-6 relative z-10">
-          {/* Top Trophy & Header */}
-          <div className="flex flex-col items-center text-center">
-            {/* Hand-Drawn Golden Trophy Icon */}
-            <div className="relative mb-1 flex items-center justify-center">
-              <div className="w-16 h-14 sm:w-20 sm:h-18 flex items-center justify-center">
-                <HandDrawnTrophy />
-              </div>
-            </div>
-
-            {/* Winner Headline with Retro Hatch Whiskers */}
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-[#A84A15] font-black text-lg sm:text-xl tracking-tighter" aria-hidden>
-                ≍
-              </span>
-              <h2 className="font-display font-black text-2xl sm:text-3xl md:text-4xl text-[#2B1B0E] tracking-tight">
-                {isSelfWinner
-                  ? "You Win!"
-                  : winnerId
-                    ? `${nameOf(winnerId)} Wins!`
-                    : "Round Over"}
-              </h2>
-              <span className="text-[#A84A15] font-black text-lg sm:text-xl tracking-tighter" aria-hidden>
-                ≍
-              </span>
-            </div>
-
-            {/* Points Subtitle Badge */}
-            <div className="mt-1 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-[#D6C4A6] bg-[#FAF4EA]/80 text-[#8C3F10] font-extrabold text-xs sm:text-sm shadow-2xs">
-              <span className="text-amber-500 font-serif">☆</span>
-              <span>
-                {state.targetScore != null
-                  ? `${winnerScore} points (${state.round} round${state.round === 1 ? "" : "s"})`
-                  : `+${winnerScore} points`}
-              </span>
-              <span className="text-amber-500 font-serif">☆</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Scrollable body — the only region that scrolls, so the header and
-            action dock below stay reachable no matter how tall the content
-            gets (short phones, a full 4th-place row, the settlement panel,
-            or all three at once). */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pl-8 sm:pl-12 pr-4 sm:pr-8 pb-2 relative z-10 space-y-2 sm:space-y-4">
-          {/* 2-Column Main Content Body */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5 items-center my-1 sm:my-2">
-            {/* LEFT: Polaroid Photo Card */}
-            <div className="hidden md:flex md:col-span-5 justify-center">
-              <div className="relative w-full max-w-[160px] sm:max-w-[190px] md:max-w-[220px] bg-white p-2.5 sm:p-3 pb-3 sm:pb-4 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.14)] border border-[#E4D7C0] flex flex-col items-center transform -rotate-1 hover:rotate-0 transition-transform duration-300">
-                {/* Masking tape on top-center */}
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 sm:w-16 h-4 sm:h-5 bg-[#E8DAC2]/90 border border-[#D0BF9F]/70 -rotate-2 rounded-[2px] shadow-2xs pointer-events-none"
-                  aria-hidden
+          {/* `my-auto` rather than `justify-center`: centred when there is room, and when a very large system font
+              makes this taller than the pane it starts at the top (below the close button) and scrolls, instead of
+              being pushed up underneath it. */}
+          <div className="flex flex-col gap-3 roomy:my-auto roomy:items-center roomy:text-center [@media(orientation:portrait)_and_(max-height:700px)]:gap-2 short-land:roomy:gap-2">
+          <div className="flex items-center gap-3 roomy:flex-col">
+            <span className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-[#FFE066] to-[#F5B400] text-[#3A2200] roomy:hidden max-[340px]:hidden">
+              <Trophy className="h-6 w-6" aria-hidden="true" />
+            </span>
+            {winnerRow && (
+              <span className="relative hidden roomy:block short-land:hidden">
+                <SeatAvatar
+                  avatar={winnerRow.player?.avatar}
+                  playerId={winnerRow.id}
+                  name={winnerRow.name}
+                  className="h-[96px] w-[96px] ring-4 ring-[#FFD84D]"
+                  textClassName="text-3xl"
                 />
-
-                {/* Cartoon Illustration */}
-                <div className="w-full aspect-[4/3.2] rounded-lg overflow-hidden bg-gradient-to-b from-[#FFF5D8] via-[#FFF9EA] to-[#FFEEC6] border border-[#F5E8C8] flex items-center justify-center relative p-1">
-                  <CelebrationIllustration winnerName={winnerPlayer?.name ?? "Winner"} />
-                </div>
-
-                {/* Handwritten style caption */}
-                <div className="text-center mt-2 space-y-0.5">
-                  <p className="text-[12px] sm:text-[13px] md:text-sm font-black text-[#3A2819] leading-tight font-body">
-                    Great game!
-                  </p>
-                  <p className="text-[10px] sm:text-[11px] md:text-xs font-bold text-[#6D533C] leading-tight flex items-center justify-center gap-1">
-                    <span>Well played everyone!</span>
-                    <span className="text-rose-600">♥</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT: Ruled Memo Scores Sheet */}
-            <div className="md:col-span-7 relative bg-[#FAF5EB] border border-[#E4D7BE] rounded-2xl p-3 sm:p-4 shadow-xs space-y-2">
-              {/* Masking tape on top-right */}
-              <div
-                className="absolute -top-2.5 right-3 w-10 sm:w-12 h-4 sm:h-4.5 bg-[#E8DAC2]/90 border border-[#D0BF9F]/70 rotate-6 rounded-[2px] shadow-2xs pointer-events-none"
-                aria-hidden
-              />
-
-              {/* Memo Binder notches on left edge */}
-              <div className="absolute left-1 top-4 bottom-4 flex flex-col justify-between items-center w-1.5 pointer-events-none opacity-40">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#8C7660]" />
-                ))}
-              </div>
-
-              {/* Scores Header */}
-              <div className="flex items-center justify-center gap-1.5 pb-1 border-b border-[#E8DCC6]">
-                <span className="text-[#A84A15] text-xs font-bold" aria-hidden>
-                  ≍
+                <span className="absolute -bottom-1 -right-1 z-20 grid h-[36px] w-[36px] place-items-center rounded-full bg-gradient-to-b from-[#FFE066] to-[#F5B400] text-[#3A2200] ring-2 ring-[#3A0A0A]">
+                  <Trophy className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#A84A15]">
-                  SCORES
-                </span>
-                <span className="text-[#A84A15] text-xs font-bold" aria-hidden>
-                  ≍
-                </span>
-              </div>
-
-              {/* Lined Leaderboard List */}
-              <div className="space-y-1.5 max-h-[140px] sm:max-h-[175px] overflow-y-auto pr-1">
-                {ranked.map((id, index) => {
-                  const isWinnerRow = id === winnerId;
-                  const p = players.find((pl) => pl.id === id);
-                  const avatarOpt = p?.avatar ? findAvatar(p.avatar) : null;
-                  const rankNum = index + 1;
-
-                  return (
-                    <div
-                      key={id}
-                      className={`flex items-center gap-2 sm:gap-2.5 px-2.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold border-b border-[#EADBCA]/70 transition-colors ${
-                        p?.isBot && p.botProfile ? "flex-wrap" : ""
-                      } ${
-                        isWinnerRow
-                          ? "bg-[#FFECC7]/60 text-[#2B1B0E]"
-                          : "text-[#4A3828]"
-                      }`}
-                    >
-                      {/* Number Circle Badge (1: Gold, 2: Blue, 3: Bronze, 4+: Green) */}
-                      <div
-                        className={`w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full flex items-center justify-center font-black text-[10px] sm:text-[11px] text-white shrink-0 shadow-2xs ${
-                          rankNum === 1
-                            ? "bg-[#E5A124]"
-                            : rankNum === 2
-                              ? "bg-[#3B82F6]"
-                              : rankNum === 3
-                                ? "bg-[#C86D32]"
-                                : "bg-[#529658]"
-                        }`}
-                      >
-                        {rankNum}
-                      </div>
-
-                      {/* Avatar */}
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-amber-400/50 bg-amber-100/50 flex items-center justify-center text-[10px]">
-                        {avatarOpt?.src ? (
-                          <img
-                            src={avatarOpt.src}
-                            alt={nameOf(id)}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span>{nameOf(id).slice(0, 1).toUpperCase()}</span>
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <span className="truncate flex-1 font-extrabold text-[#2C1D11]">
-                        {nameOf(id)}
-                        {id === selfId && " (you)"}
-                        {isWinnerRow && " 👑"}
-                      </span>
-
-                      {/* Score */}
-                      <span
-                        className={`tabular-nums shrink-0 font-black ${
-                          isWinnerRow ? "text-[#B91C1C] text-sm sm:text-base" : "text-[#5C4533]"
-                        }`}
-                      >
-                        {state.scores[id] ?? 0}
-                      </span>
-
-                      {/* Prize — only for a paid, settled match, and only the placements it actually paid */}
-                      {winnerPrizes?.[rankNum - 1] && <PrizeWonChip amount={winnerPrizes[rankNum - 1]} />}
-
-                      <BotResultNote player={p} className="basis-full pl-[3.25rem] sm:pl-[3.6rem] -mt-0.5 text-[#5C4533]" />
-                    </div>
-                  );
-                })}
-              </div>
+              </span>
+            )}
+            <div className="min-w-0">
+              <h2 id={titleId} className="line-clamp-3 break-words font-display text-[length:min(1.25rem,30px)] leading-tight roomy:text-[length:min(1.5rem,36px)] short-land:text-[length:min(1rem,24px)] [@media(orientation:portrait)_and_(max-height:700px)]:text-[length:min(1.125rem,27px)]">
+                {headline}
+              </h2>
+              {winnerRow && (
+                <p className="mt-1.5 inline-flex rounded-full border border-[#FFD84D]/40 bg-[#FFD84D]/15 px-[10px] py-[2px] text-xs font-extrabold text-[#FFD84D]">
+                  {describeWinnerPoints(winnerScore, state.targetScore, state.round)}
+                </p>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Action dock (fixed at bottom, never scrolls out of reach) */}
-        <div className="flex-shrink-0 pl-8 sm:pl-12 pr-4 sm:pr-8 pb-4 sm:pb-6 pt-2 sm:pt-3 relative z-10 space-y-2 sm:space-y-2.5">
-            {/* Action Row: Continue & Leave Table */}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 pt-0.5">
-              {/* Continue: Tan Stitched Kraft Button */}
-              <button
-                type="button"
-                onClick={onClose}
-                className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm text-[#422C19] bg-[#E8CBA0] hover:bg-[#DEC093] active:scale-[0.98] border-2 border-[#CBB083] border-dashed shadow-2xs transition cursor-pointer text-center"
-              >
-                Continue
-              </button>
-
-              {/* Leave Table: Crimson Red Stitched Button */}
-              <button
-                type="button"
-                onClick={onLeave ?? onClose}
-                className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm text-white bg-[#9E2A2B] hover:bg-[#882223] active:scale-[0.98] border-2 border-[#C54A4B] border-dashed shadow-2xs flex items-center justify-center gap-1.5 transition cursor-pointer text-center"
-              >
-                <span>Leave Table</span>
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-none stroke-current stroke-2 stroke-linecap-round stroke-linejoin-round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
-            </div>
+          {selfRow && !selfRow.isWinner && (
+            <p className="flex flex-wrap items-baseline gap-x-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[length:min(0.875rem,21px)] font-extrabold roomy:w-full roomy:justify-center short-land:py-1 short-land:text-[length:min(0.75rem,18px)] [@media(orientation:portrait)_and_(max-height:700px)]:py-1 [@media(orientation:portrait)_and_(max-height:700px)]:text-[length:min(0.75rem,18px)]">
+              <span>{describeSelfResult(selfRow)}</span>
+              <span className="whitespace-nowrap font-semibold text-[#E9B9B0]">
+                {`${selfRow.score} pts`}
+                {selfRow.cardsLeft != null && ` · ${selfRow.cardsLeft} ${selfRow.cardsLeft === 1 ? "card" : "cards"} left`}
+              </span>
+            </p>
+          )}
           </div>
+        </header>
+
+        <section aria-label="Final standings" className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-[8px] px-[23px] pb-[6px] pt-[8px] text-[11px] font-black uppercase tracking-wider text-[#E9B9B0] roomy:px-[31px] roomy:pt-[24px] short-land:pt-[8px] max-[340px]:px-[17px]">
+            <span className="flex-1">Standings</span>
+            <span className="min-w-[34px] text-center max-[340px]:min-w-[30px]">Left</span>
+            <span className="min-w-[44px] text-right max-[340px]:min-w-[38px]">Pts</span>
+          </div>
+
+          <ol className="min-h-0 flex-1 space-y-[6px] overflow-y-auto overscroll-contain px-[12px] pb-[8px] pt-[4px] roomy:px-[20px] max-[340px]:px-[8px]">
+            {standings.map((row, index) => (
+              <StandingRow key={row.id} row={row} index={index} prize={winnerPrizes?.[index]} reducedMotion={animConfig.reducedMotion} />
+            ))}
+          </ol>
+
+          <div className="grid shrink-0 grid-cols-2 gap-[10px] px-[16px] pb-[max(16px,env(safe-area-inset-bottom))] pt-[8px] roomy:px-[24px] roomy:pb-[24px] short-land:pb-[8px] [@media(orientation:portrait)_and_(max-height:700px)]:pb-[max(10px,env(safe-area-inset-bottom))]">
+            <button
+              ref={continueRef}
+              type="button"
+              onClick={onClose}
+              className="inline-flex min-h-[48px] cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-b from-[#FFE066] to-[#F5B400] px-[12px] py-[8px] text-center text-[length:min(0.875rem,21px)] font-black leading-tight text-[#3A2200] shadow-[0_4px_0_rgba(160,100,0,0.5)] transition active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/70 short-land:min-h-[44px]"
+            >
+              Continue
+            </button>
+            <button
+              type="button"
+              onClick={onLeave ?? onClose}
+              className="inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-white/25 bg-white/10 px-[12px] py-[8px] text-center text-[length:min(0.875rem,21px)] font-black leading-tight text-[#FFF3E0] transition hover:bg-white/15 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FFD84D] short-land:min-h-[44px]"
+            >
+              Leave table
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
       </motion.div>
     </Modal>
   );
 }
 
-/** Background Doodles matching the notebook sketchbook style */
-function DoodleBackground() {
+function StandingRow({ row, index, prize, reducedMotion }: { row: UnoStanding; index: number; prize: string | undefined; reducedMotion: boolean }) {
+  // Everything that is not the name or the numbers goes on a second line, so a long name, a prize chip and a bot's
+  // tagline never fight over the same few inches. A human with none of them gets a one-line row.
+  const hasSecondLine = row.isSelf || prize != null || row.player?.isBot === true;
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden>
-      {/* Top Left: Red Hatched Star & Wire Coil */}
-      <div className="absolute top-2.5 left-10 sm:left-14 flex items-center gap-1 opacity-80">
-        <svg viewBox="0 0 40 40" className="w-7 h-7 sm:w-9 sm:h-9">
-          <path
-            d="M 20 4 L 24 14 L 35 15 L 26 23 L 29 34 L 20 28 L 11 34 L 14 23 L 5 15 L 16 14 Z"
-            fill="#E85D4E"
-            fillOpacity="0.18"
-            stroke="#C93B2B"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <line x1="14" y1="18" x2="26" y2="28" stroke="#C93B2B" strokeWidth="1.2" strokeLinecap="round" />
-          <line x1="12" y1="24" x2="22" y2="34" stroke="#C93B2B" strokeWidth="1.2" strokeLinecap="round" />
-          <line x1="18" y1="12" x2="28" y2="22" stroke="#C93B2B" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
+    <motion.li
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index, 8) * 0.04, duration: 0.22 }}
+      className={`flex min-h-[56px] items-center gap-[8px] rounded-2xl border px-[10px] py-[8px] short-land:min-h-[44px] short-land:py-[4px] [@media(orientation:portrait)_and_(max-height:700px)]:min-h-[48px] [@media(orientation:portrait)_and_(max-height:700px)]:py-[5px] max-[340px]:gap-[6px] max-[340px]:px-[8px] ${
+        row.isWinner ? "border-[#FFD84D]/55 bg-[#FFD84D]/15" : "border-white/10 bg-black/25"
+      } ${row.isSelf ? "ring-2 ring-white/60" : ""}`}
+    >
+      <span
+        aria-label={row.isTied ? `Rank ${row.rank}, tied` : `Rank ${row.rank}`}
+        className={`grid h-[28px] w-[28px] shrink-0 place-items-center rounded-full text-xs font-black max-[340px]:h-[24px] max-[340px]:w-[24px] max-[340px]:text-[11px] ${rankBadgeClass(row.rank)}`}
+      >
+        {row.rank}
+      </span>
 
-        <svg viewBox="0 0 50 40" className="w-8 h-6 sm:w-10 sm:h-8 text-[#5C4533]/45">
-          <path
-            d="M 10 20 C 15 8, 30 8, 25 22 C 20 32, 38 32, 40 18 C 42 10, 28 10, 22 25"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-          />
-        </svg>
+      <span className="relative mx-[2px] shrink-0">
+        <SeatAvatar
+          avatar={row.player?.avatar}
+          playerId={row.id}
+          name={row.name}
+          className="h-[36px] w-[36px] roomy:h-[40px] roomy:w-[40px] short-land:!h-[32px] short-land:!w-[32px] [@media(orientation:portrait)_and_(max-height:700px)]:!h-[32px] [@media(orientation:portrait)_and_(max-height:700px)]:!w-[32px] max-[340px]:!h-[32px] max-[340px]:!w-[32px]"
+          textClassName="text-sm"
+        />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-sm font-extrabold">{row.name}</span>
+          {row.isWinner && <Crown className="h-4 w-4 shrink-0 fill-[#FFD84D] text-[#FFD84D]" role="img" aria-label="Winner" />}
+        </div>
+        {hasSecondLine && (
+          // Wraps when the chip and the note will not share a line, and clips as a last resort: a second line must
+          // never run on under the Left and Pts columns.
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 overflow-hidden">
+            {prize && (
+              <span className="shrink-0 rounded-full bg-[#FFF3E0] px-0.5">
+                <PrizeWonChip amount={prize} />
+              </span>
+            )}
+            {row.isSelf && <span className="shrink-0 text-[11px] font-extrabold uppercase leading-tight tracking-wide text-[#E9B9B0]">You</span>}
+            {/* The bot's title badge is styled for a light surface; here it sits on a cream pill so it can be read. */}
+            <BotResultNote
+              player={row.player}
+              className="min-w-0 max-w-full text-[#E9B9B0] [&>span.uppercase]:!border-[#FFF3E0] [&>span.uppercase]:!bg-[#FFF3E0] [&>span.uppercase]:!text-[#3A2200] [&>span:not(.uppercase)]:truncate short-land:[&>span:not(.uppercase)]:hidden [@media(orientation:portrait)_and_(max-height:700px)]:[&>span:not(.uppercase)]:hidden"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Top Right: Paperclip & Blue Hatched Star */}
-      <div className="absolute top-2.5 right-12 sm:right-16 flex items-center gap-2 opacity-80">
-        <svg viewBox="0 0 32 48" className="w-5 h-8 sm:w-6 sm:h-9 text-[#4B443B]">
-          <path
-            d="M 8 20 L 8 36 C 8 42, 22 42, 22 36 L 22 12 C 22 4, 2 4, 2 14 L 2 36 C 2 46, 28 46, 28 34 L 28 18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-
-        <svg viewBox="0 0 40 40" className="w-7 h-7 sm:w-9 sm:h-9">
-          <path
-            d="M 20 4 L 24 14 L 35 15 L 26 23 L 29 34 L 20 28 L 11 34 L 14 23 L 5 15 L 16 14 Z"
-            fill="#3B82F6"
-            fillOpacity="0.16"
-            stroke="#2563EB"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <line x1="14" y1="16" x2="26" y2="28" stroke="#2563EB" strokeWidth="1.2" strokeLinecap="round" />
-          <line x1="18" y1="12" x2="24" y2="18" stroke="#2563EB" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-      </div>
-
-      {/* Bottom Left: Paper Airplane & Dashed Loop */}
-      <div className="absolute bottom-2.5 left-10 sm:left-14 opacity-75">
-        <svg viewBox="0 0 40 40" className="w-8 h-8 sm:w-9 sm:h-9 text-[#5C4533]">
-          <path
-            d="M 6 22 L 34 6 L 22 34 L 18 24 Z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <path d="M 18 24 L 34 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path
-            d="M 4 34 C 8 36, 12 30, 8 26 C 6 24, 4 28, 6 22"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeDasharray="2 2"
-          />
-        </svg>
-      </div>
-
-      {/* Bottom Right: Hand-Drawn Flower/Rose Swirl */}
-      <div className="absolute bottom-2.5 right-6 sm:right-10 opacity-70">
-        <svg viewBox="0 0 50 50" className="w-8 h-8 sm:w-10 sm:h-10 text-[#5C4533]">
-          <path
-            d="M 25 25 C 22 22, 28 20, 27 26 C 26 30, 20 28, 22 22 C 24 16, 32 18, 33 25 C 34 32, 22 36, 18 28 C 14 20, 26 12, 34 16 C 40 20, 38 34, 28 38 C 18 42, 10 30, 14 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-    </div>
+      <span
+        aria-label={row.cardsLeft == null ? "Cards left unknown" : `${row.cardsLeft} cards left`}
+        className="min-w-[34px] shrink-0 text-center text-sm font-bold tabular-nums text-[#E9B9B0] max-[340px]:min-w-[30px]"
+      >
+        {row.cardsLeft ?? "–"}
+      </span>
+      <span
+        aria-label={`${row.score} points`}
+        className={`min-w-[44px] shrink-0 text-right text-lg font-black tabular-nums max-[340px]:min-w-[38px] max-[340px]:text-base ${row.isWinner ? "text-[#FFD84D]" : ""}`}
+      >
+        {row.score}
+      </span>
+    </motion.li>
   );
 }
-
-/** Golden Hand-Drawn Trophy with Star Badge & Radiant Stars */
-function HandDrawnTrophy() {
-  return (
-    <svg viewBox="0 0 90 70" className="w-full h-full overflow-visible">
-      {/* Radiant stars around trophy */}
-      <circle cx="12" cy="18" r="1.5" fill="#EAB308" />
-      <circle cx="78" cy="16" r="1.5" fill="#EAB308" />
-      <path d="M 16 10 L 17 12 L 19 13 L 17 14 L 16 16 L 15 14 L 13 13 L 15 12 Z" fill="#EAB308" />
-      <path d="M 72 26 L 73 28 L 75 29 L 73 30 L 72 32 L 71 30 L 69 29 L 71 28 Z" fill="#EAB308" />
-
-      {/* Trophy Handles */}
-      <path
-        d="M 28 22 C 16 22 14 36 30 38"
-        fill="none"
-        stroke="#422C1A"
-        strokeWidth="2.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M 28 22 C 18 22 16 34 29 36"
-        fill="none"
-        stroke="#EAB308"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="M 62 22 C 74 22 76 36 60 38"
-        fill="none"
-        stroke="#422C1A"
-        strokeWidth="2.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M 62 22 C 72 22 74 34 61 36"
-        fill="none"
-        stroke="#EAB308"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-
-      {/* Main Cup Body */}
-      <path
-        d="M 30 16 Q 45 16 60 16 L 56 40 C 53 49 48 50 45 50 C 42 50 37 49 34 40 Z"
-        fill="#FACC15"
-        stroke="#422C1A"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-
-      {/* Cup Rim Highlight */}
-      <ellipse cx="45" cy="16" rx="15" ry="3" fill="#FEF08A" stroke="#422C1A" strokeWidth="2" />
-
-      {/* Star on Cup */}
-      <path
-        d="M 45 24 L 46.5 28.5 L 51 28.5 L 47.5 31.5 L 49 36 L 45 33 L 41 36 L 42.5 31.5 L 39 28.5 L 43.5 28.5 Z"
-        fill="#FFFFFF"
-        stroke="#422C1A"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-
-      {/* Stem */}
-      <path d="M 42 50 L 48 50 L 47 57 L 43 57 Z" fill="#EAB308" stroke="#422C1A" strokeWidth="2" />
-
-      {/* Base Pedestal */}
-      <rect x="36" y="57" width="18" height="5" rx="1.5" fill="#92400E" stroke="#422C1A" strokeWidth="2" />
-      <rect x="32" y="62" width="26" height="5" rx="1.5" fill="#78350F" stroke="#422C1A" strokeWidth="2" />
-    </svg>
-  );
-}
-
-/** Celebration illustration showing 3 happy friends celebrating with the trophy */
-function CelebrationIllustration({ winnerName }: { winnerName: string }) {
-  return (
-    <svg viewBox="0 0 220 170" className="w-full h-full">
-      <defs>
-        <linearGradient id="pGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FFF176" />
-          <stop offset="50%" stopColor="#FBC02D" />
-          <stop offset="100%" stopColor="#F57F17" />
-        </linearGradient>
-      </defs>
-
-      {/* Background Stars */}
-      <circle cx="30" cy="30" r="2" fill="#F59E0B" opacity="0.6" />
-      <circle cx="190" cy="35" r="2.5" fill="#EF4444" opacity="0.6" />
-      <circle cx="45" cy="15" r="1.5" fill="#3B82F6" opacity="0.6" />
-      <circle cx="175" cy="20" r="2" fill="#10B981" opacity="0.6" />
-      <path
-        d="M 35 45 L 37 49 L 41 50 L 37 51 L 35 55 L 33 51 L 29 50 L 33 49 Z"
-        fill="#F59E0B"
-        opacity="0.5"
-      />
-      <path
-        d="M 185 50 L 187 54 L 191 55 L 187 56 L 185 60 L 183 56 L 179 55 L 183 54 Z"
-        fill="#F59E0B"
-        opacity="0.5"
-      />
-
-      {/* ── 1. LEFT CHARACTER (Blue Hoodie, Cheering) ── */}
-      <g transform="translate(18, 52)">
-        {/* Raised Left Arm */}
-        <path
-          d="M 28 55 C 10 38 12 18 20 12 C 24 8 30 18 28 32"
-          fill="#3B82F6"
-          stroke="#1E40AF"
-          strokeWidth="1.5"
-        />
-        <circle cx="18" cy="12" r="5" fill="#FFCC80" stroke="#D97706" strokeWidth="1" />
-
-        {/* Body (Blue Hoodie) */}
-        <path
-          d="M 20 50 C 15 80 18 105 45 105 C 55 105 58 80 55 50 Z"
-          fill="#2563EB"
-          stroke="#1E40AF"
-          strokeWidth="1.5"
-        />
-        {/* Head & Neck */}
-        <rect x="33" y="42" width="8" height="10" fill="#FFCC80" />
-        <ellipse
-          cx="37"
-          cy="32"
-          rx="14"
-          ry="15"
-          fill="#FFCC80"
-          stroke="#D97706"
-          strokeWidth="1.2"
-        />
-        {/* Hair */}
-        <path
-          d="M 23 28 C 23 15 32 15 37 15 C 45 15 51 20 51 28 C 48 24 43 25 38 25 C 33 25 27 25 23 28 Z"
-          fill="#1E293B"
-        />
-        {/* Cheerful Face */}
-        <ellipse cx="32" cy="30" rx="1.5" ry="2" fill="#1E293B" />
-        <ellipse cx="42" cy="30" rx="1.5" ry="2" fill="#1E293B" />
-        <path
-          d="M 33 36 Q 37 42 41 36 Z"
-          fill="#EF4444"
-          stroke="#1E293B"
-          strokeWidth="1"
-        />
-        {/* Cheeks */}
-        <circle cx="28" cy="34" r="2.5" fill="#F87171" opacity="0.6" />
-        <circle cx="46" cy="34" r="2.5" fill="#F87171" opacity="0.6" />
-      </g>
-
-      {/* ── 2. RIGHT CHARACTER (Orange Hoodie, Thumbs Up) ── */}
-      <g transform="translate(130, 52)">
-        {/* Raised Right Arm & Thumbs Up */}
-        <path
-          d="M 38 52 C 55 40 58 24 50 18 C 45 14 40 22 40 35"
-          fill="#EA580C"
-          stroke="#9A3412"
-          strokeWidth="1.5"
-        />
-        {/* Hand with Thumbs Up */}
-        <circle cx="53" cy="18" r="5" fill="#FFCC80" stroke="#D97706" strokeWidth="1" />
-        <rect x="52" y="11" width="3" height="6" rx="1.5" fill="#FFCC80" />
-
-        {/* Body (Orange Hoodie) */}
-        <path
-          d="M 12 50 C 10 80 15 105 45 105 C 55 105 58 80 52 50 Z"
-          fill="#F97316"
-          stroke="#9A3412"
-          strokeWidth="1.5"
-        />
-        {/* Head & Neck */}
-        <rect x="25" y="42" width="8" height="10" fill="#FFCC80" />
-        <ellipse
-          cx="29"
-          cy="32"
-          rx="14"
-          ry="15"
-          fill="#FFCC80"
-          stroke="#D97706"
-          strokeWidth="1.2"
-        />
-        {/* Curly Hair */}
-        <path
-          d="M 15 28 C 14 16 24 14 29 14 C 36 14 43 18 43 28 C 40 24 35 24 30 24 C 25 24 19 24 15 28 Z"
-          fill="#451A03"
-        />
-        {/* Cheerful Smile */}
-        <ellipse cx="24" cy="30" rx="1.5" ry="2" fill="#1E293B" />
-        <ellipse cx="34" cy="30" rx="1.5" ry="2" fill="#1E293B" />
-        <path
-          d="M 25 36 Q 29 42 33 36 Z"
-          fill="#EF4444"
-          stroke="#1E293B"
-          strokeWidth="1"
-        />
-        <circle cx="20" cy="34" r="2.5" fill="#F87171" opacity="0.6" />
-        <circle cx="38" cy="34" r="2.5" fill="#F87171" opacity="0.6" />
-      </g>
-
-      {/* ── 3. CENTER CHARACTER (Green Hoodie, Glasses, Holding Trophy) ── */}
-      <g transform="translate(75, 40)">
-        {/* Arms holding the trophy high */}
-        <path
-          d="M 18 55 C 10 35 22 18 28 8"
-          fill="none"
-          stroke="#15803D"
-          strokeWidth="7"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 52 55 C 60 35 48 18 42 8"
-          fill="none"
-          stroke="#15803D"
-          strokeWidth="7"
-          strokeLinecap="round"
-        />
-
-        {/* Hands on trophy */}
-        <circle cx="28" cy="8" r="4.5" fill="#FFCC80" stroke="#D97706" strokeWidth="1" />
-        <circle cx="42" cy="8" r="4.5" fill="#FFCC80" stroke="#D97706" strokeWidth="1" />
-
-        {/* Body (Green Hoodie) */}
-        <path
-          d="M 16 55 C 12 85 16 115 54 115 C 58 85 54 55 54 55 Z"
-          fill="#16A34A"
-          stroke="#14532D"
-          strokeWidth="1.5"
-        />
-
-        {/* Head */}
-        <rect x="31" y="44" width="8" height="10" fill="#FFCC80" />
-        <ellipse
-          cx="35"
-          cy="34"
-          rx="15"
-          ry="16"
-          fill="#FFCC80"
-          stroke="#D97706"
-          strokeWidth="1.2"
-        />
-
-        {/* Neat Hair */}
-        <path
-          d="M 20 30 C 20 16 30 14 35 14 C 42 14 50 18 50 30 C 46 25 41 25 36 25 C 31 25 25 26 20 30 Z"
-          fill="#0F172A"
-        />
-
-        {/* Black Rim Glasses */}
-        <rect
-          x="23"
-          y="29"
-          width="10"
-          height="8"
-          rx="2"
-          fill="none"
-          stroke="#0F172A"
-          strokeWidth="1.8"
-        />
-        <rect
-          x="37"
-          y="29"
-          width="10"
-          height="8"
-          rx="2"
-          fill="none"
-          stroke="#0F172A"
-          strokeWidth="1.8"
-        />
-        <line
-          x1="33"
-          y1="33"
-          x2="37"
-          y2="33"
-          stroke="#0F172A"
-          strokeWidth="1.8"
-        />
-
-        {/* Happy Eyes behind glasses */}
-        <ellipse cx="28" cy="33" rx="1.5" ry="2" fill="#0F172A" />
-        <ellipse cx="42" cy="33" rx="1.5" ry="2" fill="#0F172A" />
-
-        {/* Big Proud Smile */}
-        <path
-          d="M 28 39 Q 35 47 42 39 Z"
-          fill="#DC2626"
-          stroke="#0F172A"
-          strokeWidth="1"
-        />
-        {/* Cheeks */}
-        <circle cx="22" cy="37" r="2.5" fill="#F87171" opacity="0.6" />
-        <circle cx="48" cy="37" r="2.5" fill="#F87171" opacity="0.6" />
-
-        {/* ── Golden Trophy held in the air! ── */}
-        <g transform="translate(18, -26)">
-          <path
-            d="M 5 12 C 0 12 -2 22 8 23"
-            fill="none"
-            stroke="url(#pGold)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 29 12 C 34 12 36 22 26 23"
-            fill="none"
-            stroke="url(#pGold)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 8 6 Q 17 6 26 6 L 24 22 C 22 28 18 29 17 29 C 16 29 12 28 10 22 Z"
-            fill="url(#pGold)"
-          />
-          <ellipse cx="17" cy="6" rx="9" ry="2" fill="#FFF9C4" />
-          <path
-            d="M 17 12 L 18 15 L 21 15 L 18.5 17 L 19.5 20 L 17 18 L 14.5 20 L 15.5 17 L 13 15 L 16 15 Z"
-            fill="#FFFFFF"
-          />
-          <rect x="14" y="29" width="6" height="5" fill="#FFA000" />
-          <rect x="11" y="34" width="12" height="4" rx="1" fill="#5D4037" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
