@@ -21,6 +21,8 @@ import TableUnavailable, { type UnavailableStatus } from "../components/room/Tab
 /** How long the pre-join probe may take before the join is left to decide on its own. */
 const PROBE_TIMEOUT_MS = 4000;
 const ROOM_JOIN_TIMEOUT_MS = 20_000;
+/** How long the "this room has closed" screen waits, with a visible countdown, before taking the player to the lounge. */
+const ROOM_GONE_RETURN_SECONDS = 10;
 import { exitFullscreen, isFullscreenActive, isFullscreenSupported, isPhoneClass } from "../lib/fullscreen";
 import { useFullscreenToggle } from "../hooks/useFullscreenToggle";
 import { useGameFullscreen } from "../hooks/useGameFullscreen";
@@ -51,6 +53,9 @@ import { usePlayerCapability } from "../hooks/usePlayerCapability";
 import { BoardLoadingFallback } from "../components/BoardLoadingFallback";
 import RoomConnectingLoader from "../components/loading/RoomConnectingLoader";
 import { recoveryManager } from "../core/recovery/RecoveryManager";
+import { useRoomWatch } from "../hooks/useRoomWatch";
+import { refusalFromJoinError } from "../lib/roomRefusal";
+import { launchLinkProps } from "../lib/gameLaunch";
 import { connectionStateManager } from "../core/recovery/ConnectionStateManager";
 import { clearActiveSession, clearRoomSession } from "../core/recovery/recoveryStorage";
 import { EconomyMotionOrchestrator, useEconomyMotion, useElementAnchor } from "../components/economy/motion";
@@ -789,6 +794,16 @@ export default function Room() {
     };
   }, [code, mustDeclare]);
 
+  /**
+   * Set when the table cannot (or can no longer) take this player: it closed while they were away, their seat was
+   * released from a match that moved on, or it filled up. It replaces the connecting screen — which has nothing left
+   * to connect to — with a screen that says so and takes them back to the lounge.
+   */
+  const [refusal, setRefusal] = useState<{ status: UnavailableStatus; message?: string; game?: GameKind; returning: boolean } | null>(null);
+  useEffect(() => {
+    setRefusal(null);
+  }, [code]);
+
   // "Last gang" memory (docs/rummy/roadmap.md A.5) — once the host names a
   // Rummy table, remember who was at it so the home screen can offer a
   // one-tap WhatsApp re-invite next time. Keyed on the name itself so
@@ -860,6 +875,33 @@ export default function Room() {
     connectionStateManager.transition("RECOVERED", "Room and private game state restored");
     attempt.resolve(true);
   }, [cancelJoin, setError, setGameState]);
+
+  /**
+   * This table cannot take this player (back). Leave the connecting machinery for good: there is nothing left to
+   * retry, and a Retry button on a room that does not exist only teaches people to press it. The seat and the saved
+   * session are forgotten so nothing elsewhere offers to rejoin, and the connection state goes back to idle rather
+   * than FAILED so no "unable to restore your session" banner contradicts the screen.
+   *
+   * `returning` records whether they were actually at this table, which decides the wording: "closed while you were
+   * away" is a fact about someone who was here, not about a visitor with a dead link.
+   */
+  const concludeRefusal = useCallback((status: UnavailableStatus, message?: string) => {
+    const store = useRoomStore.getState();
+    const game = store.roomState?.game;
+    const returning = Boolean(code && (store.seatFor(code) || store.roomState?.code === code));
+    cancelJoin();
+    setIsRoomReady(false);
+    reset();
+    if (code) {
+      clearRoomSession(code);
+      useRoomStore.getState().forgetSeat(code);
+    }
+    clearActiveSession();
+    recoveryManager.detachRoom();
+    // The first reason stands: whatever arrives next (a late answer, a second signal) must not change what the
+    // player is already reading.
+    setRefusal((current) => current ?? { status, message, game, returning });
+  }, [code, cancelJoin, reset]);
 
   /**
    * Confirm-before-leave for every in-game "Leave" affordance that is NOT
@@ -956,6 +998,13 @@ export default function Room() {
         );
         if (!res.ok) {
           cancelJoin();
+          // The table is gone, full, sealed, or has moved on without this player: there is nothing to retry, so
+          // leave the connecting screen for one that says so (see `concludeRefusal`).
+          const refused = refusalFromJoinError(res.error);
+          if (refused) {
+            concludeRefusal(refused);
+            return;
+          }
           connectionStateManager.transition("FAILED", "Room join rejected");
           // A refused NAME is not a failed room: nothing is wrong with the table, and no seat was granted.
           // Send the guest back to the name step with the reason, instead of a dead-end error card.
@@ -965,10 +1014,7 @@ export default function Room() {
             setDeclaredHere(false);
             return;
           }
-          const msg =
-            res.error === "Room not found"
-              ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
-              : res.error ?? "Could not join room";
+          const msg = res.error ?? "Could not join room";
           // reset() clears lastError along with the rest of the room store,
           // so it must run BEFORE setError — otherwise the message we just
           // set is wiped in the same tick and ConnectingScreen shows a bare
@@ -1004,11 +1050,27 @@ export default function Room() {
     );
     })();
     return promise;
-  }, [code, roomPlayerName, isMember, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, setGameState, rememberSeat, setError, reset, cancelJoin, completeJoin]);
+  }, [code, roomPlayerName, isMember, mustDeclare, authReady, seatFor, setPlayerId, setRoomState, setGameState, rememberSeat, setError, reset, cancelJoin, completeJoin, concludeRefusal]);
 
   const handleRetryConnection = useCallback(() => {
     void attemptJoin("reconnect");
   }, [attemptJoin]);
+
+  /**
+   * "Not in the room" — never joined, or the connection dropped — for long enough that a normal join would have
+   * landed by now. Ask the server whether the table is still there, WITHOUT waiting for the socket: a tab left open
+   * for hours comes back with a socket still backing off, and the answer "that room closed" used to depend on it.
+   * A gone table sends the player to the refusal screen; a silent server is reported to the loader so it can say so.
+   */
+  const stuckOutsideRoom = Boolean(
+    code && roomPlayerName && !mustDeclare && authReady && !refusal && (!roomState || roomState.code !== code || !isRoomReady),
+  );
+  const { serverReachable } = useRoomWatch({
+    code,
+    seatId: code ? seatFor(code)?.playerId : undefined,
+    enabled: stuckOutsideRoom,
+    onRefusal: concludeRefusal,
+  });
 
   useEffect(() => {
     if (!code) {
@@ -1023,10 +1085,14 @@ export default function Room() {
     // signed-in tab's initial join carries the restored access token
     // instead of racing ahead on a guest one.
     if (!authReady) return;
+    // A refusal is showing: the table cannot take this player, and the join machinery must stay idle behind it. The
+    // player's name survives a refusal (only the room session is cleared), so without this a reconnecting socket
+    // would join again — be refused again and overwrite the screen with a generic one, or, if a seat had freed up,
+    // seat the player at a table they were just told they could not have.
+    if (refusal) return;
     const socket = getSocket();
     activeJoinRoomRef.current = code;
     let isActive = true;
-    let closeTimer: ReturnType<typeof setTimeout> | undefined;
     const unregisterRecovery = recoveryManager.registerRoomRecovery(code, () => attemptJoin("reconnect"));
 
     const onConnect = () => {
@@ -1085,15 +1151,9 @@ export default function Room() {
      */
     const onRoomClosed = (payload: { reason: string }) => {
       if (!isActive || !socket.connected) return;
-      cancelJoin();
-      setIsRoomReady(false);
-      reset();
-      setError(payload.reason);
-      connectionStateManager.transition("FAILED", "Room closed");
-      clearActiveSession();
-      if (code) clearRoomSession(code);
-      if (code) useRoomStore.getState().forgetSeat(code);
-      closeTimer = setTimeout(() => navigate("/"), 2000);
+      // The server's own reason is shown as the explanation; the screen then counts down to the lounge, replacing the
+      // old two-second redirect that gave nobody time to read why.
+      concludeRefusal("not_found", payload.reason);
     };
     socket.on("room:closed", onRoomClosed);
     void attemptJoin("initial");
@@ -1104,7 +1164,6 @@ export default function Room() {
       cancelJoin();
       setGameState(null);
       unregisterRecovery();
-      if (closeTimer) clearTimeout(closeTimer);
       window.removeEventListener("offline", onDisconnect);
       window.removeEventListener("online", onOnline);
       socket.off("connect", onConnect);
@@ -1131,7 +1190,7 @@ export default function Room() {
     // with it `false` for a moment, so the effect must re-run once it flips
     // to `true` rather than being stuck on the early return above forever.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, roomPlayerName, authReady, mustDeclare, attemptJoin, cancelJoin, completeJoin]);
+  }, [code, roomPlayerName, authReady, mustDeclare, refusal, attemptJoin, cancelJoin, completeJoin, concludeRefusal]);
 
   /**
    * One stable `game:move` sender.
@@ -1835,6 +1894,32 @@ export default function Room() {
   //      themselves once per room even if a name is already stored.
   // Either way, submitting persists the name and the join effect above picks
   // it up on the next render.
+  // The table cannot take this player (back): say why and take them to the lounge. This sits BEFORE the name-entry
+  // branch below on purpose — a refusal forgets the guest's seat and with it their room name, and without this the
+  // very next render would ask them to type a name for a table that is not there.
+  if (refusal) {
+    const link = refusal.game && (refusal.status === "not_found" || refusal.status === "started") ? launchLinkProps(refusal.game) : null;
+    const secondary =
+      link && refusal.game
+        ? {
+            label: `Start a new ${GAME_DISPLAY_NAMES[refusal.game] ?? "game"} room`,
+            onClick: () => navigate(link.to, link.state ? { state: link.state } : undefined),
+          }
+        : undefined;
+    return (
+      <AppLayout onSelectGame={() => navigate("/")}>
+        <TableUnavailable
+          status={refusal.status}
+          returning={refusal.returning}
+          message={refusal.message}
+          onBack={() => navigate("/")}
+          autoReturnSeconds={ROOM_GONE_RETURN_SECONDS}
+          secondary={secondary}
+        />
+      </AppLayout>
+    );
+  }
+
   if (!lastError && (!roomPlayerName || mustDeclare)) {
     // A guest with no identity yet is told what is about to be created BEFORE it is created.
     const needsGuestNotice = mustDeclare && !guestId;
@@ -1879,7 +1964,7 @@ export default function Room() {
   if (!roomState || roomState.code !== code || !isRoomReady) {
     return (
       <AppLayout onSelectGame={() => navigate("/")}>
-        <ConnectingScreen code={code} onRetry={handleRetryConnection} error={lastError} />
+        <ConnectingScreen code={code} onRetry={handleRetryConnection} error={lastError} serverUnreachable={stuckOutsideRoom && serverReachable === false} />
       </AppLayout>
     );
   }
@@ -2559,7 +2644,7 @@ export default function Room() {
  * rather than "stuck". Pure Tailwind animations (spin / ping / bounce) — no
  * extra keyframes or libraries.
  */
-function ConnectingScreen({ code, onRetry, error }: { code?: string; onRetry?: () => void; error?: string | null }) {
+function ConnectingScreen({ code, onRetry, error, serverUnreachable }: { code?: string; onRetry?: () => void; error?: string | null; serverUnreachable?: boolean }) {
   const navigate = useNavigate();
 
   const handleRetry = () => {
@@ -2577,6 +2662,7 @@ function ConnectingScreen({ code, onRetry, error }: { code?: string; onRetry?: (
       onRetry={handleRetry}
       onReturnHome={() => navigate("/")}
       error={error}
+      serverUnreachable={serverUnreachable}
     />
   );
 }

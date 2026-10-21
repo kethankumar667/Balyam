@@ -18,6 +18,12 @@ export interface RoomConnectingLoaderProps {
    * server has already rejected the join.
    */
   error?: string | null;
+  /**
+   * The game server is not answering at all (a free host waking from sleep, or the network is down). The screen then
+   * says so instead of narrating a seat check it is not doing, drops the latency figure (there is no connection to
+   * measure) and explains the wait straight away instead of after ten seconds.
+   */
+  serverUnreachable?: boolean;
   className?: string;
 }
 
@@ -28,6 +34,12 @@ const NARRATIVE_STEPS = [
   "Establishing WebRTC mesh audio…",
   "Synchronizing room state with server…",
 ];
+
+const SERVER_UNREACHABLE_LINE = "Waiting for the game server…";
+const SERVER_UNREACHABLE_COPY =
+  "The game server isn't answering yet. Free servers can take up to a minute to wake up after a quiet spell. We're checking every few seconds and will take you to your table the moment it's back.";
+const TAKING_LONG_COPY =
+  "Connecting is taking longer than usual — the game server may be waking up from cold sleep or your network is slow.";
 
 /**
  * 4-Point Celestial Diamond Glint for Atmospheric Depth
@@ -79,6 +91,7 @@ export default function RoomConnectingLoader({
   onRetry,
   onReturnHome,
   error,
+  serverUnreachable = false,
   className = "",
 }: RoomConnectingLoaderProps) {
   const navigate = useNavigate();
@@ -135,6 +148,7 @@ export default function RoomConnectingLoader({
   };
 
   const codeChars = (code || "••••••").toUpperCase().slice(0, 6).split("");
+  const narrative = serverUnreachable ? SERVER_UNREACHABLE_LINE : NARRATIVE_STEPS[stepIndex];
 
   return (
     <div
@@ -193,15 +207,17 @@ export default function RoomConnectingLoader({
           className="mb-5 sm:mb-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/25 dark:border-amber-400/25 backdrop-blur-md shadow-xs"
         >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${serverUnreachable ? "bg-amber-400" : "bg-emerald-400"}`} />
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${serverUnreachable ? "bg-amber-500" : "bg-emerald-500"}`} />
           </span>
           <span className="text-[11px] sm:text-xs font-bold font-mono tracking-wide text-amber-900 dark:text-amber-200">
-            CONNECTING • {pingMs}ms LATENCY
+            {serverUnreachable ? "SERVER NOT RESPONDING" : `CONNECTING • ${pingMs}ms LATENCY`}
           </span>
-          <span className="text-[10px] text-amber-600/70 dark:text-amber-400/60 hidden xs:inline font-mono">
-            • TLS/HMAC
-          </span>
+          {!serverUnreachable && (
+            <span className="text-[10px] text-amber-600/70 dark:text-amber-400/60 hidden xs:inline font-mono">
+              • TLS/HMAC
+            </span>
+          )}
         </motion.div>
 
         {/* ── Tri-Orbit Conic Energy System + Levitating Hero Emblem ── */}
@@ -267,7 +283,7 @@ export default function RoomConnectingLoader({
         <div className="h-8 mb-4 flex items-center justify-center px-4 w-full">
           <AnimatePresence mode="wait">
             <motion.div
-              key={NARRATIVE_STEPS[stepIndex]}
+              key={narrative}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -278,7 +294,7 @@ export default function RoomConnectingLoader({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
               </span>
-              <span>{NARRATIVE_STEPS[stepIndex]}</span>
+              <span>{narrative}</span>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -387,7 +403,7 @@ export default function RoomConnectingLoader({
 
         {/* ── Layer 4: Taking Long Cold-Start Recovery Card (Grace Period > 10s), OR immediately on a join error ── */}
         <AnimatePresence>
-          {(takingLong || !!error) && (
+          {(takingLong || !!error || serverUnreachable) && (
             <motion.div
               initial={{ opacity: 0, y: 12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -413,8 +429,7 @@ export default function RoomConnectingLoader({
                   </svg>
                 </div>
                 <p className="text-xs text-[#6A533E] dark:text-slate-300 font-medium leading-relaxed">
-                  {error ??
-                    "Connecting is taking longer than usual — the game server may be waking up from cold sleep or your network is slow."}
+                  {error ?? (serverUnreachable ? SERVER_UNREACHABLE_COPY : TAKING_LONG_COPY)}
                 </p>
               </div>
 

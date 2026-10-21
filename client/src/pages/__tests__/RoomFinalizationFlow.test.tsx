@@ -11,7 +11,9 @@ import { NAME_TAKEN_ERROR, NAME_NOT_ALLOWED_ERROR } from "@shared/playerName";
 import type { RoomCredentialResult } from "../../lib/playerIdentity";
 import { recoveryManager } from "../../core/recovery/RecoveryManager";
 import { connectionStateManager } from "../../core/recovery/ConnectionStateManager";
+import type { RoomLivenessResult } from "../../core/recovery/roomLiveness";
 
+const mockAlive = vi.fn<[string, string | undefined], Promise<RoomLivenessResult>>();
 const mockEmit = vi.fn();
 const mockOn = vi.fn();
 const mockOff = vi.fn();
@@ -33,6 +35,11 @@ function joinAck(index = 0): JoinAck {
 vi.mock("../../lib/socket", () => ({
   getSocket: () => mockSocket,
   generateActionId: () => "mock-action-id",
+}));
+
+// The page asks the server whether a table it cannot get into is still there; here the answer is the test's to give.
+vi.mock("../../core/recovery/roomLiveness", () => ({
+  checkRoomAlive: (code: string, seatId?: string) => mockAlive(code, seatId),
 }));
 
 vi.mock("../../lib/playerIdentity", async (importOriginal) => ({
@@ -134,6 +141,7 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
     mockSocket.connect.mockClear();
     boardMove = undefined;
     mockCredential.mockReset().mockResolvedValue({ ok: true, kind: "member", accessToken: "test-token", guestToken: undefined });
+    mockAlive.mockReset().mockResolvedValue({ alive: true, game: "snl", phase: "playing" });
     recoveryManager.destroy();
     useAuthStore.setState({ isMember: true, ready: true });
     useRoomStore.getState().rememberSeat("TEST99", "p_host", "seat_token_host");
@@ -290,13 +298,14 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
 
       await act(async () => joinAck()({ ok: false, error }));
 
-      expect(connectionStateManager.getState()).toBe("FAILED");
+      // A definite answer from the server: the page leaves the connecting machinery for a screen that says so, rather
+      // than a loader that still reads "connecting" over a Retry button for a table that is not there.
+      expect(connectionStateManager.getState()).toBe("DISCONNECTED");
       expect(useRoomStore.getState().seatFor("TEST99")).toBeNull();
-      const message = error === "Room not found"
-        ? "This room is no longer active. The host may have left or the server restarted. Ask for a fresh code."
-        : error;
-      expect(useRoomStore.getState().lastError).toBe(message);
-      expect(screen.getByText(message)).toBeDefined();
+      expect(useRoomStore.getState().lastError).toBeNull();
+      expect(screen.getByRole("alert").textContent).toMatch(error === "Room not found" ? /this room has closed/i : /your seat was released/i);
+      expect(screen.queryByText(/connecting/i)).toBeNull();
+      expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
       expect(screen.queryByRole("textbox")).toBeNull();
       expect(screen.queryByText(/take your seat/i)).toBeNull();
       expect(screen.queryByRole("button", { name: /join lounge room/i })).toBeNull();
@@ -499,8 +508,139 @@ describe("Real Room.tsx — Post-Match Finalization & Scorecard Continue Flow (P
       await act(async () => { void recoveryManager.attemptRecovery("TEST99"); });
       act(() => joinAck()({ ok: false, error: "Room not found" }));
       expect(useRoomStore.getState().seatFor("TEST99")).toBeNull();
-      expect(screen.getByText(/no longer active/i)).toBeDefined();
+      expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
       expect(screen.getByRole("button", { name: /return to lounge/i })).toBeDefined();
+    });
+
+    describe("a table that closed, or moved on, while the tab was left open", () => {
+      const lounge = () => screen.queryByText("Test lounge");
+      const refuseJoin = async (error: string) => {
+        mountRoom();
+        await act(async () => {});
+        await act(async () => joinAck()({ ok: false, error }));
+      };
+
+      it("tells a returning player the room closed, then takes them to the lounge by itself", async () => {
+        vi.useFakeTimers();
+        await refuseJoin("Room not found");
+
+        expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
+        expect(screen.getByText(/taking you back to the lounge in 10s/i)).toBeDefined();
+        expect(lounge()).toBeNull();
+
+        act(() => vi.advanceTimersByTime(9_000));
+        expect(lounge()).toBeNull();
+        act(() => vi.advanceTimersByTime(1_000));
+        expect(lounge()).not.toBeNull();
+      });
+
+      it("lets them stay on the page instead of being moved on", async () => {
+        vi.useFakeTimers();
+        await refuseJoin("Room not found");
+
+        fireEvent.click(screen.getByRole("button", { name: /stay on this page/i }));
+        act(() => vi.advanceTimersByTime(60_000));
+
+        expect(lounge()).toBeNull();
+        expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
+      });
+
+      it("explains a live room:closed with the server's own reason, and offers the same game again", async () => {
+        mountRoom();
+        await act(async () => {});
+        await act(async () => joinAck()(joined("lobby")));
+        await act(async () => triggerSocket("room:closed", { reason: "This match has ended and the table has closed." }));
+
+        expect(screen.getByRole("alert").textContent).toContain("This match has ended and the table has closed.");
+        expect(useRoomStore.getState().seatFor("TEST99")).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: /start a new .* room/i }));
+        expect(lounge()).not.toBeNull();
+      });
+
+      it("does not wait for the socket: asks the server, and a closed room ends the wait", async () => {
+        vi.useFakeTimers();
+        mockAlive.mockResolvedValue({ alive: false, reason: "NOT_FOUND" });
+        mountRoom();
+        await act(async () => {});
+        // No join answer ever arrives (the socket is still backing off), yet after the grace the page knows.
+        expect(screen.queryByRole("alert")).toBeNull();
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+
+        expect(mockAlive).toHaveBeenCalledWith("TEST99", "p_guest");
+        expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
+        expect(useRoomStore.getState().seatFor("TEST99")).toBeNull();
+        expect(connectionStateManager.getState()).toBe("DISCONNECTED");
+      });
+
+      it("tells someone whose seat was released from a match that moved on, before any join is refused", async () => {
+        vi.useFakeTimers();
+        mockAlive.mockResolvedValue({ alive: false, reason: "SEAT_EXPIRED", phase: "finished" });
+        mountRoom();
+        await act(async () => {});
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+
+        expect(screen.getByRole("alert").textContent).toMatch(/your seat was released/i);
+      });
+
+      it("lets a released seat rejoin a lobby, and does not call that a closed room", async () => {
+        vi.useFakeTimers();
+        mockAlive.mockResolvedValue({ alive: false, reason: "SEAT_EXPIRED", phase: "lobby" });
+        mountRoom();
+        await act(async () => {});
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(screen.getByText(/CONNECTING •/i)).toBeDefined();
+      });
+
+      it("says the server is not answering instead of pretending to connect, and moves on once it is back", async () => {
+        vi.useFakeTimers();
+        mockAlive.mockResolvedValue({ alive: false, reason: "UNREACHABLE" });
+        mountRoom();
+        await act(async () => {});
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+
+        expect(screen.getByText(/server not responding/i)).toBeDefined();
+        expect(screen.getByText(/isn't answering yet/i)).toBeDefined();
+        expect(screen.queryByText(/CONNECTING •/i)).toBeNull();
+
+        // The server wakes up, and the room is not in it: the screen moves on without anyone touching it.
+        mockAlive.mockResolvedValue({ alive: false, reason: "NOT_FOUND" });
+        await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+        expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
+      });
+
+      it("stays idle behind the refusal: a reconnecting socket neither joins again nor changes what the player is reading", async () => {
+        await refuseJoin("Room not found");
+        const joinsBefore = mockEmit.mock.calls.filter(([event]) => event === "room:join").length;
+
+        // The player's name survives a refusal, so without this guard each reconnect would join again, be refused
+        // again, and replace the screen with the generic wording (or seat them at a table they were just refused).
+        await act(async () => triggerSocket("connect"));
+        await act(async () => triggerSocket("connect"));
+
+        expect(mockEmit.mock.calls.filter(([event]) => event === "room:join")).toHaveLength(joinsBefore);
+        expect(screen.getByRole("alert").textContent).toMatch(/this room has closed/i);
+        expect(screen.getByRole("alert").textContent).not.toMatch(/ask your friend/i);
+      });
+
+      it("keeps the first reason when a second one arrives", async () => {
+        await refuseJoin("Game already in progress");
+        await act(async () => triggerSocket("room:closed", { reason: "A later, different reason." }));
+
+        expect(screen.getByRole("alert").textContent).toMatch(/your seat was released/i);
+        expect(screen.getByRole("alert").textContent).not.toContain("A later, different reason.");
+      });
+
+      it("never asks the server when the join lands promptly", async () => {
+        vi.useFakeTimers();
+        mountRoom();
+        await act(async () => {});
+        await act(async () => joinAck()(joined()));
+        await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+
+        expect(mockAlive).not.toHaveBeenCalled();
+      });
     });
 
     it("ignores credential resolution after unmount and removes the pending timeout", async () => {

@@ -110,4 +110,54 @@ describe("RoomConnectingLoader", () => {
     fireEvent.click(returnBtn);
     expect(onReturnHomeMock).toHaveBeenCalledTimes(1);
   });
+
+  describe("when the game server is not answering", () => {
+    const renderWaiting = () =>
+      render(
+        <BrowserRouter>
+          <RoomConnectingLoader code="QQXSZA" serverUnreachable />
+        </BrowserRouter>
+      );
+
+    it("says so, instead of reporting a connection and a latency it does not have", () => {
+      renderWaiting();
+
+      expect(screen.getByText(/server not responding/i)).toBeDefined();
+      expect(screen.queryByText(/CONNECTING •/i)).toBeNull();
+      expect(screen.queryByText(/ms latency/i)).toBeNull();
+      expect(screen.queryByText(/TLS\/HMAC/i)).toBeNull();
+    });
+
+    it("stops narrating a seat check it is not doing", () => {
+      renderWaiting();
+
+      expect(screen.getByText(/waiting for the game server/i)).toBeDefined();
+      act(() => {
+        vi.advanceTimersByTime(8000);
+      });
+      expect(screen.getByText(/waiting for the game server/i)).toBeDefined();
+      expect(screen.queryByText(/verifying cryptographic seat token/i)).toBeNull();
+      expect(screen.queryByText(/establishing webrtc mesh/i)).toBeNull();
+    });
+
+    it("explains the wait at once, not after ten seconds, and still offers a way out", () => {
+      renderWaiting();
+
+      expect(screen.getByText(/isn't answering yet/i)).toBeDefined();
+      expect(screen.getByText(/take you to your table the moment it's back/i)).toBeDefined();
+      expect(screen.getByRole("button", { name: /Retry Connection/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: /Return to Lounge/i })).toBeDefined();
+    });
+
+    it("keeps a join error in front of the explanation of the wait", () => {
+      render(
+        <BrowserRouter>
+          <RoomConnectingLoader code="QQXSZA" serverUnreachable error="Could not join room" />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText("Could not join room")).toBeDefined();
+      expect(screen.queryByText(/isn't answering yet/i)).toBeNull();
+    });
+  });
 });
