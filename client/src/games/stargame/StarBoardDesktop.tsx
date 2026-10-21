@@ -183,8 +183,14 @@ export default function StarBoardDesktop(props: StarBoardProps) {
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={34} />}
 
       {/* ── Top Navigation Bar ───────────────────────────────────────────── */}
+      {/* No z-index and no backdrop-blur on this header, deliberately: the
+          InlineRoomRail inside it renders its Chat / Players / Room sheets as
+          `fixed z-50`, and either property makes the header a stacking context
+          that traps them at z-20 — where the footer below (z-20, later in the
+          tree) painted over the bottom of every sheet. The background is 95%
+          opaque, so the blur was not visible anyway. */}
       <header
-        className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[#1E294B]/90 px-5 bg-[#090E22]/95 backdrop-blur-md shadow-md"
+        className="relative flex h-14 shrink-0 items-center justify-between border-b border-[#1E294B]/90 px-5 bg-[#090E22]/95 shadow-md"
       >
         <StarLogo />
 

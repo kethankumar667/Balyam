@@ -46,6 +46,7 @@ export default function InlineRoomRail({
   messages,
   variant = "dark",
   hideStrip = false,
+  floatingTray = false,
   onUnreadChange,
 }: {
   code: string;
@@ -64,6 +65,12 @@ export default function InlineRoomRail({
    *  stay live. Lets a host (Ludo mobile) drive every room action from its
    *  own bottom nav without a duplicated toolbar row eating vertical space. */
   hideStrip?: boolean;
+  /** When true the reactions tray is lifted out of flow and opens ABOVE the
+   *  nearest positioned ancestor instead of growing its host. A bottom bar
+   *  that grows by a tray's height pushes the strip itself off a short
+   *  phone (the 🙂 toggle ended up clipped below the fold). The host must be
+   *  `position: relative` and must not clip overflow. */
+  floatingTray?: boolean;
   /** Fires whenever the unread-chat count changes, so a host driving the
    *  panels from its own controls can surface the badge itself. */
   onUnreadChange?: (n: number) => void;
@@ -232,6 +239,7 @@ export default function InlineRoomRail({
           on outside click. Kept lightweight (no backdrop) so reacting feels
           instant. */}
       {open === "emoji" && (
+        <div className={floatingTray ? "absolute inset-x-0 bottom-full z-30 pb-2" : "contents"}>
         <EmojiPopover
           throwEmojis={throwEmojis}
           onPick={(e) => {
@@ -258,6 +266,7 @@ export default function InlineRoomRail({
           targetName={reactionTarget ? players.find((p) => p.id === reactionTarget)?.name ?? null : null}
           paper={paper}
         />
+        </div>
       )}
 
       {/* Side sheets for the heavier panels — Room / Players / Voice / Chat. */}

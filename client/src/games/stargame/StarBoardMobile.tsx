@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { LogOut } from "lucide-react";
 import type { StarPhase } from "@shared/types";
 import { useStarBoard } from "./useStarBoard";
 import type { StarBoardProps } from "./useStarBoard";
@@ -378,12 +379,13 @@ export default function StarBoardMobile(props: StarBoardProps) {
       {(m.iAmWinner || m.phase === "finished") && <Confetti count={30} />}
       {/* 1 — slim header: theme · round · deadline */}
       <header
-        // `pr-24` reserves the top-right corner for Room's floating Leave
-        // button, which is positioned OVER the board rather than in flow —
-        // without it the button covers the deadline pill. `relative z-10`
-        // keeps this above StarRoomBackdrop, which is absolutely positioned
-        // and would otherwise paint over every non-positioned sibling.
-        className="relative z-10 flex items-center justify-between gap-2 border-b-2 px-3 py-2 pr-24"
+        // `relative z-10` keeps this above StarRoomBackdrop, which is
+        // absolutely positioned and would otherwise paint over every
+        // non-positioned sibling. No right padding is reserved: Room draws no
+        // floating Leave for this game (it is in FULL_BLEED_GAMES), so the old
+        // `pr-24` only squeezed the round bar into the tutorial button. Leave
+        // lives in the bottom row below.
+        className="relative z-10 flex items-center justify-between gap-2 border-b-2 px-3 py-2"
         style={{ borderColor: PAPER.rim, background: PAPER.cream }}
       >
         {/* Wordmark rather than the theme glyph: on a phone the header is the
@@ -494,24 +496,50 @@ export default function StarBoardMobile(props: StarBoardProps) {
           nav bar. They were briefly in the header, where five icon buttons
           plus the wordmark, round bar, tutorial and timer could not fit 430px
           — everything collided into an unreadable pile. Down here they get a
-          row of their own and the header stays legible. */}
+          row of their own and the header stays legible.
+
+          Plain `relative`, NOT `relative z-10`: the rail renders its Chat /
+          Players / Room sheets as `fixed z-50` children, and a z-index here
+          makes this row a stacking context that traps them at z-10 — below the
+          seats (z-20/30) of the table above, which then painted over the
+          sheets. Without it the sheets join the board's own stacking order. */}
       <div
-        className="relative z-10 flex shrink-0 items-center justify-center border-t px-3 py-1.5"
+        className="relative flex shrink-0 items-center justify-center gap-2 border-t px-3 py-1.5"
         style={{
           borderColor: PAPER.rim,
           background: PAPER.creamDeep,
           paddingBottom: action ? undefined : "max(0.375rem, env(safe-area-inset-bottom))",
         }}
       >
-        <InlineRoomRail
-          code={props.roomCode}
-          game="stargame"
-          phase={props.roomPhase}
-          players={props.players}
-          selfId={props.selfId}
-          messages={props.messages}
-          variant="dark"
-        />
+        {/* The rail returns the nav strip AND, while open, the reactions tray
+            as siblings. In this flex ROW the tray used to become a third
+            column and was squeezed into a narrow vertical strip beside the
+            buttons; `floatingTray` lifts it out of flow so it opens over the
+            board, above this bar, at full width — and the bar never grows
+            enough to push the strip off a short phone. */}
+        <div className="flex min-w-0 flex-1 justify-center">
+          <InlineRoomRail
+            code={props.roomCode}
+            game="stargame"
+            phase={props.roomPhase}
+            players={props.players}
+            selfId={props.selfId}
+            messages={props.messages}
+            variant="dark"
+            floatingTray
+          />
+        </div>
+        {/* Same confirm-first path as desktop's Leave Room: `onRequestLeave`
+            opens Room's shared LeaveRoomModal rather than leaving at once. */}
+        <button
+          type="button"
+          onClick={props.onRequestLeave}
+          aria-label="Leave room"
+          title="Leave room"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-400 shadow-lg transition active:scale-95 hover:bg-rose-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+        >
+          <LogOut className="h-5 w-5" aria-hidden />
+        </button>
       </div>
 
       {/* GAL Animations */}

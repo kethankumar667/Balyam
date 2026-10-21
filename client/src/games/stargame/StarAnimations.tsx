@@ -1,10 +1,26 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import ComicBurstText from "../../animations/comic/ComicBurstText";
 import { fireStarSparkleBurst, fireFireworksBurst } from "../../animations/particles/comicBursts";
 
 /**
+ * Both overlays are decoration and must sit BELOW the room-rail sheets
+ * (InlineRoomRail's backdrop is z-40, its panel z-50). At z-40/z-50 they
+ * painted straight over an open Chat / Players / Room sheet.
+ */
+const OVERLAY_Z = "z-[35]";
+
+/** How long the burst stays up before it clears itself. */
+const BURST_VISIBLE_MS = 1600;
+
+/**
  * Star Completed / Claimed Animation.
+ *
+ * Clears itself after BURST_VISIBLE_MS. The board shells mount it for the
+ * whole of the star/handstack phase and pass no `onComplete`, so before this
+ * it stayed on screen — over the table and over every sheet — until the phase
+ * changed. `onComplete` is still called for hosts (the TV arena) that unmount
+ * it themselves.
  */
 export function StarBurstOverlay({
   playerName,
@@ -13,33 +29,46 @@ export function StarBurstOverlay({
   playerName: string;
   onComplete?: () => void;
 }) {
+  const [isVisible, setIsVisible] = useState(true);
+
   useEffect(() => {
     fireStarSparkleBurst({ left: "50%", top: "40%" }, { intensity: 1 });
     const timer = setTimeout(() => {
+      setIsVisible(false);
       onComplete?.();
-    }, 1300);
+    }, BURST_VISIBLE_MS);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
-      <motion.div
-        initial={{ scale: 0, rotate: -25 }}
-        animate={{
-          scale: [0, 1.4, 1],
-          rotate: [-25, 10, 0],
-        }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ duration: 0.4, ease: "backOut" }}
-        className="flex flex-col items-center gap-2"
-      >
-        <div className="text-6xl">⭐ ✨ ⭐</div>
-        <ComicBurstText text="STAR COMPLETED!" accent="#854D0E" fill="#FEF08A" seed={53} />
-        <div className="px-4 py-1.5 rounded-full text-xs font-black text-white bg-amber-600 border-2 border-amber-950 shadow-xl tracking-wider uppercase">
-          {playerName} got 4 matching slips!
-        </div>
-      </motion.div>
-    </div>
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          key="star-burst"
+          className={`pointer-events-none fixed inset-0 ${OVERLAY_Z} flex items-center justify-center`}
+          initial={false}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -25 }}
+            animate={{
+              scale: [0, 1.4, 1],
+              rotate: [-25, 10, 0],
+            }}
+            transition={{ duration: 0.4, ease: "backOut" }}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="text-6xl">⭐ ✨ ⭐</div>
+            <ComicBurstText text="STAR COMPLETED!" accent="#854D0E" fill="#FEF08A" seed={53} />
+            <div className="px-4 py-1.5 rounded-full text-xs font-black text-white bg-amber-600 border-2 border-amber-950 shadow-xl tracking-wider uppercase">
+              {playerName} got 4 matching slips!
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -68,7 +97,7 @@ export function StarWinnerCelebration({
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+    <div className={`pointer-events-none fixed inset-0 ${OVERLAY_Z} flex items-center justify-center`}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.65 }}
