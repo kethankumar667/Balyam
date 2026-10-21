@@ -317,6 +317,10 @@ const FULL_BLEED_GAMES: ReadonlySet<string> = new Set([
   "tictactoe",
   "connect4",
   "vamanaguntalu",
+  // Its board paints a whole-screen backdrop (paper in light, chocolate wood in dark) and draws its own title card
+  // with Leave. Inside the padded page wrapper the backdrop stopped 14px short of every edge, leaving a cream border
+  // round the dark theme, and the shell's own Leave sat above the board's: two Leave buttons stacked.
+  "bingo",
 ]);
 
 /**

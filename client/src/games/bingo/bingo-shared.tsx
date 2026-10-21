@@ -1,78 +1,73 @@
+import { useState } from "react";
+import { Check, Eye, Hand, PartyPopper, Star, Trophy } from "lucide-react";
 import type { BingoBoard, BingoLetter, BingoPlayerPublic, BingoWinner } from "@shared/types";
 import type { Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
+import BoardPreviewPill from "../../components/BoardPreviewPill";
+import PrizeWonChip from "../../components/economy/PrizeWonChip";
+import BotResultNote from "../../components/room/BotResultNote";
+import { useRoomStore } from "../../store/roomStore";
+import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
+import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
+import type { BingoSkin } from "./bingoSkin";
 
 export const BINGO_LETTERS: BingoLetter[] = ["B", "I", "N", "G", "O"];
 
-/** B-I-N-G-O Letter Header display (B-I-N-G-O strikeout letters) */
-export function BingoLetterBanner({
-  completedLetters = [],
-  isNeon,
-}: {
-  completedLetters?: BingoLetter[];
-  isNeon?: boolean;
-}) {
+/** Each letter's ball: one colour a letter, so the five read as the word before they read as letters. */
+const LETTER_BALL: Record<BingoLetter, string> = {
+  B: "from-[#FF7B7B] to-[#C81E1E]",
+  I: "from-[#FFCB4D] to-[#E07A00]",
+  N: "from-[#5EE08F] to-[#15803D]",
+  G: "from-[#6FB4FF] to-[#1D4ED8]",
+  O: "from-[#C890FF] to-[#7E22CE]",
+};
+
+/**
+ * B-I-N-G-O: one glossy ball per completed line.
+ *
+ * A letter is earned, not decorative. Earned balls grow, take a gold ring and a check badge; the rest stay a little
+ * less saturated. The badge and the ring carry the state, so it never depends on telling two reds apart.
+ */
+export function BingoLetterBanner({ completedLetters = [], skin }: { completedLetters?: BingoLetter[]; skin: BingoSkin }) {
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3 py-1">
+    <ul role="list" aria-label="Completed letters" className="flex items-center justify-center gap-2.5 py-1 sm:gap-3.5">
       {BINGO_LETTERS.map((letter) => {
-        const isStruck = completedLetters.includes(letter);
+        const isEarned = completedLetters.includes(letter);
         return (
-          <div
+          <li
             key={letter}
-            className={`relative flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-2xl font-black text-xl sm:text-2xl transition-all duration-300 shadow-md ${
-              isStruck
-                ? isNeon
-                  ? "bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 text-white scale-110 ring-4 ring-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.6)]"
-                  : "bg-gradient-to-br from-amber-400 to-amber-600 text-white scale-110 ring-4 ring-amber-300/60 shadow-amber-500/50"
-                : isNeon
-                ? "bg-slate-900/90 border-2 border-purple-500/30 text-purple-200 opacity-70"
-                : "bg-white/80 border-2 border-bhalyam-wood/30 text-bhalyam-wood-dark opacity-60"
+            role="listitem"
+            aria-label={isEarned ? `${letter}, completed` : letter}
+            className={`relative grid h-12 w-12 place-items-center rounded-full bg-gradient-to-b font-display text-2xl text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.22),0_5px_10px_rgba(0,0,0,0.25)] transition-all duration-300 [text-shadow:0_2px_0_rgba(0,0,0,0.35)] sm:h-14 sm:w-14 lg:h-16 lg:w-16 lg:text-3xl ${LETTER_BALL[letter]} ${
+              isEarned
+                ? `scale-110 ring-4 ring-[#FFD84D] ring-offset-2 ${skin.isDark ? "ring-offset-[#2A170C]" : "ring-offset-[#FFF6DC]"}`
+                : "saturate-[0.7]"
             }`}
           >
-            {letter}
-            {isStruck && (
-              <span className={`absolute inset-0 flex items-center justify-center font-extrabold text-2xl sm:text-3xl ${isNeon ? "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]" : "text-rose-600"}`}>
-                ✕
+            <span aria-hidden="true" className="pointer-events-none absolute left-[18%] top-[9%] h-[28%] w-[42%] rounded-full bg-white/45 blur-[1px]" />
+            <span aria-hidden="true">{letter}</span>
+            {isEarned && (
+              <span aria-hidden="true" className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[#15803D] text-white ring-2 ring-white">
+                <Check className="h-3 w-3" strokeWidth={4} />
               </span>
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
-/** 5x5 Grid representing a player's Bingo board (numbers 1-25) */
-function PenStrike({ seed, isNeon }: { seed: number; isNeon?: boolean }) {
-  // Cheap deterministic hash → a few stable pseudo-random offsets.
-  const j = (n: number, spread: number) =>
-    (((Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453) % 1) + 1) % 1 * spread - spread / 2;
-
-  return (
-    <svg
-      viewBox="0 0 40 40"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      aria-hidden
-    >
-      <g
-        stroke={isNeon ? "#38bdf8" : "#C2410C"}
-        strokeWidth={3.2}
-        strokeLinecap="round"
-        opacity={isNeon ? 0.95 : 0.85}
-        fill="none"
-        filter={isNeon ? "drop-shadow(0 0 4px #38bdf8)" : undefined}
-      >
-        <path
-          d={`M ${7 + j(1, 4)} ${9 + j(2, 4)} Q 20 ${20 + j(3, 6)} ${33 + j(4, 4)} ${31 + j(5, 4)}`}
-        />
-        <path
-          d={`M ${33 + j(6, 4)} ${9 + j(7, 4)} Q 20 ${20 + j(8, 6)} ${7 + j(9, 4)} ${31 + j(10, 4)}`}
-        />
-      </g>
-    </svg>
-  );
-}
+/** The call-out panel's moods, per theme: open for marking and running out. */
+const CALL_OPEN = {
+  light: "border-[#F0B400] bg-[#FFF0A8] text-[#4A2C12]",
+  dark: "border-[#FFD84D] bg-[#3A2A08] text-[#FFF1D0]",
+} as const;
+const CALL_URGENT = {
+  light: "border-[#DC2626] bg-[#FEE2E2] text-[#7F1D1D]",
+  dark: "border-[#F87171] bg-[#4A1414] text-[#FECACA]",
+} as const;
 
 /**
  * The number on the clock, and why the table is waiting.
@@ -88,73 +83,50 @@ export function CallOutPanel({
   iHaveMarked,
   waitingOn,
   wasAutoMarkedForMe,
-  isNeon,
+  skin,
 }: {
   number: number | null;
   secondsLeft: number | null;
   iHaveMarked: boolean;
   waitingOn: string[];
   wasAutoMarkedForMe: boolean;
-  isNeon?: boolean;
+  skin: BingoSkin;
 }) {
+  const mood = skin.isDark ? "dark" : "light";
+
   if (number == null) {
     // The rescue is otherwise invisible — the cell just fills in — so
     // players never learn that missing one costs them nothing.
     if (!wasAutoMarkedForMe) return null;
     return (
-      <div className={`w-full rounded-xl border-2 px-3 py-2 text-center text-sm font-bold ${isNeon ? "border-purple-500/30 bg-slate-900/80 text-purple-200" : "border-bhalyam-wood/25 bg-bhalyam-cream/80 text-bhalyam-wood-dark/80"}`}>
+      <div className={`w-full rounded-2xl px-4 py-2.5 text-center text-sm font-bold ${skin.well} ${skin.inkSoft}`}>
         Marked for you — you never lose a number
       </div>
     );
   }
 
   const urgent = secondsLeft != null && secondsLeft <= 3;
+  const tone = iHaveMarked ? `${skin.well} ${skin.ink}` : `border-2 ${urgent ? CALL_URGENT[mood] : CALL_OPEN[mood]}`;
 
   return (
-    <div
-      className={`w-full rounded-xl border-2 px-3 py-2.5 transition-colors duration-300 ${
-        iHaveMarked
-          ? isNeon
-            ? "border-purple-500/30 bg-slate-900/80 text-slate-200"
-            : "border-bhalyam-wood/25 bg-bhalyam-cream/80"
-          : urgent
-          ? isNeon
-            ? "border-red-500 bg-red-950/80 text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-            : "border-red-500 bg-red-50"
-          : isNeon
-          ? "border-cyan-500 bg-cyan-950/70 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-          : "border-amber-500 bg-amber-100"
-      }`}
-      role="status"
-      aria-live="polite"
-    >
+    <div className={`w-full rounded-2xl px-4 py-2.5 transition-colors duration-300 ${tone}`} role="status" aria-live="polite">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className={`text-[11px] font-black uppercase tracking-wider ${isNeon ? "text-cyan-400" : "text-bhalyam-wood-dark/60"}`}>
-            Called
-          </span>
-          <span className={`text-2xl font-black tabular-nums ${isNeon ? "text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.6)]" : "text-bhalyam-wood-dark"}`}>
-            {number}
-          </span>
+          <span className="text-[11px] font-black uppercase tracking-wider opacity-70">Called</span>
+          <span className="text-3xl font-black tabular-nums">{number}</span>
         </div>
 
         {!iHaveMarked ? (
-          <span
-            className={`text-sm font-black tabular-nums ${
-              urgent ? (isNeon ? "text-red-400" : "text-red-600") : (isNeon ? "text-cyan-300" : "text-bhalyam-wood-dark/80")
-            }`}
-          >
-            Tap it — {secondsLeft ?? 0}s
-          </span>
+          <span className="text-sm font-black tabular-nums">Tap it — {secondsLeft ?? 0}s</span>
         ) : waitingOn.length > 0 ? (
           // Named, not a spinner: "waiting for Ravi" is a fact players can
           // act on (nudge him), where a spinner is just a stalled screen.
-          <span className={`truncate text-xs font-bold ${isNeon ? "text-slate-400" : "text-bhalyam-wood-dark/70"}`}>
+          <span className={`truncate text-xs font-bold ${skin.inkSoft}`}>
             Waiting for {waitingOn.slice(0, 2).join(", ")}
             {waitingOn.length > 2 ? ` +${waitingOn.length - 2}` : ""}
           </span>
         ) : (
-          <span className={`text-xs font-bold ${isNeon ? "text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "text-emerald-700"}`}>Marked ✓</span>
+          <span className={`text-xs font-bold ${skin.isDark ? "text-[#6EE7A0]" : "text-[#15803D]"}`}>Marked ✓</span>
         )}
       </div>
     </div>
@@ -173,57 +145,37 @@ export function CallOutPanel({
  * Worded as what it does, not as "easy mode". Nobody should have to call
  * themselves bad at Bingo to be able to play it.
  */
-export function AutoMarkToggle({
-  enabled,
-  onChange,
-  isNeon,
-}: {
-  enabled: boolean;
-  onChange: (on: boolean) => void;
-  isNeon?: boolean;
-}) {
+export function AutoMarkToggle({ enabled, onChange, skin }: { enabled: boolean; onChange: (on: boolean) => void; skin: BingoSkin }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
-      className={`flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors ${
-        enabled
-          ? isNeon
-            ? "border-cyan-500 bg-cyan-950/60 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-            : "border-emerald-600 bg-emerald-50"
-          : isNeon
-          ? "border-purple-500/30 bg-slate-900/80 text-slate-200 hover:border-purple-500/50"
-          : "border-bhalyam-wood/25 bg-bhalyam-cream/70 hover:border-bhalyam-wood/40"
-      }`}
+      className={`flex min-h-[64px] w-full cursor-pointer items-center gap-3 rounded-3xl px-4 py-3 text-left ${skin.card} ${skin.focus}`}
     >
-      <span>
-        <span className={`block text-xs font-black uppercase tracking-wider ${isNeon ? "text-cyan-400" : "text-bhalyam-wood-dark/70"}`}>
-          Mark for me
-        </span>
-        <span className={`block text-[11px] leading-snug ${isNeon ? "text-slate-400" : "text-bhalyam-wood-dark/60"}`}>
-          {enabled
-            ? "Numbers are struck off automatically"
-            : "Tap each number yourself"}
-        </span>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${skin.well}`}>
+        <Hand className={`h-6 w-6 ${skin.isDark ? "text-[#FFD84D]" : "text-[#8A4B00]"}`} aria-hidden="true" />
       </span>
-      <span
-        aria-hidden
-        className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
-          enabled ? (isNeon ? "bg-cyan-500" : "bg-emerald-600") : (isNeon ? "bg-slate-700" : "bg-bhalyam-wood/30")
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-            enabled ? "left-[22px]" : "left-0.5"
-          }`}
-        />
+      <span className="min-w-0 flex-1">
+        <span className={`block text-sm font-black uppercase tracking-wide ${skin.ink}`}>Mark for me</span>
+        <span className={`block text-xs leading-snug ${skin.inkSoft}`}>Auto-mark numbers as they are called</span>
+      </span>
+      <span aria-hidden="true" className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${enabled ? skin.switchOn : skin.switchOff}`}>
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${enabled ? "left-[22px]" : "left-0.5"}`} />
       </span>
     </button>
   );
 }
 
+const GRID_FRAME = {
+  sm: "max-w-[13.5rem] gap-1 rounded-2xl p-1.5",
+  md: "max-w-[24rem] gap-2 rounded-[1.75rem] p-3",
+  lg: "max-w-[30rem] gap-2.5 rounded-[2rem] p-3.5",
+} as const;
+const GRID_TEXT = { sm: "text-sm", md: "text-2xl", lg: "text-3xl" } as const;
+
+/** 5x5 grid of a player's Bingo board (numbers 1-25). The cells grow with their tray, so the board fills the width it is given. */
 export function BingoGrid({
   board,
   onCellClick,
@@ -232,7 +184,7 @@ export function BingoGrid({
   size = "md",
   markableNumber = null,
   onMarkCell,
-  isNeon,
+  skin,
 }: {
   board: BingoBoard;
   onCellClick?: (val: number) => void;
@@ -247,28 +199,16 @@ export function BingoGrid({
    */
   markableNumber?: number | null;
   onMarkCell?: (val: number) => void;
-  isNeon?: boolean;
+  skin: BingoSkin;
 }) {
-  const cellDimensions =
-    size === "lg"
-      ? "h-14 w-14 sm:h-16 sm:w-16 text-lg sm:text-xl"
-      : size === "sm"
-      ? "h-10 w-10 text-xs sm:text-sm"
-      : "h-12 w-12 sm:h-14 sm:w-14 text-sm sm:text-base";
-
+  const small = size === "sm";
   return (
-    <div
-      id="bingo-board-container"
-      className={`inline-grid grid-cols-5 gap-1.5 sm:gap-2 rounded-2xl p-2.5 sm:p-3.5 shadow-xl transition-colors duration-300 ${
-        isNeon
-          ? "bg-slate-900/90 border-2 border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.2)]"
-          : "bg-bhalyam-cream/90 border-3 border-bhalyam-wood/40"
-      }`}
-    >
+    <div id="bingo-board-container" className={`mx-auto grid w-full grid-cols-5 transition-colors duration-300 ${GRID_FRAME[size]} ${skin.tray}`}>
       {board.map((cell) => {
         const isMarked = cell.marked || (calledSet && calledSet.has(cell.value));
         const canClick = isMyTurn && !isMarked && onCellClick;
         const canMark = !isMarked && onMarkCell && cell.value === markableNumber;
+        const state = isMarked ? skin.cellMarked : canMark ? skin.cellMarkable : canClick ? `${skin.cellCallable} cursor-pointer active:scale-95` : skin.cell;
 
         return (
           <button
@@ -282,27 +222,18 @@ export function BingoGrid({
               if (canMark) onMarkCell(cell.value);
               else if (canClick) onCellClick(cell.value);
             }}
-            aria-label={canMark ? `Mark ${cell.value}` : String(cell.value)}
-            className={`${cellDimensions} relative flex items-center justify-center rounded-xl font-black tabular-nums transition-all duration-200 shadow-sm border-2 ${
-              isMarked
-                ? isNeon
-                  ? "bg-slate-800/80 border-slate-700 text-slate-400"
-                  : "bg-white/90 border-bhalyam-wood/25 text-bhalyam-wood-dark/70"
-                : canMark
-                ? isNeon
-                  ? "bg-purple-950/90 border-cyan-400 text-cyan-300 cursor-pointer active:scale-95 ring-4 ring-cyan-400/70 shadow-[0_0_15px_rgba(6,182,212,0.6)] animate-pulse"
-                  : "bg-amber-200 border-amber-500 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-4 ring-amber-400/70 animate-pulse"
-                : canClick
-                ? isNeon
-                  ? "bg-slate-800/90 hover:bg-slate-700 border-purple-400 text-purple-200 cursor-pointer active:scale-95 ring-2 ring-purple-400/50 shadow-[0_0_10px_rgba(168,85,247,0.4)]"
-                  : "bg-white hover:bg-amber-100 border-amber-400 text-bhalyam-wood-dark cursor-pointer active:scale-95 ring-2 ring-amber-400/50"
-                : isNeon
-                ? "bg-slate-900/80 border-slate-700/60 text-slate-200 opacity-90"
-                : "bg-white/90 border-bhalyam-wood/20 text-bhalyam-wood-dark opacity-90"
-            }`}
+            aria-label={canMark ? `Mark ${cell.value}` : isMarked ? `${cell.value}, marked` : String(cell.value)}
+            className={`relative flex aspect-square min-w-0 items-center justify-center border-2 font-black tabular-nums transition-all duration-200 ${small ? "rounded-lg" : "rounded-xl"} ${GRID_TEXT[size]} ${state} ${skin.focus}`}
           >
             {cell.value}
-            {isMarked && <PenStrike seed={cell.index} isNeon={isNeon} />}
+            {isMarked && (
+              <span
+                aria-hidden="true"
+                className={`absolute grid place-items-center rounded-full bg-[#7A4A00] text-[#FFD84D] ring-2 ring-[#FFF3C4] ${small ? "-right-0.5 -top-0.5 h-3.5 w-3.5" : "-right-1 -top-1 h-5 w-5"}`}
+              >
+                <Star className={`fill-current ${small ? "h-2 w-2" : "h-3 w-3"}`} />
+              </span>
+            )}
           </button>
         );
       })}
@@ -310,7 +241,7 @@ export function BingoGrid({
   );
 }
 
-/** Opponents Scorecard view showing all players' 5x5 tables */
+/** Opponents scorecard: every player's 5x5 table. */
 export function AllPlayerBoardsView({
   players,
   selfId,
@@ -319,6 +250,7 @@ export function AllPlayerBoardsView({
   onTarget,
   activeTargetId,
   onCloseTarget,
+  skin,
 }: {
   players: BingoPlayerPublic[];
   selfId: string | null;
@@ -329,12 +261,13 @@ export function AllPlayerBoardsView({
   onTarget?: (playerId: string) => void;
   activeTargetId?: string | null;
   onCloseTarget?: () => void;
+  skin: BingoSkin;
 }) {
   const avatarById = new Map<string, string | undefined>();
   for (const r of roster ?? []) avatarById.set(r.id, r.avatar);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl overflow-y-auto p-2">
+    <div className="grid w-full max-w-5xl grid-cols-1 gap-4 p-1 sm:grid-cols-2 lg:grid-cols-3">
       {players.map((p) => {
         const isSelf = p.id === selfId;
         const isTargetActive = activeTargetId === p.id;
@@ -342,40 +275,26 @@ export function AllPlayerBoardsView({
           <div
             key={p.id}
             ref={registerCardRef?.(p.id)}
-            className={`relative flex flex-col items-center gap-2 rounded-2xl p-3.5 border-2 transition-all ${
-              isSelf
-                ? "bg-amber-500/10 border-amber-400 shadow-md"
-                : "bg-white/80 border-bhalyam-wood/20 cursor-pointer hover:border-amber-400 hover:shadow-lg active:scale-[0.99]"
-            }`}
+            className={`relative flex flex-col items-center gap-2 rounded-3xl p-3.5 transition-all ${skin.card} ${isSelf ? "ring-2 ring-[#F5B400]" : "cursor-pointer active:scale-[0.99]"}`}
             onClick={!isSelf ? () => onTarget?.(p.id) : undefined}
             title={!isSelf ? `Tap to react at ${p.name}` : undefined}
           >
             {isTargetActive && onCloseTarget && (
-              <SeatTargetReactionWheel
-                game="bingo"
-                targetPlayerId={p.id}
-                targetPlayerName={p.name}
-                onClose={onCloseTarget}
-                position="top"
-              />
+              <SeatTargetReactionWheel game="bingo" targetPlayerId={p.id} targetPlayerName={p.name} onClose={onCloseTarget} position="top" />
             )}
-            <div className="flex items-center justify-between w-full font-bold text-sm text-bhalyam-wood-dark px-1">
-              <span className="flex items-center gap-1.5">
-                <SeatAvatar
-                  avatar={avatarById.get(p.id)}
-                  playerId={p.id}
-                  name={p.name}
-                  className="w-6 h-6"
-                  textClassName="text-[9px]"
-                />
-                {p.name} {isSelf && "(You)"}
-                {p.isBot && <span className="text-[10px] uppercase text-bhalyam-wood-dark/50 bg-bhalyam-wood/10 px-1.5 py-0.5 rounded">bot</span>}
+            <div className={`flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-1 text-sm font-bold ${skin.ink}`}>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <SeatAvatar avatar={avatarById.get(p.id)} playerId={p.id} name={p.name} className="h-6 w-6" textClassName="text-[9px]" />
+                <span className="truncate">
+                  {p.name} {isSelf && "(You)"}
+                </span>
+                {p.isBot && <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${skin.well} ${skin.inkSoft}`}>bot</span>}
               </span>
-              <span className="text-amber-700 font-extrabold text-xs">
+              <span className={`shrink-0 text-xs font-extrabold ${skin.isDark ? "text-[#FFD84D]" : "text-[#8A4B00]"}`}>
                 {p.completedLinesCount} Lines ({p.completedLetters.join("") || "-"})
               </span>
             </div>
-            <BingoGrid board={p.board} size="sm" />
+            <BingoGrid board={p.board} size="sm" skin={skin} />
           </div>
         );
       })}
@@ -383,42 +302,23 @@ export function AllPlayerBoardsView({
   );
 }
 
-export function ClaimButton({
-  onClaim,
-  disabled,
-  className,
-  isNeon,
-}: {
-  onClaim: () => void;
-  disabled: boolean;
-  className?: string;
-  isNeon?: boolean;
-}) {
+export function ClaimButton({ onClaim, disabled, className }: { onClaim: () => void; disabled: boolean; className?: string }) {
   return (
     <button
       type="button"
       onClick={onClaim}
       disabled={disabled}
       className={
-        "min-h-[48px] rounded-2xl px-8 py-3.5 font-black uppercase tracking-wider text-white text-lg shadow-xl transition-all " +
-        (isNeon
-          ? "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-500 shadow-[0_0_25px_rgba(236,72,153,0.5)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed animate-pulse "
-          : "bg-gradient-to-r from-rose-600 via-red-500 to-amber-600 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed animate-pulse ") +
+        "inline-flex min-h-[52px] cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#FF7A59] to-[#E11D48] px-8 py-3 text-lg font-black uppercase tracking-wider text-white shadow-[0_5px_0_rgba(130,10,40,0.45)] transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FFD84D] active:translate-y-0.5 active:shadow-none disabled:cursor-not-allowed disabled:opacity-40 motion-safe:animate-pulse " +
         (className ?? "")
       }
     >
-      🎉 CLAIM BINGO! 🎉
+      <PartyPopper className="h-5 w-5" aria-hidden="true" />
+      Claim Bingo!
+      <PartyPopper className="h-5 w-5 -scale-x-100" aria-hidden="true" />
     </button>
   );
 }
-
-import { useState } from "react";
-import BoardPreviewPill from "../../components/BoardPreviewPill";
-import PrizeWonChip from "../../components/economy/PrizeWonChip";
-import BotResultNote from "../../components/room/BotResultNote";
-import { useRoomStore } from "../../store/roomStore";
-import { deriveTerminalMatchId } from "../../lib/economyMotionTriggers";
-import { useMatchSettlement, winnerPrizesFor } from "../../hooks/useMatchSettlement";
 
 export function BingoResultOverlay({
   winners,
@@ -428,6 +328,7 @@ export function BingoResultOverlay({
   calledCount,
   onLeave,
   onContinue,
+  skin,
 }: {
   winners: BingoWinner[];
   nameOf: (id: string) => string;
@@ -436,6 +337,7 @@ export function BingoResultOverlay({
   calledCount: number;
   onLeave: () => void;
   onContinue: () => void;
+  skin: BingoSkin;
 }) {
   const [previewMode, setPreviewMode] = useState(false);
   const winner = winners[0];
@@ -448,27 +350,19 @@ export function BingoResultOverlay({
   const winnerPrize = winnerPrizesFor(settlement)?.[0] ?? null;
 
   if (previewMode) {
-    return (
-      <BoardPreviewPill
-        onClosePreview={() => setPreviewMode(false)}
-        targetElementId="bingo-board-container"
-      />
-    );
+    return <BoardPreviewPill onClosePreview={() => setPreviewMode(false)} targetElementId="bingo-board-container" />;
   }
 
+  const HeroIcon = iWon ? Trophy : PartyPopper;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-md rounded-3xl bg-bhalyam-cream p-6 shadow-2xl border-4 border-amber-400/70 text-center">
-        <div className="text-5xl mb-2">{iWon ? "🏆" : "🎉"}</div>
-        <h2 className="text-3xl font-black text-bhalyam-wood-dark mb-1">
-          {iWon ? "YOU WON BINGO!" : `${winnerName} WON BINGO!`}
-        </h2>
-        <BotResultNote player={players.find((p) => p.id === winner?.playerId)} className="justify-center text-bhalyam-wood-dark mb-2" />
-        <p className={`text-sm font-medium text-bhalyam-wood-dark/70 ${winnerPrize ? "mb-1" : "mb-4"}`}>
-          Completed 5 lines in {calledCount} number callouts!
-        </p>
+    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className={`w-full max-w-md rounded-[2rem] border-4 border-[#F5B400]/70 p-6 text-center shadow-2xl ${skin.card} ${skin.ink}`}>
+        <HeroIcon className="mx-auto mb-2 h-12 w-12 text-[#F5B400]" aria-hidden="true" />
+        <h2 className="mb-1 font-display text-3xl">{iWon ? "YOU WON BINGO!" : `${winnerName} WON BINGO!`}</h2>
+        <BotResultNote player={players.find((p) => p.id === winner?.playerId)} className="mb-2 justify-center" />
+        <p className={`text-sm font-medium ${skin.inkSoft} ${winnerPrize ? "mb-1" : "mb-4"}`}>Completed 5 lines in {calledCount} number callouts!</p>
         {winnerPrize && (
-          <div className="flex justify-center mb-3">
+          <div className="mb-3 flex justify-center">
             <PrizeWonChip amount={winnerPrize} size="md" />
           </div>
         )}
@@ -477,21 +371,22 @@ export function BingoResultOverlay({
           <button
             type="button"
             onClick={() => setPreviewMode(true)}
-            className="flex-1 min-h-[46px] rounded-xl bg-amber-600 hover:bg-amber-500 py-2.5 font-black text-white shadow-md text-xs sm:text-sm transition"
+            className={`inline-flex min-h-[46px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gradient-to-b from-[#FFE066] to-[#F5B400] py-2.5 text-xs font-black text-[#3A2200] shadow-md transition sm:text-sm ${skin.focus}`}
           >
-            👁 Board Preview
+            <Eye className="h-4 w-4" aria-hidden="true" />
+            Board Preview
           </button>
           <button
             type="button"
             onClick={onLeave}
-            className="flex-1 min-h-[46px] rounded-xl border-2 border-bhalyam-wood/30 bg-white/70 py-2.5 font-bold text-bhalyam-wood-dark hover:bg-white text-xs sm:text-sm"
+            className={`min-h-[46px] flex-1 cursor-pointer rounded-xl py-2.5 text-xs font-bold sm:text-sm ${skin.well} ${skin.ink} ${skin.focus}`}
           >
             Leave
           </button>
           <button
             type="button"
             onClick={onContinue}
-            className="flex-1 min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 font-black text-white shadow-md text-xs sm:text-sm transition"
+            className={`min-h-[46px] flex-1 cursor-pointer rounded-xl bg-[#15803D] py-2.5 text-xs font-black text-white shadow-md transition hover:bg-[#166534] sm:text-sm ${skin.focus}`}
           >
             Play Again
           </button>
