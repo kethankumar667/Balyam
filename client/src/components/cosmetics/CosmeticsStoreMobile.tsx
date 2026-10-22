@@ -49,7 +49,7 @@ import {
 } from "./designTokens";
 import { CollectibleThumbnail } from "./CosmeticsItemCard";
 import { CosmeticsPreviewStage } from "./CosmeticsPreviewStage";
-import { SHOP_CATEGORY_TABS } from "./shopLogic";
+import { SHOP_CATEGORY_TABS, isEquippedInSlot } from "./shopLogic";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -139,21 +139,12 @@ export function CosmeticsStoreMobile({
     return categoryItems[0] ?? null;
   }, [categoryItems, selectedItemId]);
 
-  // Determine if active item is equipped
-  const isPreviewEquipped = useMemo(() => {
-    if (!selectedItem) return false;
-    if (selectedCategory === "DICE_SKIN") {
-      return equipped.diceSkins?.[selectedScope] === selectedItem.id;
-    }
-    if (selectedCategory === "TOKEN_SKIN") {
-      return equipped.tokenSkins?.[selectedScope] === selectedItem.id;
-    }
-    if (selectedCategory === "CARD_BACK") {
-      const s = selectedScope === "uno" ? "uno" : "rummy";
-      return equipped.cardBacks?.[s] === selectedItem.id;
-    }
-    return false;
-  }, [selectedItem, selectedCategory, selectedScope, equipped]);
+  // Determine if active item is equipped. The shared rule, so every category is covered: this used to handle
+  // only dice, tokens and card backs, which left a frame permanently "not equipped" on a phone — the bar offered
+  // EQUIP for the frame you were already wearing, and there was no way to take it off.
+  const isPreviewEquipped = selectedItem
+    ? isEquippedInSlot(equipped, selectedCategory, selectedScope, selectedItem.id)
+    : false;
 
   const isPreviewOwned = selectedItem
     ? isAdminUser || ownedIds.has(selectedItem.id) || selectedItem.unlockMethod === "DEFAULT"
@@ -400,12 +391,8 @@ export function CosmeticsStoreMobile({
               const isSelected = selectedItem?.id === item.id;
               const isItemOwned =
                 isAdminUser || ownedIds.has(item.id) || item.unlockMethod === "DEFAULT";
-              const isItemEquipped =
-                selectedCategory === "DICE_SKIN"
-                  ? equipped.diceSkins?.[selectedScope] === item.id
-                  : selectedCategory === "TOKEN_SKIN"
-                    ? equipped.tokenSkins?.[selectedScope] === item.id
-                    : equipped.cardBacks?.[selectedScope as "uno" | "rummy"] === item.id;
+              // Its fallback branch used to compare EVERY other category (frames included) against the card-back slot.
+              const isItemEquipped = isEquippedInSlot(equipped, selectedCategory, selectedScope, item.id);
 
               return (
                 <MobileCosmeticsCard

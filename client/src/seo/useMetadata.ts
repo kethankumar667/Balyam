@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { PUBLIC_ROUTES_METADATA } from "./metadata";
+import { NON_PUBLIC_ROUTE_TITLES, PUBLIC_ROUTES_METADATA } from "./metadata";
 
 /**
  * useMetadata
@@ -22,8 +22,10 @@ export function useMetadata() {
     const meta = PUBLIC_ROUTES_METADATA[location.pathname] ?? PUBLIC_ROUTES_METADATA["/"];
     if (!meta) return;
 
-    // Document Title
-    document.title = meta.title;
+    // Document Title. A non-public route (the shop) keeps its own tab title; everything else about its head is
+    // the fallback above. Set here rather than in the page: this effect runs AFTER a page's own effects, so a
+    // title set by the page would be overwritten with the home title on every navigation.
+    document.title = NON_PUBLIC_ROUTE_TITLES[location.pathname] ?? meta.title;
 
     const setMetaTag = (nameOrProperty: "name" | "property", key: string, content: string) => {
       let el = document.querySelector(`meta[${nameOrProperty}="${key}"]`);

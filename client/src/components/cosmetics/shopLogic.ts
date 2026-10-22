@@ -12,7 +12,6 @@ import {
   type CosmeticCatalogItem,
   type CosmeticCategory,
   type CosmeticGameScope,
-  type EquippedCosmeticsLoadout,
   getRegistryCosmetic,
 } from "@shared/cosmetics";
 
@@ -56,9 +55,22 @@ export function itemsForSlot(
   });
 }
 
+/**
+ * What equipped-state needs from a loadout. Structural, so both the store's full loadout and the phone layout's
+ * looser prop (optional groups, a nullable frame) satisfy it.
+ */
+export interface EquippedSlots {
+  tableThemes?: Partial<Record<CosmeticGameScope, string>>;
+  diceSkins?: Partial<Record<CosmeticGameScope, string>>;
+  tokenSkins?: Partial<Record<CosmeticGameScope, string>>;
+  cardBacks?: { uno?: string; rummy?: string };
+  avatarAura?: string | null;
+  podiumTitle?: string | null;
+}
+
 /** Whether `itemId` is what the player currently has equipped in this slot. */
 export function isEquippedInSlot(
-  equipped: EquippedCosmeticsLoadout,
+  equipped: EquippedSlots,
   category: CosmeticCategory,
   scope: CosmeticGameScope,
   itemId: string,

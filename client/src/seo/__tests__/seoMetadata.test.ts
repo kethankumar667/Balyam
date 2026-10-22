@@ -120,5 +120,8 @@ describe("SEO Metadata & Route Coverage Registry", () => {
     expect(PRERENDER_ROUTES).not.toContain("/tv");
     expect(PRERENDER_ROUTES).not.toContain("/diagnostics");
     expect(PRERENDER_ROUTES).not.toContain("/admin");
+    // The shop shows a player's own cosmetics and balance: it has a tab title (NON_PUBLIC_ROUTE_TITLES) but must
+    // never become a prerendered, sitemap-listed page.
+    expect(PRERENDER_ROUTES).not.toContain("/shop");
   });
 });

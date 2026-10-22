@@ -100,6 +100,65 @@ describe("CosmeticsStoreMobile — Mobile Boutique Component", () => {
     expect(screen.queryByRole("button", { name: /close boutique/i })).toBeNull();
   });
 
+  describe("avatar frames", () => {
+    // Real registry id: the slot filter looks it up there.
+    const frame: CosmeticCatalogItem = {
+      id: "frame_blaze_ring",
+      category: "AVATAR_AURA",
+      name: "Blaze Ring",
+      description: "A ring of flame.",
+      priceCoins: 1400,
+      rarity: "RARE",
+      unlockMethod: "COIN_PURCHASE",
+      isActive: true,
+      displayOrder: 0,
+    };
+
+    function renderFrames(equipped: { avatarAura?: string | null }, handlers: { onUnequip?: () => void } = {}) {
+      return render(
+        <CosmeticsStoreMobile
+          catalog={[frame]}
+          ownedIds={new Set([frame.id])}
+          equipped={equipped}
+          selectedCategory="AVATAR_AURA"
+          selectedScope="GLOBAL"
+          selectedItemId={frame.id}
+          isLoading={false}
+          isSubmitting={false}
+          errorMessage={null}
+          walletBalance="5000"
+          isAdminUser={false}
+          onClose={vi.fn()}
+          onSelectCategory={vi.fn()}
+          onSelectScope={vi.fn()}
+          onSelectItem={vi.fn()}
+          onPurchase={vi.fn()}
+          onRefund={vi.fn()}
+          onEquip={vi.fn()}
+          onUnequip={handlers.onUnequip ?? vi.fn()}
+        />,
+      );
+    }
+
+    it("shows the frame you are wearing as equipped, and lets you take it off", () => {
+      // It used to read as never equipped on a phone: the bar offered EQUIP for the frame already on.
+      const onUnequip = vi.fn();
+      renderFrames({ avatarAura: frame.id }, { onUnequip });
+
+      expect(screen.getByText(/Currently equipped/i)).toBeDefined();
+      fireEvent.click(screen.getByRole("button", { name: "EQUIPPED" }));
+
+      expect(onUnequip).toHaveBeenCalledTimes(1);
+    });
+
+    it("offers EQUIP for an owned frame that is not the one being worn", () => {
+      renderFrames({ avatarAura: null });
+
+      expect(screen.getByRole("button", { name: "EQUIP" })).toBeDefined();
+      expect(screen.queryByText(/Currently equipped/i)).toBeNull();
+    });
+  });
+
   it("calls onClose when Back is tapped", () => {
     const onClose = vi.fn();
     render(

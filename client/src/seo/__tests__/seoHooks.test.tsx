@@ -5,7 +5,7 @@ import { MemoryRouter, useNavigate } from "react-router-dom";
 import { useStructuredData } from "../useStructuredData";
 import { useMetadata } from "../useMetadata";
 import { getStructuredDataForRoute } from "../structuredData";
-import { PUBLIC_ROUTES_METADATA } from "../metadata";
+import { NON_PUBLIC_ROUTE_TITLES, PUBLIC_ROUTES_METADATA } from "../metadata";
 
 afterEach(() => {
   cleanup();
@@ -83,5 +83,48 @@ describe("useMetadata() on a route with no PUBLIC_ROUTES_METADATA entry", () => 
 
     const canonical = document.querySelector('link[rel="canonical"]');
     expect(canonical?.getAttribute("href")).toBe(PUBLIC_ROUTES_METADATA["/"].canonical);
+  });
+});
+
+describe("useMetadata() on a non-public route that has its own tab title (the shop)", () => {
+  it("shows the shop's title, not the home title", () => {
+    render(
+      <MemoryRouter initialEntries={["/shop"]}>
+        <MetadataHarness onReady={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(document.title).toBe(NON_PUBLIC_ROUTE_TITLES["/shop"]);
+    expect(document.title).not.toBe(PUBLIC_ROUTES_METADATA["/"].title);
+  });
+
+  it("leaves the rest of the head on the home route's fallback tags", () => {
+    render(
+      <MemoryRouter initialEntries={["/shop"]}>
+        <MetadataHarness onReady={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const canonical = document.querySelector('link[rel="canonical"]');
+    expect(canonical?.getAttribute("href")).toBe(PUBLIC_ROUTES_METADATA["/"].canonical);
+  });
+
+  it("does not keep the shop's title once the player leaves for a public page", () => {
+    let navigate: (path: string) => void = () => {};
+    render(
+      <MemoryRouter initialEntries={["/shop"]}>
+        <MetadataHarness onReady={(nav) => { navigate = nav; }} />
+      </MemoryRouter>,
+    );
+
+    act(() => {
+      navigate("/games");
+    });
+
+    expect(document.title).toBe(PUBLIC_ROUTES_METADATA["/games"].title);
+  });
+
+  it("is not a public route: it has no catalog entry to prerender", () => {
+    expect(PUBLIC_ROUTES_METADATA["/shop"]).toBeUndefined();
   });
 });

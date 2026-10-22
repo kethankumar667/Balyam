@@ -1243,6 +1243,17 @@ export const PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = Object.from
 export const PRERENDER_ROUTES = Object.keys(PUBLIC_ROUTES_METADATA);
 
 /**
+ * Browser-tab titles for routes that are NOT public pages — they show a player's own things, so they must not be
+ * prerendered, listed in the sitemap, or carry social-card tags of their own. (Every key of
+ * PUBLIC_ROUTES_METADATA becomes a prerendered, indexable page, which is why these cannot live there.)
+ *
+ * Title only: the rest of the head stays on the home route's fallback tags, exactly as it did before.
+ */
+export const NON_PUBLIC_ROUTE_TITLES: Record<string, string> = {
+  "/shop": "Cosmetics Boutique · BHALYAM",
+};
+
+/**
  * Catalog of game-specific social preview cards for multiplayer lounges and invitations.
  * Used for WhatsApp, Twitter, Discord, and Web Share integrations when creating rooms.
  */
