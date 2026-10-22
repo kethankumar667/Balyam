@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { GUEST_IDLE_EXPIRY_DAYS } from "@shared/guestIdentity.js";
 import { logger } from "../lib/logger.js";
+import { isPublishedPlaceholder } from "../lib/secretQuality.js";
 
 /**
  * An identity for someone who has not signed up.
@@ -138,14 +139,11 @@ export function signingKeyWeakness(): string | null {
   }
   // Long enough, but copied from the sample environment file: `.env.example` ships
   // "replace-with-a-stable-random-session-secret" (43 characters), a value the whole repository knows.
-  if (PLACEHOLDER_SECRET.test(key)) {
+  if (isPublishedPlaceholder(key)) {
     return "SESSION_SECRET is a placeholder copied from an example file. Generate a long random value (for example `openssl rand -base64 48`).";
   }
   return null;
 }
-
-/** Wording that only ever appears in instructions ("replace-with…", "change-me", "your secret here"), never in a random key. */
-const PLACEHOLDER_SECRET = /replace[-_ ]?with|change[-_ ]?me|your[-_ ]?(secret|key)|placeholder|example/i;
 
 export interface GuestClaims {
   /** The server-minted player id this token speaks for. */

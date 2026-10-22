@@ -153,8 +153,23 @@ export function createAdminReviewsRouter(service: ReviewsService): Router {
     }
   });
 
+  // The status is spliced into a PostgREST filter string further down, where `&` begins a new parameter, so it is
+  // checked against the real values here rather than trusted. Empty means "no filter", as it always has.
+  const allowedStatuses = ["pending", "approved", "rejected"] as const satisfies readonly ReviewStatus[];
+
   router.get("/", async (req: Request, res: Response) => {
-    const status = typeof req.query.status === "string" ? (req.query.status as ReviewStatus) : undefined;
+    const rawStatus = req.query.status;
+    let status: ReviewStatus | undefined;
+    if (rawStatus !== undefined && rawStatus !== "") {
+      if (typeof rawStatus !== "string" || !(allowedStatuses as readonly string[]).includes(rawStatus)) {
+        res.status(400).json({
+          error: "InvalidRequest",
+          message: `status must be one of ${allowedStatuses.join(", ")}.`,
+        });
+        return;
+      }
+      status = rawStatus as ReviewStatus;
+    }
     const gameIdParam = req.query.gameId;
     const filters: { status?: ReviewStatus; gameId?: string | null; featured?: boolean } = { status };
     if (gameIdParam === "null") filters.gameId = null;

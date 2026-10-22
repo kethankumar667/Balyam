@@ -231,3 +231,33 @@ describe("admin moderation surface", () => {
     expect((featured.body as { reviews: { id: string }[] }).reviews.map((r) => r.id)).toContain(reviewId);
   });
 });
+
+describe("GET /api/admin/reviews — the status filter is a closed set", () => {
+  const ops = { "x-operational-key": OPS_KEY };
+
+  it("lists everything when no status is given", async () => {
+    const res = await server.request("/api/admin/reviews", { headers: ops });
+    expect(res.status).toBe(200);
+  });
+
+  it.each(["pending", "approved", "rejected"])("accepts the real status %s", async (status) => {
+    const res = await server.request(`/api/admin/reviews?status=${status}`, { headers: ops });
+    expect(res.status).toBe(200);
+  });
+
+  // The value ends up inside a PostgREST filter string, where `&` starts a new parameter: an unchecked status
+  // could add `select=` or `order=` clauses of the caller's choosing.
+  it.each(["bogus", "pending&select=*", "pending&order=id.desc", "eq.pending", "approved,rejected"])(
+    "refuses %s instead of passing it into the store's filter",
+    async (status) => {
+      const res = await server.request(`/api/admin/reviews?status=${encodeURIComponent(status)}`, { headers: ops });
+      expect(res.status).toBe(400);
+      expect((res.body as { error: string }).error).toBe("InvalidRequest");
+    },
+  );
+
+  it("still demands the operational credential before looking at the filter", async () => {
+    const res = await server.request("/api/admin/reviews?status=bogus");
+    expect(res.status).toBe(401);
+  });
+});

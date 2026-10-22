@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { logger } from "../lib/logger.js";
-import { verifyAccessToken, verificationMode } from "../lib/supabaseAuth.js";
+import { verifyAccessToken, devAssertionsAllowed } from "../lib/supabaseAuth.js";
 import { verifyGuestToken } from "./guestToken.js";
 import { GuestProvisioningThrottledError, tryTakeGuestProvisioningSlot } from "./guestProvisioningGate.js";
 import { operationalAuthConfig } from "../security/operationalAuth.js";
@@ -366,7 +366,8 @@ export const requireMember: RequestHandler = (req, res, next) => {
     deny(res, 403, "This identity is suspended.");
     return;
   }
-  if (verificationMode() === "off") {
+  // Development only (see `devAssertionsAllowed`): in production an unverified process refuses instead.
+  if (devAssertionsAllowed()) {
     if (!req.player) {
       req.player = { kind: "member", playerId: "dev_member", email: "dev_member@bhalyam.io" };
     } else if (req.player.kind === "guest") {

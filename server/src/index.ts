@@ -10,6 +10,7 @@ import { logger } from "./lib/logger.js";
 import { globalRateLimiter, machineRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
+import { redactLastErrors } from "./lib/healthRedaction.js";
 import { serverResourceTracker } from "./reliability/ResourceTracker.js";
 import { memoryMonitor } from "./reliability/MemoryMonitor.js";
 import { metricsCollector } from "./observability/MetricsCollector.js";
@@ -101,6 +102,17 @@ try {
   process.exit(1);
 }
 
+// Not fatal (the app supports running without accounts), but never silent: with no Supabase variables a
+// production process cannot tell a member from a stranger, so every member-only route refuses everyone.
+if ((process.env.NODE_ENV ?? "").trim().toLowerCase() === "production" && verificationMode() === "off") {
+  logger.error({
+    message:
+      "Account verification is OFF in production: SUPABASE_JWT_SECRET (or SUPABASE_URL + SUPABASE_ANON_KEY) is not set. " +
+      "Member-only features will refuse every request until it is. GET /health reports this under `auth`.",
+    module: "SECURITY",
+  });
+}
+
 memoryMonitor.start(30_000);
 
 const PORT = Number(process.env.PORT) || 4000;
@@ -184,7 +196,8 @@ app.get("/health", (_req, res) => {
   const activeRooms = roomManager.getRoomCount();
   const socketCount = io.engine.clientsCount;
 
-  res.json({
+  // Public on purpose (pingers, runbooks), so counts and timestamps stay but raw error text does not.
+  res.json(redactLastErrors({
     status: "healthy",
     uptimeSec,
     activeRooms,
@@ -221,7 +234,7 @@ app.get("/health", (_req, res) => {
       rssMb: Math.round((memoryUsage.rss / 1024 / 1024) * 100) / 100,
     },
     timestamp: new Date().toISOString(),
-  });
+  }));
 });
 
 const server = http.createServer(app);

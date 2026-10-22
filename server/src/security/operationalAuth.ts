@@ -2,6 +2,7 @@ import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { logger } from "../lib/logger.js";
 import { verifyAccessToken } from "../lib/supabaseAuth.js";
+import { isPublishedPlaceholder } from "../lib/secretQuality.js";
 
 /**
  * Who is allowed to read the operating theatre.
@@ -88,7 +89,15 @@ export function setUserRole(
   }
 }
 
-export function getUserRole(userId: string, email?: string | null): PlatformRole {
+/**
+ * A user's platform role, from the two things only an operator can set: an in-app role assignment, or
+ * `ADMIN_USER_IDS`.
+ *
+ * It takes no email on purpose. It used to treat any address starting `superadmin@` (or containing
+ * `admin@bhalyam.io`) as a super admin; anyone can sign up with any address and nothing here checks it is
+ * confirmed, so that was a self-service promotion. An email says nothing about who someone is.
+ */
+export function getUserRole(userId: string): PlatformRole {
   const normalizedId = userId.trim();
   const assigned = dynamicUserRoles.get(normalizedId);
   if (assigned) return assigned.role;
@@ -98,9 +107,6 @@ export function getUserRole(userId: string, email?: string | null): PlatformRole
     .map((id) => id.trim())
     .filter(Boolean);
   if (envAdminUserIds.includes(normalizedId)) {
-    return "super_admin";
-  }
-  if (email && (email.toLowerCase().startsWith("superadmin@") || email.toLowerCase().includes("admin@bhalyam.io"))) {
     return "super_admin";
   }
   return "member";
@@ -336,6 +342,18 @@ export function operationalConfigProblems(): OperationalConfigProblem[] {
         `OPERATIONAL_SECRET is ${secret.length} characters; at least ${MIN_SECRET_LENGTH} are ` +
         "required. A short key is guessable and the endpoints behind it expose room " +
         "summaries, player counts and full event timelines.",
+    });
+  }
+
+  // Long enough is not the same as secret: the example file's value and the key committed in a script are both
+  // longer than 16 characters. Never echoes the value.
+  if (secret.length > 0 && isPublishedPlaceholder(secret)) {
+    problems.push({
+      fatal: production,
+      message:
+        "OPERATIONAL_SECRET is a placeholder or a value published in this repository (copied from an example " +
+        "file or a script), so anyone who can read the repo can use it. Generate a fresh random key, for " +
+        "example with `openssl rand -base64 48`.",
     });
   }
 

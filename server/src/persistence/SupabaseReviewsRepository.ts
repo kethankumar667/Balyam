@@ -200,7 +200,7 @@ export class SupabaseReviewsRepository implements ReviewsRepository {
 
   async listAll(filters?: ListAllFilters, opts?: ListPage): Promise<ReviewPageResult> {
     const clauses: string[] = [];
-    if (filters?.status) clauses.push(`status=eq.${filters.status}`);
+    if (filters?.status) clauses.push(`status=eq.${encodeURIComponent(filters.status)}`);
     if (filters && "gameId" in filters) {
       clauses.push(filters.gameId === null ? "game_id=is.null" : `game_id=eq.${encodeURIComponent(filters.gameId ?? "")}`);
     }

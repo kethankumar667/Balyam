@@ -52,7 +52,7 @@ export function createAdminUsersRouter(): Router {
     // of having a separate lesser tier.
     const callerRole =
       req.operationalPrincipal?.kind === "admin-user"
-        ? getUserRole(req.operationalPrincipal.userId, req.operationalPrincipal.email)
+        ? getUserRole(req.operationalPrincipal.userId)
         : null;
     if (req.operationalPrincipal?.kind !== "ops-key" && callerRole !== "super_admin") {
       res.status(403).json({

@@ -14,7 +14,7 @@ import { setUserRole } from "../../security/operationalAuth.js";
  *      non-admin identity.
  */
 
-const ENV_KEYS = ["OPERATIONAL_SECRET", "ADMIN_API_KEY", "ADMIN_USER_IDS", "SUPABASE_JWT_SECRET"];
+const ENV_KEYS = ["OPERATIONAL_SECRET", "ADMIN_API_KEY", "ADMIN_USER_IDS", "SUPABASE_JWT_SECRET", "NODE_ENV"];
 let saved: Record<string, string | undefined> = {};
 
 function mockReq(overrides: Partial<Request> & { headers?: Record<string, string> }): Request {
@@ -112,5 +112,33 @@ describe("isCallerAdmin — dev-mode assertion path (verificationMode === \"off\
     process.env.SUPABASE_JWT_SECRET = "a-real-jwt-secret";
     const req = mockReq({ headers: { "x-account-kind": "admin" } });
     expect(isCallerAdmin(req)).toBe(false);
+  });
+
+  it("never activates the header fallback in production, even with verification off", () => {
+    // A deploy that forgot its Supabase variables must not let a request header declare itself an admin.
+    process.env.NODE_ENV = "production";
+    expect(isCallerAdmin(mockReq({ headers: { "x-account-kind": "admin" } }))).toBe(false);
+    expect(isCallerAdmin(mockReq({ headers: { "x-account-kind": "super_admin" } }))).toBe(false);
+  });
+});
+
+describe("isCallerAdmin — an email address is never evidence of a role", () => {
+  // The role used to be inferred from the email string. Anyone can sign up with any address and the server
+  // does not check it is confirmed, so "superadmin@" + any domain meant every paid cosmetic for free.
+  it.each([
+    "superadmin@attacker.example",
+    "SuperAdmin@Gmail.com",
+    "admin@bhalyam.io",
+    "x-admin@bhalyam.io.attacker.example",
+    "superadmin@bhalyam.io",
+  ])("refuses a member whose email is %s", (email) => {
+    const req = mockReq({ player: { kind: "member", playerId: "self_signed_up_1", email } as never });
+    expect(isCallerAdmin(req)).toBe(false);
+  });
+
+  it("still grants admin by the real mechanisms, whatever the email says", () => {
+    setUserRole("promoted_member_1", "super_admin");
+    const req = mockReq({ player: { kind: "member", playerId: "promoted_member_1", email: "someone@example.com" } as never });
+    expect(isCallerAdmin(req)).toBe(true);
   });
 });

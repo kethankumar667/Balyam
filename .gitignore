@@ -22,3 +22,8 @@ client/public/audio/themes/**/*.wav
 # Generated test reports
 reports/
 client/reports/
+
+# Saved rooms the server writes while it runs (FileRoomSnapshotRepository). Player ids and names; the server
+# deletes and recreates them on its own, so they were never meant to be committed.
+server/.room_snapshots/
+server/.test_room_snapshots/

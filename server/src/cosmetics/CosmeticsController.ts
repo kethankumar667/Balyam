@@ -14,7 +14,7 @@ import { callerId, requireIdentity } from "../auth/identity.js";
 import { logger } from "../lib/logger.js";
 import { CosmeticsService } from "./CosmeticsService.js";
 import { operationalAuthConfig, getUserRole, secretsMatch } from "../security/operationalAuth.js";
-import { verificationMode } from "../lib/supabaseAuth.js";
+import { devAssertionsAllowed } from "../lib/supabaseAuth.js";
 import { UnownedCosmeticError } from "./CosmeticsRepository.js";
 import {
   type CosmeticCategory,
@@ -47,20 +47,20 @@ export function isCallerAdmin(req: Request): boolean {
       return true;
     }
     if (req.player.kind === "member") {
-      const role = getUserRole(req.player.playerId, req.player.email);
+      const role = getUserRole(req.player.playerId);
       if (role === "admin" || role === "super_admin") {
         return true;
       }
     }
   }
 
-  // 3. In unconfigured or local development mode, accept an explicit
-  // client-asserted role header. Deliberately does NOT also pattern-match
+  // 3. In unconfigured LOCAL DEVELOPMENT only (never production, even when Supabase is unconfigured —
+  // see `devAssertionsAllowed`), accept an explicit client-asserted role header. Deliberately does NOT also pattern-match
   // email/playerId substrings for "admin" — that heuristic could false-
   // positive on a legitimate identity that merely contains the substring
   // (e.g. an email alias), and the explicit header already covers the dev
   // use case cleanly.
-  if (verificationMode() === "off") {
+  if (devAssertionsAllowed()) {
     const accountKind = req.headers["x-account-kind"];
     if (accountKind === "admin" || accountKind === "super_admin") {
       return true;

@@ -75,6 +75,19 @@ export function verificationMode(): VerificationMode {
   return "off";
 }
 
+/**
+ * May this process believe what a caller merely CLAIMS about themselves?
+ *
+ * Only when account verification is off AND this is not production. Verification is off whenever no Supabase
+ * variables are set, which is the normal state of `npm run dev` and, by accident, of a deploy that forgot them.
+ * The development shortcuts that trust a claim (an `x-account-kind: admin` header, an unauthenticated caller
+ * promoted to a member) are therefore gated on this, not on `verificationMode()` alone: a misconfigured
+ * production process must refuse, not wave everyone through.
+ */
+export function devAssertionsAllowed(): boolean {
+  return verificationMode() === "off" && (process.env.NODE_ENV ?? "").trim().toLowerCase() !== "production";
+}
+
 export interface VerifiedAccount {
   userId: string;
   email: string | null;
