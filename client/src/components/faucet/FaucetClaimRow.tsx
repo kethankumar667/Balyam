@@ -9,9 +9,10 @@ import { HapticsManager } from "../../services/HapticsManager";
 /**
  * The free-coins claim as a full-width row inside the wallet drawer.
  *
- * On a phone the header has no room for another chip, so this is where the
- * faucet lives: the wallet is where a player already goes to think about coins.
- * Same store and same countdown as the header chip, so the two cannot disagree.
+ * This is where the faucet's WAIT lives, at every screen width: the wallet is where a player already goes to think
+ * about coins, and a countdown sitting in the header all day was noise. The header chip (`md` and up) only appears
+ * when a claim is ready, and on a phone a dot on the wallet chip says the same. Same store and same countdown as
+ * that chip, so the two cannot disagree.
  * Renders nothing for a player who has no faucet (a guest).
  */
 export function FaucetClaimRow({ className = "" }: { className?: string }) {

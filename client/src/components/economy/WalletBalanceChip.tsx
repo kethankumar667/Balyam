@@ -85,11 +85,16 @@ export const WalletBalanceChip: React.FC<WalletBalanceChipProps> = ({
       ) : (
         <div className="flex items-center gap-1.5 sm:gap-2">
           <CoinAmount amount={balance} size="sm" />
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${statusIndicator}`}
-            title={statusText}
-            aria-hidden="true"
-          />
+          {/* Only when something is off. A permanent green dot on a healthy wallet was one more dot in a row of
+              them, and a dot should mean "look at this": syncing, offline or failed. The accessible label still
+              says the wallet is synchronized. */}
+          {syncStatus !== "synced" && (
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${statusIndicator}`}
+              title={statusText}
+              aria-hidden="true"
+            />
+          )}
         </div>
       )}
       {/* Screen-reader live region for verified balance updates */}

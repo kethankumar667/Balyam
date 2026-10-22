@@ -48,10 +48,8 @@ export function CosmeticsStoreEntryChip() {
           <Store className="w-4 h-4 text-amber-500 dark:text-amber-400 group-hover:scale-110 group-hover:text-amber-300 transition-all duration-300" />
         </div>
 
-        {/* Label */}
-        <span className="hidden sm:inline text-[13px] font-extrabold tracking-tight group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
-          Shop
-        </span>
+        {/* Icon only: the name is in the tooltip and the accessible label, and the page it opens is titled "Shop".
+            A word here made the header one chip wider on every screen for something the icon already says. */}
       </motion.button>
     </Tooltip>
   );

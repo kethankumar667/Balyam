@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Gift } from "lucide-react";
-import { formatCountdown, useFaucetStore } from "../../store/faucetStore";
+import { useFaucetStore } from "../../store/faucetStore";
 import { useFaucetCountdown } from "../../hooks/useFaucetCountdown";
 import { Tooltip } from "../../design-system/dls/Tooltip";
 import { bhalyamSpring } from "../../lib/motion";
@@ -14,11 +14,13 @@ import { FaucetClaimModal } from "./FaucetClaimModal";
 const JUST_CLAIMED_VISIBLE_MS = 2_500;
 
 /**
- * Header chip for the free-coins faucet, from the `sm` breakpoint up.
+ * Header chip for the free-coins faucet, from the `md` breakpoint up.
  *
- * Three looks: ready ("Free +100", gently pulsing), waiting (a countdown, not
- * pressable) and just paid ("+100"). Mounted for signed-in members only — a guest
- * has no faucet, so the header never shows them a control that cannot work.
+ * Two looks: ready ("Free +100", gently pulsing) and just paid ("+100"). While the player is WAITING there is no
+ * chip at all: a countdown sitting in the header all day was the busiest, least useful thing in it. The wait is
+ * in the wallet drawer (`FaucetClaimRow`, every width), and the chip appears the moment there is something to do.
+ * Mounted for signed-in members only — a guest has no faucet, so the header never shows them a control that
+ * cannot work.
  *
  * It is also the one place that loads the faucet status for the whole app: it stays
  * mounted (hidden by CSS) on a phone, where the header has no room for a sixth chip
@@ -37,7 +39,7 @@ export function FaucetChip() {
   const clearJustClaimed = useFaucetStore((s) => s.clearJustClaimed);
   const reset = useFaucetStore((s) => s.reset);
   const reducedMotion = useReducedMotion();
-  const { isEligible, isWaiting, isReady, remainingSeconds, amount } = useFaucetCountdown();
+  const { isEligible, isReady, amount } = useFaucetCountdown();
 
   useEffect(() => {
     void fetchStatus();
@@ -53,14 +55,10 @@ export function FaucetChip() {
 
   if (!isEligible) return null;
 
-  const label = justClaimed !== null
-    ? `+${justClaimed}`
-    : isWaiting
-      ? formatCountdown(remainingSeconds)
-      : `Free +${amount}`;
-  const tooltip = isWaiting
-    ? `Next free coins in ${formatCountdown(remainingSeconds)}`
-    : `Claim ${amount} free coins`;
+  // Only while there is something to do (or something was just paid): see the doc comment.
+  const showChip = isReady || justClaimed !== null;
+  const label = justClaimed !== null ? `+${justClaimed}` : `Free +${amount}`;
+  const tooltip = `Claim ${amount} free coins`;
 
   const handleClick = () => {
     if (!isReady) return;
@@ -76,6 +74,7 @@ export function FaucetChip() {
       <FaucetClaimModal />
       {/* From `md` (768px), not `sm`: at 640–767px a member's header — brand, streak, shop, wallet, profile —
           has ~70px of slack, and this chip is ~105px. Below `md` the wallet's ready-dot carries it. */}
+      {showChip && (
       <div className="hidden md:contents">
         <Tooltip content={tooltip} side="bottom">
           <motion.button
@@ -123,6 +122,7 @@ export function FaucetChip() {
           </motion.button>
         </Tooltip>
       </div>
+      )}
     </>
   );
 }

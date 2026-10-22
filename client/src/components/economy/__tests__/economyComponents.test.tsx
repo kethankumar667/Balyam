@@ -123,6 +123,23 @@ describe("Economy V1 Presentational Components Suite", () => {
       render(<WalletBalanceChip balance="9223372036854775807" isMember={true} />);
       expect(screen.getByText("9,223,372,036,854,775,807")).toBeDefined();
     });
+
+    it("draws no status dot while the wallet is healthy, but still says so to a screen reader", () => {
+      const { container } = render(<WalletBalanceChip balance="5000" syncStatus="synced" onClick={() => {}} />);
+
+      expect(container.querySelector("[title]")).toBeNull();
+      expect(screen.getByRole("button").getAttribute("aria-label")).toContain("Wallet synchronized");
+    });
+
+    it.each([
+      ["syncing", "Synchronizing wallet"],
+      ["offline", "Offline / Cached wallet"],
+      ["error", "Wallet unavailable"],
+    ] as const)("draws a dot with a tooltip when the wallet is %s", (status, title) => {
+      const { container } = render(<WalletBalanceChip balance="5000" syncStatus={status} onClick={() => {}} />);
+
+      expect(container.querySelector(`[title="${title}"]`)).not.toBeNull();
+    });
   });
 
   // ── 4. EconomyActionButton (UI State Semantics) ──────────────────────────

@@ -85,6 +85,52 @@ describe("AppHeader — identity label fallback when no player name is set", () 
 });
 
 /**
+ * The header used to carry nine controls: a navigation pill that repeated the sidebar, a free-coins countdown, the
+ * streak, the shop, the wallet, the profile, an Admin pill that repeated the sidebar's Admin Console entry, and
+ * the theme switch. It is now brand on the left and account controls on the right; destinations live in the sidebar.
+ */
+describe("AppHeader — one row, not nine", () => {
+  afterEach(() => {
+    setAccessToken(null);
+  });
+
+  it("does not repeat the sidebar's destinations", () => {
+    asGuest();
+    renderHeader();
+
+    expect(screen.queryByRole("navigation", { name: "Lounge Navigation" })).toBeNull();
+    for (const name of ["All Games", "Recently Played", "Favorites"]) {
+      expect(screen.queryByRole("link", { name })).toBeNull();
+    }
+  });
+
+  it("has no Admin pill, even for a super admin: the sidebar's Admin Console entry covers that", () => {
+    asVerifiedMember();
+    useAuthStore.setState({ isAdmin: true, isSuperAdmin: true });
+    renderHeader();
+
+    expect(screen.queryByRole("link", { name: /admin/i })).toBeNull();
+    expect(screen.queryByText("Admin")).toBeNull();
+  });
+
+  it("keeps the shop one tap away from every page, as an icon with no word beside it", () => {
+    asGuest();
+    renderHeader();
+
+    const shop = screen.getByRole("button", { name: /Cosmetics Boutique/i });
+    expect(shop.textContent?.trim()).toBe("");
+  });
+
+  it("keeps the account controls: wallet, profile and the theme switch", () => {
+    asGuest();
+    renderHeader();
+
+    expect(screen.getByRole("button", { name: /^Profile/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Switch to (dark|light) mode/ })).toBeDefined();
+  });
+});
+
+/**
  * Equipping a frame in the shop must show it on the player's own avatar in the header. The header drew the
  * avatar with no `aura`, inside an `overflow-hidden` circle, so a frame (which sits OUTSIDE the avatar, at 124%
  * of it) never appeared. jsdom cannot measure layout, so the clipping half is pinned through the class name.

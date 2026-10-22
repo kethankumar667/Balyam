@@ -68,39 +68,30 @@ describe("FaucetChip", () => {
     expect(claim).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the countdown, and pressing it does nothing", () => {
+  it("shows no chip while the player waits: the header carries nothing it cannot act on", () => {
     seed(status({ canClaim: false, nextClaimAt: SERVER_NOW + 3 * 3_600_000 + 5 * 60_000 }));
 
     render(<FaucetChip />);
 
-    const button = screen.getByRole("button", { name: /next free coins in 3:0[45]:\d\d/i });
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    fireEvent.click(button);
-    expect(claim).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(/\d:\d\d/)).toBeNull();
   });
 
-  it("counts down as time passes", () => {
-    vi.useFakeTimers();
-    try {
-      seed(status({ canClaim: false, nextClaimAt: SERVER_NOW + 65_000 }));
-      render(<FaucetChip />);
-      expect(screen.getByRole("button")).toHaveTextContent("01:05");
+  it("still has the claim dialog ready for when a claim opens, even with no chip on screen", () => {
+    seed(status({ canClaim: false, nextClaimAt: SERVER_NOW + 3_600_000 }));
+    useFaucetStore.setState({ isClaimModalOpen: true });
 
-      act(() => {
-        vi.advanceTimersByTime(5_000);
-      });
+    render(<FaucetChip />);
 
-      expect(screen.getByRole("button")).toHaveTextContent("01:00");
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("becomes ready again by itself when the wait ends", () => {
+  it("appears by itself when the wait ends", () => {
     vi.useFakeTimers();
     try {
       seed(status({ canClaim: false, nextClaimAt: SERVER_NOW + 2_000 }));
       render(<FaucetChip />);
+      expect(screen.queryByRole("button")).toBeNull();
 
       act(() => {
         vi.advanceTimersByTime(3_000);

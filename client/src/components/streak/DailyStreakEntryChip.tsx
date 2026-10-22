@@ -95,7 +95,7 @@ export function DailyStreakEntryChip() {
         </div>
 
         {/* Streak Count Number */}
-        <span className="text-[13px] font-black tracking-tight font-mono">
+        <span className="text-[13px] font-black tracking-tight tabular-nums">
           {currentStreak}
         </span>
 

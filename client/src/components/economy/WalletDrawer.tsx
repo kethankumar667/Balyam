@@ -337,7 +337,7 @@ export const WalletDrawer: React.FC<WalletDrawerProps> = ({ isOpen, onClose }) =
                 </div>
 
                 {/* Free coins. On a phone the header has no room for a faucet chip, so the claim lives here. */}
-                <FaucetClaimRow className="sm:hidden" />
+                <FaucetClaimRow />
 
                 {/* Coins brought over from a guest account and the welcome bonus; renders nothing unless there is something to say. */}
                 <CarryOverCard />
