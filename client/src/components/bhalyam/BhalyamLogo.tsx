@@ -2,11 +2,12 @@ import { useState } from "react";
 import { KiteIcon } from "./icons";
 
 /**
- * BHALYAM brand logo — the wooden treasure chest icon.
+ * BHALYAM brand logo — the wooden treasure chest icon (బాల్యం on the front).
  *
- * The actual art asset lives at `client/public/bhalyam-logo.png` so it is
- * served at the root URL `/bhalyam-logo.png` by Vite. Drop the file there
- * (no build step needed) and this component picks it up.
+ * The art is served from `client/public/Bhalyam-logo.{avif,webp,png}` — a
+ * 512px, transparent-cornered cut of `docs/brand/bhalyam-logo-master.png`.
+ * The favicon / touch-icon set in `index.html` is cut from the same master;
+ * regenerate all of them together when the logo changes.
  *
  * If the file is missing, this component falls back to a gold-leaf chip
  * with the kite-glyph placeholder rather than showing the browser's broken
@@ -64,16 +65,17 @@ export default function BhalyamLogo({
     );
   }
 
+  // The art is a trimmed, transparent-cornered rounded square, so it is drawn
+  // whole (`object-contain`, no crop, no clip box) and the shadow follows its
+  // alpha with `drop-shadow`. A `box-shadow` on a clipping wrapper would put a
+  // rectangle behind the rounded corners.
   return (
     <span
-      className={`inline-block overflow-hidden flex-shrink-0 ${className ?? ""}`}
+      className={`inline-block flex-shrink-0 ${className ?? ""}`}
       style={{
         width: size,
         height: size,
-        borderRadius: radius,
-        boxShadow: shadow
-          ? "0 4px 10px -3px rgba(0,0,0,0.45)"
-          : undefined,
+        filter: shadow ? "drop-shadow(0 4px 5px rgba(0,0,0,0.4))" : undefined,
       }}
     >
       <picture>
@@ -91,7 +93,7 @@ export default function BhalyamLogo({
           // in after first paint; on hero usage the cache will already be hot.
           loading="eager"
           onError={() => setSrcIdx((i) => i + 1)}
-          className="w-full h-full object-cover scale-[1.06] origin-center"
+          className="w-full h-full object-contain"
         />
       </picture>
     </span>

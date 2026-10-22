@@ -3,10 +3,15 @@
   <head>
     <meta charset="UTF-8" />
 
-    <!-- BHALYAM brand icons. Source asset: /Bhalyam-logo.png (drop the file
-         in client/public/ — Vite serves it at the root URL). -->
-    <link rel="icon" type="image/png" href="/Bhalyam-logo.png" />
-    <link rel="apple-touch-icon" href="/Bhalyam-logo.png" />
+    <!-- BHALYAM brand icons, all cut from docs/brand/bhalyam-logo-master.png.
+         favicon.ico covers legacy tabs and crawlers that ask for /favicon.ico
+         unprompted; the PNGs are what current browsers pick by size. The touch
+         icon is an opaque square (iOS paints transparency black). To change the
+         logo, regenerate this whole set from the master — not one file. -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#6D4323" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
