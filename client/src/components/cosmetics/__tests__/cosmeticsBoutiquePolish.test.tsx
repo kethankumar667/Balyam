@@ -27,7 +27,6 @@ import {
   resolveCosmeticPresentationState,
 } from "../presentationState";
 import { CosmeticsItemCard } from "../CosmeticsItemCard";
-import { CosmeticsPreviewStage } from "../CosmeticsPreviewStage";
 import {
   RARITY_TOKENS,
   getRarityTokens,
@@ -385,130 +384,6 @@ describe("Cosmetics Boutique Polish — CosmeticsItemCard Component", () => {
 
     fireEvent.keyDown(card, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("Cosmetics Boutique Polish — CosmeticsPreviewStage Component", () => {
-  it("renders WAI-ARIA tablist with role=tab, aria-selected, and role=tabpanel", () => {
-    const onSelectMode = vi.fn();
-    const onPurchase = vi.fn();
-    const onEquip = vi.fn();
-    const onUnequip = vi.fn();
-
-    render(
-      <CosmeticsPreviewStage
-        item={mockTeakDice}
-        category="DICE_SKIN"
-        scope="GLOBAL"
-        previewMode="INSPECT"
-        onSelectPreviewMode={onSelectMode}
-        isEquipped={false}
-        isOwned={false}
-        isAdminUser={false}
-        walletBalance="1000"
-        isSubmitting={false}
-        onPurchase={onPurchase}
-        onEquip={onEquip}
-        onUnequip={onUnequip}
-        onRefund={vi.fn()}
-      />
-    );
-
-    const tablist = screen.getByRole("tablist");
-    expect(tablist).toBeDefined();
-
-    const inspectTab = screen.getByRole("tab", { name: /Inspect dice materials and details/i });
-    expect(inspectTab.getAttribute("aria-selected")).toBe("true");
-
-    const rollTab = screen.getByRole("tab", { name: /Preview visual rolling animation/i });
-    expect(rollTab.getAttribute("aria-selected")).toBe("false");
-
-    fireEvent.click(rollTab);
-    expect(onSelectMode).toHaveBeenCalledWith("ROLL_PREVIEW");
-
-    const panel = screen.getByRole("tabpanel");
-    expect(panel).toBeDefined();
-    expect(panel.id).toBe("preview-panel-INSPECT");
-  });
-
-  it("renders a single decisive CTA and single deficit sentence without duplication", () => {
-    const onPurchase = vi.fn();
-    render(
-      <CosmeticsPreviewStage
-        item={mockTeakDice} // price 800
-        category="DICE_SKIN"
-        scope="GLOBAL"
-        previewMode="INSPECT"
-        onSelectPreviewMode={vi.fn()}
-        isEquipped={false}
-        isOwned={false}
-        isAdminUser={false}
-        walletBalance="300" // shortfall 500
-        isSubmitting={false}
-        onPurchase={onPurchase}
-        onEquip={vi.fn()}
-        onUnequip={vi.fn()}
-        onRefund={vi.fn()}
-      />
-    );
-
-    // Deficit sentence rendered once in helper text
-    const needText = screen.getByText(/Need 500 more Coins/i);
-    expect(needText).toBeDefined();
-
-    // CTA button with concise deficit label
-    const ctaButton = screen.getByRole("button", { name: /500 coins short/i });
-    expect(ctaButton).toBeDefined();
-    expect(ctaButton.hasAttribute("disabled")).toBe(true);
-  });
-
-  it("renders Dice ROLL_PREVIEW face tumbling without game engine imports or server RNG", () => {
-    render(
-      <CosmeticsPreviewStage
-        item={mockTeakDice}
-        category="DICE_SKIN"
-        scope="GLOBAL"
-        previewMode="ROLL_PREVIEW"
-        onSelectPreviewMode={vi.fn()}
-        isEquipped={false}
-        isOwned={true}
-        isAdminUser={false}
-        walletBalance="1000"
-        isSubmitting={false}
-        onPurchase={vi.fn()}
-        onEquip={vi.fn()}
-        onUnequip={vi.fn()}
-        onRefund={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText(/Visual Preview Only/i)).toBeDefined();
-    expect(screen.getByText(/Independent of game RNG/i)).toBeDefined();
-    const rollBtn = screen.getByRole("button", { name: /roll/i });
-    expect(rollBtn).toBeDefined();
-  });
-
-  it("renders static presentation-only IN_GAME mockup with zero engine/network code", () => {
-    render(
-      <CosmeticsPreviewStage
-        item={mockTeakDice}
-        category="DICE_SKIN"
-        scope="GLOBAL"
-        previewMode="IN_GAME"
-        onSelectPreviewMode={vi.fn()}
-        isEquipped={false}
-        isOwned={true}
-        isAdminUser={false}
-        walletBalance="1000"
-        isSubmitting={false}
-        onPurchase={vi.fn()}
-        onEquip={vi.fn()}
-        onUnequip={vi.fn()}
-        onRefund={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText(/In-Match Table Surface View/i)).toBeDefined();
   });
 });
 

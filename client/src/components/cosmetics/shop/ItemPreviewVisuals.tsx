@@ -1,52 +1,30 @@
 /**
- * BHALYAM — Cosmetics Boutique "Enchanted Display Vault" Preview Stage
+ * BHALYAM — Cosmetics shop: what an item looks like on the shopper's own look.
  *
- * Polished artifact exhibition chamber with:
- * - Category-specific preview modes (Inspect, Roll Preview, In Game, etc.)
- * - High-fidelity 3D Dice materials (Teak Wood, Polished Ivory, Golden Ember, Cyber Neon)
- * - Presentation-only roll simulation isolated from gameplay RNG
- * - Pure static presentational in-game mockup (zero game engine or network calls)
- * - Unified single decisive CTA with safe deficit calculation
- * - Full WAI-ARIA tablist/tabpanel accessibility and prefers-reduced-motion support
+ * One entry point, `ItemPreviewVisual`, draws the selected cosmetic the way it will appear in play: a frame on the
+ * shopper's avatar, a dice skin with a roll preview, a token on the board, a card back. Presentation only: nothing
+ * here touches the game engine, the network, or the RNG.
+ *
+ * These renderers lived inside the old modal-style "display vault" stage. They are moved here unchanged so the
+ * shop page can wrap them in its own stage; the chrome that used to surround them is gone.
  */
 
-import React, { useState, useEffect, useRef, useId } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useId, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Crown, Grid, RotateCw, Star } from "lucide-react";
+import type { CosmeticCatalogItem, CosmeticCategory, CosmeticGameScope } from "@shared/cosmetics";
+import SeatAvatar from "../../profile/SeatAvatar";
+import { isFrameId } from "../frames/frameDesigns";
+import type { PreviewMode } from "../previewModes";
+import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import {
-  Crown,
-  Coins,
-  Check,
-  RotateCw,
-  RotateCcw,
-  Eye,
-  Gamepad2,
-  Trophy,
-  Star,
-  Grid,
-} from "lucide-react";
-import {
-  type CosmeticCatalogItem,
-  type CosmeticCategory,
-  type CosmeticGameScope,
-  getDefaultCosmetic,
-} from "@shared/cosmetics";
-import SeatAvatar from "../profile/SeatAvatar";
-import { isFrameId } from "./frames/frameDesigns";
-import { useRoomStore } from "../../store/roomStore";
-import { bhalyamSpring } from "../../lib/motion";
-import {
-  type PreviewMode,
-  PREVIEW_MODES_BY_CATEGORY,
-} from "./previewModes";
-import {
-  resolveCosmeticPresentationState,
-  type CosmeticPresentationResult,
-} from "./presentationState";
-import { getRarityTokens } from "./designTokens";
-import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { getRummyCardBackConfig, getUnoCardBackConfig, getTokenSkinConfig, getDiceSkinConfig } from "../../lib/cosmeticsResolver";
-import { PawnGlyph } from "../../games/ludo/PawnGlyph";
-import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
+  getDiceSkinConfig,
+  getRummyCardBackConfig,
+  getTokenSkinConfig,
+  getUnoCardBackConfig,
+} from "../../../lib/cosmeticsResolver";
+import { PawnGlyph } from "../../../games/ludo/PawnGlyph";
+import { COLOR_HEX, COLOR_HEX_DARK } from "../../../games/ludo/board-layout";
 
 /** No real seat exists at shop-preview time — every token preview shows
  *  this one fixed "showcase" seat color, matching CosmeticsItemCard's
@@ -54,431 +32,32 @@ import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
 const TOKEN_SHOWCASE_COLOR = COLOR_HEX.blue;
 const TOKEN_SHOWCASE_COLOR_DARK = COLOR_HEX_DARK.blue;
 
-interface CosmeticsPreviewStageProps {
-  item: CosmeticCatalogItem | null;
+export interface ItemPreviewVisualProps {
+  item: CosmeticCatalogItem;
   category: CosmeticCategory;
   scope: CosmeticGameScope;
-  previewMode: PreviewMode;
-  onSelectPreviewMode: (mode: PreviewMode) => void;
-  isEquipped: boolean;
-  isOwned: boolean;
-  isAdminUser: boolean;
-  walletBalance: string;
-  isSubmitting: boolean;
-  onPurchase: (item: CosmeticCatalogItem) => void;
-  onEquip: (item: CosmeticCatalogItem) => void;
-  onUnequip: () => void;
-  onRefund: (item: CosmeticCatalogItem) => void;
+  mode: PreviewMode;
+  displayName: string;
+  avatarId: string | null;
 }
 
-export function CosmeticsPreviewStage({
-  item,
-  category,
-  scope,
-  previewMode,
-  onSelectPreviewMode,
-  isEquipped,
-  isOwned,
-  isAdminUser,
-  walletBalance,
-  isSubmitting,
-  onPurchase,
-  onEquip,
-  onUnequip,
-  onRefund,
-}: CosmeticsPreviewStageProps) {
-  const { playerName, avatarId } = useRoomStore();
-  const displayName = playerName.trim() || "Player";
-
-  // Effective preview item (or category default if none selected)
-  const previewItem: CosmeticCatalogItem = item ?? {
-    id: getDefaultCosmetic(category, scope).id,
-    category,
-    name: "Standard Default",
-    description: "Standard lounge default cosmetic.",
-    priceCoins: 0,
-    rarity: "COMMON",
-    unlockMethod: "DEFAULT",
-    isActive: true,
-    displayOrder: 0,
-  };
-  const rarity = previewItem.rarity ?? "COMMON";
-
-  // Compute deterministic presentation state
-  const presentation: CosmeticPresentationResult =
-    resolveCosmeticPresentationState({
-      item: previewItem,
-      isOwned,
-      isEquipped,
-      isAdminUser,
-      walletBalance,
-      isSubmitting,
-    });
-
-  // Available preview modes for this category
-  const modeOptions = PREVIEW_MODES_BY_CATEGORY[category];
-
-  // Rarity atmospheric illumination — shared token layer (designTokens.ts),
-  // replacing a locally-duplicated copy of the same four-tier switch that
-  // also lived in CosmeticsItemCard. `accent`/`pill`/`border`/`glow` names
-  // are kept as local aliases so the JSX below reads unchanged.
-  const rarityVisual = getRarityTokens(previewItem.rarity ?? "COMMON");
-  const rarityTheme = {
-    glow: rarityVisual.ambientGlow,
-    border: rarityVisual.border,
-    accent: rarityVisual.accentText,
-    pill: rarityVisual.eyebrowPill,
-    runeStroke: rarityVisual.runeStroke,
-  };
-  const prefersReducedMotionGlobal = useReducedMotion();
-
-  return (
-    <div
-      className={`w-full flex flex-col justify-between p-5 rounded-[28px] bg-gradient-to-b from-[#111827] via-[#080d19] to-[#03050a] border ${rarityTheme.border} shadow-[0_34px_90px_-52px_rgba(0,0,0,1)] relative overflow-hidden min-h-[500px] transition-colors duration-500`}
-    >
-      <div aria-hidden="true" className="absolute inset-x-4 top-3 h-px bg-gradient-to-r from-transparent via-white/[0.18] to-transparent" />
-      <div aria-hidden="true" className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(135deg,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:16px_16px]" />
-
-      {/* ── 1. Layer: Atmospheric Rarity Radial Glow ── */}
-      <div
-        className={`absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,_var(--tw-gradient-stops))] ${rarityTheme.glow} pointer-events-none transition-all duration-700`}
-      />
-
-      {/* ── 2. Layer: Rarity-Tiered Ambient Particle System ──
-          COMMON gets nothing here — "no particles" per the rarity spec.
-          RARE gets a handful of sparse shimmer motes. EPIC keeps the
-          rotating rune compass (orbiting accents). LEGENDARY adds radiating
-          light rays and a slow edge sweep on top of the compass. This is
-          never the ONLY rarity signal — the border hue, eyebrow pill text,
-          and accent color all still differ independently. Reduced motion
-          keeps the geometry (a static decoration) but drops the spin/sweep. */}
-      {rarityVisual.particleTier >= 1 && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10" aria-hidden="true">
-          <svg
-            viewBox="0 0 400 400"
-            className={`w-80 h-80 ${
-              rarityVisual.particleTier >= 2 && !prefersReducedMotionGlobal
-                ? "motion-safe:animate-spin [animation-duration:120s] [animation-timing-function:linear]"
-                : ""
-            }`}
-          >
-            {rarityVisual.particleTier >= 2 && (
-              <>
-                <circle cx="200" cy="200" r="160" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="1.5" strokeDasharray="4 8" />
-                <circle cx="200" cy="200" r="120" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="1" strokeDasharray="2 12" />
-                <polygon points="200,45 335,280 65,280" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.8" opacity="0.6" />
-                <polygon points="200,355 65,120 335,120" fill="none" stroke={rarityTheme.runeStroke} strokeWidth="0.8" opacity="0.6" />
-              </>
-            )}
-            {/* RARE: sparse shimmer motes only (no full compass). */}
-            {rarityVisual.particleTier === 1 && (
-              <>
-                <circle cx="140" cy="120" r="2.5" fill={rarityTheme.runeStroke} opacity="0.7" />
-                <circle cx="280" cy="180" r="2" fill={rarityTheme.runeStroke} opacity="0.5" />
-                <circle cx="220" cy="290" r="2.5" fill={rarityTheme.runeStroke} opacity="0.6" />
-              </>
-            )}
-            {/* LEGENDARY: light rays radiating from the artifact's center. */}
-            {rarityVisual.particleTier >= 3 && (
-              <g stroke={rarityTheme.runeStroke} strokeWidth="1" opacity="0.35">
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-                  <line
-                    key={deg}
-                    x1="200"
-                    y1="200"
-                    x2={200 + 190 * Math.cos((deg * Math.PI) / 180)}
-                    y2={200 + 190 * Math.sin((deg * Math.PI) / 180)}
-                  />
-                ))}
-              </g>
-            )}
-          </svg>
-        </div>
-      )}
-
-      {/* Legendary-only animated edge sweep across the whole stage. */}
-      {rarityVisual.particleTier >= 3 && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none motion-reduce:hidden" aria-hidden="true">
-          <div className="absolute -inset-y-16 -left-1/2 w-1/4 rotate-12 bg-gradient-to-r from-transparent via-amber-100/[0.06] to-transparent motion-safe:animate-cosmetic-sweep" />
-        </div>
-      )}
-
-      {/* ── 3. Layer: Ground Pedestal Shadow ── */}
-      <div className="absolute top-[48%] left-1/2 -translate-x-1/2 w-56 h-10 rounded-[100%] bg-black/70 blur-xl pointer-events-none" />
-
-      {/* ── Top Bar: Rarity Eyebrow + WAI-ARIA Category-Specific Tablist ── */}
-      <div className="w-full flex items-center justify-between gap-2 z-10">
-        <span
-          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] ${rarityTheme.pill}`}
-        >
-          {rarity}
-        </span>
-
-        {/* WAI-ARIA Tablist with arrow-key roving tabindex */}
-        <div
-          role="tablist"
-          aria-label="Preview Context"
-          className="flex items-center p-1 rounded-2xl bg-black/50 border border-white/10 text-[11px] font-bold select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md"
-        >
-          {modeOptions.map((opt, idx) => {
-            const Icon = opt.icon;
-            const isActive = previewMode === opt.id;
-            return (
-              <button
-                key={opt.id}
-                id={`preview-tab-${opt.id}`}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`preview-panel-${opt.id}`}
-                tabIndex={isActive ? 0 : -1}
-                onClick={() => onSelectPreviewMode(opt.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    const next = modeOptions[(idx + 1) % modeOptions.length];
-                    onSelectPreviewMode(next.id);
-                    document
-                      .getElementById(`preview-tab-${next.id}`)
-                      ?.focus();
-                  } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const prev =
-                      modeOptions[
-                        (idx - 1 + modeOptions.length) % modeOptions.length
-                      ];
-                    onSelectPreviewMode(prev.id);
-                    document
-                      .getElementById(`preview-tab-${prev.id}`)
-                      ?.focus();
-                  }
-                }}
-                aria-label={opt.accessibleLabel}
-                className={`min-h-[36px] px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                  isActive
-                    ? "bg-amber-300/15 text-amber-100 border border-amber-300/25 shadow-[0_10px_24px_-18px_rgba(245,158,11,0.9)]"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                <span className="text-[11px] whitespace-nowrap">{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Main Artifact Display Stage (WAI-ARIA Tabpanel) ── */}
-      <div
-        role="tabpanel"
-        id={`preview-panel-${previewMode}`}
-        aria-labelledby={`preview-tab-${previewMode}`}
-        className="flex-1 flex flex-col items-center justify-center my-3.5 relative z-10 min-h-[235px] rounded-[24px] border border-amber-400/20 bg-gradient-to-b from-[#0e1526]/90 via-[#080d19]/95 to-[#03050a] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_50px_-24px_rgba(0,0,0,0.9)] overflow-hidden"
-      >
-        {/* Volumetric Overhead Spotlight Beam */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-44 bg-gradient-to-b from-amber-300/18 via-yellow-400/5 to-transparent blur-xl pointer-events-none" />
-
-        {/* 3D Exhibition Pedestal Platform */}
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-48 h-10 rounded-[100%] border-2 border-amber-400/35 bg-gradient-to-b from-amber-400/20 via-black/70 to-black/90 shadow-[0_0_30px_rgba(245,158,11,0.35)] pointer-events-none" />
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-56 h-8 rounded-[100%] bg-amber-400/15 blur-md pointer-events-none" />
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${previewItem.id}-${previewMode}`}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            transition={bhalyamSpring}
-            className="flex flex-col items-center justify-center relative z-10"
-          >
-            {category === "DICE_SKIN" && (
-              <EnchantedDiceSkinPreview
-                skinId={previewItem.id}
-                mode={previewMode}
-              />
-            )}
-
-            {category === "AVATAR_AURA" && (
-              <EnchantedAvatarAuraPreview
-                auraId={previewItem.id}
-                mode={previewMode}
-                displayName={displayName}
-                avatarId={avatarId}
-              />
-            )}
-
-            {category === "TOKEN_SKIN" && (
-              <EnchantedTokenSkinPreview
-                skinId={previewItem.id}
-                mode={previewMode}
-              />
-            )}
-
-            {category === "CARD_BACK" && (
-              <EnchantedCardBackPreview
-                cardId={previewItem.id}
-                mode={previewMode}
-                scope={scope}
-              />
-            )}
-
-            {category === "TABLE_THEME" && (
-              <EnchantedTableThemePreview
-                skinId={previewItem.id}
-                mode={previewMode}
-              />
-            )}
-
-            {category === "PODIUM_TITLE" && (
-              <EnchantedPodiumTitlePreview
-                skinId={previewItem.id}
-                titleName={previewItem.name}
-                displayName={displayName}
-                mode={previewMode}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* ── Lore Narrative & Single Unified CTA ── */}
-      <div className="flex flex-col gap-3 z-10">
-        {/* Lore Typography */}
-        <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`text-[10px] font-black uppercase tracking-wider ${rarityTheme.accent}`}
-            >
-              {rarity} • {category === "AVATAR_AURA" ? "AVATAR FRAME" : category.replace("_", " ")}
-            </span>
-            <span className="text-[11px] text-amber-300 font-mono font-black">
-              {previewItem.priceCoins > 0
-                ? `${previewItem.priceCoins.toLocaleString()} Coins`
-                : "Free Default"}
-            </span>
-          </div>
-          <h4 className="text-lg font-black text-white tracking-tight leading-snug">
-            {previewItem.name}
-          </h4>
-          <p className="text-xs text-zinc-300/90 leading-relaxed">
-            {previewItem.description}
-          </p>
-        </div>
-
-        {/* Financial Context & Deficit Calculation */}
-        <div className="flex flex-col gap-2 bg-black/[0.45] border border-amber-400/20 rounded-2xl p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <div className="flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5 text-amber-400 fill-amber-300/30" />
-              <span>Balance:</span>
-              <strong className="font-mono text-zinc-100 font-black">
-                {presentation.safeBalance.toLocaleString()} Coins
-              </strong>
-            </div>
-
-            {/* Exactly ONE full shortfall sentence (Deduplication Rule) */}
-            {presentation.state === "INSUFFICIENT_BALANCE" && (
-              <span className="text-rose-400 font-black text-xs">
-                Need {presentation.shortfall.toLocaleString()} more Coins
-              </span>
-            )}
-
-            {presentation.state === "AVAILABLE" && (
-              <span className="text-emerald-400 font-black text-xs">
-                Sufficient funds
-              </span>
-            )}
-          </div>
-
-          {/* Progress bar for unowned items */}
-          {!isOwned &&
-            !isAdminUser &&
-            previewItem.unlockMethod !== "DEFAULT" && (
-              <div className="w-full flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      presentation.state === "INSUFFICIENT_BALANCE"
-                        ? "bg-gradient-to-r from-amber-500 to-rose-500"
-                        : "bg-gradient-to-r from-amber-400 to-emerald-400"
-                    }`}
-                    style={{ width: `${presentation.progressPercent}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-mono text-zinc-400 shrink-0 font-bold">
-                  {presentation.progressText}
-                </span>
-              </div>
-            )}
-        </div>
-
-        {/* ── Single Decisive 3D Gold Action Button ── */}
-        <div className="w-full">
-          {presentation.state === "EQUIPPED" ? (
-            presentation.canEquip || isEquipped ? (
-              previewItem.unlockMethod !== "DEFAULT" ? (
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={onUnequip}
-                  className="w-full min-h-[46px] py-2.5 px-4 rounded-2xl font-black text-xs bg-white/[0.08] hover:bg-white/[0.14] text-zinc-100 border border-white/15 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
-                >
-                  <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                  <span>EQUIPPED (Click to Reset Default)</span>
-                </button>
-              ) : (
-                <div className="w-full min-h-[46px] py-2.5 px-4 rounded-2xl font-black text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 flex items-center justify-center gap-2 select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>EQUIPPED AS DEFAULT</span>
-                </div>
-              )
-            ) : null
-          ) : presentation.canEquip ? (
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onEquip(previewItem)}
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-yellow-300 via-amber-400 to-amber-500 hover:from-yellow-200 hover:to-amber-400 active:scale-[0.985] text-stone-950 border border-amber-200/90 shadow-[0_14px_32px_-10px_rgba(245,158,11,0.8),inset_0_1px_0_rgba(255,255,255,0.8)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>{presentation.ctaLabel}</span>
-            </button>
-          ) : presentation.canPurchase ? (
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onPurchase(previewItem)}
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-gradient-to-r from-yellow-300 via-amber-400 to-amber-600 hover:from-yellow-200 hover:to-amber-500 active:scale-[0.985] text-stone-950 border border-amber-200/90 shadow-[0_16px_36px_-10px_rgba(245,158,11,0.85),inset_0_1px_0_rgba(255,255,255,0.85)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Coins className="w-4 h-4 fill-amber-900/30" />
-              <span>{presentation.ctaLabel}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs bg-black/[0.5] text-zinc-500 border border-white/10 flex items-center justify-center gap-2 cursor-not-allowed select-none"
-            >
-              <span>{presentation.ctaLabel}</span>
-            </button>
-          )}
-
-          {/* Self-service refund */}
-          {isOwned && !isAdminUser && previewItem.unlockMethod === "COIN_PURCHASE" && (
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onRefund(previewItem)}
-              className="w-full mt-2 py-1.5 text-[11px] font-bold text-zinc-400 hover:text-rose-400 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Refund for {previewItem.priceCoins.toLocaleString()} Coins</span>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+export function ItemPreviewVisual({ item, category, scope, mode, displayName, avatarId }: ItemPreviewVisualProps) {
+  switch (category) {
+    case "DICE_SKIN":
+      return <EnchantedDiceSkinPreview skinId={item.id} mode={mode} />;
+    case "AVATAR_AURA":
+      return <EnchantedAvatarAuraPreview auraId={item.id} mode={mode} displayName={displayName} avatarId={avatarId} />;
+    case "TOKEN_SKIN":
+      return <EnchantedTokenSkinPreview skinId={item.id} mode={mode} />;
+    case "CARD_BACK":
+      return <EnchantedCardBackPreview cardId={item.id} mode={mode} scope={scope} />;
+    case "TABLE_THEME":
+      return <EnchantedTableThemePreview skinId={item.id} mode={mode} />;
+    case "PODIUM_TITLE":
+      return <EnchantedPodiumTitlePreview skinId={item.id} titleName={item.name} displayName={displayName} mode={mode} />;
+    default:
+      return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1110,10 +689,19 @@ function EnchantedCardBackPreview({
           badge: "bg-orange-500/20 text-orange-300 border border-orange-400/40",
         };
       default:
+        // A back with no design of its own. The red "ONE" card is UNO's; it used to be the fallback for EVERY game,
+        // so a Rummy default (Classic Navy Mandala) previewed as a red UNO card.
+        if (scope === "uno" || id.includes("uno")) {
+          return {
+            bg: "bg-gradient-to-br from-rose-600 via-red-700 to-rose-900 border-white text-white shadow-2xl",
+            pattern: "ONE",
+            badge: "bg-black/30 text-white border border-white/40",
+          };
+        }
         return {
-          bg: "bg-gradient-to-br from-rose-600 via-red-700 to-rose-900 border-white text-white shadow-2xl",
-          pattern: "ONE",
-          badge: "bg-black/30 text-white border border-white/40",
+          bg: "bg-gradient-to-br from-blue-950 via-indigo-950 to-black border-amber-400/70 text-amber-300 shadow-2xl",
+          pattern: "RUMMY",
+          badge: "bg-amber-500/20 text-amber-300 border border-amber-400/40",
         };
     }
   };
@@ -1380,3 +968,4 @@ function EnchantedPodiumTitlePreview({
     </div>
   );
 }
+

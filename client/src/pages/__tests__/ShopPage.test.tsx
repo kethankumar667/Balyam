@@ -52,19 +52,20 @@ describe("ShopPage — it is a page, not a dialog", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("draws the desktop boutique from 768px up", () => {
+  it("draws the desktop shop from 768px up, with the promise under the title", () => {
     viewport.value = "desktop";
     renderShop(["/shop"]);
 
-    expect(screen.getByRole("heading", { level: 1, name: /Cosmetics Boutique/i })).toBeDefined();
+    expect(screen.getByRole("heading", { level: 1, name: "Shop" })).toBeDefined();
+    expect(screen.getByText("Cosmetic only. Every match stays fair.")).toBeDefined();
   });
 
-  it("draws the phone boutique below 768px", () => {
+  it("draws the phone shop below 768px, which keeps the promise out of the title row", () => {
     viewport.value = "mobile";
     renderShop(["/shop"]);
 
-    expect(screen.getByRole("heading", { level: 2, name: "Boutique" })).toBeDefined();
-    expect(screen.queryByRole("heading", { level: 1, name: /Cosmetics Boutique/i })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Shop" })).toBeDefined();
+    expect(screen.queryByText("Cosmetic only. Every match stays fair.")).toBeNull();
   });
 });
 
