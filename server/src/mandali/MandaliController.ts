@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import type { DeleteMandaliFailure, MandaliService } from "./MandaliService.js";
 import { rateLimitByCaller, callerIp } from "../lib/httpRateLimiter.js";
 import { memberAvatar } from "./avatarInput.js";
+import { requireSelfParam } from "../auth/identity.js";
 
 /** HTTP status for each way a delete can be refused. */
 const DELETE_FAILURE_STATUS: Record<DeleteMandaliFailure, number> = {
@@ -79,8 +80,9 @@ export function createMandaliRouter(mandaliService: MandaliService): Router {
     res.json({ success: true, mandalis: results });
   });
 
-  // Get Player's Mandalis
-  router.get("/user/:playerId", async (req, res) => {
+  // Get Player's Mandalis. Only the player themselves: the list includes groups hidden from search, and player ids
+  // are visible to everyone at a table. (The app reads its own list from `/my`.)
+  router.get("/user/:playerId", requireSelfParam(), async (req, res) => {
     const mandalis = await mandaliService.getPlayerMandalis(req.params.playerId);
     res.json({ success: true, mandalis });
   });

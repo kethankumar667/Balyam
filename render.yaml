@@ -18,6 +18,8 @@ services:
         value: 4000
       - key: CLIENT_ORIGIN
         sync: false # Set to frontend URL (e.g. https://bhalyam.onrender.com)
+      - key: TRUST_PROXY_HOPS
+        value: 1 # Render puts ONE proxy in front. Must be a whole number, not `true`: without it every visitor looks like the proxy and the per-IP limits share one bucket.
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
@@ -201,6 +203,25 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      # Tell browsers to use HTTPS only, for a year. No includeSubDomains / preload: those are hard to take back.
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000
+      # The microphone is for voice chat and the camera for the QR scanner; nothing here uses location.
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(self), microphone=(self), geolocation=(), interest-cohort=()
+      # REPORT-ONLY on purpose: it blocks nothing, it only logs what it WOULD block to the browser console, so it
+      # cannot break the site. Browse the app with DevTools open; when no violations show, rename the header to
+      # Content-Security-Policy to enforce it. Why this matters: sign-in tokens live in localStorage, so a
+      # script that runs from anywhere else could read them.
+      #   - Google Fonts load from fonts.googleapis.com / fonts.gstatic.com; Google profile pictures from
+      #     lh3.googleusercontent.com.
+      #   - The app talks to the backend (HTTPS + the socket's WSS) and to Supabase (*.supabase.co).
+      #   - 'unsafe-inline' for styles only: the UI sets inline style attributes.
+      - path: /*
+        name: Content-Security-Policy-Report-Only
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://lh3.googleusercontent.com; media-src 'self' blob: data:; connect-src 'self' https://bhalyam-backend.onrender.com wss://bhalyam-backend.onrender.com https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'"
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable

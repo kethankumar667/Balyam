@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { GUEST_IDLE_EXPIRY_DAYS } from "@shared/guestIdentity.js";
+import { readTrustProxyHops } from "../lib/trustProxy.js";
 
 /**
  * How many NEW guests one network may create, so a guest account cannot be remade at will.
@@ -50,8 +51,7 @@ export function guestsPerNetworkLimit(): number {
  */
 export function networkLimitIsTrustworthy(): boolean {
   if ((process.env.NODE_ENV ?? "").trim().toLowerCase() !== "production") return true;
-  const hops = Number(process.env.TRUST_PROXY_HOPS);
-  return Number.isInteger(hops) && hops >= 1;
+  return readTrustProxyHops(process.env.TRUST_PROXY_HOPS).hops !== null;
 }
 
 export type NetworkVerdict = { allowed: true } | { allowed: false; retryAfterMs: number };

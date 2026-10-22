@@ -11,6 +11,7 @@ import { globalRateLimiter, machineRateLimiter } from "./lib/rateLimiter.js";
 import { turnStatus } from "./lib/iceServers.js";
 import { verificationMode } from "./lib/supabaseAuth.js";
 import { redactLastErrors } from "./lib/healthRedaction.js";
+import { readTrustProxyHops } from "./lib/trustProxy.js";
 import { serverResourceTracker } from "./reliability/ResourceTracker.js";
 import { memoryMonitor } from "./reliability/MemoryMonitor.js";
 import { metricsCollector } from "./observability/MetricsCollector.js";
@@ -158,8 +159,10 @@ const app = express();
 // put every visitor in one bucket. Set TRUST_PROXY_HOPS to the number of proxies in front of the server
 // (Render: 1). Left unset, nothing is trusted — correct for local development — and in production the
 // guest-network limit stays off rather than lock everyone out (see auth/guestNetworkLimiter.ts).
-const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
-if (Number.isInteger(trustProxyHops) && trustProxyHops >= 1) app.set("trust proxy", trustProxyHops);
+const trustProxy = readTrustProxyHops(process.env.TRUST_PROXY_HOPS);
+// A value that is set but unusable (a deploy once had `true`) used to be ignored silently; say so instead.
+if (trustProxy.warning) logger.error({ message: trustProxy.warning, module: "SECURITY" });
+if (trustProxy.hops !== null) app.set("trust proxy", trustProxy.hops);
 app.use(securityHeaders);
 app.use(cors({ origin: originAllowed }));
 app.use(express.json());
