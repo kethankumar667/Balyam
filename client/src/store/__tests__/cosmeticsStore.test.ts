@@ -34,7 +34,7 @@ beforeEach(() => {
     resolved: resolveEffectiveLoadout(nothingEquipped),
     selectedCategory: "DICE_SKIN",
     selectedScope: "GLOBAL",
-    isOpen: false,
+    selectedItemId: null,
   });
 });
 
@@ -75,35 +75,49 @@ describe("loading a saved loadout while in a room", () => {
   });
 });
 
-describe("opening the shop", () => {
+describe("entering the shop", () => {
   beforeEach(() => apiJson.mockResolvedValue(loadoutResponse(equippedWithFireball)));
 
   it("lands on the Ludo slot when the Tokens tab was the last one viewed, so tokens are listed", () => {
     useCosmeticsStore.setState({ selectedCategory: "TOKEN_SKIN", selectedScope: "ludo" });
 
-    useCosmeticsStore.getState().openStore();
+    useCosmeticsStore.getState().enterShop();
 
     expect(useCosmeticsStore.getState().selectedCategory).toBe("TOKEN_SKIN");
     expect(useCosmeticsStore.getState().selectedScope).toBe("ludo");
   });
 
-  it("opens straight onto the Ludo slot when asked for tokens", () => {
-    useCosmeticsStore.getState().openStore("TOKEN_SKIN");
+  it("lands straight on the Ludo slot when asked for tokens", () => {
+    useCosmeticsStore.getState().enterShop("TOKEN_SKIN");
 
     expect(useCosmeticsStore.getState().selectedScope).toBe("ludo");
   });
 
-  it("opens card backs on the Rummy slot and dice on the global slot", () => {
-    useCosmeticsStore.getState().openStore("CARD_BACK");
+  it("lands on card backs on the Rummy slot and dice on the global slot", () => {
+    useCosmeticsStore.getState().enterShop("CARD_BACK");
     expect(useCosmeticsStore.getState().selectedScope).toBe("rummy");
 
-    useCosmeticsStore.getState().openStore("DICE_SKIN");
+    useCosmeticsStore.getState().enterShop("DICE_SKIN");
     expect(useCosmeticsStore.getState().selectedScope).toBe("GLOBAL");
   });
 
   it("honours a scope the caller chose", () => {
-    useCosmeticsStore.getState().openStore("CARD_BACK", "uno");
+    useCosmeticsStore.getState().enterShop("CARD_BACK", "uno");
 
     expect(useCosmeticsStore.getState().selectedScope).toBe("uno");
+  });
+
+  it("drops a stale item selection so the preview starts on the first style", () => {
+    useCosmeticsStore.setState({ selectedItemId: "some_item_from_an_earlier_visit" });
+
+    useCosmeticsStore.getState().enterShop();
+
+    expect(useCosmeticsStore.getState().selectedItemId).toBeNull();
+  });
+
+  it("refreshes the catalog on arrival", () => {
+    useCosmeticsStore.getState().enterShop();
+
+    expect(apiJson).toHaveBeenCalledWith("/api/cosmetics/loadout");
   });
 });

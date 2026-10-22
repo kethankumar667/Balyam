@@ -95,7 +95,40 @@ describe("CosmeticsStoreMobile — Mobile Boutique Component", () => {
 
     expect(screen.getByText("Boutique")).toBeDefined();
     expect(screen.getByText("1,500")).toBeDefined();
-    expect(screen.getByRole("button", { name: /close boutique/i })).toBeDefined();
+    // A page now, so the header carries Back (not a sheet's close button).
+    expect(screen.getByRole("button", { name: "Back" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /close boutique/i })).toBeNull();
+  });
+
+  it("calls onClose when Back is tapped", () => {
+    const onClose = vi.fn();
+    render(
+      <CosmeticsStoreMobile
+        catalog={mockCatalog}
+        ownedIds={new Set(["dice_classic_ivory"])}
+        equipped={{ diceSkins: { GLOBAL: "dice_classic_ivory" } }}
+        selectedCategory="DICE_SKIN"
+        selectedScope="GLOBAL"
+        selectedItemId="dice_wooden_teak"
+        isLoading={false}
+        isSubmitting={false}
+        errorMessage={null}
+        walletBalance="1500"
+        isAdminUser={false}
+        onClose={onClose}
+        onSelectCategory={vi.fn()}
+        onSelectScope={vi.fn()}
+        onSelectItem={vi.fn()}
+        onPurchase={vi.fn()}
+        onRefund={vi.fn()}
+        onEquip={vi.fn()}
+        onUnequip={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("renders category tabs and triggers onSelectCategory on tap", () => {

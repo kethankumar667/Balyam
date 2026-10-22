@@ -82,6 +82,7 @@ const LazyAdminEconomyPage = lazy(() => import("./pages/admin/economy"));
 const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
 const LazyAdminComponentLibraryPage = lazy(() => import("./pages/admin/component-library"));
 const LazyLeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const LazyShopPage = lazy(() => import("./pages/ShopPage"));
 const LazyTournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
 const LazySocialHubPage = lazy(() => import("./pages/SocialHubPage"));
@@ -146,6 +147,7 @@ export interface RouteComponents {
   AdminReviewsPage?: React.ComponentType;
   AdminComponentLibraryPage?: React.ComponentType;
   LeaderboardPage?: React.ComponentType;
+  ShopPage?: React.ComponentType;
   TournamentsPage?: React.ComponentType;
   DesignSystemCatalogPage?: React.ComponentType;
   SocialHubPage?: React.ComponentType;
@@ -334,6 +336,7 @@ export default function App({ components = {} }: AppProps) {
   const AdminReviewsPage = components.AdminReviewsPage ?? LazyAdminReviewsPage;
   const AdminComponentLibraryPage = components.AdminComponentLibraryPage ?? LazyAdminComponentLibraryPage;
   const LeaderboardPage = components.LeaderboardPage ?? LazyLeaderboardPage;
+  const ShopPage = components.ShopPage ?? LazyShopPage;
   const TournamentsPage = components.TournamentsPage ?? LazyTournamentsPage;
   const DesignSystemCatalogPage = components.DesignSystemCatalogPage ?? LazyDesignSystemCatalogPage;
   const SocialHubPage = components.SocialHubPage ?? LazySocialHubPage;
@@ -402,6 +405,8 @@ export default function App({ components = {} }: AppProps) {
               <Route key={from} path={from} element={<Navigate to={to} replace />} />
             ))}
             <Route path="/leaderboard" element={<LeaderboardPage />} />
+            {/* The Cosmetics Boutique. Was a modal opened from the header chip; see pages/ShopPage.tsx. */}
+            <Route path="/shop" element={<ShopPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />
             <Route path="/social" element={<SocialHubPage />} />
             <Route path="/mandali" element={<MandaliDiscoveryPage />} />

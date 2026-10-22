@@ -14,7 +14,6 @@ vi.mock("../../../pages/home/sheets/MenuSheet", () => ({ MenuSheet: () => null }
 vi.mock("../../../pages/home/sheets/ProfileSheet", () => ({ ProfileSheet: () => null }));
 vi.mock("../../economy/WalletDrawer", () => ({ WalletDrawer: () => null }));
 vi.mock("../../streak/DailyStreakModal", () => ({ DailyStreakModal: () => null }));
-vi.mock("../../cosmetics/CosmeticsStoreModal", () => ({ CosmeticsStoreModal: () => null }));
 vi.mock("../../../animations/app/FallingPetals", () => ({ default: () => null }));
 vi.mock("../../bhalyam/GameRoomSheet", () => ({
   default: ({ game, shareToMandaliId }: { game: string | null; shareToMandaliId?: string | null }) =>

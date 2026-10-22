@@ -43,15 +43,17 @@ export interface CosmeticsStore {
   selectedCategory: CosmeticCategory;
   selectedScope: CosmeticGameScope;
   selectedItemId: string | null;
-  isOpen: boolean;
   isLoading: boolean;
   isSubmitting: boolean;
   errorMessage: string | null;
 
   // Actions
   fetchCosmetics: () => Promise<void>;
-  openStore: (category?: CosmeticCategory, scope?: CosmeticGameScope) => void;
-  closeStore: () => void;
+  /**
+   * Called by the /shop page on arrival: lands on the requested tab (or the last one browsed) and refreshes the
+   * catalog. The shop is a route now, so there is no open/closed state — being on /shop IS being in the shop.
+   */
+  enterShop: (category?: CosmeticCategory, scope?: CosmeticGameScope) => void;
   selectCategory: (category: CosmeticCategory) => void;
   selectScope: (scope: CosmeticGameScope) => void;
   selectItem: (itemId: string | null) => void;
@@ -94,7 +96,6 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
   selectedCategory: "DICE_SKIN",
   selectedScope: "GLOBAL",
   selectedItemId: null,
-  isOpen: false,
   isLoading: false,
   isSubmitting: false,
   errorMessage: null,
@@ -137,20 +138,16 @@ export const useCosmeticsStore = create<CosmeticsStore>((set, get) => ({
     }
   },
 
-  openStore: (category?: CosmeticCategory, scope?: CosmeticGameScope) => {
+  enterShop: (category?: CosmeticCategory, scope?: CosmeticGameScope) => {
     const nextCategory = category ?? get().selectedCategory;
     const nextScope = scope ?? defaultScopeFor(nextCategory);
     set({
-      isOpen: true,
       selectedCategory: nextCategory,
       selectedScope: nextScope,
+      selectedItemId: null,
       errorMessage: null,
     });
     void get().fetchCosmetics();
-  },
-
-  closeStore: () => {
-    set({ isOpen: false, errorMessage: null });
   },
 
   selectCategory: (category: CosmeticCategory) => {

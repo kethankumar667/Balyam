@@ -3,13 +3,13 @@
  *
  * Header action chip matching the styling of DailyStreakEntryChip and WalletBalanceChip.
  * Provides accessible >=44x44px touch target with hover feedback, tooltip,
- * and direct invocation of the Cosmetics Boutique modal.
+ * and takes the player to the Cosmetics Boutique page (/shop).
  */
 
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Store } from "lucide-react";
-import { useCosmeticsStore } from "../../store/cosmeticsStore";
 import { Tooltip } from "../../design-system/dls/Tooltip";
 import { bhalyamSpring } from "../../lib/motion";
 import { AudioManager } from "../../services/AudioManager";
@@ -17,12 +17,12 @@ import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
 
 export function CosmeticsStoreEntryChip() {
-  const openStore = useCosmeticsStore((s) => s.openStore);
+  const navigate = useNavigate();
 
   const handleClick = () => {
     HapticsManager.trigger("subtle");
     AudioManager.play(AUDIO.UI_CLICK);
-    openStore();
+    navigate("/shop");
   };
 
   const tooltipText = "Cosmetics Boutique — Customize table felt, dice, pawns, card backs & auras";

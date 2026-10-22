@@ -17,7 +17,6 @@ const MenuSheet = lazy(() => import("../../pages/home/sheets/MenuSheet").then((m
 const ProfileSheet = lazy(() => import("../../pages/home/sheets/ProfileSheet").then((m) => ({ default: m.ProfileSheet })));
 const WalletDrawer = lazy(() => import("../economy/WalletDrawer").then((m) => ({ default: m.WalletDrawer })));
 const DailyStreakModal = lazy(() => import("../streak/DailyStreakModal").then((m) => ({ default: m.DailyStreakModal })));
-const CosmeticsStoreModal = lazy(() => import("../cosmetics/CosmeticsStoreModal").then((m) => ({ default: m.CosmeticsStoreModal })));
 const MemberOnboarding = lazy(() => import("../onboarding/MemberOnboarding"));
 const SignInInvitation = lazy(() => import("../auth/SignInInvitation"));
 
@@ -355,7 +354,6 @@ export default function AppLayout({
             onClose={() => setWalletOpen(false)}
           />
           <DailyStreakModal />
-          <CosmeticsStoreModal />
           {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
           {/* Privacy choice, then the profile questions, then the welcome: see MemberOnboarding. */}
           {chrome && isMember && <MemberOnboarding key={memberId ?? "member"} />}

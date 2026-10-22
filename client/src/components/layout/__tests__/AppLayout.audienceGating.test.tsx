@@ -14,7 +14,6 @@ vi.mock("../../../pages/home/sheets/MenuSheet", () => ({ MenuSheet: () => null }
 vi.mock("../../../pages/home/sheets/ProfileSheet", () => ({ ProfileSheet: () => null }));
 vi.mock("../../economy/WalletDrawer", () => ({ WalletDrawer: () => null }));
 vi.mock("../../streak/DailyStreakModal", () => ({ DailyStreakModal: () => null }));
-vi.mock("../../cosmetics/CosmeticsStoreModal", () => ({ CosmeticsStoreModal: () => null }));
 vi.mock("../../../animations/app/FallingPetals", () => ({ default: () => null }));
 // Markers for the two audience-specific dialogs, so the test sees which one the shell mounts.
 vi.mock("../../onboarding/MemberOnboarding", () => ({ default: () => <div data-testid="profile-prompt" /> }));

@@ -20,18 +20,16 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowLeft,
   Store,
   X,
   Coins,
   Dice5,
-  Layers,
-  CircleDot,
   Crown,
   Check,
   RotateCcw,
   Eye,
   Lock,
-  Orbit,
 } from "lucide-react";
 import {
   type CosmeticCategory,
@@ -51,6 +49,7 @@ import {
 } from "./designTokens";
 import { CollectibleThumbnail } from "./CosmeticsItemCard";
 import { CosmeticsPreviewStage } from "./CosmeticsPreviewStage";
+import { SHOP_CATEGORY_TABS } from "./shopLogic";
 import { AudioManager } from "../../services/AudioManager";
 import { AUDIO } from "../../constants/audio";
 import { HapticsManager } from "../../services/HapticsManager";
@@ -59,17 +58,6 @@ import { useTheme } from "../../lib/useTheme";
 import { getDiceSkinConfig, getTokenSkinConfig } from "../../lib/cosmeticsResolver";
 import { PawnGlyph } from "../../games/ludo/PawnGlyph";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
-
-const CATEGORY_TABS: Array<{
-  category: CosmeticCategory;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = [
-  { category: "DICE_SKIN", label: "Dice", icon: Dice5 },
-  { category: "TOKEN_SKIN", label: "Tokens", icon: CircleDot },
-  { category: "CARD_BACK", label: "Cards", icon: Layers },
-  { category: "AVATAR_AURA", label: "Frames", icon: Orbit },
-];
 
 export interface CosmeticsStoreMobileProps {
   catalog: CosmeticCatalogItem[];
@@ -90,6 +78,7 @@ export interface CosmeticsStoreMobileProps {
   errorMessage: string | null;
   walletBalance: string;
   isAdminUser: boolean;
+  /** Leave the shop (the Back button). It is a page now, so this navigates; it no longer dismisses a sheet. */
   onClose: () => void;
   onSelectCategory: (category: CosmeticCategory) => void;
   onSelectScope: (scope: CosmeticGameScope) => void;
@@ -195,24 +184,28 @@ export function CosmeticsStoreMobile({
   };
 
   return (
+    // A page, not a bottom sheet: it fills whatever height its parent gives it (ShopPage hands it everything
+    // under the app header), so the catalog scrolls inside and the action bar stays in the thumb zone. It used
+    // to be a fixed 92vh sheet body with a drag handle.
     <div
-      className="w-full flex flex-col h-[92vh] max-h-[92dvh] relative overflow-hidden select-none"
+      className="w-full flex flex-col h-full min-h-0 relative overflow-hidden select-none"
       style={{ background: theme === "light" ? surface.base : "linear-gradient(180deg, #101827 0%, #060912 56%, #03050a 100%)" }}
     >
       <div className="absolute inset-0 pointer-events-none opacity-[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:18px_18px]" />
       <div className="absolute -top-24 left-8 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
 
-      {/* Top Drag Handle */}
-      <div className="flex-shrink-0 pt-2.5 pb-1 flex justify-center">
-        <span
-          aria-hidden
-          className="w-10 h-1 rounded-full bg-stone-300 dark:bg-white/20"
-        />
-      </div>
-
-      {/* ── Mobile Header: Boutique Wordmark & Quick Actions ── */}
+      {/* ── Mobile Header: Back, Boutique Wordmark & Balance ── */}
       <div className="flex-shrink-0 px-4 py-2.5 flex items-center justify-between border-b border-stone-200/80 dark:border-white/10 relative z-10">
         <div className="flex items-center gap-2.5 min-w-0">
+          {/* Back: >=44x44px target */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back"
+            className="w-11 h-11 min-h-[44px] min-w-[44px] -ml-1 rounded-full border border-stone-300 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] text-stone-500 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_12px_24px_-14px_rgba(245,158,11,0.95)] shrink-0 border border-amber-100/60">
             <Store className="w-4 h-4" />
           </div>
@@ -233,23 +226,12 @@ export function CosmeticsStoreMobile({
           </div>
         </div>
 
-        {/* Right Header Area: Balance Chip & Close Button */}
+        {/* Right Header Area: Balance Chip */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Coin Balance Chip */}
           <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200 font-mono font-bold text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <Coins className="w-3.5 h-3.5 text-amber-500" />
             <span>{Number(walletBalance || 0).toLocaleString()}</span>
           </div>
-
-          {/* Close Button: >=44x44px target */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Boutique"
-            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-stone-300 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] text-stone-500 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
@@ -259,7 +241,7 @@ export function CosmeticsStoreMobile({
         aria-label="Cosmetic categories"
         className="flex-shrink-0 px-3 py-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none border-b border-stone-200/60 dark:border-white/10 relative z-10"
       >
-        {CATEGORY_TABS.map((tab) => {
+        {SHOP_CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = selectedCategory === tab.category;
           return (
