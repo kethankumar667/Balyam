@@ -16,6 +16,7 @@ import SelfAvatar from "../profile/SelfAvatar";
 import SeatAvatar from "../profile/SeatAvatar";
 import { useTheme } from "../../lib/useTheme";
 import { useRoomStore } from "../../store/roomStore";
+import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import { peekGuestDisplayName } from "../../lib/playerIdentity";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import { type BhalyamGameSlug } from "../bhalyam/data";
@@ -66,6 +67,9 @@ export default function AppHeader({
   const [theme, toggleTheme] = useTheme();
   const isDark = theme === "dark";
   const { playerName, avatarId } = useRoomStore();
+  const { avatarAura } = useResolvedCosmetics();
+  // The frame the player has equipped, if any. "aura_none" is the registry's "nothing equipped", not a frame.
+  const equippedFrame = avatarAura && avatarAura !== "aura_none" ? avatarAura : undefined;
   const { isMember, isSuperAdmin, capabilities } = useAuthStore();
   const identity = useIdentityPresentation();
   const { favourites } = useFavourites();
@@ -262,9 +266,15 @@ export default function AppHeader({
                            hover:bg-[var(--chrome-control-hi)] focus-visible:outline-hidden focus-visible:ring-2
                            focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111927]"
               >
-                <div className="relative w-7 h-7 rounded-full overflow-hidden border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
+                {/* No `overflow-hidden` here: an equipped frame draws OUTSIDE the avatar (124% of it) and was
+                    being clipped away. SeatAvatar already clips the picture itself to a circle. A framed avatar
+                    is a touch larger (32px) so the frame's detail reads; its 124% still fits the 44px chip. */}
+                <div
+                  className={`relative ${equippedFrame ? "w-8 h-8" : "w-7 h-7"} rounded-full border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]`}
+                >
                   <SeatAvatar
                     avatar={avatarId ?? undefined}
+                    aura={equippedFrame}
                     name={displayName}
                     className="w-full h-full"
                     textClassName="text-[11px]"

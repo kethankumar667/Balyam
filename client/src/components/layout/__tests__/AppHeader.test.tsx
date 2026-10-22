@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import AppHeader from "../AppHeader";
 import { useAuthStore, setAccessToken } from "../../../store/authStore";
 import { useRoomStore } from "../../../store/roomStore";
+import { useCosmeticsStore } from "../../../store/cosmeticsStore";
 
 // AppHeader mounts `useWallet()`, which otherwise fires a real network
 // request (`getEconomyWallet()`). Not what this suite is about — mocked to
@@ -80,5 +81,55 @@ describe("AppHeader — identity label fallback when no player name is set", () 
     renderHeader("TestPlayer");
     expect(screen.getByText("TestPlayer")).toBeDefined();
     expect(screen.queryByText("Offline Demo Mode")).toBeNull();
+  });
+});
+
+/**
+ * Equipping a frame in the shop must show it on the player's own avatar in the header. The header drew the
+ * avatar with no `aura`, inside an `overflow-hidden` circle, so a frame (which sits OUTSIDE the avatar, at 124%
+ * of it) never appeared. jsdom cannot measure layout, so the clipping half is pinned through the class name.
+ */
+describe("AppHeader — equipped avatar frame", () => {
+  const initial = useCosmeticsStore.getState().resolved;
+
+  afterEach(() => {
+    useCosmeticsStore.setState({ resolved: initial });
+    setAccessToken(null);
+  });
+
+  function equip(avatarAura: string): void {
+    useCosmeticsStore.setState({ resolved: { ...initial, avatarAura } });
+  }
+
+  it("draws the equipped frame on the profile chip's avatar", () => {
+    asGuest();
+    equip("frame_marigold_garland");
+    renderHeader("TestPlayer");
+
+    const chip = screen.getByRole("button", { name: /^Profile/ });
+    expect(chip.querySelector('svg[data-frame="frame_marigold_garland"]')).not.toBeNull();
+  });
+
+  it("draws no frame when nothing is equipped", () => {
+    asGuest();
+    equip("aura_none");
+    renderHeader("TestPlayer");
+
+    const chip = screen.getByRole("button", { name: /^Profile/ });
+    expect(chip.querySelector("svg[data-frame]")).toBeNull();
+  });
+
+  it("does not clip the frame: no overflow-hidden between the frame and the chip", () => {
+    asGuest();
+    equip("frame_blaze_ring");
+    renderHeader("TestPlayer");
+
+    const chip = screen.getByRole("button", { name: /^Profile/ });
+    const frame = chip.querySelector('svg[data-frame="frame_blaze_ring"]');
+    expect(frame).not.toBeNull();
+    for (let el = frame?.parentElement; el && el !== chip; el = el.parentElement) {
+      // The picture's own circle clips the PHOTO, not the frame, and is a sibling of the frame, not an ancestor.
+      expect(el.className).not.toContain("overflow-hidden");
+    }
   });
 });
