@@ -242,18 +242,18 @@ describe("CosmeticsService", () => {
     it("unequips a slot and reverts to category default", async () => {
       await cosmeticsService.purchaseCosmetic(
         USER_ID,
-        "token_golden_crown",
+        "token_signet_empire",
         "idem_unequip_1",
       );
       await cosmeticsService.equipCosmetic(
         USER_ID,
         "TOKEN_SKIN",
         "ludo",
-        "token_golden_crown",
+        "token_signet_empire",
       );
 
       let state = await cosmeticsService.getState(USER_ID);
-      expect(state.resolved.tokenSkins.ludo).toBe("token_golden_crown");
+      expect(state.resolved.tokenSkins.ludo).toBe("token_signet_empire");
 
       // Unequip
       const unequipRes = await cosmeticsService.unequipCosmetic(
@@ -335,7 +335,7 @@ describe("CosmeticsService", () => {
       const catalog = await cosmeticsService.getCatalog();
       expect(adminState.ownedIds.length).toBe(catalog.length);
       expect(adminState.ownedIds).toContain("dice_cyber_neon");
-      expect(adminState.ownedIds).toContain("token_fireball_ludo");
+      expect(adminState.ownedIds).toContain("token_draco_inferno");
       expect(adminState.ownedIds).toContain("cardback_neon_cyber_uno");
       // Deactivated (shop-removed) items are not part of the active
       // catalog, so admins don't get them "for free" via this path either —
@@ -525,10 +525,10 @@ describe("CosmeticsService", () => {
 
     it("rejects replaying a refund idempotency key with a different cosmetic ID", async () => {
       await cosmeticsService.purchaseCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_purchase_3");
-      await cosmeticsService.purchaseCosmetic(USER_ID, "token_golden_crown", "idem_refund_purchase_3b");
+      await cosmeticsService.purchaseCosmetic(USER_ID, "token_signet_empire", "idem_refund_purchase_3b");
 
       await cosmeticsService.refundCosmetic(USER_ID, "dice_wooden_teak", "idem_refund_conflict_1");
-      const conflict = await cosmeticsService.refundCosmetic(USER_ID, "token_golden_crown", "idem_refund_conflict_1");
+      const conflict = await cosmeticsService.refundCosmetic(USER_ID, "token_signet_empire", "idem_refund_conflict_1");
 
       expect(conflict.applied).toBe(false);
       expect(conflict.code).toBe("IDEMPOTENCY_MISMATCH");

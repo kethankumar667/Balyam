@@ -64,32 +64,44 @@ describe("collectible token figurines", () => {
   });
 });
 
-describe("existing token skins keep their look", () => {
-  const LEGACY = [
-    "token_classic_pawn",
+describe("the token shop is the default pawn plus the collectibles", () => {
+  /** The older accessory, finish and character-theme skins, withdrawn from sale and from the registry. */
+  const REMOVED = [
     "token_golden_crown",
     "token_fireball_ludo",
     "token_neon_ring",
     "token_diamond_elite",
     "token_phoenix_wing",
-    "token_theme_imperial_general",
+    "token_finish_chrome_mirror",
     "token_theme_void_reaper",
   ];
 
-  it("do not silently turn into a collectible figurine", () => {
-    for (const id of LEGACY) expect(TOKEN_SKINS[id].figurineType, id).toBeUndefined();
+  it("lists exactly the default pawn and the sixteen collectibles", () => {
+    const tokenIds = BHALYAM_COSMETIC_REGISTRY.filter((d) => d.category === "TOKEN_SKIN").map((d) => d.id);
+
+    expect(tokenIds).toHaveLength(17);
+    expect(tokenIds).toContain("token_classic_pawn");
+    for (const id of COLLECTIBLE_IDS) expect(tokenIds).toContain(id);
   });
 
-  it("still draw the classic pawn, with their accessory and character overlays", () => {
-    const plain = render1("token_classic_pawn", "p");
-    expect(plain.container.querySelector(".figurine-classic-pawn")).not.toBeNull();
+  it("no longer knows the removed skins, in the registry or in the resolver", () => {
+    const registered = new Set(BHALYAM_COSMETIC_REGISTRY.map((d) => d.id));
+    for (const id of REMOVED) {
+      expect(registered.has(id), id).toBe(false);
+      expect(TOKEN_SKINS[id], id).toBeUndefined();
+    }
+  });
 
-    const crown = render1("token_golden_crown", "c");
-    expect(crown.container.querySelector(".figurine-classic-pawn")).not.toBeNull();
-    expect(crown.container.innerHTML).not.toBe(plain.container.innerHTML);
+  it("draws the plain classic pawn for an id it does not know, never a blank token", () => {
+    const fallback = render1("token_fireball_ludo", "same");
+    const plain = render1("token_classic_pawn", "same");
 
-    const themed = render1("token_theme_void_reaper", "t");
-    expect(themed.container.querySelector(".figurine-classic-pawn")).not.toBeNull();
-    expect(themed.container.innerHTML).not.toBe(plain.container.innerHTML);
+    expect(fallback.container.querySelector(".figurine-classic-pawn")).not.toBeNull();
+    expect(fallback.container.innerHTML).toBe(plain.container.innerHTML);
+  });
+
+  it("keeps the default pawn out of the collectible set", () => {
+    expect(TOKEN_SKINS.token_classic_pawn.figurineType).toBeUndefined();
+    expect(render1("token_classic_pawn", "d").container.querySelector(".figurine-classic-pawn")).not.toBeNull();
   });
 });

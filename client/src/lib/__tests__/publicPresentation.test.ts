@@ -8,26 +8,26 @@ import { getPublicPresentationLoadout } from "../publicPresentation";
  * GLOBAL slot, which never holds a token, and quietly sent the default pawn.
  */
 
-const FIREBALL = "token_fireball_ludo";
+const DRACO = "token_draco_inferno";
 
 function loadout(equipped: EquippedCosmeticsLoadout) {
   return resolveEffectiveLoadout(equipped);
 }
 
 const nothingEquipped: EquippedCosmeticsLoadout = { tableThemes: {}, diceSkins: {}, tokenSkins: {}, cardBacks: {} };
-const withLudoToken: EquippedCosmeticsLoadout = { ...nothingEquipped, tokenSkins: { ludo: FIREBALL } };
+const withLudoToken: EquippedCosmeticsLoadout = { ...nothingEquipped, tokenSkins: { ludo: DRACO } };
 
 describe("getPublicPresentationLoadout — token skin", () => {
   it("sends the equipped Ludo token when the caller knows the game", () => {
-    expect(getPublicPresentationLoadout(loadout(withLudoToken), "ludo").tokenSkin).toBe(FIREBALL);
+    expect(getPublicPresentationLoadout(loadout(withLudoToken), "ludo").tokenSkin).toBe(DRACO);
   });
 
   it("still sends it when the caller does not know the game (join by code, rejoin)", () => {
-    expect(getPublicPresentationLoadout(loadout(withLudoToken)).tokenSkin).toBe(FIREBALL);
+    expect(getPublicPresentationLoadout(loadout(withLudoToken)).tokenSkin).toBe(DRACO);
   });
 
   it("sends it for any other game too, because the server reads only the Ludo slot", () => {
-    expect(getPublicPresentationLoadout(loadout(withLudoToken), "rummy").tokenSkin).toBe(FIREBALL);
+    expect(getPublicPresentationLoadout(loadout(withLudoToken), "rummy").tokenSkin).toBe(DRACO);
   });
 
   it("sends the default pawn when nothing is equipped", () => {

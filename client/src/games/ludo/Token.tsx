@@ -51,7 +51,7 @@ export function Token({
   cbMode?: boolean;
   golden?: boolean;
   celebrating?: boolean;
-  /** Cosmetic token skin identifier (e.g. token_golden_crown, token_fireball_ludo, token_neon_ring) */
+  /** Cosmetic token skin identifier (e.g. token_classic_pawn, token_imperial_sovereign, token_draco_inferno) */
   skin?: string;
   /** Optional flat-palette override (print boards recolor seats by sector). */
   hex?: string;
