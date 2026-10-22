@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { BingoPlayerState, ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../../lib/socket";
 import { useAudio } from "../../hooks/useAudio";
@@ -6,7 +6,7 @@ import { AUDIO } from "../../constants/audio";
 import { useTurnSecondsLeft } from "../../components/TurnTimeWarning";
 import { useHaptics } from "../../hooks/useHaptics";
 import { useTranslation } from "../../hooks/useTranslation";
-import { announceNumber, stopAnnouncing } from "./announcer";
+import { announceNumber, isCallOutEnabled, setCallOutEnabled, stopAnnouncing, subscribeCallOut } from "./announcer";
 import { useGameTheme, type GameSkinTheme } from "../../hooks/useGameTheme";
 import { useRoomStore } from "../../store/roomStore";
 
@@ -59,10 +59,13 @@ export interface BingoBoardModel {
   /** True the instant the window rescues me, so the UI can own up to it. */
   wasAutoMarkedForMe: boolean;
   autoMark: boolean;
+  /** Whether each called number is also spoken aloud. A per-device choice, off by default. */
+  callOutEnabled: boolean;
   activeBallCalled: number | null;
 
   markNumber: (num: number) => void;
   setAutoMark: (on: boolean) => void;
+  setCallOutEnabled: (on: boolean) => void;
 
   shuffleBoard: () => void;
   lockBoard: () => void;
@@ -161,21 +164,27 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
   /* ── Calling out ──────────────────────────────────────────────────── */
 
   const [activeBallCalled, setActiveBallCalled] = useState<number | null>(null);
-  const prevCalledCount = useRef<number>(0);
+  const ballTimer = useRef<number | undefined>(undefined);
+  // Seeded with what is already called, so joining or refreshing mid-round does not shout an old number.
+  const prevCalledCount = useRef<number>(state.calledNumbers.length);
   useEffect(() => {
-    if (state.calledNumbers.length > prevCalledCount.current) {
-      const called = state.lastCalledNumber?.value;
-      play(AUDIO.SYS_TICK);
-      haptics.subtle();
-      if (typeof called === "number") {
-        announceNumber(called, locale);
-        setActiveBallCalled(called);
-        const t = window.setTimeout(() => setActiveBallCalled(null), 1200);
-        return () => window.clearTimeout(t);
-      }
-    }
+    // Record the count BEFORE acting on it. It used to be recorded after an early return, so it never
+    // advanced and every later state update (a mark, a seat change) re-announced the same number.
+    const grew = state.calledNumbers.length > prevCalledCount.current;
     prevCalledCount.current = state.calledNumbers.length;
+    if (!grew) return;
+
+    const called = state.lastCalledNumber?.value;
+    play(AUDIO.SYS_TICK);
+    haptics.subtle();
+    if (typeof called !== "number") return;
+    announceNumber(called, locale);
+    setActiveBallCalled(called);
+    // Its own timer, not this effect's cleanup: the effect re-runs on unrelated updates and must not cut the overlay short.
+    window.clearTimeout(ballTimer.current);
+    ballTimer.current = window.setTimeout(() => setActiveBallCalled(null), 1200);
   }, [state.calledNumbers, state.lastCalledNumber, play, haptics, locale]);
+  useEffect(() => () => window.clearTimeout(ballTimer.current), []);
 
   // Never leave a number being spoken over the end of a round or a leave.
   useEffect(() => stopAnnouncing, []);
@@ -236,6 +245,15 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     [play]
   );
 
+  const callOutEnabled = useSyncExternalStore(subscribeCallOut, isCallOutEnabled, isCallOutEnabled);
+  const setCallOut = useCallback(
+    (on: boolean) => {
+      play(AUDIO.UI_TOGGLE);
+      setCallOutEnabled(on);
+    },
+    [play]
+  );
+
   const { theme, toggleTheme, isNotebook, isNeon } = useGameTheme("bingo", "notebook");
 
   return {
@@ -265,8 +283,10 @@ export function useBingoBoard(props: BingoBoardProps): BingoBoardModel {
     waitingOn,
     wasAutoMarkedForMe,
     autoMark: me?.autoMark === true,
+    callOutEnabled,
     markNumber,
     setAutoMark,
+    setCallOutEnabled: setCallOut,
 
     shuffleBoard,
     lockBoard,

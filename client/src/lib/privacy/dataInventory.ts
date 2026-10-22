@@ -236,6 +236,13 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.bingo.callout",
+    label: "Bingo call-out voice",
+    description: "Whether Bingo reads each called number aloud. Off unless you turn it on.",
+    purpose: "preference",
+    isPersonalData: false,
+  },
+  {
     key: "bhalyam.language",
     label: "Language",
     description: "The language the interface is shown in.",

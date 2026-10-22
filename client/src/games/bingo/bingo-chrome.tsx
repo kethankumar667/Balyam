@@ -1,18 +1,14 @@
-import { Crown, LogOut, Megaphone, Moon, Sun } from "lucide-react";
+import { Crown, LogOut, Moon, Sun } from "lucide-react";
 import type { BingoLetter, BingoPlayerPublic, Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import type { BingoSkin } from "./bingoSkin";
 
 /**
- * The frame around a Bingo table: backdrop, title card, theme switch, turn banner, the called-numbers strip and the
- * players. The 5x5 grid and the claim / mark controls stay in `bingo-shared.tsx`; the two board shells assemble both.
+ * The frame around a Bingo table: backdrop, title card, theme switch, turn banner and the players. The 5x5 grid and the claim / mark controls stay in `bingo-shared.tsx`; the two board shells assemble both.
  *
  * Nothing here knows the rules. It is handed names, numbers and flags by `useBingoBoard`.
  */
-
-/** How many recent calls the strip shows. The count in its title carries the rest. */
-export const CALLED_STRIP_SLOTS = 8;
 
 /* ── Backdrop ───────────────────────────────────────────────────────── */
 
@@ -172,55 +168,6 @@ export function BingoTurnBanner({
         <p className={`truncate text-sm font-semibold ${skin.inkSoft}`}>{detail}</p>
       </div>
     </div>
-  );
-}
-
-/* ── Numbers called ─────────────────────────────────────────────────── */
-
-export function NumbersCalledStrip({
-  skin,
-  calledValues,
-  slots = CALLED_STRIP_SLOTS,
-}: {
-  skin: BingoSkin;
-  /** Every number called so far, in the order they were called. */
-  calledValues: readonly number[];
-  slots?: number;
-}) {
-  const recent = calledValues.slice(-slots);
-  const earlier = calledValues.length - recent.length;
-  const emptySlots = Math.max(0, slots - recent.length);
-  const newest = recent.length - 1;
-
-  return (
-    <section aria-label={`Numbers called, ${calledValues.length}`} className={`rounded-3xl px-4 py-3 ${skin.card}`}>
-      <h2 className={`mb-2 flex items-center gap-2 text-sm font-extrabold ${skin.ink}`}>
-        <Megaphone className={`h-5 w-5 ${skin.isDark ? "text-[#FFD84D]" : "text-[#8A4B00]"}`} aria-hidden="true" />
-        Numbers Called ({calledValues.length})
-      </h2>
-      <div className="flex items-center gap-2">
-        {earlier > 0 && (
-          <span className={`shrink-0 text-xs font-bold ${skin.inkSoft}`} aria-label={`${earlier} earlier`}>
-            +{earlier}
-          </span>
-        )}
-        <ol className="flex min-w-0 flex-1 items-center justify-between gap-1.5">
-          {recent.map((value, index) => (
-            <li
-              key={`${value}-${index}`}
-              aria-label={`Called ${value}`}
-              className={`grid aspect-square min-w-0 flex-1 place-items-center rounded-full bg-gradient-to-b from-[#FFE066] to-[#F5B400] text-sm font-black tabular-nums text-[#3A2200] shadow-[inset_0_-3px_0_rgba(160,100,0,0.35)] ${index === newest ? "ring-2 ring-[#FFF6C8] ring-offset-2 ring-offset-[#D99A00]/60" : ""}`}
-              style={{ maxWidth: "2.5rem" }}
-            >
-              {value}
-            </li>
-          ))}
-          {Array.from({ length: emptySlots }, (_, index) => (
-            <li key={`empty-${index}`} aria-hidden="true" className={`aspect-square min-w-0 flex-1 rounded-full ${skin.slotEmpty}`} style={{ maxWidth: "2.5rem" }} />
-          ))}
-        </ol>
-      </div>
-    </section>
   );
 }
 

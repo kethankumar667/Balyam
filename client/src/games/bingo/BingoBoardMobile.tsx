@@ -2,14 +2,22 @@ import { useMemo } from "react";
 import { Play, Shuffle } from "lucide-react";
 import type { BingoBoardProps } from "./useBingoBoard";
 import { useBingoBoard } from "./useBingoBoard";
-import { BingoLetterBanner, BingoGrid, CallOutPanel, AutoMarkToggle, AllPlayerBoardsView, ClaimButton, BingoResultOverlay } from "./bingo-shared";
+import {
+  BingoLetterBanner,
+  BingoGrid,
+  CallOutPanel,
+  AutoMarkToggle,
+  CallOutToggle,
+  AllPlayerBoardsView,
+  ClaimButton,
+  BingoResultOverlay,
+} from "./bingo-shared";
 import {
   BingoBackdrop,
   BingoPlayersStrip,
   BingoThemeSwitch,
   BingoTitleCard,
   BingoTurnBanner,
-  NumbersCalledStrip,
   buildBingoSeats,
 } from "./bingo-chrome";
 import { bingoSkinFor } from "./bingoSkin";
@@ -23,7 +31,7 @@ import { BingoBallCalledOverlay, BingoWinnerCelebration } from "./BingoAnimation
  * Phone layout (320–767px): one column, the board is the hero.
  *
  * Order, top to bottom: title card, room rail + theme switch, B-I-N-G-O, whose turn it is, the board (and the open
- * number's countdown above it), Claim when it is available, the last numbers called, the Mark-for-me switch, the players.
+ * number's countdown above it), Claim when it is available, the Mark-for-me and Call-out switches, the players.
  * "View all tables" swaps the board for every player's card; the players stay put underneath.
  */
 export default function BingoBoardMobile(props: BingoBoardProps) {
@@ -48,6 +56,8 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
     wasAutoMarkedForMe,
     autoMark,
     setAutoMark,
+    callOutEnabled,
+    setCallOutEnabled,
     claimBingo,
     canAttemptClaim,
     isNeon,
@@ -64,7 +74,6 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
     () => buildBingoSeats(state.players, model.players, model.selfId, state.currentTurnPlayerId),
     [state.players, model.players, model.selfId, state.currentTurnPlayerId],
   );
-  const calledValues = useMemo(() => [...state.calledNumbers].sort((a, b) => a.order - b.order).map((c) => c.value), [state.calledNumbers]);
 
   return (
     <BingoBackdrop skin={skin} className="px-3 pb-6 pt-3">
@@ -156,8 +165,8 @@ export default function BingoBoardMobile(props: BingoBoardProps) {
                   skin={skin}
                 />
                 {canAttemptClaim && <ClaimButton onClaim={claimBingo} disabled={false} className="w-full" />}
-                <NumbersCalledStrip skin={skin} calledValues={calledValues} />
                 <AutoMarkToggle enabled={autoMark} onChange={setAutoMark} skin={skin} />
+                <CallOutToggle enabled={callOutEnabled} onChange={setCallOutEnabled} skin={skin} />
               </>
             )}
 

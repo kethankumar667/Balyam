@@ -2,14 +2,22 @@ import { useMemo } from "react";
 import { Play, Shuffle } from "lucide-react";
 import type { BingoBoardProps } from "./useBingoBoard";
 import { useBingoBoard } from "./useBingoBoard";
-import { BingoLetterBanner, BingoGrid, CallOutPanel, AutoMarkToggle, AllPlayerBoardsView, ClaimButton, BingoResultOverlay } from "./bingo-shared";
+import {
+  BingoLetterBanner,
+  BingoGrid,
+  CallOutPanel,
+  AutoMarkToggle,
+  CallOutToggle,
+  AllPlayerBoardsView,
+  ClaimButton,
+  BingoResultOverlay,
+} from "./bingo-shared";
 import {
   BingoBackdrop,
   BingoPlayersStrip,
   BingoThemeSwitch,
   BingoTitleCard,
   BingoTurnBanner,
-  NumbersCalledStrip,
   buildBingoSeats,
 } from "./bingo-chrome";
 import { bingoSkinFor } from "./bingoSkin";
@@ -23,7 +31,7 @@ import { BingoBallCalledOverlay, BingoWinnerCelebration } from "./BingoAnimation
  * Desktop layout (1024px and up): the same game with the room to spread out.
  *
  * The play column (letters, whose turn it is, the board, Claim) sits on the left; everything you glance at rather
- * than act on moves to a side panel on the right — the numbers called, the Mark-for-me switch, and a players list
+ * than act on moves to a side panel on the right — the Mark-for-me and Call-out switches, and a players list
  * that shows each seat's lines and letters, which the phone has no room for.
  */
 export default function BingoBoardDesktop(props: BingoBoardProps) {
@@ -48,6 +56,8 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
     wasAutoMarkedForMe,
     autoMark,
     setAutoMark,
+    callOutEnabled,
+    setCallOutEnabled,
     claimBingo,
     canAttemptClaim,
     isNeon,
@@ -64,7 +74,6 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
     () => buildBingoSeats(state.players, model.players, model.selfId, state.currentTurnPlayerId),
     [state.players, model.players, model.selfId, state.currentTurnPlayerId],
   );
-  const calledValues = useMemo(() => [...state.calledNumbers].sort((a, b) => a.order - b.order).map((c) => c.value), [state.calledNumbers]);
 
   return (
     <BingoBackdrop skin={skin} className="px-8 pb-8 pt-6">
@@ -168,8 +177,8 @@ export default function BingoBoardDesktop(props: BingoBoardProps) {
             </div>
 
             <aside className="flex min-w-0 flex-col gap-4" aria-label="Table details">
-              <NumbersCalledStrip skin={skin} calledValues={calledValues} />
               <AutoMarkToggle enabled={autoMark} onChange={setAutoMark} skin={skin} />
+              <CallOutToggle enabled={callOutEnabled} onChange={setCallOutEnabled} skin={skin} />
               <BingoPlayersStrip
                 skin={skin}
                 seats={seats}

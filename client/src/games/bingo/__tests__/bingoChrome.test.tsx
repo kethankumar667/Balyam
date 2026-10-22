@@ -2,8 +2,9 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { BingoBoard, BingoPlayerPublic, Player } from "@shared/types";
-import { BingoPlayersStrip, BingoTurnBanner, CALLED_STRIP_SLOTS, NumbersCalledStrip, buildBingoSeats } from "../bingo-chrome";
-import { AutoMarkToggle, BingoGrid, BingoLetterBanner } from "../bingo-shared";
+import * as chrome from "../bingo-chrome";
+import { BingoPlayersStrip, BingoTurnBanner, buildBingoSeats } from "../bingo-chrome";
+import { AutoMarkToggle, BingoGrid, BingoLetterBanner, CallOutToggle } from "../bingo-shared";
 import { BINGO_SKIN_DARK, BINGO_SKIN_LIGHT, bingoSkinFor } from "../bingoSkin";
 
 afterEach(cleanup);
@@ -48,21 +49,11 @@ describe("bingo seats", () => {
   });
 });
 
-describe("the numbers-called strip", () => {
-  it("counts every call but shows only the latest few, oldest first, newest last", () => {
-    const called = Array.from({ length: 11 }, (_, i) => i + 1);
-    render(<NumbersCalledStrip skin={BINGO_SKIN_LIGHT} calledValues={called} />);
-    expect(screen.getByRole("heading", { name: /Numbers Called \(11\)/ })).toBeInTheDocument();
-    const shown = screen.getAllByRole("listitem").map((li) => li.textContent);
-    expect(shown).toEqual(["4", "5", "6", "7", "8", "9", "10", "11"]);
-    expect(screen.getByLabelText("3 earlier")).toHaveTextContent("+3");
-  });
-
-  it("holds the place of calls still to come with empty slots", () => {
-    const { container } = render(<NumbersCalledStrip skin={BINGO_SKIN_DARK} calledValues={[9, 16, 23]} />);
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
-    expect(container.querySelectorAll('li[aria-hidden="true"]')).toHaveLength(CALLED_STRIP_SLOTS - 3);
-    expect(screen.queryByLabelText(/earlier/)).toBeNull();
+describe("the table has no called-numbers strip", () => {
+  it("is gone from the frame on every device: the open number is shown by the call-out panel instead", () => {
+    // Players found a second list of past numbers to be noise next to the card; it was removed on purpose.
+    expect("NumbersCalledStrip" in chrome).toBe(false);
+    expect("CALLED_STRIP_SLOTS" in chrome).toBe(false);
   });
 });
 
@@ -171,6 +162,31 @@ describe("mark for me", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
     fireEvent.click(toggle);
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe("call out numbers", () => {
+  it("is a switch that reports the opposite of its state when pressed", () => {
+    const onChange = vi.fn();
+    render(<CallOutToggle enabled={false} onChange={onChange} skin={BINGO_SKIN_LIGHT} />);
+    const toggle = screen.getByRole("switch", { name: /Call out numbers/i });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("shows that it is on, and turns off when pressed again", () => {
+    const onChange = vi.fn();
+    render(<CallOutToggle enabled onChange={onChange} skin={BINGO_SKIN_DARK} />);
+    const toggle = screen.getByRole("switch", { name: /Call out numbers/i });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  it("says in words what it does, not by its icon alone", () => {
+    render(<CallOutToggle enabled={false} onChange={() => {}} skin={BINGO_SKIN_LIGHT} />);
+    expect(screen.getByText("Speak each number aloud")).toBeInTheDocument();
   });
 });
 

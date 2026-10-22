@@ -19,6 +19,52 @@ import { LOCALE_BY_ID, type LocaleId } from "../../i18n/types";
  * allowed to throw into a render.
  */
 
+/**
+ * Whether numbers are spoken at all. A per-device preference, OFF unless the player turns it on: a voice reading
+ * every number is exactly what some players do not want next to a phone call, a TV, or a sleeping house.
+ * Checked inside `announceNumber` itself so no caller can speak past a player who switched it off.
+ */
+const CALLOUT_STORAGE_KEY = "bhalyam.bingo.callout";
+
+type CallOutListener = () => void;
+const callOutListeners = new Set<CallOutListener>();
+
+function readCallOut(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(CALLOUT_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+let callOutEnabled = readCallOut();
+
+export function isCallOutEnabled(): boolean {
+  return callOutEnabled;
+}
+
+/** For `useSyncExternalStore`: the setting is shared by the phone and desktop boards and survives a reload. */
+export function subscribeCallOut(listener: CallOutListener): () => void {
+  callOutListeners.add(listener);
+  return () => {
+    callOutListeners.delete(listener);
+  };
+}
+
+export function setCallOutEnabled(on: boolean): void {
+  if (callOutEnabled === on) return;
+  callOutEnabled = on;
+  try {
+    window.localStorage.setItem(CALLOUT_STORAGE_KEY, on ? "1" : "0");
+  } catch {
+    /* private mode or blocked storage: the choice still holds for this visit */
+  }
+  // Switching off must silence a number that is mid-sentence, not just the next one.
+  if (!on) stopAnnouncing();
+  for (const listener of callOutListeners) listener();
+}
+
 /** Voices resolve asynchronously on first use; cache the lookup per locale. */
 const voiceCache = new Map<string, SpeechSynthesisVoice | null>();
 
@@ -61,7 +107,7 @@ function pickVoice(tag: string): SpeechSynthesisVoice | null {
  * worse than missing one. The number on screen is always the truth.
  */
 export function announceNumber(num: number, locale: LocaleId): void {
-  if (!supported()) return;
+  if (!callOutEnabled || !supported()) return;
   try {
     const tag = LOCALE_BY_ID[locale]?.tag ?? "en";
     const u = new SpeechSynthesisUtterance(String(num));

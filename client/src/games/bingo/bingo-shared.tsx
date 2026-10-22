@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Eye, Hand, PartyPopper, Star, Trophy } from "lucide-react";
+import { Check, Eye, Hand, PartyPopper, Star, Trophy, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import type { BingoBoard, BingoLetter, BingoPlayerPublic, BingoWinner } from "@shared/types";
 import type { Player } from "@shared/types";
 import SeatAvatar from "../../components/profile/SeatAvatar";
@@ -147,6 +147,53 @@ export function CallOutPanel({
  */
 export function AutoMarkToggle({ enabled, onChange, skin }: { enabled: boolean; onChange: (on: boolean) => void; skin: BingoSkin }) {
   return (
+    <SwitchRow
+      enabled={enabled}
+      onChange={onChange}
+      skin={skin}
+      icon={Hand}
+      title="Mark for me"
+      detail="Auto-mark numbers as they are called"
+    />
+  );
+}
+
+/**
+ * Call-out switch: whether each number is also read aloud.
+ *
+ * Off until the player turns it on, and remembered on the device (see `announcer.ts`). The icon follows the state
+ * so the row reads at a glance, but the switch role and the label carry the meaning for everyone else.
+ */
+export function CallOutToggle({ enabled, onChange, skin }: { enabled: boolean; onChange: (on: boolean) => void; skin: BingoSkin }) {
+  return (
+    <SwitchRow
+      enabled={enabled}
+      onChange={onChange}
+      skin={skin}
+      icon={enabled ? Volume2 : VolumeX}
+      title="Call out numbers"
+      detail="Speak each number aloud"
+    />
+  );
+}
+
+/** One labelled on/off row, shared by the table's switches so they look and behave alike. */
+function SwitchRow({
+  enabled,
+  onChange,
+  skin,
+  icon: Icon,
+  title,
+  detail,
+}: {
+  enabled: boolean;
+  onChange: (on: boolean) => void;
+  skin: BingoSkin;
+  icon: LucideIcon;
+  title: string;
+  detail: string;
+}) {
+  return (
     <button
       type="button"
       role="switch"
@@ -155,11 +202,11 @@ export function AutoMarkToggle({ enabled, onChange, skin }: { enabled: boolean; 
       className={`flex min-h-[64px] w-full cursor-pointer items-center gap-3 rounded-3xl px-4 py-3 text-left ${skin.card} ${skin.focus}`}
     >
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${skin.well}`}>
-        <Hand className={`h-6 w-6 ${skin.isDark ? "text-[#FFD84D]" : "text-[#8A4B00]"}`} aria-hidden="true" />
+        <Icon className={`h-6 w-6 ${skin.isDark ? "text-[#FFD84D]" : "text-[#8A4B00]"}`} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`block text-sm font-black uppercase tracking-wide ${skin.ink}`}>Mark for me</span>
-        <span className={`block text-xs leading-snug ${skin.inkSoft}`}>Auto-mark numbers as they are called</span>
+        <span className={`block text-sm font-black uppercase tracking-wide ${skin.ink}`}>{title}</span>
+        <span className={`block text-xs leading-snug ${skin.inkSoft}`}>{detail}</span>
       </span>
       <span aria-hidden="true" className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${enabled ? skin.switchOn : skin.switchOff}`}>
         <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${enabled ? "left-[22px]" : "left-0.5"}`} />
