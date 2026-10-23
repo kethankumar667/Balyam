@@ -52,7 +52,15 @@ describe("ShopStrip", () => {
     />);
     const material = container.querySelector('[data-dice-material="dice_golden_ember"]');
     expect(material).not.toBeNull();
-    expect(material?.querySelectorAll(".rounded-full")).toHaveLength(5);
+    const faces = material?.querySelectorAll("[data-die-face]");
+    expect(faces).toHaveLength(6);
+    expect(Array.from(faces ?? []).map((face) => Number(face.getAttribute("data-die-face"))).sort())
+      .toEqual([1, 2, 3, 4, 5, 6]);
+    for (const face of faces ?? []) {
+      expect(face.querySelectorAll(".rounded-full")).toHaveLength(Number(face.getAttribute("data-die-face")));
+      expect((face as HTMLElement).style.background).not.toBe("");
+      expect((face as HTMLElement).style.transform).toContain("translateZ");
+    }
   });
 
   it("moves the selection with the arrow keys, Home and End, and stops at the ends", () => {
@@ -151,6 +159,15 @@ describe("ShopStage", () => {
 
     expect(screen.getByRole("tab", { name: /Inspect dice materials and details/i })).toBeDefined();
     expect(screen.getByRole("tab", { name: /Preview visual rolling animation/i })).toBeDefined();
+  });
+
+  it.each(["INSPECT", "ROLL_PREVIEW", "IN_GAME"] as const)("renders a six-faced die in %s, not a single tile", (mode) => {
+    const { container } = render(<ItemPreviewVisual
+      item={frame({ id: "dice_golden_ember", category: "DICE_SKIN" })}
+      category="DICE_SKIN" scope="GLOBAL" mode={mode} displayName="Player" avatarId={null}
+    />);
+    expect(container.querySelectorAll("[data-die-face]")).toHaveLength(6);
+    expect(container.querySelector<HTMLElement>("[data-die-cube]")?.style.transformStyle).toBe("preserve-3d");
   });
 
   it("names the rarity in text on a solid badge", () => {

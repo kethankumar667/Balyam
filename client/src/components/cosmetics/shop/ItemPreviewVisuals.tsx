@@ -5,8 +5,7 @@
  * shopper's avatar, a dice skin with a roll preview, a token on the board, a card back. Presentation only: nothing
  * here touches the game engine, the network, or the RNG.
  *
- * These renderers lived inside the old modal-style "display vault" stage. They are moved here unchanged so the
- * shop page can wrap them in its own stage; the chrome that used to surround them is gone.
+ * Shop-only presentation keeps the real cosmetic materials without coupling previews to a game engine.
  */
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -137,23 +136,82 @@ function DiceFacePipGrid({ value, skinId, pipStyle }: DiceFaceProps) {
   );
 }
 
-/** Static shelf face uses the same material resolver and pip layout as the interactive preview. */
-export function DiceMaterialSwatch({ skinId }: { skinId: string }) {
+/** Opposite faces sum to seven; depth tracks edge size in both shelf and stage views. */
+function ShopDie({ skinId, value = 5, size = 144, tumbling = false }: {
+  skinId: string;
+  value?: number;
+  size?: number;
+  tumbling?: boolean;
+}) {
   const dice = getDiceSkinConfig(skinId);
+  const edge = size * 0.625;
+  const pairs = [1, 2, 3].filter((pip) => pip !== value && pip !== 7 - value);
+  const faces = [
+    { value, rotation: "" },
+    { value: 7 - value, rotation: "rotateY(180deg)" },
+    { value: pairs[0], rotation: "rotateX(90deg)" },
+    { value: 7 - pairs[0], rotation: "rotateX(-90deg)" },
+    { value: pairs[1], rotation: "rotateY(90deg)" },
+    { value: 7 - pairs[1], rotation: "rotateY(-90deg)" },
+  ];
   return (
     <div
       aria-hidden
       data-dice-material={skinId}
-      className="flex h-20 w-20 -rotate-12 items-center justify-center rounded-2xl border-2"
-      style={{
-        background: dice.faceBg,
-        borderColor: dice.faceBorder,
-        boxShadow: `inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.25), ${dice.glow ?? "0 6px 10px rgba(0,0,0,0.2)"}`,
-      }}
+      className="relative shrink-0"
+      style={{ width: size, height: size, perspective: size * 5 }}
     >
-      <div className="scale-75"><DiceFacePipGrid value={5} skinId={skinId} pipStyle={{ background: dice.pipBg, boxShadow: dice.pipBorder }} /></div>
+      <motion.div
+        data-die-cube
+        className="absolute left-1/2 top-1/2"
+        animate={tumbling
+          ? { rotateX: [-24, 336], rotateY: [-34, 326] }
+          : { rotateX: -24, rotateY: -34 }}
+        transition={tumbling
+          ? { duration: 0.56, repeat: Infinity, ease: "linear" }
+          : { duration: 0 }}
+        style={{ width: edge, height: edge, marginLeft: -edge / 2, marginTop: -edge / 2, transformStyle: "preserve-3d" }}
+      >
+        {faces.map((face, index) => (
+          <div
+            key={index}
+            data-die-face={face.value}
+            className="absolute inset-0 flex items-center justify-center border"
+            style={{
+              transform: `${face.rotation} translateZ(${edge / 2}px)`,
+              backfaceVisibility: "hidden",
+              borderRadius: edge * 0.08,
+              background: dice.faceBg,
+              borderColor: dice.faceBorder,
+              boxShadow: `inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -2px 4px rgba(0,0,0,0.4)${dice.glow ? `, ${dice.glow}` : ""}`,
+            }}
+          >
+            <div className="pointer-events-none absolute inset-0 rounded-[inherit]" style={{
+              background: index === 2
+                ? "linear-gradient(135deg,rgba(255,255,255,0.28),transparent)"
+                : index === 4
+                  ? "linear-gradient(90deg,rgba(0,0,0,0.22),rgba(0,0,0,0.4))"
+                  : "linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.1))",
+            }} />
+            {dice.wooden && (
+              <svg aria-hidden viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full opacity-20">
+                {[30, 50, 70].map((radius) => (
+                  <circle key={radius} cx="15" cy="15" r={radius} fill="none" stroke="#fff" strokeWidth="0.8" />
+                ))}
+              </svg>
+            )}
+            <div className="relative" style={{ transform: `scale(${edge / 112})` }}>
+              <DiceFacePipGrid value={face.value} skinId={skinId} pipStyle={{ background: dice.pipBg, boxShadow: dice.pipBorder }} />
+            </div>
+          </div>
+        ))}
+      </motion.div>
     </div>
   );
+}
+
+export function DiceMaterialSwatch({ skinId }: { skinId: string }) {
+  return <ShopDie skinId={skinId} size={80} />;
 }
 
 function EnchantedDiceSkinPreview({
@@ -172,37 +230,13 @@ function EnchantedDiceSkinPreview({
   // replaced (computed once per render, never updated again).
   const prefersReducedMotion = useReducedMotion();
 
-  // Dice visual material — built directly from the real DiceSkinConfig
-  // (the same registry Dice.tsx renders from in actual gameplay) instead of
-  // a hand-authored per-id switch. That switch used to only recognize the
-  // original 6 dice ids and silently fall back to plain ivory for any
-  // id it didn't know — exactly what broke the preview for every one of
-  // the 12 newer dice skins (their small shop-list thumbnails, driven by
-  // CosmeticsItemCard's already-generic branch, rendered correctly all
-  // along; only this big Inspect panel had the stale switch).
-  // Tailwind's arbitrary-value classes can't be built from a JS variable at
-  // build time, so this is inline `style`, not a className string.
-  const dice = getDiceSkinConfig(skinId);
-  const mat = {
-    containerStyle: {
-      background: dice.faceBg,
-      border: `3px solid ${dice.faceBorder}`,
-      boxShadow: [
-        "inset 0 2px 4px rgba(255,255,255,0.35)",
-        "inset 0 -3px 6px rgba(0,0,0,0.35)",
-        dice.glow ?? "0 16px 32px rgba(0,0,0,0.5)",
-      ].join(", "),
-    } as React.CSSProperties,
-    pipStyle: {
-      background: dice.pipBg,
-      boxShadow: dice.pipBorder,
-    } as React.CSSProperties,
-    grain: dice.wooden,
-  };
-
   // Presentation-only roll preview trigger
   const triggerPresentationRoll = () => {
     if (isTumbling) return;
+    if (prefersReducedMotion) {
+      setRollFace((face) => face % 6 + 1);
+      return;
+    }
     setIsTumbling(true);
     let step = 0;
     const sequence = [2, 4, 1, 6, 3, 5, (Math.floor(Math.random() * 6) + 1)];
@@ -223,8 +257,9 @@ function EnchantedDiceSkinPreview({
     }
     return () => {
       if (tumbleIntervalRef.current) clearInterval(tumbleIntervalRef.current);
+      setIsTumbling(false);
     };
-  }, [mode]);
+  }, [mode, prefersReducedMotion]);
 
   // Mode 1: IN_GAME Preview (Static presentational mockup, zero engine or network code)
   if (mode === "IN_GAME") {
@@ -246,16 +281,7 @@ function EnchantedDiceSkinPreview({
 
           {/* Dice placed in center of felt */}
           <div className="relative z-10 scale-75">
-            <div
-              className="w-28 h-28 rounded-2xl flex items-center justify-center relative"
-              style={mat.containerStyle}
-            >
-              <DiceFacePipGrid
-                value={6}
-                skinId={skinId}
-                pipStyle={mat.pipStyle}
-              />
-            </div>
+            <ShopDie skinId={skinId} value={6} />
           </div>
         </div>
         <span className="text-[10px] font-mono tracking-wider text-emerald-400/80 uppercase mt-2">
@@ -269,30 +295,7 @@ function EnchantedDiceSkinPreview({
   if (mode === "ROLL_PREVIEW") {
     return (
       <div className="flex flex-col items-center justify-center">
-        <motion.div
-          animate={
-            isTumbling && !prefersReducedMotion
-              ? {
-                  rotateX: [0, 90, 180, 270, 360],
-                  rotateY: [0, -90, -180, -270, -360],
-                  scale: [1, 1.1, 0.95, 1.05, 1],
-                }
-              : { rotateX: 12, rotateY: -15 }
-          }
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          className="w-32 h-32 rounded-3xl flex items-center justify-center relative cursor-pointer select-none"
-          style={{ ...mat.containerStyle, transformStyle: "preserve-3d" }}
-          onClick={triggerPresentationRoll}
-        >
-          {mat.grain && (
-            <div className="absolute inset-0 rounded-3xl opacity-25 bg-[radial-gradient(circle_at_25%_25%,_rgba(255,255,255,0.4)_0%,_transparent_60%)] pointer-events-none" />
-          )}
-          <DiceFacePipGrid
-            value={rollFace}
-            skinId={skinId}
-            pipStyle={mat.pipStyle}
-          />
-        </motion.div>
+        <ShopDie skinId={skinId} value={rollFace} tumbling={isTumbling && !prefersReducedMotion} />
 
         {/* Contact Shadow */}
         <div className="w-28 h-3 rounded-[100%] bg-black/70 blur-sm mt-2" />
@@ -302,11 +305,11 @@ function EnchantedDiceSkinPreview({
           type="button"
           onClick={triggerPresentationRoll}
           disabled={isTumbling}
-          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          className="mt-3 min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <RotateCw
             className={`w-3 h-3 text-amber-400 ${
-              isTumbling ? "animate-spin" : ""
+              isTumbling && !prefersReducedMotion ? "animate-spin" : ""
             }`}
           />
           <span>{isTumbling ? "Rolling..." : "Roll Again"}</span>
@@ -321,64 +324,7 @@ function EnchantedDiceSkinPreview({
   // Mode 3: INSPECT (Default, 136x136px Large 3D Tilt Dice Showcase)
   return (
     <div className="flex flex-col items-center justify-center">
-      <motion.div
-        animate={
-          prefersReducedMotion
-            ? { rotateX: 12, rotateY: -12 }
-            : {
-                rotateX: [10, 18, 5, 10],
-                rotateY: [-15, 15, -20, -15],
-              }
-        }
-        transition={{
-          repeat: Infinity,
-          duration: 7,
-          ease: "easeInOut",
-        }}
-        className="w-34 h-34 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none"
-        style={{ ...mat.containerStyle, transformStyle: "preserve-3d" }}
-      >
-        {/* Wood grain pattern overlay for Teak */}
-        {mat.grain && (
-          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none opacity-30 mix-blend-overlay">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <circle
-                cx="15"
-                cy="15"
-                r="30"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                opacity="0.4"
-              />
-              <circle
-                cx="15"
-                cy="15"
-                r="50"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="1"
-                opacity="0.3"
-              />
-              <circle
-                cx="15"
-                cy="15"
-                r="70"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="0.8"
-                opacity="0.2"
-              />
-            </svg>
-          </div>
-        )}
-
-        <DiceFacePipGrid
-          value={5}
-          skinId={skinId}
-          pipStyle={mat.pipStyle}
-        />
-      </motion.div>
+      <ShopDie skinId={skinId} />
 
       {/* Ground Contact Shadow */}
       <div className="w-32 h-4 rounded-[100%] bg-black/75 blur-md mt-3" />

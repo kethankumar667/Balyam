@@ -113,6 +113,14 @@ Loading and failed empty collections are identified rather than presented as
 a successful zero balance. Preview and wallet data still come from the existing
 shop hook; no layout computes entitlements or sends its own transaction.
 
+Shop dice are six-faced CSS 3D cubes, not rotating square tiles. Shelf, Inspect,
+Roll Preview and the table mockup share the same geometry and real skin material
+resolver. Faces have recessed pips, bevel lighting and proportional half-edge
+depth; opposite values sum to seven. A resting perspective shows front, top
+and side even with reduced motion. Roll Again is a keyboard-accessible 44px
+control; reduced motion changes the preview value without tumbling. Shop rolls
+remain presentation-only and never affect gameplay RNG.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.
