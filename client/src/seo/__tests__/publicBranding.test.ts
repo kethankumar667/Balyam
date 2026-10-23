@@ -61,7 +61,7 @@ describe("public branding without changing saved game identities", () => {
         .not.toMatch(/\b(Tetris|Road Rash|Block Blast)\b/);
     }
     expect(TETRIS_ACADEMY.title).toBe("Brick Blocks");
-    expect(getSocialMetadataForGame("uno")?.imageUrl).toMatch(/\/og\/color-cards\.jpg$/);
+    expect(getSocialMetadataForGame("uno")?.imageUrl).toMatch(/\/ColorCardsTile\.png$/);
   });
 
   it.each(legacyRoutes)("redirects %s to %s in the router and hosting configuration", (oldPath, newPath) => {
@@ -85,8 +85,16 @@ describe("public branding without changing saved game identities", () => {
     expect(cricket).toContainEqual(expect.objectContaining({ url: expect.stringMatching(/\/cricket2d$/) }));
     expect(JSON.stringify(getStructuredDataForRoute("/games"))).not.toContain("/games?game=cricket2d");
     expect(existsSync(resolve(__dirname, "../../../public/og/uno.jpg"))).toBe(false);
-    expect(existsSync(resolve(__dirname, "../../../public/og/color-cards.jpg"))).toBe(true);
     expect(read("src/games/handcricket/doordarshan/DoordarshanCelebration.tsx")).not.toContain("DD Sports");
+  });
+
+  it("uses an existing Color Cards preview with the actual image type and dimensions", () => {
+    const meta = getSocialMetadataForGame("uno")!;
+    const image = readFileSync(resolve(__dirname, "../../../public", new URL(meta.imageUrl).pathname.slice(1)));
+    expect(image.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    expect(meta.imageType).toBe("image/png");
+    expect(meta.imageWidth).toBe(String(image.readUInt32BE(16)));
+    expect(meta.imageHeight).toBe(String(image.readUInt32BE(20)));
   });
 
   it("removes branded racing text from both the canvas and its frame", () => {

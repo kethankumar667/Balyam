@@ -8,6 +8,99 @@
 
 ## 0. Remediation status (updated 2026-10-14)
 
+### Asset provenance and cosmetic-copy follow-up (local, not deployed)
+
+**Completed engineering work, not legal clearance:**
+
+- Corrected all **16 procedural Color Cards back descriptions** in the
+  development seed to describe the actual blocks, stripes, rings, rays,
+  petals and geometric rosette. This removes obsolete logo/action-icon
+  claims without changing names, IDs, prices, rarity or unlock rules.
+- Added [a new forward migration](../../supabase/migrations/20261105000000_card_back_descriptions.sql)
+  and [guarded emergency rollback](../../supabase/rollbacks/20261105000000_card_back_descriptions.sql).
+  The historical expansion migration is unchanged. Only `description` is
+  updated, and only when an item's existing copy matches the historical
+  wording or its known `UNO` to `card` variant. Custom operator copy is
+  preserved; missing items are not recreated. Consequently, any custom copy
+  that still mentions a logo requires manual review.
+- Found that the prior branding commit referenced a missing social-preview
+  JPEG. Metadata now points directly to the existing `ColorCardsTile.png`,
+  with its actual PNG type and 640 x 640 dimensions. A regression test checks
+  the referenced file's bytes and dimensions. No new artwork was created.
+- Generated the [per-file asset inventory](asset-provenance-inventory.json)
+  using [the read-only inventory script](../../client/scripts/audit-asset-provenance.mjs).
+  Run `node client\scripts\audit-asset-provenance.mjs` from the repository root
+  to refresh it. Each record includes SHA-256, tracking/presence status,
+  available evidence and the next rights-verification action.
+
+**Inventory results for this checkout:** 518 media files present, comprising
+323 tracked visual files and 195 local, untracked/ignored WAV files. Scope is
+all media in `client/public`, `client/src/assets` and `docs/brand`, including
+unreferenced public files that would still be copied into a build. This is a
+filesystem inventory, not a visual inspection of all 323 images.
+
+| Evidence found | Files | What this establishes |
+|---|---:|---|
+| No documented source/rights record identified | 266 | Source and commercial-use terms still need evidence. Absence of evidence is not a finding of infringement. |
+| Logo/icon derivatives and avatar crops | 12 | A local transformation pipeline exists; the source artwork's rights remain unverified. |
+| Illustration creative briefs/prompts only | 45 | Intended direction is documented, not per-file creation, ownership or provider terms. |
+| Possible repository-generated audio | 195 | The placeholder synthesizer and README document a generator; existing WAV bytes were not reproduced or compared with its output. |
+
+**No inventoried file is marked rights-cleared.** Request creator/provider,
+original source, acquisition/export date, licence/assignment and required
+attribution for each source family; connect those records to the inventory's
+hashes. Prioritize the master logo and its derivatives, avatars, game tiles
+and social previews, then supporting illustrations and card-back artwork.
+Do not describe unknown assets as stolen or infringing, or assume that an
+AI-generation prompt grants commercial rights.
+
+**Visual review priority:** samples included the master logo, Color Cards
+tile, Brick Racer preview, one avatar and one Rummy back. The Color Cards
+tile retains familiar four-colour cards, action symbols and oval geometry;
+similar imagery also appears inside the master logo. Removing the wordmark
+does not resolve visual-similarity/trade-dress questions. Have counsel assess
+these specific compositions, handset imagery and the broadcast presentations
+before deciding whether an original redesign is needed. No uncertain artwork
+was deleted or approved by this audit.
+
+**Audio and fonts:** no audio binaries are tracked under the theme directory.
+Its README says the generated WAVs are wiring placeholders, not release
+sound design; `predev` generates them, whereas the build script does not.
+Do not assume these local WAVs are deployed or that a clean build includes
+them. Any replacement MP3 takes precedence and needs its own source record.
+Selected game sounds and the sixteen card backs are synthesized in code;
+source code alone is not proof of authorship or non-infringement.
+The HTML requests **15 Google Fonts families**; their individual upstream
+licences and external responses were not verified. Separately, the imported
+`@fontsource-variable/geist` package contains an **OFL-1.1** licence in this
+installation. Confirm the required copyright/licence notices accompany
+distributed fonts. A complete dependency-licence audit is outside this pass.
+Public Markdown plans were also observed: review whether they should be
+published verbatim; no document was removed as part of this media audit.
+
+**Verification and rollout:** the cosmetic suites pass (70 tests), server
+typecheck passes, and the SQL passed against an isolated real PostgreSQL
+instance using the historical 32-row expansion seed and minimal catalog /
+ownership fixtures. Exactly sixteen descriptions changed; other catalog
+columns and owned/equipped references were preserved. Replays, rollback,
+interim copy, custom edits and absent rows were exercised. This is **not** a
+test of the full production schema, triggers, permissions or deployment.
+The focused client branding/art suites pass (15 tests), client typecheck and
+the production build pass (5,429 client modules; 39 prerendered routes), and
+the local production preview serves the PNG with HTTP 200 and `image/png`.
+A browser decoded it at 640 x 640. The rendered shop and deployed social
+platform responses were not exercised.
+
+Before deployment, export the sixteen target rows and review old/custom
+copy, then apply the new migration through the normal Supabase release
+process. Compare the affected rows and commercial fields afterwards; fewer
+than sixteen updates can be legitimate when copy is already corrected,
+customized or absent. Check the rendered shop on both layouts and the live
+social-image response/cache. No production database was contacted or changed
+here. For a production rollback, use a reviewed **new forward migration**:
+the provided emergency rollback restores historical wording (including
+obsolete brand/logo references) and is not a recommended branding remedy.
+
 ### Branding follow-up (2026-10-23)
 
 This follow-up corrects earlier overstatements below: the broadcaster names
@@ -27,9 +120,10 @@ historical findings, not a current certification of the application.
   profile/privacy labels use neutral names: **Color Cards**, **Brick Blocks**,
   **Brick Racer**, **Block Puzzle** and **Retro Cricket**. Racing canvas/frame
   copy says **Arcade Racing**. Color Cards server announcements say **ONE**.
-- The logo-bearing social image is removed. Its replacement is derived from
-  the existing Color Cards tile; this does not establish a licence or clear
-  the tile's visual similarity to other card games.
+- The logo-bearing social image is removed. The intended replacement was
+  derived from the existing Color Cards tile; the later follow-up above
+  fixes its missing file reference. Neither version establishes a licence
+  or clears the tile's visual similarity to other card games.
 - Launch destinations use `/cricket2d`, `/snake`, `/brickracer` and
   `/brickblocks`. Old branded paths redirect in the SPA and the Render/static
   host configuration. They are excluded from prerender discovery and the
@@ -49,13 +143,13 @@ The local backend was not running during browser checks (socket connection
 errors were expected); no live multiplayer round or deployed HTTP redirect
 was verified.
 
-**Still not cleared:** no trademark-registry clearance search for BHALYAM or
-the replacement names, licence/provenance audit, or legal review of card art,
+**Not cleared by the branding pass:** no trademark-registry clearance search
+for BHALYAM or the replacement names, or legal review of card art,
 falling-block gameplay presentation, handset appearance or broadcast trade
-dress was performed in this change. Renaming and restyling reduce identifiable
-branding exposure; they do not prove non-infringement. Have counsel assess
-those remaining similarities. The existing live-database cosmetic-copy
-follow-up below is also separate and remains open.
+dress was performed. Renaming and restyling reduce identifiable branding
+exposure; they do not prove non-infringement. The later asset inventory and
+cosmetic-copy implementation are recorded above; rights clearance and
+live-database deployment remain open.
 
 ### Earlier remediation history
 
@@ -81,7 +175,7 @@ follow-up below is also separate and remains open.
 
 **Also done (2026-10-14, token review):** the 16 new 3D Ludo tokens were reviewed before merge. Names and code comments no longer reference a competitor ("Ludo King") or a Nokia model number ("Retro 3310" is now "Retro Handset"). A production migration (`20261102000000_ludo_collectible_tokens.sql`) and rollback were added. Leftover "Nokia" and "3310" wording in player-visible text (catalog, leaderboards, navigation, About page) was also replaced; internal ids and routes are unchanged.
 - Worth a lawyer's look: "Sacred Trishula" is a religious symbol (Shiva's trident and damru) sold as a cosmetic for coins, and the Retro Handset's drawing (dark-blue body, green screen, Snake) still evokes the Nokia 3310 look even though it carries no name.
-- Still open: the catalog descriptions for the UNO-style card backs (dev seed and the database rows from migration `20260923000000`) still say "behind the classic logo", which is no longer true now that the art is logo-free; fixing the live database text needs a new migration.
+- Open at that review: the catalog descriptions for the UNO-style card backs still claimed a classic logo. The later follow-up above corrects the seed and supplies a new guarded migration; applying it to the live database remains outstanding.
 
 **Still open (needs you, a licence or a lawyer):** items 1, 2, 4, 5 (officer details) and 8 to 11 in section 8, plus:
 - The card *names* Skip, Reverse, Draw Two and Wild, the 108-card structure and the four colours are ordinary game rules and vocabulary, and the server's action messages depend on them, so they were kept. A lawyer should confirm that is acceptable.
