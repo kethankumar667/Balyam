@@ -12,7 +12,7 @@ import { stepShopSelection, type CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, ShopPriceBlock, useShopPlan } from "./ShopActions";
 import { GameVariantSwitch, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
-import { ShopStrip } from "./ShopStrip";
+import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
 
@@ -21,7 +21,8 @@ export interface ShopDesktopProps {
   onBack: () => void;
 }
 
-export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
+export function ShopDesktop({ shop: source, onBack }: ShopDesktopProps) {
+  const { shop, rarity, selectRarity } = useRarityShelf(source);
   const shopPlan = useShopPlan(shop);
   const { categoryItems: items, previewItem: item, selectedCategory, selectedScope } = shop;
 
@@ -72,7 +73,7 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
           ) : !hasItems || !shopPlan ? (
             <div className="relative min-h-[320px] md:col-span-2">
               <p className="absolute inset-0 flex items-center justify-center text-[16px] font-medium text-ink-mid">
-                Nothing in {tabLabel.toLowerCase()} yet.
+                {source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
               </p>
             </div>
           ) : (
@@ -122,21 +123,9 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
           )}
         </div>
         </div>
-        {hasItems && (
+        {source.categoryItems.length > 0 && (
               <div className="mx-auto w-full max-w-[1440px] px-6 pb-8 pt-6">
-                <div className="mb-2 flex items-end justify-between gap-3">
-                  <h2 className="font-display text-xl text-ink-hi">All {tabLabel.toLowerCase()}</h2>
-                  <p className="text-xs font-medium text-ink-mid">{items.length} styles · Select to preview</p>
-                </div>
-                <ShopStrip
-                  items={items}
-                  category={selectedCategory}
-                  selectedId={item?.id ?? null}
-                  isOwned={shop.isOwned}
-                  isEquipped={shop.isEquipped}
-                  onSelect={shop.selectItem}
-                  label={`${tabLabel} styles`}
-                />
+                <ShopShelf shop={shop} rarity={rarity} selectRarity={selectRarity} label={tabLabel} />
               </div>
         )}
       </section>

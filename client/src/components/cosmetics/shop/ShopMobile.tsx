@@ -14,7 +14,7 @@ import { stepShopSelection, type CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, useShopPlan } from "./ShopActions";
 import { GameVariantSwitch, REASSURANCE, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
-import { ShopStrip } from "./ShopStrip";
+import { ShopShelf, useRarityShelf } from "./ShopShelf";
 import { categoryLabel } from "./shopPlan";
 import { rarityVars } from "./shopRarity";
 
@@ -23,7 +23,8 @@ export interface ShopMobileProps {
   onBack: () => void;
 }
 
-export function ShopMobile({ shop, onBack }: ShopMobileProps) {
+export function ShopMobile({ shop: source, onBack }: ShopMobileProps) {
+  const { shop, rarity, selectRarity } = useRarityShelf(source);
   const shopPlan = useShopPlan(shop);
   const { categoryItems: items, previewItem: item, selectedCategory, selectedScope } = shop;
   const tabLabel = SHOP_CATEGORY_TABS.find((tab) => tab.category === selectedCategory)?.label ?? "Styles";
@@ -60,7 +61,7 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
           </p>
         ) : !hasItems || !shopPlan ? (
           <p className="flex flex-1 items-center justify-center px-6 text-center text-[16px] font-medium text-ink-mid">
-            Nothing in {tabLabel.toLowerCase()} yet.
+            {source.categoryItems.length ? "No matching styles. Choose another rarity below." : `Nothing in ${tabLabel.toLowerCase()} yet.`}
           </p>
         ) : (
           <>
@@ -87,26 +88,17 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
             </div>
             </div>
 
-            {selectedCategory === "CARD_BACK" && (
-              <div className="shrink-0 px-4 pt-2">
-                <GameVariantSwitch scope={selectedScope} onSelect={shop.selectScope} />
-              </div>
-            )}
-
-            <div className="min-w-0 shrink-0 px-3 pb-4 pt-5">
-              <h2 className="mb-2 font-display text-lg text-ink-hi">All {tabLabel.toLowerCase()}</h2>
-              <ShopStrip
-                compact
-                items={items}
-                category={selectedCategory}
-                selectedId={item.id}
-                isOwned={shop.isOwned}
-                isEquipped={shop.isEquipped}
-                onSelect={shop.selectItem}
-                label={`${tabLabel} styles`}
-              />
-            </div>
           </>
+        )}
+        {selectedCategory === "CARD_BACK" && (
+          <div className="shrink-0 px-4 pt-2">
+            <GameVariantSwitch scope={selectedScope} onSelect={shop.selectScope} />
+          </div>
+        )}
+        {source.categoryItems.length > 0 && (
+          <div className="min-w-0 shrink-0 px-3 pb-4 pt-5">
+            <ShopShelf compact shop={shop} rarity={rarity} selectRarity={selectRarity} label={tabLabel} />
+          </div>
         )}
       </section>
 

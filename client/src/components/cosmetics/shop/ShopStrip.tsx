@@ -3,7 +3,7 @@
  *
  * The showroom's carousel. Every style in the slot is one tile: its picture, its name, and ONE line of state
  * (price, Owned, Equipped, Default, Locked). That line is text, with an icon, never colour alone. The selected
- * tile is ringed and underlined in its rarity colour and scrolled into view.
+ * tile is ringed in its rarity colour and scrolled into view.
  *
  * It is a single-select listbox: arrow keys, Home and End move the selection (which previews the item), Tab leaves.
  */
@@ -107,31 +107,28 @@ export function ShopStrip({ items, category, selectedId, isOwned, isEquipped, on
                 else if (e.key === "Home") { e.preventDefault(); move(index, 0); }
                 else if (e.key === "End") { e.preventDefault(); move(index, items.length - 1); }
               }}
-              className={`relative flex h-full flex-col items-center gap-2 rounded-2xl border px-2.5 pb-4 pt-3 text-center shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${
-                compact ? "w-[120px]" : "w-[144px]"
+              className={`relative flex h-full flex-col items-start gap-3 overflow-hidden rounded-2xl border-2 border-[rgb(var(--shop-rar)/0.65)] bg-[linear-gradient(155deg,rgb(var(--shop-rar)/0.18),transparent_65%)] px-3 pb-3 pt-3 text-left shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${
+                compact ? "w-[172px]" : "w-[208px]"
               } ${
                 selected
                   ? "border-[rgb(var(--shop-rar))] bg-surface-1 shadow-[0_5px_16px_rgba(0,0,0,0.12)] ring-1 ring-[rgb(var(--shop-rar))]"
-                  : "border-[var(--chrome-hairline)] bg-surface-1 hover:border-[rgb(var(--shop-rar))]"
+                  : "bg-surface-1 hover:border-[rgb(var(--shop-rar))]"
               }`}
             >
               <span className="self-start rounded-full bg-[rgb(var(--shop-rar)/0.12)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-ink-hi">
                 {shopRarityOf(item.rarity).label}
               </span>
-              <span className={`flex w-full items-center justify-center rounded-xl bg-[radial-gradient(ellipse_at_center,rgb(var(--shop-rar)/0.18),transparent_75%)] ${compact ? "h-[76px]" : "h-24"}`}>
+              <span className={`flex w-full items-center justify-center rounded-xl bg-[radial-gradient(ellipse_at_center,rgb(var(--shop-rar)/0.25),transparent_75%)] ${compact ? "h-[120px]" : "h-[152px]"}`}>
                 {category === "DICE_SKIN"
                   ? <DiceMaterialSwatch skinId={item.id} />
                   : <CollectibleThumbnail item={item} category={category} isSelected={selected} rarity={item.rarity} />}
               </span>
-              <span className="line-clamp-2 min-h-[2.4em] text-[13px] font-semibold leading-tight text-ink-hi">
+              <span className="line-clamp-2 min-h-[2.4em] text-[15px] font-bold leading-tight text-ink-hi">
                 {item.name}
               </span>
-              <span className="mt-auto"><TileState item={item} owned={isOwned(item)} equipped={isEquipped(item)} /></span>
-              <span
-                aria-hidden
-                className="absolute inset-x-4 bottom-0 h-[3px] rounded-full"
-                style={{ background: "rgb(var(--shop-rar))" }}
-              />
+              <span className={`mt-auto flex min-h-[40px] w-full items-center justify-center rounded-full border border-[rgb(var(--shop-rar)/0.25)] ${isEquipped(item) ? "bg-[rgb(var(--shop-rar)/0.22)]" : "bg-surface-0"}`}>
+                <TileState item={item} owned={isOwned(item)} equipped={isEquipped(item)} />
+              </span>
             </button>
           </li>
         );

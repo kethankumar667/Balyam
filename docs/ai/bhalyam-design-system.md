@@ -130,6 +130,15 @@ desktop 1.24; short-screen variants 0.64 and 0.8). Shelf thumbnails, pedestal,
 item details and stage navigation retain their size. Embedded preview buttons
 counter-scale by 1.25 so this artwork adjustment does not shrink their controls.
 
+The collectible shelf is classified by actual catalog rarity: All, Common
+(bronze), Rare (blue), Epic (purple) and Legendary (gold). Shared 44px filter
+chips scroll horizontally on mobile. Taller material-preview cards use a
+rarity badge and outline, item name and full-width status/price pill; no
+illustrated backgrounds, invented collections or example prices are used.
+Filters narrow both the shelf and stage navigation, falling back to the first
+matching item when necessary. An empty rarity has an explicit message and
+retains the filters; switching category or card-game variant resets to All.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.

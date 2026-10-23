@@ -57,7 +57,7 @@ export function useCosmeticsShop() {
   );
 
   // No selection (or one from another slot) previews the slot's first style.
-  const previewItem = useMemo(() => {
+  const previewItem = useMemo<CosmeticCatalogItem | null>(() => {
     if (selectedItemId) {
       const found = categoryItems.find((item) => item.id === selectedItemId);
       if (found) return found;

@@ -41,12 +41,9 @@ export const BLAZE_RING = frame({
   displayOrder: 2,
 });
 
-/**
- * A slot with nothing in it. At runtime `previewItem` is null then, but `useCosmeticsShop` infers it as an item
- * (an indexed read of `categoryItems` is never undefined to the compiler), so the null is cast in once, here.
- */
+/** A slot with nothing in it. */
 export function makeEmptyShop(over: FakeShopOptions = {}): CosmeticsShop {
-  return makeShop({ categoryItems: [], previewItem: null as unknown as CosmeticCatalogItem, ...over });
+  return makeShop({ categoryItems: [], previewItem: null, ...over });
 }
 
 export type FakeShopOptions =Partial<CosmeticsShop> & {
