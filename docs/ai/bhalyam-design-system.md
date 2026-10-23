@@ -53,8 +53,19 @@ CTAs; phones retain compact spacing and at least 44px controls.
 Featured cards use the same structure with the approved gold palette,
 slightly larger artwork and a stronger shadow. This supersedes the earlier
 neutral-card/top-border proposal; the warm palette remains unchanged.
-The first two visible games marked `isPopular`
-in the shared catalog lead an unfiltered grid; they are not duplicated below.
+Two daily featured games lead an unfiltered grid, rotating through all
+playable catalog games at midnight IST (UTC+05:30). Picks are deterministic
+by date and slug order, identical on Home and All Games and stable on refresh;
+they no longer depend on `isPopular`. Unavailable games are excluded.
+Each day advances two places, so pools of four or more have no repeat from
+the previous day. Smaller pools show up to two without duplicate tiles.
+Home selects from the full pool before applying its six-card cap.
+Open pages refresh the picks at midnight and on focus/visibility changes.
+Prerendered HTML and the initial hydration render omit featured grouping;
+today's grouping is applied after mount so a previous day's build stays safe.
+No identity, network call or browser storage is involved; the device clock
+supplies the date, so a wrong device clock can show a different day's picks.
+Featured games are not duplicated below.
 Search/category/play-way filters disable that grouping and keep all matches.
 
 The palette is centralized in `components/bhalyam/tileColors.ts`:

@@ -10,9 +10,9 @@
  * uses it right now: the "coming soon" quizzes and Bounce were deleted
  * rather than left on screen as tiles that go nowhere.
  *
- * Top-of-array order is also the order of the home page tile grid. The
- * home grid is sliced to 6; everything else surfaces only on the
- * dedicated `/games` route. Keep the playable games at the top.
+ * Catalogue order fills the regular home tiles after the two daily featured
+ * picks from the full playable pool. Home stays capped at 6; the dedicated
+ * `/games` route shows the rest. Keep the playable games at the top.
  */
 
 export type BhalyamGameSlug =

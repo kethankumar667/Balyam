@@ -6,6 +6,7 @@ import CategoryFilter from "../../../components/bhalyam/CategoryFilter";
 import { FavouritesManager } from "../../../services/FavouritesManager";
 import { BHALYAM_GAMES } from "../../../components/bhalyam/data";
 import { toastStore } from "../../../lib/toastStore";
+import { dailyFeaturedGames, featuredDay } from "../../../components/games/dailyFeatured";
 
 const mockGame = BHALYAM_GAMES[0]; // "handcricket"
 const mockSecondGame = BHALYAM_GAMES[1]; // "snl"
@@ -135,6 +136,15 @@ describe("CategoryFilter — Favourites Segment Integration", () => {
 });
 
 describe("GamesSection — End-to-End Home Page Favourites", () => {
+  it("selects daily featured games from the full catalog before capping Home at six", () => {
+    render(<MemoryRouter><GamesSection onSelect={vi.fn()} /></MemoryRouter>);
+    const cards = screen.getAllByRole("article");
+    expect(cards).toHaveLength(6);
+    const featured = cards.filter((card) => card.dataset.featured === "true").map((card) => card.dataset.game);
+    expect(featured).toEqual(dailyFeaturedGames(BHALYAM_GAMES, featuredDay(Date.now())).map((game) => game.slug));
+    expect(new Set(cards.map((card) => card.dataset.game)).size).toBe(6);
+  });
+
   it("displays empty state when favourites filter is selected and no games are favorited", () => {
     const onSelect = vi.fn();
     render(

@@ -1,21 +1,44 @@
-import { useId } from "react";
-import { BHALYAM_GAME_CATALOGUE } from "@shared/catalog";
+import { useEffect, useId, useState } from "react";
 import type { BhalyamGameCard, BhalyamGameSlug } from "../bhalyam/data";
 import GameCard from "./GameCard";
+import { dailyFeaturedGames, featuredDay, FEATURED_DAY_MS, FEATURED_IST_OFFSET_MS } from "./dailyFeatured";
 
-const POPULAR_IDS = new Set(BHALYAM_GAME_CATALOGUE.filter((game) => game.isPopular).map((game) => game.id));
 const GRID = "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4";
 
 export default function GameCardGrid({
-  games, onSelect, showFeatured = true,
+  games, onSelect, showFeatured = true, limit,
 }: {
   games: readonly BhalyamGameCard[];
   onSelect: (slug: BhalyamGameSlug) => void;
   showFeatured?: boolean;
+  limit?: number;
 }) {
   const id = useId();
-  const featured = showFeatured ? games.filter((game) => POPULAR_IDS.has(game.slug)).slice(0, 2) : [];
-  const regular = games.filter((game) => !featured.includes(game));
+  // Build-time HTML and hydration must agree even when they happen on different IST dates.
+  const [day, setDay] = useState<number | null>(null);
+  useEffect(() => {
+    if (!showFeatured) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      clearTimeout(timer);
+      const now = Date.now();
+      const currentDay = featuredDay(now);
+      setDay(currentDay);
+      timer = setTimeout(refresh, (currentDay + 1) * FEATURED_DAY_MS - FEATURED_IST_OFFSET_MS - now);
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [showFeatured]);
+  const featured = showFeatured && day !== null ? dailyFeaturedGames(games, day).slice(0, limit) : [];
+  const featuredIds = new Set(featured.map((game) => game.slug));
+  const regular = games.filter((game) => !featuredIds.has(game.slug))
+    .slice(0, limit === undefined ? undefined : Math.max(0, limit - featured.length));
   if (games.length === 0) return null;
 
   return (

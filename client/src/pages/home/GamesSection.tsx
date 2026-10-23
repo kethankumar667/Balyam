@@ -69,7 +69,12 @@ export function GamesSection({
           </button>
         </div>
       ) : (
-        <GameCardGrid games={shown} onSelect={onSelect} showFeatured={!filtered} />
+        <GameCardGrid
+          games={matches}
+          limit={filter.category === "favourites" ? undefined : HOME_TILE_CAP}
+          onSelect={onSelect}
+          showFeatured={!filtered}
+        />
       )}
       <div className="mt-5 flex justify-center">
         <Link

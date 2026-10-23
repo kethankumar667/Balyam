@@ -1,20 +1,23 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import GameCard from "../GameCard";
 import GameCardGrid from "../GameCardGrid";
 import { BHALYAM_GAMES } from "../../bhalyam/data";
-import { BHALYAM_GAME_CATALOGUE } from "@shared/catalog";
+import { dailyFeaturedGames, featuredDay } from "../dailyFeatured";
 import { FavouritesManager } from "../../../services/FavouritesManager";
 
 vi.mock("../../../hooks/useAudio", () => ({ useAudio: () => ({ play: vi.fn() }) }));
 
 beforeEach(() => {
   FavouritesManager.clearFavourites();
+  vi.useRealTimers();
   document.documentElement.setAttribute("data-theme", "light");
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   FavouritesManager.clearFavourites();
 });
 
@@ -87,16 +90,53 @@ describe("hybrid game cards", () => {
 });
 
 describe("shared catalog grouping", () => {
-  it("features at most two existing popular games, with no duplicated or missing cards", () => {
+  it("keeps prerendered markup date-independent until hydration finishes", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-23T12:00:00Z"));
+    const first = renderToString(<GameCardGrid games={BHALYAM_GAMES} onSelect={vi.fn()} />);
+    vi.setSystemTime(new Date("2026-10-24T12:00:00Z"));
+    const second = renderToString(<GameCardGrid games={BHALYAM_GAMES} onSelect={vi.fn()} />);
+    expect(first).toBe(second);
+    expect(first).not.toContain('data-featured="true"');
+  });
+
+  it("features today's two playable games, with no duplicated or missing cards", () => {
     const games = BHALYAM_GAMES.slice(0, 6);
     render(<GameCardGrid games={games} onSelect={vi.fn()} />);
     const featured = screen.getByRole("region", { name: "Featured games" });
     const cards = within(featured).getAllByRole("article");
     expect(cards).toHaveLength(2);
-    const popular = new Set<string>(BHALYAM_GAME_CATALOGUE.filter((item) => item.isPopular).map((item) => item.id));
-    for (const card of cards) expect(popular.has(card.getAttribute("data-game")!)).toBe(true);
+    expect(cards.map((card) => card.getAttribute("data-game")))
+      .toEqual(dailyFeaturedGames(games, featuredDay(Date.now())).map((game) => game.slug));
     expect(screen.getAllByRole("article")).toHaveLength(games.length);
     for (const item of games) expect(screen.getAllByRole("heading", { name: item.title })).toHaveLength(1);
+  });
+
+  it("keeps the same daily picks with a six-card Home cap and the full catalog", () => {
+    const { container } = render(<>
+      <GameCardGrid games={BHALYAM_GAMES} limit={6} onSelect={vi.fn()} />
+      <GameCardGrid games={BHALYAM_GAMES} onSelect={vi.fn()} />
+    </>);
+    const regions = screen.getAllByRole("region", { name: "Featured games" });
+    const picks = regions.map((region) => within(region).getAllByRole("article").map((card) => card.dataset.game));
+    expect(picks[0]).toEqual(picks[1]);
+    expect(container.querySelectorAll("article")).toHaveLength(6 + BHALYAM_GAMES.length);
+  });
+
+  it("updates an open grid at IST midnight and after returning from a suspended tab", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-23T18:29:59Z"));
+    const { unmount } = render(<GameCardGrid games={BHALYAM_GAMES} onSelect={vi.fn()} />);
+    const picks = () => within(screen.getByRole("region", { name: "Featured games" }))
+      .getAllByRole("article").map((card) => card.dataset.game);
+    const yesterday = picks();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(picks().some((slug) => yesterday.includes(slug))).toBe(false);
+    vi.setSystemTime(new Date("2026-10-26T12:00:00Z"));
+    act(() => { fireEvent(window, new Event("focus")); });
+    expect(picks()).toEqual(dailyFeaturedGames(BHALYAM_GAMES, featuredDay(Date.now())).map((game) => game.slug));
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("does not re-promote games in a filtered view and preserves selection", () => {
