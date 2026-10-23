@@ -289,14 +289,14 @@ export class StateMachine {
 
   private renderBoot(r: RenderPipeline): void {
     r.drawText("BRICK GAME", 64, 30, r.PIXEL_COLOR, 13);
-    r.drawText("FORMULA 1", 70, 50, r.PIXEL_COLOR, 12);
+    r.drawText("ARCADE RACING", 48, 50, r.PIXEL_COLOR, 12);
     r.drawCar(6, 3, r.PIXEL_COLOR);
     r.drawText("PRESS 5 / START", 54, 160, r.PIXEL_COLOR, 10);
     r.drawText("9999 IN 1 RACER", 58, 190, r.PIXEL_COLOR, 9);
   }
 
   private renderMenu(r: RenderPipeline): void {
-    r.drawText("★ FORMULA 1 ★", 54, 18, r.PIXEL_COLOR, 13);
+    r.drawText("★ ARCADE RACING ★", 30, 18, r.PIXEL_COLOR, 13);
     r.drawLine(16, 38, 212, 38);
 
     let y = 52;

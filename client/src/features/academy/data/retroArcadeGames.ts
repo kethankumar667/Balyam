@@ -194,7 +194,7 @@ export const SNAKE_ACADEMY: GameAcademySpec = {
 
 export const TETRIS_ACADEMY: GameAcademySpec = {
   slug: "tetris",
-  title: "Brick Tetris",
+  title: "Brick Blocks",
   tagline: "9999-in-1 handheld brick legend — rotate falling blocks, clear solid lines, and survive level speed-ups.",
   genre: "retro",
   players: "Solo Play",
@@ -211,7 +211,7 @@ export const TETRIS_ACADEMY: GameAcademySpec = {
       title: "Complete Solid Horizontal Lines",
       summary: "Maneuver falling geometric blocks into complete horizontal lines without gaps.",
       keyRule: "Full lines vanish, awarding points and lowering the stack.",
-      proTip: "Clearing 4 lines at once with the long I-bar is a TETRIS — awarding the highest score multiplier!",
+      proTip: "Clearing 4 lines at once with the long I-bar awards the highest score multiplier!",
       iconName: "Grid",
     },
   ],
@@ -223,7 +223,7 @@ export const TETRIS_ACADEMY: GameAcademySpec = {
         { label: "Single", detail: "1 line: 100 points × your level.", tag: "1x" },
         { label: "Double", detail: "2 lines at once: 300 points × your level.", tag: "3x" },
         { label: "Triple", detail: "3 lines at once: 600 points × your level.", tag: "6x" },
-        { label: "Tetris (4 Lines)", detail: "1000 points × your level using the 4-block straight bar. Back-to-back Tetrises earn a further 1.5x.", tag: "10x" },
+        { label: "Four Lines", detail: "1000 points × your level using the 4-block straight bar. Back-to-back four-line clears earn a further 1.5x.", tag: "10x" },
         { label: "Level Up", detail: "Every 10 lines raises the level and the drop speed.", tag: "Speed" },
       ],
     },

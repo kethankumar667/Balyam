@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { HcSkin } from "../games/handcricket/hc-skin";
+import { HC_SKINS, type HcSkin } from "../games/handcricket/hc-skin";
 import { Hc3DStage } from "../games/handcricket/animations3d/Hc3DStage";
 import { HcCrackersFlowerBlast } from "../games/handcricket/animations3d/scorecard/HcCrackersFlowerBlast";
 import { HcRunnerCheerUp } from "../games/handcricket/animations3d/scorecard/HcRunnerCheerUp";
@@ -147,7 +147,7 @@ export default function PreviewAnimations3D() {
                   : "bg-stone-800 text-stone-300 hover:bg-stone-700"
               }`}
             >
-              {s}
+              {HC_SKINS.find((skin) => skin.id === s)?.label}
             </button>
           ))}
         </div>

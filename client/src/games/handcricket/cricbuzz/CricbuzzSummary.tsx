@@ -32,12 +32,12 @@ export function CricbuzzSummary({
       <HcScorecardFX state={state} players={players} selfId={selfId} forcedSkin="cricbuzz" />
 
       {/* Match Result Banner Card */}
-      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center shadow-md">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#6D28D9] p-6 text-center shadow-md">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F3E8FF] text-[#6D28D9] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
           <IconTrophy size={32} />
         </div>
 
-        <div className="inline-block rounded-full bg-[#E8F5E9] px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-[#00796B] dark:bg-[#10261E] dark:text-[#4DB6AC] mb-2">
+        <div className="inline-block rounded-full bg-[#F3E8FF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-[#00796B] dark:bg-[#211638] dark:text-[#4DB6AC] mb-2">
           Match Conclusion
         </div>
 
@@ -47,7 +47,7 @@ export function CricbuzzSummary({
 
         {/* Player of the Match Showcase */}
         {mom && (
-          <div className="mt-5 rounded-lg border border-[#A7F3D0] bg-[#E8F5E9] p-3.5 text-center dark:border-[#047857] dark:bg-[#10261E]">
+          <div className="mt-5 rounded-lg border border-[#EDE9FE] bg-[#F3E8FF] p-3.5 text-center dark:border-[#5B21B6] dark:bg-[#211638]">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#00796B] dark:text-[#4DB6AC] block mb-0.5">
               ⭐ PLAYER OF THE MATCH
             </span>

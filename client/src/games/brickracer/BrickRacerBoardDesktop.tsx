@@ -291,7 +291,7 @@ export default function BrickRacerBoardDesktop({ onExit }: BrickRacerBoardProps)
 
       {/* Footer */}
       <footer className="text-center text-[11px] text-zinc-500 mt-2">
-        Brick Game Formula 1 • 9999-in-1 Handheld Recreation on BHALYAM
+        Arcade Racing • 9999-in-1 Handheld Recreation on BHALYAM
       </footer>
     </div>
   );

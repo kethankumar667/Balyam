@@ -169,7 +169,7 @@ export function CricbuzzPowerplayBanner({
                 ⚡ <strong>Delivery {currentBallInOver} is Capped:</strong> Bowler restricted to <strong>1, 2, or 3</strong>.
               </span>
             ) : (
-              <span className="text-[#047857] dark:text-[#34D399] block mt-0.5">
+              <span className="text-[#5B21B6] dark:text-[#34D399] block mt-0.5">
                 🎯 <strong>Delivery {currentBallInOver} is Uncapped:</strong> Full bowling range (1–6) available.
               </span>
             )}
@@ -181,7 +181,7 @@ export function CricbuzzPowerplayBanner({
                 ⚠️ <strong>Mystery Yorker Threat:</strong> Bowler has 1 lethal Yorker! If you hit 4, 5, or 6 vs a Yorker ➔ <strong>CLEAN BOWLED</strong>! Defend with 1, 2, or 3 to dig it out safely.
               </span>
             ) : (
-              <span className="text-[#047857] dark:text-[#34D399] block">
+              <span className="text-[#5B21B6] dark:text-[#34D399] block">
                 ✓ Bowler spent their Mystery Yorker! {isRestrictedBall ? "Capped ball: your 4, 5, 6 is 100% safe!" : "Normal delivery (1-6)."}
               </span>
             )}
@@ -211,7 +211,7 @@ export function CricbuzzDeliveryReveal({
     const isWicket = reveal.wicket;
     const runs = reveal.runs;
 
-    let bannerStyle = "bg-[#E8F5E9] border-[#009270]/40 text-[#00796B] dark:bg-[#10261E] dark:text-[#00B38A]";
+    let bannerStyle = "bg-[#F3E8FF] border-[#6D28D9]/40 text-[#00796B] dark:bg-[#211638] dark:text-[#A78BFA]";
     let headline = `${runs} RUN${runs === 1 ? "" : "S"}`;
 
     if (reveal.isYorker) {
@@ -224,7 +224,7 @@ export function CricbuzzDeliveryReveal({
         bannerStyle = "bg-[#FEE2E2] border-[#EF4444]/40 text-[#DC2626] dark:bg-[#450A0A] dark:text-[#F87171]";
         headline = isBatting ? "OUT! BOWLED BY YORKER" : "⚡ WICKET! YORKER BREACHES DEFENSE";
       } else {
-        bannerStyle = "bg-[#ECFDF5] border-[#10B981]/50 text-[#047857] dark:bg-[#064E3B] dark:text-[#A7F3D0]";
+        bannerStyle = "bg-[#ECFDF5] border-[#10B981]/50 text-[#5B21B6] dark:bg-[#064E3B] dark:text-[#EDE9FE]";
         headline = `🛡️ YORKER DUG OUT! · ${runs} RUN${runs === 1 ? "" : "S"}`;
       }
     } else if (isWicket) {
@@ -270,11 +270,11 @@ export function CricbuzzDeliveryReveal({
   // Pre-delivery face-off status (when someone has locked in)
   if (myPick != null || oppLockedIn) {
     return (
-      <div className="mb-3 flex items-center justify-between rounded-lg border border-[#E3E6E8] bg-[#F5F7F8] px-3 py-2 text-[12px] dark:border-[#2C3533] dark:bg-[#151B19]">
+      <div className="mb-3 flex items-center justify-between rounded-lg border border-[#E3E6E8] bg-[#F5F7F8] px-3 py-2 text-[12px] dark:border-[#43334F] dark:bg-[#1C1527]">
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-[#222222] dark:text-white">You:</span>
           {myPick != null ? (
-            <span className="font-mono font-bold text-[#009270] dark:text-[#00B38A]">
+            <span className="font-mono font-bold text-[#6D28D9] dark:text-[#A78BFA]">
               Picked ({myPick}) ✓
             </span>
           ) : (
@@ -285,7 +285,7 @@ export function CricbuzzDeliveryReveal({
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-[#222222] dark:text-white">{oppName}:</span>
           {oppLockedIn ? (
-            <span className="font-bold text-[#009270] dark:text-[#00B38A]">Ready ✓</span>
+            <span className="font-bold text-[#6D28D9] dark:text-[#A78BFA]">Ready ✓</span>
           ) : (
             <span className="animate-pulse text-[#888888]">Thinking…</span>
           )}
@@ -421,8 +421,8 @@ export function CricbuzzInnings({
     if (!isBowling) {
       const bowlingOppName = nameOf(players, activeInnings.bowlingPlayerId);
       return (
-        <CricbuzzCard className="p-4 border-l-4 border-l-[#035A46] text-center">
-          <span className="font-bold text-[13px] uppercase tracking-wider text-[#035A46] dark:text-[#A7F3D0] block mb-1">
+        <CricbuzzCard className="p-4 border-l-4 border-l-[#3B0764] text-center">
+          <span className="font-bold text-[13px] uppercase tracking-wider text-[#3B0764] dark:text-[#EDE9FE] block mb-1">
             Over {currentOver}
           </span>
           <p className="text-[13px] text-[#555555] dark:text-[#A0A5A8]">
@@ -440,7 +440,7 @@ export function CricbuzzInnings({
     const displayBowlerIds = bowlerCandidates.length > 0 ? bowlerCandidates : bowlingXiIds;
 
     return (
-      <CricbuzzCard className="p-4 border-l-4 border-l-[#009270]">
+      <CricbuzzCard className="p-4 border-l-4 border-l-[#6D28D9]">
         <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#222222] dark:text-white mb-2">
           Select Next Bowler
         </h3>
@@ -465,8 +465,8 @@ export function CricbuzzInnings({
                 onClick={() => pickBowler(id)}
                 className={`flex flex-col items-start p-2 rounded-md border text-left transition ${
                   disabled
-                    ? "opacity-40 border-[#E3E6E8] bg-[#F5F7F8] dark:bg-[#151B19] cursor-not-allowed"
-                    : "border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] dark:bg-[#10261E] dark:text-[#00B38A] dark:hover:bg-[#009270] dark:hover:text-white"
+                    ? "opacity-40 border-[#E3E6E8] bg-[#F5F7F8] dark:bg-[#1C1527] cursor-not-allowed"
+                    : "border-[#6D28D9] bg-[#F3E8FF] hover:bg-[#6D28D9] hover:text-white text-[#00796B] dark:bg-[#211638] dark:text-[#A78BFA] dark:hover:bg-[#6D28D9] dark:hover:text-white"
                 }`}
               >
                 <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Bowler"}</span>
@@ -515,7 +515,7 @@ export function CricbuzzInnings({
                 key={id}
                 type="button"
                 onClick={() => pickNextBatter(id)}
-                className="flex flex-col items-start p-2.5 rounded-md border border-[#009270] bg-[#E8F5E9] hover:bg-[#009270] hover:text-white text-[#00796B] transition dark:bg-[#10261E] dark:text-[#00B38A]"
+                className="flex flex-col items-start p-2.5 rounded-md border border-[#6D28D9] bg-[#F3E8FF] hover:bg-[#6D28D9] hover:text-white text-[#00796B] transition dark:bg-[#211638] dark:text-[#A78BFA]"
               >
                 <span className="font-bold text-[13px] truncate w-full">{p?.name ?? "Batter"}</span>
                 <span className="text-[10px] uppercase tracking-wider opacity-80">{p?.role}</span>
@@ -568,17 +568,17 @@ export function CricbuzzInnings({
     // helper reached only via some of this component's render paths, was the
     // Rules-of-Hooks violation that crashed the board on a phase change.
     const hasDeadline = state.turnDeadline != null;
-    const timerTone = secondsLeft <= 2 ? "#CB0606" : secondsLeft <= 5 ? "#E65100" : "#009270";
+    const timerTone = secondsLeft <= 2 ? "#CB0606" : secondsLeft <= 5 ? "#E65100" : "#6D28D9";
     const timerProgressPct = Math.min(100, Math.max(0, (secondsLeft / 15) * 100));
 
     // Normal Delivery Action Pad (1 to 6)
     return (
-      <CricbuzzCard className="p-4 bg-white dark:bg-[#1B2220] border-t-2 border-t-[#009270] relative overflow-hidden">
+      <CricbuzzCard className="p-4 bg-white dark:bg-[#251C33] border-t-2 border-t-[#6D28D9] relative overflow-hidden">
         <TurnTimeWarning deadline={state.turnDeadline} active={myPick == null && (isBatting || isBowling)} chipless />
 
         {/* 15-Second Countdown Bar at the top of the card */}
         {hasDeadline && myPick == null && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-[#E3E6E8] dark:bg-[#2C3533] overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#E3E6E8] dark:bg-[#43334F] overflow-hidden">
             <div
               className="h-full transition-all duration-300 ease-linear"
               style={{
@@ -679,7 +679,7 @@ export function CricbuzzInnings({
               </span>
             )}
             {myPick != null && (
-              <span className="rounded bg-[#E8F5E9] px-2 py-0.5 text-[11px] font-bold text-[#00796B] dark:bg-[#10261E] dark:text-[#4DB6AC]">
+              <span className="rounded bg-[#F3E8FF] px-2 py-0.5 text-[11px] font-bold text-[#00796B] dark:bg-[#211638] dark:text-[#4DB6AC]">
                 Locked: {myPick}
               </span>
             )}
@@ -703,7 +703,7 @@ export function CricbuzzInnings({
                       ? "Mystery Yorker line must be 1, 2, or 3"
                       : "Bowler is restricted to 1, 2, 3 on capped powerplay deliveries"
                   }
-                  className="flex h-14 flex-col items-center justify-center rounded-lg border border-dashed border-[#E3E6E8] bg-[#F5F7F8] text-[#999999] opacity-35 cursor-not-allowed dark:bg-[#151B19] dark:border-[#2C3533]"
+                  className="flex h-14 flex-col items-center justify-center rounded-lg border border-dashed border-[#E3E6E8] bg-[#F5F7F8] text-[#999999] opacity-35 cursor-not-allowed dark:bg-[#1C1527] dark:border-[#43334F]"
                 >
                   <span className="text-[17px] line-through font-mono">{n}</span>
                   <span className="text-[8px] font-sans font-extrabold uppercase tracking-tight text-[#B45309] dark:text-[#FCD34D]">
@@ -738,10 +738,10 @@ export function CricbuzzInnings({
                 disabled={isDisabled}
                 className={`flex h-14 flex-col items-center justify-center rounded-lg border font-mono font-black transition-all active:scale-95 ${
                   isSelected
-                    ? "border-[#009270] bg-[#009270] text-white shadow-md"
+                    ? "border-[#6D28D9] bg-[#6D28D9] text-white shadow-md"
                     : myPick != null
-                    ? "border-[#E3E6E8] bg-[#F5F7F8] text-[#999999] opacity-40 cursor-not-allowed dark:bg-[#151B19] dark:border-[#2C3533]"
-                    : "border-[#D0D4D9] bg-white text-[#222222] hover:border-[#009270] hover:bg-[#E8F5E9] dark:bg-[#252F2C] dark:border-[#3A4744] dark:text-white dark:hover:bg-[#10261E]"
+                    ? "border-[#E3E6E8] bg-[#F5F7F8] text-[#999999] opacity-40 cursor-not-allowed dark:bg-[#1C1527] dark:border-[#43334F]"
+                    : "border-[#D0D4D9] bg-white text-[#222222] hover:border-[#6D28D9] hover:bg-[#F3E8FF] dark:bg-[#252F2C] dark:border-[#3A4744] dark:text-white dark:hover:bg-[#211638]"
                 }`}
               >
                 <span className="text-[20px]">{n}</span>
@@ -755,7 +755,7 @@ export function CricbuzzInnings({
 
         <div className="mt-3 flex items-center justify-between text-[12px] text-[#666666] dark:text-[#A0A5A8]">
           <div className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${oppLockedIn ? "bg-[#009270]" : "animate-ping bg-[#FFC107]"}`} />
+            <span className={`h-2 w-2 rounded-full ${oppLockedIn ? "bg-[#6D28D9]" : "animate-ping bg-[#FFC107]"}`} />
             <span>{oppLockedIn ? `${oppName} is ready` : `Waiting for ${oppName}...`}</span>
           </div>
           <span className="font-semibold">{myPick != null ? "Waiting for outcome..." : "Pick your number"}</span>
@@ -777,8 +777,8 @@ export function CricbuzzInnings({
         {/* Left 7 Columns: Live Scorecard & Action Pad */}
         <div className="min-h-0 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5 lg:col-span-7">
           {/* Cricbuzz Match Centre Top Score Strip */}
-          <CricbuzzCard className="p-4 border-t-4 border-t-[#009270]">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3E6E8] pb-3 dark:border-[#2C3533]">
+          <CricbuzzCard className="p-4 border-t-4 border-t-[#6D28D9]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3E6E8] pb-3 dark:border-[#43334F]">
               <div>
                 <span className="text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:text-[#A0A5A8] block">
                   {nameOf(players, innings.battingPlayerId)} BATTING
@@ -805,7 +805,7 @@ export function CricbuzzInnings({
                   </div>
                 ) : (
                   <div>
-                    <span className="text-[12px] font-bold uppercase tracking-wider text-[#009270] block">
+                    <span className="text-[12px] font-bold uppercase tracking-wider text-[#6D28D9] block">
                       Current Over: {currentOver}
                     </span>
                     <span className="font-semibold text-[13px] text-[#666666] dark:text-[#A0A5A8]">
@@ -841,13 +841,13 @@ export function CricbuzzInnings({
 
           {/* Batters & Bowler Duel Table */}
           <CricbuzzCard className="overflow-hidden">
-            <div className="bg-[#035A46] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-white">
+            <div className="bg-[#3B0764] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-white">
               Live Crease Duel
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#2C3533] dark:bg-[#151B19] dark:text-[#A0A5A8]">
+                  <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#43334F] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
                     <th className="py-2 px-3">Batter</th>
                     <th className="py-2 px-2 text-right">R</th>
                     <th className="py-2 px-2 text-right">B</th>
@@ -856,10 +856,10 @@ export function CricbuzzInnings({
                     <th className="py-2 px-3 text-right">SR</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+                <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
                   {/* Striker */}
-                  <tr className="bg-[#E8F5E9]/50 dark:bg-[#10261E]/50 font-semibold">
-                    <td className="py-2 px-3 text-[#00796B] dark:text-[#00B38A] flex items-center gap-1.5">
+                  <tr className="bg-[#F3E8FF]/50 dark:bg-[#211638]/50 font-semibold">
+                    <td className="py-2 px-3 text-[#00796B] dark:text-[#A78BFA] flex items-center gap-1.5">
                       <IconBat size={14} />
                       <span>{strikerName} *</span>
                     </td>
@@ -888,7 +888,7 @@ export function CricbuzzInnings({
               </table>
 
               {/* Bowler Row */}
-              <div className="border-t border-[#E3E6E8] bg-[#F9FAFB] px-3 py-2 text-[12px] flex items-center justify-between dark:border-[#2C3533] dark:bg-[#151B19]">
+              <div className="border-t border-[#E3E6E8] bg-[#F9FAFB] px-3 py-2 text-[12px] flex items-center justify-between dark:border-[#43334F] dark:bg-[#1C1527]">
                 <div className="flex items-center gap-1.5 font-bold text-[#222222] dark:text-white">
                   <IconBall size={14} />
                   <span>Bowler: {bowlerName}</span>
@@ -925,7 +925,7 @@ export function CricbuzzInnings({
         {/* Right 5 Columns: Commentary Feed & Scorecard */}
         <div className="min-h-0 space-y-4 overflow-y-auto lg:col-span-5">
           <CricbuzzCard className="p-4">
-            <div className="flex items-center justify-between border-b border-[#E3E6E8] pb-2 mb-3 dark:border-[#2C3533]">
+            <div className="flex items-center justify-between border-b border-[#E3E6E8] pb-2 mb-3 dark:border-[#43334F]">
               <h3 className="font-bold text-[14px] uppercase tracking-wider text-[#222222] dark:text-white">
                 Ball-by-Ball Commentary
               </h3>
@@ -952,7 +952,7 @@ export function CricbuzzInnings({
   return (
     <div className="space-y-3 pb-24">
       {/* Sticky Mobile Mini-Score Strip */}
-      <CricbuzzCard className="p-3 border-t-2 border-t-[#009270]">
+      <CricbuzzCard className="p-3 border-t-2 border-t-[#6D28D9]">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
@@ -968,7 +968,7 @@ export function CricbuzzInnings({
                 </span>
               )}
             </div>
-            <span className="text-[11px] font-bold uppercase text-[#009270]">
+            <span className="text-[11px] font-bold uppercase text-[#6D28D9]">
               {nameOf(players, innings.battingPlayerId)}
             </span>
           </div>
@@ -1002,7 +1002,7 @@ export function CricbuzzInnings({
           {/* Batters Mini-Table */}
           <CricbuzzCard className="p-3 space-y-2">
             <div className="flex items-center justify-between text-[13px] font-bold">
-              <span className="text-[#00796B] dark:text-[#00B38A]">{strikerName} *</span>
+              <span className="text-[#00796B] dark:text-[#A78BFA]">{strikerName} *</span>
               <span>
                 {strikerStats?.runs ?? 0} <span className="text-[11px] font-normal text-[#666666]">({strikerStats?.balls ?? 0})</span>
               </span>
@@ -1013,7 +1013,7 @@ export function CricbuzzInnings({
                 {nonStrikerStats?.runs ?? 0} <span className="text-[11px] font-normal text-[#888888]">({nonStrikerStats?.balls ?? 0})</span>
               </span>
             </div>
-            <div className="border-t border-[#E3E6E8] pt-2 text-[12px] flex items-center justify-between dark:border-[#2C3533]">
+            <div className="border-t border-[#E3E6E8] pt-2 text-[12px] flex items-center justify-between dark:border-[#43334F]">
               <span className="font-bold text-[#333333] dark:text-white">Bowler: {bowlerName}</span>
               <span className="font-mono text-[11px] text-[#666666]">
                 {oversFromBalls(bowlerStats?.balls ?? 0)}-{bowlerStats?.runs ?? 0}-{bowlerStats?.wickets ?? 0}

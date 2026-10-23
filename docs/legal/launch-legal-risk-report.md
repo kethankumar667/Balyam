@@ -8,6 +8,57 @@
 
 ## 0. Remediation status (updated 2026-10-14)
 
+### Branding follow-up (2026-10-23)
+
+This follow-up corrects earlier overstatements below: the broadcaster names
+were still visible in actual headers and a Hindi milestone caption, and the
+social preview still contained the UNO logo. The dated sections below are
+historical findings, not a current certification of the application.
+
+- Hand Cricket now displays **BHALYAM Live Score** and **Retro Broadcast**,
+  including the theme pickers, preview page, celebration caption and Hindi
+  milestone caption. The Live Score presentation uses violet, separated
+  panels and a BHALYAM masthead; the retro milestone uses a cricket-ball
+  illustration instead of its broadcaster-style swirl. Mobile headers wrap
+  their controls so the new names remain visible.
+- Both themed headers resolve team abbreviations from the fictional roster
+  metadata (for example CCO and BLZ), not the legacy `csk` / `rcb` IDs.
+- Public metadata, static HTML, social copy, structured data, academy and
+  profile/privacy labels use neutral names: **Color Cards**, **Brick Blocks**,
+  **Brick Racer**, **Block Puzzle** and **Retro Cricket**. Racing canvas/frame
+  copy says **Arcade Racing**. Color Cards server announcements say **ONE**.
+- The logo-bearing social image is removed. Its replacement is derived from
+  the existing Color Cards tile; this does not establish a licence or clear
+  the tile's visual similarity to other card games.
+- Launch destinations use `/cricket2d`, `/snake`, `/brickracer` and
+  `/brickblocks`. Old branded paths redirect in the SPA and the Render/static
+  host configuration. They are excluded from prerender discovery and the
+  sitemap. Internal game IDs, socket intents, saved theme preferences,
+  achievement records, storage keys and owned cosmetic IDs are unchanged.
+- Regression tests cover readable metadata/catalog/profile/privacy labels,
+  redirects, launch destinations, fictional team labels and actual themed
+  headers. Deploy the change before checking live HTTP redirect status and
+  refreshing social-preview/search caches.
+
+**Verification:** 171 focused client tests and 192 affected server tests pass.
+The production client build (including TypeScript and 39 prerendered routes)
+and server typecheck pass. The five legacy SPA redirects and both cricket
+shells were exercised locally. The integrated browser repeatedly reset its
+viewport, so the full mobile/tablet/desktop visual matrix is not certified.
+The local backend was not running during browser checks (socket connection
+errors were expected); no live multiplayer round or deployed HTTP redirect
+was verified.
+
+**Still not cleared:** no trademark-registry clearance search for BHALYAM or
+the replacement names, licence/provenance audit, or legal review of card art,
+falling-block gameplay presentation, handset appearance or broadcast trade
+dress was performed in this change. Renaming and restyling reduce identifiable
+branding exposure; they do not prove non-infringement. Have counsel assess
+those remaining similarities. The existing live-database cosmetic-copy
+follow-up below is also separate and remains open.
+
+### Earlier remediation history
+
 **Done in code (uncommitted until you commit):**
 - All 16 card backs carried the Mattel logo (not just `UNO9.png`). They are deleted and replaced by 16 generated, logo-free designs (`client/src/lib/unoCardBackArt.ts`, pinned by a test that forbids any text or embedded image).
 - The home-page tile (`UNOTile.*`) and two background images (`UNO Desktop BG`, `UNO Mobile BG`, unused) also carried the logo. The tile is replaced by an original `ColorCardsTile.*`; the backgrounds are deleted.

@@ -184,7 +184,7 @@ export const BOT_TAGLINES_BY_GAME: Record<GameKind, readonly string[]> = {
     "Fits every shape somewhere",
     "Saves the long piece for later",
     "Stacks neat, clears bigger",
-    "Tetris brain, Block Blast hands",
+    "Puzzle brain, block-stacking hands",
     "Never panics on a full board",
   ],
   roadrash: [

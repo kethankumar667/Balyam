@@ -289,7 +289,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   blockblast: {
     game: "blockblast",
-    displayName: "Block Blast",
+    displayName: "Block Puzzle",
     category: "retro_arcade",
     defaultModeId: "classic_endless",
     modes: [
@@ -298,7 +298,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   roadrash: {
     game: "roadrash",
-    displayName: "Road Rash 2D",
+    displayName: "Brick Racer",
     category: "retro_arcade",
     defaultModeId: "circuit_rush",
     modes: [
@@ -307,7 +307,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   brickblocks: {
     game: "brickblocks",
-    displayName: "Brick Tetris",
+    displayName: "Brick Blocks",
     category: "retro_arcade",
     defaultModeId: "classic",
     modes: [

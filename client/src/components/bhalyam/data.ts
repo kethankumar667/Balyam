@@ -482,7 +482,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     paperBorder: "rgba(244, 63, 94, 0.55)",
     btnGradient: { from: "#E11D48", to: "#9F1239", shadow: "#4C0519" },
     blurb:
-      "Authentic 9999-in-1 Brick Game Formula 1 racing. 10x20 LCD block matrix, 3-lane car dodging, nitro speed boost, and retro buzzer nostalgia.",
+      "Retro 9999-in-1 arcade racing. 10x20 LCD block matrix, 3-lane car dodging, nitro speed boost, and retro buzzer nostalgia.",
     accent: { from: "#F43F5E", to: "#9F1239" },
   },
   {

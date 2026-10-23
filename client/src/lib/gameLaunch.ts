@@ -13,11 +13,11 @@ import { BHALYAM_GAMES } from "../components/bhalyam/data";
 
 /** Games with a page of their own that runs entirely in the browser: no room, no lobby. */
 export const CLIENT_GAME_ROUTES: Readonly<Record<string, string>> = {
-  nokiacricket: "/nokiacricket",
+  nokiacricket: "/cricket2d",
   // The catalog's "Retro Snake" tile is the slug `snake`, and it opens the same page as `nokiasnake`.
   snake: "/snake",
-  nokiasnake: "/nokiasnake",
-  roadrash: "/roadrash",
+  nokiasnake: "/snake",
+  roadrash: "/brickracer",
   brickblocks: "/brickblocks",
   // `tetris` is the catalog's alias for brickblocks.
   tetris: "/brickblocks",

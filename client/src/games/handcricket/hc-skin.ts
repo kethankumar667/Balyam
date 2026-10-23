@@ -21,7 +21,7 @@ export const HC_SKINS: readonly { id: HcSkin; label: string }[] = [
   { id: "nostalgia", label: "Classic" },
   { id: "broadcast", label: "Broadcast" },
   { id: "cricbuzz", label: "Live Score" },
-  { id: "doordarshan", label: "Rerun" },
+  { id: "doordarshan", label: "Retro Broadcast" },
 ];
 
 const KEY = "mpg.hc.skin";

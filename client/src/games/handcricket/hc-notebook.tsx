@@ -1246,7 +1246,7 @@ export function HcNotebookHeader({
                   }`}
                   style={{ fontFamily: "'Kalam', cursive" }}
                 >
-                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "Score" : opt.id === "doordarshan" ? "Retro" : "Book"}
                 </span>
               )}
             />

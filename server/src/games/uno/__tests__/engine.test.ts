@@ -652,6 +652,7 @@ describe("UnoEngine", () => {
       const result = engine.applyMove({ playerId: "p1", type: "declareUno" });
       expect(result.ok).toBe(true);
       expect(engine.getPublicState().unoDeclaredBy).toEqual(["p1"]);
+      expect(engine.getPublicState().lastAction).toContain("declared ONE!");
     });
 
     it("cannot declare twice for the same hand", () => {
@@ -671,6 +672,7 @@ describe("UnoEngine", () => {
       });
       expect(result.ok).toBe(true);
       expect(stateOf(engine).hands["p2"]).toHaveLength(before + 2);
+      expect(engine.getPublicState().lastAction).toContain("without calling ONE! +2 penalty.");
     });
 
     it("catchUno: fails once the target has already declared", () => {

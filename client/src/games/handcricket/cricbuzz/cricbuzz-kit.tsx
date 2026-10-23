@@ -2,31 +2,30 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../../../lib/cn";
 
 /**
- * CRICBUZZ DESIGN SYSTEM & KIT FOR HAND CRICKET
- * Replicates the authentic Cricbuzz visual hierarchy, typography, colors,
- * scorecards, tables, and match centre components.
+ * BHALYAM Live Score primitives. Legacy identifiers are retained for saved preferences.
+ * Violet score panels and the BHALYAM masthead give this skin its own identity.
  */
 
 export const CB = {
-  // Signature Greens
-  green: "#009270",         // Cricbuzz Primary Green (Action buttons, tab underline, brand)
-  greenLight: "#00B38A",    // Lighter highlight green
-  greenDeep: "#035A46",     // Match bar subheaders, deep accents
-  greenDark: "#004838",     // Top app bar / header dark green
-  greenBg: "#E8F5E9",       // Light green alert background
-  greenBgDark: "#10261E",   // Dark green alert background
+  // Live Score violet ramp
+  green: "#6D28D9",         // Primary action accent
+  greenLight: "#A78BFA",    // Lighter highlight green
+  greenDeep: "#3B0764",     // Match bar subheaders, deep accents
+  greenDark: "#24103F",     // Top app bar / header dark green
+  greenBg: "#F3E8FF",       // Light green alert background
+  greenBgDark: "#211638",   // Dark green alert background
 
   // Surfaces & Backdrops
-  bg: "#ECEEF2",            // Cricbuzz Light mode canvas background
-  bgDark: "#0F1413",        // Cricbuzz Dark mode canvas background
+  bg: "#F5F0FA",            // Light canvas
+  bgDark: "#15101F",        // Dark canvas
   card: "#FFFFFF",          // White card surface
-  cardDark: "#1B2220",      // Dark mode card surface
+  cardDark: "#251C33",      // Dark mode card surface
   cardMuted: "#F5F7F8",     // Zebra row / sunken well surface
-  cardMutedDark: "#151B19", // Dark zebra row surface
+  cardMutedDark: "#1C1527", // Dark zebra row surface
 
   // Borders
   border: "#E3E6E8",        // Light card divider / border
-  borderDark: "#2C3533",    // Dark card divider / border
+  borderDark: "#43334F",    // Dark card divider / border
   borderStrong: "#CCD0D4",  // Crisp header border
 
   // Typography Colors
@@ -122,7 +121,7 @@ export function CricbuzzShell({
   return (
     <div
       className={cn(
-        "flex flex-col bg-[#ECEEF2] text-[#222222] antialiased selection:bg-[#009270] selection:text-white dark:bg-[#0F1413] dark:text-[#EAEAEA]",
+        "flex flex-col gap-2 p-2 sm:gap-3 sm:p-3 bg-[#F5F0FA] text-[#222222] antialiased selection:bg-[#6D28D9] selection:text-white dark:bg-[#15101F] dark:text-[#EAEAEA]",
         className
       )}
       style={{ fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", ...style }}
@@ -147,11 +146,11 @@ export function CricbuzzCard({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-lg border bg-white shadow-xs transition-colors dark:bg-[#1B2220]",
+        "rounded-lg border bg-white shadow-xs transition-colors dark:bg-[#251C33]",
         highlight
-          ? "border-[#009270] ring-1 ring-[#009270]"
-          : "border-[#E3E6E8] dark:border-[#2C3533]",
-        onClick && "cursor-pointer hover:border-[#009270] active:scale-[0.99]",
+          ? "border-[#6D28D9] ring-1 ring-[#6D28D9]"
+          : "border-[#E3E6E8] dark:border-[#43334F]",
+        onClick && "cursor-pointer hover:border-[#6D28D9] active:scale-[0.99]",
         className
       )}
     >
@@ -180,7 +179,7 @@ export function CricbuzzTabs({
   className?: string;
 }) {
   return (
-    <div className={cn("flex border-b border-[#E3E6E8] bg-white px-2 dark:border-[#2C3533] dark:bg-[#1B2220]", className)}>
+    <div className={cn("flex border-b border-[#E3E6E8] bg-white px-2 dark:border-[#43334F] dark:bg-[#251C33]", className)}>
       <div className="flex space-x-1 overflow-x-auto no-scrollbar py-1">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -192,7 +191,7 @@ export function CricbuzzTabs({
               className={cn(
                 "relative flex items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-[13px] font-bold uppercase tracking-wider transition-colors",
                 isActive
-                  ? "text-[#009270] dark:text-[#00B38A]"
+                  ? "text-[#6D28D9] dark:text-[#A78BFA]"
                   : "text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E] dark:hover:text-white"
               )}
             >
@@ -201,14 +200,14 @@ export function CricbuzzTabs({
                 <span className={cn(
                   "rounded-full px-1.5 py-0.2 text-[10px] font-extrabold",
                   isActive
-                    ? "bg-[#009270] text-white"
-                    : "bg-[#E0E0E0] text-[#444444] dark:bg-[#2C3533] dark:text-[#CCCCCC]"
+                    ? "bg-[#6D28D9] text-white"
+                    : "bg-[#E0E0E0] text-[#444444] dark:bg-[#43334F] dark:text-[#CCCCCC]"
                 )}>
                   {tab.badge}
                 </span>
               )}
               {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#009270] rounded-t-sm" />
+                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#6D28D9] rounded-t-sm" />
               )}
             </button>
           );
@@ -239,8 +238,8 @@ export function CricbuzzChip({
   size?: "sm" | "md";
 }) {
   const toneClass = {
-    neutral: "bg-[#ECEEF2] text-[#444444] dark:bg-[#242F2B] dark:text-[#D1D5DB]",
-    green: "bg-[#E8F5E9] text-[#00796B] dark:bg-[#10261E] dark:text-[#4DB6AC] border border-[#A7F3D0] dark:border-[#047857]",
+    neutral: "bg-[#F5F0FA] text-[#444444] dark:bg-[#242F2B] dark:text-[#D1D5DB]",
+    green: "bg-[#F3E8FF] text-[#00796B] dark:bg-[#211638] dark:text-[#4DB6AC] border border-[#EDE9FE] dark:border-[#5B21B6]",
     red: "bg-[#FFEBEE] text-[#C62828] dark:bg-[#2D1618] dark:text-[#EF5350] border border-[#FECACA] dark:border-[#991B1B]",
     blue: "bg-[#E3F2FD] text-[#1565C0] dark:bg-[#13283E] dark:text-[#64B5F6] border border-[#BFDBFE] dark:border-[#1E40AF]",
     amber: "bg-[#FFF8E1] text-[#B78103] dark:bg-[#2E2512] dark:text-[#FBBF24] border border-[#FDE68A] dark:border-[#B45309]",
@@ -296,7 +295,7 @@ export function CricbuzzBallChip({
 
   if (num === 0 || value === "•" || value === ".") {
     return (
-      <span className={cn("grid place-items-center rounded-full font-medium text-[#777777] bg-[#EEEEEE] border border-[#E0E0E0] dark:bg-[#2C3533] dark:border-[#3D4744] dark:text-[#A0A5A8] shrink-0", dims)}>
+      <span className={cn("grid place-items-center rounded-full font-medium text-[#777777] bg-[#EEEEEE] border border-[#E0E0E0] dark:bg-[#43334F] dark:border-[#3D4744] dark:text-[#A0A5A8] shrink-0", dims)}>
         •
       </span>
     );
@@ -321,7 +320,7 @@ export function CricbuzzTeamBadge({
   size?: "sm" | "md" | "lg";
 }) {
   const dims = size === "lg" ? "w-12 h-8 text-[14px]" : size === "md" ? "w-10 h-7 text-[12px]" : "w-8 h-5 text-[10px]";
-  const bgCol = color || "#009270";
+  const bgCol = color || "#6D28D9";
 
   return (
     <span
@@ -355,10 +354,10 @@ export function CricbuzzButton({
   const baseClass = "inline-flex items-center justify-center font-bold uppercase tracking-wider rounded-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
 
   const variantClass = {
-    primary: "bg-[#009270] hover:bg-[#007A5E] text-white shadow-xs",
-    secondary: "bg-[#035A46] hover:bg-[#004838] text-white shadow-xs",
+    primary: "bg-[#6D28D9] hover:bg-[#5B21B6] text-white shadow-xs",
+    secondary: "bg-[#3B0764] hover:bg-[#24103F] text-white shadow-xs",
     danger: "bg-[#CB0606] hover:bg-[#A80505] text-white shadow-xs",
-    outline: "border border-[#009270] text-[#009270] hover:bg-[#E8F5E9] dark:hover:bg-[#10261E] dark:text-[#00B38A] dark:border-[#00B38A]",
+    outline: "border border-[#6D28D9] text-[#6D28D9] hover:bg-[#F3E8FF] dark:hover:bg-[#211638] dark:text-[#A78BFA] dark:border-[#A78BFA]",
   }[variant];
 
   const sizeClass = {

@@ -185,11 +185,11 @@ export function CricbuzzCommentaryFeed({
   }
 
   return (
-    <div className={`space-y-3 divide-y divide-[#E3E6E8] dark:divide-[#2C3533] ${className}`}>
+    <div className={`space-y-3 divide-y divide-[#E3E6E8] dark:divide-[#43334F] ${className}`}>
       {commentary.map((entry) => (
         <div key={entry.id} className="pt-3 first:pt-0">
           {entry.overSummary && (
-            <div className="mb-3 rounded bg-[#E8F5E9] px-3 py-2 text-[12px] font-bold text-[#00796B] dark:bg-[#10261E] dark:text-[#4DB6AC] border border-[#A7F3D0] dark:border-[#047857]">
+            <div className="mb-3 rounded bg-[#F3E8FF] px-3 py-2 text-[12px] font-bold text-[#00796B] dark:bg-[#211638] dark:text-[#4DB6AC] border border-[#EDE9FE] dark:border-[#5B21B6]">
               <div className="flex items-center justify-between">
                 <span>END OF OVER {entry.overSummary.overNumber} ({entry.overSummary.runsConceded} RUNS, {entry.overSummary.wicketsLost} WKTS)</span>
                 <span>{entry.overSummary.totalRuns}/{entry.overSummary.totalWickets}</span>

@@ -238,7 +238,7 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
 
   if (cleanPath === "/brickblocks" || cleanPath === "/tetris" || cleanPath === "/bricktetris" || cleanPath === "/pentix") {
     crumbs.push({ label: "Retro Classics", path: "/games?c=retro" });
-    crumbs.push({ label: "Brick Tetris" });
+    crumbs.push({ label: "Brick Blocks" });
     return crumbs;
   }
 

@@ -23,7 +23,7 @@ const FRANCHISES: HcFranchise[] = [
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
     batter: "bg-[#E3F2FD] text-[#1565C0] border-[#90CAF9] dark:bg-[#13283E] dark:text-[#64B5F6]",
-    bowler: "bg-[#E8F5E9] text-[#2E7D32] border-[#A5D6A7] dark:bg-[#10261E] dark:text-[#81C784]",
+    bowler: "bg-[#F3E8FF] text-[#2E7D32] border-[#A5D6A7] dark:bg-[#211638] dark:text-[#81C784]",
     keeper: "bg-[#F3E5F5] text-[#7B1FA2] border-[#CE93D8] dark:bg-[#28152D] dark:text-[#BA68C8]",
     allrounder: "bg-[#FFF8E1] text-[#F57F17] border-[#FFE082] dark:bg-[#2E2512] dark:text-[#FFD54F]",
   };
@@ -70,8 +70,8 @@ export function CricbuzzTeamPicker({
   return (
     <div className="space-y-4">
       {/* Cricbuzz Subheader */}
-      <div className="flex border-b border-[#E3E6E8] bg-white px-3 dark:border-[#2C3533] dark:bg-[#1B2220] rounded-t-lg">
-        <span className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider border-b-2 border-[#009270] text-[#009270] dark:text-[#00B38A]">
+      <div className="flex border-b border-[#E3E6E8] bg-white px-3 dark:border-[#43334F] dark:bg-[#251C33] rounded-t-lg">
+        <span className="px-4 py-3 text-[13px] font-bold uppercase tracking-wider border-b-2 border-[#6D28D9] text-[#6D28D9] dark:text-[#A78BFA]">
           {isIpl ? "T20 Franchise League" : "ICC International Teams"}
         </span>
       </div>
@@ -90,7 +90,7 @@ export function CricbuzzTeamPicker({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <CricbuzzTeamBadge short={meta.short} color="#009270" size="lg" />
+                      <CricbuzzTeamBadge short={meta.short} color="#6D28D9" size="lg" />
                       <div>
                         <h3 className="font-bold text-[15px] text-[#222222] dark:text-white leading-tight">
                           {meta.name}
@@ -165,7 +165,7 @@ export function CricbuzzSquadPicker({
   return (
     <div className="space-y-4">
       {/* Header Info Banner */}
-      <CricbuzzCard className="p-4 flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-[#009270]">
+      <CricbuzzCard className="p-4 flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-[#6D28D9]">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-[18px] font-black uppercase text-[#222222] dark:text-white">
@@ -201,11 +201,11 @@ export function CricbuzzSquadPicker({
 
       {/* Playing XI Table */}
       <CricbuzzCard className="overflow-hidden">
-        <div className="bg-[#035A46] px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-white">
+        <div className="bg-[#3B0764] px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-white">
           Active Playing XI ({s.xi.length})
         </div>
 
-        <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+        <div className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
           {s.xi.map((player, idx) => {
             const isCaptain = s.captainId === player.id;
             const style = s.styleMap.get(player.name.toLowerCase());
@@ -213,7 +213,7 @@ export function CricbuzzSquadPicker({
             return (
               <div
                 key={player.id}
-                className="flex items-center justify-between p-3 hover:bg-[#F5F7F8] dark:hover:bg-[#151B19] transition"
+                className="flex items-center justify-between p-3 hover:bg-[#F5F7F8] dark:hover:bg-[#1C1527] transition"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-5 text-center font-mono text-[12px] font-bold text-[#888888]">
@@ -225,7 +225,7 @@ export function CricbuzzSquadPicker({
                         {player.name}
                       </span>
                       {isCaptain && (
-                        <span className="rounded bg-[#009270] px-1 py-0.2 text-[10px] font-extrabold text-white">
+                        <span className="rounded bg-[#6D28D9] px-1 py-0.2 text-[10px] font-extrabold text-white">
                           C
                         </span>
                       )}
@@ -245,8 +245,8 @@ export function CricbuzzSquadPicker({
                     onClick={() => s.setCaptain(player.id)}
                     className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
                       isCaptain
-                        ? "bg-[#009270] text-white"
-                        : "bg-[#ECEEF2] text-[#555555] hover:bg-[#D0D4D9] dark:bg-[#2C3533] dark:text-[#CCCCCC]"
+                        ? "bg-[#6D28D9] text-white"
+                        : "bg-[#F5F0FA] text-[#555555] hover:bg-[#D0D4D9] dark:bg-[#43334F] dark:text-[#CCCCCC]"
                     }`}
                   >
                     Captain
@@ -268,14 +268,14 @@ export function CricbuzzSquadPicker({
       {/* Bench Players Section */}
       {s.bench.length > 0 && (
         <CricbuzzCard className="overflow-hidden">
-          <div className="bg-[#F5F7F8] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:bg-[#151B19] dark:text-[#A0A5A8] border-b border-[#E3E6E8] dark:border-[#2C3533]">
+          <div className="bg-[#F5F7F8] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:bg-[#1C1527] dark:text-[#A0A5A8] border-b border-[#E3E6E8] dark:border-[#43334F]">
             Bench Reserves ({s.bench.length})
           </div>
-          <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+          <div className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
             {s.bench.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#151B19] transition"
+                className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#1C1527] transition"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-[13px] text-[#333333] dark:text-[#DDDDDD]">
@@ -286,7 +286,7 @@ export function CricbuzzSquadPicker({
                 <button
                   type="button"
                   onClick={() => s.toggle(player.id)}
-                  className="rounded bg-[#E8F5E9] px-2.5 py-1 text-[11px] font-bold text-[#00796B] hover:bg-[#009270] hover:text-white transition"
+                  className="rounded bg-[#F3E8FF] px-2.5 py-1 text-[11px] font-bold text-[#00796B] hover:bg-[#6D28D9] hover:text-white transition"
                 >
                   + Add to XI
                 </button>
@@ -300,14 +300,14 @@ export function CricbuzzSquadPicker({
           reference: Broadcast's "Legends pool" / Doordarshan's "ARCHIVE XI". */}
       {s.legendsBench.length > 0 && (
         <CricbuzzCard className="overflow-hidden">
-          <div className="bg-[#F5F7F8] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:bg-[#151B19] dark:text-[#A0A5A8] border-b border-[#E3E6E8] dark:border-[#2C3533]">
+          <div className="bg-[#F5F7F8] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[#666666] dark:bg-[#1C1527] dark:text-[#A0A5A8] border-b border-[#E3E6E8] dark:border-[#43334F]">
             ★ Legends ({s.legendsBench.length})
           </div>
-          <div className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+          <div className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
             {s.legendsBench.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#151B19] transition"
+                className="flex items-center justify-between p-3 opacity-75 hover:opacity-100 hover:bg-[#F5F7F8] dark:hover:bg-[#1C1527] transition"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-[13px] text-[#333333] dark:text-[#DDDDDD]">
@@ -318,7 +318,7 @@ export function CricbuzzSquadPicker({
                 <button
                   type="button"
                   onClick={() => s.toggle(player.id)}
-                  className="rounded bg-[#E8F5E9] px-2.5 py-1 text-[11px] font-bold text-[#00796B] hover:bg-[#009270] hover:text-white transition"
+                  className="rounded bg-[#F3E8FF] px-2.5 py-1 text-[11px] font-bold text-[#00796B] hover:bg-[#6D28D9] hover:text-white transition"
                 >
                   + Add to XI
                 </button>
@@ -345,8 +345,8 @@ export function CricbuzzWaiting({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pt-4">
-      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#6D28D9] p-6 text-center">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F3E8FF] text-[#6D28D9] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
           <IconBat size={24} />
         </div>
 
@@ -357,8 +357,8 @@ export function CricbuzzWaiting({
           Waiting for {oppName} to finalize their Playing XI before the toss.
         </p>
 
-        <div className="mt-5 flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-3 text-[12px] font-semibold text-[#555555] dark:bg-[#151B19] dark:text-[#A0A5A8]">
-          <span className="h-2 w-2 animate-ping rounded-full bg-[#009270]" />
+        <div className="mt-5 flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-3 text-[12px] font-semibold text-[#555555] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
+          <span className="h-2 w-2 animate-ping rounded-full bg-[#6D28D9]" />
           <span>Match referee setting up the toss...</span>
         </div>
       </CricbuzzCard>

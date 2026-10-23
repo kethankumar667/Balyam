@@ -39,13 +39,13 @@ export function CricbuzzToss({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pt-4">
-      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center">
+      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#6D28D9] p-6 text-center">
         {/* Step Indicator */}
-        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#E8F5E9] dark:bg-[#10261E] px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-[#00796B] dark:text-[#00B38A] border border-[#009270]/30">
+        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#F3E8FF] dark:bg-[#211638] px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-[#00796B] dark:text-[#A78BFA] border border-[#6D28D9]/30">
           <span>Step 2 of 2 · Number Selection</span>
         </div>
 
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F3E8FF] text-[#6D28D9] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
           <IconCoin size={32} />
         </div>
 
@@ -57,13 +57,13 @@ export function CricbuzzToss({
         </p>
 
         {/* Clear Winning Stakes Box */}
-        <div className="mt-3 rounded-xl bg-[#E8F5E9]/60 dark:bg-[#10261E]/80 p-3 border border-[#009270]/30 text-center space-y-1">
-          <div className="text-[12px] font-bold text-[#00796B] dark:text-[#00B38A]">
+        <div className="mt-3 rounded-xl bg-[#F3E8FF]/60 dark:bg-[#211638]/80 p-3 border border-[#6D28D9]/30 text-center space-y-1">
+          <div className="text-[12px] font-bold text-[#00796B] dark:text-[#A78BFA]">
             {callerId === selfId ? "You called" : `${callerName} called`}{" "}
             <span className="uppercase font-black underline text-[#004D40] dark:text-white">{callerCall}</span>
           </div>
           <div className="text-[12px] font-medium text-[#333333] dark:text-[#E0E0E0]">
-            🎯 <strong className="text-[#00796B] dark:text-[#00B38A]">You WIN</strong> if Total Sum (You + {oppName}) is{" "}
+            🎯 <strong className="text-[#00796B] dark:text-[#A78BFA]">You WIN</strong> if Total Sum (You + {oppName}) is{" "}
             <strong className="uppercase font-black text-[#004D40] dark:text-white">{myCall}</strong>{" "}
             <span className="text-[11px] opacity-75 font-mono">
               ({myCall === "even" ? "2, 4, 6, 8, 10, 12" : "1, 3, 5, 7, 9, 11"})
@@ -75,7 +75,7 @@ export function CricbuzzToss({
         <div className="my-6 flex items-center justify-center gap-6">
           <div className="flex flex-col items-center gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#666666] dark:text-[#A0A5A8]">YOU</span>
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-[#009270] bg-[#E8F5E9] text-[26px] font-black text-[#00796B] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-[#6D28D9] bg-[#F3E8FF] text-[26px] font-black text-[#00796B] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
               {myPick ?? "?"}
             </div>
           </div>
@@ -87,7 +87,7 @@ export function CricbuzzToss({
 
           <div className="flex flex-col items-center gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#666666] dark:text-[#A0A5A8] max-w-[90px] truncate">{oppName}</span>
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-[#035A46] bg-[#ECEEF2] text-[26px] font-black text-[#035A46] dark:bg-[#151B19] dark:text-[#A7F3D0] shadow-xs">
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-[#3B0764] bg-[#F5F0FA] text-[26px] font-black text-[#3B0764] dark:bg-[#1C1527] dark:text-[#EDE9FE] shadow-xs">
               {oppLockedIn ? "✓" : "?"}
             </div>
           </div>
@@ -104,7 +104,7 @@ export function CricbuzzToss({
                   key={n}
                   type="button"
                   onClick={() => pick(n)}
-                  className="h-12 w-12 rounded-lg border border-[#E3E6E8] bg-white font-mono text-[18px] font-black text-[#222222] shadow-xs hover:border-[#009270] hover:bg-[#E8F5E9] active:scale-95 transition dark:bg-[#1B2220] dark:border-[#2C3533] dark:text-white dark:hover:bg-[#10261E]"
+                  className="h-12 w-12 rounded-lg border border-[#E3E6E8] bg-white font-mono text-[18px] font-black text-[#222222] shadow-xs hover:border-[#6D28D9] hover:bg-[#F3E8FF] active:scale-95 transition dark:bg-[#251C33] dark:border-[#43334F] dark:text-white dark:hover:bg-[#211638]"
                 >
                   {n}
                 </button>
@@ -112,8 +112,8 @@ export function CricbuzzToss({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-4 text-[13px] font-semibold text-[#555555] dark:bg-[#151B19] dark:text-[#A0A5A8]">
-            <span className="h-2 w-2 animate-ping rounded-full bg-[#009270]" />
+          <div className="flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-4 text-[13px] font-semibold text-[#555555] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
+            <span className="h-2 w-2 animate-ping rounded-full bg-[#6D28D9]" />
             <span>{oppLockedIn ? "Tallying the toss outcome..." : `Waiting for ${oppName} to pick...`}</span>
           </div>
         )}
@@ -155,17 +155,17 @@ export function CricbuzzTossChoice({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pt-4">
-      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#6D28D9] p-6 text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F3E8FF] text-[#6D28D9] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
           <IconBat size={32} />
         </div>
 
         {/* Outcome Breakdown Pill */}
         {sum != null && (
-          <div className="mb-3 rounded-xl bg-[#F5F7F8] dark:bg-[#151B19] p-3 text-center border border-[#E3E6E8] dark:border-[#2C3533] space-y-1">
+          <div className="mb-3 rounded-xl bg-[#F5F7F8] dark:bg-[#1C1527] p-3 text-center border border-[#E3E6E8] dark:border-[#43334F] space-y-1">
             <div className="text-[12px] font-bold text-[#444444] dark:text-[#D0D5D8]">
               {nameOf(players, p1)} ({pick1 ?? "?"}) + {nameOf(players, p2)} ({pick2 ?? "?"}) ={" "}
-              <span className="font-extrabold text-[#009270]">{sum} ({parity})</span>
+              <span className="font-extrabold text-[#6D28D9]">{sum} ({parity})</span>
             </div>
             <div className="text-[11px] text-[#666666] dark:text-[#A0A5A8]">
               {callerName} called <strong className="uppercase">{callerCall}</strong> ·{" "}
@@ -188,7 +188,7 @@ export function CricbuzzTossChoice({
             <button
               type="button"
               onClick={() => choose("bat")}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-[#009270] bg-[#E8F5E9] p-5 font-bold text-[#00796B] hover:bg-[#009270] hover:text-white transition-all active:scale-[0.98] dark:bg-[#10261E] dark:text-[#4DB6AC] dark:hover:bg-[#009270] dark:hover:text-white"
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-[#6D28D9] bg-[#F3E8FF] p-5 font-bold text-[#00796B] hover:bg-[#6D28D9] hover:text-white transition-all active:scale-[0.98] dark:bg-[#211638] dark:text-[#4DB6AC] dark:hover:bg-[#6D28D9] dark:hover:text-white"
             >
               <IconBat size={28} />
               <span className="text-[14px] uppercase tracking-wider">Opt To Bat</span>
@@ -197,15 +197,15 @@ export function CricbuzzTossChoice({
             <button
               type="button"
               onClick={() => choose("bowl")}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-[#035A46] bg-[#ECEEF2] p-5 font-bold text-[#035A46] hover:bg-[#035A46] hover:text-white transition-all active:scale-[0.98] dark:bg-[#1B2220] dark:text-[#A7F3D0] dark:hover:bg-[#035A46] dark:hover:text-white"
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-[#3B0764] bg-[#F5F0FA] p-5 font-bold text-[#3B0764] hover:bg-[#3B0764] hover:text-white transition-all active:scale-[0.98] dark:bg-[#251C33] dark:text-[#EDE9FE] dark:hover:bg-[#3B0764] dark:hover:text-white"
             >
               <IconBall size={28} />
               <span className="text-[14px] uppercase tracking-wider">Opt To Bowl</span>
             </button>
           </div>
         ) : (
-          <div className="mt-6 flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-4 text-[13px] font-semibold text-[#555555] dark:bg-[#151B19] dark:text-[#A0A5A8]">
-            <span className="h-2 w-2 animate-ping rounded-full bg-[#009270]" />
+          <div className="mt-6 flex items-center justify-center gap-2 rounded-md bg-[#F5F7F8] p-4 text-[13px] font-semibold text-[#555555] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
+            <span className="h-2 w-2 animate-ping rounded-full bg-[#6D28D9]" />
             <span>{winnerName} is deciding the match strategy...</span>
           </div>
         )}

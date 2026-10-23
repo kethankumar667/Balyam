@@ -17,7 +17,7 @@ export function BrickConsoleFrame({ children }: BrickConsoleFrameProps) {
 
       {/* Brand Subtitle */}
       <div className="text-[10px] font-black tracking-[0.2em] text-[#7A5504] uppercase mb-3">
-        FORMULA 1 • BHALYAM
+        ARCADE RACING • BHALYAM
       </div>
 
       {/* Screen & Keypad Container */}

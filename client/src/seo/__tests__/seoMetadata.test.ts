@@ -14,11 +14,10 @@ describe("SEO Metadata & Route Coverage Registry", () => {
     "/leaderboard",
     "/tournaments",
     "/social",
-    "/nokiacricket",
+    "/cricket2d",
     "/snake",
     "/brickracer",
     "/brickblocks",
-    "/tetris",
     "/breakout",
   ];
 

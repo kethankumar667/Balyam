@@ -170,8 +170,9 @@ export const STRUCTURED_DATA_GAMES = [
     genre: ["Classroom", "Quick Game", "Puzzle"],
   },
   {
-    slug: "nokiacricket",
-    name: "Pocket Cricket 2D",
+    slug: "cricket2d",
+    gameItemUrl: `${BASE_URL}/cricket2d`,
+    name: "Retro Cricket",
     description: "Hit sixes and time your batting in authentic 90s monochrome LCD mobile cricket.",
     image: `${BASE_URL}/og/nokiacricket.jpg`,
     minPlayers: 1,
@@ -201,15 +202,6 @@ export const STRUCTURED_DATA_GAMES = [
     name: "Brick Blocks 9999-in-1",
     description: "Handheld brick console falling blocks puzzle. Rotate shapes and clear horizontal lines.",
     image: `${BASE_URL}/og/brickblocks.jpg`,
-    minPlayers: 1,
-    maxPlayers: 1,
-    genre: ["Retro Game", "Puzzle", "Arcade"],
-  },
-  {
-    slug: "tetris",
-    name: "Classic Tetris 90s",
-    description: "Original falling block puzzle with authentic 90s LCD pixel grid and escalating speeds.",
-    image: `${BASE_URL}/og/tetris.jpg`,
     minPlayers: 1,
     maxPlayers: 1,
     genre: ["Retro Game", "Puzzle", "Arcade"],
@@ -422,7 +414,7 @@ export function getStructuredDataForRoute(pathname: string, customParams?: Recor
       ];
 
     default: {
-      // Check if it's a known standalone game path (e.g. /nokiacricket, /snake, /tetris)
+      // Check if it's a known standalone game path.
       const cleanSlug = path.replace(/^\//, "");
       const matchedGame = STRUCTURED_DATA_GAMES.find((g) => g.slug === cleanSlug);
       if (matchedGame) {

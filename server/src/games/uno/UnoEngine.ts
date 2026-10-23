@@ -162,7 +162,7 @@ export class UnoEngine implements GameEngine {
   init(players: Player[]): void {
     if (players.length < this.minPlayers || players.length > this.maxPlayers) {
       throw new Error(
-        `UNO requires ${this.minPlayers}-${this.maxPlayers} players`
+        `Color Cards requires ${this.minPlayers}-${this.maxPlayers} players`
       );
     }
 
@@ -367,7 +367,7 @@ export class UnoEngine implements GameEngine {
       return { ok: false, error: "Nothing to declare" };
     }
     this.state.unoDeclaredBy.add(playerId);
-    this.state.lastAction = `${this.nameOf(playerId)} declared UNO!`;
+    this.state.lastAction = `${this.nameOf(playerId)} declared ONE!`;
     return { ok: true };
   }
 
@@ -385,7 +385,7 @@ export class UnoEngine implements GameEngine {
     this.state.hands[targetId]!.push(...drawn);
     this.syncUnoDeclaration(targetId);
     this.state.lastHit = { targetIds: [targetId], kind: "catch", count: 2 };
-    this.state.lastAction = `${this.nameOf(playerId)} caught ${this.nameOf(targetId)} without UNO! +2 penalty.`;
+    this.state.lastAction = `${this.nameOf(playerId)} caught ${this.nameOf(targetId)} without calling ONE! +2 penalty.`;
     return { ok: true };
   }
 

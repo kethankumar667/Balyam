@@ -51,7 +51,7 @@ export class RenderPipeline {
   }
 
   public drawCar(centerCol: number, topRow: number, color: string = this.PIXEL_COLOR): void {
-    // Formula 1 7-block shape
+    // Seven-block racing car
     // Row 0: Nose (center)
     this.drawBlock(centerCol, topRow, color);
     // Row 1: Front Axle (left wheel, center, right wheel)

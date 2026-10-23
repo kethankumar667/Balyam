@@ -236,7 +236,7 @@ export function HcProHeader({
               >
                 <span className="hidden sm:inline">{opt.label}</span>
                 <span className="sm:hidden">
-                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "Score" : opt.id === "doordarshan" ? "Retro" : "Book"}
                 </span>
               </span>
             )}

@@ -26,17 +26,12 @@ Allow: /reset-password
 Allow: /verify-email
 
 # Nostalgic & Retro arcade games
-Allow: /nokiacricket
 Allow: /cricket2d
 Allow: /snake
-Allow: /nokiasnake
 Allow: /snake2d
 Allow: /brickracer
-Allow: /roadrash
 Allow: /racer
 Allow: /brickblocks
-Allow: /tetris
-Allow: /bricktetris
 Allow: /pentix
 Allow: /breakout
 Allow: /brickbreakout

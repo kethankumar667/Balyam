@@ -263,7 +263,7 @@ export function DoordarshanCelebrationOverlay({ data }: { data: HcCelebrationDat
         <div className="mt-3 flex items-center justify-center gap-2" aria-hidden>
           <span style={{ width: 28, height: 2, background: DD.amber, opacity: 0.6 }} />
           <span className="font-crt text-[13px] uppercase" style={{ color: DD.inkLo, letterSpacing: "0.2em" }}>
-            DD Sports
+            Retro Broadcast
           </span>
           <span style={{ width: 28, height: 2, background: DD.amber, opacity: 0.6 }} />
         </div>

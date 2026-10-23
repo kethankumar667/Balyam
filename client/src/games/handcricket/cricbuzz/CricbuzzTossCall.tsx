@@ -32,13 +32,13 @@ export function CricbuzzTossCall({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pt-4">
-      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#009270] p-6 text-center">
+      <CricbuzzCard className="overflow-hidden border-t-4 border-t-[#6D28D9] p-6 text-center">
         {/* Step Indicator */}
-        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#E8F5E9] dark:bg-[#10261E] px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-[#00796B] dark:text-[#00B38A] border border-[#009270]/30">
+        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#F3E8FF] dark:bg-[#211638] px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-[#00796B] dark:text-[#A78BFA] border border-[#6D28D9]/30">
           <span>Step 1 of 2 · The Call</span>
         </div>
 
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#E8F5E9] text-[#009270] dark:bg-[#10261E] dark:text-[#00B38A] shadow-xs">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F3E8FF] text-[#6D28D9] dark:bg-[#211638] dark:text-[#A78BFA] shadow-xs">
           <IconCoin size={32} />
         </div>
 
@@ -52,21 +52,21 @@ export function CricbuzzTossCall({
         </p>
 
         {/* 3-Step Mini Visual Guide */}
-        <div className="mt-4 rounded-xl bg-[#F5F7F8] dark:bg-[#151B19] p-3 text-left border border-[#E3E6E8] dark:border-[#2C3533]">
+        <div className="mt-4 rounded-xl bg-[#F5F7F8] dark:bg-[#1C1527] p-3 text-left border border-[#E3E6E8] dark:border-[#43334F]">
           <div className="text-[11px] font-bold uppercase tracking-wider text-[#666666] dark:text-[#A0A5A8] mb-2 text-center">
             How The Gully Toss Works:
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#2C3533]">
-              <span className="block font-extrabold text-[#009270]">1. Pick Call</span>
+            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#43334F]">
+              <span className="block font-extrabold text-[#6D28D9]">1. Pick Call</span>
               <span className="text-[#555555] dark:text-[#A0A5A8] text-[10px]">ODD or EVEN</span>
             </div>
-            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#2C3533]">
-              <span className="block font-extrabold text-[#009270]">2. Show Fingers</span>
+            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#43334F]">
+              <span className="block font-extrabold text-[#6D28D9]">2. Show Fingers</span>
               <span className="text-[#555555] dark:text-[#A0A5A8] text-[10px]">Both pick 1 to 6</span>
             </div>
-            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#2C3533]">
-              <span className="block font-extrabold text-[#009270]">3. Sum Total</span>
+            <div className="rounded-lg bg-white dark:bg-[#1E2523] p-2 border border-[#E3E6E8] dark:border-[#43334F]">
+              <span className="block font-extrabold text-[#6D28D9]">3. Sum Total</span>
               <span className="text-[#555555] dark:text-[#A0A5A8] text-[10px]">Sum matches call = Win</span>
             </div>
           </div>
@@ -88,8 +88,8 @@ export function CricbuzzTossCall({
                 onClick={() => setSelectedCall("odd")}
                 className={`flex flex-col items-center justify-center rounded-xl p-5 border-2 transition active:scale-95 ${
                   selectedCall === "odd"
-                    ? "border-[#009270] bg-[#E8F5E9] dark:bg-[#10261E] text-[#00796B] dark:text-[#00B38A] shadow-md ring-2 ring-[#009270]/40"
-                    : "border-[#E3E6E8] bg-white hover:border-[#009270]/60 dark:bg-[#1B2220] dark:border-[#2C3533] text-[#222222] dark:text-white"
+                    ? "border-[#6D28D9] bg-[#F3E8FF] dark:bg-[#211638] text-[#00796B] dark:text-[#A78BFA] shadow-md ring-2 ring-[#6D28D9]/40"
+                    : "border-[#E3E6E8] bg-white hover:border-[#6D28D9]/60 dark:bg-[#251C33] dark:border-[#43334F] text-[#222222] dark:text-white"
                 }`}
               >
                 <span className="text-[26px] font-black tracking-widest">ODD</span>
@@ -105,8 +105,8 @@ export function CricbuzzTossCall({
                 onClick={() => setSelectedCall("even")}
                 className={`flex flex-col items-center justify-center rounded-xl p-5 border-2 transition active:scale-95 ${
                   selectedCall === "even"
-                    ? "border-[#009270] bg-[#E8F5E9] dark:bg-[#10261E] text-[#00796B] dark:text-[#00B38A] shadow-md ring-2 ring-[#009270]/40"
-                    : "border-[#E3E6E8] bg-white hover:border-[#009270]/60 dark:bg-[#1B2220] dark:border-[#2C3533] text-[#222222] dark:text-white"
+                    ? "border-[#6D28D9] bg-[#F3E8FF] dark:bg-[#211638] text-[#00796B] dark:text-[#A78BFA] shadow-md ring-2 ring-[#6D28D9]/40"
+                    : "border-[#E3E6E8] bg-white hover:border-[#6D28D9]/60 dark:bg-[#251C33] dark:border-[#43334F] text-[#222222] dark:text-white"
                 }`}
               >
                 <span className="text-[26px] font-black tracking-widest">EVEN</span>
@@ -131,8 +131,8 @@ export function CricbuzzTossCall({
           </div>
         ) : (
           <div className="my-5 space-y-4">
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-[#F5F7F8] p-6 text-center dark:bg-[#151B19] border border-[#E3E6E8] dark:border-[#2C3533]">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#009270] border-t-transparent" />
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-[#F5F7F8] p-6 text-center dark:bg-[#1C1527] border border-[#E3E6E8] dark:border-[#43334F]">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#6D28D9] border-t-transparent" />
               <div>
                 <p className="text-[14px] font-bold text-[#222222] dark:text-white">
                   Waiting for {callerName} to make the call…

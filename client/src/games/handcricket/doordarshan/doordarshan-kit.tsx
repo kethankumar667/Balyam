@@ -3,10 +3,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { findAvatar } from "../../../lib/avatars";
 
 /**
- * DOORDARSHAN KIT — the shared visual language for Hand Cricket's
- * "Doordarshan Rerun" theme.
+ * Retro Broadcast primitives. Legacy identifiers preserve saved preferences.
  *
- * The reference is a worn recording of a 1983-World-Cup-era analog telecast:
+ * An original clubhouse television scene:
  * sepia/amber grade, CRT scanlines, a boxy character-generator scorebug, a
  * rounded tube-TV bezel around the whole board. A cool, quiet ARTIFACT — a
  * recording, not a live event — which is what separates it from

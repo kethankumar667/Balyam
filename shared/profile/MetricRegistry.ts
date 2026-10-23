@@ -658,7 +658,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
     game: "brickblocks",
     primaryRankMetric: {
       key: "bestScore",
-      label: "Highest Tetris Score",
+      label: "Highest Brick Blocks Score",
       shortLabel: "Score",
       description: "Highest line clear and survival score",
       format: "raw_number",
@@ -679,8 +679,8 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
       },
       {
         key: "tetrisClears",
-        label: "Tetris 4-Line Clears",
-        shortLabel: "Tetris 4x",
+        label: "Four-Line Clears",
+        shortLabel: "Four Lines",
         description: "Pure 4-line simultaneous clears",
         format: "raw_number",
         direction: "HIGHER_IS_BETTER",
@@ -693,7 +693,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
     game: "tetris",
     primaryRankMetric: {
       key: "bestScore",
-      label: "Highest Tetris Score",
+      label: "Highest Brick Blocks Score",
       shortLabel: "Score",
       description: "Highest line clear and survival score",
       format: "raw_number",
@@ -979,7 +979,7 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
     game: "blockblast",
     primaryRankMetric: {
       key: "bestScore",
-      label: "Block Blast High Score",
+      label: "Block Puzzle High Score",
       shortLabel: "Score",
       description: "Highest puzzle score clearing rows and columns",
       format: "raw_number",
@@ -1655,5 +1655,4 @@ export function getSignatureFeatsForGame(
     },
   ];
 }
-
 

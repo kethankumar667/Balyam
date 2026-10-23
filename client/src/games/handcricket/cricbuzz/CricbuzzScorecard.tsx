@@ -44,7 +44,7 @@ export function CricbuzzInningsScorecardTable({
     <div className="space-y-4">
       {/* Batting Scorecard Table */}
       <CricbuzzCard className="overflow-hidden">
-        <div className="flex items-center justify-between bg-[#004838] px-4 py-2.5 text-white">
+        <div className="flex items-center justify-between bg-[#24103F] px-4 py-2.5 text-white">
           <div className="flex items-center gap-2">
             <IconBat size={16} />
             <span className="font-bold text-[13px] uppercase tracking-wider">{teamName} Batting</span>
@@ -57,7 +57,7 @@ export function CricbuzzInningsScorecardTable({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#2C3533] dark:bg-[#151B19] dark:text-[#A0A5A8]">
+              <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#43334F] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
                 <th className="py-2.5 px-3">Batter</th>
                 <th className="py-2.5 px-3">Dismissal</th>
                 <th className="py-2.5 px-2 text-right">R</th>
@@ -67,7 +67,7 @@ export function CricbuzzInningsScorecardTable({
                 <th className="py-2.5 px-3 text-right">SR</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+            <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
               {battingXiIds.map((playerId, idx) => {
                 const profile = battingProfiles.get(playerId);
                 const stats = innings.batterStats[playerId];
@@ -89,8 +89,8 @@ export function CricbuzzInningsScorecardTable({
                 return (
                   <tr
                     key={playerId}
-                    className={`hover:bg-[#F9FAFB] dark:hover:bg-[#151B19] ${
-                      isStriker || isNonStriker ? "bg-[#E8F5E9]/40 dark:bg-[#10261E]/40 font-semibold" : ""
+                    className={`hover:bg-[#F9FAFB] dark:hover:bg-[#1C1527] ${
+                      isStriker || isNonStriker ? "bg-[#F3E8FF]/40 dark:bg-[#211638]/40 font-semibold" : ""
                     }`}
                   >
                     <td className="py-2.5 px-3">
@@ -126,7 +126,7 @@ export function CricbuzzInningsScorecardTable({
 
         {/* Fall of Wickets */}
         {fow.length > 0 && (
-          <div className="border-t border-[#E3E6E8] bg-[#F9FAFB] p-3 text-[12px] dark:border-[#2C3533] dark:bg-[#151B19]">
+          <div className="border-t border-[#E3E6E8] bg-[#F9FAFB] p-3 text-[12px] dark:border-[#43334F] dark:bg-[#1C1527]">
             <span className="font-bold text-[#666666] dark:text-[#A0A5A8] uppercase tracking-wider block mb-1">
               Fall of Wickets:
             </span>
@@ -134,7 +134,7 @@ export function CricbuzzInningsScorecardTable({
               {fow.map((w) => {
                 const bName = battingProfiles.get(w.batterId)?.name ?? "Batter";
                 return (
-                  <span key={w.wicket} className="rounded bg-white px-2 py-0.5 border border-[#E3E6E8] dark:bg-[#1B2220] dark:border-[#2C3533]">
+                  <span key={w.wicket} className="rounded bg-white px-2 py-0.5 border border-[#E3E6E8] dark:bg-[#251C33] dark:border-[#43334F]">
                     <strong className="text-[#CB0606]">{w.wicket}-{w.score}</strong> ({bName}, {w.over} ov)
                   </span>
                 );
@@ -146,7 +146,7 @@ export function CricbuzzInningsScorecardTable({
 
       {/* Bowling Scorecard Table */}
       <CricbuzzCard className="overflow-hidden">
-        <div className="flex items-center justify-between bg-[#035A46] px-4 py-2.5 text-white">
+        <div className="flex items-center justify-between bg-[#3B0764] px-4 py-2.5 text-white">
           <div className="flex items-center gap-2">
             <IconBall size={16} />
             <span className="font-bold text-[13px] uppercase tracking-wider">Bowling Figures</span>
@@ -156,7 +156,7 @@ export function CricbuzzInningsScorecardTable({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#2C3533] dark:bg-[#151B19] dark:text-[#A0A5A8]">
+              <tr className="border-b border-[#E3E6E8] bg-[#F5F7F8] font-bold text-[#666666] dark:border-[#43334F] dark:bg-[#1C1527] dark:text-[#A0A5A8]">
                 <th className="py-2.5 px-3">Bowler</th>
                 <th className="py-2.5 px-2 text-right">O</th>
                 <th className="py-2.5 px-2 text-right">R</th>
@@ -164,7 +164,7 @@ export function CricbuzzInningsScorecardTable({
                 <th className="py-2.5 px-3 text-right">Econ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#2C3533]">
+            <tbody className="divide-y divide-[#E3E6E8] dark:divide-[#43334F]">
               {bowlingXiIds.map((playerId) => {
                 const profile = bowlingProfiles.get(playerId);
                 const stats = innings.bowlerStats[playerId];
@@ -176,8 +176,8 @@ export function CricbuzzInningsScorecardTable({
                 return (
                   <tr
                     key={playerId}
-                    className={`hover:bg-[#F9FAFB] dark:hover:bg-[#151B19] ${
-                      isCurrent ? "bg-[#E8F5E9]/40 dark:bg-[#10261E]/40 font-semibold" : ""
+                    className={`hover:bg-[#F9FAFB] dark:hover:bg-[#1C1527] ${
+                      isCurrent ? "bg-[#F3E8FF]/40 dark:bg-[#211638]/40 font-semibold" : ""
                     }`}
                   >
                     <td className="py-2.5 px-3 font-bold text-[#222222] dark:text-white">
@@ -223,14 +223,14 @@ export function CricbuzzFullScorecard({
   return (
     <div className="space-y-4">
       {/* Tab Switcher */}
-      <div className="flex border-b border-[#E3E6E8] bg-white dark:border-[#2C3533] dark:bg-[#1B2220] rounded-t-lg">
+      <div className="flex border-b border-[#E3E6E8] bg-white dark:border-[#43334F] dark:bg-[#251C33] rounded-t-lg">
         {state.innings1 && (
           <button
             type="button"
             onClick={() => setActiveTab("inn1")}
             className={`px-4 py-3 text-[13px] font-bold uppercase tracking-wider transition border-b-2 ${
               activeTab === "inn1"
-                ? "border-[#009270] text-[#009270] dark:text-[#00B38A]"
+                ? "border-[#6D28D9] text-[#6D28D9] dark:text-[#A78BFA]"
                 : "border-transparent text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E]"
             }`}
           >
@@ -244,7 +244,7 @@ export function CricbuzzFullScorecard({
             onClick={() => setActiveTab("inn2")}
             className={`px-4 py-3 text-[13px] font-bold uppercase tracking-wider transition border-b-2 ${
               activeTab === "inn2"
-                ? "border-[#009270] text-[#009270] dark:text-[#00B38A]"
+                ? "border-[#6D28D9] text-[#6D28D9] dark:text-[#A78BFA]"
                 : "border-transparent text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E]"
             }`}
           >
@@ -257,7 +257,7 @@ export function CricbuzzFullScorecard({
           onClick={() => setActiveTab("info")}
           className={`px-4 py-3 text-[13px] font-bold uppercase tracking-wider transition border-b-2 ${
             activeTab === "info"
-              ? "border-[#009270] text-[#009270] dark:text-[#00B38A]"
+              ? "border-[#6D28D9] text-[#6D28D9] dark:text-[#A78BFA]"
               : "border-transparent text-[#666666] hover:text-[#222222] dark:text-[#9E9E9E]"
           }`}
         >
@@ -285,7 +285,7 @@ export function CricbuzzFullScorecard({
 
       {activeTab === "info" && (
         <CricbuzzCard className="p-5 space-y-4">
-          <h3 className="font-bold text-[15px] uppercase tracking-wider text-[#222222] dark:text-white border-b border-[#E3E6E8] pb-2 dark:border-[#2C3533]">
+          <h3 className="font-bold text-[15px] uppercase tracking-wider text-[#222222] dark:text-white border-b border-[#E3E6E8] pb-2 dark:border-[#43334F]">
             Match Information
           </h3>
 
@@ -336,9 +336,9 @@ export function CricbuzzInningsBreak({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <CricbuzzCard className="w-full max-w-lg border-t-4 border-t-[#009270] p-6 shadow-2xl space-y-4">
+      <CricbuzzCard className="w-full max-w-lg border-t-4 border-t-[#6D28D9] p-6 shadow-2xl space-y-4">
         <div className="text-center">
-          <span className="inline-block rounded-full bg-[#E8F5E9] px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-[#00796B] dark:bg-[#10261E] dark:text-[#4DB6AC] mb-1">
+          <span className="inline-block rounded-full bg-[#F3E8FF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-[#00796B] dark:bg-[#211638] dark:text-[#4DB6AC] mb-1">
             Mid-Innings Break
           </span>
           <h2 className="text-[22px] font-black uppercase text-[#222222] dark:text-white">
@@ -349,8 +349,8 @@ export function CricbuzzInningsBreak({
           </p>
         </div>
 
-        <div className="border-t border-b border-[#E3E6E8] py-3 text-center dark:border-[#2C3533]">
-          <span className="text-[13px] font-bold text-[#009270] dark:text-[#00B38A]">
+        <div className="border-t border-b border-[#E3E6E8] py-3 text-center dark:border-[#43334F]">
+          <span className="text-[13px] font-bold text-[#6D28D9] dark:text-[#A78BFA]">
             {countdown.iAmReady && countdown.waitingOn.length > 0
               ? `Waiting for ${countdown.waitingOn.join(", ")}...`
               : `2nd Innings starts in ${countdown.secondsLeft} seconds`}

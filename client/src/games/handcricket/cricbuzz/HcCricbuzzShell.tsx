@@ -22,8 +22,7 @@ import { useSeatReactions } from "../../../components/reactions/useSeatReactions
 import { HcMatchLayout } from "../HcMatchLayout";
 
 /**
- * Hand Cricket — Cricbuzz Theme Shell.
- * Full Cricbuzz match centre experience with responsive dual layout.
+ * Hand Cricket — BHALYAM Live Score shell with responsive match panels.
  */
 export default function HcCricbuzzShell({
   state,

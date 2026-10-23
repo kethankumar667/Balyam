@@ -6,6 +6,7 @@ import { HcThemeSwitcher } from "../HcThemeSwitcher";
 import { useHcSkin } from "../hc-skin";
 import { useFullscreenToggle } from "../../../hooks/useFullscreenToggle";
 import { isFullscreenSupported } from "../../../lib/fullscreen";
+import { teamLabel } from "../hc-shared";
 
 function pad2(n: number): string {
   return n.toString().padStart(2, "0");
@@ -61,7 +62,7 @@ export function DoordarshanLeaveButton({ onLeave }: { onLeave: () => void }) {
       type="button"
       onClick={onLeave}
       aria-label="Leave room"
-      className="rounded px-2.5 py-1.5 font-crt text-[14px] uppercase transition hover:brightness-125 active:scale-95"
+      className="min-h-11 min-w-11 rounded px-2.5 py-1.5 font-crt text-[14px] uppercase transition hover:brightness-125 active:scale-95"
       style={{ letterSpacing: "0.08em", background: "rgba(192,57,43,0.14)", color: "#E08277", border: "1px solid rgba(192,57,43,0.4)" }}
     >
       Leave
@@ -74,7 +75,7 @@ function ChipBtn({ label, onClick }: { label: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded px-2.5 py-1.5 font-crt text-[14px] uppercase transition hover:brightness-125 active:scale-95"
+      className="min-h-11 min-w-11 rounded px-2.5 py-1.5 font-crt text-[14px] uppercase transition hover:brightness-125 active:scale-95"
       style={{ letterSpacing: "0.08em", background: "rgba(232,198,140,0.06)", color: DD.inkMid, border: `1px solid ${DD.line}` }}
     >
       {label}
@@ -116,10 +117,8 @@ export function DoordarshanHeader({
     });
   }
 
-  const team0Id = p0 ? state.teamSelections[p0]?.teamId : null;
-  const team1Id = p1 ? state.teamSelections[p1]?.teamId : null;
-  const short0 = team0Id ? String(team0Id).slice(0, 3).toUpperCase() : "TEAM 1";
-  const short1 = team1Id ? String(team1Id).slice(0, 3).toUpperCase() : "TEAM 2";
+  const short0 = p0 && state.teamSelections[p0]?.teamId ? teamLabel(state, p0, players).short : "TEAM 1";
+  const short1 = p1 && state.teamSelections[p1]?.teamId ? teamLabel(state, p1, players).short : "TEAM 2";
 
   const formatLabel =
     opts.format === "test"
@@ -135,8 +134,8 @@ export function DoordarshanHeader({
       style={{ borderBottom: `1px solid ${DD.lineStrong}`, background: "rgba(10,7,5,0.85)" }}
     >
       {/* Row 1: Brand + CRT tape indicator + Actions */}
-      <div className="flex items-center justify-between gap-x-3 gap-y-1.5 w-full">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-3 gap-y-1.5 w-full">
+        <div className="flex w-full lg:w-auto min-w-0 items-center gap-2">
           <div
             className="grid h-7 w-7 shrink-0 place-items-center rounded"
             style={{ background: `linear-gradient(165deg, ${DD.amber}, ${DD.amberDeep})`, color: "#1A0F04" }}
@@ -145,7 +144,7 @@ export function DoordarshanHeader({
           </div>
           <div className="min-w-0">
             <div className="font-typewriter truncate text-[12px] sm:text-[13px] leading-none" style={{ color: DD.ink }}>
-              Doordarshan Rerun
+              Retro Broadcast
             </div>
             <div className="font-crt mt-1 truncate text-[10px] sm:text-[12px] uppercase leading-none" style={{ letterSpacing: "0.1em", color: DD.inkLo }}>
               {PHASE_LABEL[state.phase]}
@@ -153,7 +152,7 @@ export function DoordarshanHeader({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex flex-wrap w-full lg:w-auto items-center justify-start lg:justify-end gap-1 sm:gap-1.5 shrink-0">
           <DdTapeCounter since={state.startedAt} />
           {live && <DdLive />}
           <HcThemeSwitcher
@@ -161,7 +160,7 @@ export function DoordarshanHeader({
             onChange={setSkin}
             renderOption={(opt, isActive) => (
               <span
-                className="inline-block rounded px-1.5 py-0.5 sm:px-2 sm:py-1 font-crt text-[10px] sm:text-[12px] uppercase transition-all"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-1.5 py-0.5 sm:px-2 sm:py-1 font-crt text-[10px] sm:text-[12px] uppercase transition-all"
                 style={{
                   letterSpacing: "0.06em",
                   background: isActive ? "rgba(217,138,61,0.18)" : "rgba(232,198,140,0.05)",
@@ -171,7 +170,7 @@ export function DoordarshanHeader({
               >
                 <span className="hidden sm:inline">{opt.label}</span>
                 <span className="sm:hidden">
-                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "CB" : opt.id === "doordarshan" ? "DD" : "Book"}
+                  {opt.id === "broadcast" ? "Live" : opt.id === "cricbuzz" ? "Score" : opt.id === "doordarshan" ? "Retro" : "Book"}
                 </span>
               </span>
             )}

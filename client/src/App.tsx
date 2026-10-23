@@ -647,17 +647,17 @@ export default function App({ components = {} }: AppProps) {
             />
 
             {/* Standalone nostalgic & retro games */}
-            <Route path="/nokiacricket" element={<NokiaCricketPage />} />
+            <Route path="/nokiacricket" element={<Navigate to="/cricket2d" replace />} />
             <Route path="/cricket2d" element={<NokiaCricketPage />} />
             <Route path="/snake" element={<NokiaSnakePage />} />
-            <Route path="/nokiasnake" element={<NokiaSnakePage />} />
+            <Route path="/nokiasnake" element={<Navigate to="/snake" replace />} />
             <Route path="/snake2d" element={<NokiaSnakePage />} />
-            <Route path="/roadrash" element={<BrickRacerPage />} />
+            <Route path="/roadrash" element={<Navigate to="/brickracer" replace />} />
             <Route path="/brickracer" element={<BrickRacerPage />} />
             <Route path="/racer" element={<BrickRacerPage />} />
             <Route path="/brickblocks" element={<BrickTetrisPage />} />
-            <Route path="/tetris" element={<BrickTetrisPage />} />
-            <Route path="/bricktetris" element={<BrickTetrisPage />} />
+            <Route path="/tetris" element={<Navigate to="/brickblocks" replace />} />
+            <Route path="/bricktetris" element={<Navigate to="/brickblocks" replace />} />
             <Route path="/pentix" element={<BrickTetrisPage />} />
             <Route path="/breakout" element={<BrickBreakoutPage />} />
             <Route path="/brickbreakout" element={<BrickBreakoutPage />} />

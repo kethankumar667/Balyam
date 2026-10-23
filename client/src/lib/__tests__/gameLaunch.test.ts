@@ -51,8 +51,8 @@ describe("every game on the leaderboard has somewhere to go", () => {
 
 describe("gameLaunch", () => {
   it("opens a client-only game on its own page", () => {
-    expect(gameLaunch("nokiacricket")).toEqual({ kind: "page", to: "/nokiacricket" });
-    expect(gameLaunch("roadrash")).toEqual({ kind: "page", to: "/roadrash" });
+    expect(gameLaunch("nokiacricket")).toEqual({ kind: "page", to: "/cricket2d" });
+    expect(gameLaunch("roadrash")).toEqual({ kind: "page", to: "/brickracer" });
     expect(gameLaunch("brickblocks")).toEqual({ kind: "page", to: "/brickblocks" });
     expect(gameLaunch("breakout")).toEqual({ kind: "page", to: "/breakout" });
     expect(gameLaunch("2048")).toEqual({ kind: "page", to: "/2048" });
@@ -77,7 +77,7 @@ describe("gameLaunch", () => {
 
 describe("launchLinkProps: the props for a <Link> that launches a game", () => {
   it("is a plain path for a game with its own page", () => {
-    expect(launchLinkProps("nokiasnake")).toEqual({ to: "/nokiasnake" });
+    expect(launchLinkProps("nokiasnake")).toEqual({ to: "/snake" });
   });
 
   it("hands a room game to the home layout, which opens its create sheet (the `state.newRoom` hand-off)", () => {

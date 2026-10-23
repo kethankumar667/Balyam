@@ -64,7 +64,7 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({ state }) => {
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="Tetris 10 by 20 matrix board"
+        aria-label="Brick Blocks 10 by 20 matrix board"
         className="w-full h-full block"
         style={{ aspectRatio: "10 / 20" }}
       />

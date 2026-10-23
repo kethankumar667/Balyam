@@ -84,7 +84,7 @@ export function buildGameApplicationSchema(config: GameSchemaConfig) {
  * Builds an ItemList schema for the games catalog page (/games).
  */
 export function buildGamesCatalogItemListSchema(
-  games: Array<{ name: string; slug: string; description: string; image?: string }>,
+  games: Array<{ name: string; slug: string; description: string; image?: string; gameItemUrl?: string }>,
 ) {
   return {
     "@context": "https://schema.org",
@@ -96,7 +96,7 @@ export function buildGamesCatalogItemListSchema(
       "@type": "ListItem",
       position: index + 1,
       name: game.name,
-      url: `${BASE_URL}/games?game=${game.slug}`,
+      url: game.gameItemUrl ?? `${BASE_URL}/games?game=${game.slug}`,
       description: game.description,
       ...(game.image ? { image: game.image } : {}),
     })),

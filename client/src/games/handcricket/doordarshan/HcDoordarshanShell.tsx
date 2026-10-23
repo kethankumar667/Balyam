@@ -19,7 +19,7 @@ import { useSeatReactions } from "../../../components/reactions/useSeatReactions
 import { HcMatchLayout } from "../HcMatchLayout";
 
 /**
- * Hand Cricket — "Doordarshan Rerun" shell. Same skeleton as
+ * Hand Cricket — "Retro Broadcast" shell. Same skeleton as
  * HcBroadcastShell.tsx (one responsive shell, not a desktop/mobile split).
  */
 export default function HcDoordarshanShell({

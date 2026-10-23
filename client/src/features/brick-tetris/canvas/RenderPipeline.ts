@@ -35,7 +35,7 @@ export class RenderPipeline {
     this.canvas = canvas;
     const context = canvas.getContext("2d", { alpha: false });
     if (!context) {
-      throw new Error("Unable to obtain 2D context for Brick Tetris canvas");
+      throw new Error("Unable to obtain 2D context for Brick Blocks canvas");
     }
     this.ctx = context;
     this.ctx.imageSmoothingEnabled = false;

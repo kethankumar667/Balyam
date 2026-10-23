@@ -26,7 +26,7 @@ const HcCricbuzzShell = lazy(() => import("./cricbuzz/HcCricbuzzShell"));
 // load never flashes the wrong theme's color at the loading player.
 const SHELL_LOADING_BG: Record<HcSkin, string> = {
   broadcast: "#070F1C",
-  cricbuzz: "#004838",
+  cricbuzz: "#24103F",
   doordarshan: "#120D08",
   nostalgia: "#FBF5E0",
 };

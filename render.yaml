@@ -81,9 +81,9 @@ services:
       - type: rewrite
         source: /verify-email
         destination: /verify-email/index.html
-      - type: rewrite
+      - type: redirect
         source: /nokiacricket
-        destination: /nokiacricket/index.html
+        destination: /cricket2d
       - type: rewrite
         source: /snake
         destination: /snake/index.html
@@ -93,9 +93,9 @@ services:
       - type: rewrite
         source: /brickblocks
         destination: /brickblocks/index.html
-      - type: rewrite
+      - type: redirect
         source: /tetris
-        destination: /tetris/index.html
+        destination: /brickblocks
       - type: rewrite
         source: /breakout
         destination: /breakout/index.html
@@ -147,21 +147,21 @@ services:
       - type: rewrite
         source: /cricket2d
         destination: /cricket2d/index.html
-      - type: rewrite
+      - type: redirect
         source: /nokiasnake
-        destination: /nokiasnake/index.html
+        destination: /snake
       - type: rewrite
         source: /snake2d
         destination: /snake2d/index.html
-      - type: rewrite
+      - type: redirect
         source: /roadrash
-        destination: /roadrash/index.html
+        destination: /brickracer
       - type: rewrite
         source: /racer
         destination: /racer/index.html
-      - type: rewrite
+      - type: redirect
         source: /bricktetris
-        destination: /bricktetris/index.html
+        destination: /brickblocks
       - type: rewrite
         source: /pentix
         destination: /pentix/index.html
