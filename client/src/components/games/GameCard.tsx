@@ -68,17 +68,19 @@ export default function GameCard({
       data-tile-style={tileStyle}
       data-category={category}
       data-featured={featured}
-      className={`group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border p-2.5 text-left shadow-sm transition-[transform,box-shadow] duration-200 motion-safe:hover:-translate-y-1 sm:p-4 ${className}`}
+      className={`group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[24px] border p-3 text-left shadow-sm transition-[transform,box-shadow] duration-200 motion-safe:hover:-translate-y-1 sm:p-5 ${className}`}
       style={{
         background: classic ? (isDark ? game.paperBg : light.background) : surface.card.background,
         borderColor: classic ? (isDark ? game.paperBorder : light.border) : surface.card.border,
         boxShadow: classic ? light.shadow : surface.card.shadow,
       }}
     >
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px]" style={{ background: classic ? accent.from : surface.rail }} />
+      {tileStyle !== "hybrid" && (
+        <span data-color-rail aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px]" style={{ background: classic ? accent.from : surface.rail }} />
+      )}
       <div className="flex min-w-0 items-center justify-between gap-1">
         <span
-          className={`inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-extrabold sm:text-[11px] ${
+          className={`inline-flex min-w-0 items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide sm:text-[11px] ${
             featured ? "bg-amber-200 text-amber-950" : "bg-black/5 text-ink-hi dark:bg-white/10"
           }`}
         >
@@ -96,7 +98,7 @@ export default function GameCard({
             showToast(`${game.title} ${saved ? "added to" : "removed from"} favourites`);
           }}
           className={`flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-1 ${
-            isFav ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" : "text-ink-mid hover:bg-black/5 dark:hover:bg-white/10"
+            isFav ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" : "bg-white/60 text-ink-mid hover:bg-white/90 dark:bg-white/10 dark:hover:bg-white/20"
           }`}
         >
           <Heart className={`h-4 w-4 ${isFav ? "fill-current" : ""}`} aria-hidden="true" />
@@ -104,8 +106,8 @@ export default function GameCard({
       </div>
       <div
         data-art-stage
-        className={`relative mb-3 flex w-full items-center justify-center overflow-hidden rounded-xl border ${featured ? "h-32 sm:h-44" : "h-24 sm:h-36"}`}
-        style={{ background: surface.stage.background, borderColor: surface.stage.border }}
+        className={`relative mb-2 flex w-full items-center justify-center ${tileStyle === "hybrid" ? "" : "overflow-hidden rounded-xl border"} ${featured ? "h-32 sm:h-44" : "h-28 sm:h-40"}`}
+        style={tileStyle === "hybrid" ? undefined : { background: surface.stage.background, borderColor: surface.stage.border }}
       >
         <GameArtwork src={TILE_ART_BY_GAME[game.slug]} title={game.title} compact={compact && !featured}>
           <Glyph className="h-16 w-16 text-ink-hi" />
@@ -115,10 +117,10 @@ export default function GameCard({
         <h3 className={`font-display font-bold leading-snug tracking-tight text-ink-hi ${featured ? "text-base sm:text-2xl" : "text-sm sm:text-xl"}`}>
           {game.title}
         </h3>
-        <p className="mt-1 line-clamp-2 min-h-[2.5em] font-script text-[13px] leading-tight text-ink-mid sm:text-base">
+        <p className="mt-1 line-clamp-2 font-script text-[14px] italic leading-snug text-ink-mid sm:text-lg">
           {game.nostalgiaQuote ?? game.blurb}
         </p>
-        <div className="mb-3 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold leading-relaxed text-ink-mid sm:text-xs">
+        <div className="mb-3 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold leading-relaxed text-ink-mid sm:text-sm">
           <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
             {game.playerRange ?? "2–8 Players"}
@@ -136,7 +138,7 @@ export default function GameCard({
             play(AUDIO.UI_CLICK);
             onSelect();
           }}
-          className="mt-auto flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[11px] font-extrabold uppercase tracking-wide transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 enabled:hover:shadow-lg motion-safe:enabled:active:translate-y-px disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-mid sm:text-sm"
+          className="mt-auto flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl px-2 py-2.5 text-[11px] font-extrabold uppercase tracking-wide transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 enabled:hover:shadow-lg motion-safe:enabled:active:translate-y-px disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-mid sm:min-h-[50px] sm:text-base"
           style={locked ? undefined : classic
             ? { background: `linear-gradient(135deg, ${from}, ${to})`, color: "#FFFFFF" }
             : { background: surface.button.background, color: surface.button.color, boxShadow: surface.button.shadow }}
@@ -164,7 +166,7 @@ export function GameArtwork({
   if (!src || failed) return <>{children}</>;
   const resolved = (retry === 0 ? src : `${src}?retry=${retry}`).replace(/\s/g, encodeURIComponent);
   return (
-    <picture className="flex h-full w-full items-center justify-center p-2">
+    <picture className="flex h-full w-full items-center justify-center">
       <source type="image/avif" srcSet={resolved.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, ".avif$2")} />
       <source type="image/webp" srcSet={resolved.replace(/\.(png|jpg|jpeg)(\?.*)?$/i, ".webp$2")} />
       <img
@@ -172,7 +174,7 @@ export function GameArtwork({
         alt={`${title} artwork`}
         width={320}
         height={320}
-        className={`max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-200 motion-safe:group-hover:scale-105 ${compact ? "h-24 sm:h-32" : "h-28 sm:h-40"}`}
+        className={`max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-200 motion-safe:group-hover:scale-105 ${compact ? "h-28 sm:h-40" : "h-32 sm:h-44"}`}
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}

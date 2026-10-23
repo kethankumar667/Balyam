@@ -31,9 +31,10 @@ describe("hybrid category palette", () => {
     }
   });
 
-  it("keeps regular surfaces neutral in both themes and reserves full gradients for featured cards", () => {
+  it("uses full-card gradients and coloured rims for every tile in both themes", () => {
     for (const dark of [false, true]) {
-      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.background).toBe("var(--surface-1)");
+      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.background).toContain("linear-gradient");
+      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.border).not.toBe("var(--rim-soft)");
       expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, true).card.background).toContain("linear-gradient");
     }
   });

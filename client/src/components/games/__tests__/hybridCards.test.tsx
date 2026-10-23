@@ -21,15 +21,19 @@ afterEach(() => {
 const game = BHALYAM_GAMES.find((item) => item.slug === "dotsboxes")!;
 
 describe("hybrid game cards", () => {
-  it("defaults to a neutral card with a labelled category rail and tinted art stage", () => {
+  it("gives every tile one continuous gradient with floating artwork and no top rail", () => {
     const { container } = render(<GameCard game={game} onSelect={vi.fn()} />);
     const card = screen.getByRole("article");
     expect(card).toHaveAttribute("data-tile-style", "hybrid");
     expect(card).toHaveAttribute("data-category", "classroom");
     expect(card).toHaveAttribute("data-featured", "false");
     expect(screen.getByText("Classroom")).toBeVisible();
-    expect(card.style.background).toBe("var(--surface-1)");
-    expect(container.querySelector("[data-art-stage]")).not.toBeNull();
+    expect(card.style.background).toContain("linear-gradient");
+    expect(container.querySelector("[data-color-rail]")).toBeNull();
+    const stage = container.querySelector<HTMLElement>("[data-art-stage]")!;
+    expect(stage.style.background).toBe("");
+    expect(stage).not.toHaveClass("border");
+    expect(screen.getByRole("button", { name: `Add ${game.title} to favourites` })).toHaveClass("rounded-full", "bg-white/60");
     expect(screen.getByRole("button", { name: `Play ${game.title}` })).toHaveClass("min-h-[44px]");
   });
 

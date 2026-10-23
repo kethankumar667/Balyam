@@ -26,8 +26,8 @@ export default function TileDesignPreview() {
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black text-ink-hi tracking-tight">Game tile design</h1>
             <p className="text-sm text-ink-mid max-w-2xl">
-              Calm uses one gold Play button across all games. The current hybrid uses category-coloured rails,
-              softly tinted artwork stages and matching Play buttons. Switch themes to compare light and dark.
+              Calm uses one gold Play button across all games. The current tiles use continuous pastel gradients,
+              floating artwork and category-coloured Play buttons. Switch themes to compare light and dark.
             </p>
           </header>
 

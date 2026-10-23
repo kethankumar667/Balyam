@@ -15,17 +15,15 @@ export function gameCardCategory(tags: readonly GameTag[]): GameTag {
   return tags.find((tag) => tag !== "solo" && tag !== "multiplayer") ?? tags[0] ?? "solo";
 }
 
-/** The category colour frames the artwork; only featured cards carry a full colour wash. */
+/** A continuous pastel wash lets artwork float directly on the card, as in the approved reference. */
 export function hybridTileSurface(category: typeof HYBRID_CATEGORIES[GameTag], isDark: boolean, featured: boolean) {
   return {
     card: {
-      background: featured
-        ? `linear-gradient(145deg, var(--surface-1) 15%, ${withAlpha(category.tint, isDark ? 0.24 : 0.25)} 100%)`
-        : "var(--surface-1)",
-      border: featured ? withAlpha(category.tint, isDark ? 0.6 : 0.55) : "var(--rim-soft)",
+      background: `linear-gradient(135deg, var(--surface-1) 0%, ${withAlpha(category.tint, isDark ? 0.24 : 0.28)} 65%, var(--surface-1) 140%)`,
+      border: withAlpha(category.tint, isDark ? 0.6 : 0.65),
       shadow: featured
         ? `0 10px 24px -14px ${withAlpha(category.from, 0.55)}, 0 3px 8px rgba(15,23,42,0.08)`
-        : "0 3px 8px rgba(15,23,42,0.05), 0 10px 20px -18px rgba(15,23,42,0.25)",
+        : `0 8px 20px -12px ${withAlpha(category.from, 0.35)}, 0 3px 8px rgba(15,23,42,0.06)`,
     },
     rail: category.from,
     stage: {
@@ -35,7 +33,7 @@ export function hybridTileSurface(category: typeof HYBRID_CATEGORIES[GameTag], i
     button: {
       background: `linear-gradient(180deg, ${category.from}, ${category.to})`,
       color: "#FFFFFF",
-      shadow: `0 4px 9px -4px ${withAlpha(category.to, 0.6)}`,
+      shadow: `0 7px 12px -5px ${withAlpha(category.to, 0.65)}, inset 0 1px 0 rgba(255,255,255,0.15)`,
     },
   };
 }

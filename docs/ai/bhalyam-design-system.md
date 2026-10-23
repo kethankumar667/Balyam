@@ -43,10 +43,14 @@
 #### Catalog cards: hybrid treatment
 
 The home grid and All Games catalog share `components/games/GameCard.tsx`
-and `GameCardGrid.tsx`. A regular card uses the theme's neutral surface,
-a category-coloured top rail, a softly tinted artwork stage and a matching
-Play button. Featured cards use a fuller tint and stronger shadow, not a
-different interaction model. The first two visible games marked `isPopular`
+and `GameCardGrid.tsx`. Every card uses a continuous, category-tinted pastel
+gradient, a thin coloured rim, a circular favourite control and large artwork
+floating directly on the card: no inset artwork box or top rail. Text is
+left-aligned; the category-coloured Play button carries a stronger shadow.
+This follows the owner's enhanced-card reference for ALL tiles, not only
+featured cards. Featured cards keep their badge, slightly larger artwork
+and stronger card shadow, not a different interaction model.
+The first two visible games marked `isPopular`
 in the shared catalog lead an unfiltered grid; they are not duplicated below.
 Search/category/play-way filters disable that grouping and keep all matches.
 
