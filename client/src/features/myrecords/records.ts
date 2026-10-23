@@ -1,5 +1,5 @@
 import { GAME_MODE_REGISTRY, getGameModeConfig } from "@shared/profile/GameModes";
-import type { AllGameSlug, PlayerScorecardArchive } from "@shared/profile/Scorecard";
+import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared/profile/Scorecard";
 import { readModeBest } from "../../lib/modeBests";
 import { formatGameMetricValue } from "../../lib/metricFormatters";
 import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
@@ -49,62 +49,107 @@ export const RECORD_GOALS: Record<string, Record<string, number>> = {
 };
 
 function object(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function positive(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
-/** Device-only bests have no reliable match count or achievement date. */
-export function readDeviceBest(game: AllGameSlug, mode: string): number | null {
+function readDeviceData(game: AllGameSlug): unknown {
   if (typeof window === "undefined") return null;
   const key = ({
     "2048": "bhalyam.2048.stats.v1", nokiasnake: "bhalyam_retro_snake_v1",
     nokiacricket: "bhalyam_nokia_cricket_data_v1", roadrash: "bhalyam_brick_racer_v1",
     brickblocks: "bhalyam_brick_tetris_save_v1", breakout: "bhalyam_brick_breakout_v1",
+    snake: "mpg.snake.best", blockblast: "bb.best",
   } as Partial<Record<AllGameSlug, string>>)[game];
   if (!key) return null;
   try {
     const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const data = object(JSON.parse(raw));
-    if (game === "2048") {
-      if (mode === "race") {
-        const ms = positive(data.bestRaceTimeMs);
-        return ms === null ? null : Math.round(ms / 1000);
-      }
-      return positive(mode === "daily" ? data.dailyBestScore : object(data.bestScore)[mode]);
-    }
-    if (game === "nokiasnake" || game === "nokiacricket") return readModeBest(data.modeBestScores, mode);
-    if (game === "brickblocks") return positive(mode === "pentix" ? data.bestPentixScore : data.bestClassicScore);
-    return positive(data.highScore);
+    return raw ? JSON.parse(raw) : null;
   } catch (error) {
     console.warn(`Could not read saved records for ${game}`, error);
     return null;
   }
 }
 
+/** Device-only bests have no reliable match count or achievement date. */
+export function readDeviceBest(game: AllGameSlug, mode: string): number | null {
+  return deviceBestForMode(game, mode, readDeviceData(game));
+}
+
+function deviceBestForMode(game: AllGameSlug, mode: string, raw: unknown): number | null {
+  if (!getGameModeConfig(game).modes.some((entry) => entry.modeId === mode)) return null;
+  if (game === "blockblast") return positive(raw);
+  const data = object(raw);
+  if (game === "2048") {
+    if (mode === "race") {
+      const ms = positive(data.bestRaceTimeMs);
+      return ms === null ? null : Math.round(ms / 1000);
+    }
+    return positive(mode === "daily" ? data.dailyBestScore : object(data.bestScore)[mode]);
+  }
+  if (game === "nokiasnake" || game === "nokiacricket") return readModeBest(data.modeBestScores, mode);
+  if (game === "brickblocks") {
+    const stored = positive(mode === "pentix" ? data.bestPentixScore : data.bestClassicScore);
+    const entries: unknown[] = Array.isArray(data.highScores) ? data.highScores : [];
+    return positive(entries.reduce<number>((best, entry) => {
+      const result = object(entry);
+      return result.mode === (mode === "pentix" ? "PENTIX" : "CLASSIC") ? Math.max(best, positive(result.score) ?? 0) : best;
+    }, stored ?? 0));
+  }
+  return positive(data.highScore);
+}
+
+/** An overall device best cannot establish which rules were used. */
+function readPreviousOverallBest(game: AllGameSlug, raw: unknown): number | null {
+  if (game === "snake") return positive(raw);
+  if (game !== "nokiasnake" && game !== "nokiacricket") return null;
+  const data = object(raw);
+  const overall = positive(data.highScore);
+  if (overall === null) return null;
+  const tracked = getGameModeConfig(game).modes.some(
+    (mode) => (readModeBest(data.modeBestScores, mode.modeId) ?? 0) >= overall,
+  );
+  return tracked ? null : overall;
+}
+
 export function buildRecords(archive: PlayerScorecardArchive | null, useDevice = true) {
-  return RECORD_GAMES.map((game) => ({
-    ...game,
-    lastPlayedAt: archive?.games[game.id]?.lastPlayedAt,
-    modes: game.config.modes.map((mode) => {
-      const saved = archive?.games[game.id]?.modes[mode.modeId];
-      const deviceBest = useDevice ? readDeviceBest(game.id, mode.modeId) : null;
-      const hasSavedBest = saved !== undefined && Number.isFinite(saved.bestScore) && saved.timesPlayed > 0;
-      return {
-        ...mode,
-        best: hasSavedBest ? saved.bestScore : deviceBest,
-        deviceOnly: !hasSavedBest && deviceBest !== null,
-        timesPlayed: saved?.timesPlayed ?? 0,
-        achievedAt: hasSavedBest ? saved.bestScoreAchievedAt : undefined,
-        recentScores: (saved?.recentScores ?? []).filter(Number.isFinite).slice(0, 5).reverse(),
-        average: saved?.averageScore,
-        goal: RECORD_GOALS[game.id]?.[mode.modeId],
-      };
-    }),
-  }));
+  return RECORD_GAMES.map((game) => {
+    const current = archive?.games[game.id];
+    const older = game.id === "brickblocks" ? archive?.games.tetris : undefined;
+    const savedModes = { ...older?.modes, ...current?.modes };
+    const previousModeRecords = Object.entries(savedModes)
+      .filter(([id, saved]) => !game.config.modes.some((mode) => mode.modeId === id) && hasRecordedBest(saved))
+      .map(([, saved]) => saved);
+    const deviceData = useDevice ? readDeviceData(game.id) : null;
+    return {
+      ...game,
+      lastPlayedAt: current?.lastPlayedAt ?? older?.lastPlayedAt,
+      previousOverallBest: readPreviousOverallBest(game.id, deviceData),
+      previousModeRecords,
+      modes: game.config.modes.map((mode) => {
+        const saved = savedModes[mode.modeId];
+        const deviceBest = deviceBestForMode(game.id, mode.modeId, deviceData);
+        const hasSavedBest = hasRecordedBest(saved);
+        return {
+          ...mode,
+          best: hasSavedBest ? saved.bestScore : deviceBest,
+          deviceOnly: !hasSavedBest && deviceBest !== null,
+          timesPlayed: saved?.timesPlayed ?? 0,
+          achievedAt: hasSavedBest ? saved.bestScoreAchievedAt : undefined,
+          recentScores: (saved?.recentScores ?? []).filter(Number.isFinite).slice(0, 5).reverse(),
+          average: saved?.averageScore,
+          goal: RECORD_GOALS[game.id]?.[mode.modeId],
+        };
+      }),
+    };
+  });
+}
+
+function hasRecordedBest(saved: ModeScorecard | undefined): saved is ModeScorecard {
+  return saved !== undefined && Number.isFinite(saved.bestScore) && saved.timesPlayed > 0;
 }
 
 export type RecordGame = ReturnType<typeof buildRecords>[number];
@@ -136,12 +181,13 @@ export function goalProgress(mode: RecordMode): number | null {
 
 export function recordSummary(games: RecordGame[]) {
   const modes = games.flatMap((game) => game.modes);
+  const previous = games.flatMap((game) => game.previousModeRecords);
   return {
-    gamesExplored: games.filter((game) => game.modes.some((mode) => mode.best !== null || mode.timesPlayed > 0)).length,
+    gamesExplored: games.filter((game) => game.previousOverallBest !== null || game.previousModeRecords.length > 0 || game.modes.some((mode) => mode.best !== null || mode.timesPlayed > 0)).length,
     modesAvailable: modes.length,
-    modesPlayed: modes.filter((mode) => mode.best !== null || mode.timesPlayed > 0).length,
-    personalBests: modes.filter((mode) => mode.best !== null).length,
+    modesPlayed: modes.filter((mode) => mode.best !== null || mode.timesPlayed > 0).length + previous.length,
+    personalBests: modes.filter((mode) => mode.best !== null).length + games.filter((game) => game.previousOverallBest !== null).length + previous.length,
     goalsReached: modes.filter((mode) => goalProgress(mode) === 100).length,
-    matches: modes.reduce((total, mode) => total + mode.timesPlayed, 0),
+    matches: modes.reduce((total, mode) => total + mode.timesPlayed, 0) + previous.reduce((total, mode) => total + mode.timesPlayed, 0),
   };
 }

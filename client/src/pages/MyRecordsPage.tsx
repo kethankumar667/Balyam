@@ -31,7 +31,7 @@ export default function MyRecordsPage() {
   useEffect(() => { if (playerId) void fetchScorecards(playerId); }, [playerId, fetchScorecards]);
   const games = useMemo(() => buildRecords(archive, mounted), [archive, mounted]);
   const summary = useMemo(() => recordSummary(games), [games]);
-  const filtered = games.filter((game) => `${game.label} ${game.id} ${game.modes.map((mode) => `${mode.displayName} ${mode.description}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const filtered = games.filter((game) => `${game.label} ${game.id} ${game.modes.map((mode) => `${mode.displayName} ${mode.description}`).join(" ")} ${game.previousModeRecords.map((saved) => `${saved.modeDisplayName} ${saved.modeId}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
   const game = filtered.find((candidate) => candidate.id === gameId) ?? filtered[0] ?? games[0]!;
   const mode = game.modes.find((candidate) => candidate.modeId === modeId) ?? game.modes.find((candidate) => candidate.modeId === game.config.defaultModeId) ?? game.modes[0]!;
   const progress = goalProgress(mode);
@@ -57,9 +57,9 @@ export default function MyRecordsPage() {
           {isSuperAdmin && <Link to="/admin/leaderboards" className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--chrome-hairline)] px-3 text-xs ${FOCUS}`}>Admin Ratings Panel <ArrowUpRight className="h-4 w-4" aria-hidden /></Link>}
         </header>
 
-        {loading && !archive ? (
+        {loading && !archive && !summary.gamesExplored ? (
           <div role="status" className={`${PANEL} flex items-center justify-center gap-3 p-12 text-ink-mid`}><RefreshCw className="h-5 w-5 motion-safe:animate-spin" aria-hidden />Loading scorecards...</div>
-        ) : error && !archive ? (
+        ) : error && !archive && !summary.gamesExplored ? (
           <div role="alert" className={`${PANEL} space-y-3 p-8 text-center`}>
             <AlertCircle className="mx-auto h-8 w-8 text-danger" aria-hidden /><h2 className="font-display text-xl">Scorecards Unavailable</h2>
             <p className="text-sm text-ink-mid">{error}</p>
@@ -68,6 +68,7 @@ export default function MyRecordsPage() {
         ) : (
           <>
             {error && <p role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-ink-hi">Showing saved records. {error}</p>}
+            {loading && <p role="status" className="text-sm text-ink-mid">Showing saved records. Loading account scorecards...</p>}
             <section aria-label="Your record totals" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
               {stats.map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className={`${PANEL} flex min-w-0 items-center gap-2.5 px-3 py-3`}>
@@ -95,6 +96,7 @@ export default function MyRecordsPage() {
                           className={`w-[104px] shrink-0 snap-start overflow-hidden rounded-xl border-2 bg-surface-1 text-left ${FOCUS} ${candidate.id === game.id ? "border-amber-500 shadow-md shadow-amber-500/15" : "border-[var(--chrome-hairline)]"}`}>
                           <img src={candidate.image} alt="" loading="lazy" className="h-[72px] w-full bg-amber-500/5 object-contain" />
                           <span className="block px-1.5 pb-2 pt-1 text-center"><span className="block text-xs font-bold">{candidate.label}</span><span className="mt-0.5 block text-[10px] text-ink-mid">{candidate.modes.filter((entry) => entry.best !== null).length}/{candidate.modes.length} modes</span></span>
+                          {(candidate.previousOverallBest !== null || candidate.previousModeRecords.length > 0) && <span className="block px-1.5 pb-2 text-center text-[10px] text-ink-mid">Previous best saved</span>}
                         </button>
                       ))}
                     </div>
@@ -106,6 +108,30 @@ export default function MyRecordsPage() {
                   <div className={`${PANEL} space-y-3 p-10 text-center`}><h2 className="font-display text-xl">No games found</h2><p className="text-sm text-ink-mid">Try another game or mode name.</p><button type="button" onClick={() => setSearch("")} className={`min-h-[44px] rounded-xl bg-amber-500 px-4 font-bold text-slate-950 ${FOCUS}`}>Clear Filters</button></div>
                 ) : (
                   <>
+                    {game.previousOverallBest !== null && (
+                      <section aria-labelledby="previous-overall-best-title" className={`${PANEL} space-y-2 p-4`}>
+                        <h2 id="previous-overall-best-title" className="font-display text-lg">Previous overall best — mode not recorded</h2>
+                        <p className="font-display text-2xl text-ink-hi">{formatRecordScore(game, mode, game.previousOverallBest)}</p>
+                        <p className="text-xs text-ink-mid">Saved on this device · Date not recorded</p>
+                        <p className="text-xs leading-relaxed text-ink-mid">Your older {game.label} save kept an overall best without its match mode. It is preserved here separately, not assigned to any mode below.</p>
+                      </section>
+                    )}
+                    {game.previousModeRecords.length > 0 && (
+                      <section aria-labelledby="previous-modes-title" className={`${PANEL} space-y-3 p-4`}>
+                        <h2 id="previous-modes-title" className="font-display text-lg">Previously recorded modes</h2>
+                        <p className="text-xs leading-relaxed text-ink-mid">These saved modes are no longer in the current mode list. Original scores are preserved without guessing their units or applying today's goals.</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {game.previousModeRecords.map((saved) => (
+                            <div key={saved.modeId} className="min-w-0 space-y-1 rounded-xl border border-[var(--chrome-hairline)] p-3">
+                              <h3 className="break-words font-bold">{saved.modeDisplayName}</h3>
+                              <p className="break-all text-xs text-ink-mid">Saved mode: {saved.modeId}</p>
+                              <p className="font-display text-xl">Stored score: {saved.bestScore.toLocaleString()}</p>
+                              <p className="text-xs text-ink-mid">{saved.timesPlayed.toLocaleString()} recorded matches · {recordDate(saved.bestScoreAchievedAt)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
                     <section aria-label={`${game.label} personal record`} className="relative isolate overflow-hidden rounded-2xl border border-amber-600/40 bg-[#182B24] p-5 text-white shadow-lg sm:p-6">
                       <img src={game.id === "handcricket" ? "/illustrations/Handcricket/stadium.png" : game.image} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-75" />
                       <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(17,24,22,0.97),rgba(17,24,22,0.8)_45%,rgba(17,24,22,0.28))]" />
@@ -153,7 +179,7 @@ export default function MyRecordsPage() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     {[
                       { icon: Trophy, title: "Personal bests improved", value: archive?.totalPersonalBestsBeaten ?? 0, note: "Recorded improvements" },
-                      { icon: Gamepad2, title: "Most played game", value: [...games].sort((a, b) => b.modes.reduce((n, m) => n + m.timesPlayed, 0) - a.modes.reduce((n, m) => n + m.timesPlayed, 0))[0]?.label, note: summary.matches ? "By recorded match count" : "No matches recorded yet" },
+                      { icon: Gamepad2, title: "Most played game", value: [...games].sort((a, b) => recordSummary([b]).matches - recordSummary([a]).matches)[0]?.label, note: summary.matches ? "By recorded match count" : "No matches recorded yet" },
                       { icon: Clock, title: "Latest archive update", value: archive ? recordDate(archive.updatedAt) : "Not synced yet", note: "Device-only bests stay on this device" },
                     ].map(({ icon: Icon, title, value, note }) => <div key={title} className="flex items-start gap-3 rounded-xl bg-amber-500/5 p-3"><Icon aria-hidden className="mt-1 h-6 w-6 shrink-0 text-amber-600 dark:text-amber-400" /><div><p className="text-xs text-ink-mid">{title}</p><p className="mt-1 text-sm font-bold">{title === "Most played game" && !summary.matches ? "—" : value}</p><p className="mt-1 text-[10px] text-ink-mid">{note}</p></div></div>)}
                   </div>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -78,5 +78,61 @@ describe("My Records", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filter by Retro Snake game" }));
     expect(screen.getAllByText(/Date not recorded/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Saved on this device/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows older Retro Cricket records separately and preserves them across mode changes", () => {
+    const saved = JSON.stringify({ highScore: 200, modeBestScores: { classic_10: 140 } });
+    localStorage.setItem("bhalyam_nokia_cricket_data_v1", saved);
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Filter by Retro Cricket game" }));
+    const previous = screen.getByRole("region", { name: "Previous overall best — mode not recorded" });
+    expect(within(previous).getByText("200 runs")).toBeDefined();
+    expect(within(previous).getByText(/date not recorded/i)).toBeDefined();
+    expect(screen.getByRole("button", { name: /Classic.*10.*140 runs/i })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Classic.*1 Over.*Best:/i }));
+    expect(within(previous).getByText("200 runs")).toBeDefined();
+    expect(screen.getByText("No score yet")).toBeDefined();
+    expect(localStorage.getItem("bhalyam_nokia_cricket_data_v1")).toBe(saved);
+  });
+
+  it.each([
+    ["Retro Snake", "bhalyam_retro_snake_v1", '{"highScore":95}', "95 🍎"],
+    ["Snake 2D", "mpg.snake.best", "75", "75 🍎"],
+    ["Block Puzzle", "bb.best", "800", "800 pts"],
+  ])("shows saved %s records even when account scorecards fail", (label, key, raw, score) => {
+    localStorage.setItem(key, raw);
+    useScorecardStore.setState({ archive: null, loading: false, error: "Offline" });
+    show();
+    expect(screen.getByRole("alert").textContent).toContain("Offline");
+    fireEvent.click(screen.getByRole("button", { name: `Filter by ${label} game` }));
+    expect(screen.getAllByText(score).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/older Retro Cricket save/)).toBeNull();
+    expect(localStorage.getItem(key)).toBe(raw);
+  });
+
+  it("does not hide device records while account records are loading", () => {
+    localStorage.setItem("bb.best", "800");
+    useScorecardStore.setState({ loading: true });
+    show();
+    expect(screen.getByRole("button", { name: "Filter by Block Puzzle game" })).toBeDefined();
+    expect(screen.getByRole("status").textContent).toContain("Loading account scorecards");
+  });
+
+  it("keeps account errors explicit when no saved records exist", () => {
+    useScorecardStore.setState({ error: "Offline" });
+    show();
+    expect(screen.getByRole("heading", { name: "Scorecards Unavailable" })).toBeDefined();
+  });
+
+  it("displays older archived modes separately instead of silently dropping them", () => {
+    const oldMode = { ...archive.games.handcricket!.modes.t20!, modeId: "legacy_format", modeDisplayName: "Previous format" };
+    useScorecardStore.setState({ archive: { ...archive, games: {
+      handcricket: { ...archive.games.handcricket!, modes: { legacy_format: oldMode } },
+    } } });
+    show();
+    const history = screen.getByRole("region", { name: "Previously recorded modes" });
+    expect(within(history).getByText("Previous format")).toBeDefined();
+    expect(within(history).getByText(/Stored score: 184/)).toBeDefined();
+    expect(within(history).getByText(/legacy_format/)).toBeDefined();
   });
 });

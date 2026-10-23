@@ -109,6 +109,32 @@ fabricated date or match count. Failed refreshes show an explicit error,
 retaining cached records when available. Selectors use native pressed
 buttons, 44px targets, focus rings and reduced-motion-aware scrolling.
 
+Older Retro Cricket and Retro Snake saves may contain only an overall
+`highScore`, without `modeBestScores`. When that best is not accounted for by a saved mode, show it
+separately as **Previous overall best — mode not recorded**. Never assign it
+to Classic/Chase or an innings length, migrate the save, or invent match
+counts, dates or history. It counts as a personal best and an explored game,
+not a played mode or a milestone. New per-mode records remain separate; a
+matching or higher device-mode best makes the extra overall card redundant.
+Snake 2D's numeric `mpg.snake.best` is also an unknown-mode overall best.
+The single-mode Block Puzzle reads its legacy numeric `bb.best`; Brick Blocks
+reads mode-tagged `highScores` as well as its dedicated mode-best fields.
+2048, Brick Racer and Breakout retain their existing device readers. These
+are read-only compatibility paths: no migration, writeback or account reward.
+Sudoku progress, unfinished puzzles, tutorials and cosmetic unlocks are not
+personal-best scores and must never be interpreted as such.
+
+Across all 26 catalog games, archive modes no longer in the registry appear
+under **Previously recorded modes**, with their saved names, raw scores,
+counts and dates. Their original units are not recorded, so do not guess
+units or apply current-mode goals. Their actual counts contribute to totals
+and the most-played cabinet. The existing `tetris` alias supplies missing
+Brick Blocks archive modes; a canonical mode takes precedence over an alias
+duplicate. Available-mode totals still describe today's catalog.
+Device records remain visible during account loading or failure, with an
+explicit loading/error notice. No compatibility reader can recover deleted
+storage or scores that were never saved.
+
 #### Shop: cinematic collectible showroom
 
 `components/cosmetics/shop/` owns the shop-only visual treatment; global app
