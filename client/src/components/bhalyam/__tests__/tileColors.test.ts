@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BHALYAM_GAMES } from "../data";
-import { lightTileSurface, withAlpha } from "../tileColors";
+import { CALM_BUTTON, calmTileSurface, lightTileSurface, withAlpha } from "../tileColors";
 
 /**
  * Game tiles are the first thing a player sees, so their colour has to do two jobs: keep the Play Now label
@@ -82,6 +82,47 @@ describe("neighbouring tiles", () => {
       }
     });
     expect(clashes).toEqual([]);
+  });
+});
+
+describe("calm tile surface", () => {
+  const GREEN = "#16A34A";
+  const ORANGE = "#F97316";
+
+  it("keeps the card itself neutral, on the theme's own surface and rim", () => {
+    for (const isDark of [false, true]) {
+      const { card } = calmTileSurface(GREEN, isDark);
+      expect(card.background).toBe("var(--surface-1)");
+      expect(card.border).toBe("var(--rim-soft)");
+      expect(card.background + card.border + card.shadow).not.toContain(GREEN);
+    }
+  });
+
+  it("puts the game's colour only on the top rail and the art stage", () => {
+    const { rail, stage } = calmTileSurface(GREEN, false);
+
+    expect(rail).toBe(GREEN);
+    expect(stage.background).toContain(GREEN);
+    expect(stage.border).toContain(GREEN);
+  });
+
+  it("makes the stage a little stronger on dark, where a faint tint would vanish", () => {
+    const alphaOf = (css: string) => parseInt(css.match(/#16A34A([0-9A-F]{2})/)![1], 16);
+    expect(alphaOf(calmTileSurface(GREEN, true).stage.border)).toBeGreaterThan(alphaOf(calmTileSurface(GREEN, false).stage.border));
+  });
+
+  it("gives every game the same Play Now button, whatever its colour", () => {
+    expect(calmTileSurface(GREEN, false).button).toEqual(calmTileSurface(ORANGE, true).button);
+    expect(calmTileSurface(GREEN, false).button.background).toContain(CALM_BUTTON.from);
+  });
+
+  it("keeps the Play Now label readable at both ends of the button", () => {
+    const contrast = (a: string, b: string) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    expect(contrast(CALM_BUTTON.text, CALM_BUTTON.from)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(CALM_BUTTON.text, CALM_BUTTON.to)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

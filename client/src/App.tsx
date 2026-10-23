@@ -88,6 +88,7 @@ const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatal
 const LazySocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const LazyPreviewLoader = lazy(() => import("./pages/PreviewLoader"));
 const LazyGameTileShowcase = lazy(() => import("./pages/GameTileShowcase"));
+const LazyTileDesignPreview = lazy(() => import("./pages/TileDesignPreview"));
 const LazyMandaliDiscoveryPage = lazy(() => import("./pages/mandali/MandaliDiscoveryPage"));
 const LazyMandaliHubPage = lazy(() => import("./pages/mandali/MandaliHubPage"));
 
@@ -475,6 +476,7 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/loader" element={<PreviewLoader />} />
             <Route path="/preview/tiles" element={<GameTileShowcase />} />
             <Route path="/showcase/tiles" element={<GameTileShowcase />} />
+            <Route path="/preview/tile-design" element={<LazyTileDesignPreview />} />
             {/*
               Two gates, deliberately.
 

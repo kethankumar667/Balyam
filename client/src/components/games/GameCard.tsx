@@ -16,7 +16,7 @@ import {
   getGameAccent,
   isLocked,
 } from "../bhalyam/data";
-import { lightTileSurface } from "../bhalyam/tileColors";
+import { calmTileSurface, lightTileSurface } from "../bhalyam/tileColors";
 import {
   HandCricketGlyph,
   LudoGlyph,
@@ -41,6 +41,8 @@ export interface GameCardProps {
   onSelect: () => void;
   className?: string;
   compact?: boolean;
+  /** `classic` is today's full-colour tile; `calm` is a neutral card with colour only on the rail and art stage. */
+  tileStyle?: "classic" | "calm";
 }
 
 const GAME_GLYPHS: Record<BhalyamGameSlug, React.ComponentType<{ className?: string }>> = {
@@ -105,6 +107,7 @@ export default function GameCard({
   game,
   onSelect,
   className = "",
+  tileStyle = "classic",
 }: GameCardProps) {
   const [theme] = useTheme();
   const isDark = theme === "dark";
@@ -134,15 +137,23 @@ export default function GameCard({
   const btnTo = game.btnGradient?.to ?? accent.to;
   const btnShadow = game.btnGradient?.shadow ?? accent.to;
 
+  const isCalm = tileStyle === "calm";
+  const calm = calmTileSurface(accent.from, isDark);
   const lightSurface = lightTileSurface(accent.from, "var(--surface-1)");
 
-  const bgStyle = isDark
-    ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
-    : lightSurface.background;
+  const bgStyle = isCalm
+    ? calm.card.background
+    : isDark
+      ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
+      : lightSurface.background;
 
-  const borderStyle = isDark
-    ? game.paperBorder ?? "rgba(255, 255, 255, 0.1)"
-    : lightSurface.border;
+  const borderStyle = isCalm
+    ? calm.card.border
+    : isDark
+      ? game.paperBorder ?? "rgba(255, 255, 255, 0.1)"
+      : lightSurface.border;
+
+  const boxShadowStyle = isCalm ? calm.card.shadow : isDark ? undefined : lightSurface.shadow;
 
   return (
     <motion.article
@@ -155,9 +166,16 @@ export default function GameCard({
       style={{
         background: bgStyle,
         borderColor: borderStyle,
-        ...(isDark ? {} : { boxShadow: lightSurface.shadow }),
+        ...(boxShadowStyle ? { boxShadow: boxShadowStyle } : {}),
       }}
     >
+      {isCalm && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-6 top-0 h-[3px] rounded-b-full"
+          style={{ background: calm.rail }}
+        />
+      )}
       {/* Top row: Mode badge, Category & Favourite Toggle */}
       <div className="flex items-center justify-between gap-2 z-10 w-full min-w-0">
         <span
@@ -212,12 +230,19 @@ export default function GameCard({
       </div>
 
       {/* Hero illustration with consistent safe area (Issue 12) */}
-      <div className="relative my-3 h-28 sm:h-32 flex items-center justify-center w-full min-w-0">
-        <div
-          className="absolute w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-30 group-hover:scale-115 transition-transform duration-300"
-          style={{ background: accent.from }}
-          aria-hidden="true"
-        />
+      <div
+        className={`relative my-3 h-28 sm:h-32 flex items-center justify-center w-full min-w-0 ${
+          isCalm ? "rounded-3xl border" : ""
+        }`}
+        style={isCalm ? { background: calm.stage.background, borderColor: calm.stage.border } : undefined}
+      >
+        {!isCalm && (
+          <div
+            className="absolute w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-30 group-hover:scale-115 transition-transform duration-300"
+            style={{ background: accent.from }}
+            aria-hidden="true"
+          />
+        )}
         <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-1.5">
           <GameArtwork src={TILE_ART[game.slug]} title={game.title}>
             <span className="relative inline-flex w-16 h-16 rounded-2xl items-center justify-center bg-surface-1 text-ink-hi shadow-inner">
@@ -264,15 +289,23 @@ export default function GameCard({
         onClick={underMaintenance ? undefined : onSelect}
         disabled={underMaintenance}
         aria-label={`Play ${game.title}`}
-        className={`w-full min-w-0 min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white transition-[filter,box-shadow] duration-200 cursor-pointer shadow-md ${
+        className={`w-full min-w-0 min-h-[44px] py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider transition-[filter,box-shadow] duration-200 cursor-pointer shadow-md ${
+          isCalm && !underMaintenance ? "" : "text-white"
+        } ${
           underMaintenance
             ? "bg-zinc-600 opacity-60 cursor-not-allowed"
             : "hover:brightness-110 hover:shadow-lg"
         }`}
-        style={{
-          background: `linear-gradient(135deg, ${btnFrom}, ${btnTo})`,
-          boxShadow: `0 6px 16px -3px ${btnShadow}90, 0 2px 0 0 ${btnShadow}`,
-        }}
+        style={
+          underMaintenance
+            ? undefined
+            : isCalm
+              ? { background: calm.button.background, color: calm.button.color, boxShadow: calm.button.shadow }
+              : {
+                  background: `linear-gradient(135deg, ${btnFrom}, ${btnTo})`,
+                  boxShadow: `0 6px 16px -3px ${btnShadow}90, 0 2px 0 0 ${btnShadow}`,
+                }
+        }
       >
         <span>{underMaintenance ? "Coming Soon" : "Play Now"}</span>
         <ArrowRight className="w-4 h-4 shrink-0" />
