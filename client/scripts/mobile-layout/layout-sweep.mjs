@@ -126,7 +126,7 @@ function resolveViewports() {
 const ROUTES = [
   "/", "/games", "/favorites", "/recently-played",
   "/profile", "/profile/matches", "/profile/achievements", "/profile/scorecards",
-  "/leaderboard", "/tournaments", "/social", "/mandali",
+  "/myrecords", "/tournaments", "/social", "/mandali",
   "/about", "/how-to-play", "/community-rules", "/support", "/contact", "/reviews/write", "/feedback",
   "/testimonials", "/privacy", "/terms", "/safety",
   "/settings/preferences", "/settings/security",

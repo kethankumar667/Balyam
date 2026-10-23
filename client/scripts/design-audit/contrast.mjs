@@ -53,7 +53,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.env.BASE || "http://localhost:5173";
 const OUT = process.env.OUT || path.resolve(__dirname, "../../../.design-audit");
 const ROUTES = (process.env.ROUTES ||
-  "/,/games,/social,/tournaments,/leaderboard,/settings,/about,/privacy,/design-system,/login,/signup,/no-such-404"
+  "/,/games,/social,/tournaments,/myrecords,/settings,/about,/privacy,/design-system,/login,/signup,/no-such-404"
 ).split(",").filter(Boolean);
 
 fs.mkdirSync(OUT, { recursive: true });

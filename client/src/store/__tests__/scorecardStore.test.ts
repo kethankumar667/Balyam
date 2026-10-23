@@ -77,4 +77,19 @@ describe("scorecardStore — cross-account isolation", () => {
     expect(useScorecardStore.getState().loading).toBe(false);
     expect(useScorecardStore.getState().error).toBeNull();
   });
+
+  it("reports an unavailable response instead of displaying an empty archive", async () => {
+    mockApiJson.mockResolvedValueOnce(null);
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().loading).toBe(false);
+    expect(useScorecardStore.getState().error).toBe("Could not load records. Please try again.");
+  });
+
+  it("preserves cached records when the refresh is unavailable", async () => {
+    localStorage.setItem("bhalyam.scorecards.cache.playerA", JSON.stringify(archiveFor("playerA")));
+    mockApiJson.mockResolvedValueOnce(null);
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().archive?.playerId).toBe("playerA");
+    expect(useScorecardStore.getState().error).toBeTruthy();
+  });
 });

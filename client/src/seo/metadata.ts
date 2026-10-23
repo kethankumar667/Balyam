@@ -330,29 +330,29 @@ const RAW_PUBLIC_ROUTES_METADATA: Record<string, RouteMetadata> = {
       "Standards of fair play, communication etiquette, and positive community interactions in BHALYAM lounges.",
     twitterImage: DEFAULT_OG_IMAGE,
   },
-  "/leaderboard": {
-    path: "/leaderboard",
-    title: "Global Leaderboards & Hall of Fame | BHALYAM Champions",
+  "/myrecords": {
+    path: "/myrecords",
+    title: "My Records | Personal Game Bests — BHALYAM",
     description:
-      "Track top players, win streaks, and highest ranked champions across Hand Cricket, Ludo, Rummy, and retro games on Bhalyam.",
+      "Explore your personal game records, mode-by-mode bests and recent recorded results across BHALYAM games.",
     keywords: [
-      "bhalyam leaderboard",
-      "top players",
+      "bhalyam my records",
+      "personal bests",
       "hand cricket high score",
-      "ludo win streak",
-      "gaming rankings",
-      "nostalgia champions",
+      "game scorecards",
+      "game records",
+      "record history",
     ],
-    canonical: `${BASE_URL}/leaderboard`,
-    ogTitle: "Global Leaderboards | Top Champions — BHALYAM",
+    canonical: `${BASE_URL}/myrecords`,
+    ogTitle: "My Records | BHALYAM",
     ogDescription:
-      "Discover the top nostalgic game champions, highest XP earners, and winning streaks on Bhalyam.",
+      "Every game. Every mode. Every personal best. Follow your own BHALYAM journey.",
     ogImage: DEFAULT_OG_IMAGE,
     ogType: "website",
     twitterCard: "summary_large_image",
-    twitterTitle: "Global Leaderboards & Hall of Fame | BHALYAM Champions",
+    twitterTitle: "My Records | Personal Game Bests — BHALYAM",
     twitterDescription:
-      "Check out real-time player rankings, global leaderboards, and seasonal champion ladders.",
+      "Explore personal scorecards and your last five recorded results per game mode.",
     twitterImage: DEFAULT_OG_IMAGE,
   },
   "/tournaments": {

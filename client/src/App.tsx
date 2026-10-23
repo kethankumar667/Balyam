@@ -81,7 +81,7 @@ const LazyAdminSettingsPage = lazy(() => import("./pages/admin/settings"));
 const LazyAdminEconomyPage = lazy(() => import("./pages/admin/economy"));
 const LazyAdminReviewsPage = lazy(() => import("./pages/admin/reviews"));
 const LazyAdminComponentLibraryPage = lazy(() => import("./pages/admin/component-library"));
-const LazyLeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const LazyMyRecordsPage = lazy(() => import("./pages/MyRecordsPage"));
 const LazyShopPage = lazy(() => import("./pages/ShopPage"));
 const LazyTournamentsPage = lazy(() => import("./pages/TournamentsPage"));
 const LazyDesignSystemCatalogPage = lazy(() => import("./pages/DesignSystemCatalogPage"));
@@ -147,7 +147,7 @@ export interface RouteComponents {
   AdminEconomyPage?: React.ComponentType;
   AdminReviewsPage?: React.ComponentType;
   AdminComponentLibraryPage?: React.ComponentType;
-  LeaderboardPage?: React.ComponentType;
+  MyRecordsPage?: React.ComponentType;
   ShopPage?: React.ComponentType;
   TournamentsPage?: React.ComponentType;
   DesignSystemCatalogPage?: React.ComponentType;
@@ -219,7 +219,7 @@ function RouteLoadingFallback() {
     );
   }
 
-  if (pathname.startsWith("/leaderboard")) {
+  if (pathname.startsWith("/myrecords")) {
     return (
       <div className="min-h-screen bhalyam-paper py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -336,7 +336,7 @@ export default function App({ components = {} }: AppProps) {
   const AdminEconomyPage = components.AdminEconomyPage ?? LazyAdminEconomyPage;
   const AdminReviewsPage = components.AdminReviewsPage ?? LazyAdminReviewsPage;
   const AdminComponentLibraryPage = components.AdminComponentLibraryPage ?? LazyAdminComponentLibraryPage;
-  const LeaderboardPage = components.LeaderboardPage ?? LazyLeaderboardPage;
+  const MyRecordsPage = components.MyRecordsPage ?? LazyMyRecordsPage;
   const ShopPage = components.ShopPage ?? LazyShopPage;
   const TournamentsPage = components.TournamentsPage ?? LazyTournamentsPage;
   const DesignSystemCatalogPage = components.DesignSystemCatalogPage ?? LazyDesignSystemCatalogPage;
@@ -405,7 +405,7 @@ export default function App({ components = {} }: AppProps) {
             {Object.entries(PROFILE_ROUTE_REDIRECTS).map(([from, to]) => (
               <Route key={from} path={from} element={<Navigate to={to} replace />} />
             ))}
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/myrecords" element={<MyRecordsPage />} />
             {/* The Cosmetics Boutique. Was a modal opened from the header chip; see pages/ShopPage.tsx. */}
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/tournaments" element={<TournamentsPage />} />

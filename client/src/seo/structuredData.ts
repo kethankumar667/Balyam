@@ -336,11 +336,11 @@ export function getStructuredDataForRoute(pathname: string, customParams?: Recor
         ]),
       ];
 
-    case "/leaderboard":
+    case "/myrecords":
       return [
         buildBreadcrumbSchema([
           { name: "Home", path: "/" },
-          { name: "Leaderboard", path: "/leaderboard" },
+          { name: "My Records", path: "/myrecords" },
         ]),
       ];
 

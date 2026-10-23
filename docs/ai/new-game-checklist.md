@@ -204,7 +204,7 @@ Client-submitted scores are forgeable. The pattern that survived review:
 - [ ] Score has min/max plausible bounds in `GameModes.ts`; `validateRecordScorePayload` (`server/src/profile/scoreValidation.ts`)
       rejects out-of-range, non-finite, reserved names, malformed ids.
 - [ ] Idempotent per `matchId` (no double-record on retry/replay). The controller is rate-limited (`rateLimitByCaller`) — keep it.
-- [ ] `ScorecardService` has the per-game entry; `LeaderboardPage.tsx` + `ModeScorecardsLeaderboard.tsx` show it; a new game's
+- [ ] `ScorecardService` has the per-game entry; `MyRecordsPage.tsx` + `features/myrecords/records.ts` show it; a new game's
       empty leaderboard renders an honest empty state, not fake rows.
 
 ---
@@ -263,8 +263,8 @@ Tick each, or write "N/A because …". Line numbers drift; **search by the matur
 - [ ] `client/src/components/bhalyam/WhatAreWePlayingSection.tsx`.
 
 **Discovery / reporting**
-- [ ] `client/src/pages/LeaderboardPage.tsx` (mode config, tips, deep link, filter list) and
-      `client/src/components/leaderboard/ModeScorecardsLeaderboard.tsx`.
+- [ ] `client/src/features/myrecords/records.ts` (catalog, image, optional suggested goal) and
+      `client/src/pages/MyRecordsPage.tsx` (shared game-launch link).
 - [ ] `client/src/features/profile/MatchHistoryList.tsx` (name/icon/mode map **and** the filter `<option>`),
       `client/src/pages/GameStatisticsPage.tsx`, `client/src/components/RoomCodeShare.tsx` (display-name map).
 - [ ] `client/src/seo/metadata.ts` (`GAME_SOCIAL_METADATA` + an og image at `client/public/og/connect4.jpg` — Tic Tac Toe and Sudoku

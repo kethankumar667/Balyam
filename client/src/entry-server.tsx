@@ -41,7 +41,7 @@ import NokiaSnakePage from "./pages/NokiaSnakePage";
 import BrickRacerPage from "./pages/BrickRacerPage";
 import BrickTetrisPage from "./pages/BrickTetrisPage";
 import BrickBreakoutPage from "./pages/BrickBreakoutPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
+import MyRecordsPage from "./pages/MyRecordsPage";
 import TournamentsPage from "./pages/TournamentsPage";
 import SocialHubPage from "./pages/SocialHubPage";
 import DesignSystemCatalogPage from "./pages/DesignSystemCatalogPage";
@@ -77,7 +77,7 @@ const ssrComponents: RouteComponents = {
   BrickRacerPage,
   BrickTetrisPage,
   BrickBreakoutPage,
-  LeaderboardPage,
+  MyRecordsPage,
   TournamentsPage,
   SocialHubPage,
   DesignSystemCatalogPage,

@@ -91,7 +91,7 @@ const VIEWPORTS = [
 const ROUTES = [
   { path: "/", name: "Home" },
   { path: "/games", name: "Games" },
-  { path: "/leaderboard", name: "Leaderboard" },
+  { path: "/myrecords", name: "Leaderboard" },
   { path: "/tournaments", name: "Tournaments" },
   { path: "/social", name: "Social hub" },
   { path: "/settings", name: "Settings" },

@@ -3,7 +3,7 @@ import React, { lazy } from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import TournamentsPage from "../TournamentsPage";
-import LeaderboardPage from "../LeaderboardPage";
+import MyRecordsPage from "../MyRecordsPage";
 import OfflineBanner from "../../components/games/OfflineBanner";
 import {
   RoomSkeleton,
@@ -68,7 +68,7 @@ describe("UI Hardening Remediation Suite", () => {
       useAuthStore.setState({ isSuperAdmin: true });
       render(
         <BrowserRouter>
-          <LeaderboardPage />
+          <MyRecordsPage />
         </BrowserRouter>
       );
 

@@ -132,9 +132,9 @@ describe("Route Resolver & Context-Aware Navigation", () => {
 
       // Leaderboard is unlocked for all players across all environments
       expect(guestLeaderboard?.disabled).toBe(false);
-      expect(guestLeaderboard?.badge?.text).toBe("Top");
+      expect(guestLeaderboard?.label).toBe("My Records");
       expect(memberLeaderboard?.disabled).toBe(false);
-      expect(memberLeaderboard?.badge?.text).toBe("Top");
+      expect(memberLeaderboard?.label).toBe("My Records");
 
       // Profile is Member gated: Member badge for guests, unlocked for members
       expect(guestProfile?.badge?.text).toBe("Member");
@@ -190,9 +190,9 @@ describe("Route Resolver & Context-Aware Navigation", () => {
         const hub = resolveNavigation({ pathname, isMember });
         expect(hub.id).toBe("games");
         const leaderboard = hub.items.find((i) => i.id === "games-leaderboard");
-        expect(leaderboard?.fullHref).toBe("/leaderboard");
+        expect(leaderboard?.fullHref).toBe("/myrecords");
         expect(leaderboard?.disabled).toBe(false);
-        expect(leaderboard?.badge?.text).toBe("Top");
+        expect(leaderboard?.label).toBe("My Records");
         // It is a destination, not a filter: no games page highlights it.
         expect(leaderboard?.active).toBe(false);
       }

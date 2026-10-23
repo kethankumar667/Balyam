@@ -103,11 +103,10 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       },
       {
         id: "home-leaderboard",
-        label: "Leaderboard",
+        label: "My Records",
         icon: Trophy,
-        path: "/leaderboard",
-        badge: { text: "Top", variant: "amber" },
-        isActive: (p) => p.startsWith("/leaderboard"),
+        path: "/myrecords",
+        isActive: (p) => p.startsWith("/myrecords"),
       },
 
       // Personal, Settings & Help Group
@@ -225,15 +224,14 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
         isActive: (p) => p.startsWith("/favorites"),
       },
       // A destination rather than a filter, so it sits apart from the list above. It is never the
-      // highlighted item here: opening it leaves the hub for the Hall of Fame section.
+      // highlighted item here: opening it leaves the hub for the My Records section.
       {
         id: "games-leaderboard",
-        label: "Leaderboard",
+        label: "My Records",
         icon: Trophy,
-        path: "/leaderboard",
-        badge: { text: "Top", variant: "amber" },
+        path: "/myrecords",
         dividerBefore: true,
-        isActive: (p) => p.startsWith("/leaderboard"),
+        isActive: (p) => p.startsWith("/myrecords"),
       },
     ],
   },
@@ -333,11 +331,9 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       },
       {
         id: "achievements-leaderboard",
-        label: "Leaderboard",
+        label: "My Records",
         icon: Crown,
-        path: "/profile",
-        hash: "#sec-profile",
-        badge: { text: "Top 10", variant: "amber" },
+        path: "/myrecords",
       },
       {
         id: "achievements-stats",
@@ -498,7 +494,7 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
       { id: "tourney-upcoming", label: "Upcoming Brackets", icon: Clock, path: "/tournaments" },
       { id: "tourney-my", label: "My Matches", icon: Trophy, path: "/tournaments" },
       { id: "tourney-rules", label: "Tournament Rules", icon: BookOpen, path: "/tournaments" },
-      { id: "tourney-leaderboard", label: "Leaderboards", icon: Crown, path: "/leaderboard", badge: { text: "Top", variant: "amber" } },
+      { id: "tourney-leaderboard", label: "My Records", icon: Crown, path: "/myrecords" },
     ],
   },
 
@@ -507,14 +503,14 @@ export const NAVIGATION_CONFIG: NavigationConfig = {
     id: "leaderboard",
     showPromoNote: false,
     header: {
-      title: "Hall of Fame",
-      subtitle: "Player scorecards & game records",
+      title: "My Records",
+      subtitle: "Every game. Every personal best.",
       icon: Crown,
       parentPath: "/",
       parentLabel: "Back to Home",
     },
     items: [
-      { id: "lb-scoreboard", label: "Score Board", icon: Trophy, path: "/leaderboard" },
+      { id: "lb-scoreboard", label: "My Records", icon: Trophy, path: "/myrecords" },
     ],
   },
 

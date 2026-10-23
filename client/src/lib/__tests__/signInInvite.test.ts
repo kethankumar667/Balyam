@@ -37,7 +37,7 @@ describe("isQuietRoute", () => {
     expect(isQuietRoute(path)).toBe(true),
   );
 
-  it.each(["/", "/home", "/games", "/mandali", "/leaderboard", "/profile"])("is fine on %s", (path) =>
+  it.each(["/", "/home", "/games", "/mandali", "/myrecords", "/profile"])("is fine on %s", (path) =>
     expect(isQuietRoute(path)).toBe(false),
   );
 

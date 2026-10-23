@@ -6,7 +6,7 @@ import OfflineBanner from "../../components/games/OfflineBanner";
 import RecoveryBanner from "../../core/recovery/RecoveryBanner";
 import GameCard from "../../components/games/GameCard";
 import QrCodeModal from "../../components/QrCodeModal";
-import LeaderboardPage from "../../pages/LeaderboardPage";
+import MyRecordsPage from "../../pages/MyRecordsPage";
 import MatchHistoryPage from "../../pages/MatchHistoryPage";
 import GameRoomSheet from "../../components/bhalyam/GameRoomSheet";
 import JoinRoomModal from "../../components/bhalyam/JoinRoomModal";
@@ -471,17 +471,17 @@ describe("Production UX Resilience Audit Suite", () => {
 
   describe("4. Empty States & Dynamic Filters in Feature Hubs", () => {
     it("dynamically shows EmptyState when Leaderboard search matches 0 games and restores on clear", async () => {
-      // LeaderboardPage now shows a real loading state while its scorecard
+      // MyRecordsPage now shows a real loading state while its scorecard
       // fetch is in flight (see the fake-data fix — a silent render during
       // load used to be indistinguishable from "you haven't played
       // anything"). Resolve with an empty archive so it settles immediately.
-      mockApiJson.mockResolvedValueOnce({
+      mockApiJson.mockImplementation(async (url: string) => url.endsWith("/scorecards") ? {
         archive: { playerId: "p_test_123", games: {}, totalPersonalBestsBeaten: 0, updatedAt: Date.now() },
-      });
+      } : null);
 
       render(
         <MemoryRouter>
-          <LeaderboardPage />
+          <MyRecordsPage />
         </MemoryRouter>
       );
 

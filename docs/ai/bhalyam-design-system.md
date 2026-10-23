@@ -89,6 +89,26 @@ one bounded retry (including AVIF/WebP URLs) and a glyph fallback. The
 `classic` and `calm` treatments remain available for design comparisons;
 `hybrid` is the default wherever the shared card is used.
 
+#### My Records: personal performance dashboard
+
+`/myrecords` replaces the former `/leaderboard` route; the old public route is
+removed without a redirect. Admin rankings and their API are unchanged.
+`pages/MyRecordsPage.tsx` uses shared scorecard archives and existing device
+best-score keys, with the game/mode model in `features/myrecords/records.ts`.
+
+Desktop uses a main dashboard and a journey rail; phone stacks the sections
+with horizontal game and mode selectors. Summary cards, an illustrated
+personal-best banner, mode cards, a last-five-results chart and a record
+cabinet use actual tracked values. Suggested milestone goals are explicitly
+not rewards. Timed modes display durations; score units appear only once.
+
+Results run oldest to newest and have an expandable accessible table.
+Archives do not provide full dated history, earlier-best snapshots or activity
+streaks, so the interface does not invent them. Device-only bests carry no
+fabricated date or match count. Failed refreshes show an explicit error,
+retaining cached records when available. Selectors use native pressed
+buttons, 44px targets, focus rings and reduced-motion-aware scrolling.
+
 #### Shop: cinematic collectible showroom
 
 `components/cosmetics/shop/` owns the shop-only visual treatment; global app

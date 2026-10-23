@@ -40,7 +40,7 @@ The multiplayer room model remains the heart of the app: a React client sends in
 - Game catalog family: `/games`, `/favorites`, `/recently-played`
 - Room play: `/room/:code` and related room flow through `client/src/pages/Room.tsx`
 - Profile family: `/profile`, `/profile/personal`, `/profile/statistics`, `/profile/matches`, `/profile/achievements`, plus aliases
-- Competitive/social: `/leaderboard`, `/tournaments`, `/social`
+- Personal records/social: `/myrecords`, `/tournaments`, `/social`
 - Account/auth: login, signup, password reset, verification
 - Support/legal/content: privacy, terms, safety, about, FAQs, contact, feedback, reviews
 - Retro/standalone pages: Nokia cricket, Nokia snake, brick racer, brick tetris, brick breakout

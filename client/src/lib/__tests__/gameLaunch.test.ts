@@ -91,7 +91,7 @@ describe("launchLinkProps: the props for a <Link> that launches a game", () => {
 
 describe("no launch surface builds its own /games/<slug> path any more", () => {
   it.each([
-    "../../pages/LeaderboardPage.tsx",
+    "../../pages/MyRecordsPage.tsx",
     "../../components/scorecard/HoloPassShareModal.tsx",
     "../../components/scorecard/ChronoScorecardDeckDesktop.tsx",
     "../../components/scorecard/ChronoScorecardDeckMobile.tsx",

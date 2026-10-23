@@ -29,7 +29,7 @@ import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:5173";
 const ROUTES = (process.env.ROUTES ||
-  "/,/games,/leaderboard,/tournaments,/social,/login,/signup,/about,/privacy,/design-system,/snake,/tetris,/breakout,/roadrash,/nokiacricket,/diagnostics,/no-such-404"
+  "/,/games,/myrecords,/tournaments,/social,/login,/signup,/about,/privacy,/design-system,/snake,/tetris,/breakout,/roadrash,/nokiacricket,/diagnostics,/no-such-404"
 ).split(",").filter(Boolean);
 
 const WCAG_FLOOR = 24;   // WCAG 2.2 AA 2.5.8

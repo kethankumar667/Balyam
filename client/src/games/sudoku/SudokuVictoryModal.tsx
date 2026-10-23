@@ -217,7 +217,7 @@ function SudokuVictoryModal({
 
             <button
               type="button"
-              onClick={() => navigate("/leaderboard")}
+              onClick={() => navigate("/myrecords")}
               className={`min-h-[44px] py-2.5 rounded-2xl border font-bold uppercase text-xs tracking-wider active:scale-95 transition flex items-center justify-center gap-1.5 ${
                 isLight
                   ? "bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200"

@@ -61,7 +61,7 @@ describe("BHALYAM UI Perfection & Hardening Suite", () => {
 
       expect(paths).toContain("/tournaments");
       expect(paths).toContain("/social");
-      expect(paths).toContain("/leaderboard");
+      expect(paths).toContain("/myrecords");
       expect(paths).toContain("/games");
     });
   });

@@ -10,7 +10,7 @@ Allow: /privacy
 Allow: /terms
 Allow: /safety
 Allow: /community-rules
-Allow: /leaderboard
+Allow: /myrecords
 Allow: /tournaments
 Allow: /social
 Allow: /favorites

@@ -51,7 +51,7 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://bhalyam.onrender.com/leaderboard</loc>
+    <loc>https://bhalyam.onrender.com/myrecords</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>

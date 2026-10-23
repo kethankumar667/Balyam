@@ -82,9 +82,8 @@ export function resolveBreadcrumbs(pathname: string, search: string = ""): Bread
   }
 
   // 3. Competitions & Community
-  if (cleanPath === "/leaderboard") {
-    crumbs.push({ label: "Competitions", path: "/leaderboard" });
-    crumbs.push({ label: "Global Leaderboard" });
+  if (cleanPath === "/myrecords") {
+    crumbs.push({ label: "My Records" });
     return crumbs;
   }
 

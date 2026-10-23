@@ -203,7 +203,7 @@ test.describe("SMOKE-03: Prerender delivery", () => {
         description: "remote-staging-rewrite-verification",
       });
 
-      const representativeRoutes = ["/", "/about", "/leaderboard", "/nokiacricket", "/cricket2d", "/privacy", "/how-to-play"];
+      const representativeRoutes = ["/", "/about", "/myrecords", "/nokiacricket", "/cricket2d", "/privacy", "/how-to-play"];
       for (const route of representativeRoutes) {
         const res = await apiRequest.get(new URL(route, config.baseUrl).toString());
         expect(res.status()).toBe(200);

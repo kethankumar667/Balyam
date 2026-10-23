@@ -136,11 +136,11 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/leaderboard"
+                  to="/myrecords"
                   className="hover:text-[#EA580C] dark:hover:text-amber-400 transition flex items-center gap-1.5 min-h-[28px] focus-visible:outline-2 focus-visible:outline-amber-500 rounded"
                 >
                   <Trophy className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Global Leaderboard</span>
+                  <span>My Records</span>
                 </Link>
               </li>
               <li>

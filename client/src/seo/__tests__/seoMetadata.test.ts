@@ -11,7 +11,7 @@ describe("SEO Metadata & Route Coverage Registry", () => {
     "/terms",
     "/safety",
     "/community-rules",
-    "/leaderboard",
+    "/myrecords",
     "/tournaments",
     "/social",
     "/cricket2d",

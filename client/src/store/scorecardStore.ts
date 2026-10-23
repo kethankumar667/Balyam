@@ -86,7 +86,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
         saveCachedArchive(playerId, data.archive);
         set({ archive: data.archive, loading: false, error: null });
       } else {
-        set({ loading: false });
+        set({ loading: false, error: "Could not load records. Please try again." });
       }
     } catch (err) {
       if (myGeneration !== scorecardFetchGeneration) return;
@@ -221,4 +221,3 @@ export async function recordSoloScore(
     secondaryMetrics,
   });
 }
-
