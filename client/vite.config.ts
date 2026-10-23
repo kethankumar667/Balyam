@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { PRERENDER_ROUTES } from "./src/seo/metadata";
 
 /**
  * ADMIN-SEC-001 — refuse to produce a build artifact that could carry
@@ -51,7 +52,24 @@ export default defineConfig(({ mode, command }) => {
   assertNoOperationalKeyInBuild(loadEnv(mode, process.cwd(), ""), command);
 
   return {
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "prerender-preview-routes",
+      configurePreviewServer(server) {
+        // Match the hosting rewrites: /about must hydrate /about/index.html, not Home.
+        server.middlewares.use((request, _response, next) => {
+          if (request.method === "GET" || request.method === "HEAD") {
+            const url = new URL(request.url ?? "/", "http://localhost");
+            if (url.pathname !== "/" && PRERENDER_ROUTES.includes(url.pathname)) {
+              request.url = `${url.pathname}/index.html${url.search}`;
+            }
+          }
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@shared": path.resolve(__dirname, "../shared"),

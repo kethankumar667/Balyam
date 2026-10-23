@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import {
   authErrorMessage,
@@ -390,6 +390,7 @@ export interface PasswordUpdateState {
  */
 export function usePasswordUpdate(): PasswordUpdateState {
   const [params] = useSearchParams();
+  const { hash } = useLocation();
   const ready = useAuthStore((s) => s.ready);
   const isMember = useAuthStore((s) => s.isMember);
   const [loading, setLoading] = useState(false);
@@ -401,7 +402,7 @@ export function usePasswordUpdate(): PasswordUpdateState {
   // than by failing quietly, in the query string or the hash depending on
   // the flow. Either one means the same thing to the player.
   const linkFailed =
-    params.get("error") !== null || /(^|[#&])error(_code)?=/.test(window.location.hash);
+    params.get("error") !== null || /(^|[#&])error(_code)?=/.test(hash);
 
   let status: RecoverySessionStatus = "checking";
   if (!isSupabaseConfigured) status = "ready";

@@ -1,10 +1,10 @@
 import React from "react";
-import ReactDOMServer from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 import App, { type RouteComponents } from "./App";
 import { AudioProvider } from "./context/AudioContext";
 import { PUBLIC_ROUTES_METADATA, PRERENDER_ROUTES } from "./seo/metadata";
 import { getStructuredDataForRoute, serializeJsonLd } from "./seo/structuredData";
+import { renderToHtml } from "./ssr/renderToHtml";
 
 /**
  * Re-exported so `client/scripts/prerender.mjs` can pull the authoritative
@@ -89,12 +89,12 @@ const ssrComponents: RouteComponents = {
   BrainVitaPage,
 };
 
-export function render(url: string) {
+export async function render(url: string) {
   const metadata = PUBLIC_ROUTES_METADATA[url] || PUBLIC_ROUTES_METADATA["/"];
   const structuredData = getStructuredDataForRoute(url);
   const jsonLdString = serializeJsonLd(structuredData);
 
-  const appHtml = ReactDOMServer.renderToString(
+  const appHtml = await renderToHtml(
     <React.StrictMode>
       <StaticRouter location={url}>
         <AudioProvider>

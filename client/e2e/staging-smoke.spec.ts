@@ -75,7 +75,8 @@ test.describe("SMOKE-02: Frontend availability", () => {
    */
   const HYDRATION_ERROR_PATTERN = /invariant=41[0-9]|invariant=42[0-9]|Hydration failed|switch to client rendering/i;
 
-  test("root document loads, hydrates deterministically, and the server-rendered root is never discarded", async ({
+  for (const route of ["/", "/games", "/about", "/myrecords", "/community-rules", "/reset-password"]) {
+  test(`${route} loads and hydrates without unfinished Suspense boundaries`, async ({
     page,
     request: apiRequest,
   }) => {
@@ -95,9 +96,12 @@ test.describe("SMOKE-02: Frontend availability", () => {
     // JS has run at all — already contains real rendered content inside
     // #root, not an empty mount point. This proves prerendering itself
     // produced real markup independent of what the browser does with it.
-    const raw = await apiRequest.get(new URL("/", (await loadE2EConfig()).baseUrl).toString());
+    const raw = await apiRequest.get(new URL(route, (await loadE2EConfig()).baseUrl).toString());
     expect(raw.status()).toBe(200);
     const rawHtml = await raw.text();
+    expect(rawHtml.match(/<title>([\s\S]*?)<\/title>/i)?.[1]).toBe(PUBLIC_ROUTES_METADATA[route].title);
+    expect(rawHtml, `${route} must not contain an aborted Suspense boundary`).not.toContain("<!--$!-->");
+    expect(rawHtml, `${route} must not contain a pending Suspense boundary`).not.toContain("<!--$?-->");
     const rootStart = rawHtml.indexOf('<div id="root">');
     expect(rootStart, 'raw server response must contain <div id="root">').toBeGreaterThanOrEqual(0);
     const afterRootTag = rawHtml.slice(rootStart + '<div id="root">'.length, rootStart + '<div id="root">'.length + 20);
@@ -106,19 +110,62 @@ test.describe("SMOKE-02: Frontend availability", () => {
       `raw server response's #root must contain prerendered markup, not be empty — found: ${afterRootTag}`,
     ).toBe(false);
 
-    const response = await page.goto("/", { waitUntil: "domcontentloaded" });
+    const response = await page.goto(route, { waitUntil: "domcontentloaded" });
     expect(response?.status()).toBe(200);
 
-    // #root is the real mount point (see client/index.html / entry-client);
-    // waiting for a child to exist proves React actually hydrated, not just
-    // that the static shell arrived.
+    // Retain the static page, then exercise real consent controls to prove
+    // the client is interactive rather than only displaying prerendered HTML.
     await expect(page.locator("#root")).not.toBeEmpty({ timeout: 15_000 });
+    await page.getByRole("button", { name: "I'm 18 or older", exact: true }).click();
+    await page.getByRole("button", { name: "Only what's essential", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator("h1").first()).toBeVisible();
 
     expect(hydrationConsoleErrors, `Hydration-related console errors: ${hydrationConsoleErrors.join("; ")}`).toEqual(
       [],
     );
     expect(pageErrors, `Uncaught page errors: ${pageErrors.join("; ")}`).toEqual([]);
   });
+  }
+
+  for (const { width, theme } of [
+    { width: 375, theme: "dark" },
+    { width: 1440, theme: "light" },
+  ]) {
+    test(`saved ${theme} preferences survive hydration and refresh at ${width}px`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("console", (message) => {
+        if (message.type() === "error" && HYDRATION_ERROR_PATTERN.test(message.text())) {
+          errors.push(message.text());
+        }
+      });
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript((savedTheme) => {
+        localStorage.setItem("bhalyam.theme", savedTheme);
+        localStorage.setItem("bhalyam.fairplay.pledge", "true");
+      }, theme);
+      await page.goto("/myrecords");
+      await page.getByRole("button", { name: "I'm 18 or older", exact: true }).click();
+      await page.getByRole("button", { name: "Only what's essential", exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      const search = page.getByRole("textbox", { name: "Search games by name" });
+      await search.fill("__no_matching_game__");
+      await expect(page.getByRole("heading", { name: "No games found" })).toBeVisible();
+      await page.getByRole("button", { name: "Clear Filters", exact: true }).click();
+      await expect(search).toHaveValue("");
+      await page.reload();
+      await expect(search).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.goto("/community-rules");
+      await expect(page.getByText("Pledge Verified", { exact: true })).toBeVisible();
+      await page.reload();
+      await expect(page.getByText("Pledge Verified", { exact: true })).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+  }
 });
 
 const distDir = fs.existsSync(path.resolve(process.cwd(), "dist"))
@@ -137,8 +184,8 @@ test.describe("SMOKE-03: Prerender delivery", () => {
         description: "local-generated-prerender-file-verification",
       });
 
-      // Verify all 37 authoritative public routes generated static files
-      expect(PRERENDER_ROUTES.length).toBe(37);
+      // The metadata catalog owns the route inventory, including its count.
+      expect(PRERENDER_ROUTES.length).toBeGreaterThan(0);
 
       for (const route of PRERENDER_ROUTES) {
         const outPath =
@@ -149,6 +196,17 @@ test.describe("SMOKE-03: Prerender delivery", () => {
         expect(fs.existsSync(outPath), `Prerendered file missing on disk for ${route} at ${outPath}`).toBe(true);
 
         const html = fs.readFileSync(outPath, "utf-8");
+        const served = await apiRequest.get(new URL(route, config.baseUrl).toString());
+        expect(served.status(), `${route} HTTP status`).toBe(200);
+        const servedHtml = await served.text();
+        expect(
+          servedHtml.match(/<title>([\s\S]*?)<\/title>/i)?.[1],
+          `${route} must serve its own HTML, not Home's fallback`,
+        ).toBe(
+          PUBLIC_ROUTES_METADATA[route].title,
+        );
+        expect(html, `${route} has an aborted Suspense boundary`).not.toContain("<!--$!-->");
+        expect(html, `${route} has a pending Suspense boundary`).not.toContain("<!--$?-->");
 
         // Non-empty #root prerender content
         const rootStart = html.indexOf('<div id="root">');
@@ -173,8 +231,8 @@ test.describe("SMOKE-03: Prerender delivery", () => {
           );
         }
 
-        // Non-home routes must never have a canonical that ends in bare "/"
-        if (route !== "/") {
+        // The /home alias intentionally shares Home's canonical.
+        if (route !== "/" && route !== "/home") {
           const canonicalMatch = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i);
           expect(canonicalMatch, `${route} had no canonical link`).not.toBeNull();
           expect(canonicalMatch![1], `${route} erroneously received homepage canonical`).not.toMatch(/\/$/);

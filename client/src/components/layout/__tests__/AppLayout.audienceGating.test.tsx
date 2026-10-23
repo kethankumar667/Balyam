@@ -2,6 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { StaticRouter } from "react-router-dom/server";
+import { renderToString } from "react-dom/server";
 import { useAuthStore } from "../../../store/authStore";
 
 vi.mock("../AppHeader", () => ({ default: () => null }));
@@ -39,6 +41,17 @@ function renderShell({ isMember, chrome = true }: { isMember: boolean; chrome?: 
  */
 describe("AppLayout: which audience-specific dialog it mounts", () => {
   afterEach(cleanup);
+
+  it("prerenders the page without browser-only overlay or background boundaries", () => {
+    const html = renderToString(
+      <StaticRouter location="/myrecords">
+        <AppLayout chrome={false} showFallingPetals><p>page</p></AppLayout>
+      </StaticRouter>,
+    );
+    expect(html).toContain("<p>page</p>");
+    expect(html).not.toContain("<!--$!-->");
+    expect(html).not.toContain("<!--$?-->");
+  });
 
   it("gives a signed-in member the profile prompt and no sign-in invitation", async () => {
     renderShell({ isMember: true });

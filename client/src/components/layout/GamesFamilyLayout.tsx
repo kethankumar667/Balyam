@@ -35,9 +35,11 @@ export default function GamesFamilyLayout() {
   return (
     <AppLayout onSelectGame={setSheetGame} showFallingPetals>
       <Outlet context={context} />
-      <Suspense fallback={null}>
-        <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
-      </Suspense>
+      {sheetGame && (
+        <Suspense fallback={null}>
+          <GameRoomSheet game={sheetGame} onClose={() => setSheetGame(null)} />
+        </Suspense>
+      )}
     </AppLayout>
   );
 }

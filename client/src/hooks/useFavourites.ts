@@ -2,6 +2,8 @@
 import { FavouritesManager } from "../services/FavouritesManager";
 import type { BhalyamGameSlug } from "../components/bhalyam/data";
 
+const SERVER_FAVOURITES: BhalyamGameSlug[] = [];
+
 export function useFavourites(): {
   favourites: BhalyamGameSlug[];
   isFavourite: (slug: BhalyamGameSlug) => boolean;
@@ -12,7 +14,7 @@ export function useFavourites(): {
   const favourites = useSyncExternalStore(
     FavouritesManager.subscribe.bind(FavouritesManager),
     () => FavouritesManager.getFavourites(),
-    () => []
+    () => SERVER_FAVOURITES
   );
 
   return {

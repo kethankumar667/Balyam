@@ -324,7 +324,8 @@ export function useHasVerifiedMember(): boolean {
 
 function initialState(): StoredAccount & { userId: string | null; ready: boolean } {
   if (typeof window === "undefined" || typeof localStorage === "undefined") {
-    return { ...GUEST, userId: null, ready: true };
+    // SSR has not resolved a browser session; match its initial pending state.
+    return { ...GUEST, userId: null, ready: !isSupabaseConfigured };
   }
   const local = loadLocalAccount();
   if (local.kind === "super_admin" || local.kind === "admin" || local.kind === "member") {

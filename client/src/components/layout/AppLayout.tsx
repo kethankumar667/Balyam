@@ -89,6 +89,8 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const { pathname, search, state: navState } = useLocation();
   const navigate = useNavigate();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [theme] = useTheme();
   const isDark = theme === "dark";
   // Two dialogs, one audience each. Mounting only the one that can be shown also keeps the other's
@@ -298,7 +300,7 @@ export default function AppLayout({
             tabIndex={-1}
             className="flex-1 min-w-0 w-full max-w-full h-full overflow-y-auto overflow-x-hidden relative focus:outline-none flex flex-col touch-pan-y overscroll-y-contain"
           >
-            {showFallingPetals && (
+            {mounted && showFallingPetals && (
               <Suspense fallback={null}>
                 <FallingPetals />
               </Suspense>
@@ -319,46 +321,48 @@ export default function AppLayout({
           </main>
         </div>
 
-        {/* Global Modals & Sheets */}
-        <Suspense fallback={null}>
-          <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
-          <GameRoomSheet
-            game={sheetGame}
-            shareToMandaliId={sheetShareTo}
-            onClose={() => {
-              setSheetGame(null);
-              setSheetShareTo(null);
-            }}
-          />
-          <MenuSheet
-            open={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
-            onOpenJoin={() => {
-              setSettingsOpen(false);
-              setJoinOpen(true);
-            }}
-          />
-          <ProfileSheet
-            open={profileOpen}
-            onClose={() => setProfileOpen(false)}
-            notifications={notifications}
-            onUpdateNotifications={setNotifications}
-            initialView={profileInitialView}
-            onOpenJoin={() => {
-              setProfileOpen(false);
-              setJoinOpen(true);
-            }}
-          />
-          <WalletDrawer
-            isOpen={walletOpen}
-            onClose={() => setWalletOpen(false)}
-          />
-          <DailyStreakModal />
-          {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
-          {/* Privacy choice, then the profile questions, then the welcome: see MemberOnboarding. */}
-          {chrome && isMember && <MemberOnboarding key={memberId ?? "member"} />}
-          {chrome && !isMember && <SignInInvitation />}
-        </Suspense>
+        {/* Browser-only overlays are not part of the static page. */}
+        {mounted && (
+          <Suspense fallback={null}>
+            <JoinRoomModal open={joinOpen} onClose={() => setJoinOpen(false)} />
+            <GameRoomSheet
+              game={sheetGame}
+              shareToMandaliId={sheetShareTo}
+              onClose={() => {
+                setSheetGame(null);
+                setSheetShareTo(null);
+              }}
+            />
+            <MenuSheet
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              onOpenJoin={() => {
+                setSettingsOpen(false);
+                setJoinOpen(true);
+              }}
+            />
+            <ProfileSheet
+              open={profileOpen}
+              onClose={() => setProfileOpen(false)}
+              notifications={notifications}
+              onUpdateNotifications={setNotifications}
+              initialView={profileInitialView}
+              onOpenJoin={() => {
+                setProfileOpen(false);
+                setJoinOpen(true);
+              }}
+            />
+            <WalletDrawer
+              isOpen={walletOpen}
+              onClose={() => setWalletOpen(false)}
+            />
+            <DailyStreakModal />
+            {/* Not over a live board: `chrome` is off exactly when a match is on screen. */}
+            {/* Privacy choice, then the profile questions, then the welcome: see MemberOnboarding. */}
+            {chrome && isMember && <MemberOnboarding key={memberId ?? "member"} />}
+            {chrome && !isMember && <SignInInvitation />}
+          </Suspense>
+        )}
       </div>
     </AppLayoutContext.Provider>
   );

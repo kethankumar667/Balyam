@@ -127,8 +127,8 @@ services:
         source: /community-rules
         destination: /community-rules/index.html
       - type: rewrite
-        source: /leaderboard
-        destination: /leaderboard/index.html
+        source: /myrecords
+        destination: /myrecords/index.html
       - type: rewrite
         source: /tournaments
         destination: /tournaments/index.html

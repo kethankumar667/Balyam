@@ -121,9 +121,14 @@ export default function CommunityRulesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const [hasPledged, setHasPledged] = useState(() => {
-    return localStorage.getItem("bhalyam.fairplay.pledge") === "true";
-  });
+  const [hasPledged, setHasPledged] = useState(false);
+  useEffect(() => {
+    try {
+      setHasPledged(localStorage.getItem("bhalyam.fairplay.pledge") === "true");
+    } catch (error) {
+      console.warn("Could not read the saved fair play pledge", error);
+    }
+  }, []);
   const [openQuizIndex, setOpenQuizIndex] = useState<number | null>(null);
 
   const handleTakePledge = () => {

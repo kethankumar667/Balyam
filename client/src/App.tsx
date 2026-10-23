@@ -281,6 +281,22 @@ import { TooltipProvider } from "./design-system/dls/Tooltip";
 import { useStructuredData } from "./seo/useStructuredData";
 import { useMetadata } from "./seo/useMetadata";
 
+/** Keep bootstrap subscriptions from updating the route boundary before it hydrates. */
+function AppBootstrap() {
+  useEffect(() => {
+    enforceConsentOnLoad();
+    getSocket();
+  }, []);
+  useAdminAutoCheck();
+  useGuestCarryOver();
+  useGuestNameHygiene();
+  useCosmeticsBootstrap();
+  useLevelUpWatcher();
+  useStructuredData();
+  useMetadata();
+  return null;
+}
+
 export default function App({ components = {} }: AppProps) {
   const BhalyamHome = components.BhalyamHome ?? LazyBhalyamHome;
   const Room = components.Room ?? LazyRoom;
@@ -346,22 +362,11 @@ export default function App({ components = {} }: AppProps) {
   const MandaliDiscoveryPage = components.MandaliDiscoveryPage ?? LazyMandaliDiscoveryPage;
   const MandaliHubPage = components.MandaliHubPage ?? LazyMandaliHubPage;
 
-  useEffect(() => {
-    enforceConsentOnLoad();
-    getSocket();
-  }, []);
-  useAdminAutoCheck();
-  useGuestCarryOver();
-  useGuestNameHygiene();
-  useCosmeticsBootstrap();
-  useLevelUpWatcher();
-  useStructuredData();
-  useMetadata();
-
   return (
     <ErrorBoundary>
       <RecoveryProvider>
         <TooltipProvider delayDuration={200} skipDelayDuration={100}>
+          <AppBootstrap />
           <ScrollToTopOnRouteChange />
           <ToastHost />
           <AgeGateModal />

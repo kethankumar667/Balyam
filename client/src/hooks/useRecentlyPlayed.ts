@@ -2,6 +2,8 @@
 import { RecentlyPlayedManager, type RecentlyPlayedItem } from "../services/RecentlyPlayedManager";
 import type { BhalyamGameSlug } from "../components/bhalyam/data";
 
+const SERVER_RECENT_ITEMS: RecentlyPlayedItem[] = [];
+
 export function useRecentlyPlayed(): {
   recentItems: RecentlyPlayedItem[];
   recordRecentlyPlayed: (slug: BhalyamGameSlug) => void;
@@ -10,7 +12,7 @@ export function useRecentlyPlayed(): {
   const recentItems = useSyncExternalStore(
     RecentlyPlayedManager.subscribe.bind(RecentlyPlayedManager),
     () => RecentlyPlayedManager.getRecentlyPlayed(),
-    () => []
+    () => SERVER_RECENT_ITEMS
   );
 
   return {

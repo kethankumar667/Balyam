@@ -15,6 +15,44 @@ possible. See §9 for what certification actually requires.
 
 ## 1. Architecture
 
+### Static HTML and hydration gate
+
+The client build prerenders the authoritative routes from
+`client/src/seo/metadata.ts`. The SSR entry awaits
+`client/src/ssr/renderToHtml.ts`, which uses React's `renderToPipeableStream`
+and waits for `onAllReady` before collecting HTML. `renderToString` does not
+wait for lazy components inside Suspense: its unfinished boundaries cause
+React #419 recovery errors in the production browser.
+
+A render error or a 30-second per-route timeout fails the build; it must not
+publish a fallback as successful HTML. SMOKE-02 exercises hydration on Home,
+Games, About, My Records, Community Rules and password reset. SMOKE-03 checks every generated route for
+unfinished boundaries (`<!--$!-->` or `<!--$?-->`) as well as metadata.
+Run these checks against a local production preview, not only Vite dev.
+Browser preferences such as the Community Rules pledge load in effects after
+the deterministic first render. Recovery-link errors use the router location
+rather than accessing `window` while rendering.
+`AppBootstrap` isolates global subscriptions from the route tree. Early
+account/bootstrap updates must not rerender the still-hydrating route Suspense
+boundary (React #421). All hooks still run; public page content remains
+server-rendered. `AppLayout` mounts browser-only dialogs after hydration so
+preference/account updates cannot interrupt their lazy boundary; ambient
+backgrounds follow the same rule. Recently played and favourite hooks use stable
+empty server snapshots, then restore device lists. The theme hook also starts
+hydration from the server's light snapshot before syncing the saved theme; the
+document theme is still stamped before mounting to avoid a palette flash.
+With accounts configured, server auth starts pending like the browser rather
+than claiming a resolved guest session. Password reset therefore prerenders its
+checking state instead of racing between checking and expired-link markup.
+The games-family create sheet mounts only when a game is selected, so a closed
+sheet does not introduce a hydrating lazy boundary.
+Vite preview rewrites extensionless catalog URLs to their generated `index.html`,
+matching the explicit Render rewrites (including `/myrecords`, not `/leaderboard`).
+SMOKE-03 checks both every generated file and its extensionless HTTP response;
+serving Home's fallback for another public page is a failure, even if client-side
+routing eventually draws the requested page. None of these local checks deploys
+the hosting configuration.
+
 ```
 Render: bhalyam-staging (static site)
         |  VITE_SERVER_URL

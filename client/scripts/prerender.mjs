@@ -65,7 +65,7 @@ async function prerender() {
 
   for (const url of routesToPrerender) {
     try {
-      const { appHtml, metadata, jsonLdString } = render(url);
+      const { appHtml, metadata, jsonLdString } = await render(url);
 
       let html = templateHtml;
 

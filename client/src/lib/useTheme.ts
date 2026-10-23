@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export type AppTheme = "light" | "dark";
 
@@ -44,6 +44,11 @@ export function resolveTheme(): AppTheme {
 
 const readTheme = resolveTheme;
 
+function subscribeTheme(sync: () => void): () => void {
+  window.addEventListener(EVENT_NAME, sync);
+  return () => window.removeEventListener(EVENT_NAME, sync);
+}
+
 export function setTheme(next: AppTheme): void {
   if (typeof document === "undefined" || typeof window === "undefined") return;
   document.documentElement.setAttribute("data-theme", next);
@@ -56,13 +61,7 @@ export function setTheme(next: AppTheme): void {
 }
 
 export function useTheme(): readonly [AppTheme, () => void] {
-  const [theme, setLocal] = useState<AppTheme>(readTheme);
-
-  useEffect(() => {
-    const sync = () => setLocal(readTheme());
-    window.addEventListener(EVENT_NAME, sync);
-    return () => window.removeEventListener(EVENT_NAME, sync);
-  }, []);
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => DEFAULT_THEME);
 
   const toggle = () => setTheme(theme === "light" ? "dark" : "light");
   return [theme, toggle] as const;
