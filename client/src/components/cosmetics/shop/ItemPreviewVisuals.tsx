@@ -328,9 +328,6 @@ function EnchantedDiceSkinPreview({
 
       {/* Ground Contact Shadow */}
       <div className="w-32 h-4 rounded-[100%] bg-black/75 blur-md mt-3" />
-      <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase mt-1">
-        3D Tactile Material Inspection
-      </span>
     </div>
   );
 }

@@ -152,10 +152,11 @@ export function ShopStage({ item, category, scope, mode, onModeChange, onStep, c
             exit={reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Scaled up to fill the plate; down on a short screen, where the plate itself is small. */}
+            {/* Previews are 20% smaller; embedded controls retain their previous rendered size. */}
             <div
-              className={`origin-center ${
-                compact ? "scale-[1.05] [@media(max-height:700px)]:scale-[0.8]" : "scale-[1.55] short-land:scale-[1]"
+              data-shop-preview-scale
+              className={`origin-center [&_button]:scale-[1.25] ${
+                compact ? "scale-[0.84] [@media(max-height:700px)]:scale-[0.64]" : "scale-[1.24] short-land:scale-[0.8]"
               }`}
             >
               <ItemPreviewVisual

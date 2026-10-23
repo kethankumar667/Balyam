@@ -125,6 +125,11 @@ Both mobile and desktop stages offer previous/next style arrows, sharing the
 same category-scoped wrap-around selection. Categories with fewer than two
 styles omit the arrows; the shelf remains an alternative selection control.
 
+Large shop previews use a 20% smaller scale on both layouts (mobile 0.84,
+desktop 1.24; short-screen variants 0.64 and 0.8). Shelf thumbnails, pedestal,
+item details and stage navigation retain their size. Embedded preview buttons
+counter-scale by 1.25 so this artwork adjustment does not shrink their controls.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.

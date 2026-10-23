@@ -115,6 +115,18 @@ describe("ShopStrip", () => {
 });
 
 describe("ShopStage", () => {
+  it.each([false, true])("reduces preview artwork by 20% without scaling stage navigation (compact=%s)", (compact) => {
+    const { container } = render(<ShopStage
+      item={frame()} category="AVATAR_AURA" scope="GLOBAL" mode="PROFILE"
+      onModeChange={vi.fn()} onStep={vi.fn()} compact={compact}
+    />);
+    const artwork = container.querySelector("[data-shop-preview-scale]");
+    expect(artwork?.className).toContain(compact ? "scale-[0.84]" : "scale-[1.24]");
+    expect(artwork?.className).toContain(compact ? "scale-[0.64]" : "scale-[0.8]");
+    expect(artwork?.contains(screen.getByRole("button", { name: "Next style" }))).toBe(false);
+    expect(artwork?.contains(screen.getByRole("tablist", { name: "Preview context" }))).toBe(false);
+  });
+
   function renderStage(over: { category?: "AVATAR_AURA" | "DICE_SKIN"; item?: CosmeticCatalogItem; withSteps?: boolean } = {}) {
     const onModeChange = vi.fn();
     const onStep = vi.fn();
@@ -195,6 +207,12 @@ describe("ShopStage", () => {
 
 describe("ItemPreviewVisual", () => {
   const teak: CosmeticCatalogItem = frame({ id: "dice_wooden_teak", category: "DICE_SKIN", name: "Carved Teak Wood", rarity: "RARE" });
+
+  it("shows the inspected die without a material-inspection caption", () => {
+    const { container } = render(<ItemPreviewVisual item={teak} category="DICE_SKIN" scope="GLOBAL" mode="INSPECT" displayName="Kay" avatarId={null} />);
+    expect(container.querySelectorAll("[data-die-face]")).toHaveLength(6);
+    expect(screen.queryByText(/3D Tactile Material Inspection/i)).toBeNull();
+  });
 
   it("renders the dice roll preview as presentation only, independent of game RNG", () => {
     render(<ItemPreviewVisual item={teak} category="DICE_SKIN" scope="GLOBAL" mode="ROLL_PREVIEW" displayName="Kay" avatarId={null} />);
