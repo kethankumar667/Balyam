@@ -53,6 +53,16 @@ describe("Play Now button colours", () => {
   );
 });
 
+describe("light tile tint colour", () => {
+  // A dark accent (a deep red, say) at 12-24% over white is a dusty salmon, not a tint. The tint colour has to be bright.
+  const MAX_TINT_CONTRAST_WITH_WHITE = 5;
+
+  it.each(BHALYAM_GAMES.map((g) => [g.slug, g] as const))("%s uses a bright accent for its tint", (_slug, game) => {
+    if (hueAndSaturation(game.accent.from).saturation < 0.3) return;
+    expect(contrastWithWhite(game.accent.from)).toBeLessThanOrEqual(MAX_TINT_CONTRAST_WITH_WHITE);
+  });
+});
+
 describe("neighbouring tiles", () => {
   const COLUMNS = 3;
   const NEUTRAL_SATURATION = 0.3;

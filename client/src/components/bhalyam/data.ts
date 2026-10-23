@@ -203,7 +203,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     btnGradient: { from: "#B91C1C", to: "#7F1D1D", shadow: "#450A0A" },
     blurb:
       "Odd or Even? The back-bench class champion simulator. Zero infrastructure, infinite intensity.",
-    accent: { from: "#B91C1C", to: "#7F1D1D" },
+    accent: { from: "#F97316", to: "#C2410C" },
   },
   {
     slug: "rummy",
