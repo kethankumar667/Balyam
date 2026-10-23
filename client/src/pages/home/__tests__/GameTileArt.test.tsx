@@ -16,6 +16,16 @@ afterEach(() => {
  * byte-identical to the one that just failed.
  */
 describe("GameTileArt — retry after image load failure", () => {
+  it("escapes filename spaces so optimized sources are URLs, not invalid srcset descriptors", () => {
+    const { container } = render(
+      <GameTileArt src="/Bingo Tile.png" title="Bingo" compact>
+        <span>fallback</span>
+      </GameTileArt>,
+    );
+    expect(container.querySelector('source[type="image/avif"]')?.getAttribute("srcset")).toBe("/Bingo%20Tile.avif");
+    expect(container.querySelector('source[type="image/webp"]')?.getAttribute("srcset")).toBe("/Bingo%20Tile.webp");
+  });
+
   it("carries the retry cache-buster into the avif/webp <source> URLs, not just the fallback <img src>", () => {
     vi.useFakeTimers();
 

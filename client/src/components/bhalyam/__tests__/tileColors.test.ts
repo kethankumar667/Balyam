@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BHALYAM_GAMES } from "../data";
-import { CALM_BUTTON, calmTileSurface, lightTileSurface, withAlpha } from "../tileColors";
+import { CALM_BUTTON, calmTileSurface, lightTileSurface, withAlpha, HYBRID_CATEGORIES, hybridTileSurface } from "../tileColors";
 
 /**
  * Game tiles are the first thing a player sees, so their colour has to do two jobs: keep the Play Now label
@@ -22,6 +22,22 @@ const luminance = (hex: string): number => {
 };
 
 const contrastWithWhite = (hex: string): number => 1.05 / (luminance(hex) + 0.05);
+
+describe("hybrid category palette", () => {
+  it("keeps every category CTA readable at both gradient ends", () => {
+    for (const category of Object.values(HYBRID_CATEGORIES)) {
+      expect(contrastWithWhite(category.from)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastWithWhite(category.to)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("keeps regular surfaces neutral in both themes and reserves full gradients for featured cards", () => {
+    for (const dark of [false, true]) {
+      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.background).toBe("var(--surface-1)");
+      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, true).card.background).toContain("linear-gradient");
+    }
+  });
+});
 
 const hueAndSaturation = (hex: string): { hue: number; saturation: number } => {
   const [r, g, b] = hexToRgb(hex).map((c) => c / 255);

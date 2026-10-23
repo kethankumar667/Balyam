@@ -1,4 +1,44 @@
+import type { GameTag } from "./data";
+
 const SIX_DIGIT_HEX = /^#[0-9a-f]{6}$/i;
+
+export const HYBRID_CATEGORIES = {
+  classroom: { label: "Classroom", from: "#00875A", to: "#006B46", tint: "#34D399" },
+  board: { label: "Board", from: "#24568A", to: "#16385D", tint: "#60A5FA" },
+  party: { label: "Party", from: "#7525CB", to: "#5814A2", tint: "#C084FC" },
+  retro: { label: "Retro", from: "#BD145C", to: "#970F47", tint: "#F472B6" },
+  solo: { label: "Solo", from: "#B85C00", to: "#914600", tint: "#FBBF24" },
+  multiplayer: { label: "Multiplayer", from: "#24568A", to: "#16385D", tint: "#60A5FA" },
+} satisfies Record<GameTag, { label: string; from: string; to: string; tint: string }>;
+
+export function gameCardCategory(tags: readonly GameTag[]): GameTag {
+  return tags.find((tag) => tag !== "solo" && tag !== "multiplayer") ?? tags[0] ?? "solo";
+}
+
+/** The category colour frames the artwork; only featured cards carry a full colour wash. */
+export function hybridTileSurface(category: typeof HYBRID_CATEGORIES[GameTag], isDark: boolean, featured: boolean) {
+  return {
+    card: {
+      background: featured
+        ? `linear-gradient(145deg, var(--surface-1) 15%, ${withAlpha(category.tint, isDark ? 0.24 : 0.25)} 100%)`
+        : "var(--surface-1)",
+      border: featured ? withAlpha(category.tint, isDark ? 0.6 : 0.55) : "var(--rim-soft)",
+      shadow: featured
+        ? `0 10px 24px -14px ${withAlpha(category.from, 0.55)}, 0 3px 8px rgba(15,23,42,0.08)`
+        : "0 3px 8px rgba(15,23,42,0.05), 0 10px 20px -18px rgba(15,23,42,0.25)",
+    },
+    rail: category.from,
+    stage: {
+      background: `linear-gradient(145deg, ${withAlpha(category.tint, isDark ? 0.16 : 0.09)}, ${withAlpha(category.tint, isDark ? 0.23 : 0.2)})`,
+      border: withAlpha(category.tint, isDark ? 0.22 : 0.12),
+    },
+    button: {
+      background: `linear-gradient(180deg, ${category.from}, ${category.to})`,
+      color: "#FFFFFF",
+      shadow: `0 4px 9px -4px ${withAlpha(category.to, 0.6)}`,
+    },
+  };
+}
 
 /** `#RRGGBB` plus an alpha byte; anything else (an `hsl()` fallback accent) goes through `color-mix`. */
 export function withAlpha(color: string, alpha: number): string {

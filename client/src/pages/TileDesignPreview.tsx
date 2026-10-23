@@ -9,8 +9,7 @@ const GRID_CLASS = "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols
 const noop = () => undefined;
 
 /**
- * Side-by-side look at the two tile designs, on the real GameCard and the real catalogue: the proposed calm tile
- * first, today's tile underneath. Flip the theme from the header to compare light and dark.
+ * Compare the calm alternative with the shipped hybrid using the real catalogue.
  */
 export default function TileDesignPreview() {
   return (
@@ -27,14 +26,14 @@ export default function TileDesignPreview() {
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black text-ink-hi tracking-tight">Game tile design</h1>
             <p className="text-sm text-ink-mid max-w-2xl">
-              Calm: a neutral card, the game's colour only on the top rail and the art stage, one Play Now button for
-              every game. Current: the full-colour tile. Use the theme switch in the header to compare light and dark.
+              Calm uses one gold Play button across all games. The current hybrid uses category-coloured rails,
+              softly tinted artwork stages and matching Play buttons. Switch themes to compare light and dark.
             </p>
           </header>
 
           <section aria-labelledby="calm-heading" className="space-y-4">
             <h2 id="calm-heading" className="text-lg font-black text-ink-hi">
-              Calm (proposed)
+              Calm alternative
             </h2>
             <ul role="list" className={GRID_CLASS}>
               {BHALYAM_GAMES.map((game) => (
@@ -47,7 +46,7 @@ export default function TileDesignPreview() {
 
           <section aria-labelledby="current-heading" className="space-y-4 pt-8 border-t border-black/10 dark:border-white/10">
             <h2 id="current-heading" className="text-lg font-black text-ink-hi">
-              Current
+              Current hybrid
             </h2>
             <ul role="list" className={GRID_CLASS}>
               {BHALYAM_GAMES.map((game) => (

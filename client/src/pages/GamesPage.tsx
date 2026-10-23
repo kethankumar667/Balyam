@@ -5,12 +5,11 @@ import {
 } from "lucide-react";
 import type { GamesFamilyOutletContext } from "../components/layout/GamesFamilyLayout";
 import JoinRoomModal from "../components/bhalyam/JoinRoomModal";
-import GameCard from "../components/games/GameCard";
+import GameCardGrid from "../components/games/GameCardGrid";
 import GameCardSkeleton from "../components/games/GameCardSkeleton";
 import SearchField from "../components/games/SearchField";
 import FilterBar from "../components/games/FilterBar";
 import EmptyState from "../components/games/EmptyState";
-import OfflineBanner from "../components/games/OfflineBanner";
 import {
   BHALYAM_GAMES,
   type GameTag,
@@ -21,16 +20,12 @@ import {
   type GameFilter,
 } from "../components/bhalyam/CategoryFilter";
 import { getSocket } from "../lib/socket";
-import { useTheme } from "../lib/useTheme";
 
 export default function GamesPage() {
   const { openGameSheet } = useOutletContext<GamesFamilyOutletContext>();
   const [joinOpen, setJoinOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [theme] = useTheme();
-  const isLight = theme === "light";
 
   const [params, setParams] = useSearchParams();
   const filter: GameFilter = useMemo(() => {
@@ -115,7 +110,7 @@ export default function GamesPage() {
         <section aria-labelledby="catalog-heading" className="w-full min-w-0">
           <h2 id="catalog-heading" className="sr-only">Available Games</h2>
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 w-full min-w-0">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
               {Array.from({ length: 8 }).map((_, idx) => (
                 <GameCardSkeleton key={idx} />
               ))}
@@ -131,25 +126,11 @@ export default function GamesPage() {
               onReset={handleResetFilters}
             />
           ) : (
-            <ul
-              role="list"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 w-full min-w-0"
-              style={{ perspective: 1200 }}
-            >
-              {displayedGames.map((game) => (
-                <li
-                  key={game.slug}
-                  role="listitem"
-                  className="w-full min-w-0 flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(217,119,6,0.25)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] rounded-2xl"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <GameCard
-                    game={game}
-                    onSelect={() => openGameSheet(game.slug)}
-                  />
-                </li>
-              ))}
-            </ul>
+            <GameCardGrid
+              games={displayedGames}
+              onSelect={openGameSheet}
+              showFeatured={filter.category === "all" && !searchQuery.trim()}
+            />
           )}
         </section>
       </div>

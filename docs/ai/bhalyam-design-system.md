@@ -40,6 +40,32 @@
 - `<PremiumProgressCard>`: Level / XP / Battle Pass progress track with dynamic fill percentage.
 - `<PremiumHeroCard>`: Large banner card for active seasons, featured games, and tournament announcements.
 
+#### Catalog cards: hybrid treatment
+
+The home grid and All Games catalog share `components/games/GameCard.tsx`
+and `GameCardGrid.tsx`. A regular card uses the theme's neutral surface,
+a category-coloured top rail, a softly tinted artwork stage and a matching
+Play button. Featured cards use a fuller tint and stronger shadow, not a
+different interaction model. The first two visible games marked `isPopular`
+in the shared catalog lead an unfiltered grid; they are not duplicated below.
+Search/category/play-way filters disable that grouping and keep all matches.
+
+The palette is centralized in `components/bhalyam/tileColors.ts`:
+Classroom green, Board blue, Party violet, Retro rose, with amber for
+solo-only entries. Genre tags take precedence over player-count tags.
+Category labels remain visible, so colour is never the only identifier.
+White CTA text must meet 4.5:1 at both gradient endpoints. Use the existing
+display/body/script fonts; do not introduce a font download for these cards.
+
+Grids start at two columns on phones, then three/four columns on wider
+screens; featured cards remain a pair. Titles and metadata wrap instead of
+truncating the game name. Play and favourite controls remain native, separate
+buttons with 44px targets, visible focus rings and a pressed state for saved
+favourites. Lift/press effects are restricted to `motion-safe`. Artwork keeps
+one bounded retry (including AVIF/WebP URLs) and a glyph fallback. The
+`classic` and `calm` treatments remain available for design comparisons;
+`hybrid` is the default wherever the shared card is used.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.
@@ -66,4 +92,3 @@
 | **Podium / Victory Celebrations** | `Sparkles` ❌ | `Crown`, `Award`, `Trophy`, `Star` | Authentic game tournament prestige rather than AI fairy dust. |
 | **Tabletop Felt Mats & Boards** | `Sparkles` ❌ | `Grid`, `Layers`, `Palette` | Tactile tabletop geometry. |
 | **Achievements & Badges** | `Sparkles` ❌ | `Medal`, `Trophy`, `ShieldCheck` | Distinct milestone progression. |
-
