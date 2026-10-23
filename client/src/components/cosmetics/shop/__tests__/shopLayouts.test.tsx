@@ -197,26 +197,22 @@ describe.each(layouts)("shop — %s layout", (_name, Layout) => {
 });
 
 describe("shop — what differs between the layouts", () => {
-  it("gives the desktop stage step arrows and the phone none (the phone steps with the strip)", () => {
-    const { unmount } = render(<ShopDesktop shop={makeShop()} onBack={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Next style" })).toBeDefined();
-    unmount();
-
-    render(<ShopMobile shop={makeShop()} onBack={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: "Next style" })).toBeNull();
-  });
-
-  it("steps through the desktop arrows, wrapping round at the ends", () => {
+  it.each([ShopDesktop, ShopMobile])("steps through stage arrows, wrapping round at both ends", (Layout) => {
     const shop = makeShop({ previewItem: BLAZE_RING });
-    render(<ShopDesktop shop={shop} onBack={vi.fn()} />);
+    const { unmount } = render(<Layout shop={shop} onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Next style" }));
 
     expect(shop.selectItem).toHaveBeenCalledWith(DEFAULT_FRAME.id);
+    unmount();
+    const first = makeShop({ previewItem: DEFAULT_FRAME });
+    render(<Layout shop={first} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Previous style" }));
+    expect(first.selectItem).toHaveBeenCalledWith(BLAZE_RING.id);
   });
 
-  it("has no step arrows when there is only one style", () => {
-    render(<ShopDesktop shop={makeShop({ categoryItems: [frame()] })} onBack={vi.fn()} />);
+  it.each([ShopDesktop, ShopMobile])("has no step arrows when there is only one style", (Layout) => {
+    render(<Layout shop={makeShop({ categoryItems: [frame()] })} onBack={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Next style" })).toBeNull();
   });

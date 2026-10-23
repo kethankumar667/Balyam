@@ -8,7 +8,7 @@
 
 import { Crown, ShieldCheck, Eye } from "lucide-react";
 import { SHOP_CATEGORY_TABS } from "../shopLogic";
-import type { CosmeticsShop } from "../useCosmeticsShop";
+import { stepShopSelection, type CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, ShopPriceBlock, useShopPlan } from "./ShopActions";
 import { GameVariantSwitch, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
@@ -24,12 +24,6 @@ export interface ShopDesktopProps {
 export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
   const shopPlan = useShopPlan(shop);
   const { categoryItems: items, previewItem: item, selectedCategory, selectedScope } = shop;
-
-  const step = (direction: -1 | 1) => {
-    if (!item || items.length < 2) return;
-    const index = items.findIndex((candidate) => candidate.id === item.id);
-    shop.selectItem(items[(index + direction + items.length) % items.length].id);
-  };
 
   const tabLabel = SHOP_CATEGORY_TABS.find((tab) => tab.category === selectedCategory)?.label ?? "Styles";
   const hasItems = items.length > 0 && item !== null;
@@ -91,7 +85,7 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
                     scope={selectedScope}
                     mode={shop.previewMode}
                     onModeChange={shop.setPreviewMode}
-                    onStep={items.length > 1 ? step : undefined}
+                    onStep={items.length > 1 ? (direction) => stepShopSelection(shop, direction) : undefined}
                   />
                 </div>
               </div>

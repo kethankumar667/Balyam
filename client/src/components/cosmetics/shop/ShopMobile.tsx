@@ -5,12 +5,12 @@
  * collection progress and category tabs, then a stacked cinematic stage and collectible shelf.
  * The primary action stays in a sticky safe-area bar; short screens scroll naturally.
  *
- * Differences from the desktop shell: the stage has no step arrows (the strip steps), the preview-context switch
+ * Differences from the desktop shell: the preview-context switch
  * moves to the stage's bottom edge, strip tiles are shorter, and the details collapse to a name and one line.
  */
 
 import { SHOP_CATEGORY_TABS } from "../shopLogic";
-import type { CosmeticsShop } from "../useCosmeticsShop";
+import { stepShopSelection, type CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, useShopPlan } from "./ShopActions";
 import { GameVariantSwitch, REASSURANCE, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
@@ -74,6 +74,7 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
                   scope={selectedScope}
                   mode={shop.previewMode}
                   onModeChange={shop.setPreviewMode}
+                  onStep={items.length > 1 ? (direction) => stepShopSelection(shop, direction) : undefined}
                 />
               </div>
             </div>

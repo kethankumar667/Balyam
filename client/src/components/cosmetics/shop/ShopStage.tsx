@@ -28,7 +28,7 @@ export interface ShopStageProps {
   scope: CosmeticGameScope;
   mode: PreviewMode;
   onModeChange: (mode: PreviewMode) => void;
-  /** Step to the previous / next style. Omitted on a phone, where the thumbnail strip does this. */
+  /** Step to the previous / next style; omitted for a category with fewer than two styles. */
   onStep?: (direction: -1 | 1) => void;
   /** Phone layout: the context switch moves to the bottom and the item is drawn a little smaller. */
   compact?: boolean;

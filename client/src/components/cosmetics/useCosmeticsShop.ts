@@ -145,3 +145,13 @@ export function useCosmeticsShop() {
 }
 
 export type CosmeticsShop = ReturnType<typeof useCosmeticsShop>;
+
+export function stepShopSelection(
+  shop: Pick<CosmeticsShop, "previewItem" | "categoryItems" | "selectItem">,
+  direction: -1 | 1,
+): void {
+  const { previewItem: item, categoryItems: items } = shop;
+  if (!item || items.length < 2) return;
+  const index = items.findIndex((candidate) => candidate.id === item.id);
+  shop.selectItem(items[(index + direction + items.length) % items.length].id);
+}

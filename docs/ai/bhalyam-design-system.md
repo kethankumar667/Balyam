@@ -121,6 +121,10 @@ and side even with reduced motion. Roll Again is a keyboard-accessible 44px
 control; reduced motion changes the preview value without tumbling. Shop rolls
 remain presentation-only and never affect gameplay RNG.
 
+Both mobile and desktop stages offer previous/next style arrows, sharing the
+same category-scoped wrap-around selection. Categories with fewer than two
+styles omit the arrows; the shelf remains an alternative selection control.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.
