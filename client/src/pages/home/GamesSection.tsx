@@ -21,6 +21,7 @@ import {
   type BhalyamGameCard,
   type BhalyamGameSlug,
 } from "../../components/bhalyam/data";
+import { lightTileSurface } from "../../components/bhalyam/tileColors";
 import {
   HandCricketGlyph,
   LudoGlyph,
@@ -257,17 +258,19 @@ export function GameTile({
   const btnTo = game.btnGradient?.to ?? accent.to;
   const btnShadow = game.btnGradient?.shadow ?? accent.to;
 
+  const lightSurface = lightTileSurface(accent.from);
+
   const bgStyle = isDark
     ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #080B12 100%)`
-    : `linear-gradient(155deg, #FFFFFF 0%, ${btnFrom}38 36%, ${btnTo}58 100%)`;
+    : lightSurface.background;
 
   const borderStyle = isDark
     ? game.paperBorder ?? `${btnFrom}55`
-    : `${btnFrom}75`;
+    : lightSurface.border;
 
   const shadowStyle = isDark
     ? `0 20px 42px -12px rgba(0,0,0,0.85), 0 0 32px -4px ${btnFrom}40, inset 0 1.5px 1.5px rgba(255,255,255,0.22), inset 0 -1px 1px ${btnTo}44`
-    : `0 18px 38px -8px ${btnShadow}45, 0 0 28px -4px ${btnFrom}35, inset 0 2px 2px rgba(255,255,255,0.95), inset 0 -2px 4px ${btnTo}35`;
+    : lightSurface.shadow;
 
   return (
     <motion.div
@@ -325,7 +328,7 @@ export function GameTile({
           className={`absolute w-32 h-32 rounded-full blur-3xl pointer-events-none transition-transform duration-500 group-hover:scale-125 ${
             isDark ? "opacity-50" : "opacity-45"
           }`}
-          style={{ background: btnFrom }}
+          style={{ background: accent.from }}
           aria-hidden
         />
         <GameTileArt src={tileArtByGame[game.slug]} title={game.title} compact={compact}>

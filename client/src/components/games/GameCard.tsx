@@ -16,6 +16,7 @@ import {
   getGameAccent,
   isLocked,
 } from "../bhalyam/data";
+import { lightTileSurface } from "../bhalyam/tileColors";
 import {
   HandCricketGlyph,
   LudoGlyph,
@@ -133,13 +134,15 @@ export default function GameCard({
   const btnTo = game.btnGradient?.to ?? accent.to;
   const btnShadow = game.btnGradient?.shadow ?? accent.to;
 
+  const lightSurface = lightTileSurface(accent.from, "var(--surface-1)");
+
   const bgStyle = isDark
     ? game.paperBg ?? `linear-gradient(155deg, ${btnFrom}2e 0%, ${btnTo}14 45%, #0B101C 100%)`
-    : `linear-gradient(155deg, var(--surface-1) 0%, ${btnFrom}28 40%, ${btnTo}48 100%)`;
+    : lightSurface.background;
 
   const borderStyle = isDark
     ? game.paperBorder ?? "rgba(255, 255, 255, 0.1)"
-    : `${btnFrom}55`;
+    : lightSurface.border;
 
   return (
     <motion.article
@@ -152,6 +155,7 @@ export default function GameCard({
       style={{
         background: bgStyle,
         borderColor: borderStyle,
+        ...(isDark ? {} : { boxShadow: lightSurface.shadow }),
       }}
     >
       {/* Top row: Mode badge, Category & Favourite Toggle */}
@@ -211,7 +215,7 @@ export default function GameCard({
       <div className="relative my-3 h-28 sm:h-32 flex items-center justify-center w-full min-w-0">
         <div
           className="absolute w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-30 group-hover:scale-115 transition-transform duration-300"
-          style={{ background: btnFrom }}
+          style={{ background: accent.from }}
           aria-hidden="true"
         />
         <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-1.5">
