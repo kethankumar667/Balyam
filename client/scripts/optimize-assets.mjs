@@ -39,7 +39,7 @@ const GAME_TILES = [
   'HandCricketTile.png',
   'Dots&boxes.png',
   'words_building.png',
-  'BrainVitaTile.png',
+  'GoliJumpTile.png',
 ];
 
 const ONBOARDING_ASSETS = [

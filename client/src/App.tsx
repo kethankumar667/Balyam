@@ -665,7 +665,9 @@ export default function App({ components = {} }: AppProps) {
             <Route path="/blockbreakout" element={<BrickBreakoutPage />} />
             <Route path="/2048" element={<Game2048Page />} />
             <Route path="/sudoku" element={<SudokuPage />} />
-            <Route path="/brainvita" element={<BrainVitaPage />} />
+            {/* Goli Jump. The game's earlier address, /brainvita, redirects so links and bookmarks keep working. */}
+            <Route path="/goli-jump" element={<BrainVitaPage />} />
+            <Route path="/brainvita" element={<Navigate to="/goli-jump" replace />} />
             <Route path="/preview/animations" element={<LazyPreviewAnimations3D />} />
 
             <Route path="*" element={<NotFound />} />

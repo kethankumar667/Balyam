@@ -222,7 +222,7 @@ export function BrainVitaGrid({
   return (
     <div
       role="group"
-      aria-label="Brain Vita board"
+      aria-label="Goli Jump board"
       onKeyDown={onKeyDown}
       className="relative"
       style={{

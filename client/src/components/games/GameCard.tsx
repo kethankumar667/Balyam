@@ -97,7 +97,7 @@ const TILE_ART: Record<BhalyamGameSlug, string> = {
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
   vamanaguntalu: "/VamanaGuntaluTile.png",
-  brainvita: "/BrainVitaTile.png",
+  brainvita: "/GoliJumpTile.png",
 };
 
 export default function GameCard({

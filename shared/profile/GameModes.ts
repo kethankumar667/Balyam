@@ -341,7 +341,7 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   brainvita: {
     game: "brainvita",
-    displayName: "Brain Vita",
+    displayName: "Goli Jump",
     category: "retro_arcade",
     defaultModeId: "classic",
     strictModes: true,

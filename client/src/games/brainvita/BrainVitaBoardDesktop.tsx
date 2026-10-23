@@ -79,7 +79,7 @@ export default function BrainVitaBoardDesktop({ onExit }: BrainVitaBoardProps) {
         </div>
 
         {isShort ? (
-          <h1 className="sr-only">Brain Vita</h1>
+          <h1 className="sr-only">Goli Jump</h1>
         ) : (
           <header className="relative z-20 grid h-[88px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 px-6 pt-3">
             <div className="flex items-center gap-3">

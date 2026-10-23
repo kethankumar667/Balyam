@@ -24,7 +24,8 @@ export const CLIENT_GAME_ROUTES: Readonly<Record<string, string>> = {
   breakout: "/breakout",
   "2048": "/2048",
   sudoku: "/sudoku",
-  brainvita: "/brainvita",
+  // The game id stays `brainvita` (scores and saved data are keyed by it); the page is Goli Jump.
+  brainvita: "/goli-jump",
 };
 
 const GAMES_PAGE = "/games";

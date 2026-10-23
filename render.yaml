@@ -184,8 +184,12 @@ services:
         source: /sudoku
         destination: /sudoku/index.html
       - type: rewrite
+        source: /goli-jump
+        destination: /goli-jump/index.html
+      # Goli Jump was called Brain Vita. The old address redirects, permanently, so links and search results follow.
+      - type: redirect
         source: /brainvita
-        destination: /brainvita/index.html
+        destination: /goli-jump
 
       # Single Page Application (SPA) catch-all rewrite for deep links &
       # refreshes. Everything dynamic lands here — /room/:code, /tv/:code,

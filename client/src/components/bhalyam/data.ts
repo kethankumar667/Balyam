@@ -570,7 +570,7 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
   {
     slug: "brainvita",
     tags: ["solo", "board"],
-    title: "Brain Vita",
+    title: "Goli Jump",
     badge: "Classic",
     nostalgiaQuote: "Thirty-two marbles, one empty hole, and a lot of thinking.",
     playerRange: "1 Player",
@@ -581,6 +581,6 @@ export const BHALYAM_GAMES: readonly BhalyamGameCard[] = [
     blurb:
       "The classic marble puzzle. Jump one marble over another into an empty hole to take it off the board, and try to finish with just one marble left. Hints and undo are there for practice; an unassisted game can post to the leaderboard.",
     accent: { from: "#38BDF8", to: "#0369A1" },
-    tileImage: "/BrainVitaTile.png",
+    tileImage: "/GoliJumpTile.png",
   },
 ];

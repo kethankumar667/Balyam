@@ -242,10 +242,10 @@ export const STRUCTURED_DATA_GAMES = [
     genre: ["Puzzle", "Brain Game", "Logic", "Solo"],
   },
   {
-    slug: "brainvita",
-    name: "Brain Vita",
+    slug: "goli-jump",
+    name: "Goli Jump",
     description: "The classic marble puzzle: jump marbles over each other on a cross-shaped board and try to finish with one.",
-    image: `${BASE_URL}/BrainVitaTile.png`,
+    image: `${BASE_URL}/GoliJumpTile.png`,
     minPlayers: 1,
     maxPlayers: 1,
     genre: ["Puzzle", "Brain Game", "Solo"],

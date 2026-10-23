@@ -78,7 +78,7 @@ describe("BrainVitaGrid", () => {
 
   it("draws 33 holes in the cross, each a button, in a labelled group", () => {
     grid();
-    expect(screen.getByRole("group", { name: "Brain Vita board" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Goli Jump board" })).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(33);
   });
 

@@ -67,7 +67,7 @@ export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainV
           </>
         )}
         <h1
-          aria-label="Brain Vita"
+          aria-label="Goli Jump"
           className="uppercase leading-none"
           style={{
             color: skin.titleColor,
@@ -80,13 +80,13 @@ export function BrainVitaTitleSign({ isCompact = false, className = "" }: BrainV
           }}
         >
           {skin.titleLetters ? (
-            Array.from("Brain Vita").map((letter, index) => (
+            Array.from("Goli Jump").map((letter, index) => (
               <span key={index} aria-hidden style={{ color: letter === " " ? undefined : skin.titleLetters?.[index % skin.titleLetters.length] }}>
                 {letter === " " ? " " : letter}
               </span>
             ))
           ) : (
-            "Brain Vita"
+            "Goli Jump"
           )}
         </h1>
       </div>

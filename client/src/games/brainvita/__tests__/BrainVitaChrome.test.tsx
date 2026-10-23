@@ -66,10 +66,10 @@ describe("BrainVitaPill", () => {
 describe("BrainVitaTitleSign", () => {
   it("is the page heading, whatever size the sign is", () => {
     const full = render(<BrainVitaTitleSign />);
-    expect(screen.getByRole("heading", { level: 1, name: "Brain Vita" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Goli Jump" })).toBeInTheDocument();
     full.unmount();
     render(<BrainVitaTitleSign isCompact />);
-    expect(screen.getByRole("heading", { level: 1, name: "Brain Vita" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Goli Jump" })).toBeInTheDocument();
   });
 
   it("drops the crown and marbles on a compact sign", () => {

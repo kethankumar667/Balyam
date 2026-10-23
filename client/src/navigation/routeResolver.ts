@@ -27,6 +27,7 @@ const RETRO_GAME_ROUTES = new Set([
   "/2048",
   "/sudoku",
   "/brainvita",
+  "/goli-jump",
 ]);
 
 /**

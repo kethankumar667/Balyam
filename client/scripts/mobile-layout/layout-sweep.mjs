@@ -131,7 +131,7 @@ const ROUTES = [
   "/testimonials", "/privacy", "/terms", "/safety",
   "/settings/preferences", "/settings/security",
   "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email",
-  "/nokiacricket", "/snake", "/roadrash", "/brickblocks", "/breakout", "/2048", "/sudoku", "/brainvita",
+  "/nokiacricket", "/snake", "/roadrash", "/brickblocks", "/breakout", "/2048", "/sudoku", "/goli-jump",
   "/preview/ludo", "/preview/tiles", "/diagnostics", "/this-route-does-not-exist",
 ];
 const NOT_COVERED = [

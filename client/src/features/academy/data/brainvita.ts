@@ -6,7 +6,7 @@ import type { GameAcademySpec } from "../types/academy";
  */
 export const BRAINVITA_ACADEMY: GameAcademySpec = {
   slug: "brainvita",
-  title: "Brain Vita",
+  title: "Goli Jump",
   tagline: "The classic marble puzzle — jump, remove, and try to leave just one.",
   genre: "board",
   players: "1 Player",
@@ -58,7 +58,7 @@ export const BRAINVITA_ACADEMY: GameAcademySpec = {
   ],
   cheatsheet: [
     {
-      title: "Brain Vita at a glance",
+      title: "Goli Jump at a glance",
       iconName: "Grid",
       items: [
         { label: "Board", detail: "A cross of 33 holes. 32 marbles, the centre hole empty.", tag: "Setup" },

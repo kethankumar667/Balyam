@@ -14,8 +14,8 @@ export default function BrainVitaPage() {
   }, [setActiveGame]);
 
   return (
-    <main role="main" aria-label="Brain Vita marble puzzle game" className="h-dvh-safe min-h-dvh-safe w-full overflow-hidden overscroll-none">
-      <h1 className="sr-only">Brain Vita — marble solitaire puzzle</h1>
+    <main role="main" aria-label="Goli Jump marble puzzle game" className="h-dvh-safe min-h-dvh-safe w-full overflow-hidden overscroll-none">
+      <h1 className="sr-only">Goli Jump — marble solitaire puzzle</h1>
       <BrainVitaBoard onExit={() => navigate("/games")} />
     </main>
   );

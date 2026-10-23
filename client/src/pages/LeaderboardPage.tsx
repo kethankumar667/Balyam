@@ -243,7 +243,7 @@ const SUPPORTED_GAMES: { id: AllGameSlug; label: string; icon: string }[] = [
   { id: "spacewar", label: "Space War", icon: "🚀" },
   { id: "blockblast", label: "Block Blast", icon: "💥" },
   { id: "sudoku", label: "Sudoku Cyber-Matrix", icon: "🧩" },
-  { id: "brainvita", label: "Brain Vita", icon: "🔮" },
+  { id: "brainvita", label: "Goli Jump", icon: "🔮" },
   { id: "connect4", label: "Four in a Row", icon: "🟡" },
   { id: "vamanaguntalu", label: "Vamana Guntalu", icon: "🌰" },
 ];
@@ -273,7 +273,7 @@ const GAME_TILE_IMAGES: Record<string, string> = {
   blockblast: "/BlockBlast Game Tile.png",
   tambola: "/Tambola.png",
   sudoku: "/Sudoku Game Tile.png",
-  brainvita: "/BrainVitaTile.png",
+  brainvita: "/GoliJumpTile.png",
   tictactoe: "/TicTacToeTile.png",
   connect4: "/Connect4Tile.png",
   vamanaguntalu: "/VamanaGuntaluTile.png",
