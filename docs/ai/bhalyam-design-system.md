@@ -43,22 +43,30 @@
 #### Catalog cards: hybrid treatment
 
 The home grid and All Games catalog share `components/games/GameCard.tsx`
-and `GameCardGrid.tsx`. Every card uses a continuous, category-tinted pastel
-gradient, a thin coloured rim, a circular favourite control and large artwork
-floating directly on the card: no inset artwork box or top rail. Text is
-left-aligned; the category-coloured Play button carries a stronger shadow.
-This follows the owner's enhanced-card reference for ALL tiles, not only
-featured cards. Featured cards keep their badge, slightly larger artwork
-and stronger card shadow, not a different interaction model.
+and `GameCardGrid.tsx`. The owner's final structural reference uses a
+continuous category-tinted gradient and thin coloured outline on EVERY card:
+no top rail or inset artwork box. Large floating artwork sits below the
+category pill and circular favourite control. Left-aligned title, handwritten
+tagline and player/time details lead into a wide pill-shaped Play button with
+a soft shadow. Desktop uses larger artwork, 56px favourite controls and 60px
+CTAs; phones retain compact spacing and at least 44px controls.
+Featured cards use the same structure with the approved gold palette,
+slightly larger artwork and a stronger shadow. This supersedes the earlier
+neutral-card/top-border proposal; the warm palette remains unchanged.
 The first two visible games marked `isPopular`
 in the shared catalog lead an unfiltered grid; they are not duplicated below.
 Search/category/play-way filters disable that grouping and keep all matches.
 
 The palette is centralized in `components/bhalyam/tileColors.ts`:
-Classroom green, Board blue, Party violet, Retro rose, with amber for
-solo-only entries. Genre tags take precedence over player-count tags.
+Featured gold `#F59E0B`, Board & Cards royal blue `#2563EB`, Retro rose
+`#E11D48`, Classroom green `#16A34A`, and Party purple `#9333EA`.
+Solo/multiplayer-only entries use blue without changing their labels.
+Genre tags take precedence over player-count tags; featured status overrides
+the surface and CTA palette, not the game's category.
 Category labels remain visible, so colour is never the only identifier.
-White CTA text must meet 4.5:1 at both gradient endpoints. Use the existing
+White CTA text must meet 4.5:1 at both gradient endpoints: gold starts at
+`#B45309` and green at `#15803D`, deliberately deeper than their primary
+accents to preserve readable labels. Use the existing
 display/body/script fonts; do not introduce a font download for these cards.
 
 Grids start at two columns on phones, then three/four columns on wider

@@ -21,7 +21,7 @@ afterEach(() => {
 const game = BHALYAM_GAMES.find((item) => item.slug === "dotsboxes")!;
 
 describe("hybrid game cards", () => {
-  it("gives every tile one continuous gradient with floating artwork and no top rail", () => {
+  it("gives regular tiles a continuous gradient, floating artwork and pill-shaped CTA", () => {
     const { container } = render(<GameCard game={game} onSelect={vi.fn()} />);
     const card = screen.getByRole("article");
     expect(card).toHaveAttribute("data-tile-style", "hybrid");
@@ -34,15 +34,18 @@ describe("hybrid game cards", () => {
     expect(stage.style.background).toBe("");
     expect(stage).not.toHaveClass("border");
     expect(screen.getByRole("button", { name: `Add ${game.title} to favourites` })).toHaveClass("rounded-full", "bg-white/60");
-    expect(screen.getByRole("button", { name: `Play ${game.title}` })).toHaveClass("min-h-[44px]");
+    expect(screen.getByRole("button", { name: `Play ${game.title}` })).toHaveClass("min-h-[44px]", "rounded-full");
   });
 
   it("uses a stronger featured surface and larger artwork without changing the launch action", () => {
     const select = vi.fn();
-    render(<GameCard game={game} featured onSelect={select} />);
+    const { container } = render(<GameCard game={game} featured onSelect={select} />);
     const card = screen.getByRole("article");
     expect(card).toHaveAttribute("data-featured", "true");
     expect(card.style.background).toContain("linear-gradient");
+    expect(container.querySelector("[data-color-rail]")).toBeNull();
+    expect(container.querySelector<HTMLElement>("[data-art-stage]")!.style.background).toBe("");
+    expect(screen.getByRole("button", { name: `Play ${game.title}` }).style.background.toLowerCase()).toContain("#b45309");
     expect(screen.getByText("Featured")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: `Play ${game.title}` }));
     expect(select).toHaveBeenCalledOnce();

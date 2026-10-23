@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BHALYAM_GAMES } from "../data";
-import { CALM_BUTTON, calmTileSurface, lightTileSurface, withAlpha, HYBRID_CATEGORIES, hybridTileSurface } from "../tileColors";
+import { CALM_BUTTON, calmTileSurface, lightTileSurface, withAlpha, HYBRID_CATEGORIES, HYBRID_FEATURED, hybridTileSurface } from "../tileColors";
 
 /**
  * Game tiles are the first thing a player sees, so their colour has to do two jobs: keep the Play Now label
@@ -25,18 +25,34 @@ const contrastWithWhite = (hex: string): number => 1.05 / (luminance(hex) + 0.05
 
 describe("hybrid category palette", () => {
   it("keeps every category CTA readable at both gradient ends", () => {
-    for (const category of Object.values(HYBRID_CATEGORIES)) {
+    for (const category of [...Object.values(HYBRID_CATEGORIES), HYBRID_FEATURED]) {
       expect(contrastWithWhite(category.from)).toBeGreaterThanOrEqual(4.5);
       expect(contrastWithWhite(category.to)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
-  it("uses full-card gradients and coloured rims for every tile in both themes", () => {
+  it("uses continuous category gradients and rims while reserving gold for featured", () => {
     for (const dark of [false, true]) {
-      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.background).toContain("linear-gradient");
-      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, false).card.border).not.toBe("var(--rim-soft)");
-      expect(hybridTileSurface(HYBRID_CATEGORIES.board, dark, true).card.background).toContain("linear-gradient");
+      const regular = hybridTileSurface(HYBRID_CATEGORIES.board, dark, false);
+      expect(regular.card.background).toContain("linear-gradient");
+      expect(regular.card.border).toBe(HYBRID_CATEGORIES.board.border);
+      expect(regular.rail).toBe("#2563EB");
+      expect(regular.stage.background).toContain(dark ? "#2563EB" : "#EFF6FF");
+      const featured = hybridTileSurface(HYBRID_CATEGORIES.board, dark, true);
+      expect(featured.card.background).toContain("linear-gradient");
+      expect(featured.button.background).toContain(HYBRID_FEATURED.from);
+      expect(featured).toEqual(hybridTileSurface(HYBRID_CATEGORIES.retro, dark, true));
     }
+  });
+
+  it("uses the warm brand palette without inventing another colour for player-count tags", () => {
+    expect(HYBRID_FEATURED.primary).toBe("#F59E0B");
+    expect(HYBRID_CATEGORIES.board.primary).toBe("#2563EB");
+    expect(HYBRID_CATEGORIES.retro.primary).toBe("#E11D48");
+    expect(HYBRID_CATEGORIES.classroom.primary).toBe("#16A34A");
+    expect(HYBRID_CATEGORIES.party.primary).toBe("#9333EA");
+    expect(HYBRID_CATEGORIES.solo.primary).toBe(HYBRID_CATEGORIES.board.primary);
+    expect(HYBRID_CATEGORIES.multiplayer.primary).toBe(HYBRID_CATEGORIES.board.primary);
   });
 });
 
