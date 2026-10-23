@@ -89,6 +89,30 @@ one bounded retry (including AVIF/WebP URLs) and a glyph fallback. The
 `classic` and `calm` treatments remain available for design comparisons;
 `hybrid` is the default wherever the shared card is used.
 
+#### Shop: cinematic collectible showroom
+
+`components/cosmetics/shop/` owns the shop-only visual treatment; global app
+chrome and economy contracts are unchanged. Warm ivory (`#FFF9ED`) surrounds
+a dark ember-lit hero (`#291A12` to `#10131C`), with rarity-coloured orbital
+lighting and an original SVG pedestal. The actual cosmetic renderer remains
+the product preview: stage lighting is decorative, not an item capability.
+No raster hero asset, font download, paid offer or countdown is introduced.
+
+Desktop/tablet (768px+) pairs the live preview with description, actual
+price and existing purchase/equip/reset/refund actions. The collectible shelf
+below shows rarity, item names and price/ownership/equipped state. Phone
+uses a stacked stage and details, horizontal shelf and sticky safe-area action
+bar. Both preserve category/scope deep links, arrow-key tabs/listbox navigation,
+44px controls and reduced-motion previews. Local hero text/surface variables
+keep contrast without changing the app's selected theme.
+
+Collection progress counts active registered items in the four shop categories,
+using actual owned IDs plus defaults. Admin access is explicitly labelled
+as a pass, not earned ownership, because its store synthesizes access IDs.
+Loading and failed empty collections are identified rather than presented as
+a successful zero balance. Preview and wallet data still come from the existing
+shop hook; no layout computes entitlements or sends its own transaction.
+
 ### 2.3 Modals & Dialogs
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.

@@ -137,6 +137,25 @@ function DiceFacePipGrid({ value, skinId, pipStyle }: DiceFaceProps) {
   );
 }
 
+/** Static shelf face uses the same material resolver and pip layout as the interactive preview. */
+export function DiceMaterialSwatch({ skinId }: { skinId: string }) {
+  const dice = getDiceSkinConfig(skinId);
+  return (
+    <div
+      aria-hidden
+      data-dice-material={skinId}
+      className="flex h-20 w-20 -rotate-12 items-center justify-center rounded-2xl border-2"
+      style={{
+        background: dice.faceBg,
+        borderColor: dice.faceBorder,
+        boxShadow: `inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.25), ${dice.glow ?? "0 6px 10px rgba(0,0,0,0.2)"}`,
+      }}
+    >
+      <div className="scale-75"><DiceFacePipGrid value={5} skinId={skinId} pipStyle={{ background: dice.pipBg, boxShadow: dice.pipBorder }} /></div>
+    </div>
+  );
+}
+
 function EnchantedDiceSkinPreview({
   skinId,
   mode,
@@ -968,4 +987,3 @@ function EnchantedPodiumTitlePreview({
     </div>
   );
 }
-

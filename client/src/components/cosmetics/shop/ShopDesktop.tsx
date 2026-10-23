@@ -1,19 +1,16 @@
 /**
  * BHALYAM — Cosmetics shop, desktop and tablet layout (768px and up).
  *
- * The shop is a page you walk into: title row and tabs on the page ground, then the showroom, a full-width band
- * tinted by the selected item's rarity. In it, the stage takes the left (the item large on its plate) and the details
- * column the right (name, what it is, price, the one button). The thumbnail strip is the shelf along the band's
- * bottom edge. There is no bordered panel anywhere: the band is the page's own background changing colour.
+ * A cinematic item stage and purchase column lead into a collectible shelf on the page ground.
  *
  * State and actions come from `useCosmeticsShop`; the phone has its own shell (ShopMobile).
  */
 
-import { Crown } from "lucide-react";
+import { Crown, ShieldCheck, Eye } from "lucide-react";
 import { SHOP_CATEGORY_TABS } from "../shopLogic";
 import type { CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, ShopPriceBlock, useShopPlan } from "./ShopActions";
-import { GameVariantSwitch, SHOWROOM_ID, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
+import { GameVariantSwitch, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
 import { ShopStrip } from "./ShopStrip";
 import { categoryLabel } from "./shopPlan";
@@ -38,11 +35,12 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
   const hasItems = items.length > 0 && item !== null;
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <div className="mx-auto w-full max-w-[1280px] px-6 pt-5 short-land:pt-2">
+    <div className="flex min-h-full min-w-0 flex-1 flex-col bg-[#FFF9ED] dark:bg-surface-0">
+      <div className="mx-auto grid w-full max-w-[1440px] items-center gap-4 px-6 pb-4 pt-5 short-land:pt-2 lg:grid-cols-[1fr_300px]">
         <ShopHeader balance={shop.walletBalance} onBack={onBack} />
+        <ShopCollection shop={shop} />
       </div>
-      <div className="mx-auto mt-3 w-full max-w-[1280px] px-6 short-land:mt-1">
+      <div className="mx-auto w-full max-w-[1440px] px-6">
         <ShopTabs
           selected={selectedCategory}
           onSelect={shop.selectCategory}
@@ -58,15 +56,19 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
         </p>
       )}
 
-      {/* The showroom band: the page's ground, tinted by rarity. Full width; its contents are centred. */}
       <section
         id={SHOWROOM_ID}
         role="tabpanel"
         aria-labelledby={shopTabId(selectedCategory)}
         style={rarityVars(item?.rarity)}
-        className="mt-0 flex-1 border-t-[3px] border-[rgb(var(--shop-rar))] bg-[rgb(var(--shop-rar)/0.12)] transition-colors duration-500 dark:bg-[rgb(var(--shop-rar)/0.1)]"
+        className="min-w-0 flex-1"
       >
-        <div className="mx-auto grid w-full max-w-[1280px] gap-x-10 gap-y-3 px-6 pb-6 pt-6 short-land:pb-3 short-land:pt-3 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div
+          data-shop-hero
+          className="relative isolate overflow-hidden border-y border-amber-500/25 bg-[#17120F] bg-[radial-gradient(ellipse_at_30%_35%,rgb(var(--shop-rar)/0.3),transparent_60%),linear-gradient(115deg,#291A12,#10131C)] [--surface-1:#211A16] [--surface-2:#382D25] [--text-hi:#FFF7E6] [--text-mid:#E2D3BD] [--text-mute:#E2D3BD]"
+        >
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(0deg,rgba(245,158,11,0.1),transparent)]" />
+        <div className="relative mx-auto grid w-full max-w-[1440px] gap-x-8 gap-y-3 px-6 py-8 short-land:py-3 md:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_400px]">
           {shop.isLoading && !hasItems ? (
             <div className="relative min-h-[440px] md:col-span-2" aria-busy="true">
               <p className="absolute inset-0 flex items-center justify-center text-[15px] font-medium text-ink-mid motion-safe:animate-pulse">
@@ -81,8 +83,7 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
             </div>
           ) : (
             <>
-              {/* Follows the viewport so the whole shelf fits a 900px-tall screen without scrolling; grows on a tall one. */}
-              <div className="relative min-h-[clamp(380px,calc(100dvh_-_480px),560px)] short-land:min-h-[300px]">
+              <div className="relative min-h-[420px] short-land:min-h-[300px]">
                 <div className="absolute inset-0">
                   <ShopStage
                     item={item}
@@ -96,6 +97,7 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
               </div>
 
               <div className="flex flex-col justify-center gap-5 py-2 short-land:gap-3">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">The collectible showroom</p>
                 <div>
                   <h2 className="text-balance font-display text-[36px] leading-[1.08] text-ink-hi short-land:text-[26px]">{item.name}</h2>
                   <p className="mt-1.5 text-[15px] font-medium text-ink-mid">{categoryLabel(selectedCategory, selectedScope)}</p>
@@ -110,6 +112,10 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
                   onReset={shop.unequip}
                   onRefund={shop.refund}
                 />
+                <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-white/10 pt-4 text-xs text-ink-mid">
+                  <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" aria-hidden /> Preview before you choose</span>
+                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" aria-hidden /> No gameplay advantage</span>
+                </div>
                 {shop.isAdminUser && (
                   <p className="flex items-center gap-2 text-[14px] text-ink-mid">
                     <Crown className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
@@ -118,20 +124,27 @@ export function ShopDesktop({ shop, onBack }: ShopDesktopProps) {
                 )}
               </div>
 
-              <div className="md:col-span-2">
+            </>
+          )}
+        </div>
+        </div>
+        {hasItems && (
+              <div className="mx-auto w-full max-w-[1440px] px-6 pb-8 pt-6">
+                <div className="mb-2 flex items-end justify-between gap-3">
+                  <h2 className="font-display text-xl text-ink-hi">All {tabLabel.toLowerCase()}</h2>
+                  <p className="text-xs font-medium text-ink-mid">{items.length} styles · Select to preview</p>
+                </div>
                 <ShopStrip
                   items={items}
                   category={selectedCategory}
-                  selectedId={item.id}
+                  selectedId={item?.id ?? null}
                   isOwned={shop.isOwned}
                   isEquipped={shop.isEquipped}
                   onSelect={shop.selectItem}
                   label={`${tabLabel} styles`}
                 />
               </div>
-            </>
-          )}
-        </div>
+        )}
       </section>
     </div>
   );

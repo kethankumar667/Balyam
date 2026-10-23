@@ -22,6 +22,28 @@ function show(Layout: typeof ShopDesktop | typeof ShopMobile, over: FakeShopOpti
 }
 
 describe.each(layouts)("shop — %s layout", (_name, Layout) => {
+  it("shows real collection progress", () => {
+    show(Layout, { ownedIds: new Set(["frame_blaze_ring"]) });
+    const collection = screen.getByRole("progressbar", { name: "Your collection" });
+    expect(collection.getAttribute("aria-valuenow")).toBe("2");
+    expect(collection.getAttribute("aria-valuemax")).toBe("3");
+    expect(screen.getByText("2 / 3 unlocked")).toBeDefined();
+    expect(screen.queryByText(/Special offers|Limited time/i)).toBeNull();
+  });
+
+  it("does not present Admin Pass access as earned collection ownership", () => {
+    show(Layout, { isAdminUser: true });
+    expect(screen.queryByRole("progressbar", { name: "Your collection" })).toBeNull();
+    expect(screen.getByText(/not earned ownership/)).toBeDefined();
+  });
+
+  it("places the collectible shelf after a cinematic hero and labels rarity on the cards", () => {
+    const { container } = render(<Layout shop={makeShop()} onBack={vi.fn()} />);
+    expect(container.querySelector("[data-shop-hero]")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "All frames" })).toBeDefined();
+    expect(within(screen.getByRole("option", { name: /Blaze Ring/ })).getByText("Epic")).toBeDefined();
+  });
+
   it("shows the page title, the balance and the promise that nothing here changes a match", () => {
     show(Layout);
 
@@ -149,6 +171,21 @@ describe.each(layouts)("shop — %s layout", (_name, Layout) => {
     show(Layout, { errorMessage: "Could not reach the shop." });
 
     expect(screen.getByRole("alert").textContent).toBe("Could not reach the shop.");
+  });
+
+  it("does not show a failed empty catalog as a zero collection", () => {
+    render(<Layout shop={makeEmptyShop({ errorMessage: "Could not reach the shop." })} onBack={vi.fn()} />);
+    expect(screen.getByText(/Collection unavailable/)).toBeDefined();
+    expect(screen.queryByRole("progressbar", { name: "Your collection" })).toBeNull();
+  });
+
+  it("keeps actions disabled while a transaction is pending", () => {
+    const { shop } = show(Layout, { isSubmitting: true });
+    const buttons = screen.getAllByRole("button").filter((button) => (button as HTMLButtonElement).disabled);
+    expect(buttons.length).toBeGreaterThan(0);
+    buttons.forEach((button) => fireEvent.click(button));
+    expect(shop.purchase).not.toHaveBeenCalled();
+    expect(shop.equip).not.toHaveBeenCalled();
   });
 
   it("keeps the Admin Pass free of prices", () => {

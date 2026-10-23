@@ -5,8 +5,7 @@
  * card back. The stage has no frame of its own: it sits on the showroom band, so the page reads as a place with a
  * stage in it, not a panel floating on a page.
  *
- * Depth is flat and honest: a ringed diamond plate, a solid pedestal, and ONE soft shadow with a real offset under
- * it. No glow halo, no spotlight beam, no radial gradient.
+ * A luminous orbital pedestal frames the real cosmetic renderer, never a substitute product illustration.
  *
  * Authored motion: when the selection changes the item settles onto the plate (a short rise and fade). Reduced
  * motion removes it; the colour change of the plate is a plain colour transition.
@@ -38,9 +37,10 @@ export interface ShopStageProps {
 /** One panel for every preview context, so each tab's `aria-controls` points at something that is always there. */
 const PREVIEW_PANEL_ID = "preview-panel";
 
-/** The plate and pedestal. Decorative; `--shop-rar` comes from the band it sits in. */
+/** Decorative showroom lighting stays isolated from the actual cosmetic material. */
 function StagePlate() {
   const shadowId = useId();
+  const glowId = useId();
   const rar = "rgb(var(--shop-rar))";
   return (
     <svg
@@ -50,27 +50,27 @@ function StagePlate() {
       className="pointer-events-none absolute inset-0 m-auto h-full w-full"
     >
       <defs>
+        <radialGradient id={glowId}>
+          <stop offset="0%" stopColor={rar} stopOpacity="0.48" />
+          <stop offset="70%" stopColor={rar} stopOpacity="0.1" />
+          <stop offset="100%" stopColor={rar} stopOpacity="0" />
+        </radialGradient>
         <filter id={shadowId} x="-20%" y="-60%" width="140%" height="220%">
           <feGaussianBlur stdDeviation="7" />
         </filter>
       </defs>
       <g style={{ transition: "stroke 400ms, fill 400ms" }}>
-        <rect
-          x="95" y="75" width="210" height="210" rx="30" transform="rotate(45 200 180)"
-          style={{ fill: "rgb(var(--shop-rar) / 0.26)", stroke: rar }} strokeWidth="4"
-        />
-        <rect
-          x="128" y="108" width="144" height="144" rx="22" transform="rotate(45 200 180)"
-          style={{ fill: "none", stroke: "rgb(var(--shop-rar) / 0.55)" }} strokeWidth="1.5"
-        />
+        <circle cx="200" cy="180" r="190" fill={`url(#${glowId})`} />
         <circle
-          cx="200" cy="180" r="158" strokeDasharray="2 11" strokeLinecap="round"
-          style={{ fill: "none", stroke: "rgb(var(--shop-rar) / 0.5)" }} strokeWidth="2"
+          cx="200" cy="180" r="148" strokeDasharray="1 13" strokeLinecap="round"
+          style={{ fill: "none", stroke: "rgb(var(--shop-rar) / 0.65)" }} strokeWidth="2"
         />
-        {/* Pedestal: a soft shadow offset below it, the solid base, a lighter top face. */}
+        <path d="M62 180 A138 138 0 0 1 200 42 M338 180 A138 138 0 0 1 200 318" fill="none" stroke={rar} strokeWidth="1" opacity="0.3" />
         <ellipse cx="200" cy="336" rx="134" ry="20" fill="#000" opacity="0.3" filter={`url(#${shadowId})`} />
-        <ellipse cx="200" cy="322" rx="128" ry="21" style={{ fill: rar }} />
-        <ellipse cx="200" cy="316" rx="112" ry="15" style={{ fill: "rgb(255 255 255 / 0.28)" }} />
+        <path d="M72 312 L72 329 A128 23 0 0 0 328 329 L328 312 Z" fill="#291E16" stroke={rar} strokeWidth="1" />
+        <ellipse cx="200" cy="312" rx="128" ry="23" fill="#3B2B1C" stroke={rar} strokeWidth="2" />
+        <ellipse cx="200" cy="312" rx="112" ry="17" fill={`url(#${glowId})`} stroke={rar} strokeWidth="1" />
+        <ellipse cx="200" cy="312" rx="96" ry="12" fill="none" stroke="#FFF1B8" strokeWidth="1" opacity="0.6" />
       </g>
     </svg>
   );

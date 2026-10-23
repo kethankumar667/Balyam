@@ -2,9 +2,8 @@
  * BHALYAM — Cosmetics shop, phone layout (under 768px).
  *
  * Designed for one hand on a small screen, not shrunk from the desktop. Top to bottom: title row (Back, the
- * "cosmetic only" line, the coin balance), four equal tabs, then the showroom, which takes ALL the remaining height:
- * the stage (flexible), the selected item's name, the thumbnail strip. The one action sits pinned at the bottom in the
- * thumb zone, above the safe area. Nothing scrolls except the strip, sideways.
+ * collection progress and category tabs, then a stacked cinematic stage and collectible shelf.
+ * The primary action stays in a sticky safe-area bar; short screens scroll naturally.
  *
  * Differences from the desktop shell: the stage has no step arrows (the strip steps), the preview-context switch
  * moves to the stage's bottom edge, strip tiles are shorter, and the details collapse to a name and one line.
@@ -13,7 +12,7 @@
 import { SHOP_CATEGORY_TABS } from "../shopLogic";
 import type { CosmeticsShop } from "../useCosmeticsShop";
 import { ShopActionButtons, useShopPlan } from "./ShopActions";
-import { GameVariantSwitch, REASSURANCE, SHOWROOM_ID, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
+import { GameVariantSwitch, REASSURANCE, SHOWROOM_ID, ShopCollection, ShopHeader, ShopTabs, shopTabId } from "./ShopNav";
 import { ShopStage } from "./ShopStage";
 import { ShopStrip } from "./ShopStrip";
 import { categoryLabel } from "./shopPlan";
@@ -33,10 +32,11 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
   return (
     // `min-h-full`, not `h-full`: on a short phone (360x640, 375x667) the stage, name, strip and action cannot all fit
     // at once. The page grows and scrolls instead of crushing the stage; the action bar stays pinned (sticky).
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full min-w-0 flex-1 flex-col bg-[#FFF9ED] dark:bg-surface-0">
       <div className="shrink-0 px-3 pb-1 pt-2">
         <ShopHeader balance={shop.walletBalance} onBack={onBack} showReassurance={false} />
       </div>
+      <div className="px-3 py-2"><ShopCollection shop={shop} /></div>
       <div className="shrink-0 px-1">
         <ShopTabs fill selected={selectedCategory} onSelect={shop.selectCategory} />
       </div>
@@ -52,7 +52,7 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
         role="tabpanel"
         aria-labelledby={shopTabId(selectedCategory)}
         style={rarityVars(item?.rarity)}
-        className="flex flex-1 flex-col border-t-[3px] border-[rgb(var(--shop-rar))] bg-[rgb(var(--shop-rar)/0.12)] transition-colors duration-500 dark:bg-[rgb(var(--shop-rar)/0.1)]"
+        className="flex min-w-0 flex-1 flex-col"
       >
         {shop.isLoading && !hasItems ? (
           <p aria-busy="true" className="flex flex-1 items-center justify-center text-[15px] font-medium text-ink-mid motion-safe:animate-pulse">
@@ -64,7 +64,8 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
           </p>
         ) : (
           <>
-            <div className="relative min-h-[240px] flex-1">
+            <div data-shop-hero className="border-y border-amber-500/25 bg-[#17120F] bg-[radial-gradient(ellipse_at_50%_30%,rgb(var(--shop-rar)/0.3),transparent_70%),linear-gradient(140deg,#291A12,#10131C)] pb-5 [--surface-1:#211A16] [--surface-2:#382D25] [--text-hi:#FFF7E6] [--text-mid:#E2D3BD] [--text-mute:#E2D3BD]">
+            <div className="relative min-h-[300px]">
               <div className="absolute inset-0">
                 <ShopStage
                   compact
@@ -79,9 +80,10 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
 
             <div className="shrink-0 px-4 pt-2">
               <h2 className="text-balance font-display text-[24px] leading-tight text-ink-hi">{item.name}</h2>
-              <p className="line-clamp-1 text-[14px] leading-snug text-ink-mid">
+              <p className="mt-1 text-[14px] leading-relaxed text-ink-mid">
                 {categoryLabel(selectedCategory, selectedScope)} · {item.description}
               </p>
+            </div>
             </div>
 
             {selectedCategory === "CARD_BACK" && (
@@ -90,7 +92,8 @@ export function ShopMobile({ shop, onBack }: ShopMobileProps) {
               </div>
             )}
 
-            <div className="shrink-0 pt-2">
+            <div className="min-w-0 shrink-0 px-3 pb-4 pt-5">
+              <h2 className="mb-2 font-display text-lg text-ink-hi">All {tabLabel.toLowerCase()}</h2>
               <ShopStrip
                 compact
                 items={items}

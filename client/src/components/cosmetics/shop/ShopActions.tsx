@@ -65,7 +65,7 @@ export function ShopActionButtons({ shopPlan, isSubmitting, onUnlock, onEquip, o
       {primary.kind === "status" ? (
         <div
           role="status"
-          className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-600/35 bg-emerald-600/10 px-4 text-[15px] font-semibold text-emerald-800 dark:text-emerald-200"
+          className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-emerald-600/35 bg-emerald-50 px-4 text-[15px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
         >
           <Check className="h-5 w-5 stroke-[3]" aria-hidden />
           {primary.label}
@@ -96,7 +96,7 @@ export function ShopActionButtons({ shopPlan, isSubmitting, onUnlock, onEquip, o
       {(plan.canReset || plan.showRefund) && (
         <div className="flex flex-wrap items-center gap-x-2">
           {plan.canReset && (
-            <Button variant="ghost" size="sm" disabled={isSubmitting} onClick={onReset}>
+            <Button variant="ghost" size="sm" className="!text-ink-mid" disabled={isSubmitting} onClick={onReset}>
               Reset to default
             </Button>
           )}
@@ -104,6 +104,7 @@ export function ShopActionButtons({ shopPlan, isSubmitting, onUnlock, onEquip, o
             <Button
               variant="ghost"
               size="sm"
+              className="!text-ink-mid"
               disabled={isSubmitting}
               onClick={() => onRefund(item)}
               leftIcon={<RotateCcw className="h-4 w-4" />}

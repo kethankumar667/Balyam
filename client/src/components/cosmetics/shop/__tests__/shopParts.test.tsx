@@ -44,6 +44,17 @@ describe("ShopStrip", () => {
     expect(onSelect).toHaveBeenCalledWith("frame_blaze_ring");
   });
 
+  it("shows material dice faces on the shelf rather than generic dice icons", () => {
+    const { container } = render(<ShopStrip
+      items={[frame({ id: "dice_golden_ember", category: "DICE_SKIN", name: "Golden Ember" })]}
+      category="DICE_SKIN" selectedId="dice_golden_ember"
+      isOwned={() => false} isEquipped={() => false} onSelect={vi.fn()} label="Dice styles"
+    />);
+    const material = container.querySelector('[data-dice-material="dice_golden_ember"]');
+    expect(material).not.toBeNull();
+    expect(material?.querySelectorAll(".rounded-full")).toHaveLength(5);
+  });
+
   it("moves the selection with the arrow keys, Home and End, and stops at the ends", () => {
     const { onSelect } = renderStrip();
     const selected = screen.getByRole("option", { name: /Bubble Float/ });

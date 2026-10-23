@@ -13,7 +13,8 @@ import { Check, Coins, Lock } from "lucide-react";
 import type { CosmeticCatalogItem, CosmeticCategory } from "@shared/cosmetics";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { CollectibleThumbnail } from "../CosmeticsItemCard";
-import { rarityVars } from "./shopRarity";
+import { rarityVars, shopRarityOf } from "./shopRarity";
+import { DiceMaterialSwatch } from "./ItemPreviewVisuals";
 
 export interface ShopStripProps {
   items: readonly CosmeticCatalogItem[];
@@ -87,7 +88,7 @@ export function ShopStrip({ items, category, selectedId, isOwned, isEquipped, on
       role="listbox"
       aria-label={label}
       aria-orientation="horizontal"
-      className="flex snap-x snap-proximity gap-2 overflow-x-auto px-3 pb-3 pt-1 [scrollbar-color:rgb(var(--shop-rar)/0.6)_transparent] [scrollbar-width:thin] sm:px-0"
+      className="flex snap-x snap-proximity gap-3 overflow-x-auto px-1 pb-4 pt-2 [scrollbar-color:rgb(var(--shop-rar)/0.6)_transparent] [scrollbar-width:thin]"
     >
       {items.map((item, index) => {
         const selected = item.id === selectedId;
@@ -106,21 +107,26 @@ export function ShopStrip({ items, category, selectedId, isOwned, isEquipped, on
                 else if (e.key === "Home") { e.preventDefault(); move(index, 0); }
                 else if (e.key === "End") { e.preventDefault(); move(index, items.length - 1); }
               }}
-              className={`relative flex flex-col items-center gap-1.5 rounded-2xl px-2 pb-3.5 pt-2 text-center transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 ${
-                compact ? "w-[92px]" : "w-[120px]"
+              className={`relative flex h-full flex-col items-center gap-2 rounded-2xl border px-2.5 pb-4 pt-3 text-center shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 ${
+                compact ? "w-[120px]" : "w-[144px]"
               } ${
                 selected
-                  ? "bg-surface-1 shadow-[0_3px_10px_rgba(0,0,0,0.14)] ring-2 ring-[rgb(var(--shop-rar))]"
-                  : "bg-surface-1/55 hover:bg-surface-1"
+                  ? "border-[rgb(var(--shop-rar))] bg-surface-1 shadow-[0_5px_16px_rgba(0,0,0,0.12)] ring-1 ring-[rgb(var(--shop-rar))]"
+                  : "border-[var(--chrome-hairline)] bg-surface-1 hover:border-[rgb(var(--shop-rar))]"
               }`}
             >
-              <span className={`flex items-center justify-center ${compact ? "h-[52px] w-[52px]" : "h-16 w-16"}`}>
-                <CollectibleThumbnail item={item} category={category} isSelected={selected} rarity={item.rarity} />
+              <span className="self-start rounded-full bg-[rgb(var(--shop-rar)/0.12)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-ink-hi">
+                {shopRarityOf(item.rarity).label}
+              </span>
+              <span className={`flex w-full items-center justify-center rounded-xl bg-[radial-gradient(ellipse_at_center,rgb(var(--shop-rar)/0.18),transparent_75%)] ${compact ? "h-[76px]" : "h-24"}`}>
+                {category === "DICE_SKIN"
+                  ? <DiceMaterialSwatch skinId={item.id} />
+                  : <CollectibleThumbnail item={item} category={category} isSelected={selected} rarity={item.rarity} />}
               </span>
               <span className="line-clamp-2 min-h-[2.4em] text-[13px] font-semibold leading-tight text-ink-hi">
                 {item.name}
               </span>
-              <TileState item={item} owned={isOwned(item)} equipped={isEquipped(item)} />
+              <span className="mt-auto"><TileState item={item} owned={isOwned(item)} equipped={isEquipped(item)} /></span>
               <span
                 aria-hidden
                 className="absolute inset-x-4 bottom-0 h-[3px] rounded-full"

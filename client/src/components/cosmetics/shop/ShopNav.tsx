@@ -9,8 +9,9 @@
  */
 
 import type { ReactNode } from "react";
-import { ArrowLeft, Coins } from "lucide-react";
-import type { CosmeticCategory, CosmeticGameScope } from "@shared/cosmetics";
+import { ArrowLeft, Coins, Store, Trophy } from "lucide-react";
+import { getRegistryCosmetic, type CosmeticCategory, type CosmeticGameScope } from "@shared/cosmetics";
+import type { CosmeticsShop } from "../useCosmeticsShop";
 import { Button } from "../../../design-system/dls/Buttons";
 import { CARD_BACK_SCOPES, SHOP_CATEGORY_TABS } from "../shopLogic";
 
@@ -37,7 +38,10 @@ export function ShopHeader({ balance, onBack, showReassurance = true }: ShopHead
         Back
       </Button>
       <div className="min-w-0 flex-1">
-        <h1 className="truncate font-display text-[28px] leading-tight text-ink-hi sm:text-[34px] short-land:text-[24px]">Shop</h1>
+        <h1 className="flex items-center gap-2 font-display text-[28px] leading-tight text-ink-hi sm:text-[34px] short-land:text-[24px]">
+          <Store className="h-6 w-6 shrink-0 text-orange-600" aria-hidden /> Shop
+        </h1>
+        <p className="text-[12px] font-medium text-ink-mid sm:text-sm">Collect. Customize. Relive childhood.</p>
         {showReassurance && <p className="text-[13px] leading-snug text-ink-mid sm:text-[14px]">{REASSURANCE}</p>}
       </div>
       <div
@@ -48,6 +52,48 @@ export function ShopHeader({ balance, onBack, showReassurance = true }: ShopHead
         <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
         <span>{coins}</span>
         <span className="hidden font-medium text-ink-mid sm:inline">coins</span>
+      </div>
+    </div>
+  );
+}
+
+export function ShopCollection({ shop }: { shop: CosmeticsShop }) {
+  // The admin store grants access by populating ownedIds; it is not an earned collection.
+  if (shop.isAdminUser) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+        <Trophy className="h-7 w-7 text-amber-600 dark:text-amber-400" aria-hidden />
+        <div><p className="text-sm font-bold text-ink-hi">Admin Pass</p><p className="text-xs text-ink-mid">All styles available · not earned ownership</p></div>
+      </div>
+    );
+  }
+  const items = shop.catalog.filter((item) => item.isActive && getRegistryCosmetic(item.id) &&
+    SHOP_CATEGORY_TABS.some((tab) => tab.category === item.category));
+  if (shop.errorMessage && !items.length) {
+    return <p className="rounded-2xl border border-rose-500/20 px-4 py-3 text-sm text-ink-mid">Collection unavailable. Try reloading the shop.</p>;
+  }
+  const unlocked = items.filter((item) => item.unlockMethod === "DEFAULT" || shop.ownedIds.has(item.id)).length;
+  const percent = items.length ? Math.round(unlocked / items.length * 100) : 0;
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+      <Trophy className="h-7 w-7 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm font-bold text-ink-hi">Your collection</p>
+          <span className="text-xs font-semibold tabular-nums text-ink-mid">{shop.isLoading ? "Updating…" : `${percent}%`}</span>
+        </div>
+        <p className="mt-0.5 text-xs text-ink-mid">{shop.isLoading && !items.length ? "Loading collection…" : `${unlocked} / ${items.length} unlocked`}</p>
+        <div
+          role="progressbar"
+          aria-label="Your collection"
+          aria-valuemin={0}
+          aria-valuemax={items.length || 1}
+          aria-valuenow={unlocked}
+          aria-valuetext={shop.isLoading ? "Updating collection" : `${unlocked} of ${items.length} unlocked`}
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-amber-900/10 dark:bg-white/10"
+        >
+          <div className="h-full rounded-full bg-amber-500" style={{ width: `${percent}%` }} />
+        </div>
       </div>
     </div>
   );
@@ -64,11 +110,11 @@ export interface ShopTabsProps {
 
 export function ShopTabs({ selected, onSelect, fill = false, trailing }: ShopTabsProps) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-[var(--chrome-hairline)]">
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 border-b border-[var(--chrome-hairline)]">
     <div
       role="tablist"
       aria-label="Cosmetic categories"
-      className={fill ? "grid flex-1 grid-cols-4" : "flex gap-2"}
+      className={fill ? "grid min-w-0 flex-1 grid-cols-4" : "flex min-w-0 gap-1"}
     >
       {SHOP_CATEGORY_TABS.map((tab) => {
         const Icon = tab.icon;
@@ -93,8 +139,8 @@ export function ShopTabs({ selected, onSelect, fill = false, trailing }: ShopTab
               onSelect(next);
               document.getElementById(shopTabId(next))?.focus();
             }}
-            className={`relative inline-flex min-h-[52px] items-center justify-center gap-2 px-3 text-[15px] short-land:min-h-[44px] font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500 sm:px-6 ${
-              active ? "text-ink-hi" : "text-ink-mid hover:text-ink-hi"
+            className={`relative inline-flex min-h-[52px] items-center justify-center gap-1.5 rounded-t-xl px-2 text-[13px] short-land:min-h-[44px] font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500 sm:px-4 sm:text-[15px] ${
+              active ? "bg-amber-500/10 text-ink-hi" : "text-ink-mid hover:bg-amber-500/5 hover:text-ink-hi"
             }`}
           >
             {/* Under 360px four icon+label tabs do not fit; the labels carry it. */}
