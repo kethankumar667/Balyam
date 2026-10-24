@@ -39,6 +39,15 @@ describe("faucet surfaces for a phone", () => {
   });
 
   describe("FaucetClaimRow", () => {
+    it("offers the illustrated wallet variant without changing the claim contract", () => {
+      seed(status());
+      render(<FaucetClaimRow variant="wallet" />);
+      expect(screen.getByText(/ready to claim/i)).toBeInTheDocument();
+      expect(screen.getByText(/100 coins every 4 hours/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /claim 100 coins/i }));
+      expect(useFaucetStore.getState().isClaimModalOpen).toBe(true);
+      expect(claim).not.toHaveBeenCalled();
+    });
     it("renders nothing for a player who has no faucet", () => {
       seed(status({ eligible: false, canClaim: false }));
 

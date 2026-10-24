@@ -671,6 +671,9 @@ export interface EconomyRepository {
     opts?: { limit?: number; offset?: number },
   ): Promise<CoinLedgerEntryRecord[]>;
 
+  /** Complete UTC daily ledger totals and closing balances, including today so far; never provisions a wallet. */
+  getWalletActivity(walletId: string, now: number): Promise<import("@shared/walletActivity.js").WalletActivityDay[]>;
+
   /** `null` if the match hasn't been committed yet. */
   getSettlement(matchId: string): Promise<MatchEconomySettlementRecord | null>;
 

@@ -568,6 +568,10 @@ export class SupabaseEconomyRepository implements EconomyRepository {
     return rows.map(toLedgerEntry);
   }
 
+  async getWalletActivity(walletId: string, now: number): Promise<import("@shared/walletActivity.js").WalletActivityDay[]> {
+    return this.rpc("wallet_activity_30_days", { p_wallet_id: walletId, p_now: new Date(now).toISOString() });
+  }
+
   async getSettlement(matchId: string): Promise<MatchEconomySettlementRecord | null> {
     const rows = await this.select<SettlementRow>(
       "match_economy_settlements_safe",

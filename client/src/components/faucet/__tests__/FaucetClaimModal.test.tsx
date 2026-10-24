@@ -65,7 +65,7 @@ describe("FaucetClaimModal", () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it("celebrates a paid claim with the coin rain, the amount and a Done button", async () => {
+  it("celebrates a paid claim with the coin rain, the amount and an Awesome button", async () => {
     claim.mockResolvedValue(paid);
     open(status());
 
@@ -74,10 +74,10 @@ describe("FaucetClaimModal", () => {
     });
 
     expect(claim).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("heading", { name: /coins added/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /100 coins claimed/i })).toBeInTheDocument();
     expect(await screen.findByText("+100")).toBeInTheDocument();
     expect(screen.getByTestId("coin-rain")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^awesome!$/i })).toBeInTheDocument();
     expect(trigger).toHaveBeenCalledWith("reward");
   });
 

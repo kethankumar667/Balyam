@@ -88,6 +88,7 @@ class ScriptedFailureRepository implements EconomyRepository {
 
   ping() { return this.inner.ping(); }
   getWallet(id: string) { return this.inner.getWallet(id); }
+  getWalletActivity(id: string, now: number) { return this.inner.getWalletActivity(id, now); }
   listLedger(id: string, o?: { limit?: number; offset?: number }) { return this.inner.listLedger(id, o); }
   getSettlement(id: string) { return this.inner.getSettlement(id); }
   getWorldBankSnapshot() { return this.inner.getWorldBankSnapshot(); }

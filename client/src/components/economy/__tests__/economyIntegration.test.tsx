@@ -100,6 +100,13 @@ describe("Economy V1 UI Integration Suite", () => {
         expect(screen.getAllByText("5,000").length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText("Starter Grant")).toBeDefined();
       });
+      expect(screen.queryByText(/cryptographic audit/i)).toBeNull();
+      const entry = screen.getByRole("button", { name: /starter grant/i });
+      entry.focus();
+      fireEvent.click(entry);
+      await waitFor(() => expect(screen.getByRole("dialog", { name: "Ledger Entry Details" })).toBeDefined());
+      fireEvent.keyDown(window, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Ledger Entry Details" })).toBeNull());
     });
 
     it("renders player identity footer under the wallet popup for support and audit lookup", async () => {

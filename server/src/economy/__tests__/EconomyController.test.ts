@@ -75,6 +75,22 @@ function seedHost(identityId: string, balance: string, kind: "member" | "guest" 
 }
 
 /* ═══════════════════════ wallet retrieval ════════════════════════════════ */
+describe("GET /api/economy/wallet/activity", () => {
+  it("rejects anonymous access", async () => {
+    expect((await server.request("/api/economy/wallet/activity")).status).toBe(401);
+  });
+  it("uses only the authenticated identity, even when another wallet is requested", async () => {
+    seedHost(BOB, "987654");
+    const spy = vi.spyOn(service, "getWalletActivity");
+    const response = await server.request(`/api/economy/wallet/activity?walletId=${BOB}`, { token: mintMemberToken(ALICE) });
+    expect(response.status).toBe(200);
+    expect(spy).toHaveBeenCalledWith(ALICE);
+    const body = response.body as import("@shared/walletActivity.js").WalletActivity;
+    expect(body.days).toHaveLength(30);
+    expect(body.days.every((day) => day.balance === "0")).toBe(true);
+    expect(await repo.getWallet(ALICE)).toBeNull();
+  });
+});
 
 describe("GET /api/economy/wallet", () => {
   it("returns the caller's own provisioned wallet", async () => {

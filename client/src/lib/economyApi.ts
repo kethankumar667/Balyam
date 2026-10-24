@@ -329,6 +329,17 @@ export async function claimMemberWelcome(): Promise<{ applied: boolean; wallet: 
 /**
  * GET /api/economy/wallet/ledger — retrieves caller's own ledger history.
  */
+export async function getWalletActivity(): Promise<import("@shared/walletActivity").WalletActivity> {
+  const res = await apiFetch("/api/economy/wallet/activity");
+  const body = await handleResponse<import("@shared/walletActivity").WalletActivity>(res);
+  if (!Array.isArray(body.days) || body.days.length !== 30 || !Number.isFinite(body.serverNow) ||
+      body.days.some((day) => !day || !/^\d{4}-\d{2}-\d{2}$/.test(day.date) ||
+        ![day.credited, day.spent, day.balance].every((value) => typeof value === "string" && /^\d+$/.test(value)))) {
+    throw new EconomyClientError(res.status, "MalformedResponse", "Wallet activity is unavailable.");
+  }
+  return body;
+}
+
 export async function getEconomyLedger(
   options: { limit?: number; offset?: number } = {},
 ): Promise<{ entries: CoinLedgerEntryRecord[]; hasMore: boolean }> {

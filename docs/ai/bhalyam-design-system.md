@@ -25,6 +25,24 @@
 
 ## 2. Standardized Component Library
 
+### Coin wallet drawer
+
+`components/economy/WalletDrawer.tsx` uses a warm ivory shell (charcoal in
+dark mode), an always-dark gold balance hero, illustrated coin-drop card,
+2x2 lifetime totals and keyboard-operable transaction rows. Reuse `GoldCoin`
+and `RewardChest` (the original open-chest SVG); do not hardcode the reference image's role,
+balances, gains or audit claims. The claim confirmation remains server-driven;
+only an immediately paid reward gets the dark/gold celebration and coin rain.
+Waiting, held, refused, frozen and unavailable states retain their actual meaning.
+
+`WalletActivityChart` reads the caller-only `/api/economy/wallet/activity`
+aggregate, not the paginated ledger. It shows 30 UTC dates, daily closing
+balances (today so far), and an expandable exact-value table. All amounts stay
+decimal strings/BigInt; only bounded SVG ratios become numbers. A missing
+aggregate is an explicit retryable error, never a fabricated flat chart.
+Deploy migration `20261107000000_wallet_activity.sql` before the server/client;
+its service-role-only RPC never creates a wallet or changes any balance.
+
 ### 2.1 Buttons (`client/src/design-system/dls/Buttons.tsx`)
 | Button Component | Visual Style | Intended Usage |
 | :--- | :--- | :--- |

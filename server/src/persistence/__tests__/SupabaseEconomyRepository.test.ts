@@ -45,6 +45,16 @@ describe("SupabaseEconomyRepository", () => {
   });
 
   describe("request construction", () => {
+    it("requests the complete activity aggregate with caller wallet and server time, preserving decimal strings", async () => {
+      const days = [{ date: "2026-11-07", credited: "9007199254740993", spent: "0", balance: "9007199254740993" }];
+      fetchMock.mockResolvedValueOnce(jsonResponse(200, days));
+      const repo = new SupabaseEconomyRepository(CONFIG);
+      const now = Date.UTC(2026, 10, 7, 12);
+      expect(await repo.getWalletActivity("guest_abc", now)).toEqual(days);
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://example.supabase.co/rest/v1/rpc/wallet_activity_30_days");
+      expect(JSON.parse(init.body as string)).toEqual({ p_wallet_id: "guest_abc", p_now: "2026-11-07T12:00:00.000Z" });
+    });
     it("getWallet issues a GET against coin_wallets_safe (the bigint-text view, not the raw table) filtered by identity_id", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(200, []));
       const repo = new SupabaseEconomyRepository(CONFIG);

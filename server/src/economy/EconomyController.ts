@@ -363,6 +363,19 @@ export function createEconomyRouter(service: EconomyService): Router {
     }
   });
 
+  router.get("/wallet/activity", requireIdentity, async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    try {
+      const activity = await service.getWalletActivity(callerId(req));
+      res.setHeader("Cache-Control", "no-store");
+      res.json(activity);
+      logOutcome(req, res, "GET /wallet/activity", "getWalletActivity", null, startedAt, "ok");
+    } catch (err) {
+      const mapped = sendError(req, res, err);
+      logOutcome(req, res, "GET /wallet/activity", "getWalletActivity", null, startedAt, "error", mapped.error);
+    }
+  });
+
   /** GET /wallet/ledger — caller's own ledger only. Same limit/offset convention as ProfileController's matches route. */
   router.get("/wallet/ledger", requireIdentity, async (req: Request, res: Response) => {
     const startedAt = Date.now();

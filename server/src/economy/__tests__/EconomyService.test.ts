@@ -108,6 +108,9 @@ class ScriptedFailureRepository implements EconomyRepository {
   getWallet(identityId: string): Promise<CoinWalletRecord | null> {
     return this.invoke("getWallet", () => this.inner.getWallet(identityId));
   }
+  getWalletActivity(id: string, now: number) {
+    return this.invoke("getWalletActivity", () => this.inner.getWalletActivity(id, now));
+  }
   listLedger(walletId: string, opts?: { limit?: number; offset?: number }) {
     return this.invoke("listLedger", () => this.inner.listLedger(walletId, opts));
   }

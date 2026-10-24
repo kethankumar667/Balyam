@@ -494,6 +494,13 @@ export class EconomyService {
     return wallet;
   }
 
+  async getWalletActivity(identityId: string): Promise<import("@shared/walletActivity.js").WalletActivity> {
+    const now = this.now();
+    const days = await this.withRetry("getWalletActivity", null, () => this.repository.getWalletActivity(identityId, now));
+    this.logOutcome("getWalletActivity", null, now, "read");
+    return { days, serverNow: now };
+  }
+
   async getLedger(
     identityId: string,
     opts?: { limit?: number; offset?: number },

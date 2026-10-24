@@ -76,7 +76,7 @@ export function FaucetClaimModal() {
   const waitingView = phase === "ready" && isWaiting;
 
   const title = celebrating
-    ? "Coins added!"
+    ? `${paid} Coins Claimed!`
     : phase === "pending"
       ? "Claimed"
       : phase === "refused"
@@ -105,11 +105,14 @@ export function FaucetClaimModal() {
         onClose={close}
         ariaLabelledBy={titleId}
         initialFocusRef={focusRef}
-        mobileSheet
+        mobileSheet={!celebrating}
         zIndex={MODAL_Z}
         panelClassName="w-full max-w-sm"
       >
-        <div className="overflow-hidden rounded-t-3xl border border-[#EEDBCA] bg-[#FFF9EE] pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl dark:border-slate-700 dark:bg-[#182234] md:rounded-3xl">
+        <div className={celebrating
+          ? "overflow-hidden rounded-3xl border border-amber-400/60 bg-[radial-gradient(ellipse_at_50%_25%,#574020,#1E2024_70%)] pb-6 shadow-[0_0_60px_#D99A2633] [&_h2]:text-amber-200 [&_p]:text-amber-100"
+          : "overflow-hidden rounded-t-3xl border border-[#EEDBCA] bg-[#FFF9EE] pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl dark:border-slate-700 dark:bg-[#182234] md:rounded-3xl"}>
+          {celebrating && <div className="px-6 pt-7 text-center"><h2 id={titleId} className="text-2xl font-black">{title}</h2><p className="mt-2 text-xs">Keep playing. Keep growing.</p></div>}
           {/* The stage: a warm pool of light under the coin, with two slow rings while a claim waits to be taken. */}
           <div className="relative flex h-52 items-center justify-center bg-[radial-gradient(closest-side_at_50%_52%,rgba(245,183,46,0.45),rgba(245,183,46,0)_100%)]">
             {phase === "ready" && isReady && !reduceMotion && (
@@ -136,18 +139,19 @@ export function FaucetClaimModal() {
             </motion.div>
           </div>
 
+          {celebrating && <p aria-hidden="true" className="text-center font-script text-2xl">Small Rewards<br />Big Memories!</p>}
           <div className="px-6 pt-2 text-center">
-            <h2 id={titleId} className="text-xl font-black leading-tight text-[#2B3550] dark:text-slate-100">
+            {!celebrating && <h2 id={titleId} className="text-xl font-black leading-tight text-[#2B3550] dark:text-slate-100">
               {title}
-            </h2>
+            </h2>}
 
             {(celebrating || phase === "ready") && (
-              <p className="mt-2 text-5xl font-black leading-none text-amber-600 tabular-nums dark:text-amber-300" aria-hidden={waitingView}>
+              <p className={celebrating ? "sr-only" : "mt-2 text-5xl font-black leading-none text-amber-600 tabular-nums dark:text-amber-300"} aria-hidden={waitingView}>
                 {waitingView ? formatCountdown(remainingSeconds) : celebrating ? `+${ticked}` : `+${amount}`}
               </p>
             )}
 
-            <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-slate-300" role="status" aria-live="polite">
+            <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-slate-300" role={isWaiting ? undefined : "status"} aria-live={isWaiting ? "off" : "polite"}>
               {body}
             </p>
           </div>
@@ -174,7 +178,7 @@ export function FaucetClaimModal() {
             )}
             {(celebrating || phase === "pending" || phase === "refused" || waitingView) && (
               <button ref={focusRef} type="button" onClick={close} className={PRIMARY_BUTTON}>
-                {celebrating ? "Done" : "Close"}
+                {celebrating ? "Awesome!" : "Close"}
               </button>
             )}
           </div>

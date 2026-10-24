@@ -466,6 +466,28 @@ export class InMemoryEconomyRepository implements EconomyRepository {
     return rows.map(clone);
   }
 
+  async getWalletActivity(walletId: string, now: number): Promise<import("@shared/walletActivity.js").WalletActivityDay[]> {
+    const today = Math.floor(now / 86_400_000) * 86_400_000;
+    const rows = this.walletLedger.filter((entry) => entry.walletId === walletId && entry.createdAt <= now)
+      .sort((a, b) => a.createdAt - b.createdAt || a.id - b.id);
+    let index = 0;
+    let balance = "0";
+    return Array.from({ length: 30 }, (_, day) => {
+      const start = today - (29 - day) * 86_400_000;
+      let credited = 0n;
+      let spent = 0n;
+      while (index < rows.length && rows[index]!.createdAt < start + 86_400_000) {
+        const row = rows[index++]!;
+        balance = row.balanceAfter;
+        if (row.createdAt < start) continue;
+        const amount = BigInt(row.amount);
+        if (amount > 0n) credited += amount;
+        else spent -= amount;
+      }
+      return { date: new Date(start).toISOString().slice(0, 10), credited: String(credited), spent: String(spent), balance };
+    });
+  }
+
   async getSettlement(matchId: string): Promise<MatchEconomySettlementRecord | null> {
     const settlement = this.settlements.get(matchId);
     return settlement ? clone(settlement) : null;
