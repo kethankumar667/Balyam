@@ -1,0 +1,166 @@
+.safety-gateway-backdrop.safety-gateway-backdrop {
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:
+    radial-gradient(ellipse at 50% 38%, #24466b33, transparent 60%),
+    #081426e8;
+}
+
+.safety-gateway {
+  --safety-ink: #0f2342;
+  --safety-muted: #596579;
+  --safety-surface: #fff9ed;
+  --safety-glass: #ffffffd9;
+  --safety-border: #d8cbb1;
+  --safety-control-border: #7c8694;
+  --safety-accent: #b87917;
+  --safety-verification: #16765f;
+  --safety-orbit: #9caeae66;
+  --safety-shield-hi: #f6f4e6;
+  --safety-shield-lo: #d7e7e2;
+  --safety-shield-edge: #82a39c;
+  position: relative;
+  isolation: isolate;
+  flex-shrink: 0;
+  border: 1px solid var(--safety-border);
+  color: var(--safety-ink);
+  background:
+    radial-gradient(ellipse at 50% 16%, #e0edea66, transparent 40%),
+    linear-gradient(145deg, #fffdf8, var(--safety-surface));
+  box-shadow: 0 26px 90px #0005, 0 0 0 5px #b5caca0a, inset 0 1px 0 #ffffffcf;
+}
+
+:root[data-theme="dark"] .safety-gateway {
+  --safety-ink: #f6f2e8;
+  --safety-muted: #b0becd;
+  --safety-surface: #10233b;
+  --safety-glass: #193149cc;
+  --safety-border: #476477;
+  --safety-control-border: #6f8498;
+  --safety-accent: #ffd76a;
+  --safety-verification: #69d7b8;
+  --safety-orbit: #7baba64d;
+  --safety-shield-hi: #34574f;
+  --safety-shield-lo: #19303e;
+  --safety-shield-edge: #7dafa0;
+  background:
+    radial-gradient(ellipse at 50% 16%, #47877b20, transparent 40%),
+    linear-gradient(145deg, #152c45, var(--safety-surface));
+  box-shadow: 0 26px 90px #0008, 0 0 0 5px #b5caca08, inset 0 1px 0 #c9e5e51a;
+}
+
+.safety-gateway::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: 27px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(#7caaa60a 1px, transparent 1px),
+    linear-gradient(90deg, #7caaa60a 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(#0009, transparent 50%);
+}
+
+.safety-emblem {
+  background: radial-gradient(ellipse, #7ba69b24, transparent 66%);
+}
+
+.safety-emblem-symbol {
+  color: var(--safety-verification);
+  filter: drop-shadow(0 2px 2px #172d3420);
+}
+
+.safety-steps > li:first-child::after {
+  content: "";
+  position: absolute;
+  left: calc(50% + 16px);
+  top: 11px;
+  width: calc(100% - 32px);
+  height: 1px;
+  background: var(--safety-border);
+}
+
+.safety-step-dot {
+  color: var(--safety-muted);
+  border: 1px solid var(--safety-control-border);
+  background: var(--safety-surface);
+}
+
+.safety-steps [aria-current="step"] .safety-step-dot {
+  color: var(--safety-verification);
+  border-color: var(--safety-verification);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--safety-verification) 9%, transparent);
+}
+
+.safety-choice {
+  color: var(--safety-ink);
+  border-color: var(--safety-control-border);
+  background: var(--safety-glass);
+  box-shadow: inset 0 1px 0 #ffffff26, 0 2px 4px #0f234205;
+}
+
+.safety-choice-age,
+.safety-status {
+  color: var(--safety-ink);
+  background: color-mix(in srgb, var(--safety-muted) 10%, transparent);
+}
+
+.safety-protections {
+  border-color: var(--safety-border);
+  background: var(--safety-glass);
+}
+
+.safety-privacy {
+  border-color: var(--safety-border);
+}
+
+.safety-continue {
+  color: #fff9ed;
+  background: #0f2342;
+  border: 1px solid #0f2342;
+}
+
+:root[data-theme="dark"] .safety-continue {
+  color: #0f2342;
+  background: #e8efe9;
+  border-color: #e8efe9;
+}
+
+.safety-back {
+  color: var(--safety-muted);
+}
+
+.safety-gateway :is(button, a) {
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.safety-choice:hover {
+  border-color: var(--safety-verification);
+  background: color-mix(in srgb, var(--safety-verification) 5%, var(--safety-glass));
+}
+
+.safety-choice:active {
+  background: color-mix(in srgb, var(--safety-verification) 12%, var(--safety-glass));
+}
+
+.safety-back:hover {
+  color: var(--safety-ink);
+}
+
+.safety-gateway :is(button, a):focus-visible {
+  outline: 3px solid var(--safety-accent);
+  outline-offset: 3px;
+}
+
+.safety-gateway h2:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .safety-gateway :is(button, a) {
+    transition: none !important;
+  }
+}

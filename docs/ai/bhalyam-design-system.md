@@ -227,6 +227,27 @@ retains the filters; switching category or card-game variant resets to All.
 
 ### 2.3 Modals & Dialogs
 
+**Safety Gateway** (`components/privacy/AgeGateModal.tsx`) is deliberately calmer
+than reward and wallet surfaces. It shares one shield illustration, fine circuit
+lines, age/conditional-guardian step indicator and device-local privacy footer
+across the age question, guardian confirmation and waiting screens. Light mode
+uses cream glass and navy ink; dark mode uses navy glass and quiet teal accents.
+The navy blurred backdrop, 480px maximum panel and 56px-or-larger decision
+controls remain readable and scrollable on small or short screens. There is no
+celebration, timer, reward, ambient animation or sound.
+
+Both age choices share identical styling; initial focus goes to the heading
+rather than preferring the adult answer. Each step focuses its heading and
+retains keyboard containment. This mandatory gate has no Close, Escape or
+backdrop bypass. Waiting stores nothing, and Go back returns to the age question.
+Privacy and Terms remain readable without answering.
+
+Only implemented limitations are described: coin-sending controls are hidden
+for under-18s on this device. Messaging, coin requests and server-side protection
+must not be advertised as disabled by this UI. The guardian step explicitly
+identifies this as a self-declared check, **not verified guardian consent**.
+The existing local age-answer key and confirmation rules are unchanged.
+
 The daily-streak popup opens directly into **Rewards Expedition**, whether
 today's reward is ready or already claimed. Desktop pairs a parchment daily
 card with an illuminated next-chest showcase, followed by an original SVG
