@@ -20,7 +20,10 @@ import type {
   SeasonStatsRecord,
   TournamentRecordRow,
   XpLedgerEntry,
+  ScorecardSnapshot,
+  ScorecardCommit,
 } from "./ProgressionRepository.js";
+import type { PlayerScorecardArchive, RecordScoreResult } from "@shared/profile/Scorecard.js";
 
 /**
  * The repository, in Supabase Postgres.
@@ -66,6 +69,22 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
    */
   async ping(): Promise<void> {
     await this.db.select("player_identities", "select=player_id&limit=1");
+    await this.db.select("player_scorecard_archives", "select=player_id&limit=1");
+  }
+
+  async getScorecardSnapshot(playerId: string): Promise<ScorecardSnapshot> {
+    const [row] = await this.db.select<{ revision: number; archive: PlayerScorecardArchive | null }>(
+      "player_scorecard_archives", `player_id=eq.${encodeURIComponent(playerId)}&select=revision,archive&limit=1`,
+    );
+    return row ?? { revision: 0, archive: null };
+  }
+
+  async commitScorecard(playerId: string, expectedRevision: number, eventKey: string,
+    archive: PlayerScorecardArchive, result: RecordScoreResult): Promise<ScorecardCommit> {
+    return this.db.rpc<ScorecardCommit>("commit_player_scorecard", {
+      p_player_id: playerId, p_expected_revision: expectedRevision, p_event_key: eventKey,
+      p_archive: archive, p_result: result,
+    });
   }
 
   /* ── identities ── */

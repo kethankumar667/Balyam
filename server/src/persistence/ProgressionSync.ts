@@ -1,5 +1,6 @@
 import { logger } from "../lib/logger.js";
 import { progressionRepository } from "./index.js";
+import type { RecordScorePayload } from "@shared/profile/Scorecard.js";
 import {
   matchIdFor,
   rewardKeyFor,
@@ -21,10 +22,11 @@ import {
  * So the services keep their in-memory state and their synchronous signatures,
  * and every durable fact is ALSO handed to this module, which writes it behind
  * the caller. Reads still come from memory; the store is what memory is
- * restored from at boot (`hydrateProgression`).
+ * restored from at boot (`hydrateProgression`). Personal scorecards instead
+ * read their durable archive on demand, so other processes' results are visible.
  *
  * ── What write-behind does and does not buy ───────────────────────────
- * It buys durability across the thing that was actually destroying data: a
+ * Once flushed, it buys durability across the thing that was destroying data: a
  * redeploy, a crash, an idle spin-down. Those are seconds-to-minutes apart from
  * the write, and the queue below is drained on `SIGTERM`.
  *
@@ -35,7 +37,9 @@ import {
  * acknowledging a claim and flushing it loses the claim record, and the player
  * can claim again after the restart. That direction — a player occasionally
  * getting a second chance at their own reward — is the safe one, and it is
- * written down here rather than discovered later.
+ * written down here rather than discovered later. A finished-room scorecard
+ * can likewise be lost in that pre-flush crash window. Solo HTTP score writes
+ * wait for the database commit before success is returned.
  *
  * ── Failures are loud, never silent ───────────────────────────────────
  * A rejected write increments a counter that `/health` and the operational API
@@ -59,6 +63,33 @@ class ProgressionSync {
   private failed = 0;
   private lastError: string | null = null;
   private lastErrorAt: number | null = null;
+  private pendingScorecards = new Map<string, Map<string, { payload: RecordScorePayload; recordedAt: number }>>();
+
+  scorecardRecorded(playerId: string, payload: RecordScorePayload, recordedAt: number): void {
+    const saved = structuredClone(payload);
+    const key = JSON.stringify([saved.game, saved.modeId, saved.matchId]);
+    const pending = this.pendingScorecards.get(playerId) ?? new Map();
+    pending.set(key, { payload: saved, recordedAt });
+    this.pendingScorecards.set(playerId, pending);
+    this.enqueue("recordScorecard", async () => {
+      const { persistScorecard } = await import("../profile/scorecardPersistence.js");
+      await persistScorecard(playerId, saved, recordedAt);
+      pending.delete(key);
+      if (pending.size === 0) this.pendingScorecards.delete(playerId);
+    });
+  }
+
+  /** A failed write must not become a successful empty read. Retry it, or fail the read explicitly. */
+  async retryPendingScorecards(playerId: string): Promise<void> {
+    const pending = this.pendingScorecards.get(playerId);
+    if (!pending) return;
+    const { persistScorecard } = await import("../profile/scorecardPersistence.js");
+    for (const [key, entry] of [...pending.entries()]) {
+      await persistScorecard(playerId, entry.payload, entry.recordedAt);
+      pending.delete(key);
+    }
+    if (pending.size === 0) this.pendingScorecards.delete(playerId);
+  }
 
   private enqueue(label: string, work: (repo: ProgressionRepository) => Promise<unknown>): void {
     this.pending += 1;

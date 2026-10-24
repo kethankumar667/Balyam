@@ -36,6 +36,18 @@
  * crosses this boundary.
  */
 
+import type { PlayerScorecardArchive, RecordScoreResult } from "@shared/profile/Scorecard.js";
+
+export interface ScorecardSnapshot {
+  revision: number;
+  archive: PlayerScorecardArchive | null;
+}
+
+export interface ScorecardCommit {
+  committed: boolean;
+  result?: RecordScoreResult;
+}
+
 export type PlayerKind = "member" | "guest";
 
 export interface IdentityRecord {
@@ -261,6 +273,9 @@ export interface MatchTrendBucket {
 }
 
 export interface ProgressionRepository {
+  getScorecardSnapshot(playerId: string): Promise<ScorecardSnapshot>;
+  commitScorecard(playerId: string, expectedRevision: number, eventKey: string,
+    archive: PlayerScorecardArchive, result: RecordScoreResult): Promise<ScorecardCommit>;
   /** Which implementation this is. Reported by `/health`, logged at boot. */
   readonly kind: "memory" | "supabase";
 

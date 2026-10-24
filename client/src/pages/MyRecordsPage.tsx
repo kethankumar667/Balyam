@@ -19,17 +19,27 @@ const FOCUS = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 export default function MyRecordsPage() {
   const { playerId } = usePlayerId();
   const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
-  const { archive, loading, error, fetchScorecards } = useScorecardStore();
+  const { archive, localArchive, loading, error, fetchScorecards } = useScorecardStore();
   const [mounted, setMounted] = useState(false);
   const [gameId, setGameId] = useState("handcricket");
-  const [modeId, setModeId] = useState("t20");
+  const [modeId, setModeId] = useState("international_t20");
   const [search, setSearch] = useState("");
   const gamesRef = useRef<HTMLDivElement>(null);
   const modesRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { if (playerId) void fetchScorecards(playerId); }, [playerId, fetchScorecards]);
-  const games = useMemo(() => buildRecords(archive, mounted), [archive, mounted]);
+  useEffect(() => {
+    if (!playerId) return;
+    const refresh = () => { if (document.visibilityState === "visible") void fetchScorecards(playerId); };
+    void fetchScorecards(playerId);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [playerId, fetchScorecards]);
+  const games = useMemo(() => buildRecords(archive, mounted, localArchive?.playerId === playerId ? localArchive : null), [archive, localArchive, mounted, playerId]);
   const summary = useMemo(() => recordSummary(games), [games]);
   const filtered = games.filter((game) => `${game.label} ${game.id} ${game.modes.map((mode) => `${mode.displayName} ${mode.description}`).join(" ")} ${game.previousModeRecords.map((saved) => `${saved.modeDisplayName} ${saved.modeId}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
   const game = filtered.find((candidate) => candidate.id === gameId) ?? filtered[0] ?? games[0]!;
@@ -54,8 +64,10 @@ export default function MyRecordsPage() {
             <div><h1 className="font-display text-2xl sm:text-3xl">My Records</h1><p className="text-xs text-ink-mid sm:text-sm">Every game. Every mode. Every personal best.</p></div>
           </div>
           <span className="hidden font-script text-xl text-amber-700 dark:text-amber-300 lg:block">Same games. Bigger memories.</span>
+          {playerId && <button type="button" disabled={loading} onClick={() => void fetchScorecards(playerId)} className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--chrome-hairline)] px-3 text-xs disabled:opacity-50 ${FOCUS}`}><RefreshCw className="h-4 w-4" aria-hidden />Refresh account records</button>}
           {isSuperAdmin && <Link to="/admin/leaderboards" className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--chrome-hairline)] px-3 text-xs ${FOCUS}`}>Admin Ratings Panel <ArrowUpRight className="h-4 w-4" aria-hidden /></Link>}
         </header>
+        <p className="text-xs leading-relaxed text-ink-mid">Account records are shared across devices. Bests labeled “Saved on this device” are local only and are not imported as account records.</p>
 
         {loading && !archive && !summary.gamesExplored ? (
           <div role="status" className={`${PANEL} flex items-center justify-center gap-3 p-12 text-ink-mid`}><RefreshCw className="h-5 w-5 motion-safe:animate-spin" aria-hidden />Loading scorecards...</div>
@@ -119,14 +131,14 @@ export default function MyRecordsPage() {
                     {game.previousModeRecords.length > 0 && (
                       <section aria-labelledby="previous-modes-title" className={`${PANEL} space-y-3 p-4`}>
                         <h2 id="previous-modes-title" className="font-display text-lg">Previously recorded modes</h2>
-                        <p className="text-xs leading-relaxed text-ink-mid">These saved modes are no longer in the current mode list. Original scores are preserved without guessing their units or applying today's goals.</p>
+                        <p className="text-xs leading-relaxed text-ink-mid">Historical modes and older device-only snapshots stay separate from current account records. Original scores are preserved without guessing categories or units, or applying today's goals.</p>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {game.previousModeRecords.map((saved) => (
                             <div key={saved.modeId} className="min-w-0 space-y-1 rounded-xl border border-[var(--chrome-hairline)] p-3">
                               <h3 className="break-words font-bold">{saved.modeDisplayName}</h3>
-                              <p className="break-all text-xs text-ink-mid">Saved mode: {saved.modeId}</p>
+                              <p className="break-all text-xs text-ink-mid">Saved mode: {saved.originalModeId ?? saved.modeId}</p>
                               <p className="font-display text-xl">Stored score: {saved.bestScore.toLocaleString()}</p>
-                              <p className="text-xs text-ink-mid">{saved.timesPlayed.toLocaleString()} recorded matches · {recordDate(saved.bestScoreAchievedAt)}</p>
+                              <p className="text-xs text-ink-mid">{saved.deviceOnly ? "Saved on this device · Account sync not verified" : `${saved.timesPlayed.toLocaleString()} recorded matches · ${recordDate(saved.bestScoreAchievedAt)}`}</p>
                             </div>
                           ))}
                         </div>

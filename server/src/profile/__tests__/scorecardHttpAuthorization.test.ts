@@ -5,6 +5,8 @@ import { attachPlayerIdentity } from "../../auth/identity.js";
 import { scorecardRouter } from "../ScorecardController.js";
 import { clearVerificationCache } from "../../lib/supabaseAuth.js";
 import { scorecardService } from "../ScorecardService.js";
+import { InMemoryProgressionRepository, setProgressionRepository } from "../../persistence/index.js";
+import { progressionSync } from "../../persistence/ProgressionSync.js";
 
 /**
  * The scorecard endpoints were previously only tested by calling
@@ -44,6 +46,8 @@ function mintToken(sub: string, opts: { exp?: number } = {}): string {
 let server: TestServer;
 
 beforeEach(async () => {
+  await progressionSync.drain();
+  setProgressionRepository(new InMemoryProgressionRepository());
   saved = {};
   for (const k of ENV_KEYS) {
     saved[k] = process.env[k];
@@ -65,6 +69,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await server.close();
+  await progressionSync.drain();
+  setProgressionRepository(null);
   for (const k of ENV_KEYS) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
@@ -115,6 +121,59 @@ describe("scorecard record endpoint — auth boundary", () => {
 
     const archive = scorecardService.getScorecards(ALICE);
     expect(archive.games["2048"]?.modes.battle?.bestScore).toBe(1234);
+  });
+
+  it("serves the same account best to an independent device without relying on the local service cache", async () => {
+    const mobile = await server.request(`/api/profile/${ALICE}/scorecards/record`, {
+      method: "POST", token: mintToken(ALICE), body: JSON.stringify(recordPayload()),
+    });
+    expect(mobile.status).toBe(200);
+    scorecardService.deleteScorecards(ALICE);
+    const laptop = await server.request(`/api/profile/${ALICE}/scorecards`, { token: mintToken(ALICE) });
+    expect(laptop.status).toBe(200);
+    expect(laptop.headers.get("cache-control")).toBe("no-store");
+    expect(laptop.body).toMatchObject({ archive: { games: { "2048": { modes: { battle: { bestScore: 1234 } } } } } });
+    const other = await server.request(`/api/profile/${BOB}/scorecards`, { token: mintToken(BOB) });
+    expect(other.body).toEqual({ archive: { playerId: BOB, games: {}, totalPersonalBestsBeaten: 0, updatedAt: 0 } });
+  });
+
+  it("counts a retried HTTP result once while keeping the greatest best across distinct matches", async () => {
+    for (const [matchId, score] of [["same", 100], ["same", 999], ["next", 80], ["best", 150]] as const) {
+      const res = await server.request(`/api/profile/${ALICE}/scorecards/record`, {
+        method: "POST", token: mintToken(ALICE), body: JSON.stringify(recordPayload({ score, matchId })),
+      });
+      expect(res.status).toBe(200);
+    }
+    const res = await server.request(`/api/profile/${ALICE}/scorecards`, { token: mintToken(ALICE) });
+    expect(res.body).toMatchObject({ archive: { games: { "2048": { modes: { battle: { bestScore: 150, timesPlayed: 3 } } } } } });
+  });
+
+  it("returns an explicit unavailable response when durable writes fail", async () => {
+    const repo = new InMemoryProgressionRepository();
+    repo.commitScorecard = async () => { throw new Error("Database unavailable"); };
+    setProgressionRepository(repo);
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/record`, {
+      method: "POST", token: mintToken(ALICE), body: JSON.stringify(recordPayload()),
+    });
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ error: expect.stringContaining("could not be saved") });
+  });
+
+  it("returns an explicit unavailable response when durable reads fail", async () => {
+    const repo = new InMemoryProgressionRepository();
+    repo.getScorecardSnapshot = async () => { throw new Error("Database unavailable"); };
+    setProgressionRepository(repo);
+    const res = await server.request(`/api/profile/${ALICE}/scorecards`, { token: mintToken(ALICE) });
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ error: expect.stringContaining("temporarily unavailable") });
+  });
+
+  it.each(["handcricket", "rummy"])("refuses client-authored %s match results", async (game) => {
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/record`, {
+      method: "POST", token: mintToken(ALICE), body: JSON.stringify(recordPayload({ game, modeId: game === "rummy" ? "single" : "t20" })),
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: expect.stringContaining("recorded by the server") });
   });
 });
 

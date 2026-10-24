@@ -22,10 +22,13 @@ type Choice = { options?: Record<string, unknown>; expect: string };
 
 const LOBBY_CHOICES: Record<string, Choice[]> = {
   handcricket: [
-    { options: { mode: "single", format: "t20" }, expect: "t20" },
-    { options: { mode: "single", format: "odi" }, expect: "odi" },
-    { options: { mode: "single", format: "test" }, expect: "test" },
-    { options: { mode: "tournament", format: "t20" }, expect: "t20" },
+    { options: { mode: "single", category: "international", format: "t20" }, expect: "international_t20" },
+    { options: { mode: "single", category: "international", format: "odi" }, expect: "international_odi" },
+    { options: { mode: "single", category: "international", format: "test" }, expect: "international_test" },
+    { options: { mode: "single", category: "ipl", format: "t20" }, expect: "franchise_t20" },
+    { options: { mode: "single", category: "ipl", format: "odi" }, expect: "franchise_odi" },
+    { options: { mode: "single", category: "ipl", format: "test" }, expect: "franchise_test" },
+    { options: { mode: "tournament", format: "t20" }, expect: "international_t20" },
     { options: { mode: "galli", format: "t20", galliOvers: 2 }, expect: "galli_quick" },
     { options: { mode: "galli", format: "t20", galliOvers: 5 }, expect: "galli_quick" },
     { options: { mode: "galli", format: "t20", galliOvers: 6 }, expect: "galli_standard" },
@@ -36,7 +39,7 @@ const LOBBY_CHOICES: Record<string, Choice[]> = {
     { options: { mode: "galli", format: "t20" }, expect: "galli_quick" },
     { options: { mode: "galli", format: "t20", galliOvers: 1 }, expect: "galli_quick" },
     { options: { mode: "galli", format: "t20", galliOvers: 99 }, expect: "galli_long" },
-    { expect: "t20" },
+    { expect: "international_t20" },
   ],
   "2048": [
     { options: { mode: "daily" }, expect: "daily" },

@@ -7,7 +7,7 @@ import { validateRecordScorePayload } from "../scoreValidation.js";
  * the object lookups behind it, and the free-form fields need a shape.
  */
 describe("validateRecordScorePayload — hardening", () => {
-  const ok = { game: "handcricket", modeId: "2_overs", score: 10 };
+  const ok = { game: "nokiacricket", modeId: "2_overs", score: 10 };
 
   describe("server-scored games", () => {
     it("rejects a client-reported Tic Tac Toe score — the server computes it from the match", () => {
@@ -55,7 +55,7 @@ describe("validateRecordScorePayload — hardening", () => {
         ["2048", "timeattack"],
         ["nokiasnake", "classic_walled"],
         ["roadrash", "circuit_rush"],
-        ["handcricket", "2_overs"],
+        ["nokiacricket", "2_overs"],
       ]) {
         expect(validateRecordScorePayload({ game, modeId, score: 1 }).ok).toBe(true);
       }

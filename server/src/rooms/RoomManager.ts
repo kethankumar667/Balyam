@@ -121,6 +121,7 @@ import { metricsCollector } from "../observability/MetricsCollector.js";
 import { metricsRegistry } from "../observability/MetricsRegistry.js";
 import { performanceMonitor } from "../observability/PerformanceMonitor.js";
 import { profileService } from "../profile/ProfileService.js";
+import { cricketRecordScore, rummyRecordScore } from "../profile/matchRecordScores.js";
 import { roomModeId } from "./roomModeId.js";
 import { rankingService } from "../ranking/RankingService.js";
 import { recentPlayersService } from "../ranking/RecentPlayersService.js";
@@ -3871,26 +3872,8 @@ export class RoomManager {
       const publicState = room.engine.getPublicState() as Record<string, unknown> | null;
       if (!publicState) return {};
 
-      // Hand Cricket: innings scores
       if (room.game === "handcricket") {
-        const i1 = publicState.innings1 as
-          | { batterStats?: Record<string, { runs: number; balls: number; fours?: number; sixes?: number }> }
-          | undefined;
-        const i2 = publicState.innings2 as
-          | { batterStats?: Record<string, { runs: number; balls: number; fours?: number; sixes?: number }> }
-          | undefined;
-        const bStats = i1?.batterStats?.[playerId] ?? i2?.batterStats?.[playerId];
-        if (bStats) {
-          return {
-            score: bStats.runs,
-            secondaryMetrics: {
-              balls: bStats.balls,
-              strikeRate: bStats.balls > 0 ? Math.round((bStats.runs / bStats.balls) * 100) : 0,
-              fours: bStats.fours ?? 0,
-              sixes: bStats.sixes ?? 0,
-            },
-          };
-        }
+        return cricketRecordScore(publicState, playerId);
       }
 
       // Ludo: rolls to finish, tokens captured, sixes rolled
@@ -3933,20 +3916,8 @@ export class RoomManager {
         }
       }
 
-      // Indian Rummy: penalty points (0 = pure show)
       if (room.game === "rummy") {
-        const scores = publicState.scores as Record<string, number> | undefined;
-        if (scores && typeof scores[playerId] === "number") {
-          const penalty = scores[playerId];
-          return {
-            score: penalty,
-            secondaryMetrics: {
-              penaltyPoints: penalty,
-              isPureShow: penalty === 0 ? 1 : 0,
-              pureShowRate: penalty === 0 ? 100 : 0,
-            },
-          };
-        }
+        return rummyRecordScore(publicState, playerId);
       }
 
       // UNO: hand penalty points remaining

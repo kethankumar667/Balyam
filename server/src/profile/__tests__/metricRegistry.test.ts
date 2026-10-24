@@ -18,8 +18,8 @@ describe("MetricRegistry & Polymorphic Telemetry", () => {
     expect(ludoSchema.secondaryMetrics.some((m) => m.key === "tokensCaptured")).toBe(true);
 
     const rummySchema = getGameMetricSchema("rummy");
-    expect(rummySchema.primaryRankMetric.format).toBe("penalty_pts");
-    expect(rummySchema.primaryRankMetric.direction).toBe("LOWER_IS_BETTER");
+    expect(rummySchema.primaryRankMetric.format).toBe("raw_number");
+    expect(rummySchema.primaryRankMetric.direction).toBe("HIGHER_IS_BETTER");
 
     const handcricketSchema = getGameMetricSchema("handcricket");
     expect(handcricketSchema.primaryRankMetric.format).toBe("runs");
@@ -142,4 +142,3 @@ describe("MetricRegistry & Polymorphic Telemetry", () => {
     expect(speedCircuit?.isUnlocked).toBe(true);
   });
 });
-

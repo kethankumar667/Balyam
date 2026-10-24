@@ -1,4 +1,5 @@
 import type { Card, Player, Rank, RummyPlayerState } from "@shared/types";
+import { rummyRoundPoints } from "@shared/rummyScoring";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { PlayingCard, SUIT_GLYPHS } from "./Card";
@@ -57,22 +58,7 @@ export default function RummyResultModal({
   const botOf = (id: string) => players.find((p) => p.id === id && p.isBot);
   const lossOf = (id: string) => Math.max(0, state.scores?.[id] ?? 0);
 
-  // Chips: normal round → winner takes Σ(losers' hand values), each loser pays
-  // their own; wrong show → mis-declarer eats −80 split across opponents.
-  const chipsOf = (id: string): number => {
-    if (isWrongShow) {
-      if (id === wrongShowerId) return -80;
-      const opp = state.playerOrder.filter((p) => p !== wrongShowerId);
-      return opp.length > 0 ? Math.round(80 / opp.length) : 0;
-    }
-    if (id === winnerId) {
-      return state.playerOrder.reduce(
-        (s, p) => (p === winnerId ? s : s + lossOf(p)),
-        0,
-      );
-    }
-    return -lossOf(id);
-  };
+  const chipsOf = (id: string): number => rummyRoundPoints(state, id);
 
   const ranked = [...state.playerOrder].sort((a, b) => {
     if (isWrongShow) {

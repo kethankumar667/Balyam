@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockApiJson = vi.fn();
+const mockApiFetch = vi.fn();
 vi.mock("../../lib/playerIdentity", () => ({
   apiJson: (...args: unknown[]) => mockApiJson(...args),
-  apiFetch: vi.fn(),
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
   getPlayerCredential: vi.fn().mockResolvedValue(null),
   peekPlayerCredential: vi.fn().mockReturnValue(null),
 }));
@@ -18,7 +19,8 @@ function archiveFor(playerId: string) {
 describe("scorecardStore — cross-account isolation", () => {
   beforeEach(() => {
     mockApiJson.mockReset();
-    useScorecardStore.setState({ archive: null, loading: false, error: null, lastNewPB: null, activeGhostPace: null });
+    mockApiFetch.mockReset();
+    useScorecardStore.setState({ archive: null, localArchive: null, loading: false, error: null, lastNewPB: null, activeGhostPace: null });
     try {
       localStorage.clear();
     } catch {
@@ -91,5 +93,49 @@ describe("scorecardStore — cross-account isolation", () => {
     await useScorecardStore.getState().fetchScorecards("playerA");
     expect(useScorecardStore.getState().archive?.playerId).toBe("playerA");
     expect(useScorecardStore.getState().error).toBeTruthy();
+  });
+
+  it("preserves an old cache locally when the new durable account archive is empty", async () => {
+    const previous = { ...archiveFor("playerA"), totalPersonalBestsBeaten: 7 };
+    localStorage.setItem("bhalyam.scorecards.cache.playerA", JSON.stringify(previous));
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().localArchive).toEqual(previous);
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().localArchive).toEqual(previous);
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerB") });
+    await useScorecardStore.getState().fetchScorecards("playerB");
+    expect(useScorecardStore.getState().localArchive).toBeNull();
+    useScorecardStore.getState().clearScorecards();
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().localArchive).toEqual(previous);
+  });
+
+  it("clears another account's archive immediately while the new account loads", async () => {
+    useScorecardStore.setState({ archive: archiveFor("playerA") });
+    let resolveB!: (v: { archive: ReturnType<typeof archiveFor> }) => void;
+    mockApiJson.mockReturnValueOnce(new Promise((resolve) => { resolveB = resolve; }));
+    const loading = useScorecardStore.getState().fetchScorecards("playerB");
+    expect(useScorecardStore.getState().archive).toBeNull();
+    resolveB({ archive: archiveFor("playerB") });
+    await loading;
+  });
+
+  it("refuses a mismatched account response rather than caching someone else's records", async () => {
+    mockApiJson.mockResolvedValueOnce({ archive: archiveFor("playerB") });
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    expect(useScorecardStore.getState().archive).toBeNull();
+    expect(useScorecardStore.getState().error).toBeTruthy();
+  });
+
+  it("makes a failed score sync visible instead of reporting a successful record", async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: false });
+    const result = await useScorecardStore.getState().recordScore("playerA", {
+      game: "2048", modeId: "classic", score: 128, context: "SOLO", matchId: "failed",
+    });
+    expect(result).toBeNull();
+    expect(useScorecardStore.getState().error).toContain("could not be synced");
+    expect(useScorecardStore.getState().lastNewPB).toBeNull();
   });
 });

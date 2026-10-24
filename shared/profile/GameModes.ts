@@ -97,13 +97,17 @@ export function nokiaSnakeModeId(gameMode: NokiaSnakeGameMode): string {
 export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   handcricket: {
     game: "handcricket",
+    serverScored: true,
     displayName: "Hand Cricket",
     category: "social",
-    defaultModeId: "t20",
+    defaultModeId: "international_t20",
     modes: [
-      { modeId: "t20", displayName: "T20 Match (10 Overs)", description: "10 overs per innings with powerplay swings", scoringDirection: "HIGHER_IS_BETTER", unit: "runs", isDefault: true },
-      { modeId: "odi", displayName: "ODI Match (15 Overs)", description: "15 overs strategic duel with bowler limits", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
-      { modeId: "test", displayName: "Test Match (30 Overs)", description: "30 overs per innings with bowler quotas", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "international_t20", displayName: "International T20 (10 Overs)", description: "International squads, 10 overs per innings with powerplay swings", scoringDirection: "HIGHER_IS_BETTER", unit: "runs", isDefault: true },
+      { modeId: "international_odi", displayName: "International ODI (15 Overs)", description: "International squads, 15 overs with bowler limits", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "international_test", displayName: "International Test (30 Overs)", description: "International squads, 30 overs with bowler quotas", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "franchise_t20", displayName: "Franchise T20 (10 Overs)", description: "Franchise squads, 10 overs per innings with powerplay swings", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "franchise_odi", displayName: "Franchise ODI (15 Overs)", description: "Franchise squads, 15 overs with bowler limits", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
+      { modeId: "franchise_test", displayName: "Franchise Test (30 Overs)", description: "Franchise squads, 30 overs with bowler quotas", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
       { modeId: "galli_quick", displayName: "Galli Quick (2–5 Overs)", description: "Street cricket, a short innings of 2 to 5 overs", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
       { modeId: "galli_standard", displayName: "Galli Standard (6–10 Overs)", description: "Street cricket over 6 to 10 overs", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
       { modeId: "galli_long", displayName: "Galli Long (11–20 Overs)", description: "Street cricket over 11 to 20 overs", scoringDirection: "HIGHER_IS_BETTER", unit: "runs" },
@@ -158,13 +162,14 @@ export const GAME_MODE_REGISTRY: Record<string, GameModeConfig> = {
   },
   rummy: {
     game: "rummy",
+    serverScored: true,
     displayName: "Indian Rummy",
     category: "card",
     defaultModeId: "single",
     modes: [
-      { modeId: "single", displayName: "Points Rummy (Single Deal)", description: "One deal showdown — lowest penalty points wins", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts", isDefault: true },
-      { modeId: "pool101", displayName: "Pool 101", description: "Multi-deal elimination — survive below 101 penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
-      { modeId: "pool201", displayName: "Pool 201", description: "Championship elimination — survive below 201 penalty points", scoringDirection: "LOWER_IS_BETTER", unit: "penalty pts" },
+      { modeId: "single", displayName: "Points Rummy (Single Deal)", description: "Highest positive points earned by winning a completed deal", scoringDirection: "HIGHER_IS_BETTER", unit: "pts", isDefault: true },
+      { modeId: "pool101", displayName: "Pool 101", description: "Highest positive points from the final winning round of a completed 101 pool", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
+      { modeId: "pool201", displayName: "Pool 201", description: "Highest positive points from the final winning round of a completed 201 pool", scoringDirection: "HIGHER_IS_BETTER", unit: "pts" },
     ],
   },
   uno: {
@@ -463,7 +468,9 @@ const MODE_RESOLVERS: Readonly<Record<string, ModeResolver>> = {
       const overs = Math.max(HC_GALLI_MIN_OVERS, Math.min(HC_GALLI_MAX_OVERS, Math.floor(finiteNumber(o.galliOvers) ?? 5)));
       return overs <= 5 ? "galli_quick" : overs <= 10 ? "galli_standard" : "galli_long";
     }
-    return oneOf(o.format, ["odi", "test"] as const) ?? "t20";
+    const category = o.category === "ipl" ? "franchise" : "international";
+    const format = oneOf(o.format, ["odi", "test"] as const) ?? "t20";
+    return `${category}_${format}`;
   },
   "2048": (o) => oneOf(o.mode === "time_attack" ? "timeattack" : o.mode, ["daily", "battle", "race", "timeattack", "zen"] as const),
   snl: (o) => oneOf(o.difficulty, ["easy", "medium", "hard", "extreme"] as const),

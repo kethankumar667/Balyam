@@ -95,6 +95,28 @@ one bounded retry (including AVIF/WebP URLs) and a glyph fallback. The
 removed without a redirect. Admin rankings and their API are unchanged.
 `pages/MyRecordsPage.tsx` uses shared scorecard archives and existing device
 best-score keys, with the game/mode model in `features/myrecords/records.ts`.
+Account archives come from durable server storage under the canonical account
+ID, not the current device. The page refreshes on focus/visibility and offers a
+44px **Refresh account records** button. An account switch clears the previous
+account's archive immediately; a failed same-account refresh retains its cache
+and displays an error. Device-only bests are labeled local and are not silently
+uploaded.
+The existing per-account cache key now stores a version-2 envelope. An older
+raw cache archive is retained inside it as a separate local snapshot when the
+server archive refreshes, even when the server is empty. Unmatched or greater
+cached bests appear in **Previously recorded modes**, labeled **Saved on this
+device · Account sync not verified**, without adding verified match counts or
+dates. A current account result that accounts for a cached best hides the
+redundant snapshot; snapshots never leak to another account.
+
+Hand Cricket records the highest whole played innings from completed matches,
+win or loss, separately for International and franchise T20/ODI/Test, plus the
+three Galli lengths. Older format-only records remain in the historical section
+because their category was not saved; never guess it. Rummy records only a valid final winning round's
+positive score-sheet points in Points, Pool 101 and Pool 201, higher-is-better;
+not losing penalties, cumulative pool totals, wrong shows or disconnect
+walkovers. It shares `rummyRoundPoints` with the result sheet. Older
+lower-is-better penalty records remain in **Previously recorded modes**.
 
 Desktop uses a main dashboard and a journey rail; phone stacks the sections
 with horizontal game and mode selectors. Summary cards, an illustrated

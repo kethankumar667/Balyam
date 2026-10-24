@@ -35,7 +35,8 @@ describe("roomModeId: the mode a room's match is filed under", () => {
     expect(
       roomModeId({ game: "wordbuilding", wordBuildingOptions: { ...DEFAULT_WORDBUILDING_OPTIONS, dictionaryMode: "tournament", boardSize: 8 } }),
     ).toBe("tournament_8x8");
-    expect(roomModeId({ game: "handcricket", hcOptions: { ...DEFAULT_HC_OPTIONS, format: "odi" } })).toBe("odi");
+    expect(roomModeId({ game: "handcricket", hcOptions: { ...DEFAULT_HC_OPTIONS, format: "odi" } })).toBe("international_odi");
+    expect(roomModeId({ game: "handcricket", hcOptions: { ...DEFAULT_HC_OPTIONS, category: "ipl", format: "t20" } })).toBe("franchise_t20");
     expect(roomModeId({ game: "handcricket", hcOptions: { ...DEFAULT_HC_OPTIONS, mode: "galli", galliOvers: 12 } })).toBe("galli_long");
     expect(roomModeId({ game: "stargame", starGameOptions: { ...DEFAULT_STARGAME_OPTIONS, totalRounds: 7 } })).toBe("extended_7");
     expect(roomModeId({ game: "bingo", bingoOptions: { ...DEFAULT_BINGO_OPTIONS, stopOnFirstWin: false } })).toBe("all_win");
@@ -53,7 +54,7 @@ describe("roomModeId: the mode a room's match is filed under", () => {
     expect(roomModeId({ game: "snl", snlOptions: DEFAULT_SNL_OPTIONS })).toBe("medium");
     expect(roomModeId({ game: "dotsboxes", dotsBoxesOptions: DEFAULT_DOTSBOXES_OPTIONS })).toBe("grid_7x7");
     expect(roomModeId({ game: "wordbuilding", wordBuildingOptions: DEFAULT_WORDBUILDING_OPTIONS })).toBe("classroom_10x10");
-    expect(roomModeId({ game: "handcricket", hcOptions: DEFAULT_HC_OPTIONS })).toBe("t20");
+    expect(roomModeId({ game: "handcricket", hcOptions: DEFAULT_HC_OPTIONS })).toBe("international_t20");
     expect(roomModeId({ game: "bingo", bingoOptions: DEFAULT_BINGO_OPTIONS })).toBe("first_win");
     expect(roomModeId({ game: "namesplaceanimal", namesplaceanimalOptions: DEFAULT_NAMESPLACEANIMAL_OPTIONS })).toBe("medium_5rds");
     expect(roomModeId({ game: "stargame", starGameOptions: DEFAULT_STARGAME_OPTIONS })).toBe("classic_5");

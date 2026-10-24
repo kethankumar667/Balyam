@@ -152,11 +152,11 @@ export const GAME_METRIC_SCHEMAS: Record<string, GameMetricSchema> = {
     game: "rummy",
     primaryRankMetric: {
       key: "bestScore",
-      label: "Lowest Penalty Points",
-      shortLabel: "Penalty Pts",
-      description: "Fewest penalty points conceded across valid deals (0 = Pure Show)",
-      format: "penalty_pts",
-      direction: "LOWER_IS_BETTER",
+      label: "Highest Winning Round Points",
+      shortLabel: "Winning Pts",
+      description: "Highest positive points earned in the final winning round of a completed match",
+      format: "raw_number",
+      direction: "HIGHER_IS_BETTER",
       importance: "PRIMARY",
       icon: "Award",
     },
@@ -1119,8 +1119,8 @@ export function calculatePerformanceRank(
     };
   }
 
-  // Classic Rummy (0 points is Pure Show, lower is better)
-  if (game === "rummy") {
+  // Historical penalty records retain their original grading.
+  if (game === "rummy" && direction === "LOWER_IS_BETTER") {
     if (score === 0) {
       return {
         tier: "S_RANK",
@@ -1400,7 +1400,7 @@ export function getNextMilestoneTarget(
     };
   }
 
-  if (game === "rummy") {
+  if (game === "rummy" && direction === "LOWER_IS_BETTER") {
     if (current > 25) {
       return {
         targetScore: 25,
@@ -1573,6 +1573,7 @@ export function getSignatureFeatsForGame(
   }
 
   if (game === "rummy") {
+    const legacyPenalty = scorecard?.scoringDirection === "LOWER_IS_BETTER";
     const isPure = Number(secondary["isPureShow"] ?? 0);
 
     return [
@@ -1581,14 +1582,14 @@ export function getSignatureFeatsForGame(
         name: "Pure Magician",
         description: "Achieved a flawless 0-point Pure Show declaration.",
         icon: "Award",
-        isUnlocked: bestScore === 0 || isPure === 1,
+        isUnlocked: (legacyPenalty && bestScore === 0) || isPure === 1,
       },
       {
         id: "rummy_iron_shield",
         name: "Shield of Iron",
         description: "Capped penalty deficit under 25 in competitive melds.",
         icon: "ShieldCheck",
-        isUnlocked: bestScore != null && bestScore <= 25,
+        isUnlocked: legacyPenalty && bestScore != null && bestScore <= 25,
       },
       {
         id: "rummy_meld_veteran",
@@ -1655,4 +1656,3 @@ export function getSignatureFeatsForGame(
     },
   ];
 }
-

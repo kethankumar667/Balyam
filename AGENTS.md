@@ -498,6 +498,8 @@ These are **mandatory** for any AI working in this repo.
 
 Inferred from the actual code:
 
+- **Personal records are account-based and durable when progression uses Supabase.** `server/src/profile/scorecardPersistence.ts` reads revisioned archives on demand and commits through the service-only `commit_player_scorecard` RPC (migration `20261106000000_account_scorecards.sql`), with durable game/mode/match receipts. Solo HTTP submissions await commit; finished rooms use `ProgressionSync` and retain its pre-flush hard-crash window. Device-only saves are never silently imported. Hand Cricket saves whole played innings, including losses, separately for International/franchise T20/ODI/Test and the three Galli lengths; old format-only modes remain historical, never assigned a guessed category. Rummy saves positive final winning-round points for all three modes through shared `rummyRoundPoints`, never cumulative penalties. Legacy penalty modes remain separate. The dev-only `@electric-sql/pglite` tests execute real PostgreSQL migration/concurrency/reopen/permissions/cascade checks without production access. See `docs/runbooks/persistence.md`; migration and deployment require separate authorization.
+
 - **Game catalog** lives in `client/src/components/bhalyam/data.ts`. Adding a tile requires a `GameKind` entry **and** an entry there. Games marked `maintenance: true` show but route nowhere.
 - **`PLAYABLE_SLUGS`** in `GameRoomSheet` is a runtime allow-list for game tiles that actually launch a room; `BhalyamGameSlug` is wider than `GameKind` to include maintenance-only entries.
 - **`MAX_PLAYERS_BY_GAME`** in `client/src/pages/Room.tsx` mirrors `getGameLimits` on the server. Keep them in sync.

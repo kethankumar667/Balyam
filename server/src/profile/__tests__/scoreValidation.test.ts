@@ -3,7 +3,7 @@ import { validateRecordScorePayload, MAX_RECORDABLE_SCORE } from "../scoreValida
 
 describe("validateRecordScorePayload — client-reported scores", () => {
   it("accepts a normal payload", () => {
-    expect(validateRecordScorePayload({ game: "handcricket", modeId: "2_overs", score: 48 })).toEqual({ ok: true });
+    expect(validateRecordScorePayload({ game: "nokiacricket", modeId: "2_overs", score: 48 })).toEqual({ ok: true });
   });
 
   it("requires game, modeId and a numeric score", () => {

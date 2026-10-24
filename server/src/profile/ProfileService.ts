@@ -436,7 +436,7 @@ export class ProfileService {
       this.unlockedAchievements.set(p.playerId, unlMap);
 
       // 5. Update personal best scorecard for this game and mode
-      if (typeof p.score === "number") {
+      if (typeof p.score === "number" && (params.game !== "rummy" || (p.isWinner && p.score > 0))) {
         const resolvedMode = params.modeId || resolveModeId(params.game);
         const isSoloOrBot = params.participants.filter((x) => !x.isBot).length <= 1;
         const context = isSoloOrBot ? "VS_BOTS" : "PVP_MULTIPLAYER";

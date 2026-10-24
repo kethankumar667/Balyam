@@ -3,6 +3,7 @@ import type { AllGameSlug, ModeScorecard, PlayerScorecardArchive } from "@shared
 import { readModeBest } from "../../lib/modeBests";
 import { formatGameMetricValue } from "../../lib/metricFormatters";
 import { getGameMetricSchema } from "@shared/profile/MetricRegistry";
+import { preserveLegacyRummyModes } from "@shared/profile/recordCompatibility";
 
 const GAME_IDS: AllGameSlug[] = [
   "handcricket", "2048", "nokiasnake", "nokiacricket", "roadrash", "brickblocks", "breakout",
@@ -41,8 +42,8 @@ export const RECORD_GOALS: Record<string, Record<string, number>> = {
   nokiacricket: { classic_1: 14, classic_2: 44, classic_5: 96, classic_10: 172, chase_1: 16, chase_2: 30, chase_5: 68, chase_10: 130 },
   roadrash: { circuit_rush: 450 }, brickblocks: { classic: 5400, pentix: 3900 },
   snake: { classic_walled: 92, borderless_wrap: 110, speed_rush: 76 },
-  handcricket: { t20: 184, odi: 240, test: 312, galli_quick: 52, galli_standard: 112, galli_long: 196 },
-  ludo: { classic_4token: 34 }, rummy: { single: 0, pool101: 25, pool201: 55 },
+  handcricket: { international_t20: 184, international_odi: 240, international_test: 312, franchise_t20: 184, franchise_odi: 240, franchise_test: 312, galli_quick: 52, galli_standard: 112, galli_long: 196 },
+  ludo: { classic_4token: 34 },
   uno: { single: 0, race_300: 85, race_500: 160, race_1000: 320 },
   chess: { blitz_3m: 28, bullet_1m: 32, rapid_10m: 25 },
   tictactoe: { quantum: 12, classic: 9 }, connect4: { classic: 18 }, vamanaguntalu: { classic: 50 },
@@ -115,14 +116,33 @@ function readPreviousOverallBest(game: AllGameSlug, raw: unknown): number | null
   return tracked ? null : overall;
 }
 
-export function buildRecords(archive: PlayerScorecardArchive | null, useDevice = true) {
+interface PreviousModeRecord extends ModeScorecard {
+  deviceOnly?: boolean;
+  originalModeId?: string;
+}
+
+export function buildRecords(archive: PlayerScorecardArchive | null, useDevice = true, localArchive: PlayerScorecardArchive | null = null) {
   return RECORD_GAMES.map((game) => {
     const current = archive?.games[game.id];
     const older = game.id === "brickblocks" ? archive?.games.tetris : undefined;
-    const savedModes = { ...older?.modes, ...current?.modes };
-    const previousModeRecords = Object.entries(savedModes)
+    const archivedModes = { ...older?.modes, ...current?.modes };
+    const savedModes = game.id === "rummy" ? preserveLegacyRummyModes(archivedModes) : archivedModes;
+    const previousModeRecords: PreviousModeRecord[] = Object.entries(savedModes)
       .filter(([id, saved]) => !game.config.modes.some((mode) => mode.modeId === id) && hasRecordedBest(saved))
       .map(([, saved]) => saved);
+    const local = useDevice && (!archive || archive.playerId === localArchive?.playerId) ? localArchive : null;
+    const localModes = { ...(game.id === "brickblocks" ? local?.games.tetris?.modes : {}), ...local?.games[game.id]?.modes };
+    const localSavedModes = game.id === "rummy" ? preserveLegacyRummyModes(localModes) : localModes;
+    for (const [id, saved] of Object.entries(localSavedModes)) {
+      if (!hasRecordedBest(saved)) continue;
+      const account = savedModes[id];
+      if (hasRecordedBest(account) && account.scoringDirection === saved.scoringDirection &&
+        (saved.scoringDirection === "LOWER_IS_BETTER" ? account.bestScore <= saved.bestScore : account.bestScore >= saved.bestScore)) continue;
+      previousModeRecords.push({
+        ...saved, modeId: `device_cache_${id}`, originalModeId: id, deviceOnly: true,
+        timesPlayed: 0, bestScoreAchievedAt: 0,
+      });
+    }
     const deviceData = useDevice ? readDeviceData(game.id) : null;
     return {
       ...game,
@@ -185,7 +205,7 @@ export function recordSummary(games: RecordGame[]) {
   return {
     gamesExplored: games.filter((game) => game.previousOverallBest !== null || game.previousModeRecords.length > 0 || game.modes.some((mode) => mode.best !== null || mode.timesPlayed > 0)).length,
     modesAvailable: modes.length,
-    modesPlayed: modes.filter((mode) => mode.best !== null || mode.timesPlayed > 0).length + previous.length,
+    modesPlayed: modes.filter((mode) => mode.best !== null || mode.timesPlayed > 0).length + previous.filter((mode) => !mode.deviceOnly).length,
     personalBests: modes.filter((mode) => mode.best !== null).length + games.filter((game) => game.previousOverallBest !== null).length + previous.length,
     goalsReached: modes.filter((mode) => goalProgress(mode) === 100).length,
     matches: modes.reduce((total, mode) => total + mode.timesPlayed, 0) + previous.reduce((total, mode) => total + mode.timesPlayed, 0),

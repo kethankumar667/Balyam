@@ -85,7 +85,8 @@ export async function initialiseProgressionStore(): Promise<PersistenceStatus> {
       throw new Error(
         "Refusing to start in production without durable progression. " +
           "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must both be set, and " +
-          "supabase/migrations/20260818000000_progression_persistence.sql must have been applied. " +
+          "the progression and account-scorecard migrations must have been applied " +
+          "(20260818000000 and 20261106000000). " +
           "Without them every profile, reward claim, friendship and match record is lost on " +
           "restart. Set ALLOW_EPHEMERAL_PROGRESSION=true only for a smoke test that must not " +
           "keep anything.",
@@ -129,7 +130,7 @@ export async function initialiseProgressionStore(): Promise<PersistenceStatus> {
       message:
         `Configured for durable progression but the store did not answer: ${detail}. ` +
         "Check SUPABASE_URL, that the key is the SERVICE-ROLE key, and that " +
-        "20260818000000_progression_persistence.sql has been applied.",
+        "20260818000000_progression_persistence.sql and 20261106000000_account_scorecards.sql have been applied.",
       module: "PERSISTENCE",
     });
     // Never quietly downgrade to memory: that is the exact failure mode this

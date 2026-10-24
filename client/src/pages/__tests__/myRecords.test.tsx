@@ -9,7 +9,8 @@ import { useScorecardStore } from "../../store/scorecardStore";
 import type { PlayerScorecardArchive } from "@shared/profile/Scorecard";
 
 vi.mock("../../components/layout/AppLayout", () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
-vi.mock("../../lib/playerIdentity", () => ({ usePlayerId: () => ({ playerId: null }) }));
+const identity = vi.hoisted(() => ({ playerId: null as string | null }));
+vi.mock("../../lib/playerIdentity", () => ({ usePlayerId: () => identity }));
 
 const archive: PlayerScorecardArchive = {
   playerId: "record-test", totalPersonalBestsBeaten: 2, updatedAt: 1728691200000,
@@ -17,8 +18,8 @@ const archive: PlayerScorecardArchive = {
     handcricket: {
       game: "handcricket", gameDisplayName: "Hand Cricket", lastPlayedAt: 1728691200000, totalModesPlayed: 1,
       modes: {
-        t20: {
-          modeId: "t20", modeDisplayName: "T20 Match", bestScore: 184, bestScoreAchievedAt: 1728691200000,
+        international_t20: {
+          modeId: "international_t20", modeDisplayName: "International T20", bestScore: 184, bestScoreAchievedAt: 1728691200000,
           bestScoreMatchId: "match-1", scoringDirection: "HIGHER_IS_BETTER", timesPlayed: 5,
           totalScoreAccumulated: 500, averageScore: 100, recentScores: [184, 164, 156, 142, 120],
           bestContext: "SOLO", secondaryMetrics: {}, foilTier: "neon_cyan",
@@ -33,10 +34,47 @@ function show() { return render(<MemoryRouter><MyRecordsPage /></MemoryRouter>);
 
 beforeEach(() => {
   localStorage.clear();
-  useScorecardStore.setState({ archive: null, loading: false, error: null });
+  identity.playerId = null;
+  useScorecardStore.setState({ archive: null, localArchive: null, loading: false, error: null });
 });
 
 describe("My Records", () => {
+  it("labels an older cache snapshot as local instead of pretending it was account-synced", () => {
+    identity.playerId = "record-test";
+    const original = useScorecardStore.getState().fetchScorecards;
+    useScorecardStore.setState({
+      archive: { ...archive, games: {} }, localArchive: archive, fetchScorecards: vi.fn().mockResolvedValue(undefined),
+    });
+    const view = show();
+    try {
+      const previous = screen.getByRole("region", { name: "Previously recorded modes" });
+      expect(within(previous).getByText("Stored score: 184")).toBeDefined();
+      expect(within(previous).getByText("Saved on this device · Account sync not verified")).toBeDefined();
+      expect(screen.getByText("No score yet")).toBeDefined();
+    } finally {
+      view.unmount();
+      useScorecardStore.setState({ fetchScorecards: original });
+    }
+  });
+
+  it("refreshes the same account explicitly and when the page regains focus", () => {
+    identity.playerId = "record-test";
+    const fetchScorecards = vi.fn().mockResolvedValue(undefined);
+    const original = useScorecardStore.getState().fetchScorecards;
+    useScorecardStore.setState({ archive, fetchScorecards });
+    const view = show();
+    expect(fetchScorecards).toHaveBeenCalledWith("record-test");
+    fetchScorecards.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh account records" }));
+    expect(fetchScorecards).toHaveBeenCalledOnce();
+    fireEvent.focus(window);
+    expect(fetchScorecards).toHaveBeenCalledTimes(2);
+    view.unmount();
+    fireEvent.focus(window);
+    expect(fetchScorecards).toHaveBeenCalledTimes(2);
+    useScorecardStore.setState({ fetchScorecards: original });
+  });
+
   it("registers only the new public route", () => {
     const app = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../App.tsx"), "utf8");
     expect(app).toContain('path="/myrecords"');
@@ -125,7 +163,7 @@ describe("My Records", () => {
   });
 
   it("displays older archived modes separately instead of silently dropping them", () => {
-    const oldMode = { ...archive.games.handcricket!.modes.t20!, modeId: "legacy_format", modeDisplayName: "Previous format" };
+    const oldMode = { ...archive.games.handcricket!.modes.international_t20!, modeId: "legacy_format", modeDisplayName: "Previous format" };
     useScorecardStore.setState({ archive: { ...archive, games: {
       handcricket: { ...archive.games.handcricket!, modes: { legacy_format: oldMode } },
     } } });

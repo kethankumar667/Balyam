@@ -16,6 +16,8 @@ import {
   calculateRadarMetrics,
   GAME_MODE_REGISTRY,
 } from "@shared/profile/GameModes.js";
+import { progressionSync } from "../persistence/ProgressionSync.js";
+import { preserveLegacyRummyModes } from "@shared/profile/recordCompatibility.js";
 
 export const BOT_PROFILES: Record<string, { displayName: string; avatar: string }> = {
   bot_lounge_champ: { displayName: "Master A.N.N.A", avatar: "aura-gold" },
@@ -25,9 +27,17 @@ export const BOT_PROFILES: Record<string, { displayName: string; avatar: string 
 
 export class ScorecardService {
   private scorecards: Map<string, PlayerScorecardArchive> = new Map();
+  private persist = false;
 
-  constructor() {
-    this.seedInitialLeaderboards();
+  constructor(seed = true, persist = false) {
+    if (seed) this.seedInitialLeaderboards();
+    this.persist = persist;
+  }
+
+  restoreArchive(archive: PlayerScorecardArchive): void {
+    const restored = structuredClone(archive);
+    if (restored.games.rummy) restored.games.rummy.modes = preserveLegacyRummyModes(restored.games.rummy.modes);
+    this.scorecards.set(archive.playerId, restored);
   }
 
   /**
@@ -51,7 +61,7 @@ export class ScorecardService {
    * Records a match score for a player in a specific game and mode.
    * Atomically evaluates Personal Best conditions and updates radar/trends.
    */
-  public recordScore(playerId: string, payload: RecordScorePayload): RecordScoreResult {
+  public recordScore(playerId: string, payload: RecordScorePayload, now = Date.now()): RecordScoreResult {
     const archive = this.getScorecards(playerId);
     const gameConfig = getGameModeConfig(payload.game);
     const modeDef =
@@ -70,7 +80,7 @@ export class ScorecardService {
         game: payload.game,
         gameDisplayName: gameConfig.displayName,
         modes: {},
-        lastPlayedAt: Date.now(),
+        lastPlayedAt: now,
         totalModesPlayed: 0,
       };
       archive.games[payload.game] = gameScorecard;
@@ -78,7 +88,6 @@ export class ScorecardService {
 
     const existingMode = gameScorecard.modes[payload.modeId];
     const scoringDirection = modeDef.scoringDirection;
-    const now = Date.now();
 
     let isNewPersonalBest = false;
     let previousBest: number | undefined = undefined;
@@ -156,6 +165,7 @@ export class ScorecardService {
       archive.totalPersonalBestsBeaten += 1;
     }
     archive.updatedAt = now;
+    if (this.persist) progressionSync.scorecardRecorded(playerId, payload, now);
 
     return {
       game: payload.game,
@@ -345,9 +355,12 @@ export class ScorecardService {
         classic: [1850, 1320, 840],
       },
       handcricket: {
-        t20: [184, 142, 98],
-        odi: [240, 185, 130],
-        test: [312, 240, 170],
+        international_t20: [184, 142, 98],
+        international_odi: [240, 185, 130],
+        international_test: [312, 240, 170],
+        franchise_t20: [184, 142, 98],
+        franchise_odi: [240, 185, 130],
+        franchise_test: [312, 240, 170],
         galli_quick: [52, 38, 26],
         galli_standard: [112, 86, 62],
         galli_long: [196, 150, 104],
@@ -387,9 +400,9 @@ export class ScorecardService {
         classic_4token: [34, 42, 52],
       },
       rummy: {
-        single: [0, 12, 24],
-        pool101: [25, 45, 68],
-        pool201: [55, 85, 120],
+        single: [120, 80, 40],
+        pool101: [160, 100, 60],
+        pool201: [200, 130, 75],
       },
       uno: {
         single: [0, 18, 35],
@@ -465,4 +478,4 @@ export class ScorecardService {
   }
 }
 
-export const scorecardService = new ScorecardService();
+export const scorecardService = new ScorecardService(true, true);

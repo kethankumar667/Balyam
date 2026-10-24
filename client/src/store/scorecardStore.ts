@@ -11,6 +11,7 @@ import { getGameModeConfig } from "@shared/profile/GameModes";
 
 interface ScorecardState {
   archive: PlayerScorecardArchive | null;
+  localArchive: PlayerScorecardArchive | null;
   loading: boolean;
   error: string | null;
   activeGhostPace: GhostPaceStatus | null;
@@ -25,19 +26,39 @@ interface ScorecardState {
 
 const STORAGE_KEY = "bhalyam.scorecards.cache";
 
-function loadCachedArchive(playerId: string): PlayerScorecardArchive | null {
+interface CachedScorecards {
+  version: 2;
+  archive: PlayerScorecardArchive | null;
+  localArchive: PlayerScorecardArchive | null;
+}
+
+function loadCachedArchive(playerId: string): CachedScorecards {
+  const empty: CachedScorecards = { version: 2, archive: null, localArchive: null };
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY}.${playerId}`);
-    if (raw) return JSON.parse(raw) as PlayerScorecardArchive;
+    if (raw) {
+      const cached = JSON.parse(raw) as PlayerScorecardArchive | CachedScorecards;
+      if (!cached || typeof cached !== "object") return empty;
+      if ("version" in cached && cached.version === 2) {
+        return {
+          version: 2,
+          archive: cached.archive?.playerId === playerId ? cached.archive : null,
+          localArchive: cached.localArchive?.playerId === playerId ? cached.localArchive : null,
+        };
+      }
+      if ("playerId" in cached && cached.playerId === playerId) {
+        return { version: 2, archive: cached, localArchive: cached };
+      }
+    }
   } catch {
     // Ignore storage issues
   }
-  return null;
+  return empty;
 }
 
-function saveCachedArchive(playerId: string, archive: PlayerScorecardArchive): void {
+function saveCachedArchive(playerId: string, archive: PlayerScorecardArchive, localArchive: PlayerScorecardArchive | null): void {
   try {
-    localStorage.setItem(`${STORAGE_KEY}.${playerId}`, JSON.stringify(archive));
+    localStorage.setItem(`${STORAGE_KEY}.${playerId}`, JSON.stringify({ version: 2, archive, localArchive }));
   } catch {
     // Ignore storage quota
   }
@@ -56,6 +77,7 @@ let scorecardFetchGeneration = 0;
 
 export const useScorecardStore = create<ScorecardState>((set, get) => ({
   archive: null,
+  localArchive: null,
   loading: false,
   error: null,
   activeGhostPace: null,
@@ -68,11 +90,14 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
 
     // Fast local optimistic load
     const cached = loadCachedArchive(playerId);
-    if (cached && !get().archive) {
-      set({ archive: cached });
-    }
-
-    set({ loading: !cached, error: null });
+    const current = get().archive;
+    const localArchive = get().localArchive?.playerId === playerId ? get().localArchive : cached.localArchive;
+    set({
+      archive: current?.playerId === playerId ? current : cached.archive,
+      localArchive,
+      loading: true, error: null,
+      ...(current?.playerId !== playerId ? { lastNewPB: null, activeGhostPace: null } : {}),
+    });
 
     try {
       const data = await apiJson<{ archive: PlayerScorecardArchive }>(
@@ -82,8 +107,8 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       // refetch) started while this one was in flight — its result already
       // won, so this stale response must not overwrite it.
       if (myGeneration !== scorecardFetchGeneration) return;
-      if (data?.archive) {
-        saveCachedArchive(playerId, data.archive);
+      if (data?.archive && data.archive.playerId === playerId) {
+        saveCachedArchive(playerId, data.archive, localArchive);
         set({ archive: data.archive, loading: false, error: null });
       } else {
         set({ loading: false, error: "Could not load records. Please try again." });
@@ -106,6 +131,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       }
     }
     if (!effectivePlayerId) return null;
+    const generation = scorecardFetchGeneration;
 
     try {
       const res = await apiFetch(`/api/profile/${effectivePlayerId}/scorecards/record`, {
@@ -119,6 +145,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
 
       if (data?.result) {
         const result = data.result;
+        if (generation !== scorecardFetchGeneration) return result;
 
         // If new personal best, queue celebratory overdrive modal
         if (result.isNewPersonalBest) {
@@ -131,6 +158,9 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       }
     } catch (err) {
       console.warn("Failed to record score:", err);
+      if (generation === scorecardFetchGeneration) {
+        set({ error: "Your score could not be synced to your account. Check your connection and try again." });
+      }
     }
     return null;
   },
@@ -191,6 +221,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
     }
     set({
       archive: null,
+      localArchive: null,
       lastNewPB: null,
       activeGhostPace: null,
       error: null,

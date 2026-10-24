@@ -21,6 +21,28 @@ function archived(game: AllGameSlug, modes: Record<string, ModeScorecard>): Play
 }
 
 describe("personal records data", () => {
+  it("preserves older cache snapshots locally without inventing synced matches or overwriting account bests", () => {
+    const old = archived("handcricket", { t20: scorecard("t20", 200), international_t20: scorecard("international_t20", 180) });
+    const synced = archived("handcricket", { international_t20: scorecard("international_t20", 140) });
+    const game = buildRecords(synced, true, old).find((entry) => entry.id === "handcricket")!;
+    expect(game.modes.find((mode) => mode.modeId === "international_t20")?.best).toBe(140);
+    expect(game.previousModeRecords).toHaveLength(2);
+    expect(game.previousModeRecords.every((saved) => saved.deviceOnly && saved.timesPlayed === 0 && saved.bestScoreAchievedAt === 0)).toBe(true);
+    expect(recordSummary([game]).matches).toBe(2);
+    expect(buildRecords(old, true, old).find((entry) => entry.id === "handcricket")!.previousModeRecords).toHaveLength(1);
+  });
+
+  it("keeps cricket categories independent and preserves older category-unknown formats", () => {
+    const game = buildRecords(archived("handcricket", {
+      international_t20: scorecard("international_t20", 140),
+      franchise_t20: scorecard("franchise_t20", 180),
+      t20: scorecard("t20", 200),
+    })).find((entry) => entry.id === "handcricket")!;
+    expect(game.modes.find((mode) => mode.modeId === "international_t20")?.best).toBe(140);
+    expect(game.modes.find((mode) => mode.modeId === "franchise_t20")?.best).toBe(180);
+    expect(game.previousModeRecords.map((saved) => saved.modeId)).toEqual(["t20"]);
+  });
+
   it.each(RECORD_GAMES)("retains current and historical archive records for $id", ({ id, config }) => {
     const currentId = config.defaultModeId;
     const archive = archived(id, { [currentId]: scorecard(currentId), retired_format: scorecard("retired_format", 21) });
@@ -109,6 +131,18 @@ describe("personal records data", () => {
     localStorage.setItem("bhalyam.sudoku.saved.v1", '{"elapsedSeconds":123,"isComplete":false}');
     const game = buildRecords(null).find((entry) => entry.id === "sudoku")!;
     expect(recordSummary([game])).toMatchObject({ gamesExplored: 0, personalBests: 0, matches: 0 });
+  });
+
+  it("preserves old Rummy penalty scores without showing them as winning-point records", () => {
+    const old = { ...scorecard("single", 0), scoringDirection: "LOWER_IS_BETTER" as const };
+    const archive = archived("rummy", { single: old });
+    const before = JSON.stringify(archive);
+    const game = buildRecords(archive).find((entry) => entry.id === "rummy")!;
+    expect(game.modes.find((mode) => mode.modeId === "single")).toMatchObject({
+      best: null, scoringDirection: "HIGHER_IS_BETTER", goal: undefined,
+    });
+    expect(game.previousModeRecords[0]).toMatchObject({ bestScore: 0, modeId: "legacy_penalty_single" });
+    expect(JSON.stringify(archive)).toBe(before);
   });
 
   it.each(["NaN", "Infinity", "-10", "0", '"123"', "null", "{}", "[]", "123oops"])("rejects invalid standalone saved scores: %s", (raw) => {
