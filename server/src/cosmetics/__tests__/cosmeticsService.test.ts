@@ -4,6 +4,7 @@ import { InMemoryEconomyRepository } from "../../persistence/InMemoryEconomyRepo
 import { EconomyService } from "../../economy/EconomyService.js";
 import { StreakService } from "../../streak/StreakService.js";
 import { UnownedCosmeticError, InvalidCosmeticError, CosmeticsDebitUnsupportedError } from "../CosmeticsRepository.js";
+import { NOSTALGIA_PACK } from "@shared/referrals.js";
 
 describe("CosmeticsService", () => {
   let economyRepo: InMemoryEconomyRepository;
@@ -340,6 +341,24 @@ describe("CosmeticsService", () => {
   });
 
   describe("Admin & Super Admin Privileges", () => {
+    it("equips the complete referral pack through Admin Pass without charging or granting earned ownership", async () => {
+      const before = await economyService.getWallet(USER_ID);
+      const adminState = await cosmeticsService.getUserLoadout(USER_ID, true);
+      for (const item of NOSTALGIA_PACK) {
+        expect(adminState.ownedIds).toContain(item.id);
+        await expect(cosmeticsService.equipCosmetic(USER_ID, item.category, item.scope, item.id))
+          .rejects.toThrow(UnownedCosmeticError);
+        const equipped = await cosmeticsService.equipCosmetic(USER_ID, item.category, item.scope, item.id, true);
+        expect(equipped.success).toBe(true);
+      }
+      const state = await cosmeticsService.getUserLoadout(USER_ID);
+      expect(state.equipped.avatarAura).toBe("aura_nostalgia_gold");
+      expect(state.equipped.podiumTitle).toBe("title_gang_leader");
+      expect(state.equipped.tableThemes.rummy).toBe("table_retro_school_slate");
+      expect(state.ownedIds).toHaveLength(0);
+      expect((await economyService.getWallet(USER_ID)).balance).toBe(before.balance);
+    });
+
     it("returns all catalog cosmetics as owned for admin users", async () => {
       const regularState = await cosmeticsService.getUserLoadout(USER_ID, false);
       expect(regularState.ownedIds).toHaveLength(0);

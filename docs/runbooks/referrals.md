@@ -13,6 +13,14 @@ Golden Reunion avatar aura, Gang Leader podium title, and School Slate
 Rummy material. There are no referral coins or XP. Existing cosmetic ownership
 is preserved; ownership is never fabricated by the client.
 
+Admin Pass (including Super Admin) can equip all three items without qualifying
+referrals, using **Equip pack · Admin Pass** on the Journey Social Quest card.
+It remains available while invitation progress is loading or unavailable.
+The button uses the existing server-verified cosmetic equip permission; it
+neither grants earned entitlements nor changes referral counts or wallet balance.
+Ordinary members still need the earned pack. School Slate remains confined to
+classic Rummy; a host-selected non-classic world takes priority for admins too.
+
 `referral_sync` reads durable `match_summaries`/`match_participants`. Qualification
 and all entitlements commit together under the inviter's row lock. Sync happens
 on dashboard arrival, progression updates, or **Refresh progress**; this is not
@@ -64,6 +72,9 @@ The browser notice version is 5; review the updated privacy notice before releas
   must roll back, and the UI must show a retryable failure.
 - Equip the pack; check the aura/title and both Rummy layouts. Switch to a
   non-classic host world: it must override School Slate. Card artwork is unchanged.
+- With a server-recognised Super Admin and zero referrals, equip all three through
+  Admin Pass, including when referral sync is unavailable. Confirm the wallet and
+  earned ownership are unchanged. An ordinary unearned member must still be refused.
 - Restart the server/database and verify progress/ownership remain. Delete an
   account and verify attribution cascades; earned rewards on others remain.
 - Test 320/375/768/1024/1440px, keyboard, both theme contexts, reduced motion,
@@ -85,8 +96,8 @@ Supabase project's redirects, auth schema, email delivery or real two-device flo
 Focused verification commands (from the repository root):
 
 ```powershell
-npm --prefix client test -- src/hooks/__tests__/useReferralProgress.test.tsx src/components/auth/__tests__/referralSignup.test.tsx src/pages/__tests__/InvitePage.test.tsx src/pages/home/__tests__/PlayerJourneyDashboard.test.tsx src/components/profile/__tests__/SeatAvatar.test.tsx src/components/cosmetics/__tests__/cosmeticsBoutiquePolish.test.tsx src/components/cosmetics/__tests__/referralCosmetics.test.tsx src/store/__tests__/cosmeticsStore.test.ts src/store/__tests__/authLifecycle.test.ts src/pages/__tests__/privacyPolicyContent.test.tsx src/lib/__tests__/referrals.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
-npm --prefix server test -- src/referrals/__tests__ src/cosmetics/__tests__/cosmeticsService.test.ts src/rooms/__tests__/cosmeticsOwnership.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
+npm --prefix client test -- src/hooks/__tests__/useReferralProgress.test.tsx src/components/auth/__tests__/referralSignup.test.tsx src/pages/__tests__/InvitePage.test.tsx src/pages/home/__tests__/PlayerJourneyDashboard.test.tsx src/pages/home/__tests__/ReferralQuest.test.tsx src/components/profile/__tests__/SeatAvatar.test.tsx src/components/cosmetics/__tests__/cosmeticsBoutiquePolish.test.tsx src/components/cosmetics/__tests__/referralCosmetics.test.tsx src/store/__tests__/cosmeticsStore.test.ts src/store/__tests__/authLifecycle.test.ts src/pages/__tests__/privacyPolicyContent.test.tsx src/lib/__tests__/referrals.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
+npm --prefix server test -- src/referrals/__tests__ src/cosmetics/__tests__/cosmeticsService.test.ts src/cosmetics/__tests__/CosmeticsController.test.ts src/rooms/__tests__/cosmeticsOwnership.test.ts --reporter=dot --maxWorkers=1 --minWorkers=1
 npm --prefix client run typecheck
 npm --prefix client run build
 npm --prefix server run typecheck

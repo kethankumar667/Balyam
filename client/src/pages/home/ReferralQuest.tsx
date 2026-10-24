@@ -12,9 +12,11 @@ const BUTTON = "inline-flex min-h-[52px] w-full items-center justify-center gap-
 export function ReferralQuest({ isMember }: { isMember: boolean }) {
   const { progress, loading, error, notice, retry } = useReferralProgress(isMember);
   const userId = useAuthStore(s => s.userId);
+  const hasAdminPass = useAuthStore(s => s.capabilities.unlockAllFeatures);
   const [sharing, setSharing] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [equipping, setEquipping] = useState(false);
+  const canEquipPack = hasAdminPass || (progress?.rewardGranted && !error && !loading);
   const link = progress ? `${window.location.origin}/invite/${progress.inviteCode}` : "";
   useEffect(() => { setSharing(false); setFeedback(null); setEquipping(false); }, [userId]);
 
@@ -79,9 +81,12 @@ export function ReferralQuest({ isMember }: { isMember: boolean }) {
     ) : null}
     {notice && <p role="status" className="mb-3 text-xs leading-relaxed text-amber-100">{notice}</p>}
     <div className="mt-auto pt-4">
+      {canEquipPack && <>
+        {hasAdminPass && <p className="mb-3 text-xs leading-relaxed text-amber-100">Admin Pass gives access to all three items without completing referrals. This is not earned ownership.</p>}
+        <button type="button" disabled={equipping} onClick={() => void equipPack()} className={`${BUTTON} mb-2 border-amber-200/60 text-amber-100`}>{equipping ? "Equipping..." : hasAdminPass ? "Equip pack · Admin Pass" : "Equip earned pack"}</button>
+      </>}
       {!isMember ? <Link to="/login" className={BUTTON}>Sign in to invite <ArrowRight size={16} aria-hidden="true" /></Link>
         : progress && !error && !loading ? <>
-          {progress.rewardGranted && <button type="button" disabled={equipping} onClick={() => void equipPack()} className={`${BUTTON} mb-2 border-amber-200/60 text-amber-100`}>{equipping ? "Equipping..." : "Equip earned pack"}</button>}
           <button type="button" onClick={() => setSharing(s => !s)} aria-expanded={sharing} className={BUTTON}>Invite friends <ArrowRight size={16} aria-hidden="true" /></button>
           {sharing && <div className="mt-3 space-y-2 rounded-xl border border-violet-200/40 bg-[#111b30] p-3">
             <a href={`https://wa.me/?text=${encodeURIComponent(`Join me on BHALYAM. Accept my invitation before creating your account: ${link}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-[44px] items-center justify-center rounded-lg border border-emerald-200/50 px-2 text-xs font-bold text-emerald-100 focus-visible:ring-2 focus-visible:ring-amber-300">Share using WhatsApp</a>

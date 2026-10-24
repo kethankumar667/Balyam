@@ -162,6 +162,19 @@ describe("cosmetics broadcast to the room only when actually owned", () => {
     expect(seatOf(rooms, alice.code, alice.playerId).cosmetics?.podiumTitle).toBe("title_grandmaster");
   });
 
+  it("broadcasts the Super Admin's Nostalgia aura and title without referral entitlements", async () => {
+    const { rooms, economyService, cosmeticsService, broadcasts } = makeHarness();
+    const identityId = "nostalgia_super_admin";
+    await economyService.ensureIdentityRegistered(identityId, "member");
+    setUserRole(identityId, "super_admin");
+    const alice = hostWithIdentity(rooms, "sock_nostalgia_admin", "Alice", identityId);
+    const cosmetics = { avatarAura: "aura_nostalgia_gold", podiumTitle: "title_gang_leader" };
+    await rooms.setCosmetics("sock_nostalgia_admin", cosmetics);
+    expect(seatOf(rooms, alice.code, alice.playerId).cosmetics).toMatchObject(cosmetics);
+    expect(broadcasts.at(-1)?.players.find(player => player.id === alice.playerId)?.cosmetics).toMatchObject(cosmetics);
+    expect((await cosmeticsService.getUserLoadout(identityId)).ownedIds).toHaveLength(0);
+  });
+
   it("shows a skin an admin equipped in the shop, even though the live connection cannot see the operational key", async () => {
     const { rooms, economyService, cosmeticsService } = makeHarness();
     const identityId = "player_key_admin";
