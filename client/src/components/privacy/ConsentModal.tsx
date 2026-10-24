@@ -61,7 +61,7 @@ export default function ConsentModal() {
       ariaLabelledBy="consent-title"
       ariaDescribedBy="consent-description"
       className="safety-gateway-backdrop"
-      panelClassName="safety-gateway w-full max-w-[480px] rounded-[28px] p-6 sm:p-7"
+      panelClassName="safety-gateway max-h-full w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-[28px] p-6 sm:p-7"
     >
       <header className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.16em]">
         <span className="flex items-center gap-1.5"><Star aria-hidden="true" className="h-3 w-3 text-[var(--safety-accent)]" />BHALYAM</span>

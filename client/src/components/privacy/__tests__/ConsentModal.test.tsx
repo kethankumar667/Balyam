@@ -44,6 +44,12 @@ afterEach(() => {
 });
 
 describe("ConsentModal Safety Gateway", () => {
+  it("bounds the panel to the padded viewport and scrolls long disclosures inside it", () => {
+    renderAt();
+    expect(screen.getByRole("dialog", { name: "What BHALYAM keeps" }))
+      .toHaveClass("max-h-full", "overflow-y-auto", "overscroll-contain");
+  });
+
   it("uses neutral heading focus and equally styled, unselected consent choices", () => {
     renderAt();
     const dialog = screen.getByRole("dialog", { name: "What BHALYAM keeps" });
