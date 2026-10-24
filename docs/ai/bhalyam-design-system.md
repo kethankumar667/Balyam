@@ -248,6 +248,17 @@ must not be advertised as disabled by this UI. The guardian step explicitly
 identifies this as a self-declared check, **not verified guardian consent**.
 The existing local age-answer key and confirmation rules are unchanged.
 
+The privacy-choice dialog (`components/privacy/ConsentModal.tsx`) uses the same
+Safety Gateway materials and shared `SafetyEmblem`, with a lock at its centre.
+Required and optional device data are grouped in labelled sections without
+removing the existing disclosures. Both consent choices use identical controls
+and initial focus goes to the heading, never to Allow all. Phones stack the
+choices; wider screens place them side by side. Long content scrolls with the
+whole panel, preserving its heading and keyboard-reachable actions.
+The separate-tab privacy-notice link and announcement, age-first ordering,
+profile-recovery wait, per-account acknowledgements and essential-only purging
+are unchanged. This is a visual update, not a new notice version or data policy.
+
 The daily-streak popup opens directly into **Rewards Expedition**, whether
 today's reward is ready or already claimed. Desktop pairs a parchment daily
 card with an illuminated next-chest showcase, followed by an original SVG

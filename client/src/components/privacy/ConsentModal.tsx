@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { IdCard, LockKeyhole, SlidersHorizontal, Star } from "lucide-react";
 import { recordConsent } from "../../lib/privacy/consent";
 import { useConsentPending } from "../../hooks/useConsentPending";
 import { useAgeGatePending } from "../../hooks/useAgeGatePending";
 import { useAuthStore } from "../../store/authStore";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
-import { KeyholeIcon } from "../auth/authIcons";
 import Modal from "../Modal";
+import SafetyEmblem from "./SafetyEmblem";
+import "./safety-gateway.css";
 
 /**
  * First-run consent — DPDP Sections 5 and 6.
@@ -20,10 +22,8 @@ import Modal from "../Modal";
  *   • It says what is stored before asking, in one screen, rather than
  *     linking away and hoping nobody follows.
  *
- * It does NOT block the page. Someone arriving on a shared room link is
- * mid-social-moment and should not meet a wall; the essential data needed to
- * seat them is lawful under legitimate use either way. This asks about the
- * rest, and stays until answered.
+ * Both choices let someone play. This asks about optional device storage
+ * and stays until explicitly answered; dismissing it cannot count as consent.
  */
 export default function ConsentModal() {
   const [isReady, setIsReady] = useState(false);
@@ -35,7 +35,7 @@ export default function ConsentModal() {
   const memberId = useAuthStore((state) => state.userId);
   const profileReady = useAuthStore((state) => state.profileReady);
   const open = isReady && !isAgePending && isConsentPending && profileReady !== false && pathname !== "/privacy";
-  const acceptRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     // Deferred a beat so it does not fight the page's first paint.
@@ -43,10 +43,8 @@ export default function ConsentModal() {
     return () => window.clearTimeout(id);
   }, []);
 
-  // Focus trap and initial focus (onto "Allow all") are owned by <Modal> at
-  // the return site below. No onClose is passed: this is a decision, not a
-  // dismissible dialog — Escape and the backdrop must not be able to answer
-  // it on the user's behalf, so both are intentionally inert here.
+  // Heading focus keeps the first keystroke neutral. No onClose is passed:
+  // Escape and the backdrop must not answer a privacy choice on someone's behalf.
 
   if (!open) return null;
 
@@ -57,107 +55,105 @@ export default function ConsentModal() {
   return (
     <Modal
       open={open}
-      initialFocusRef={acceptRef}
-      mobileSheet
+      initialFocusRef={titleRef}
+      closeOnBackdropClick={false}
       zIndex={60}
       ariaLabelledBy="consent-title"
-      ariaDescribedBy="consent-body"
-      className="auth-shell"
-      panelClassName="w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl
-                   border border-[var(--auth-card-edge)] bg-[var(--auth-card)]
-                   p-5 sm:p-6 shadow-[0_-8px_40px_-12px_rgba(74,44,18,0.5)]
-                   max-h-[88vh] overflow-y-auto"
+      ariaDescribedBy="consent-description"
+      className="safety-gateway-backdrop"
+      panelClassName="safety-gateway w-full max-w-[480px] rounded-[28px] p-6 sm:p-7"
     >
-        <span
-          className="inline-flex w-11 h-11 rounded-2xl items-center justify-center
-                     bhalyam-gold-leaf text-bhalyam-wood-dark
-                     shadow-[0_8px_18px_-8px_rgba(228,177,40,0.7)]"
-          aria-hidden
-        >
-          <KeyholeIcon className="w-6 h-6" />
-        </span>
-
+      <header className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.16em]">
+        <span className="flex items-center gap-1.5"><Star aria-hidden="true" className="h-3 w-3 text-[var(--safety-accent)]" />BHALYAM</span>
+        <span className="text-[var(--safety-muted)]">Privacy choice</span>
+      </header>
+      <div className="relative mt-3 text-center">
+        <SafetyEmblem>
+          <LockKeyhole className="h-7 w-7" strokeWidth={1.6} />
+        </SafetyEmblem>
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-[.2em] text-[var(--safety-muted)]">Your data, your choice</p>
         <h2
+          ref={titleRef}
+          tabIndex={-1}
           id="consent-title"
-          className="bhalyam-display text-[var(--auth-ink)] text-[24px] leading-tight mt-4"
+          className="mx-auto mt-2 max-w-[340px] text-[25px] font-bold leading-tight tracking-tight"
         >
           What BHALYAM keeps
         </h2>
+        <p id="consent-description" className="mt-3 text-[13px] leading-relaxed text-[var(--safety-muted)]">
+          Choose what this device remembers.
+        </p>
+      </div>
 
-        <div id="consent-body" className="mt-2 space-y-3 text-sm leading-relaxed text-[var(--auth-ink-soft)]">
-          <p>
+      <div id="consent-body" className="relative mt-5 space-y-3 text-[13px] leading-relaxed text-[var(--safety-muted)]">
+        <section aria-labelledby="consent-essential-title" className="safety-protections rounded-2xl border p-4">
+          <h3 id="consent-essential-title" className="flex items-center gap-2 text-xs font-bold text-[var(--safety-ink)]">
+            <IdCard aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--safety-verification)]" />Required for play
+          </h3>
+          <p className="mt-2">
             To seat you at a table we store a display name and a random player id on this device.
             That much is what playing requires.
           </p>
-          <p>
+        </section>
+        <section aria-labelledby="consent-optional-title" className="safety-protections rounded-2xl border p-4">
+          <h3 id="consent-optional-title" className="flex items-center gap-2 text-xs font-bold text-[var(--safety-ink)]">
+            <SlidersHorizontal aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--safety-verification)]" />Optional on this device
+          </h3>
+          <p className="mt-2">
             Beyond that we&apos;d like to remember your sound and language settings, board
             skins, best scores, which tutorials you have already seen, and a short connection log
             for debugging dropped games. All of it stays on this device. There is no tracking and
             no advertising.
           </p>
-          <p>
+        </section>
+        <div className="flex items-start gap-2.5 px-1">
+          <LockKeyhole aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--safety-verification)]" />
+          <p className="text-[11px]">
             We also keep your privacy choice and the account ids that answered this notice on this
             device, including after sign-out. Erasing your local data removes that record.
           </p>
-          <p>
-            {isSupabaseConfigured
-              ? "An account is optional and separate from this choice: you can play everything as a guest, and creating one later asks for an email address then."
-              : "There are no accounts in this build at all."}
-          </p>
-          <p>
-            <a
-              href="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setNoticeOpened(true)}
-              className="inline-flex items-center min-h-[44px] font-bold text-[var(--auth-accent)]
-                         underline decoration-[#D9BE7A] underline-offset-4 rounded-sm
-                         focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70"
+        </div>
+        <p className="px-1 text-[11px]">
+          {isSupabaseConfigured
+            ? "An account is optional and separate from this choice: you can play everything as a guest, and creating one later asks for an email address then."
+            : "There are no accounts in this build at all."}
+        </p>
+      </div>
+
+      <footer className="safety-privacy relative mt-5 border-t pt-2">
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setNoticeOpened(true)}
+          className="safety-back mx-auto flex min-h-11 w-fit items-center px-2 text-center text-xs font-semibold underline underline-offset-4"
+        >
+          Read the full privacy notice
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+        <p role="status" className="text-center text-[11px] leading-relaxed text-[var(--safety-muted)]">
+          {noticeOpened ? "Privacy notice opened in a new tab. Return here to make your choice." : ""}
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {([
+            ["granted", "Allow all"],
+            ["essential-only", "Only what's essential"],
+          ] as const).map(([choice, label]) => (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => choose(choice)}
+              className="safety-choice min-h-14 w-full rounded-2xl border px-4 py-3 text-sm font-semibold"
             >
-              Read the full privacy notice
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </p>
-          <p role="status" className="text-[12px] text-[var(--auth-ink-soft)]">
-            {noticeOpened ? "Privacy notice opened in a new tab. Return here to make your choice." : ""}
-          </p>
+              {label}
+            </button>
+          ))}
         </div>
-
-        {/* Equal weight on purpose — see the note above. */}
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <button
-            ref={acceptRef}
-            type="button"
-            onClick={() => choose("granted")}
-            className="min-h-[50px] px-5 rounded-full font-extrabold text-[15px]
-                       bhalyam-gold-leaf bhalyam-cta-shine border border-bhalyam-gold-dark
-                       text-bhalyam-wood-dark cursor-pointer hover:brightness-[1.04]
-                       shadow-[0_8px_18px_-6px_rgba(228,177,40,0.6)]
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                       focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--auth-card)]
-                       transition-[filter,box-shadow] duration-200"
-          >
-            Allow all
-          </button>
-          <button
-            type="button"
-            onClick={() => choose("essential-only")}
-            className="min-h-[50px] px-5 rounded-full font-extrabold text-[15px]
-                       bg-[var(--auth-field)] border border-[var(--auth-field-edge)]
-                       text-[var(--auth-ink)] cursor-pointer hover:bg-[var(--auth-rule)]
-                       active:scale-[0.99]
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-bhalyam-gold-dark/70
-                       focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--auth-card)]
-                       transition-[background-color,transform] duration-200"
-          >
-            Only what&apos;s essential
-          </button>
-        </div>
-
-        <p className="mt-3 text-[12px] leading-relaxed text-[var(--auth-ink-mute)]">
+        <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--safety-muted)]">
           You can change this any time from Profile → Your data, and erase everything from the
           same place.
         </p>
+      </footer>
     </Modal>
   );
 }
