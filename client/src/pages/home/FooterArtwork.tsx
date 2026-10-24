@@ -38,7 +38,7 @@ export function PlaygroundSignoff() {
         <path d="M850 195V117H946V195M859 117L838 196M936 117L957 196M878 118V166M919 118V166M872 167H885M912 167H925" strokeWidth="2" />
         <path d="M772 58L785 39L798 57L785 73ZM785 73Q773 96 792 99T785 128" />
       </g>
-      <g className="text-footer-night" fill="currentColor" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <g className="text-footer-scene-ink" fill="currentColor" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="438" cy="159" r="9" /><path d="M434 170L420 189L443 194L450 211M425 182L446 184L459 177M435 193L421 213" strokeWidth="8" />
         <circle cx="510" cy="154" r="9" /><path d="M508 166L518 186L498 199L496 215M515 178L492 185L479 179M516 188L533 210" strokeWidth="8" />
         <circle cx="575" cy="163" r="8" /><path d="M575 174L565 194L583 202M570 182L589 184M568 194L553 210M579 200L594 213" strokeWidth="7" />

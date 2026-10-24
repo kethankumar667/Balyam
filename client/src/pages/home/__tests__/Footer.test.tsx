@@ -41,6 +41,11 @@ describe("Nostalgia Network Hub footer", () => {
     expect(screen.getByRole("contentinfo")).toHaveClass("shrink-0");
   });
 
+  it("scopes its adaptive palette to the footer", () => {
+    show();
+    expect(screen.getByRole("contentinfo")).toHaveClass("bhalyam-footer");
+  });
+
   it("groups real player destinations into Play, Community and Trust", () => {
     show();
     const navigation = screen.getByRole("navigation", { name: "Footer navigation" });

@@ -114,7 +114,7 @@ export function Footer() {
   const language = clientReady ? LOCALE_BY_ID[locale] : null;
   const shareUrl = `https://wa.me/?text=${encodeURIComponent(`Same games. Bigger memories. Join me on BHALYAM: ${BASE_URL}`)}`;
 
-  return <footer className="relative z-10 mt-6 w-full shrink-0 overflow-hidden border-t border-footer-edge/20 bg-gradient-to-br from-footer-night via-footer-night to-footer-deep text-left text-footer-ink sm:mt-10">
+  return <footer className="bhalyam-footer relative z-10 mt-6 w-full shrink-0 overflow-hidden border-t border-footer-edge/20 bg-gradient-to-br from-footer-night via-footer-night to-footer-deep text-left text-footer-ink sm:mt-10">
     <div className="pointer-events-none absolute -right-40 top-0 h-96 w-96 rounded-full bg-footer-cyan/5 blur-3xl" aria-hidden="true" />
     <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-y-9 px-4 pt-10 sm:px-6 sm:pt-14 lg:grid-cols-12 lg:gap-x-8 lg:px-8">
       <section aria-label="BHALYAM signoff" className="order-1 min-w-0 lg:col-span-4">

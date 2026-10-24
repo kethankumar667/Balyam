@@ -32,8 +32,15 @@ uses `shrink-0` to retain its full content height in the home's flex column.
 Without it, the viewport-height shell can shrink the footer to its border,
 and its decorative `overflow-hidden` clips the entire directory. Verify
 scroll reachability on the actual home page, not only an isolated footer.
-Its `footer.*` Tailwind palette stays midnight/navy in both app themes without
-changing the document theme. Existing display, body, script and utility
+Its `footer.*` Tailwind palette uses opacity-aware RGB variables scoped to
+`.bhalyam-footer`: warm cream surfaces, brown ink, antique gold and readable
+blue/green accents by default; the original midnight/navy palette under the
+document's `data-theme="dark"`. Surface, text, borders and focus colours switch
+together without a React theme branch or a separate footer preference.
+Playground silhouettes use their own ink token so they remain dark on the
+light ground instead of inheriting the light surface colour. Neither the
+document theme nor game-table worlds are changed by the footer.
+Existing display, body, script and utility
 fonts carry the brand; an original SVG playground turns chalk markings into
 a digital route ending at the emblem. Decorative SVGs are noninteractive
 and hidden from assistive technology. Only the playground scene is visible

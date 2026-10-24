@@ -571,6 +571,40 @@ body, #root, .bhalyam-paper {
   color: #3f2a1d;
 }
 
+/* Scoped RGB channels keep translucent footer utilities theme-aware without
+   changing the app or the independently themed game tables. */
+.bhalyam-footer {
+  --footer-night: 255 253 247;
+  --footer-deep: 243 231 211;
+  --footer-glass: 251 245 233;
+  --footer-panel: 243 231 211;
+  --footer-ink: 74 37 8;
+  --footer-soft: 92 55 23;
+  --footer-mute: 122 91 62;
+  --footer-gold: 110 82 6;
+  --footer-orange: 232 93 4;
+  --footer-cyan: 4 98 143;
+  --footer-mint: 17 107 57;
+  --footer-edge: 150 121 90;
+  --footer-scene-ink: 74 37 8;
+}
+
+:root[data-theme="dark"] .bhalyam-footer {
+  --footer-night: 6 16 31;
+  --footer-deep: 16 37 68;
+  --footer-glass: 16 37 66;
+  --footer-panel: 24 49 82;
+  --footer-ink: 248 250 252;
+  --footer-soft: 184 197 216;
+  --footer-mute: 130 148 172;
+  --footer-gold: 255 184 0;
+  --footer-orange: 249 115 22;
+  --footer-cyan: 39 215 242;
+  --footer-mint: 50 214 160;
+  --footer-edge: 125 211 252;
+  --footer-scene-ink: 6 16 31;
+}
+
 :root[data-theme="dark"] .bhalyam-paper {
   background-color: #070B14;
   background-image:
