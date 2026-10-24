@@ -3102,12 +3102,35 @@ export interface SoundboardRecvPayload {
  * cheater exactly the information the server exists to withhold — so this
  * travels the same trust boundary as `getStateFor`.
  */
+/** The move a hint recommends, in a form code can act on (the headline is the same advice for people). */
+export type CoachAction =
+  | { type: "draw"; from: "open" | "closed" }
+  | { type: "discard"; cardId: string }
+  | { type: "declare"; discardCardId: string; melds: string[][] }
+  | { type: "drop" };
+
+/** The working behind a hint: facts a player can check, the alternatives weighed, and what opponents seem to hold. */
+export interface CoachAnalysis {
+  /** One line on where the hand stands. */
+  status: string;
+  /** Checkable numbers, e.g. cards still needed, the chance a draw helps, points exposed. */
+  facts: { label: string; value: string }[];
+  /** The alternatives weighed, best first. */
+  options?: { label: string; detail: string; best?: boolean }[];
+  /** What opponents appear to be collecting, from the open pile they were seen to take from. */
+  reads?: string[];
+}
+
 export interface CoachHint {
   /**
    * What the player should do next. Game-specific, but the client only
    * needs it to pick an icon — `headline` carries the meaning.
    */
-  kind: "draw" | "discard" | "declare" | "build" | "place" | "wait";
+  kind: "draw" | "discard" | "declare" | "build" | "place" | "wait" | "drop";
+  /** The recommended move as data, when the game can express one. */
+  action?: CoachAction;
+  /** The reasoning behind it, when the coach has more to show than one sentence. */
+  analysis?: CoachAnalysis;
   /** One short imperative line. Shown as the hint's title. */
   headline: string;
   /** Why. One sentence — the teaching half of the feature. */

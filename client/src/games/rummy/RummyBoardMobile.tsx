@@ -17,7 +17,8 @@ import {
 } from "./meldCheck";
 import EmojiRain from "../ludo/EmojiRain";
 import CardTracker from "./CardTracker";
-import { suggestArrangement, suggestDiscard } from "./autoArrange";
+import { planFromHint } from "./hintPlan";
+import RummyHintBanner from "./RummyHintBanner";
 import { freshMeldLayout, appendIncomingCards, applyHintSuggestion, redistributeCards } from "./reconcileLayout";
 import { captureRects, playFlip } from "../../lib/anim";
 import { rummySfx, setRummySoundEnabled, isRummySoundEnabled } from "./sound";
@@ -28,7 +29,7 @@ import PlayerList from "../../components/PlayerList";
 import QrCodeModal from "../../components/QrCodeModal";
 import VoicePanel from "../../components/VoicePanel";
 import { VOICE_CHAT_ENABLED } from "../../lib/voiceFeature";
-import CoachHintButton, { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
+import { CoachHighlightProvider, useCoach } from "../../components/CoachHintButton";
 import Chat from "../../components/Chat";
 import Avatar from "./Avatar";
 import "./rummy-mobile-fit.css";
@@ -1038,81 +1039,45 @@ export default function RummyBoardMobile({
   const flipCleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => flipCleanup.current?.(), []);
 
-  const [pendingHint, setPendingHint] = useState<{
-    groups: Card[][];
-    ungrouped: Card[];
-    bestDiscardCard: Card | null;
-    openPickupCard: Card | null;
-  } | null>(null);
-
   /**
-   * Request Smart Hint: computes proposed melds & discard card, then shows
-   * an approval preview banner so the user must click "APPROVE" to apply.
+   * The hint is the server coach's: it counts the cards still in play, reads what opponents picked up and weighs
+   * every discard, none of which this client can see. Pressing Hint asks it; the answer arrives in `coach.hint`
+   * and is shown in the shared banner for the player to approve.
    */
+  const openPickupId =
+    state.lastDrawSource === "open" && state.lastDrawnCardId && byId.has(state.lastDrawnCardId)
+      ? state.lastDrawnCardId
+      : null;
+  const hintPlan = useMemo(
+    () => (coach.hint ? planFromHint(coach.hint, byId, openPickupId) : null),
+    [coach.hint, byId, openPickupId],
+  );
+
   function requestSmartHint() {
     try { haptics.subtle(); } catch { /* ignore */ }
-
-    // Carve the open-deck pickup out before optimizing — `suggestArrangement`
-    // has no concept of it and will happily fold it into whatever pure
-    // sequence/set it best fits, which is exactly the "is this card new or
-    // was it already there?" confusion players hit. It stays eligible as a
-    // discard candidate (a useless just-drawn card is still worth flagging).
-    const openPickupId =
-      state.lastDrawSource === "open" && state.lastDrawnCardId && byId.has(state.lastDrawnCardId)
-        ? state.lastDrawnCardId
-        : null;
-    const openPickupCard = openPickupId ? byId.get(openPickupId) ?? null : null;
-
-    const allCards: Card[] = layout.groups
-      .flatMap((g) => g.cardIds.map((id) => byId.get(id)).filter((c): c is Card => !!c))
-      .filter((c) => c.id !== openPickupId);
-    if (allCards.length === 0) return;
-
-    const suggestion = suggestArrangement(allCards, wildRank as Rank);
-    const discardCandidates = openPickupCard ? [...suggestion.ungrouped, openPickupCard] : suggestion.ungrouped;
-    const discardHand = openPickupCard ? [...allCards, openPickupCard] : allCards;
-    const bestDiscard = suggestDiscard(discardCandidates, discardHand, wildRank as Rank);
-
-    setPendingHint({
-      groups: suggestion.groups,
-      ungrouped: suggestion.ungrouped,
-      bestDiscardCard: bestDiscard,
-      openPickupCard,
-    });
+    coach.request();
   }
 
   function approveSmartHint() {
-    if (!pendingHint) return;
+    if (!hintPlan) return;
 
-    // The hand can change out from under an open hint banner — most often
-    // the AFK auto-play safety net taking one or more turns on the player's
-    // behalf while they haven't dismissed it. Applying a stale suggestion in
-    // that case would inject melds referencing cards no longer in the hand,
-    // rendering as an orphaned empty meld box. Bail out instead.
-    const referencedIds = [
-      ...pendingHint.groups.flat().map((c) => c.id),
-      ...pendingHint.ungrouped.map((c) => c.id),
-      ...(pendingHint.openPickupCard ? [pendingHint.openPickupCard.id] : []),
-    ];
-    if (referencedIds.some((id) => !byId.has(id))) {
-      setPendingHint(null);
+    // The hand can change out from under an open hint banner — most often the AFK auto-play safety net taking a
+    // turn on the player's behalf. Applying a stale plan would inject melds referencing cards no longer in the
+    // hand, rendering as an orphaned empty meld box. Bail out instead.
+    if (hintPlan.stale) {
+      coach.dismiss();
       setError("Your hand changed — hint expired, tap HINT again");
       return;
     }
 
     try { haptics.subtle(); } catch { /* ignore */ }
 
-    const newGroups = applyHintSuggestion(
-      pendingHint.groups,
-      pendingHint.ungrouped,
-      pendingHint.openPickupCard,
-      newGroupId,
-    );
+    const newGroups = applyHintSuggestion(hintPlan.groups, hintPlan.ungrouped, hintPlan.openPickup, newGroupId);
 
     const allCards = [
-      ...pendingHint.groups.flat(),
-      ...pendingHint.ungrouped,
-      ...(pendingHint.openPickupCard ? [pendingHint.openPickupCard] : []),
+      ...hintPlan.groups.flat(),
+      ...hintPlan.ungrouped,
+      ...(hintPlan.openPickup ? [hintPlan.openPickup] : []),
     ];
     const nodes = new Map<string, HTMLElement | null>(
       allCards.map((c) => [c.id, document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(c.id)}"]`)]),
@@ -1123,14 +1088,9 @@ export default function RummyBoardMobile({
       groups: newGroups,
       ungrouped: [],
     });
+    setSelected(hintPlan.discard ? new Set([hintPlan.discard.id]) : new Set());
 
-    if (pendingHint.bestDiscardCard) {
-      setSelected(new Set([pendingHint.bestDiscardCard.id]));
-    } else {
-      setSelected(new Set());
-    }
-
-    setPendingHint(null);
+    coach.dismiss();
     setError(null);
     rummySfx.meldFormed();
 
@@ -1144,7 +1104,7 @@ export default function RummyBoardMobile({
   }
 
   function dismissSmartHint() {
-    setPendingHint(null);
+    coach.dismiss();
   }
 
 
@@ -1749,131 +1709,18 @@ export default function RummyBoardMobile({
         </RummyModal>
       )}
 
-      {/* Smart Hint Approval Banner — requires player click on APPROVE before touching the hand */}
-      {pendingHint && (
-        <div
-          className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[50] w-[94%] max-w-sm p-3 rounded-2xl flex flex-col gap-2 shadow-2xl"
-          style={{
-            background: "linear-gradient(145deg, #1e1b18 0%, #2d261e 100%)",
-            border: "2px solid #f59e0b",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.85), 0 0 20px rgba(245,158,11,0.35)",
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-black text-amber-400 text-[11px] uppercase tracking-wider">
-              <span>💡</span>
-              <span>Suggested Hand Rearrangement</span>
-            </div>
-            <button
-              onClick={dismissSmartHint}
-              className="text-white/60 hover:text-white text-xs px-2 py-0.5"
-            >
-              ✕
-            </button>
-          </div>
+      {/* Coach hint — the player must press APPROVE before the coach touches the hand */}
+      <RummyHintBanner
+        hint={coach.hint}
+        loading={coach.loading}
+        error={coach.error}
+        plan={hintPlan}
+        wildRank={wildRank as Rank}
+        compact
+        onApprove={approveSmartHint}
+        onDismiss={dismissSmartHint}
+      />
 
-          {/* Melds summary chips showing exact cards */}
-          <div className="flex items-center gap-1.5 flex-wrap max-h-36 overflow-y-auto pr-1">
-            {pendingHint.groups.map((g, idx) => {
-              const classification = classifyMeld(g, wildRank as Rank);
-              const name = classification.valid
-                ? classification.label.replace(/\s*✓\s*$/, "")
-                : `${g.length} Cards`;
-              const cardsStr = g
-                .map((c) => {
-                  if (c.isPrintedJoker) return "🃏";
-                  const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
-                  const rank = c.rank === "T" ? "10" : c.rank;
-                  return `${rank}${suit}`;
-                })
-                .join(" ");
-              return (
-                <div
-                  key={idx}
-                  className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 flex-wrap"
-                  style={{
-                    background: classification.counts ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.22)",
-                    border: `1px solid ${classification.counts ? "#10b981" : "#f59e0b"}`,
-                    color: classification.counts ? "#a7f3d0" : "#fef08a",
-                  }}
-                >
-                  <span className="font-extrabold uppercase text-[10px] tracking-wide" style={{ color: classification.counts ? "#34d399" : "#fcd34d" }}>
-                    {classification.counts ? "✓ " : "• "}{name}:
-                  </span>
-                  <span className="font-mono tracking-wider text-white font-black text-xs">
-                    {cardsStr}
-                  </span>
-                </div>
-              );
-            })}
-            {pendingHint.openPickupCard && (
-              <div
-                className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 flex-wrap"
-                style={{
-                  background: "rgba(56,189,248,0.18)",
-                  border: "1px solid #38bdf8",
-                  color: "#bae6fd",
-                }}
-              >
-                <span className="font-extrabold uppercase text-[10px] tracking-wide" style={{ color: "#7dd3fc" }}>
-                  🆕 Just Drawn (kept separate):
-                </span>
-                <span className="font-mono tracking-wider text-white font-black text-xs">
-                  {(() => {
-                    const c = pendingHint.openPickupCard;
-                    if (c.isPrintedJoker) return "🃏";
-                    const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
-                    const rank = c.rank === "T" ? "10" : c.rank;
-                    return `${rank}${suit}`;
-                  })()}
-                </span>
-              </div>
-            )}
-            {pendingHint.bestDiscardCard && (
-              <div className="px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-rose-950/90 border border-rose-500 text-rose-200">
-                <span className="font-extrabold uppercase text-[10px] tracking-wide text-rose-400">
-                  🗑 Suggested Discard:
-                </span>
-                <span className="font-mono tracking-wider text-rose-300 font-black text-xs">
-                  {(() => {
-                    const c = pendingHint.bestDiscardCard;
-                    if (c.isPrintedJoker) return "🃏";
-                    const suit = c.suit === "S" ? "♠" : c.suit === "H" ? "♥" : c.suit === "D" ? "♦" : "♣";
-                    const rank = c.rank === "T" ? "10" : c.rank;
-                    return `${rank}${suit}`;
-                  })()}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Approve / Cancel actions */}
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              onClick={approveSmartHint}
-              className="flex-1 py-1.5 rounded-xl font-black text-[11px] uppercase tracking-wider transition transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              style={{
-                background: "linear-gradient(135deg, #10b981, #059669)",
-                color: "#ffffff",
-                border: "1px solid #34d399",
-                boxShadow: "0 4px 14px rgba(16,185,129,0.45)",
-              }}
-            >
-              ✓ Approve & Rearrange
-            </button>
-            <button
-              onClick={dismissSmartHint}
-              className="px-3 py-1.5 rounded-xl font-extrabold text-[11px] uppercase tracking-wider text-white/70 hover:text-white cursor-pointer"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Strip-less room rail: mobile drives Players/Voice/Chat from its own
           hamburger menu above, so only the `bhalyam:react-at-player` /

@@ -103,14 +103,89 @@ export function useCoach(): CoachState {
   return { hint, highlight, loading, error, request, dismiss };
 }
 
-const KIND_ICON: Record<CoachHint["kind"], string> = {
+export const KIND_ICON: Record<CoachHint["kind"], string> = {
   draw: "🃏",
   discard: "🗑",
   declare: "🏆",
   build: "🧩",
   place: "✏️",
   wait: "👀",
+  drop: "🚪",
 };
+
+/**
+ * The working behind a hint, folded away until asked for: the headline and one sentence are what most people
+ * want, and the numbers, the alternatives weighed and the read on opponents are what someone learning wants.
+ * A native <details> keeps it keyboard-operable with no state of its own.
+ */
+const ANALYSIS_TONE = {
+  light: {
+    summary: "text-[#8A5A2B]",
+    strong: "text-[#3A3027]",
+    muted: "text-[#6E5E4D]",
+    label: "text-[#8A7865]",
+    best: "bg-[#E6A11E]/25 text-[#3A3027]",
+    rule: "border-[#C8A66B]/50",
+  },
+  dark: {
+    summary: "text-amber-300",
+    strong: "text-white",
+    muted: "text-white/70",
+    label: "text-white/55",
+    best: "bg-amber-400/20 text-white",
+    rule: "border-white/15",
+  },
+} as const;
+
+export function HintAnalysis({
+  analysis,
+  tone = "light",
+}: {
+  analysis: NonNullable<CoachHint["analysis"]>;
+  /** `dark` for the Rummy board's dark banner, `light` for the cream hint card. */
+  tone?: keyof typeof ANALYSIS_TONE;
+}) {
+  const { status, facts, options, reads } = analysis;
+  const c = ANALYSIS_TONE[tone];
+  return (
+    <details className="mt-2">
+      <summary className={`flex min-h-[44px] cursor-pointer items-center text-[11px] font-semibold hover:underline ${c.summary}`}>
+        Why this move
+      </summary>
+      <p className={`text-xs ${c.strong}`}>{status}</p>
+      {facts.length > 0 && (
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className={`text-[10px] uppercase tracking-wide ${c.label}`}>{fact.label}</dt>
+              <dd className={`text-sm font-bold ${c.strong}`}>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {options && options.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {options.map((option) => (
+            <li key={option.label} className={`rounded-lg px-2 py-1 text-xs ${option.best ? c.best : c.muted}`}>
+              <span className="font-semibold">{option.label}</span>
+              {option.best && <span className="sr-only"> (recommended)</span>}
+              <span className="block">{option.detail}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {reads && reads.length > 0 && (
+        <ul className={`mt-2 space-y-1 border-t pt-2 ${c.rule}`}>
+          {reads.map((line) => (
+            <li key={line} className={`text-xs ${c.muted}`}>
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
+  );
+}
 
 /** Button + hint card. Pass a `coach` from useCoach to share state with a board. */
 export default function CoachHintButton({
@@ -149,7 +224,7 @@ export default function CoachHintButton({
       {(hint || error) && (
         <div
           role="status"
-          className={`absolute z-50 mt-2 w-[min(80vw,20rem)] rounded-xl p-3 shadow-2xl text-left ${
+          className={`absolute z-50 mt-2 w-[min(80vw,20rem)] max-h-[70vh] overflow-y-auto rounded-xl p-3 shadow-2xl text-left ${
             align === "left" ? "left-0" : "right-0"
           }`}
           style={{ background: "#F6EDDB", border: "1px solid #C8A66B" }}
@@ -171,6 +246,7 @@ export default function CoachHintButton({
                   your cards.
                 </p>
               )}
+              {hint.analysis && <HintAnalysis analysis={hint.analysis} />}
             </>
           ) : (
             <p className="text-xs text-[#6E5E4D]">{error}</p>

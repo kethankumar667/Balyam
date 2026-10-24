@@ -19,6 +19,7 @@ import {
 } from "./score.js";
 import { chooseDiscard, chooseDraw, findDeclaration } from "./rummyStrategy.js";
 import { rummyHint } from "./coach.js";
+import type { AdvisorTable, PublicEvent } from "./advisor/types.js";
 
 interface InternalState {
   phase: "playing" | "arranging" | "finished";
@@ -92,6 +93,12 @@ interface InternalState {
    * {@link getStateFor} — other players never see it.
    */
   lastDraw: { playerId: string; cardId: string; source: "open" | "closed" } | null;
+  /**
+   * What every player at the table saw happen this round, oldest first: an open-pile pickup shows its card, a
+   * closed draw only that it happened. This is exactly what the coach may know about the other players, and it
+   * is kept separate from the hands so the coach cannot reach anything hidden through it.
+   */
+  publicLog: PublicEvent[];
   options: RummyGameOptions;
   /** All players (kept for resetting between rounds). */
   allPlayers: Player[];
@@ -339,6 +346,7 @@ export class RummyEngine implements GameEngine {
       pendingAnimationPauseMs: 0,
       firstDrawTaken: false,
       lastDraw: null,
+      publicLog: [],
       options: { ...this.pendingOptions },
       allPlayers: players.slice(),
       matchMode: this.pendingOptions.mode,
@@ -393,6 +401,7 @@ export class RummyEngine implements GameEngine {
     this.s.pendingAnimationPauseMs = 0;
     this.s.firstDrawTaken = false;
     this.s.lastDraw = null;
+    this.s.publicLog = [];
     this.s.roundNumber += 1;
     // Wipe stale arrangements — last round's groups don't apply to the
     // fresh hands dealt for this round.
@@ -526,6 +535,7 @@ export class RummyEngine implements GameEngine {
       const drawn = this.s.closedDeck.shift()!;
       hand.push(drawn);
       this.s.lastDraw = { playerId: move.playerId, cardId: drawn.id, source: "closed" };
+      this.s.publicLog.push({ type: "draw", playerId: move.playerId, source: "closed" });
     } else {
       if (this.s.openPile.length === 0) {
         return { ok: false, error: "Open pile is empty" };
@@ -541,6 +551,7 @@ export class RummyEngine implements GameEngine {
       const drawn = this.s.openPile.pop()!;
       hand.push(drawn);
       this.s.lastDraw = { playerId: move.playerId, cardId: drawn.id, source: "open" };
+      this.s.publicLog.push({ type: "draw", playerId: move.playerId, source: "open", card: drawn });
     }
     this.s.firstDrawTaken = true;
     this.s.turnAction = "discardOrDeclare";
@@ -562,6 +573,7 @@ export class RummyEngine implements GameEngine {
 
     const [card] = hand.splice(idx, 1);
     this.s.openPile.push(card);
+    this.s.publicLog.push({ type: "discard", playerId: move.playerId, card });
     this.s.lastDraw = null;
     this.advanceTurn();
     return { ok: true };
@@ -756,6 +768,7 @@ export class RummyEngine implements GameEngine {
       [toShuffle[i], toShuffle[j]] = [toShuffle[j], toShuffle[i]];
     }
     this.s.closedDeck = toShuffle;
+    this.s.publicLog.push({ type: "reshuffle" });
   }
 
   getPublicState(): RummyPublicState {
@@ -829,13 +842,39 @@ export class RummyEngine implements GameEngine {
     if (this.s.phase !== "playing") return null;
     const hand = this.s.hands.get(playerId);
     if (!hand) return null;
-    return rummyHint({
+    return rummyHint({ table: this.advisorTableFor(playerId, hand), names: this.playerNames() });
+  }
+
+  /**
+   * The coach's whole view of the table: the asker's own hand and what every player could see. The closed
+   * deck's order and other players' hands are not passed, so the coach cannot use them even by mistake.
+   */
+  private advisorTableFor(playerId: string, hand: readonly Card[]): AdvisorTable {
+    const isMyTurn = this.s.playerOrder[this.s.turnIndex] === playerId;
+    const phase = !isMyTurn ? "waiting" : this.s.turnAction === "draw" ? "draw" : "discard";
+    const top = this.s.openPile.at(-1);
+    return {
+      myId: playerId,
       hand: hand.slice(),
-      wildJokerRank: this.s.wildJoker.rank,
-      isMyTurn: this.s.playerOrder[this.s.turnIndex] === playerId,
-      turnAction: this.s.turnAction,
-      openTop: this.s.openPile.at(-1) ?? null,
-    });
+      wild: this.s.wildJoker.rank,
+      cutCard: this.s.wildJoker,
+      openPile: this.s.openPile.slice(),
+      openJokerDrawable: top?.isPrintedJoker === true && !this.s.firstDrawTaken,
+      closedDeckCount: this.s.closedDeck.length,
+      phase,
+      log: this.s.publicLog.slice(),
+      opponents: this.s.playerOrder
+        .filter((id) => id !== playerId && this.s.hands.has(id) && !this.s.droppedPlayers.has(id) && !this.s.quitPlayers.has(id))
+        .map((id) => ({ id, handSize: this.s.hands.get(id)?.length ?? 0 })),
+      mode: this.s.matchMode,
+      myTotal: this.s.cumulativeScores.get(playerId) ?? 0,
+      poolTarget: this.s.poolTarget,
+      myTurns: this.s.publicLog.filter((event) => event.type === "draw" && event.playerId === playerId).length,
+    };
+  }
+
+  private playerNames(): Record<string, string> {
+    return Object.fromEntries(this.s.allPlayers.map((player) => [player.id, player.name]));
   }
 
   /**

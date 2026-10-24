@@ -1,125 +1,255 @@
-import type { Card, CoachHint, Rank } from "@shared/types.js";
-import { bestArrangementForScoring } from "./score.js";
-import { chooseDiscard, chooseDraw, findDeclaration } from "./rummyStrategy.js";
+import type { Card, CoachAnalysis, CoachHint } from "@shared/types.js";
+import {
+  advise,
+  type Advice,
+  type DiscardOption,
+  type DrawChoice,
+  type DropVerdict,
+  type HandEvaluation,
+} from "./advisor/advisor.js";
+import { cardLabel, describeOuts, labelsOf, percent, plural } from "./advisor/labels.js";
+import type { OpponentReads } from "./advisor/opponents.js";
+import type { AdvisorTable } from "./advisor/types.js";
+import { DEFAULT_TUNING, type AdvisorTuning } from "./advisor/tuning.js";
 
 /**
  * Rummy coach.
  *
- * Deliberately thin. Every judgement here already existed for the bot AI —
- * `findDeclaration`, `chooseDiscard`, `chooseDraw` (rummyStrategy.ts),
- * `bestArrangementForScoring`. Writing a second, separate "hint intelligence"
- * would mean two engines that can disagree about the same hand, and the one
- * the player sees would be the one nobody tested against real rounds.
+ * The thinking is in `advisor/`: it counts the cards still in play, reads what opponents were seen to pick
+ * up, and weighs every discard by how close it leaves the hand, how likely the next draw is to help and what
+ * it costs if an opponent shows first. This file turns that verdict into what the player sees: a headline, a
+ * reason a player can check, the alternatives weighed, and a machine-readable `action` (which the self-play
+ * tournament uses to play the coach against the bots).
  *
- * So the coach's only real job is translation: turn a bot decision into a
- * sentence that explains itself. The teaching is in `detail`, not in the
- * recommendation — a beginner who is told "discard the K♦" learns nothing,
- * and a beginner who is told why learns the shape of the game.
+ * Nothing here can see another player's hand or the closed deck's order: `AdvisorTable` has no field for them.
  */
 
-function cardLabel(card: Card): string {
-  const suit = { S: "♠", H: "♥", D: "♦", C: "♣" }[card.suit] ?? card.suit;
-  return `${card.rank}${suit}`;
-}
-
-function labelsOf(cards: Card[]): string {
-  return cards.map(cardLabel).join(" ");
-}
-
 export interface RummyHintInput {
-  hand: Card[];
-  wildJokerRank: Rank;
-  /** Whether it is this player's turn, and which half of it. */
-  isMyTurn: boolean;
-  turnAction: "draw" | "discardOrDeclare";
-  /** Top of the open pile, or null when it is empty. */
-  openTop: Card | null;
+  table: AdvisorTable;
+  /** Display names by player id, for the opponent reads. */
+  names: Readonly<Record<string, string>>;
 }
 
-export function rummyHint(input: RummyHintInput): CoachHint {
-  const { hand, wildJokerRank, isMyTurn, turnAction, openTop } = input;
+const fromShowing = (needed: number): string => (needed === 0 ? "ready to show" : `${plural(needed, "card")} from showing`);
 
-  if (hand.length === 0) {
-    return {
-      kind: "wait",
-      headline: "Nothing to work with yet",
-      detail: "Your hand is empty — wait for the deal.",
-      highlight: [],
-    };
+function melds(evaluation: HandEvaluation): string[][] {
+  return evaluation.arrangement.melds.map((group) => group.map((card) => card.id));
+}
+
+function facts(evaluation: HandEvaluation, unseenTotal: number): CoachAnalysis["facts"] {
+  return [
+    { label: "Cards from showing", value: String(evaluation.needed) },
+    { label: "Chance a draw helps", value: percent(evaluation.chance) },
+    { label: "Points exposed", value: String(evaluation.deadwood) },
+    { label: "Cards unseen", value: String(unseenTotal) },
+  ];
+}
+
+/** What the table has shown about each opponent's hand, in a line a player can act on. */
+function describeReads(reads: OpponentReads, names: RummyHintInput["names"]): string[] {
+  const lines: string[] = [];
+  for (const [id, read] of reads.byPlayer) {
+    if (read.held.length === 0) continue;
+    const who = names[id] ?? "An opponent";
+    lines.push(`${who} took ${labelsOf(read.held)} from the open pile, so cards next to those help them: do not feed them.`);
   }
+  return lines;
+}
 
-  const arrangement = bestArrangementForScoring(hand, wildJokerRank);
-  const groups = arrangement.melds.map((m) => m.map((c) => c.id));
+function describeShape(evaluation: HandEvaluation): string {
+  const { hasPureSequence, hasSecondSequence } = evaluation.arrangement;
+  if (hasPureSequence && hasSecondSequence) return "Both sequences are in: build sets and close the gaps";
+  if (hasPureSequence) return "Pure sequence done: find a second sequence";
+  return "No pure sequence yet: that is the priority";
+}
 
-  // Off-turn the coach still shows the grouping. Planning while an opponent
-  // thinks is the single biggest thing good players do that beginners don't,
-  // so the button is most useful exactly when it is not your move.
-  if (!isMyTurn) {
-    return {
-      kind: "wait",
-      headline: describeShape(arrangement.hasPureSequence, arrangement.hasSecondSequence),
-      detail: arrangement.melds.length
-        ? `Best grouping so far: ${arrangement.melds.map(labelsOf).join(" | ")}. Plan your discard before your turn starts.`
-        : "No melds yet. Look for three cards in a row in one suit — that pure sequence is mandatory.",
-      highlight: arrangement.melds.flat().map((c) => c.id),
-      groups,
-    };
-  }
-
-  if (turnAction === "draw") {
-    const takeOpen = openTop ? chooseDraw(hand, openTop, wildJokerRank) === "open" : false;
-    return {
-      kind: "draw",
-      headline: takeOpen && openTop ? `Take ${cardLabel(openTop)} from the open pile` : "Draw from the closed deck",
-      detail:
-        takeOpen && openTop
-          ? `${cardLabel(openTop)} extends a group you are already building, which is worth more than an unknown card.`
-          : openTop
-          ? `${cardLabel(openTop)} does not help any group you hold. An unknown card from the closed deck has better odds.`
-          : "The open pile is empty, so the closed deck is your only option.",
-      highlight: arrangement.melds.flat().map((c) => c.id),
-      groups,
-    };
-  }
-
-  // discardOrDeclare — the decision that actually wins or loses the round.
-  const declaration = findDeclaration(hand, wildJokerRank);
-  if (declaration) {
-    const toss = hand.find((c) => c.id === declaration.discardCardId);
-    return {
-      kind: "declare",
-      headline: "You can declare — every card is in a valid meld",
-      detail: `Discard ${toss ? cardLabel(toss) : "the spare card"} and declare. Check the grouping first: a wrong show costs the full penalty.`,
-      highlight: [declaration.discardCardId],
-      groups: declaration.melds.map((g) => g.map((c) => c.id)),
-    };
-  }
-
-  const discardId = chooseDiscard(hand, wildJokerRank);
-  const discard = hand.find((c) => c.id === discardId);
+function dropHint(drop: DropVerdict, evaluation: HandEvaluation, rivals: number, unseenTotal: number): CoachHint {
   return {
-    kind: "discard",
-    headline: discard ? `Discard ${cardLabel(discard)}` : "Discard your least useful card",
-    detail: discard
-      ? `${cardLabel(discard)} is the card doing least for your hand${
-          arrangement.hasPureSequence
-            ? ""
-            : " — and you still need a pure sequence, so keep same-suit runs together"
-        }. ${describeGap(arrangement.hasPureSequence, arrangement.hasSecondSequence)}`
-      : "Drop the high card that belongs to no group.",
-    highlight: discard ? [discard.id] : [],
-    groups,
+    kind: "drop",
+    action: { type: "drop" },
+    headline: "Drop this round",
+    detail:
+      `You are ${fromShowing(evaluation.needed)} with ${evaluation.deadwood} points exposed, about ${percent(drop.winChance)} to show first ` +
+      `against ${plural(rivals, "opponent")}. Playing on is expected to cost around ${Math.round(drop.playCost)} points; dropping costs ${drop.dropCost}.`,
+    highlight: [],
+    groups: melds(evaluation),
+    analysis: {
+      status: "A hand this far from showing usually costs more to carry than to leave.",
+      facts: [...facts(evaluation, unseenTotal), { label: "Chance to show first", value: percent(drop.winChance) }],
+      options: [
+        { label: "Drop now", detail: `Pay ${drop.dropCost} points and keep the rest of the round off your back.`, best: true },
+        { label: "Play on", detail: `Expected cost about ${Math.round(drop.playCost)} points.` },
+      ],
+    },
   };
 }
 
-function describeShape(hasPure: boolean, hasSecond: boolean): string {
-  if (hasPure && hasSecond) return "You have both sequences — build sets now";
-  if (hasPure) return "Pure sequence done — find a second sequence";
-  return "No pure sequence yet — that is the priority";
+function drawHint(advice: Extract<Advice, { kind: "draw" }>, table: AdvisorTable, names: RummyHintInput["names"]): CoachHint {
+  const { choice, reads, unseenTotal, drop } = advice;
+  const { current } = choice;
+  if (drop?.advised) return dropHint(drop, current, table.opponents.length, unseenTotal);
+
+  const top = choice.openCard;
+  const takeOpen = choice.from === "open" && top !== null;
+  const analysis: CoachAnalysis = {
+    status: `${describeShape(current)}.`,
+    facts: facts(current, unseenTotal),
+    options: drawOptions(choice, current),
+    reads: describeReads(reads, names),
+  };
+
+  if (current.needed === 0) {
+    return {
+      kind: "draw",
+      action: { type: "draw", from: "closed" },
+      headline: "Draw from the closed deck",
+      detail: "Your hand is already complete: draw any card, throw it back and show.",
+      highlight: [],
+      groups: melds(current),
+      analysis,
+    };
+  }
+
+  if (takeOpen && top) {
+    return {
+      kind: "draw",
+      action: { type: "draw", from: "open" },
+      headline: `Take the ${cardLabel(top)} from the open pile`,
+      detail: openReason(choice, current),
+      highlight: [],
+      groups: melds(current),
+      analysis,
+    };
+  }
+
+  const outs = `${current.outs.reduce((sum, out) => sum + out.copies, 0)} of the ${unseenTotal} unseen cards help (${percent(current.chance)}): ${describeOuts(current.outs)}.`;
+  const why = top
+    ? `The ${cardLabel(top)} does not move you closer, and taking it shows opponents what you want. `
+    : "The open pile has nothing for you. ";
+  return {
+    kind: "draw",
+    action: { type: "draw", from: "closed" },
+    headline: "Draw from the closed deck",
+    detail: `${why}${outs}`,
+    highlight: [],
+    groups: melds(current),
+    analysis,
+  };
 }
 
-function describeGap(hasPure: boolean, hasSecond: boolean): string {
-  if (!hasPure) return "A pure sequence (no joker) is required before anything else counts.";
-  if (!hasSecond) return "You need a second sequence before your sets can be credited.";
-  return "Both sequences are done, so the rest of your cards can go into sets.";
+/** Why the open card is worth taking, stated as what really changes: cards from showing, else odds, else points. */
+function openReason(choice: DrawChoice, current: HandEvaluation): string {
+  const after = choice.openBest;
+  if (!after) return "It improves your hand.";
+  const { evaluation } = after;
+  const thrown = cardLabel(after.card);
+  if (evaluation.needed < current.needed) {
+    return `It ${choice.openCardIsOut ? "is one of the cards your hand wants and " : ""}leaves you ${fromShowing(evaluation.needed)} once you throw the ${thrown}, against ${fromShowing(current.needed)} now.`;
+  }
+  const better: string[] = [];
+  if (evaluation.chance > current.chance + 0.02) better.push(`lifts your chance of improving from ${percent(current.chance)} to ${percent(evaluation.chance)}`);
+  if (evaluation.deadwood < current.deadwood) better.push(`cuts the points you hold from ${current.deadwood} to ${evaluation.deadwood}`);
+  const gain = better.length > 0 ? better.join(" and ") : "is the better card to hold";
+  return `It does not bring you closer to showing, but once you throw the ${thrown} it ${gain}.`;
+}
+
+function drawOptions(choice: DrawChoice, current: HandEvaluation): NonNullable<CoachAnalysis["options"]> {
+  const closed = {
+    label: "Closed deck",
+    detail: `${percent(current.chance)} to bring you closer; ${fromShowing(current.needed)} now.`,
+    best: choice.from === "closed",
+  };
+  if (!choice.openCard || !choice.openBest) return [closed];
+  const open = {
+    label: `Open pile ${cardLabel(choice.openCard)}`,
+    detail: `${fromShowing(choice.openBest.evaluation.needed)} after throwing the ${cardLabel(choice.openBest.card)}.`,
+    best: choice.from === "open",
+  };
+  return choice.from === "open" ? [open, closed] : [closed, open];
+}
+
+function discardOptions(options: readonly DiscardOption[]): NonNullable<CoachAnalysis["options"]> {
+  return options.slice(0, 3).map((option, index) => ({
+    label: `Discard ${cardLabel(option.card)}`,
+    detail: `${fromShowing(option.evaluation.needed)}, ${percent(option.evaluation.chance)} to improve, ${option.evaluation.deadwood} points exposed${
+      option.feedRisk >= 0.5 ? ", and it would feed an opponent" : ""
+    }.`,
+    best: index === 0,
+  }));
+}
+
+function discardHint(advice: Extract<Advice, { kind: "discard" }>, names: RummyHintInput["names"]): CoachHint {
+  const [best, runnerUp] = advice.options;
+  if (!best) {
+    return { kind: "wait", headline: "Nothing to discard", detail: "Your hand is empty.", highlight: [] };
+  }
+  const after = best.evaluation;
+  const closeCall = runnerUp && runnerUp.score - best.score < 0.4 ? ` The ${cardLabel(runnerUp.card)} is nearly as good.` : "";
+  const outs = after.needed > 0 ? ` ${percent(after.chance)} of unseen cards help: ${describeOuts(after.outs)}.` : "";
+  const feed = best.feedRisk >= 0.5 ? " It sits next to a card an opponent picked up, but nothing else is cheaper to lose." : "";
+  const pure = after.arrangement.hasPureSequence ? "" : " You still need a pure sequence (no joker) before any group counts.";
+  return {
+    kind: "discard",
+    action: { type: "discard", cardId: best.card.id },
+    headline: `Discard the ${cardLabel(best.card)}`,
+    detail: `It leaves you ${fromShowing(after.needed)} with ${after.deadwood} points exposed.${outs}${feed}${closeCall}${pure}`,
+    highlight: [best.card.id],
+    groups: melds(after),
+    analysis: {
+      status: `${describeShape(after)}.`,
+      facts: facts(after, advice.unseenTotal),
+      options: discardOptions(advice.options),
+      reads: describeReads(advice.reads, names),
+    },
+  };
+}
+
+function declareHint(advice: Extract<Advice, { kind: "declare" }>, hand: readonly Card[]): CoachHint {
+  const { show } = advice;
+  const toss = hand.find((card) => card.id === show.discardCardId);
+  return {
+    kind: "declare",
+    action: { type: "declare", discardCardId: show.discardCardId, melds: show.melds },
+    headline: "You can declare: every card is in a valid group",
+    detail: `Discard the ${toss ? cardLabel(toss) : "spare card"} and show. The groups are checked: a pure sequence, a second sequence, and the rest in sets or runs.`,
+    highlight: [show.discardCardId],
+    groups: show.melds,
+  };
+}
+
+function waitHint(advice: Extract<Advice, { kind: "wait" }>, names: RummyHintInput["names"]): CoachHint {
+  const evaluation = advice.evaluation;
+  if (!evaluation) {
+    return { kind: "wait", headline: "Nothing to work with yet", detail: "Your hand is empty: wait for the deal.", highlight: [] };
+  }
+  const grouped = evaluation.arrangement.melds;
+  return {
+    kind: "wait",
+    headline: describeShape(evaluation),
+    detail: grouped.length
+      ? `Best grouping so far: ${grouped.map(labelsOf).join(" | ")}. You are ${fromShowing(evaluation.needed)}; plan your discard before your turn.`
+      : "No groups yet. Look for three cards in a row in one suit: that pure sequence is mandatory.",
+    highlight: grouped.flat().map((card) => card.id),
+    groups: melds(evaluation),
+    analysis: {
+      status: "Planning while an opponent thinks is what good players do with this time.",
+      facts: facts(evaluation, 0).slice(0, 3),
+      reads: describeReads(advice.reads, names),
+    },
+  };
+}
+
+export function rummyHint(input: RummyHintInput, tuning: AdvisorTuning = DEFAULT_TUNING): CoachHint {
+  const { table, names } = input;
+  const advice = advise(table, tuning);
+  switch (advice.kind) {
+    case "declare":
+      return declareHint(advice, table.hand);
+    case "discard":
+      return discardHint(advice, names);
+    case "draw":
+      return drawHint(advice, table, names);
+    case "wait":
+      return waitHint(advice, names);
+  }
 }
