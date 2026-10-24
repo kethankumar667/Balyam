@@ -36,6 +36,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("Nostalgia Network Hub footer", () => {
+  it("opts out of flex shrinking at the footer's clipping boundary", () => {
+    show();
+    expect(screen.getByRole("contentinfo")).toHaveClass("shrink-0");
+  });
+
   it("groups real player destinations into Play, Community and Trust", () => {
     show();
     const navigation = screen.getByRole("navigation", { name: "Footer navigation" });

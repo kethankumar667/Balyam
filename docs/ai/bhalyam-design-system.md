@@ -27,8 +27,12 @@
 
 ### Nostalgia Network Hub footer
 
-The home `Footer` sits outside the page's constrained content wrapper. Its
-`footer.*` Tailwind palette stays midnight/navy in both app themes without
+The home `Footer` sits outside the page's constrained content wrapper and
+uses `shrink-0` to retain its full content height in the home's flex column.
+Without it, the viewport-height shell can shrink the footer to its border,
+and its decorative `overflow-hidden` clips the entire directory. Verify
+scroll reachability on the actual home page, not only an isolated footer.
+Its `footer.*` Tailwind palette stays midnight/navy in both app themes without
 changing the document theme. Existing display, body, script and utility
 fonts carry the brand; an original SVG playground turns chalk markings into
 a digital route ending at the emblem. Decorative SVGs are noninteractive
