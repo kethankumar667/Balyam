@@ -431,8 +431,7 @@ export default function RummyBoardMobile({
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  // Hamburger menu (consolidates every secondary action behind a single ☰ icon
-  // so the top strip can stay 20px tall).
+  // Secondary panels stay in the menu; table worlds and fullscreen have header shortcuts.
   const [menuOpen, setMenuOpen] = useState(false);
   // Tiny "Copied!" toast on the room-code copy button.
   const [copiedFlash, setCopiedFlash] = useState(false);
@@ -1301,8 +1300,7 @@ export default function RummyBoardMobile({
         active={state.phase === "playing" && state.turnPlayerId === selfId}
       />
 
-      {/* 20px top strip — Leave · RoomPill · Hamburger.
-          Everything else is the felt. */}
+      {/* Leave · RoomPill · Table world · Fullscreen · Menu. */}
       <TopStrip
         gameLabel={
           state.matchMode === "pool101"
@@ -1559,12 +1557,11 @@ export default function RummyBoardMobile({
       {/* Tutorial overlay */}
       {tutorialOpen && <TutorialModal onClose={() => setTutorialOpen(false)} />}
 
-      {/* Hamburger menu — single entry point for every secondary action.
+      {/* Hamburger menu — secondary panels and settings.
           Each row closes the menu and opens the relevant detail modal. */}
       {menuOpen && (
         <RummyModal title="Menu" onClose={() => setMenuOpen(false)}>
           <div className="grid grid-cols-1 gap-1.5">
-            <TableWorldControl game="rummy" variant="row" className="text-nostalgia-paper bg-black/25 border border-amber-500/20" onChanged={() => setMenuOpen(false)} />
             <MenuRow emoji="👥" label="Players" onClick={() => { setMenuOpen(false); setPlayersOpen(true); }} />
             <MenuRow
               emoji="🙂"
@@ -2182,19 +2179,21 @@ function TopStrip({
         <QrCodeModal open={true} code={roomCode} onClose={() => setShowQrModal(false)} />
       )}
 
-      {/* Right — Fullscreen toggle + Hamburger. The fullscreen toggle is
+      {/* Right — Table world, Fullscreen toggle, and Hamburger. The fullscreen toggle is
           always visible (not buried in the menu) because players reach for
           it frequently — to swap orientation, to recover from an accidental
           ESC, or because their device decided to show the URL bar mid-game.
           Hidden on devices where the API isn't available (iPhone Safari). */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5">
+        <TableWorldControl game="rummy" variant="icon"
+          className="mt-1 bg-black/30 text-amber-200 transition-colors hover:bg-black/45 motion-reduce:transition-none" />
         {fullscreenSupported && (
           <button
             onClick={onToggleFullscreen}
             aria-label={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
             aria-pressed={fullscreenOn}
             title={fullscreenOn ? "Exit fullscreen" : "Enter fullscreen"}
-            className="w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-[#fde68a] cursor-pointer transition-colors duration-200"
+            className="w-11 h-11 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-[#fde68a] cursor-pointer transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 motion-reduce:transition-none"
             style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
           >
             {fullscreenOn ? (
@@ -2208,7 +2207,7 @@ function TopStrip({
           onClick={onOpenMenu}
           aria-label="Open menu"
           title="Menu"
-          className="relative w-7 h-7 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-nostalgia-paper"
+          className="relative w-11 h-11 mt-1 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/45 text-sm flex-shrink-0 text-nostalgia-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
           style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
         >
           ☰

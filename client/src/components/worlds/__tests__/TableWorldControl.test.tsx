@@ -48,6 +48,48 @@ describe("the host's control for the table's world, during a match", () => {
     expect(row.className).toMatch(/min-h-\[44px\]/);
   });
 
+  it("gives the Rummy host a labelled, touch-sized icon that opens the existing picker", () => {
+    seatAs(HOST_ID, stateOf({ game: "rummy" }));
+    render(<TableWorldControl game="rummy" variant="icon" />);
+    const trigger = screen.getByRole("button", { name: "Change the table's world" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(trigger).not.toHaveTextContent("World");
+    expect(trigger).toHaveClass("min-h-[44px]", "min-w-[44px]");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("uses the icon's picker to request a world and shows a refusal without changing the table", () => {
+    act(() => useAuthStore.setState({ capabilities: capabilitiesFor("super_admin") }));
+    emit.mockImplementation((_event: string, _world: string, ack?: (r: { ok: boolean; error?: string }) => void) =>
+      ack?.({ ok: false, error: "Only the host can change the world" }));
+    seatAs(HOST_ID, stateOf({ game: "rummy" }));
+    render(<TableWorldControl game="rummy" variant="icon" />);
+    const trigger = screen.getByRole("button", { name: "Change the table's world" });
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("radio", { name: new RegExp(WORLD_META.neon.name) }));
+    expect(emit).toHaveBeenCalledWith("room:setWorld", "neon", expect.any(Function));
+    expect(screen.getByRole("alert")).toHaveTextContent("Only the host can change the world");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(useRoomStore.getState().roomState?.world).toBe("classic");
+  });
+
+  it.each([
+    ["another player", "someone-else", "playing"],
+    ["a finished table", HOST_ID, "finished"],
+    ["the lobby", HOST_ID, "lobby"],
+  ] as const)("hides the icon for %s", (_label, playerId, phase) => {
+    seatAs(playerId, stateOf({ game: "rummy", phase }));
+    const { container } = render(<TableWorldControl game="rummy" variant="icon" />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("gives a player who is not the host nothing", () => {
     seatAs("someone-else", stateOf());
     const { container } = render(<TableWorldControl game="ludo" variant="row" />);

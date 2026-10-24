@@ -89,6 +89,17 @@ describe("a printed card is the same in every world", () => {
 });
 
 describe("the worlds are wired into both layouts", () => {
+  it("puts the mobile world icon before fullscreen, outside the hamburger menu", () => {
+    const header = MOBILE.slice(MOBILE.indexOf("function TopStrip("));
+    const control = header.indexOf('<TableWorldControl game="rummy" variant="icon"');
+    expect(control).toBeGreaterThan(-1);
+    expect(control).toBeLessThan(header.indexOf("{fullscreenSupported &&"));
+    expect(control).toBeLessThan(header.indexOf("onClick={onOpenMenu}"));
+    expect(MOBILE.match(/<TableWorldControl\b/g)).toHaveLength(1);
+    expect(MOBILE).not.toContain('<TableWorldControl game="rummy" variant="row"');
+    expect(DESKTOP).toContain('<TableWorldControl game="rummy" variant="chip"');
+  });
+
   it("confines the earned School Slate material to the classic world in both layouts", () => {
     for (const layout of [DESKTOP, MOBILE]) {
       expect(layout).toContain('useTableTheme("rummy")');

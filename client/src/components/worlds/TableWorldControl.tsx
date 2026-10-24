@@ -1,4 +1,5 @@
 import type { GameKind } from "@shared/types";
+import { Palette } from "lucide-react";
 import { useRoomStore } from "../../store/roomStore";
 import { WORLD_META } from "../../lib/worlds/worldMeta";
 import { useWorldChoice } from "../../lib/worlds/useWorldChoice";
@@ -8,10 +9,10 @@ import { WorldSwatch } from "./WorldSwatch";
 export interface TableWorldControlProps {
   game: GameKind;
   /**
-   * `row` fills a menu with the world's swatch and name; `chip` is a compact header button. Both open the same picker,
-   * and both are plain buttons the game's own menu or header places where it likes.
+   * `row` fills a menu with the world's swatch and name; `chip` is a text header button; `icon` is a touch-sized palette.
+   * All open the same picker.
    */
-  variant: "row" | "chip";
+  variant: "row" | "chip" | "icon";
   /** Extra classes for the trigger, so each game can dress it like its own buttons. */
   className?: string;
   /** Runs once the server has changed the world, so the menu this sits in can close and show the new table. */
@@ -47,8 +48,13 @@ export function TableWorldControl({ game, variant, className = "", onChanged }: 
           <span className="flex-shrink-0 text-xs font-bold underline underline-offset-2">Change</span>
         </button>
       ) : (
-        <button type="button" onClick={choice.open} className={className} title="Change the table's world" aria-label="Change the table's world">
-          World
+        <button type="button" onClick={choice.open}
+          className={variant === "icon"
+            ? `inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${className}`
+            : className}
+          title="Change the table's world" aria-label="Change the table's world"
+          aria-haspopup="dialog" aria-expanded={choice.isOpen}>
+          {variant === "icon" ? <Palette size={18} aria-hidden="true" /> : "World"}
         </button>
       )}
       <WorldPickerDialog

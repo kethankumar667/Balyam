@@ -38,6 +38,9 @@ the whole table.
   reads as the classic world.
 - The client counts a win in `useCountWorldWin` (Room), reads progress in `useWorldProgress`, and shows the choice in
   `LobbyWorld` / `WorldPickerDialog`.
+- Rummy's mobile/landscape header exposes the host's live-world picker as a labelled palette icon immediately before
+  fullscreen (or before Menu when fullscreen is unsupported), rather than a duplicate row inside Menu. It retains the
+  same host/unlock/server-confirmation rules. The desktop header keeps its existing World chip.
 
 ## Consequences
 
