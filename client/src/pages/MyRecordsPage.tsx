@@ -10,6 +10,7 @@ import { useAuthStore } from "../store/authStore";
 import { usePlayerId } from "../lib/playerIdentity";
 import { launchLinkProps } from "../lib/gameLaunch";
 import { buildRecords, formatRecordScore, goalProgress, recordSummary, recordValue, recordDate, type RecordGame } from "../features/myrecords/records";
+import { importDeviceBests, listDeviceBests } from "../features/myrecords/deviceRecords";
 import { RecordHistory, RecordJourney } from "../features/myrecords/RecordPanels";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
@@ -17,10 +18,12 @@ const PANEL = "rounded-2xl border border-[var(--chrome-hairline)] bg-surface-1 s
 const FOCUS = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500";
 
 export default function MyRecordsPage() {
-  const { playerId } = usePlayerId();
+  const { playerId, kind } = usePlayerId();
   const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
-  const { archive, localArchive, loading, error, fetchScorecards } = useScorecardStore();
+  const { archive, localArchive, loading, error, fetchScorecards, pendingScoreCount } = useScorecardStore();
   const [mounted, setMounted] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncNote, setSyncNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [gameId, setGameId] = useState("handcricket");
   const [modeId, setModeId] = useState("international_t20");
   const [search, setSearch] = useState("");
@@ -41,6 +44,26 @@ export default function MyRecordsPage() {
   }, [playerId, fetchScorecards]);
   const games = useMemo(() => buildRecords(archive, mounted, localArchive?.playerId === playerId ? localArchive : null), [archive, localArchive, mounted, playerId]);
   const summary = useMemo(() => recordSummary(games), [games]);
+  // Only a signed-in member can be offered this: a guest's records already live under that guest, and their
+  // sign-out does not clear the device.
+  const deviceBests = useMemo(
+    () => (mounted && kind === "member" ? listDeviceBests(archive?.playerId === playerId ? archive : null) : []),
+    [archive, kind, mounted, playerId],
+  );
+  const addDeviceBests = async () => {
+    if (!playerId) return;
+    setIsSyncing(true);
+    setSyncNote(null);
+    try {
+      const { accepted } = await importDeviceBests(playerId, deviceBests);
+      setSyncNote({ ok: true, text: `Added ${accepted} ${accepted === 1 ? "best" : "bests"} to your account.` });
+      await fetchScorecards(playerId);
+    } catch (failure) {
+      setSyncNote({ ok: false, text: failure instanceof Error ? failure.message : "Your device records could not be added. Please try again." });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   const filtered = games.filter((game) => `${game.label} ${game.id} ${game.modes.map((mode) => `${mode.displayName} ${mode.description}`).join(" ")} ${game.previousModeRecords.map((saved) => `${saved.modeDisplayName} ${saved.modeId}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
   const game = filtered.find((candidate) => candidate.id === gameId) ?? filtered[0] ?? games[0]!;
   const mode = game.modes.find((candidate) => candidate.modeId === modeId) ?? game.modes.find((candidate) => candidate.modeId === game.config.defaultModeId) ?? game.modes[0]!;
@@ -68,6 +91,23 @@ export default function MyRecordsPage() {
           {isSuperAdmin && <Link to="/admin/leaderboards" className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--chrome-hairline)] px-3 text-xs ${FOCUS}`}>Admin Ratings Panel <ArrowUpRight className="h-4 w-4" aria-hidden /></Link>}
         </header>
         <p className="text-xs leading-relaxed text-ink-mid">Account records are shared across devices. Bests labeled “Saved on this device” are local only and are not imported as account records.</p>
+
+        {pendingScoreCount > 0 && (
+          <div role="status" className={`${PANEL} flex flex-wrap items-center justify-between gap-3 p-4 text-sm`}>
+            <p className="min-w-0 flex-1">{pendingScoreCount === 1 ? "1 result is waiting" : `${pendingScoreCount} results are waiting`} to reach your account. They are saved on this device and sent again automatically.</p>
+            <button type="button" onClick={() => playerId && void fetchScorecards(playerId)} className={`min-h-[44px] rounded-xl border border-[var(--chrome-hairline)] px-4 text-xs font-bold ${FOCUS}`}>Try sending now</button>
+          </div>
+        )}
+        {deviceBests.length > 0 && (
+          <section aria-label="Records only on this device" className={`${PANEL} flex flex-wrap items-center justify-between gap-3 p-4`}>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-base">{deviceBests.length === 1 ? "1 best is only on this device" : `${deviceBests.length} bests are only on this device`}</h2>
+              <p className="mt-1 text-xs leading-relaxed text-ink-mid">Add them to your account so they follow you to every device and survive signing out. They stay private: they show here, but never count on leaderboards.</p>
+            </div>
+            <button type="button" disabled={isSyncing} onClick={() => void addDeviceBests()} className={`min-h-[44px] rounded-xl bg-amber-400 px-5 text-sm font-bold text-[#3B2506] disabled:opacity-60 ${FOCUS}`}>{isSyncing ? "Adding…" : "Add to my account"}</button>
+          </section>
+        )}
+        {syncNote && <p role={syncNote.ok ? "status" : "alert"} className={`${PANEL} p-3 text-sm`}>{syncNote.text}</p>}
 
         {loading && !archive && !summary.gamesExplored ? (
           <div role="status" className={`${PANEL} flex items-center justify-center gap-3 p-12 text-ink-mid`}><RefreshCw className="h-5 w-5 motion-safe:animate-spin" aria-hidden />Loading scorecards...</div>
@@ -153,7 +193,7 @@ export default function MyRecordsPage() {
                           <h2 className="font-display text-2xl sm:text-3xl">{game.label}</h2>
                           <p className="mt-2 font-display text-4xl tabular-nums sm:text-5xl">{recordValue(game, mode)}</p>
                           <p className="mt-1 font-semibold text-amber-100">{mode.displayName}</p>
-                          <p className="mt-3 text-xs text-stone-200">{mode.deviceOnly ? "Saved on this device · Date not recorded" : mode.best !== null ? `Best achieved: ${recordDate(mode.achievedAt)}` : "Play a game to set your first record."}</p>
+                          <p className="mt-3 text-xs text-stone-200">{mode.deviceOnly ? "Saved on this device · Date not recorded" : mode.imported ? "Imported from your device · Date not recorded" : mode.best !== null ? `Best achieved: ${recordDate(mode.achievedAt)}` : "Play a game to set your first record."}</p>
                           {mode.goal !== undefined && <div className="mt-4 max-w-sm">
                             <p className="flex items-center gap-2 text-xs font-semibold"><Target className="h-4 w-4 text-amber-300" aria-hidden />Milestone Target: {formatRecordScore(game, mode, mode.goal)}</p>
                             <p className="mt-1 text-[10px] text-stone-300">A suggested goal, not a reward.</p>
@@ -175,7 +215,7 @@ export default function MyRecordsPage() {
                             <div className="relative h-20 w-full overflow-hidden bg-amber-500/5"><img src={game.image} alt="" loading="lazy" className="absolute right-0 h-full w-20 object-contain opacity-30" /><span className="relative flex items-start gap-2 p-3 text-sm font-bold"><Medal aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />{entry.displayName}</span></div>
                             <div className="flex w-full flex-1 flex-col gap-2 p-3">
                               <p className="text-xs font-bold text-ink-hi">Best: {recordValue(game, entry)}</p>
-                              <p className="text-[11px] text-ink-mid">{entry.deviceOnly ? "Saved on this device" : `Played ${entry.timesPlayed} ${entry.timesPlayed === 1 ? "time" : "times"}`}</p>
+                              <p className="text-[11px] text-ink-mid">{entry.deviceOnly ? "Saved on this device" : entry.imported ? "Imported from your device" : `Played ${entry.timesPlayed} ${entry.timesPlayed === 1 ? "time" : "times"}`}</p>
                               <p className="text-[10px] text-ink-mid">{entry.best !== null ? recordDate(entry.achievedAt) : "Play to set your record"}</p>
                               {goalProgress(entry) !== null && <div className="mt-auto h-1.5 overflow-hidden rounded-full bg-amber-500/10"><div className="h-full rounded-full bg-amber-500" style={{ width: `${goalProgress(entry)}%` }} /></div>}
                             </div>

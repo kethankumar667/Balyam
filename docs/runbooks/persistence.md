@@ -154,8 +154,13 @@ return HTTP 503 and the UI shows a sync error rather than an empty success.
 Durability is not claimed in ephemeral/in-memory mode.
 
 Older device-only scores remain visible with a local-only label. They are not
-uploaded as trusted account history, and scores already lost with a previous
-server process cannot be reconstructed. An older raw per-account browser cache
+uploaded as trusted account history unless the player chooses "Add to my
+account" in My Records (or in the sign-out prompt): that records them as private
+imported bests (`deviceImports`, never ranked, no date or match count). Signing
+out clears the device, so a member's sign-out is checked first and warns about
+anything that exists only on it. A solo result that could not be sent is queued
+on the device and resent, with the same match id, before the next account read.
+Scores already lost with a previous server process cannot be reconstructed. An older raw per-account browser cache
 is retained as a local-only snapshot in the same key's version-2 envelope
 before a successful account refresh can replace it; empty server archives do
 not erase that snapshot. It is not assigned verified counts, dates or a guessed

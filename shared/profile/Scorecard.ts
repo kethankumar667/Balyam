@@ -59,6 +59,33 @@ export interface PlayerScorecardArchive {
   games: Partial<Record<AllGameSlug, GameScorecard>>;
   totalPersonalBestsBeaten: number;
   updatedAt: number;
+  /**
+   * Bests the player chose to bring from a device's own storage. Kept apart from `games` on purpose: a
+   * browser's save can be edited, so these are shown in My Records but never feed a ranking.
+   */
+  deviceImports?: Partial<Record<AllGameSlug, Record<string, ImportedBest>>>;
+}
+
+/** One best brought from a device. There is no date or match count: a browser cannot prove either. */
+export interface ImportedBest {
+  score: number;
+  importedAt: number;
+}
+
+/** What a device sends when its player chooses to add its saved bests to their account. */
+export interface DeviceBestEntry {
+  game: AllGameSlug;
+  modeId: string;
+  score: number;
+}
+
+/** At most this many bests per request: one per game mode, with room to spare. */
+export const MAX_DEVICE_IMPORT_ENTRIES = 80;
+
+/** The receipt stored for an import, in the same table as score receipts. */
+export interface DeviceImportResult {
+  kind: "device_import";
+  accepted: DeviceBestEntry[];
 }
 
 /**

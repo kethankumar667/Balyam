@@ -11,6 +11,7 @@ import { getSocket } from "./lib/socket";
 import { useAdminAutoCheck } from "./lib/useAdminAutoCheck";
 import { useGuestCarryOver } from "./lib/guestCarryOver";
 import { useGuestNameHygiene } from "./hooks/useGuestNameHygiene";
+import { useScoreSyncOnReconnect } from "./hooks/useScoreSyncOnReconnect";
 import { useCosmeticsBootstrap } from "./hooks/useCosmeticsBootstrap";
 import { useLevelUpWatcher } from "./hooks/useLevelUpWatcher";
 import { LevelUpAscension } from "./components/progression/LevelUpAscension";
@@ -277,6 +278,7 @@ function ScrollToTopOnRouteChange() {
 
 import { RecoveryProvider } from "./core/recovery/RecoveryProvider";
 import ToastHost from "./components/ToastHost";
+import SignOutGuardDialog from "./components/records/SignOutGuardDialog";
 import { TooltipProvider } from "./design-system/dls/Tooltip";
 import { useStructuredData } from "./seo/useStructuredData";
 import { useMetadata } from "./seo/useMetadata";
@@ -289,6 +291,7 @@ function AppBootstrap() {
   }, []);
   useAdminAutoCheck();
   useGuestCarryOver();
+  useScoreSyncOnReconnect();
   useGuestNameHygiene();
   useCosmeticsBootstrap();
   useLevelUpWatcher();
@@ -372,6 +375,7 @@ export default function App({ components = {} }: AppProps) {
           <AgeGateModal />
           <ConsentModal />
           <CarryOverArrivalDialog />
+          <SignOutGuardDialog />
           <CoinJoyOverlay />
           <LevelUpAscension />
           <XpGainToast />

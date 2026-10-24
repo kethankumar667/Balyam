@@ -153,12 +153,20 @@ export function buildRecords(archive: PlayerScorecardArchive | null, useDevice =
         const saved = savedModes[mode.modeId];
         const deviceBest = deviceBestForMode(game.id, mode.modeId, deviceData);
         const hasSavedBest = hasRecordedBest(saved);
+        // A best the player brought from a device is the account's own, but it has no date and no match count, and it
+        // never replaces a better recorded best.
+        const importedBest = positive(archive?.deviceImports?.[game.id]?.[mode.modeId]?.score);
+        const isImportedBetter = importedBest !== null &&
+          (!hasSavedBest || isBetterScore(importedBest, saved.bestScore, mode.scoringDirection));
+        const accountBest = isImportedBetter ? importedBest : hasSavedBest ? saved.bestScore : null;
         return {
           ...mode,
-          best: hasSavedBest ? saved.bestScore : deviceBest,
-          deviceOnly: !hasSavedBest && deviceBest !== null,
+          best: accountBest ?? deviceBest,
+          imported: isImportedBetter,
+          deviceBest,
+          deviceOnly: accountBest === null && deviceBest !== null,
           timesPlayed: saved?.timesPlayed ?? 0,
-          achievedAt: hasSavedBest ? saved.bestScoreAchievedAt : undefined,
+          achievedAt: hasSavedBest && !isImportedBetter ? saved.bestScoreAchievedAt : undefined,
           recentScores: (saved?.recentScores ?? []).filter(Number.isFinite).slice(0, 5).reverse(),
           average: saved?.averageScore,
           goal: RECORD_GOALS[game.id]?.[mode.modeId],
@@ -166,6 +174,11 @@ export function buildRecords(archive: PlayerScorecardArchive | null, useDevice =
       }),
     };
   });
+}
+
+/** `better` as the mode reads it: a lower time wins in some modes, a higher score in the rest. */
+export function isBetterScore(candidate: number, current: number, direction: ModeScorecard["scoringDirection"]): boolean {
+  return direction === "LOWER_IS_BETTER" ? candidate < current : candidate > current;
 }
 
 function hasRecordedBest(saved: ModeScorecard | undefined): saved is ModeScorecard {

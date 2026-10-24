@@ -4,7 +4,8 @@ import { requireSelfParam, callerId } from "../auth/identity.js";
 import { validateRecordScorePayload } from "./scoreValidation.js";
 import { rateLimitByCaller } from "../lib/httpRateLimiter.js";
 import type { RecordScorePayload, AllGameSlug } from "@shared/profile/Scorecard.js";
-import { persistScorecard, readPersistedScorecards } from "./scorecardPersistence.js";
+import { persistDeviceImports, persistScorecard, readPersistedScorecards } from "./scorecardPersistence.js";
+import { parseDeviceImportBody } from "./deviceImport.js";
 import { progressionSync } from "../persistence/ProgressionSync.js";
 import { logger } from "../lib/logger.js";
 import { randomUUID } from "node:crypto";
@@ -103,5 +104,35 @@ scorecardRouter.post("/:playerId/scorecards/record", requireSelfParam(), recordR
   } catch (error) {
     logger.error({ module: "SCORECARDS", message: `Failed to save account record: ${String(error)}` });
     res.status(503).json({ error: "Your account record could not be saved. Please retry." });
+  }
+});
+
+/**
+ * PRIVATE — POST /api/profile/:playerId/scorecards/import-device
+ *
+ * Adds the bests a device holds to the caller's own private record. They are shown in My Records and never
+ * ranked (see `applyDeviceImports`). A player triggers this on purpose, a handful of times at most.
+ */
+const importRateLimit = rateLimitByCaller({
+  capacity: 6,
+  refillPerSec: 0.05,
+  keyOf: (req) => callerId(req) ?? req.ip ?? "anonymous",
+});
+
+scorecardRouter.post("/:playerId/scorecards/import-device", requireSelfParam(), importRateLimit, async (req, res) => {
+  const targetId = callerId(req);
+  const parsed = parseDeviceImportBody(req.body);
+  if (!parsed.ok) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+
+  try {
+    const result = await progressionSync.afterPending(() => persistDeviceImports(targetId, parsed.entries));
+    scorecardService.restoreArchive(await progressionSync.afterPending(() => readPersistedScorecards(targetId)));
+    res.json({ accepted: result.accepted, skipped: result.skipped });
+  } catch (error) {
+    logger.error({ module: "SCORECARDS", message: `Failed to import device records: ${String(error)}` });
+    res.status(503).json({ error: "Your device records could not be added to your account. Please retry." });
   }
 });

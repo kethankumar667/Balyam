@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockApiJson = vi.fn();
 const mockApiFetch = vi.fn();
+const mockPeek = vi.fn();
 vi.mock("../../lib/playerIdentity", () => ({
   apiJson: (...args: unknown[]) => mockApiJson(...args),
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
   getPlayerCredential: vi.fn().mockResolvedValue(null),
-  peekPlayerCredential: vi.fn().mockReturnValue(null),
+  peekPlayerCredential: (...args: unknown[]) => mockPeek(...args),
 }));
 
 // Imported AFTER the mock so the store picks up the mocked apiJson.
@@ -137,5 +138,127 @@ describe("scorecardStore — cross-account isolation", () => {
     expect(result).toBeNull();
     expect(useScorecardStore.getState().error).toContain("could not be synced");
     expect(useScorecardStore.getState().lastNewPB).toBeNull();
+  });
+});
+
+describe("scorecardStore — scores that could not be saved are kept and sent again", () => {
+  const payload = (matchId: string, score = 18) => ({
+    game: "nokiacricket" as const, modeId: "classic_1", score, context: "SOLO" as const, matchId,
+  });
+  const ok = { ok: true, status: 200, json: async () => ({ result: null }) };
+  const asPlayer = (playerId: string | null) =>
+    mockPeek.mockReturnValue(playerId ? { playerId, token: "t", kind: "member" } : null);
+  const sentMatchIds = () =>
+    mockApiFetch.mock.calls.map(([, init]) => (JSON.parse((init as { body: string }).body) as { matchId: string }).matchId);
+
+  beforeEach(() => {
+    mockApiJson.mockReset();
+    mockApiFetch.mockReset();
+    mockPeek.mockReset();
+    asPlayer("playerA");
+    useScorecardStore.setState({
+      archive: null, localArchive: null, loading: false, error: null, lastNewPB: null, activeGhostPace: null, pendingScoreCount: 0,
+    });
+    localStorage.clear();
+  });
+
+  it("queues a score the server could not take, and says it will be sent again", async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+    const result = await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+
+    expect(result).toBeNull();
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(1);
+    expect(useScorecardStore.getState().error).toContain("sent again");
+  });
+
+  it("queues a score when the request never got through at all", async () => {
+    mockApiFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(1);
+  });
+
+  it("does not queue a score the server refused as invalid, because it would never be accepted", async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 400 });
+
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(0);
+  });
+
+  it("sends queued scores before it reads the account, then clears the queue", async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+    mockApiFetch.mockReset();
+    mockApiFetch.mockResolvedValue(ok);
+    mockApiJson.mockResolvedValueOnce({ archive: archiveFor("playerA") });
+
+    await useScorecardStore.getState().fetchScorecards("playerA");
+
+    expect(sentMatchIds()).toEqual(["m1"]);
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(0);
+    expect(mockApiFetch.mock.invocationCallOrder[0]).toBeLessThan(mockApiJson.mock.invocationCallOrder[0]!);
+  });
+
+  it("keeps the rest, in order, when the server is still unavailable", async () => {
+    mockApiFetch.mockResolvedValue({ ok: false, status: 503 });
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+    await useScorecardStore.getState().recordScore("playerA", payload("m2"));
+    mockApiFetch.mockReset();
+    mockApiFetch.mockResolvedValueOnce(ok).mockResolvedValue({ ok: false, status: 503 });
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+
+    await useScorecardStore.getState().fetchScorecards("playerA");
+
+    expect(sentMatchIds()).toEqual(["m1", "m2"]);
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(1);
+  });
+
+  it("gives up on a queued score the server rejects as invalid, but keeps one it merely could not reach", async () => {
+    mockApiFetch.mockResolvedValue({ ok: false, status: 503 });
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+    await useScorecardStore.getState().recordScore("playerA", payload("m2"));
+    mockApiFetch.mockReset();
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 400 }).mockResolvedValue({ ok: false, status: 503 });
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+
+    await useScorecardStore.getState().fetchScorecards("playerA");
+
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(1);
+  });
+
+  it("never sends one account's queued scores while a different account is signed in", async () => {
+    mockApiFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+    mockApiFetch.mockReset();
+    asPlayer("playerB");
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerB") });
+
+    await useScorecardStore.getState().fetchScorecards("playerB");
+
+    expect(mockApiFetch).not.toHaveBeenCalled();
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(0);
+  });
+
+  it("counts a queued score once however many times it is retried", async () => {
+    mockApiFetch.mockResolvedValue({ ok: false, status: 503 });
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+
+    await useScorecardStore.getState().fetchScorecards("playerA");
+    await useScorecardStore.getState().fetchScorecards("playerA");
+
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(1);
+  });
+
+  it("leaves the queue empty when a score is saved first time", async () => {
+    mockApiFetch.mockResolvedValue({ ...ok, json: async () => ({ result: { isNewPersonalBest: false } }) });
+    mockApiJson.mockResolvedValue({ archive: archiveFor("playerA") });
+
+    await useScorecardStore.getState().recordScore("playerA", payload("m1"));
+
+    expect(useScorecardStore.getState().pendingScoreCount).toBe(0);
   });
 });

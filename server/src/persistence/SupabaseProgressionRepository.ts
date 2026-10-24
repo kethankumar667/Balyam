@@ -22,6 +22,7 @@ import type {
   XpLedgerEntry,
   ScorecardSnapshot,
   ScorecardCommit,
+  ScorecardReceipt,
 } from "./ProgressionRepository.js";
 import type { PlayerScorecardArchive, RecordScoreResult } from "@shared/profile/Scorecard.js";
 
@@ -80,7 +81,7 @@ export class SupabaseProgressionRepository implements ProgressionRepository {
   }
 
   async commitScorecard(playerId: string, expectedRevision: number, eventKey: string,
-    archive: PlayerScorecardArchive, result: RecordScoreResult): Promise<ScorecardCommit> {
+    archive: PlayerScorecardArchive, result: ScorecardReceipt): Promise<ScorecardCommit> {
     return this.db.rpc<ScorecardCommit>("commit_player_scorecard", {
       p_player_id: playerId, p_expected_revision: expectedRevision, p_event_key: eventKey,
       p_archive: archive, p_result: result,

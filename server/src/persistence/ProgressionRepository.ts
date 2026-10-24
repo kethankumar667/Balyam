@@ -36,16 +36,19 @@
  * crosses this boundary.
  */
 
-import type { PlayerScorecardArchive, RecordScoreResult } from "@shared/profile/Scorecard.js";
+import type { DeviceImportResult, PlayerScorecardArchive, RecordScoreResult } from "@shared/profile/Scorecard.js";
 
 export interface ScorecardSnapshot {
   revision: number;
   archive: PlayerScorecardArchive | null;
 }
 
+/** What a committed archive change leaves as its receipt: a recorded score, or a device import. */
+export type ScorecardReceipt = RecordScoreResult | DeviceImportResult;
+
 export interface ScorecardCommit {
   committed: boolean;
-  result?: RecordScoreResult;
+  result?: ScorecardReceipt;
 }
 
 export type PlayerKind = "member" | "guest";
@@ -275,7 +278,7 @@ export interface MatchTrendBucket {
 export interface ProgressionRepository {
   getScorecardSnapshot(playerId: string): Promise<ScorecardSnapshot>;
   commitScorecard(playerId: string, expectedRevision: number, eventKey: string,
-    archive: PlayerScorecardArchive, result: RecordScoreResult): Promise<ScorecardCommit>;
+    archive: PlayerScorecardArchive, result: ScorecardReceipt): Promise<ScorecardCommit>;
   /** Which implementation this is. Reported by `/health`, logged at boot. */
   readonly kind: "memory" | "supabase";
 

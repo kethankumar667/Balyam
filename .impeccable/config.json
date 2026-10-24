@@ -50,6 +50,15 @@
         ],
         "createdAt": "2026-10-13T18:43:08.711Z",
         "reason": "assistant triage 2026-10-14: lines 264/455 are pre-existing buttons using stone-950 on amber-500 and white on stone-900, both high-contrast, not gray; not user confirmed"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "client/src/pages/MyRecordsPage.tsx"
+        ],
+        "createdAt": "2026-10-24T07:05:18.359Z",
+        "reason": "assistant: pre-existing text-slate-950 (near-black) on bg-amber-400/500 buttons, about 11:1 contrast; the detector reads slate as gray"
       }
     ]
   }

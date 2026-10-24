@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { apiJson, apiFetch, getPlayerCredential } from "../lib/playerIdentity";
+import { apiJson, apiFetch, getPlayerCredential, peekPlayerCredential } from "../lib/playerIdentity";
+import { enqueueScore, pendingScores, removeScore } from "../lib/scoreOutbox";
+import { toast } from "../hooks/useToast";
 import type {
   PlayerScorecardArchive,
   RecordScorePayload,
@@ -16,8 +18,11 @@ interface ScorecardState {
   error: string | null;
   activeGhostPace: GhostPaceStatus | null;
   lastNewPB: RecordScoreResult | null;
+  /** Results this player finished that the account has not confirmed yet. They are kept and sent again. */
+  pendingScoreCount: number;
 
   fetchScorecards: (playerId: string) => Promise<void>;
+  flushPendingScores: (playerId: string) => Promise<{ sent: number; remaining: number }>;
   recordScore: (playerId: string, payload: RecordScorePayload) => Promise<RecordScoreResult | null>;
   updateLivePace: (game: AllGameSlug, modeId: string, currentScore: number) => void;
   dismissPBModal: () => void;
@@ -75,6 +80,23 @@ function saveCachedArchive(playerId: string, archive: PlayerScorecardArchive, lo
  */
 let scorecardFetchGeneration = 0;
 
+const SYNC_QUEUED_MESSAGE =
+  "Your score could not be synced to your account yet. It is saved on this device and will be sent again automatically.";
+const SYNC_FAILED_MESSAGE = "Your score could not be synced to your account. Check your connection and try again.";
+
+/**
+ * Whether a failed save is worth trying again. Only a result the server judged invalid (400, 422) never will be
+ * accepted; a dropped connection, a server waking up, a 5xx, a rate limit or an expired sign-in all can be.
+ * A response with no status is treated as retryable too, since keeping a score costs little and losing one is
+ * the bug this queue exists to prevent.
+ */
+function isRetryableStatus(status: number | undefined): boolean {
+  return status !== 400 && status !== 422;
+}
+
+const scoreEndpoint = (playerId: string) => `/api/profile/${playerId}/scorecards/record`;
+const flushesInFlight = new Map<string, Promise<{ sent: number; remaining: number }>>();
+
 export const useScorecardStore = create<ScorecardState>((set, get) => ({
   archive: null,
   localArchive: null,
@@ -82,6 +104,51 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
   error: null,
   activeGhostPace: null,
   lastNewPB: null,
+  pendingScoreCount: 0,
+
+  /**
+   * Send the results that could not be saved earlier, oldest first, stopping at the first one the server
+   * cannot take so their order is kept. Only the signed-in player's own results are sent: a queued score
+   * belongs to the account that earned it, and another account must never be asked to carry it.
+   */
+  flushPendingScores: (playerId: string) => {
+    const running = flushesInFlight.get(playerId);
+    if (running) return running;
+
+    const run = (async () => {
+      const queued = pendingScores(playerId);
+      if (queued.length === 0 || peekPlayerCredential()?.playerId !== playerId) {
+        set({ pendingScoreCount: queued.length });
+        return { sent: 0, remaining: queued.length };
+      }
+
+      let sent = 0;
+      for (const entry of queued) {
+        try {
+          const res = await apiFetch(scoreEndpoint(playerId), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry.payload),
+          });
+          if (res.ok || !isRetryableStatus(res.status)) {
+            removeScore(playerId, entry.payload);
+            if (res.ok) sent += 1;
+            continue;
+          }
+        } catch (err) {
+          console.warn("Could not resend a queued score:", err);
+        }
+        break;
+      }
+
+      const remaining = pendingScores(playerId).length;
+      set({ pendingScoreCount: remaining });
+      return { sent, remaining };
+    })().finally(() => flushesInFlight.delete(playerId));
+
+    flushesInFlight.set(playerId, run);
+    return run;
+  },
 
   fetchScorecards: async (playerId: string) => {
     if (!playerId) return;
@@ -98,6 +165,15 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       loading: true, error: null,
       ...(current?.playerId !== playerId ? { lastNewPB: null, activeGhostPace: null } : {}),
     });
+
+    // Results that could not be saved earlier go first, so the archive read below already includes them.
+    // Nothing is awaited when nothing is queued, which is almost always.
+    const waiting = pendingScores(playerId).length;
+    set({ pendingScoreCount: waiting });
+    if (waiting > 0) {
+      await get().flushPendingScores(playerId);
+      if (myGeneration !== scorecardFetchGeneration) return;
+    }
 
     try {
       const data = await apiJson<{ archive: PlayerScorecardArchive }>(
@@ -133,14 +209,18 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
     if (!effectivePlayerId) return null;
     const generation = scorecardFetchGeneration;
 
+    let retryable = true;
     try {
-      const res = await apiFetch(`/api/profile/${effectivePlayerId}/scorecards/record`, {
+      const res = await apiFetch(scoreEndpoint(effectivePlayerId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to record score");
+      if (!res.ok) {
+        retryable = isRetryableStatus(res.status);
+        throw new Error("Failed to record score");
+      }
       const data = (await res.json()) as { result: RecordScoreResult };
 
       if (data?.result) {
@@ -158,8 +238,14 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       }
     } catch (err) {
       console.warn("Failed to record score:", err);
+      // Keep the result instead of losing it: the game has already shown it as a record from its own save,
+      // so nothing else will ever tell the account. It is sent again, with the same matchId, until it lands.
+      const pending = retryable ? enqueueScore(effectivePlayerId, payload) : pendingScores(effectivePlayerId).length;
+      if (retryable) {
+        toast.warning("Score saved on this device. We'll add it to your account as soon as we can reach the server.");
+      }
       if (generation === scorecardFetchGeneration) {
-        set({ error: "Your score could not be synced to your account. Check your connection and try again." });
+        set({ pendingScoreCount: pending, error: retryable ? SYNC_QUEUED_MESSAGE : SYNC_FAILED_MESSAGE });
       }
     }
     return null;
@@ -226,6 +312,7 @@ export const useScorecardStore = create<ScorecardState>((set, get) => ({
       activeGhostPace: null,
       error: null,
       loading: false,
+      pendingScoreCount: 0,
     });
   },
 }));

@@ -20,6 +20,42 @@ function archived(game: AllGameSlug, modes: Record<string, ModeScorecard>): Play
   } };
 }
 
+describe("bests brought from a device", () => {
+  const withImport = (score: number, saved?: ModeScorecard): PlayerScorecardArchive => ({
+    ...(saved ? archived("nokiacricket", { classic_1: saved }) : { playerId: "test", games: {}, totalPersonalBestsBeaten: 0, updatedAt: 1 }),
+    deviceImports: { nokiacricket: { classic_1: { score, importedAt: 5 } } },
+  });
+  const classic1 = (archive: PlayerScorecardArchive | null) =>
+    buildRecords(archive, false).find((entry) => entry.id === "nokiacricket")!.modes.find((mode) => mode.modeId === "classic_1")!;
+
+  it("shows an imported best as the account's own, labelled as imported, with no date or match count", () => {
+    expect(classic1(withImport(150))).toMatchObject({ best: 150, imported: true, deviceOnly: false, timesPlayed: 0, achievedAt: undefined });
+  });
+
+  it("keeps a real recorded best when it is higher than the import", () => {
+    expect(classic1(withImport(150, scorecard("classic_1", 200)))).toMatchObject({ best: 200, imported: false, timesPlayed: 2 });
+  });
+
+  it("shows the import when it is higher than the real record, without borrowing that record's date", () => {
+    expect(classic1(withImport(300, scorecard("classic_1", 200)))).toMatchObject({ best: 300, imported: true, achievedAt: undefined });
+  });
+
+  it("counts an imported best as a personal best but never as a recorded match", () => {
+    const game = buildRecords(withImport(150), false).find((entry) => entry.id === "nokiacricket")!;
+    expect(recordSummary([game])).toMatchObject({ personalBests: 1, matches: 0 });
+  });
+
+  it("stops calling a device score device-only once the account holds it, and exposes the raw device best either way", () => {
+    localStorage.setItem("bhalyam_nokia_cricket_data_v1", JSON.stringify({ modeBestScores: { classic_1: 150 } }));
+
+    expect(buildRecords(null, true).find((entry) => entry.id === "nokiacricket")!.modes.find((mode) => mode.modeId === "classic_1"))
+      .toMatchObject({ best: 150, deviceOnly: true, deviceBest: 150, imported: false });
+    expect(buildRecords(withImport(150), true).find((entry) => entry.id === "nokiacricket")!.modes.find((mode) => mode.modeId === "classic_1")).toMatchObject({
+      best: 150, imported: true, deviceOnly: false, deviceBest: 150,
+    });
+  });
+});
+
 describe("personal records data", () => {
   it("preserves older cache snapshots locally without inventing synced matches or overwriting account bests", () => {
     const old = archived("handcricket", { t20: scorecard("t20", 200), international_t20: scorecard("international_t20", 180) });

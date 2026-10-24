@@ -209,6 +209,62 @@ describe("scorecard record endpoint — score validation", () => {
   });
 });
 
+describe("scorecard device-import endpoint", () => {
+  const body = (entries: unknown) => JSON.stringify({ entries });
+  const best = { game: "2048", modeId: "battle", score: 1234 };
+
+  it("refuses an anonymous import", async () => {
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/import-device`, { method: "POST", body: body([best]) });
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses player A adding bests to player B's record", async () => {
+    const res = await server.request(`/api/profile/${BOB}/scorecards/import-device`, {
+      method: "POST", token: mintToken(ALICE), body: body([best]),
+    });
+    expect(res.status).toBe(403);
+    const bob = await server.request(`/api/profile/${BOB}/scorecards`, { token: mintToken(BOB) });
+    expect(bob.body).toMatchObject({ archive: { games: {} } });
+  });
+
+  it("lets a player add their own bests, which another device then reads but which are never ranked", async () => {
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/import-device`, {
+      method: "POST", token: mintToken(ALICE), body: body([best, { game: "2048", modeId: "not_a_mode", score: 5 }]),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      accepted: [best],
+      skipped: [{ game: "2048", modeId: "not_a_mode", reason: "unknown_mode" }],
+    });
+
+    const laptop = await server.request(`/api/profile/${ALICE}/scorecards`, { token: mintToken(ALICE) });
+    expect(laptop.body).toMatchObject({ archive: { deviceImports: { "2048": { battle: { score: 1234 } } }, games: {} } });
+    expect(scorecardService.getModeLeaderboard("2048", "battle").some((row) => row.playerId === ALICE)).toBe(false);
+  });
+
+  it.each([
+    ["a missing list", undefined],
+    ["an empty list", []],
+    ["a list that is not a list", "everything"],
+  ])("refuses %s", async (_label, entries) => {
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/import-device`, {
+      method: "POST", token: mintToken(ALICE), body: body(entries),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns an explicit unavailable response when the durable write fails", async () => {
+    const repo = new InMemoryProgressionRepository();
+    repo.commitScorecard = async () => { throw new Error("Database unavailable"); };
+    setProgressionRepository(repo);
+    const res = await server.request(`/api/profile/${ALICE}/scorecards/import-device`, {
+      method: "POST", token: mintToken(ALICE), body: body([best]),
+    });
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ error: expect.stringContaining("could not be added") });
+  });
+});
+
 describe("scorecard read endpoint — deliberately public", () => {
   it("lets an anonymous caller read any player's scorecards", async () => {
     // Guarding this would be a product change wearing a fix's clothes —

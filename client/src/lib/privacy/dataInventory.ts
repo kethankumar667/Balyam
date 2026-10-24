@@ -321,6 +321,14 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = [
     isPersonalData: false,
   },
   {
+    key: "bhalyam.scorecards.outbox",
+    label: "Scores waiting to reach your account",
+    description:
+      "Finished results that could not be sent to your account yet (no signal, or the server was busy), each filed under your account id. They are sent again automatically and removed once your account has them.",
+    purpose: "progress",
+    isPersonalData: true,
+  },
+  {
     key: "ludo.tutorial.completed.v1",
     label: "Ludo tutorial seen",
     description: "Whether you have seen the Ludo tutorial, so it stops reappearing.",
