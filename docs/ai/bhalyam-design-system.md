@@ -25,6 +25,46 @@
 
 ## 2. Standardized Component Library
 
+### Nostalgia Network Hub footer
+
+The home `Footer` sits outside the page's constrained content wrapper. Its
+`footer.*` Tailwind palette stays midnight/navy in both app themes without
+changing the document theme. Existing display, body, script and utility
+fonts carry the brand; an original SVG playground turns chalk markings into
+a digital route ending at the emblem. Decorative SVGs are noninteractive
+and hidden from assistive technology. Only the playground scene is visible
+on mobile; the small veranda vignette is desktop-only.
+
+Desktop pairs the brand/System Pulse with three glass navigation groups,
+then Dispatch, a four-card trust grid, the signoff and one utility bar.
+Mobile moves Dispatch above native-button accordions and uses a 2x2 trust
+grid. Closed mobile panels are not keyboard-focusable; all groups remain
+visible on desktop. Links/controls are at least 44px, with cyan focus rings
+and reduced-motion alternatives. Specialist links appear in an Admin tools
+disclosure via `accessAdminPanel`; this is navigation presentation, not a
+replacement for route/API authorization.
+
+System Pulse makes a credential-free, uncached `/health` request only while
+the footer and browser tab are visible, at most one request in flight.
+A healthy response is `status: "healthy"`. The measured response time is a
+browser-to-server HTTP health request, **not** gameplay ping, an India gateway,
+or an all-services guarantee. Each request times out after 5 seconds, retries
+are explicit, and visible checks repeat every 60 seconds. Hidden/unmounted
+checks are aborted and timers cleaned up. A sparkline uses only the last eight
+successful measurements and appears after two; no sample history is invented.
+
+Veranda Dispatch is explicitly **not accepting signups**. Its labelled input
+and button are disabled; no email is collected, saved, sent or reported as
+subscribed. There is no fabricated latest transmission. A real subscription
+service remains separate work. Footer WhatsApp uses the configured canonical
+site URL; email uses the existing support address. The generic Instagram
+homepage link is omitted until an official account is confirmed. The language
+control shows the actual chosen language and opens existing settings.
+Cookie/storage and data-choice links open Security & Data, where the
+existing local-data inventory and essential-only consent control live.
+Device language and admin navigation appear only after mount, preserving
+the prerendered footer's hydration contract.
+
 ### Personal Journey Command Center
 
 The home `PlayerJourneyDashboard` connects an emerald latest-game poster,

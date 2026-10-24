@@ -5,6 +5,20 @@ export default {
   theme: {
     extend: {
       colors: {
+        footer: {
+          night: "#06101F",
+          deep: "#102544",
+          glass: "#102542",
+          panel: "#183152",
+          ink: "#F8FAFC",
+          soft: "#B8C5D8",
+          mute: "#8294AC",
+          gold: "#FFB800",
+          orange: "#F97316",
+          cyan: "#27D7F2",
+          mint: "#32D6A0",
+          edge: "#7DD3FC",
+        },
         brand: {
           50:  "var(--color-brand-50)",
           100: "var(--color-brand-100)",
