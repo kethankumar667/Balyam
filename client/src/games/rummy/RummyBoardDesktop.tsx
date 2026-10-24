@@ -27,6 +27,7 @@ import { RummyWorldScene } from "./RummyWorldScene";
 import type { WorldId } from "@shared/worlds";
 import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 import { drawnWorld } from "../../lib/worlds/worldArt";
+import { useTableTheme } from "../../lib/cosmeticsResolver";
 import TutorialModal from "./TutorialModal";
 import {
   classifyMeld,
@@ -204,6 +205,7 @@ export default function RummyBoardDesktop({
   world: tableWorld,
 }: BoardProps) {
   const world = drawnWorld("rummy", tableWorld);
+  const tableTheme = useTableTheme("rummy");
   const hand = state.myHand ?? [];
   const byId = useMemo(() => new Map(hand.map((c) => [c.id, c])), [hand]);
   const coach = useCoach();
@@ -932,7 +934,7 @@ export default function RummyBoardDesktop({
 
   return (
     <CoachHighlightProvider ids={coach.highlight}>
-    <div id="rummy-table-container" className={`rm-room rm-world-${world}`}>
+    <div id="rummy-table-container" className={`rm-room rm-world-${world} ${world === "classic" && tableTheme.id === "table_retro_school_slate" ? "rm-school-slate" : ""}`}>
       <RummyWorldScene world={world} />
       {/* The desk clutter (paperclip, notebook, coffee cup), the corner suit
           watermarks and the background doodle are deliberately NOT rendered

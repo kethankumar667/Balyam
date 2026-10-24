@@ -36,7 +36,7 @@ import { THIRD_PARTIES } from "../lib/privacy/dataInventory";
 import { downloadMyData } from "../lib/privacy/exportData";
 
 /** Change this whenever the policy's wording changes — the policy promises as much (section 13). */
-const POLICY_EFFECTIVE_DATE = "October 12, 2026";
+const POLICY_EFFECTIVE_DATE = "October 24, 2026";
 /** Where the app lives today. Update it, and the Google consent screen's links, when the custom domain arrives. */
 const SITE_ADDRESS = "bhalyam.onrender.com";
 
@@ -340,6 +340,7 @@ export default function PrivacyPolicyPage() {
                       <li><strong>Signing in with Google:</strong> If you choose Continue with Google, Google shares your name and email address with us. We use them only to create and run your account and to contact you about it. Google's response may also include a link to your profile photo; it is kept with your account record, but we do not display or use it. We never sell this information or use it for advertising. You can remove it by deleting your account (section 11).</li>
                       <li><strong>Date of birth and gender:</strong> If you give us your date of birth, we use it only so the Bhalyam group can send you a birthday greeting. Gender is optional and is not used for anything else.</li>
                       <li><strong>Groups and messages:</strong> The Mandali groups you own or belong to, and the messages you send in them, are stored so the group can read them.</li>
+                      <li><strong>Friend invitations:</strong> Only when you accept an invitation, we keep a signed acceptance on this device and, for email signup, with the new account. We connect account identifiers and check verified registration and completed human matches to award referral cosmetics. The inviter sees qualification counts, never your email or private match details. There is no contact upload or device/network fingerprinting for referrals.</li>
                       <li><strong>Match Telemetry:</strong> Moves made, round timers, outcome state, and player disconnect timestamps to ensure fair play and seat recovery.</li>
                     </ul>
                   </div>
@@ -366,7 +367,7 @@ export default function PrivacyPolicyPage() {
                   <p>
                     We do not deploy cross-site tracking cookies. We use your browser's local storage to run the app: a player id and seat tokens so your seat stays yours, your sign-in session if you have an account, and settings such as theme and sound. The complete list, with what each item is for, is in{" "}
                     <Link to="/settings/security" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">Security &amp; Data → Your data</Link>
-                    , where you can also download or erase it.
+                    , where you can also download or erase it. A deliberately accepted friend invitation is also kept here until connected, refused, or erased; its eligibility expires after 30 days.
                   </p>
                 )}
 
@@ -389,9 +390,9 @@ export default function PrivacyPolicyPage() {
                 )}
 
                 {sec.id === "data-retention" && (
-                  <p>
+                  <div className="space-y-2"><p>
                     In-memory game rooms are purged immediately after matches conclude and players leave. Member profiles and career badges persist until you delete your account. Mandali chat messages are removed after one year. Records of reward checks (an account's standing and the events behind it) are kept for one year and then deleted, or sooner on request. Reward and coin records are kept as a financial record and hold only an anonymous account identifier. A guest who has not returned for about a week is deleted or, if they have a coin wallet, has their personal data erased while the anonymous coin record is kept. To stop guest accounts being re-made over and over to collect welcome coins, the network address of a new guest is turned into a one-way scrambled code the moment it arrives, held only in the server's memory for at most 7 days, and never stored or logged in readable form.
-                  </p>
+                  </p><p>Friend invitations must qualify within 30 days of acceptance. Attribution and earned cosmetic ownership remain with the account until deletion so qualification cannot pay twice. Deleting either account removes the associated attribution; an already earned pack is not taken away from the other player.</p></div>
                 )}
 
                 {sec.id === "data-security" && (

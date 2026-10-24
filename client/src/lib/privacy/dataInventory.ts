@@ -102,6 +102,14 @@ const ACADEMY_ENTRIES: readonly InventoryEntry[] = ACADEMY_GAMES.map(([slug, nam
 
 export const DATA_INVENTORY: readonly InventoryEntry[] = [
   {
+    key: "bhalyam.referral.intent",
+    label: "Accepted friend invitation",
+    description: "A signed record that you deliberately accepted a friend's invitation before creating an account. Valid for 30 days; removed here when connected, refused, or when you erase device data. A copy travels with email signup so confirmation on another device can connect it.",
+    purpose: "consent",
+    isPersonalData: true,
+    holdsOthersData: true,
+  },
+  {
     key: "mpg.playerId",
     label: "Player ID",
     description:

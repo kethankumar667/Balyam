@@ -36,6 +36,13 @@ export interface TableThemeConfig {
 }
 
 export const TABLE_THEMES: Record<string, TableThemeConfig> = {
+  table_retro_school_slate: {
+    id: "table_retro_school_slate",
+    name: "School Slate",
+    bgClass: "bg-slate-900",
+    surfaceClass: "bg-slate-900 border-[#a88350]",
+    feltStyle: { background: "repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #132b27)" },
+  },
   table_classic_green: {
     id: "table_classic_green",
     name: "Classic Green Felt",
@@ -504,6 +511,11 @@ export interface AvatarAuraConfig {
 }
 
 export const AVATAR_AURAS: Record<string, AvatarAuraConfig> = {
+  aura_nostalgia_gold: {
+    id: "aura_nostalgia_gold",
+    className: "border-amber-300 shadow-[0_0_12px_#f5b94080]",
+    ringColor: "#F5B940",
+  },
   aura_none: {
     id: "aura_none",
     className: "",
@@ -542,6 +554,11 @@ export interface PodiumTitleConfig {
 }
 
 export const PODIUM_TITLES: Record<string, PodiumTitleConfig> = {
+  title_gang_leader: {
+    id: "title_gang_leader",
+    label: "Gang Leader",
+    badgeClass: "bg-amber-100 text-amber-950 border-amber-500 dark:bg-amber-950 dark:text-amber-200",
+  },
   title_none: {
     id: "title_none",
     label: "",

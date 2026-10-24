@@ -3,8 +3,7 @@ import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
 import { getLevelTier } from "@shared/progression/MiniclipProgression";
-import AvatarFrameOverlay from "../cosmetics/frames/AvatarFrameOverlay";
-import { isFrameId } from "../cosmetics/frames/frameDesigns";
+import AvatarFrameOverlay, { hasAvatarFrameArtwork } from "../cosmetics/frames/AvatarFrameOverlay";
 import { useSeatFrame } from "../cosmetics/frames/SeatFrame";
 
 /**
@@ -99,6 +98,7 @@ export default function SeatAvatar({
   const seatFrame = useSeatFrame(aura === undefined ? playerId : undefined);
   const effectiveAura = aura ?? seatFrame;
   const auraConfig = getAvatarAuraConfig(effectiveAura);
+  const hasFrameArtwork = hasAvatarFrameArtwork(effectiveAura);
 
   const isEmoji =
     avatar &&
@@ -135,8 +135,8 @@ export default function SeatAvatar({
             }}
           />
         )}
-        {isFrameId(effectiveAura) && <AvatarFrameOverlay frameId={effectiveAura} />}
-        {!isFrameId(effectiveAura) && auraConfig && auraConfig.className && (
+        {hasFrameArtwork && effectiveAura && <AvatarFrameOverlay frameId={effectiveAura} />}
+        {!hasFrameArtwork && auraConfig && auraConfig.className && (
           <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
         {node}

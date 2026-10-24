@@ -20,7 +20,7 @@ export type CosmeticCategory = (typeof COSMETIC_CATEGORIES)[number];
 
 export type CosmeticGameScope = "GLOBAL" | "uno" | "rummy" | "ludo" | "snl";
 export type CosmeticRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
-export type UnlockMethod = "COIN_PURCHASE" | "STREAK_MILESTONE" | "DEFAULT";
+export type UnlockMethod = "COIN_PURCHASE" | "STREAK_MILESTONE" | "REFERRAL_MILESTONE" | "DEFAULT";
 
 /**
  * Immutable structural definition for a cosmetic in the closed-set registry.
@@ -39,6 +39,9 @@ export interface RegistryCosmeticDef {
  * Any ID outside this registry is treated as invalid and rejected on server ingress.
  */
 export const BHALYAM_COSMETIC_REGISTRY: readonly RegistryCosmeticDef[] = [
+  { id: "aura_nostalgia_gold", category: "AVATAR_AURA", supportedScopes: ["GLOBAL"], bundledAssetKey: "aura-nostalgia-gold", isDefault: false },
+  { id: "title_gang_leader", category: "PODIUM_TITLE", supportedScopes: ["GLOBAL"], bundledAssetKey: "title-gang-leader", isDefault: false },
+  { id: "table_retro_school_slate", category: "TABLE_THEME", supportedScopes: ["rummy"], bundledAssetKey: "felt-school-slate", isDefault: false },
   // ── Table Themes ──
   {
     id: "table_classic_green",

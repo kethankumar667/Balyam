@@ -13,12 +13,13 @@ import { motion } from "framer-motion";
 import { Crown, Grid, RotateCw, Star } from "lucide-react";
 import type { CosmeticCatalogItem, CosmeticCategory, CosmeticGameScope } from "@shared/cosmetics";
 import SeatAvatar from "../../profile/SeatAvatar";
-import { isFrameId } from "../frames/frameDesigns";
+import { hasAvatarFrameArtwork } from "../frames/AvatarFrameOverlay";
 import type { PreviewMode } from "../previewModes";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import {
   getDiceSkinConfig,
   getRummyCardBackConfig,
+  getTableThemeConfig,
   getTokenSkinConfig,
   getUnoCardBackConfig,
 } from "../../../lib/cosmeticsResolver";
@@ -396,7 +397,7 @@ function EnchantedAvatarAuraPreview({
   displayName: string;
   avatarId: string | null;
 }) {
-  if (isFrameId(auraId)) {
+  if (hasAvatarFrameArtwork(auraId)) {
     return <FramePreview frameId={auraId} mode={mode} displayName={displayName} avatarId={avatarId} />;
   }
 
@@ -793,8 +794,11 @@ function EnchantedTableThemePreview({
   skinId: string;
   mode: PreviewMode;
 }) {
+  const materialStyle = skinId === "table_retro_school_slate" ? getTableThemeConfig(skinId).feltStyle : undefined;
   const getThemeClass = (id: string) => {
     switch (id) {
+      case "table_retro_school_slate":
+        return getTableThemeConfig(id).surfaceClass;
       case "table_royal_mahogany":
         return "bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950 border-amber-700 shadow-[0_0_35px_rgba(180,83,9,0.4)]";
       case "table_crt_neon_90s":
@@ -816,6 +820,7 @@ function EnchantedTableThemePreview({
             className={`w-full h-[140px] rounded-2xl border flex flex-col items-center justify-center ${getThemeClass(
               skinId,
             )}`}
+            style={materialStyle}
           >
             <Grid className="w-5 h-5 text-white/40" />
             <span className="text-[8px] font-mono text-white/50 uppercase mt-1">
@@ -835,6 +840,7 @@ function EnchantedTableThemePreview({
           className={`w-64 h-36 rounded-2xl border-3 flex flex-col items-center justify-between p-3 relative overflow-hidden shadow-2xl ${getThemeClass(
             skinId,
           )}`}
+          style={materialStyle}
         >
           <div className="w-full flex items-center justify-between text-[10px] text-white/60 font-mono">
             <span>Opponent Seat</span>
@@ -857,6 +863,7 @@ function EnchantedTableThemePreview({
       className={`w-64 h-36 rounded-2xl border-4 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl ${getThemeClass(
         skinId,
       )}`}
+      style={materialStyle}
     >
       <div className="w-32 h-20 rounded-xl border border-dashed border-white/25 flex flex-col items-center justify-center">
         <Grid className="w-6 h-6 text-white/50 animate-pulse" />

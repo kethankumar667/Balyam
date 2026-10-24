@@ -77,6 +77,8 @@ import { MandaliService } from "./mandali/MandaliService.js";
 import { createMandaliRouter } from "./mandali/MandaliController.js";
 import { registerMandaliSocketHandlers } from "./mandali/MandaliSocketHandlers.js";
 import { createPresenceSources } from "./mandali/presenceSources.js";
+import { ReferralService } from "./referrals/ReferralService.js";
+import { createReferralRouter } from "./referrals/ReferralController.js";
 
 /**
  * Refuse to boot a production process that cannot protect its own telemetry.
@@ -402,6 +404,13 @@ if (economyService) {
 }
 
 app.use("/api/cosmetics", createCosmeticsRouter(cosmeticsService));
+const referralConfig = readPostgrestConfig();
+const referralKey = process.env.SESSION_SECRET?.trim() ?? "";
+app.use("/api/referrals", createReferralRouter(
+  referralConfig && referralKey.length >= 32
+    ? new ReferralService(new PostgrestClient(referralConfig), referralKey)
+    : null,
+));
 
 /**
  * 30-Day Daily Login Streak & Rewards API.

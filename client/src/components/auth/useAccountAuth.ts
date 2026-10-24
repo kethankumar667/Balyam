@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { pendingReferralIntent, referralReturnPath } from "../../lib/referrals";
 import {
   authErrorMessage,
   getSupabase,
@@ -255,6 +256,7 @@ export function useSignUp(): SignUpState {
               gender: extra?.gender || null,
               account_id: extra?.accountId || null,
               avatar_id: extra?.avatarId || null,
+              referral_intent: pendingReferralIntent(),
             },
             emailRedirectTo: redirectTo("/verify-email?state=verified"),
           },
@@ -288,7 +290,7 @@ export function useSignUp(): SignUpState {
     setError(null);
     setLoading(true);
     void supabase.auth
-      .signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo("/") } })
+      .signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo(referralReturnPath()) } })
       .then(({ error: err }) => {
         if (err) {
           setLoading(false);

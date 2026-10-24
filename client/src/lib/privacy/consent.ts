@@ -40,8 +40,9 @@ export interface ConsentRecord {
  *     is asked again rather than assumed to have agreed to this.
  * 4 — records the account ids that acknowledged the notice on this device,
  *     including across sign-out, so guest consent cannot bypass member onboarding.
+ * 5 — declares deliberately accepted friend invitations and account referral qualification.
  */
-export const NOTICE_VERSION = 4;
+export const NOTICE_VERSION = 5;
 
 export const CONSENT_KEY = "bhalyam.consent";
 

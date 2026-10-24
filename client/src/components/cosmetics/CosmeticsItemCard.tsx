@@ -53,7 +53,7 @@ import { PawnGlyph } from "../../games/ludo/PawnGlyph";
 import { COLOR_HEX, COLOR_HEX_DARK } from "../../games/ludo/board-layout";
 import SeatAvatar from "../profile/SeatAvatar";
 import { useRoomStore } from "../../store/roomStore";
-import { isFrameId } from "./frames/frameDesigns";
+import { hasAvatarFrameArtwork } from "./frames/AvatarFrameOverlay";
 
 /** No real seat exists at shop-browse time — every token thumbnail/preview
  *  shows this one fixed "showcase" seat color so a purchased finish's own
@@ -278,7 +278,7 @@ export function CollectibleThumbnail({
 }) {
   const rarity = getRarityTokensAdaptive(rarityKey);
 
-  if (category === "AVATAR_AURA" && isFrameId(item.id)) {
+  if (category === "AVATAR_AURA" && hasAvatarFrameArtwork(item.id)) {
     return <FrameThumbnail frameId={item.id} />;
   }
 

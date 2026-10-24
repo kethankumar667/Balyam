@@ -66,6 +66,9 @@ class KeyedMutex {
 // bought new. `getCatalog()` already filters on `isActive`, so this alone
 // removes them from every shop listing/browse response.
 const SEED_CATALOG: CosmeticCatalogItem[] = [
+  { id: "aura_nostalgia_gold", category: "AVATAR_AURA", name: "Golden Reunion", description: "A warm gold aura earned by bringing three new friends to play.", priceCoins: 0, rarity: "RARE", unlockMethod: "REFERRAL_MILESTONE", isActive: true, displayOrder: 900 },
+  { id: "title_gang_leader", category: "PODIUM_TITLE", name: "Gang Leader", description: "A social title earned through three qualifying friend invitations.", priceCoins: 0, rarity: "RARE", unlockMethod: "REFERRAL_MILESTONE", isActive: true, displayOrder: 910 },
+  { id: "table_retro_school_slate", category: "TABLE_THEME", name: "School Slate", description: "A chalk-lined slate surface for your classic Rummy table. Host-selected worlds take priority.", priceCoins: 0, rarity: "RARE", unlockMethod: "REFERRAL_MILESTONE", isActive: true, displayOrder: 920 },
   // Table Themes — shop removed 2026-09-10; only the free default remains active.
   { id: "table_classic_green", category: "TABLE_THEME", name: "Classic Felt Green", description: "Traditional gaming lounge green felt with clean stitch border.", priceCoins: 0, rarity: "COMMON", unlockMethod: "DEFAULT", isActive: true, displayOrder: 10 },
   { id: "table_crt_neon_90s", category: "TABLE_THEME", name: "CRT Cyber Neon 90s", description: "Retro gridlines, arcade CRT glow, and synthwave backdrop.", priceCoins: 2500, rarity: "EPIC", unlockMethod: "COIN_PURCHASE", isActive: false, displayOrder: 20 },
@@ -306,12 +309,12 @@ export class InMemoryCosmeticsRepository implements CosmeticsRepository {
         };
       }
 
-      if (item.unlockMethod === "DEFAULT") {
+      if (item.unlockMethod !== "COIN_PURCHASE") {
         return {
           applied: false,
           code: "INVALID_COSMETIC",
           cosmeticId: input.cosmeticId,
-          message: "Default cosmetics cannot be purchased.",
+          message: "Default and earned cosmetics cannot be purchased.",
         };
       }
 

@@ -69,8 +69,15 @@ describe("PrivacyPolicyPage content", () => {
     it("carries a real effective date and no invented statistics", () => {
       renderPage();
 
-      expect(screen.getByText(/EFFECTIVE: OCTOBER 12, 2026/i)).toBeInTheDocument();
+      expect(screen.getByText(/EFFECTIVE: OCTOBER 24, 2026/i)).toBeInTheDocument();
       expect(document.body.textContent).not.toMatch(/2,400 words|min read/i);
+    });
+
+    it("discloses deliberate referrals, counts-only sharing, and actual retention", () => {
+      renderPage();
+      expect(section("info-we-collect").getByText(/Only when you accept an invitation/i)).toBeInTheDocument();
+      expect(section("info-we-collect").getByText(/never your email or private match details/i)).toBeInTheDocument();
+      expect(section("data-retention").getByText(/within 30 days.*remain with the account until deletion/i)).toBeInTheDocument();
     });
 
     it("spells its own heading correctly", () => {

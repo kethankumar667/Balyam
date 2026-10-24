@@ -1,6 +1,5 @@
 import { useRoomStore } from "../../../store/roomStore";
-import AvatarFrameOverlay from "./AvatarFrameOverlay";
-import { isFrameId } from "./frameDesigns";
+import AvatarFrameOverlay, { hasAvatarFrameArtwork } from "./AvatarFrameOverlay";
 
 /**
  * The animated frame the player in a seat wears, found by player id in the live room state.
@@ -14,7 +13,7 @@ export function useSeatFrame(playerId: string | undefined): string | undefined {
   return useRoomStore((state) => {
     if (!playerId) return undefined;
     const aura = state.roomState?.players.find((player) => player.id === playerId)?.cosmetics?.avatarAura;
-    return isFrameId(aura) ? aura : undefined;
+    return hasAvatarFrameArtwork(aura) ? aura : undefined;
   });
 }
 

@@ -51,6 +51,19 @@ describe("CosmeticsService", () => {
   });
 
   describe("Atomic Purchases & Wallet Deductions", () => {
+    it("never sells or equips an unearned zero-price referral pack", async () => {
+      for (const id of ["aura_nostalgia_gold", "title_gang_leader", "table_retro_school_slate"]) {
+        const result = await cosmeticsService.purchaseCosmetic(USER_ID, id, `not-for-sale-${id}`);
+        expect(result.applied).toBe(false);
+        expect(result.code).toBe("INVALID_COSMETIC");
+      }
+      const state = await cosmeticsService.getState(USER_ID);
+      expect(state.ownedIds).toHaveLength(0);
+      expect((await economyService.getWallet(USER_ID)).balance).toBe("5000");
+      await expect(cosmeticsService.equipCosmetic(USER_ID, "AVATAR_AURA", "GLOBAL", "aura_nostalgia_gold"))
+        .rejects.toThrow(UnownedCosmeticError);
+    });
+
     it("successfully purchases an item, debits wallet balance, and creates entitlement", async () => {
       // dice_wooden_teak costs 800 coins
       const initialWallet = await economyService.getWallet(USER_ID);

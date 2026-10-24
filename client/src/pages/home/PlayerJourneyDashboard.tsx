@@ -1,378 +1,146 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Flag, Gamepad2, Trophy } from "lucide-react";
 import { RevealOnScroll } from "../../components/RevealOnScroll";
 import { formatTimeAgo } from "../../lib/formatTimeAgo";
-import { useTheme } from "../../lib/useTheme";
-import { type PlayerSnapshot } from "../../hooks/usePlayerSnapshot";
+import { describeXpJourney } from "../../lib/xpJourney";
+import type { PlayerSnapshot } from "../../hooks/usePlayerSnapshot";
 import { BHALYAM_GAMES, type BhalyamGameSlug } from "../../components/bhalyam/data";
 import { TILE_ART_BY_GAME } from "./gameArt";
-import { WhatsappGlyph } from "./icons";
+import { JourneyLandscape } from "./JourneyArtwork";
+import { ReferralQuest } from "./ReferralQuest";
 
-/*
- * `LiveLoungePulse` (four platform-wide activity tiles, a rotating
- * "community feed" ticker, and a "Weekly Leaderboard" that named the real
- * signed-in user at a fixed fake rank) was removed rather than wired.
- *
- * Unlike the cards above, nothing here had a real source to wire to: there is
- * no online-presence counter, no cross-player activity feed, and no weekly
- * XP leaderboard service anywhere in `server/src`. Every number — "548
- * Players Online", "68 Active Live Rooms", "23 School Gangs Active", "145
- * Matches Won Today" — was a hardcoded literal animated with `<CountUp>` to
- * read as live telemetry it was not. See TRUST-REMEDIATION-REPORT.md.
- */
+const ACTION = "mt-auto inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#102541]";
+const CARD = "relative flex min-w-0 flex-col rounded-2xl border p-5 sm:p-6";
 
-export function PlayerJourneyDashboard({
-  onSelect,
-  snapshot,
-  isMember = true,
-}: {
+export function PlayerJourneyDashboard({ onSelect, snapshot, isMember = true }: {
   onSelect: (slug: BhalyamGameSlug) => void;
   snapshot: PlayerSnapshot;
-  /**
-   * Whether the viewer has an account. The snapshot is only fetched for members, so for a guest it never
-   * becomes ready; without this a guest saw grey placeholders forever. A guest gets an honest invitation
-   * to sign in where the level card would be.
-   */
   isMember?: boolean;
 }) {
-  const [theme] = useTheme();
-  const isDark = theme === "dark";
-
-  const handleShareWhatsAppReferral = () => {
-    const text = encodeURIComponent(
-      "🎮 Hey gang! Come join my room on BHALYAM to unlock our nostalgic 90s childhood games together: " + window.location.origin
-    );
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  };
-
-  // Real numbers, computed once and shared by Card 1 and Card 2 below.
-  // `matches` is limit=1 from usePlayerSnapshot, so [0] IS "last played".
-  const lastMatch = snapshot.matches[0];
-  const lastGameCard = lastMatch ? BHALYAM_GAMES.find((g) => g.slug === lastMatch.game) : undefined;
-  const lastGameStats = lastMatch ? snapshot.stats?.perGame[lastMatch.game] : undefined;
-  const overallStreak = snapshot.stats?.currentWinStreak ?? 0;
-
-  const xp = snapshot.profile?.experiencePoints ?? 0;
-  const level = snapshot.profile?.level ?? 1;
-  const xpIntoLevel = xp % 100;
-  // Closest to completion first — the most motivating "next" target, and the
-  // one most likely to already be in progress.
-  const nextAchievement = [...snapshot.achievements]
-    .filter((a) => !a.unlocked)
+  const lastMatch = isMember ? snapshot.matches[0] : undefined;
+  const game = lastMatch ? BHALYAM_GAMES.find(g => g.slug === lastMatch.game) : undefined;
+  const stats = lastMatch && !snapshot.stats?.demo ? snapshot.stats?.perGame[lastMatch.game] : undefined;
+  const xp = isMember && snapshot.profile ? describeXpJourney(snapshot.profile.experiencePoints) : null;
+  const achievement = [...snapshot.achievements].filter(a => !a.unlocked)
     .sort((a, b) => b.progressPercent - a.progressPercent)[0];
+  const loading = isMember && !snapshot.ready;
 
   return (
-    <RevealOnScroll as="section" amount={0.1} className="mt-6 mb-8">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <h2 className={`bhalyam-display text-[22px] sm:text-[28px] leading-tight ${
-            isDark ? "text-white" : "text-[#1D2C4A]"
-          }`}>
-            Continue Your Journey
-          </h2>
-          <p className={`text-[13px] sm:text-[14px] font-medium ${
-            isDark ? "text-slate-400" : "text-[#6D5C4D]"
-          }`}>
-            Pick up where you left off and track real progress toward your next achievement
-          </p>
+    <RevealOnScroll as="section" amount={0.1} className="relative my-8 isolate overflow-hidden rounded-[28px] border border-[#38516a] bg-[#071426] px-4 py-6 text-slate-50 shadow-[0_22px_65px_-32px_#071426aa] sm:px-6 sm:py-7">
+      <JourneyLandscape />
+      <header className="relative mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="max-w-xl">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-200">Your personal playground</p>
+          <h2 className="font-display text-[25px] leading-tight sm:text-[32px]">Your Journey Continues</h2>
+          <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#B6C4D8]">Play your next game, reach a milestone, and bring your crew together.</p>
         </div>
-      </div>
+        {xp && !loading && (
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="rounded-full border border-cyan-300/40 bg-[#102541] px-3 py-2 text-cyan-100">Level {xp.level}</span>
+            {achievement && <span className="rounded-full border border-violet-300/40 bg-[#102541] px-3 py-2 text-violet-100">Next goal: {achievement.progressPercent}%</span>}
+          </div>
+        )}
+      </header>
 
-      {isMember && !snapshot.ready ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch animate-pulse" role="status" aria-busy="true">
+      {loading ? (
+        <div role="status" aria-label="Loading player progress" aria-busy="true" className="grid gap-4 lg:grid-cols-3">
           <span className="sr-only">Loading player progress</span>
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className={`rounded-3xl border p-5 sm:p-6 min-h-[220px] flex flex-col justify-between ${
-                isDark ? "bg-[#131926]/50 border-white/5" : "bg-[#FFFDF7]/50 border-[#ECD9BA]/60"
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="h-5 w-28 bg-black/10 dark:bg-white/10 rounded-full" />
-                <div className="h-16 w-full bg-black/5 dark:bg-white/5 rounded-2xl" />
-              </div>
-              <div className="h-10 w-full bg-black/10 dark:bg-white/10 rounded-2xl" />
-            </div>
-          ))}
+          {[1, 2, 3].map(i => <div key={i} className="h-[430px] rounded-2xl border border-slate-600 bg-[#102541] p-6 motion-safe:animate-pulse">
+            <div className="h-5 w-32 rounded bg-slate-600/70" /><div className="mt-8 h-44 rounded-xl bg-slate-700/60" /><div className="mt-8 h-12 rounded-xl bg-slate-600/60" />
+          </div>)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-stretch">
-
-          {/* Card 1: Jump back into the real last-played game, or an honest
-              first-game prompt when there is no match history yet. */}
-          <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-            isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
-          }`}>
-            {lastMatch && lastGameCard ? (
+        <div className="relative grid gap-4 border-l border-[#405775] pl-3 lg:grid-cols-[1.08fr_1fr_1fr] lg:border-0 lg:pl-0">
+          <article className={`${CARD} border-emerald-300/40 bg-gradient-to-b from-[#18333d]/95 to-[#0c2530]/95`}>
+            <span aria-hidden="true" className="absolute -left-[17px] top-7 h-2 w-2 rounded-full bg-emerald-200 lg:hidden" />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200"><Gamepad2 size={16} aria-hidden="true" /> Jump back in</p>
+              {lastMatch && <span className="text-[10px] text-[#B6C4D8]">{formatTimeAgo(lastMatch.finishedAt)}</span>}
+            </div>
+            {game && lastMatch ? (
               <>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border ${
-                      isDark
-                        ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                        : "bg-amber-100 text-amber-900 border-amber-300"
-                    }`}>
-                      ▶ Jump Back In
-                    </span>
-                    <span className={`text-[12px] font-semibold ${
-                      isDark ? "text-slate-400" : "text-sand-600"
-                    }`}>
-                      Last played {formatTimeAgo(lastMatch.finishedAt)}
-                    </span>
-                  </div>
-
-                  <div className={`flex items-center gap-3.5 my-3 p-3 rounded-2xl border ${
-                    isDark ? "bg-white/5 border-white/10" : "bg-[#FAF2DF] border-[#ECD9BA]"
-                  }`}>
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-200 border-2 border-amber-400 p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
-                      <picture className="w-full h-full flex items-center justify-center">
-                        <source type="image/avif" srcSet={TILE_ART_BY_GAME[lastGameCard.slug].replace(/\.(png|jpg|jpeg)$/i, '.avif')} />
-                        <source type="image/webp" srcSet={TILE_ART_BY_GAME[lastGameCard.slug].replace(/\.(png|jpg|jpeg)$/i, '.webp')} />
-                        <img
-                          src={TILE_ART_BY_GAME[lastGameCard.slug]}
-                          alt={lastGameCard.title}
-                          width={64}
-                          height={64}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-contain"
-                        />
-                      </picture>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className={`font-display font-black text-[20px] leading-tight truncate ${
-                        isDark ? "text-white" : "text-[#1D2C4A]"
-                      }`}>
-                        {lastGameCard.title}
-                      </h3>
-                      <div className={`flex items-center gap-2 text-[12px] font-bold mt-0.5 ${
-                        isDark ? "text-slate-300" : "text-[#6D5C4D]"
-                      }`}>
-                        {lastGameStats && (
-                          <>
-                            <span className={isDark ? "text-emerald-400 font-bold" : "text-emerald-700 font-bold"}>
-                              🏆 {lastGameStats.wins} Win{lastGameStats.wins === 1 ? "" : "s"}
-                            </span>
-                            <span>•</span>
-                          </>
-                        )}
-                        <span>Lvl {level}</span>
-                        {overallStreak > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className={isDark ? "text-chest-300 font-extrabold" : "text-chest-700 font-extrabold"}>
-                              🔥 {overallStreak}x Streak
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <div className="relative my-4 flex h-[190px] items-center justify-center overflow-hidden rounded-xl border border-amber-200/20 bg-[radial-gradient(ellipse_at_50%_100%,#a3713766,transparent_70%)] sm:h-[260px] lg:h-[280px]">
+                  <picture className="h-full w-full">
+                    <source type="image/avif" srcSet={TILE_ART_BY_GAME[game.slug].replace(/\.(png|jpg|jpeg)$/i, ".avif")} />
+                    <source type="image/webp" srcSet={TILE_ART_BY_GAME[game.slug].replace(/\.(png|jpg|jpeg)$/i, ".webp")} />
+                    <img src={TILE_ART_BY_GAME[game.slug]} alt="" width={280} height={210} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-300 motion-safe:hover:scale-[1.03] motion-reduce:transition-none" />
+                  </picture>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => onSelect(lastGameCard.slug)}
-                  className="w-full mt-3 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[14px] uppercase tracking-wider shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926]"
-                >
-                  <span>Resume {lastGameCard.title}</span>
-                  <ArrowRight className="w-4 h-4" />
+                <h3 className="font-display text-2xl leading-tight text-white">{game.title}</h3>
+                <p className="mt-2 text-xs text-emerald-100">Last match: {lastMatch.result === "WIN" ? "Won" : lastMatch.result === "DRAW" ? "Draw" : "Played"}</p>
+                {stats && <p className="mt-1 text-xs text-[#B6C4D8]">{stats.wins} wins in this game</p>}
+                <p className="mb-5 mt-3 text-xs leading-relaxed text-[#B6C4D8]">A fresh table. The same favourite game.</p>
+                <button type="button" onClick={() => onSelect(game.slug)} className={`${ACTION} border-emerald-300/60 bg-[#08745c] text-white hover:bg-[#09624f]`}>
+                  Play {game.title} again <ArrowRight size={17} aria-hidden="true" />
                 </button>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center py-6 gap-3 flex-1">
-                <span className="text-3xl" aria-hidden>🎮</span>
-                <p className={`text-[14px] font-bold ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
-                  Play your first game to start your history
-                </p>
-                <p className={`text-[12px] font-medium ${isDark ? "text-slate-400" : "text-[#6D5C4D]"}`}>
-                  Your last-played game will appear here so you can jump straight back in.
-                </p>
-                <Link
-                  to="/games"
-                  className="mt-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black text-[13px] uppercase tracking-wider shadow-md transition inline-flex items-center gap-2 min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926]"
-                >
-                  <span>Browse Games</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              <>
+                <div className="my-6 flex h-[170px] items-center justify-center rounded-xl border border-dashed border-emerald-200/40 bg-emerald-900/20"><Gamepad2 size={70} strokeWidth={1} className="text-emerald-200" aria-hidden="true" /></div>
+                <h3 className="font-display text-2xl">Make your next memory</h3>
+                <p className="mb-6 mt-3 text-sm leading-relaxed text-[#B6C4D8]">{isMember && !snapshot.profile ? "Your recent game could not be loaded. You can still choose a game." : "Choose a favourite and start a new game. Your next completed match belongs here."}</p>
+                <Link to="/games" className={`${ACTION} border-emerald-300/60 bg-[#08745c] text-white hover:bg-[#09624f]`}>Explore games <ArrowRight size={17} aria-hidden="true" /></Link>
+              </>
             )}
           </article>
 
-          {/* Card 2 for a guest: no level to show, so say where it will live rather than a placeholder. */}
-          {!isMember ? (
-            <article
-              aria-label="Your level and XP"
-              className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-                isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className={`font-display font-black text-[18px] ${isDark ? "text-white" : "text-[#1D2C4A]"}`}>
-                    🏆 Your level &amp; XP
-                  </span>
-                </div>
-                <div
-                  aria-hidden="true"
-                  className={`w-full h-2.5 rounded-full mb-3 ${isDark ? "bg-slate-800" : "bg-[#ECD9BA]"}`}
-                />
-                <p className={`text-[13px] font-medium ${isDark ? "text-slate-300" : "text-[#6D5C4D]"}`}>
-                  Create a free account to see your level, XP and achievements here, and keep them on every device.
-                </p>
+          <article className={`${CARD} border-cyan-300/40 bg-gradient-to-b from-[#142d48]/95 to-[#17213e]/95`}>
+            <span aria-hidden="true" className="absolute -left-[17px] top-7 h-2 w-2 rounded-full bg-cyan-200 lg:hidden" />
+            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200"><Flag size={15} aria-hidden="true" /> Level progress</p>
+            {!isMember ? (
+              <div className="flex flex-1 flex-col justify-center">
+                <Trophy className="my-7 self-center text-cyan-200" size={64} strokeWidth={1} aria-hidden="true" />
+                <h3 className="font-display text-xl">A journey of your own</h3>
+                <p className="mb-6 mt-3 text-sm leading-relaxed text-[#B6C4D8]">Create a free account to keep your level, XP and achievements across devices.</p>
+                <Link to="/signup?from=home" className={`${ACTION} border-cyan-200/60 bg-cyan-900/60 text-cyan-50 hover:bg-cyan-900`}>Create account <ArrowRight size={17} aria-hidden="true" /></Link>
+                <Link to="/login" className="mt-2 flex min-h-[44px] items-center justify-center rounded-xl text-sm text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">Sign in</Link>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  to="/signup?from=home"
-                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 text-[13px] font-black uppercase tracking-wider text-white shadow-md transition hover:brightness-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#131926]"
-                >
-                  Create account
-                </Link>
-                <Link
-                  to="/login"
-                  className={`min-h-[44px] inline-flex items-center justify-center rounded-2xl border px-4 text-[13px] font-bold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                    isDark ? "border-white/15 text-slate-200 hover:bg-white/5" : "border-[#ECD9BA] text-[#1D2C4A] hover:bg-[#FAF2DF]"
-                  }`}
-                >
-                  Sign in
-                </Link>
-              </div>
-            </article>
-          ) : (
-          /* Card 2: Real level progress and the real closest-to-unlocking
-              achievement. */
-          <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-colors ${
-            isDark ? "bg-[#131926] border-white/10" : "bg-[#FFFDF7] border-[#ECD9BA]"
-          }`}>
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className={`font-display font-black text-[18px] ${
-                  isDark ? "text-white" : "text-[#1D2C4A]"
-                }`}>
-                  🏆 Level {level} Progress
-                </span>
-                <span className={`text-[12px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                  isDark
-                    ? "bg-amber-950/60 text-amber-300 border-amber-700/50"
-                    : "bg-amber-100 text-amber-900 border-amber-300"
-                }`}>
-                  {xpIntoLevel}% Complete
-                </span>
-              </div>
-
-              {/* XP Bar */}
-              <div
-                role="progressbar"
-                aria-valuenow={xpIntoLevel}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Level ${level} experience progress`}
-                className={`w-full h-2.5 rounded-full overflow-hidden mb-3 ${
-                  isDark ? "bg-slate-800" : "bg-[#ECD9BA]"
-                }`}
-              >
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
-                  style={{ width: `${xpIntoLevel}%` }}
-                />
-              </div>
-
-              {/* Next real achievement, closest to completion */}
-              {nextAchievement ? (
-                <div className={`p-2.5 rounded-xl border ${
-                  isDark ? "bg-white/5 border-white/10" : "bg-[#FAF2DF] border-[#ECD9BA]"
-                }`}>
-                  <div className={`text-xs font-black uppercase tracking-wider ${
-                    isDark ? "text-chest-300" : "text-chest-700"
-                  }`}>
-                    🎯 Next Achievement
-                  </div>
-                  <div className={`text-[13px] font-bold mt-0.5 ${
-                    isDark ? "text-white" : "text-[#1D2C4A]"
-                  }`}>
-                    {nextAchievement.title}
-                  </div>
-                  <div className={`text-[11px] font-semibold ${
-                    isDark ? "text-slate-300" : "text-[#7A6B5C]"
-                  }`}>
-                    {nextAchievement.currentProgress} / {nextAchievement.targetValue} — {nextAchievement.description}
+            ) : xp ? (
+              <>
+                <div className="relative mx-auto my-4 h-[180px] w-[180px]">
+                  <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90" aria-hidden="true">
+                    <circle cx="80" cy="80" r="68" fill="none" stroke="#344b68" strokeWidth="7" />
+                    <circle cx="80" cy="80" r="68" fill="none" stroke="#5ee4ee" strokeWidth="7" pathLength="100" strokeDasharray={`${xp.percent} 100`} strokeLinecap="round" />
+                    <circle cx="80" cy="80" r="57" fill="none" stroke="#9b85ef" strokeWidth="1" strokeDasharray="2 7" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100">Level</span>
+                    <span className="font-display text-[45px] leading-tight">{xp.level}</span>
+                    <span className="font-mono text-xs text-cyan-200">{xp.percent}% XP</span>
                   </div>
                 </div>
-              ) : (
-                <p className={`text-[12px] font-semibold ${isDark ? "text-slate-400" : "text-[#6D5C4D]"}`}>
-                  {snapshot.ready
-                    ? "Every achievement unlocked so far. Play a match to find the next one."
-                    : "Play matches to start unlocking achievements."}
-                </p>
-              )}
-            </div>
-          </article>
-          )}
-
-          {/* Card 3: Invite Friends — real WhatsApp share action */}
-          <article className={`rounded-3xl border p-5 sm:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors ${
-            isDark
-              ? "bg-[#0E1526] border-amber-500/30"
-              : "bg-gradient-to-br from-[#FFFDF7] to-[#FDF4E3] border-amber-300/80"
-          }`}>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl" aria-hidden>👥</span>
-                <h3 className={`font-display font-black text-[18px] ${
-                  isDark ? "text-white" : "text-[#1D2C4A]"
-                }`}>
-                  Invite Friends, Unlock Perks
-                </h3>
+                <div role="progressbar" aria-label="Level XP" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xp.percent} aria-valuetext={`${xp.xpIntoLevel} of ${xp.xpPerLevel} XP to Level ${xp.nextLevel}`}>
+                  <p className="text-center text-xs font-semibold text-cyan-100">{xp.xpIntoLevel} / {xp.xpPerLevel} XP to Level {xp.nextLevel}</p>
+                </div>
+                <div className="mb-5 mt-5 rounded-xl border border-violet-200/25 bg-[#101d35]/80 p-3.5">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-200">Next achievement</p>
+                  {achievement ? <>
+                    <h3 className="mt-2 font-display text-lg">{achievement.title}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-[#C5D1E2]">{achievement.description}</p>
+                    <div className="mb-2 mt-3 flex justify-between gap-2 font-mono text-[11px] text-violet-100"><span>{achievement.currentProgress} / {achievement.targetValue}</span><span>{achievement.progressPercent}%</span></div>
+                    <div role="progressbar" aria-label="Achievement progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={achievement.progressPercent} className="h-1.5 overflow-hidden rounded-full bg-slate-600"><div className="h-full rounded-full bg-violet-300" style={{ width: `${achievement.progressPercent}%` }} /></div>
+                  </> : <p className="mt-2 text-xs leading-relaxed text-[#C5D1E2]">{snapshot.achievements.length ? "Every available achievement is unlocked." : "Visit your trophy vault to load your achievements."}</p>}
+                </div>
+                <Link to="/profile/achievements" className={`${ACTION} border-cyan-200/50 bg-cyan-950/40 text-cyan-100 hover:bg-cyan-900/60`}>View goals <ArrowRight size={17} aria-hidden="true" /></Link>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col justify-center py-6">
+                <h3 className="font-display text-xl">Your progress is unavailable</h3>
+                <p className="mb-6 mt-3 text-sm leading-relaxed text-[#B6C4D8]">We could not load your level and achievements. Open your profile to try again.</p>
+                <Link to="/profile" className={`${ACTION} border-cyan-200/50 text-cyan-100`}>Open profile <ArrowRight size={17} aria-hidden="true" /></Link>
               </div>
-              <p className={`text-[13px] font-medium mb-3 ${
-                isDark ? "text-slate-300" : "text-[#6D5C4D]"
-              }`}>
-                Bring 3 friends to BHALYAM and instantly unlock exclusive nostalgia rewards:
-              </p>
-
-              <ul className={`space-y-2 mb-4 text-[13px] font-bold ${
-                isDark ? "text-slate-200" : "text-[#2A221B]"
-              }`}>
-                <li className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
-                    isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
-                  }`}>
-                    ✓
-                  </span>
-                  <span>Exclusive Gold Avatar Frame</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
-                    isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
-                  }`}>
-                    ✓
-                  </span>
-                  <span>Nostalgia "Gang Leader" Chat Badge</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
-                    isDark ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-800"
-                  }`}>
-                    ✓
-                  </span>
-                  <span>Retro 90s School Slate Board Theme</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleShareWhatsAppReferral}
-              className="w-full mt-3 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-[#0B2E20] font-black text-[14px] uppercase tracking-wider shadow-[0_4px_14px_rgba(37,211,102,0.35)] active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer min-h-[44px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0E1526]"
-            >
-              <WhatsappGlyph className="w-4 h-4 text-[#0B2E20]" />
-              <span>Invite on WhatsApp</span>
-            </button>
+            )}
           </article>
-
+          <ReferralQuest isMember={isMember} />
         </div>
       )}
+      <div aria-hidden="true" className="relative mt-6 hidden items-center justify-between px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[#B6C4D8] lg:flex">
+        <span className="flex items-center gap-2 text-emerald-200"><i className="h-2 w-2 rounded-full bg-emerald-300" /> Play now</span>
+        <span className="mx-4 h-px flex-1 bg-gradient-to-r from-emerald-400/60 to-cyan-300/40" />
+        <span className="flex items-center gap-2 text-cyan-100"><i className="h-2 w-2 rounded-full border border-cyan-200" /> Next goal</span>
+        <span className="mx-4 h-px flex-1 bg-gradient-to-r from-cyan-300/40 to-violet-300/50" />
+        <span className="flex items-center gap-2 text-violet-200"><i className="h-2 w-2 rounded-full border border-violet-200" /> Bring your crew</span>
+      </div>
     </RevealOnScroll>
   );
 }

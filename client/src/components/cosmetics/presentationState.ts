@@ -63,6 +63,7 @@ export function resolveCosmeticPresentationState(params: {
   const canAfford = safeBalance >= priceCoins;
   const isDefault = item.unlockMethod === "DEFAULT";
   const isStreak = item.unlockMethod === "STREAK_MILESTONE";
+  const isReferral = item.unlockMethod === "REFERRAL_MILESTONE";
 
   const progressPercent =
     priceCoins > 0
@@ -162,7 +163,7 @@ export function resolveCosmeticPresentationState(params: {
   }
 
   // 6. Streak milestone locked
-  if (isStreak) {
+  if (isStreak || isReferral) {
     return {
       state: "LOCKED",
       canPurchase: false,
@@ -170,11 +171,11 @@ export function resolveCosmeticPresentationState(params: {
       shortfall: 0,
       safeBalance,
       progressPercent: 0,
-      progressText: "Day 7 Streak",
-      ctaLabel: "STREAK DAY 7 REQUIRED",
-      badgeLabel: "DAY 7",
+      progressText: isReferral ? "3 qualifying friends" : "Day 7 Streak",
+      ctaLabel: isReferral ? "INVITE 3 FRIENDS" : "STREAK DAY 7 REQUIRED",
+      badgeLabel: isReferral ? "SOCIAL QUEST" : "DAY 7",
       badgeStyle: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-      cardSubtext: "Unlock by maintaining a 7-day streak",
+      cardSubtext: isReferral ? "Earn through your home page's Social Quest" : "Unlock by maintaining a 7-day streak",
     };
   }
 

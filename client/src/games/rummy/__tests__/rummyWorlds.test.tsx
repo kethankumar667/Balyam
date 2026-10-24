@@ -89,6 +89,16 @@ describe("a printed card is the same in every world", () => {
 });
 
 describe("the worlds are wired into both layouts", () => {
+  it("confines the earned School Slate material to the classic world in both layouts", () => {
+    for (const layout of [DESKTOP, MOBILE]) {
+      expect(layout).toContain('useTableTheme("rummy")');
+      expect(layout).toContain('world === "classic" && tableTheme.id === "table_retro_school_slate"');
+    }
+    expect(block(".rm-room.rm-world-classic.rm-school-slate")).toContain("--rm-felt");
+    expect(block(".rm-world-classic.rm-school-slate")).toContain("--rm-m-table");
+    expect(block(".rm-world-classic.rm-school-slate")).toContain("--rm-m-frame");
+  });
+
   it("passes the world from the entry to the desktop and the phone table", () => {
     expect(ENTRY).toContain("world");
     expect(ENTRY).toMatch(/<RummyBoardDesktop \{\.\.\.props\}/);

@@ -26,7 +26,7 @@ interface CosmeticCatalogRow {
   description: string;
   price_coins: number;
   rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
-  unlock_method: "COIN_PURCHASE" | "STREAK_MILESTONE" | "DEFAULT";
+  unlock_method: "COIN_PURCHASE" | "STREAK_MILESTONE" | "REFERRAL_MILESTONE" | "DEFAULT";
   is_active: boolean;
   display_order: number;
 }

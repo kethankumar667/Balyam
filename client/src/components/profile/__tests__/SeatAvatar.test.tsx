@@ -14,6 +14,12 @@ const AVATAR = AVATARS[0].id;
  * seats looked uneven. These pin the two things that make every avatar a circle of the size it is given.
  */
 describe("SeatAvatar shape", () => {
+  it("shows the earned Golden Reunion artwork rather than a generic dashed placeholder", () => {
+    const { container } = render(<SeatAvatar name="Kethan" aura="aura_nostalgia_gold" />);
+    expect(container.querySelector('svg[data-frame="aura_nostalgia_gold"]')).toBeInTheDocument();
+    expect(container.querySelector(".border-dashed")).not.toBeInTheDocument();
+  });
+
   it("fills its box when asked to, so a percentage size has something to be a percentage of", () => {
     const { container } = render(<SeatAvatar avatar={AVATAR} name="Kethan" className="w-full h-full rounded-full object-cover" />);
 

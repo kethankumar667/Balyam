@@ -23,6 +23,7 @@ import { PROFILE_ROUTE_REDIRECTS } from "./features/profile/profileNavigation";
 
 // ── Lazy-loaded pages & routes (code-split) ──
 const LazyBhalyamHome = lazy(() => import("./pages/BhalyamHome"));
+const LazyInvitePage = lazy(() => import("./pages/InvitePage"));
 const LazyRoom = lazy(() => import("./pages/Room"));
 const LazyGamesPage = lazy(() => import("./pages/GamesPage"));
 const LazyFavoritesPage = lazy(() => import("./pages/FavoritesPage"));
@@ -383,6 +384,7 @@ export default function App({ components = {} }: AppProps) {
           <Routes>
             <Route path="/" element={<BhalyamHome />} />
             <Route path="/home" element={<BhalyamHome />} />
+            <Route path="/invite/:code" element={<LazyInvitePage />} />
             {/*
               One persistent layout route for the three pages a player
               bounces between constantly (header nav pills go straight

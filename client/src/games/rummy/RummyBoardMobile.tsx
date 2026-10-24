@@ -37,6 +37,7 @@ import { RummyWorldScene } from "./RummyWorldScene";
 import type { WorldId } from "@shared/worlds";
 import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 import { drawnWorld } from "../../lib/worlds/worldArt";
+import { useTableTheme } from "../../lib/cosmeticsResolver";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import RummyResultModal from "./RummyResultModal";
 import { RummyDeclareFlourish, RummyWinnerCelebration, RummyInvalidDeclareOverlay } from "./RummyAnimations";
@@ -354,6 +355,7 @@ export default function RummyBoardMobile({
   world?: WorldId;
 }) {
   const world = drawnWorld("rummy", tableWorld);
+  const tableTheme = useTableTheme("rummy");
   const isArranging = state.phase === "arranging";
   const myTurn = state.turnPlayerId === selfId && state.phase === "playing";
   const canDraw = myTurn && state.turnAction === "draw" && state.phase === "playing";
@@ -1262,7 +1264,7 @@ export default function RummyBoardMobile({
     <CoachHighlightProvider ids={coach.highlight}>
     <div
       id="rummy-table-container"
-      className={`rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden rm-world-${world}`}
+      className={`rounded-none sm:rounded-[28px] px-3 sm:px-5 pt-3 sm:pt-4 relative shadow-2xl flex flex-col gap-1 sm:gap-1.5 h-full overflow-hidden rm-world-${world} ${world === "classic" && tableTheme.id === "table_retro_school_slate" ? "rm-school-slate" : ""}`}
       style={{
         // The wooden table is the fallback: a world sets --rm-m-table and --rm-m-frame (rummy-worlds.css).
         background: "var(--rm-m-table, linear-gradient(160deg, #6D4323 0%, #4A2C16 55%, #3a2010 100%))",

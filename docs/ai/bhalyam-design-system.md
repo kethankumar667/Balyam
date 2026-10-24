@@ -25,6 +25,27 @@
 
 ## 2. Standardized Component Library
 
+### Personal Journey Command Center
+
+The home `PlayerJourneyDashboard` connects an emerald latest-game poster,
+a cyan/violet XP module and a violet/gold `ReferralQuest` within one navy
+landscape. Cards stack beside a vertical route below 1024px; desktop uses
+three columns and a horizontal route. Primary actions are at least 52px.
+The panel intentionally stays navy in either app theme; it never changes
+the document theme. Decoration is original SVG, noninteractive and hidden
+from assistive technology; hover movement respects reduced motion.
+
+Only display real snapshot data. Level XP uses `describeXpJourney`;
+achievement progress and its full requirement are labelled separately.
+Completed history opens a **new** game and says **Play again**, not Resume:
+cross-device playable saves are a separate milestone.
+
+Referrals show authenticated server counts, explicit loading/retry/unavailable
+states and user-revealed sharing channels. Never invent a joined-friend count,
+saved mode, XP reward or continuation estimate. The earned School Slate
+material is personal, Rummy-only, and applies in both layouts only while the
+host's world is classic. Non-classic host worlds take priority.
+
 ### Coin wallet drawer
 
 `components/economy/WalletDrawer.tsx` uses a warm ivory shell (charcoal in

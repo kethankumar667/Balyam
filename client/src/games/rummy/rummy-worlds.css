@@ -14,6 +14,29 @@
  * Every pair of ink on felt below was chosen to clear 4.5:1 on all the felt depths of its own world.
  */
 
+/* Personal material on the classic table only; a host's world always wins. */
+.rm-room.rm-world-classic.rm-school-slate {
+  --rm-room-bg: #112622;
+  --rm-felt-deep: #19332c;
+  --rm-felt: #29453d;
+  --rm-felt-lit: #35564c;
+  --rm-panel: #1a312b;
+  --rm-panel-lit: #284a3e;
+  --rm-felt-thread: #e1eadd0d;
+  --rm-felt-weave: #e1eadd08;
+  --rm-ink: #f1f5ec;
+  --rm-ink-mid: #dae7d7;
+  --rm-ink-low: #bfcfbd;
+}
+.rm-world-classic.rm-school-slate {
+  --rm-m-table: repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #132b27);
+  --rm-m-frame: 0 0 0 5px #a88350 inset, 0 0 0 8px #e4d4ad inset, 0 0 35px #0008 inset;
+}
+.rm-room.rm-world-classic.rm-school-slate .rm-felt {
+  background: repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #19332c);
+  border-color: #a88350;
+}
+
 /* ── NEON DECK — a night on the glass. Deep navy felt, cyan rails, pale-cyan ink. ─────────────────────────────── */
 .rm-room.rm-world-neon {
   --rm-room-bg:     #030814;
