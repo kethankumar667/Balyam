@@ -33,7 +33,25 @@ function Host() {
   );
 }
 
+function IllustratedDialog() {
+  const { containerRef } = useFocusTrap({ open: true });
+  return <div ref={containerRef} role="dialog">
+    <button type="button">Close illustrated dialog</button>
+    <details><summary tabIndex={0}>Preview illustrated rewards</summary>Rewards</details>
+    <svg aria-hidden="true"><use href="#decorative-island" /></svg>
+  </div>;
+}
+
 describe("useFocusTrap", () => {
+  it("ignores decorative SVG references when finding the last keyboard target", () => {
+    render(<IllustratedDialog />);
+    const close = screen.getByRole("button", { name: "Close illustrated dialog" });
+    close.focus();
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(document.activeElement?.textContent).toBe("Preview illustrated rewards");
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+  });
   it("keeps focus in the field while the dialog re-renders on every keystroke", () => {
     render(<Dialog />);
     const input = screen.getByLabelText("Confirmation");

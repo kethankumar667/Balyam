@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Coins,
   Crown,
@@ -17,6 +19,7 @@ import {
   STREAK_REWARDS_SCHEDULE,
   type StreakMilestoneChest,
   type StreakScheduledDay,
+  shieldsGrantedBy,
 } from "@shared/streak-types";
 import { useStreakStore } from "../../store/streakStore";
 import { AudioManager } from "../../services/AudioManager";
@@ -32,12 +35,17 @@ export interface ExpeditionMilestone {
   special: string;
 }
 
-export const EXPEDITION_MILESTONES: readonly ExpeditionMilestone[] = [
-  { day: 7, title: "Bronze Chest", chest: "bronze", coins: 1_000, special: "Early Bird title" },
-  { day: 14, title: "Silver Chest", chest: "silver", coins: 2_500, special: "Emoji pack" },
-  { day: 21, title: "Gold Chest", chest: "gold", coins: 5_000, special: "Solar Flare frame" },
-  { day: 30, title: "Ultimate Vault", chest: "diamond", coins: 10_000, special: "Champion crown + shield" },
-] as const;
+const MILESTONE_NAMES = ["Bronze Chest", "Silver Chest", "Gold Chest", "Ultimate Vault"];
+export const EXPEDITION_MILESTONES: readonly ExpeditionMilestone[] =
+  ([7, 14, 21, 30] as const).map((day, index) => {
+    const reward = STREAK_REWARDS_SCHEDULE[day - 1];
+    return {
+      day, title: MILESTONE_NAMES[index],
+      chest: ({ 7: "bronze", 14: "silver", 21: "gold", 30: "diamond" } as const)[day],
+      coins: reward.coins,
+      special: `${reward.specialRewardTitle} ${reward.specialRewardType === "title" ? "title" : reward.specialRewardType === "badge" ? "badge" : ""}${shieldsGrantedBy(reward) ? " + shield" : ""}`.trim(),
+    };
+  });
 
 export interface StreakExpeditionModel {
   activeDay: number;
@@ -92,7 +100,7 @@ export function useStreakExpedition(): StreakExpeditionModel {
   const isClaimable = state?.isClaimableToday ?? false;
   // Registered today: nothing has been claimed, and nothing is "today's" yet — Day 1 is tomorrow's.
   const isHeldForFirstDay = Boolean(state?.firstClaimAt);
-  const completedDays = isClaimable ? Math.max(0, activeDay - 1) : isHeldForFirstDay ? 0 : activeDay;
+  const completedDays = !state || isHeldForFirstDay ? 0 : isClaimable ? Math.max(0, activeDay - 1) : activeDay;
   const todayReward = scheduledReward(activeDay, schedule);
   const nextDay = activeDay === 30 ? 1 : activeDay + 1;
   const nextReward = isHeldForFirstDay ? todayReward : scheduledReward(nextDay, schedule);
@@ -155,93 +163,56 @@ interface TodayRewardCardProps {
 }
 
 export function TodayRewardCard({ model, compact = false }: TodayRewardCardProps) {
-  const reduce = useReducedMotion();
-  const streakCount = Math.max(model.currentStreak, model.completedDays);
-
+  const stripStart = Math.min(24, Math.max(1, model.activeDay - 3));
   return (
-    <section className={`streak-paper relative w-full overflow-hidden ${compact ? "p-3.5" : "p-5"} flex flex-col justify-between`}>
-      <div aria-hidden="true" className="absolute top-3.5 bottom-3.5 left-3 flex flex-col justify-between pointer-events-none py-0.5">
-        {Array.from({ length: 4 }, (_, index) => (
-          <span key={index} className="h-2 w-2 rounded-full bg-[#10254b]/75" />
-        ))}
+    <section className={`streak-paper relative flex w-full flex-1 flex-col overflow-hidden ${compact ? "p-5" : "p-6"}`}>
+      <div className="flex items-center gap-4">
+        <div className="streak-day-seal relative grid h-[100px] w-[100px] shrink-0 place-content-center rounded-full text-center">
+          <Flame aria-hidden="true" className="mx-auto h-6 w-6 fill-orange-400 text-orange-600" />
+          <span className="font-display text-3xl leading-none text-[#194b3b]">{model.currentStreak}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#315348]">Day streak</span>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[.15em] text-[#725633]">Your daily reward</p>
+          <h3 className="mt-1 font-display text-xl leading-tight text-[#204d37]">
+            {model.isClaimable ? `Day ${model.activeDay} Ready` : model.isHeldForFirstDay ? "Starts tomorrow" : "Today secured!"}
+          </h3>
+          <p className="mt-2 flex items-center gap-1.5 font-display text-2xl text-[#854a12]">
+            <Coins aria-hidden="true" className="h-5 w-5 shrink-0 text-[#a56b15]" />
+            +{model.todayReward.coins.toLocaleString()} Coins
+          </p>
+          <p className="mt-1 text-[11px] font-semibold text-[#66563e]">
+            {model.isHeldForFirstDay ? "Your first grant awaits" : model.isClaimable ? "A little treasure, every day" : "Daily reward claimed"}
+          </p>
+        </div>
       </div>
 
-      <div className="relative pl-5 sm:pl-6 flex flex-col justify-between">
-        <div>
-          <div className="flex items-start gap-2.5">
-            <motion.div
-              animate={reduce ? undefined : { rotate: [-2, 2, -2], y: [0, -3, 0] }}
-              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-              className={`grid shrink-0 place-items-center rounded-full bg-orange-100 text-orange-600 ring-2 ring-orange-300 ${compact ? "h-11 w-11" : "h-14 w-14"}`}
-            >
-              <Flame className={`${compact ? "h-6 w-6" : "h-8 w-8"} fill-orange-400/45`} />
-            </motion.div>
-            <div className="min-w-0">
-              <p className="font-hand text-xs font-bold text-[#365eaa]">Your daily expedition</p>
-              <h3 className={`${compact ? "text-2xl" : "text-3xl"} font-hand font-black leading-none text-[#10254b]`}>
-                {model.isHeldForFirstDay ? "Starts tomorrow!" : `${Math.max(1, streakCount)} Day Streak!`}
-              </h3>
-            </div>
-          </div>
-
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-black ${model.isClaimable ? "border-orange-300 bg-orange-100 text-orange-900" : model.isHeldForFirstDay ? "border-amber-300 bg-amber-100 text-amber-900" : "border-emerald-300 bg-emerald-100 text-emerald-800"}`}>
-              {model.isClaimable ? <Flame className="h-3.5 w-3.5" /> : model.isHeldForFirstDay ? <Clock3 className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5 stroke-[3]" />}
-              {model.isClaimable ? `Day ${model.activeDay} Ready` : model.isHeldForFirstDay ? "You joined today" : "Claimed today"}
+      {model.isClaimable ? (
+        <button type="button" onClick={model.claim} disabled={model.isClaiming}
+          aria-label={`Claim +${model.todayReward.coins} coins`}
+          className="streak-claim-button mt-4 min-h-11 w-full rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider disabled:cursor-wait disabled:opacity-70">
+          {model.isClaiming ? "Claiming..." : `Claim +${model.todayReward.coins.toLocaleString()} coins`}
+        </button>
+      ) : (
+        <p className="mt-4 flex items-center justify-center gap-2 border-y border-[#c4a878]/60 py-2.5 text-xs font-semibold text-[#574730]">
+          <Clock3 aria-hidden="true" className="h-4 w-4 shrink-0" />
+          {model.isHeldForFirstDay ? "First reward in" : "Next reward in"}
+          <span className="font-mono font-bold">{model.timeUntilReset}</span>
+        </p>
+      )}
+      <ol aria-label="Nearby daily rewards" className="mt-auto flex justify-between gap-1 pt-4">
+        {Array.from({ length: 7 }, (_, index) => {
+          const day = stripStart + index;
+          const complete = day <= model.completedDays;
+          return <li key={day} aria-current={day === model.activeDay ? "step" : undefined} className="flex flex-col items-center gap-1 text-[10px] font-bold text-[#66563e]">
+            <span className={`grid h-7 w-7 place-items-center rounded-full border ${complete ? "border-[#588369] bg-[#e0ecce] text-[#285237]" : day === model.activeDay ? "border-[#b47a19] bg-[#f5d689] text-[#68430b]" : "border-[#cbb892] bg-[#ecdfc2] text-[#756447]"}`}>
+              {complete ? <Check aria-hidden="true" className="h-4 w-4" /> : day}
             </span>
-            {model.shieldsRemaining > 0 && (
-              <span className="inline-flex min-h-[28px] items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] font-black text-sky-800">
-                <Shield className="h-3.5 w-3.5" />
-                {model.shieldsRemaining} shield{model.shieldsRemaining === 1 ? "" : "s"}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2.5 flex items-baseline justify-between gap-2">
-            <div>
-              <p className="font-hand text-xs font-bold text-[#5f4a37]">
-                {model.isClaimable ? "Today's grant" : model.isHeldForFirstDay ? "Your first grant" : "Next grant"}
-              </p>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[#8b3513]">
-                <Coins className={`${compact ? "h-5 w-5" : "h-6 w-6"} fill-amber-300 text-amber-600`} />
-                <span className={`font-hand ${compact ? "text-2xl" : "text-3xl"} font-black leading-none`}>
-                  +{model.isClaimable ? model.todayReward.coins.toLocaleString() : model.nextReward.coins.toLocaleString()} Coins
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3">
-          {model.isClaimable ? (
-            <button
-              type="button"
-              onClick={model.claim}
-              disabled={model.isClaiming}
-              aria-label={`Claim +${model.todayReward.coins} coins`}
-              className="streak-claim-button min-h-[42px] w-full rounded-xl px-4 py-2 text-xs font-black uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70"
-            >
-              {model.isClaiming ? "Claiming…" : `Claim +${model.todayReward.coins.toLocaleString()} coins`}
-            </button>
-          ) : model.isHeldForFirstDay ? (
-            <div className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100 px-3 text-xs font-black text-amber-900">
-              <Clock3 className="h-4 w-4" />
-              Opens tomorrow — see you then
-            </div>
-          ) : (
-            <div className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-100 px-3 text-xs font-black text-emerald-800">
-              <Check className="h-4 w-4 stroke-[3]" />
-              Claimed for today
-            </div>
-          )}
-
-          {model.claimError && (
-            <div role="alert" className="mt-2 rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-bold text-red-800">
-              {model.claimError}
-            </div>
-          )}
-        </div>
-      </div>
+            <span>Day {day}<span className="sr-only">{complete ? ", claimed" : ", not claimed"}</span></span>
+          </li>;
+        })}
+      </ol>
+      {model.claimError && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-2 text-xs font-bold text-red-800">{model.claimError}</p>}
     </section>
   );
 }
@@ -253,55 +224,33 @@ interface NextMilestoneCardProps {
 
 export function NextMilestoneCard({ model, compact = false }: NextMilestoneCardProps) {
   const milestoneProgress = Math.min(100, (model.completedDays / model.nextMilestone.day) * 100);
-
   return (
-    <section className={`streak-panel w-full flex flex-col justify-between ${compact ? "p-3.5" : "p-5"}`}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="streak-eyebrow">Next milestone</p>
-          <h3 className={`mt-0.5 font-hand ${compact ? "text-xl" : "text-2xl"} font-black text-[var(--streak-ink)]`}>
+    <section className={`streak-panel streak-chest-showcase relative flex w-full flex-1 flex-col overflow-hidden ${compact ? "p-4" : "p-6"}`}>
+      <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)_125px] items-center gap-2 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="min-w-0">
+          <p className="streak-eyebrow">{model.daysToNextMilestone ? "Next milestone" : "Cycle complete"}</p>
+          <h3 className="mt-2 font-display text-2xl text-[var(--streak-ink)]">
             {model.nextMilestone.title}
           </h3>
+          <p className="mt-1 text-xs font-bold text-[var(--streak-muted)]">{model.daysToNextMilestone ? `${model.daysToNextMilestone} ${model.daysToNextMilestone === 1 ? "day" : "days"} left to unlock` : "All waypoints reached!"}</p>
+          <p className="mt-4 flex items-center gap-1.5 font-display text-xl text-amber-800 dark:text-amber-300"><Coins aria-hidden="true" className="h-5 w-5 shrink-0" />+{model.nextMilestone.coins.toLocaleString()} Coins</p>
+          <p className="mt-2 text-xs font-semibold leading-relaxed text-[var(--streak-muted)]">{model.nextMilestone.special}</p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full border border-[var(--streak-border)] bg-[var(--streak-control)] px-2.5 py-1 text-[11px] font-black text-[var(--streak-muted)]">
-          <CalendarDays className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300" />
-          {model.daysToNextMilestone} {model.daysToNextMilestone === 1 ? "day" : "days"} left
-        </span>
+        <div className="streak-chest-pedestal relative grid h-[145px] place-items-center lg:h-[155px]">
+          <PremiumRewardChest type={model.nextMilestone.chest} size={compact ? 145 : 165} scale={2.3} className="relative z-10 max-w-full scale-[.8] lg:scale-100" />
+        </div>
       </div>
-
-      <div className={`mt-2.5 grid flex-1 items-center gap-3 ${compact ? "grid-cols-[105px_1fr]" : "grid-cols-[140px_1fr]"}`}>
-        <div className={`streak-art-well grid place-items-center rounded-xl ${compact ? "min-h-[105px] p-1" : "min-h-[130px] p-2"} overflow-visible`}>
-          <PremiumRewardChest
-            type={model.nextMilestone.chest}
-            size={compact ? 105 : 145}
-            scale={1.45}
-            className="transition-transform duration-300 hover:-translate-y-1 hover:scale-[1.05]"
-          />
+      <div className="relative z-10 mt-3">
+        <div className="mb-2 flex justify-between text-xs font-bold text-[var(--streak-muted)]"><span>{model.completedDays} / {model.nextMilestone.day} days completed</span><span>{Math.floor(milestoneProgress)}%</span></div>
+        <div role="progressbar" aria-label="Next milestone progress" aria-valuemin={0} aria-valuemax={model.nextMilestone.day} aria-valuenow={model.completedDays} className="h-2.5 overflow-hidden rounded-full border border-[var(--streak-border)] bg-[var(--streak-track)]">
+          <div className="h-full rounded-full bg-gradient-to-r from-amber-600 via-amber-300 to-amber-500" style={{ width: `${milestoneProgress}%` }} />
         </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex rounded-full bg-orange-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-              Day {model.nextMilestone.day}
-            </span>
-            <span className="text-xs font-black text-amber-700 dark:text-amber-300">
-              +{model.nextMilestone.coins.toLocaleString()} Coins
-            </span>
-          </div>
-          <p className="mt-1 text-xs font-bold text-[var(--streak-muted)]">
-            {model.completedDays} / {model.nextMilestone.day} days completed
-          </p>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--streak-track)] ring-1 ring-[var(--streak-border)]">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${milestoneProgress}%` }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
-            />
-          </div>
-          <p className="mt-1.5 truncate text-[11px] font-bold text-[var(--streak-muted)]">
-            Bonus: {model.nextMilestone.special}
-          </p>
-        </div>
+        <details className="streak-preview mt-2">
+          <summary tabIndex={0} className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-bold text-[var(--streak-ink)]"><Gift aria-hidden="true" className="h-4 w-4 text-amber-600 dark:text-amber-300" />Preview rewards <ChevronRight aria-hidden="true" className="ml-auto h-4 w-4" /></summary>
+          <ul className="space-y-2 border-t border-[var(--streak-border)] py-3 text-xs text-[var(--streak-muted)]">
+            {EXPEDITION_MILESTONES.map((reward) => <li key={reward.day}><strong className="text-[var(--streak-ink)]">Day {reward.day} · {reward.coins.toLocaleString()} coins</strong><br />{reward.special}</li>)}
+          </ul>
+        </details>
       </div>
     </section>
   );
@@ -343,6 +292,9 @@ interface MilestoneRailProps {
 }
 
 export function MilestoneRail({ model, mobile = false, compact = false }: MilestoneRailProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const artId = useId().replace(/:/g, "");
   const checkpoints = [
     { day: 1, title: "Base Camp", chest: null, coins: STREAK_REWARDS_SCHEDULE[0].coins },
     ...EXPEDITION_MILESTONES.map((milestone) => ({
@@ -353,81 +305,75 @@ export function MilestoneRail({ model, mobile = false, compact = false }: Milest
     })),
   ];
 
-  const circleSize = compact ? 64 : 68;
-  const centerY = circleSize / 2; // Exact geometric center Y (32px or 34px)
+  // Checkpoints are equally spaced visually, but represent unequal spans of days.
+  const segment = Math.max(0, checkpoints.findIndex((point) => point.day >= model.activeDay) - 1);
+  const from = checkpoints[segment];
+  const to = checkpoints[segment + 1];
+  const position = model.activeDay === 1 ? 0 : (segment + (model.activeDay - from.day) / (to.day - from.day)) / 4;
+  const move = (direction: number) => scrollRef.current?.scrollBy({ left: direction * 240, behavior: reduce ? "instant" : "smooth" });
 
   return (
-    <section className={`streak-panel ${compact ? "p-3" : "p-4 sm:p-5"}`}>
-      <div className={`${compact ? "mb-2" : "mb-3"} flex items-center justify-between gap-3`}>
+    <section className={`streak-panel overflow-hidden ${compact ? "p-4" : "p-5"}`}>
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="streak-eyebrow">Expedition Waypoints</p>
-          <h3 className={`font-hand ${compact ? "text-lg" : "text-xl"} font-black text-[var(--streak-ink)]`}>
-            30-Day Milestone Journey
-          </h3>
+          <p className="streak-eyebrow">One day. One step. More treasure.</p>
+          <h3 className="mt-1 font-display text-lg text-[var(--streak-ink)]">30-Day Milestone Journey</h3>
         </div>
-        {mobile && <span className="text-xs font-bold text-[var(--streak-muted)]">Swipe to explore</span>}
+        {mobile && <div className="flex shrink-0 gap-1">
+          <button type="button" aria-label="Previous waypoints" onClick={() => move(-1)} className="streak-icon-button grid h-11 w-11 place-items-center rounded-full"><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" aria-label="Next waypoints" onClick={() => move(1)} className="streak-icon-button grid h-11 w-11 place-items-center rounded-full"><ChevronRight className="h-5 w-5" /></button>
+        </div>}
       </div>
-
-      <div className={mobile ? "overflow-x-auto pb-2" : ""}>
-        <div className={`relative flex items-start ${mobile ? "min-w-[540px] gap-2" : "justify-between gap-2"}`}>
-          {/* Background Inactive Track Line passing through center of all nodes */}
-          <div
-            className="absolute left-[10%] right-[10%] h-[3px] rounded-full bg-[var(--streak-track)]"
-            style={{ top: `${centerY}px`, transform: "translateY(-50%)" }}
-          />
-
-          {/* Active Gradient Progress Line passing through center */}
-          <div
-            className="absolute left-[10%] h-[3px] rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-orange-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all duration-500"
-            style={{
-              top: `${centerY}px`,
-              transform: "translateY(-50%)",
-              width: `${Math.min(80, Math.max(0, (model.completedDays / 30) * 80))}%`,
-            }}
-          />
-
-          {checkpoints.map((checkpoint) => {
+      <div ref={scrollRef} role="region" aria-label="Expedition waypoint map" tabIndex={mobile ? 0 : undefined} className="streak-scrollbar mt-1 overflow-x-auto pb-1">
+        <div className={`streak-journey-map relative h-[230px] ${mobile ? "min-w-[670px]" : "min-w-[600px]"}`}>
+          <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-[175px] w-full" viewBox="0 0 1000 175" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={`${artId}-rock`} x2="0" y2="1"><stop stopColor="var(--streak-island-edge)" /><stop offset="1" stopColor="var(--streak-rock)" /></linearGradient>
+              <linearGradient id={`${artId}-grass`} x2="0" y2="1"><stop stopColor="var(--streak-grass-hi)" /><stop offset="1" stopColor="var(--streak-grass)" /></linearGradient>
+              <g id={`${artId}-pine`}><path d="M0 0v28" stroke="#655039" strokeWidth="3" /><path d="m0-17-12 24h24ZM0-7-16 24h32Z" fill="var(--streak-pine)" /><path d="M0-17V17H16L7 1H12Z" fill="var(--streak-pine-hi)" /></g>
+              <g id={`${artId}-island`}>
+                <ellipse cy="52" rx="81" ry="12" fill="var(--streak-map-shadow)" opacity=".4" />
+                <path d="M-80 10-65 41-37 52-15 44 9 59 38 40 63 43 80 10Z" fill={`url(#${artId}-rock)`} />
+                <path d="m-42 24 11 17m42-15L9 59m42-35-13 16" stroke="var(--streak-rock)" strokeWidth="3" opacity=".6" />
+                <ellipse rx="80" ry="25" cy="9" fill="var(--streak-island-edge)" />
+                <ellipse rx="75" ry="23" cy="3" fill={`url(#${artId}-grass)`} />
+                <path d="M-59 2Q-28-19 1-8T56 6" fill="none" stroke="var(--streak-grass-hi)" strokeWidth="2" opacity=".7" />
+                <use href={`#${artId}-pine`} x="-55" y="-16" /><use href={`#${artId}-pine`} x="49" y="-12" transform="translate(10 1) scale(.8)" />
+                <path d="m-29 5 6-4 7 5-3 6h-12Zm65 7 5-4 8 3-1 6H35Z" fill="#bbad84" opacity=".7" />
+              </g>
+            </defs>
+            <path d="M0 140Q120 120 230 143T460 144T740 146T1000 135M0 156Q200 140 340 158T680 158T1000 153" fill="none" stroke="var(--streak-water-line)" strokeWidth="1.5" opacity=".45" />
+            <path d="M100 99C190 99 200 58 300 58S410 99 500 99 610 58 700 58 800 99 900 99" fill="none" stroke="var(--streak-route)" strokeWidth="3" strokeDasharray="2 9" strokeLinecap="round" />
+            {[100, 300, 500, 700, 900].map((x, index) => <use key={x} href={`#${artId}-island`} x={x} y={index % 2 ? 74 : 108} />)}
+          </svg>
+          <div className="absolute top-0 z-20 -translate-x-1/2 rounded-full border border-amber-500 bg-[#f8df94] px-3 py-1 text-[10px] font-black text-[#5b3a10] shadow-md" style={{ left: `${10 + position * 80}%` }}>
+            {model.isHeldForFirstDay ? "Start here" : `You · Day ${model.activeDay}`}
+            <span aria-hidden="true" className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-500 bg-[#f8df94]" />
+            <span aria-hidden="true" className="absolute left-1/2 top-[calc(100%+5px)] h-12 border-l border-dashed border-amber-500" />
+            <span aria-hidden="true" className="absolute left-1/2 top-[calc(100%+50px)] h-3 w-3 -translate-x-1/2 rotate-45 border border-amber-500 bg-[#f8df94] shadow-[0_0_12px_#fbbf24]" />
+          </div>
+          <ol aria-label="Milestone rewards" className="relative grid h-full grid-cols-5">
+          {checkpoints.map((checkpoint, index) => {
             const complete = model.completedDays >= checkpoint.day;
-            const isNext = checkpoint.day === model.nextMilestone.day && !complete;
             return (
-              <div
-                key={checkpoint.day}
-                className={`${mobile ? "w-[100px]" : "min-w-0 flex-1"} relative z-10 flex flex-col items-center text-center`}
-              >
-                <div
-                  className={`grid place-items-center rounded-full border-2 overflow-visible relative transition-all duration-300 ${complete ? "border-emerald-300 bg-emerald-500/15 shadow-[0_0_16px_rgba(16,185,129,0.25)]" : isNext ? "border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(245,158,11,0.3)]" : "border-[var(--streak-border)] bg-[var(--streak-control)]"}`}
-                  style={{ width: circleSize, height: circleSize }}
-                >
-                  {checkpoint.chest ? (
-                    <div className="w-full h-full flex items-center justify-center overflow-visible">
-                      <PremiumRewardChest
-                        type={checkpoint.chest}
-                        size={circleSize - 2}
-                        scale={1.38}
-                        className="relative z-10"
-                      />
-                    </div>
-                  ) : complete ? (
-                    <Check className="h-6 w-6 text-emerald-500 stroke-[3]" />
-                  ) : (
-                    <Flame className="h-6 w-6 fill-orange-300 text-orange-600" />
-                  )}
+              <li key={checkpoint.day} className="relative flex min-w-0 flex-col items-center text-center" style={{ paddingTop: index % 2 ? 32 : 66 }}>
+                <div className="relative grid h-[70px] w-[78px] place-items-center">
+                  {checkpoint.chest ? <PremiumRewardChest type={checkpoint.chest} size={78} scale={1.8} /> :
+                    <div aria-hidden="true" className="streak-base-camp"><span /><span /></div>}
+                  {complete && <span className="absolute -right-1 top-0 grid h-5 w-5 place-items-center rounded-full border border-[#b8efc0] bg-[#26754c] text-white"><Check aria-hidden="true" className="h-3 w-3" /><span className="sr-only">Claimed</span></span>}
                 </div>
-                <p className={`mt-1.5 ${compact ? "text-[11px]" : "text-xs"} font-black text-[var(--streak-ink)]`}>
-                  Day {checkpoint.day}
-                </p>
-                <p className={`truncate ${compact ? "text-[10px]" : "text-[11px]"} font-bold text-[var(--streak-muted)]`}>
-                  {checkpoint.title}
-                </p>
-                <p className={`mt-0.5 flex items-center gap-0.5 ${compact ? "text-[10px]" : "text-[11px]"} font-black text-amber-700 dark:text-amber-300`}>
-                  <Coins className="h-3 w-3" />
-                  +{checkpoint.coins.toLocaleString()}
-                </p>
-              </div>
+                <div className="streak-waypoint-label mt-5 rounded-xl px-2 py-1.5">
+                  <p className="text-xs font-black text-[var(--streak-ink)]">Day {checkpoint.day}</p>
+                  <p className="text-[11px] font-semibold text-[var(--streak-muted)]">{checkpoint.title}</p>
+                  <p className="mt-0.5 text-xs font-bold text-amber-800 dark:text-amber-300">+{checkpoint.coins.toLocaleString()} coins</p>
+                </div>
+              </li>
             );
           })}
+          </ol>
         </div>
       </div>
+      {mobile && <p className="mt-2 text-center text-[11px] text-[var(--streak-muted)]">Swipe or use the arrows to explore all 5 waypoints</p>}
     </section>
   );
 }
@@ -525,26 +471,30 @@ export function ExpeditionFooter({ model, mobile = false }: { model: StreakExped
 }
 
 export function ExpeditionCompactFooter({ model }: { model: StreakExpeditionModel }) {
+  const chestsClaimed = EXPEDITION_MILESTONES.filter((reward) => reward.day <= model.completedDays).length;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[var(--streak-border)] bg-[var(--streak-control)] px-3.5 py-2 text-xs">
-      <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5 font-black text-[var(--streak-ink)]">
-          <Trophy className="h-4 w-4 text-amber-600 dark:text-amber-300" />
-          Best: {model.longestStreak} {model.longestStreak === 1 ? "day" : "days"}
-        </span>
-        <span className="hidden sm:flex items-center gap-1.5 font-bold text-[var(--streak-muted)]">
-          <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300" />
-          Pool: {model.totalCoins.toLocaleString()} coins
-        </span>
-        <span className="hidden md:flex items-center gap-1.5 font-bold text-[var(--streak-muted)]">
-          <Gift className="h-3.5 w-3.5 text-orange-600 dark:text-orange-300" />
-          4 Grand Chests
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--streak-muted)]">
-        <Lightbulb className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-        <span>Shields protect missed days</span>
-      </div>
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <section className="streak-panel p-4">
+        <h3 className="flex items-center gap-2 font-display text-sm"><Trophy aria-hidden="true" className="h-4 w-4 text-amber-600 dark:text-amber-300" />Expedition stats</h3>
+        <dl className="mt-3 space-y-2 text-xs">
+          <div className="flex justify-between gap-2"><dt className="text-[var(--streak-muted)]">Longest streak</dt><dd className="font-bold">{model.longestStreak} {model.longestStreak === 1 ? "day" : "days"}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-[var(--streak-muted)]">Chests this cycle</dt><dd className="font-bold">{chestsClaimed} / 4</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-[var(--streak-muted)]">Cycle reward pool</dt><dd className="font-bold">{model.totalCoins.toLocaleString()} coins</dd></div>
+        </dl>
+      </section>
+      <section className="streak-panel p-4">
+        <h3 className="flex items-center gap-2 font-display text-sm"><Gift aria-hidden="true" className="h-4 w-4 text-amber-600 dark:text-amber-300" />Reward highlights</h3>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="streak-highlight-medal grid h-14 w-14 shrink-0 place-items-center rounded-xl"><Crown aria-hidden="true" className="h-8 w-8" /></div>
+          <div className="text-xs"><p className="font-bold">Monthly Champion</p><p className="mt-1 leading-relaxed text-[var(--streak-muted)]">Day 30 badge + a streak shield</p></div>
+        </div>
+        <p className="mt-2 text-[11px] text-[var(--streak-muted)]">Titles, reactions & a frame along the way.</p>
+      </section>
+      <section className="streak-panel p-4">
+        <h3 className="flex items-center gap-2 font-display text-sm"><Shield aria-hidden="true" className="h-4 w-4 text-sky-700 dark:text-sky-300" />Streak protection</h3>
+        <div className="mt-3 flex items-center gap-3"><Shield aria-hidden="true" className="h-10 w-10 shrink-0 fill-sky-500/15 text-sky-700 dark:text-sky-300" /><p className="text-xs font-bold">{model.shieldsRemaining} {model.shieldsRemaining === 1 ? "shield" : "shields"} available</p></div>
+        <p className="mt-2 text-[11px] leading-relaxed text-[var(--streak-muted)]">A shield protects a missed day. Without one, your streak starts again at Day 1.</p>
+      </section>
     </div>
   );
 }
@@ -557,11 +507,10 @@ export function CountdownPill({ model, compact = false }: { model: StreakExpedit
         <p className="text-[9px] font-black uppercase tracking-wider text-[var(--streak-muted)] leading-none">
           {model.isClaimable ? "Reset in" : model.isHeldForFirstDay ? "Opens in" : "Next reward"}
         </p>
-        <p className={`font-mono ${compact ? "text-xs" : "text-base"} font-black tracking-wide text-[var(--streak-ink)] leading-tight`}>
+        <p className={`font-mono ${compact ? "text-sm" : "text-base"} font-black tracking-wide text-[var(--streak-ink)] leading-tight`}>
           {model.timeUntilReset}
         </p>
       </div>
     </div>
   );
 }
-

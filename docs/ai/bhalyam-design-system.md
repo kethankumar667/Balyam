@@ -226,6 +226,26 @@ matching item when necessary. An empty rarity has an explicit message and
 retains the filters; switching category or card-game variant resets to All.
 
 ### 2.3 Modals & Dialogs
+
+The daily-streak popup opens directly into **Rewards Expedition**, whether
+today's reward is ready or already claimed. Desktop pairs a parchment daily
+card with an illuminated next-chest showcase, followed by an original SVG
+island journey and three summary panels. Mobile uses a fullscreen, safe-area
+stack with swipeable waypoints and visible 44px previous/next controls.
+Ivory/parchment and midnight/cyan materials follow the application's light
+and dark themes; neither layout changes the document theme.
+
+Reward amounts and milestone perks come from the shared schedule. The daily
+card shows that day's grant even after claiming, not tomorrow's amount.
+Stats distinguish the cycle reward pool and chests reached this cycle from
+lifetime earnings; no invented earned totals appear. Day 30 awards the
+Monthly Champion **badge** and a shield, not an equippable crown. Claiming,
+registration waits, protection and reward settlement remain server-controlled.
+Preview rewards is an expandable disclosure. Loading, retry and claim errors
+are explicit; unavailable player state is never shown as a secured day.
+The popup is portalled, scroll-locked, keyboard-contained and Escape-dismissible,
+with focus restoration, visible focus rings and reduced-motion transitions.
+
 - `<RewardRevealModal>`: High-dopamine dialog with particle confetti and unlock sound triggers.
 - `<WelcomeModal>`: 3-step first-time player onboarding carousel.
 - `<PartyInvitationModal>`: Realtime squad invitation popup with Accept & Join / Decline actions.

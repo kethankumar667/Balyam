@@ -19,6 +19,7 @@ import CountUp from "../CountUp";
 import { getChestImageUrl, PremiumRewardChest } from "./PremiumRewardChest";
 import { CoinFountain } from "../faucet/CoinCelebrations";
 import { ArcadeChestOpeningModal, buildStreakLoot, lootFootnote } from "../chest";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface StreakClaimCelebrationProps {
   result: DailyStreakClaimResult;
@@ -69,6 +70,7 @@ export function StreakClaimCelebration({ result, onClose }: StreakClaimCelebrati
 }
 
 function CoinStreakCelebration({ result, onClose }: StreakClaimCelebrationProps) {
+  const { containerRef } = useFocusTrap({ open: true });
   const isGrandCycle = Boolean(result.cycleCompleted);
   const milestoneChestType = result.claimedDay === 30 ? "diamond" : undefined;
 
@@ -172,6 +174,7 @@ function CoinStreakCelebration({ result, onClose }: StreakClaimCelebrationProps)
 
         {/* Modal Card — dopamine-engineered reward presentation */}
         <motion.div
+          ref={containerRef}
           role="dialog"
           aria-modal="true"
           aria-label="Streak Reward Claimed"

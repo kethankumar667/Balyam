@@ -34,6 +34,7 @@ export interface StreakStore {
   isOpen: boolean;
   viewMode: StreakModalView;
   isLoading: boolean;
+  loadError: string | null;
   isClaiming: boolean;
   latestClaimResult: DailyStreakClaimResult | null;
   showCelebration: boolean;
@@ -56,8 +57,9 @@ export interface StreakStore {
 export const useStreakStore = create<StreakStore>((set, get) => ({
   state: null,
   isOpen: false,
-  viewMode: "reward",
+  viewMode: "journey",
   isLoading: false,
+  loadError: null,
   isClaiming: false,
   latestClaimResult: null,
   showCelebration: false,
@@ -72,7 +74,7 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
   },
 
   fetchStreak: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, loadError: null });
     try {
       const data = await apiJson<DailyStreakState>("/api/streak");
       if (data) {
@@ -80,6 +82,8 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
           state: data,
           timeUntilReset: formatTimeRemaining(data.nextResetAt),
         });
+      } else {
+        set({ loadError: "Couldn't load your expedition. Please try again." });
       }
     } finally {
       set({ isLoading: false });
@@ -127,14 +131,13 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
   },
 
   openModal: (targetView?: StreakModalView) => {
-    const isClaimable = get().state?.isClaimableToday ?? false;
-    const resolvedView = targetView ?? (isClaimable ? "reward" : "journey");
+    const resolvedView = targetView ?? "journey";
     set({ isOpen: true, viewMode: resolvedView });
     void get().fetchStreak();
   },
 
   openClaimModal: () => {
-    get().openModal("reward");
+    get().openModal("journey");
   },
 
   openExpeditionModal: () => {
@@ -161,8 +164,9 @@ export const useStreakStore = create<StreakStore>((set, get) => ({
     set({
       state: null,
       isOpen: false,
-      viewMode: "reward",
+      viewMode: "journey",
       isLoading: false,
+      loadError: null,
       isClaiming: false,
       latestClaimResult: null,
       showCelebration: false,

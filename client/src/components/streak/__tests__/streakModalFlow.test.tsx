@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, render, renderHook, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useStreakAutoOpen } from "../../../hooks/useStreakAutoOpen";
 import { useAuthStore } from "../../../store/authStore";
 import { useStreakStore } from "../../../store/streakStore";
@@ -57,10 +57,12 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
     useStreakStore.getState().resetTransientState();
 
     refreshWalletSpy = vi.spyOn(useEconomy, "refreshCurrentWallet").mockResolvedValue();
-    apiJsonSpy = vi.spyOn(playerIdentity, "apiJson");
+    apiJsonSpy = vi.spyOn(playerIdentity, "apiJson").mockResolvedValue(null);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await act(async () => {});
+    cleanup();
     apiJsonSpy.mockRestore();
     refreshWalletSpy.mockRestore();
     useStreakStore.getState().resetTransientState();
@@ -69,6 +71,40 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       userId: null,
       kind: "guest",
       isMember: false,
+    });
+  });
+
+  describe("Expedition accessibility and unavailable data", () => {
+    it("contains focus, closes directly on Escape and restores the trigger and body scrolling", async () => {
+      useStreakStore.setState({ state: createMockStreakState(), isOpen: false });
+      apiJsonSpy.mockResolvedValue(createMockStreakState());
+      render(<><button onClick={() => useStreakStore.getState().openModal()}>Open expedition</button><DailyStreakModal /></>);
+      const trigger = screen.getByRole("button", { name: "Open expedition" });
+      trigger.focus();
+      await act(async () => { fireEvent.click(trigger); });
+      const close = screen.getByRole("button", { name: "Close streak rewards" });
+      expect(document.activeElement).toBe(close);
+      expect(document.body.style.overflow).toBe("hidden");
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+      expect(document.activeElement?.textContent).toContain("Preview rewards");
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(useStreakStore.getState().isOpen).toBe(false);
+      expect(useStreakStore.getState().state?.isClaimableToday).toBe(true);
+      expect(document.activeElement).toBe(trigger);
+      expect(document.body.style.overflow).not.toBe("hidden");
+    });
+
+    it("shows loading and a recoverable error instead of a fake secured day", async () => {
+      useStreakStore.setState({ state: null, isOpen: true, isLoading: true });
+      render(<DailyStreakModal />);
+      expect(screen.getByRole("status").textContent).toContain("Loading your expedition");
+      expect(screen.queryByText("Today secured!")).toBeNull();
+      act(() => useStreakStore.setState({ isLoading: false, loadError: "Couldn't load your expedition. Please try again." }));
+      expect(screen.getByRole("alert")).toBeDefined();
+      apiJsonSpy.mockResolvedValue(createMockStreakState({ isClaimableToday: false }));
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(screen.getByText("Today secured!")).toBeDefined());
+      expect(useStreakStore.getState().loadError).toBeNull();
     });
   });
 
@@ -172,13 +208,14 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
 
       await waitFor(() => {
         expect(useStreakStore.getState().isOpen).toBe(true);
-        expect(useStreakStore.getState().viewMode).toBe("reward");
+        expect(useStreakStore.getState().viewMode).toBe("journey");
         expect(useStreakStore.getState().hasAutoOpenedInSession).toBe(true);
       });
 
       // Reward claim screen must be visible with today's reward
       expect(screen.getByRole("dialog")).toBeDefined();
-      expect(screen.getByText(/Day 4 Ready to Claim/i)).toBeDefined();
+      expect(screen.getByRole("heading", { name: "Rewards Expedition" })).toBeDefined();
+      expect(screen.getByText(/Day 4 Ready/i)).toBeDefined();
       expect(screen.getByText(/CLAIM \+180 COINS/i)).toBeDefined();
     });
 
@@ -278,26 +315,27 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       });
 
       const mockState = createMockStreakState({ isClaimableToday: true, currentStreak: 5 });
+      apiJsonSpy.mockResolvedValue(mockState);
       useStreakStore.setState({
         state: mockState,
         isOpen: true,
-        viewMode: "reward",
+        viewMode: "journey",
         hasAutoOpenedInSession: false,
       });
 
-      render(
+      await act(async () => { render(
         <>
           <DailyStreakEntryChip />
           <DailyStreakModal />
         </>
-      );
+      ); });
 
       // Verify open
       expect(screen.getByRole("dialog")).toBeDefined();
 
       // Close modal by clicking close button
       const closeBtn = screen.getByRole("button", { name: /Close/i });
-      fireEvent.click(closeBtn);
+      await act(async () => { fireEvent.click(closeBtn); });
 
       // Modal is closed, but reward is STILL claimable
       expect(useStreakStore.getState().isOpen).toBe(false);
@@ -309,36 +347,36 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       expect(chip).toBeDefined();
 
       // Clicking chip reopens the claim modal
-      fireEvent.click(chip);
+      await act(async () => { fireEvent.click(chip); });
       expect(useStreakStore.getState().isOpen).toBe(true);
-      expect(useStreakStore.getState().viewMode).toBe("reward");
+      expect(useStreakStore.getState().viewMode).toBe("journey");
     });
 
-    it("clicking header streak chip when unclaimed opens claim modal", () => {
+    it("clicking header streak chip when unclaimed opens the expedition", async () => {
       const mockState = createMockStreakState({ isClaimableToday: true });
       useStreakStore.setState({
         state: mockState,
         isOpen: false,
       });
 
-      render(<DailyStreakEntryChip />);
+      await act(async () => { render(<DailyStreakEntryChip />); });
       const chip = screen.getByRole("button", { name: /Reward Ready to Claim/i });
-      fireEvent.click(chip);
+      await act(async () => { fireEvent.click(chip); });
 
       expect(useStreakStore.getState().isOpen).toBe(true);
-      expect(useStreakStore.getState().viewMode).toBe("reward");
+      expect(useStreakStore.getState().viewMode).toBe("journey");
     });
 
-    it("clicking header streak chip when already claimed opens Rewards Expedition modal (journey)", () => {
+    it("clicking header streak chip when already claimed opens Rewards Expedition modal (journey)", async () => {
       const mockState = createMockStreakState({ isClaimableToday: false, currentStreak: 7 });
       useStreakStore.setState({
         state: mockState,
         isOpen: false,
       });
 
-      render(<DailyStreakEntryChip />);
+      await act(async () => { render(<DailyStreakEntryChip />); });
       const chip = screen.getByRole("button", { name: /Daily Login Streak: 7 days/i });
-      fireEvent.click(chip);
+      await act(async () => { fireEvent.click(chip); });
 
       expect(useStreakStore.getState().isOpen).toBe(true);
       expect(useStreakStore.getState().viewMode).toBe("journey");
@@ -387,7 +425,7 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       useStreakStore.setState({
         state: mockState,
         isOpen: true,
-        viewMode: "reward",
+        viewMode: "journey",
       });
 
       render(
@@ -419,7 +457,7 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       useStreakStore.setState({
         state: mockState,
         isOpen: true,
-        viewMode: "reward",
+        viewMode: "journey",
       });
 
       // Simulate network / server error returning null
@@ -497,8 +535,8 @@ describe("Daily Streak Reward Flow & Modal Orchestration", () => {
       render(<DailyStreakModal />);
 
       // Switch to another user
-      useAuthStore.setState({
-        userId: "user-beta",
+      await act(async () => {
+        useAuthStore.setState({ userId: "user-beta" });
       });
 
       await waitFor(() => {
