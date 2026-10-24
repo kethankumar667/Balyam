@@ -13,6 +13,7 @@ import {
 } from "./ludo-board-composites";
 import LudoThemeWeather from "./LudoThemeWeather";
 import { LudoWorldScene } from "./LudoWorldScene";
+import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 
 /**
  * Ludo — desktop shell (BHALYAM notebook theme).
@@ -75,6 +76,7 @@ export default function LudoBoardDesktop(props: LudoBoardProps) {
             selfId={selfId}
             messages={messages}
             variant="paper"
+            beforeChat={<TableWorldControl game="ludo" variant="icon" className="border border-[var(--ludo-chip-border)] [background:var(--ludo-chip-bg)] text-[var(--ludo-chip-text)]" />}
           />
         }
       />

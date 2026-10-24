@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Ticket, Users, Mic, MessageSquare, X } from "lucide-react";
 import type { ChatMessage, Player } from "@shared/types";
 import { getSocket } from "../lib/socket";
@@ -48,6 +48,7 @@ export default function InlineRoomRail({
   hideStrip = false,
   floatingTray = false,
   onUnreadChange,
+  beforeChat,
 }: {
   code: string;
   game: string;
@@ -74,6 +75,8 @@ export default function InlineRoomRail({
   /** Fires whenever the unread-chat count changes, so a host driving the
    *  panels from its own controls can surface the badge itself. */
   onUnreadChange?: (n: number) => void;
+  /** Optional game control placed immediately before Chat in the visible strip. */
+  beforeChat?: ReactNode;
 }) {
   const paper = variant === "paper";
   // The "throw at a target" row is themed per game (Rummy gets tomatoes and
@@ -209,6 +212,7 @@ export default function InlineRoomRail({
               <IconMic />
             </InlineButton>
           )}
+          {beforeChat}
           <InlineButton
             label="Chat"
             paper={paper}

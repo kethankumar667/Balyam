@@ -9,11 +9,12 @@ import { WorldSwatch } from "./WorldSwatch";
 export interface TableWorldControlProps {
   game: GameKind;
   /**
-   * `row` fills a menu with the world's swatch and name; `chip` is a text header button; `icon` is a touch-sized palette.
+   * `row` fills a menu with the world's swatch and name; `chip` is a text header button; `icon` is a touch-sized palette;
+   * `nav` adds a visible Theme label below the palette.
    * All open the same picker.
    */
-  variant: "row" | "chip" | "icon";
-  /** Extra classes for the trigger, so each game can dress it like its own buttons. */
+  variant: "row" | "chip" | "icon" | "nav";
+  /** Extra classes for the trigger (the icon surface in `nav`), so each game can match its own buttons. */
   className?: string;
   /** Runs once the server has changed the world, so the menu this sits in can close and show the new table. */
   onChanged?: () => void;
@@ -49,12 +50,21 @@ export function TableWorldControl({ game, variant, className = "", onChanged }: 
         </button>
       ) : (
         <button type="button" onClick={choice.open}
-          className={variant === "icon"
-            ? `inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${className}`
-            : className}
-          title="Change the table's world" aria-label="Change the table's world"
+          className={variant === "nav"
+            ? "flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer flex-col items-center gap-1 rounded-xl transition active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            : variant === "icon"
+              ? `inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${className}`
+              : className}
+          title="Change the table's world" aria-label={variant === "nav" ? "Change table theme" : "Change the table's world"}
           aria-haspopup="dialog" aria-expanded={choice.isOpen}>
-          {variant === "icon" ? <Palette size={18} aria-hidden="true" /> : "World"}
+          {variant === "nav" ? (
+            <>
+              <span className={`flex h-11 w-11 items-center justify-center rounded-full shadow-md ${className}`}>
+                <Palette size={19} aria-hidden="true" />
+              </span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider short-land:hidden">Theme</span>
+            </>
+          ) : variant === "icon" ? <Palette size={18} aria-hidden="true" /> : "World"}
         </button>
       )}
       <WorldPickerDialog

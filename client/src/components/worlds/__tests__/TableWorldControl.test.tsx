@@ -10,9 +10,14 @@ import { artWorldsFor } from "../../../lib/worlds/worldArt";
 import { WORLD_META } from "../../../lib/worlds/worldMeta";
 import { recordWorldWin } from "../../../lib/worlds/worldWins";
 import { TableWorldControl } from "../TableWorldControl";
+import InlineRoomRail from "../../InlineRoomRail";
 
 const emit = vi.fn();
 vi.mock("../../../lib/socket", () => ({ getSocket: () => ({ emit }) }));
+vi.mock("../../PlayerList", () => ({ default: () => null }));
+vi.mock("../../VoicePanel", () => ({ default: () => null }));
+vi.mock("../../QrCodeModal", () => ({ default: () => null }));
+vi.mock("../../Chat", () => ({ default: () => null }));
 
 /**
  * Changing the table's world DURING a match. Only the host gets the control, only while the match is live, and what it
@@ -62,6 +67,50 @@ describe("the host's control for the table's world, during a match", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("gives the Ludo host a Theme navigation button using the same picker", () => {
+    seatAs(HOST_ID, stateOf());
+    render(<TableWorldControl game="ludo" variant="nav" />);
+    const trigger = screen.getByRole("button", { name: "Change table theme" });
+    expect(trigger).toHaveTextContent("Theme");
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("places the desktop theme button directly before Chat without moving the other room actions", () => {
+    seatAs(HOST_ID, stateOf());
+    render(<InlineRoomRail
+      code="ABC123"
+      game="ludo"
+      phase="playing"
+      players={[]}
+      selfId={HOST_ID}
+      messages={[]}
+      beforeChat={<TableWorldControl game="ludo" variant="icon" />}
+    />);
+    const nav = within(screen.getByRole("navigation", { name: "Room actions" }));
+    const buttons = nav.getAllByRole("button");
+    const chat = nav.getByRole("button", { name: "Chat" });
+    expect(buttons[buttons.indexOf(chat) - 1]).toHaveAccessibleName("Change the table's world");
+    expect(buttons.slice(0, 2).map((button) => button.getAttribute("aria-label"))).toEqual(["Room code", "Players"]);
+    expect(buttons[buttons.length - 1]).toHaveAccessibleName("Reactions");
+  });
+
+  it.each([
+    ["another player", "someone-else", "playing"],
+    ["a finished table", HOST_ID, "finished"],
+    ["the lobby", HOST_ID, "lobby"],
+  ] as const)("leaves no Theme label or button for %s", (_label, playerId, phase) => {
+    seatAs(playerId, stateOf({ phase }));
+    const { container } = render(<TableWorldControl game="ludo" variant="nav" />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("uses the icon's picker to request a world and shows a refusal without changing the table", () => {

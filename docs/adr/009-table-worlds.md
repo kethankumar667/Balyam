@@ -41,6 +41,9 @@ the whole table.
 - Rummy's mobile/landscape header exposes the host's live-world picker as a labelled palette icon immediately before
   fullscreen (or before Menu when fullscreen is unsupported), rather than a duplicate row inside Menu. It retains the
   same host/unlock/server-confirmation rules. The desktop header keeps its existing World chip.
+- Ludo exposes the same picker immediately before Chat: a palette button labelled Theme in the mobile/tablet bottom
+  bar, and a palette icon in the desktop room-action strip. Display settings keeps its accessibility and display
+  toggles, with no duplicate world entry. Host permissions, earned worlds and server confirmation are unchanged.
 
 ## Consequences
 

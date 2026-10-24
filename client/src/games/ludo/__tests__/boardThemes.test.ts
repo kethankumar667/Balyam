@@ -7,6 +7,9 @@ import SVG from "../PrintBoardSVG.tsx?raw";
 import CROSS from "../ludo-board-shared.tsx?raw";
 import SCENE from "../LudoWorldScene.tsx?raw";
 import SETTINGS from "../settings.ts?raw";
+import SETTINGS_MENU from "../SettingsMenu.tsx?raw";
+import COMPOSITES from "../ludo-board-composites.tsx?raw";
+import DESKTOP from "../LudoBoardDesktop.tsx?raw";
 import ROOM from "../../../pages/Room.tsx?raw";
 import { artWorldsFor } from "../../../lib/worlds/worldArt";
 import { WORLD_META } from "../../../lib/worlds/worldMeta";
@@ -26,6 +29,27 @@ import type { WorldId } from "@shared/worlds";
  */
 
 const LUDO_WORLDS: readonly WorldId[] = artWorldsFor("ludo");
+
+describe("Ludo's world control is directly before Chat", () => {
+  it("puts one labelled theme control before Chat in the mobile bottom bar", () => {
+    const bar = COMPOSITES.slice(COMPOSITES.indexOf("export function LudoBottomBar("), COMPOSITES.indexOf("export function LudoBoardArea("));
+    expect(bar.match(/<TableWorldControl\b/g)).toHaveLength(1);
+    expect(bar).toMatch(/<TableWorldControl\s+game="ludo"\s+variant="nav"/);
+    expect(bar.indexOf("<TableWorldControl")).toBeLessThan(bar.indexOf('<NavBtn label="Chat"'));
+  });
+
+  it("puts the desktop theme icon in the header rail's before-Chat slot", () => {
+    expect(DESKTOP.match(/<TableWorldControl\b/g)).toHaveLength(1);
+    expect(DESKTOP).toMatch(/beforeChat=\{<TableWorldControl\s+game="ludo"\s+variant="icon"[^>]*\/>\}/);
+  });
+
+  it("removes only the world picker from display settings", () => {
+    expect(SETTINGS_MENU).not.toContain("TableWorldControl");
+    for (const label of ["Color-blind shapes", "High contrast", "Hover preview", "Reduce motion", "Golden tokens", "Wooden dice"]) {
+      expect(SETTINGS_MENU).toContain(`label="${label}"`);
+    }
+  });
+});
 
 /** The scene component each world draws behind the table. */
 const SCENE_COMPONENT: Readonly<Record<Exclude<WorldId, "classic">, string>> = {

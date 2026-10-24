@@ -25,7 +25,7 @@ const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 520px)"
  * Premium-pass layout (AAA design-review): the board is the hero, and the
  * chrome around it is minimised. Top→bottom: one-row paper header (menu ·
  * LUDO · turn banner · sound · Rules · Leave) → BOARD → bottom player cards →
- * roll cup → bottom nav (chat · emoji · voice · invite). The old persistent
+ * roll cup → bottom nav (theme for the host · chat · emoji · voice · more). The old persistent
  * social-toolbar row was removed — its panels (chat/voice/players/room/emoji)
  * stay mounted strip-less and are driven from the bottom nav via the
  * `bhalyam:open-room-panel` bridge, reclaiming a full row for gameplay.

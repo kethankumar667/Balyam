@@ -20,6 +20,7 @@ import EmojiRain from "./EmojiRain";
 import WinnerCelebration from "./WinnerCelebration";
 import { GotchaCaptureOverlay, SafeShieldPop, OutOfGateBurst, HomeEntryBurst, LuckySixBurst } from "./LudoAnimations";
 import SettingsMenu from "./SettingsMenu";
+import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 import PrintBoardSVG from "./PrintBoardSVG";
 import { seatColor, seatColorDark } from "./print-board";
 import { TurnTimeWarning, useTurnSecondsLeft } from "../../components/TurnTimeWarning";
@@ -1429,7 +1430,7 @@ export function LudoRollTray({ m, state }: { m: LudoBoardModel; state: LudoState
   );
 }
 
-/** Bottom action bar: Chat · Emoji · [roll cup] · Voice · Invite. The side
+/** Bottom action bar: Theme (host only) · Chat · Emoji · [roll cup] · Voice · More. The side
  *  buttons drive the (now strip-less) room rail's panels via the
  *  `bhalyam:open-room-panel` bridge — this bar is the ONLY persistent room
  *  toolbar now, so the duplicate top strip is gone (critique: reduce layers).
@@ -1472,7 +1473,7 @@ export function LudoBottomBar({
           </span>
         )}
       </span>
-      {/* Sideways the four buttons share a row with nothing else to spare; the icon + aria-label carry it. */}
+      {/* Sideways the icons and accessible names carry the compact action row. */}
       <span className="text-[10px] font-extrabold uppercase tracking-wider short-land:hidden" style={{ color: "var(--ludo-nav-text, #4A2E18)" }}>{label}</span>
     </button>
   );
@@ -1481,7 +1482,12 @@ export function LudoBottomBar({
      * (still one tap from "More"). It is the rarest action here by a wide
      * margin — you invite once, before the match — and it was carrying the
      * same weight as Chat, which is used constantly. */
-    <div className={`flex items-end justify-center ${withTray ? "gap-2 sm:gap-4" : "gap-6"}`}>
+    <div className={`flex items-end justify-center ${withTray ? "gap-2 sm:gap-4" : "gap-3 sm:gap-6 short-land:gap-2"}`}>
+      <TableWorldControl
+        game="ludo"
+        variant="nav"
+        className="border-[2.5px] border-[var(--ludo-nav-border)] [background:var(--ludo-nav-bg)] text-[var(--ludo-nav-text)]"
+      />
       <NavBtn label="Chat" icon={<ChatIcon size={19} />} panel="chat" badge={unread} />
       <NavBtn label="Emoji" icon={<SmileyIcon size={19} />} panel="emoji" />
       {withTray && <LudoRollTray m={m} state={state} />}

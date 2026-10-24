@@ -1,5 +1,4 @@
 import { useLudoSettings } from "./settings";
-import { TableWorldControl } from "../../components/worlds/TableWorldControl";
 
 export default function SettingsMenu({ onClose }: { onClose: () => void }) {
   const [s, update] = useLudoSettings();
@@ -13,12 +12,6 @@ export default function SettingsMenu({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-bold">Display settings</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
         </div>
-
-        <p className="rounded-lg bg-slate-900/60 px-3 py-2 text-xs leading-snug text-slate-300">
-          The look of the table is chosen by the host, in the lobby or during the match, and everyone at the table sees it.
-        </p>
-
-        <TableWorldControl game="ludo" variant="row" className="border border-white/15 bg-white/10 text-white hover:bg-white/15" onChanged={onClose} />
 
         <Toggle
           label="Color-blind shapes"
@@ -102,4 +95,3 @@ function Toggle({
     </div>
   );
 }
-
