@@ -134,14 +134,15 @@ describe("LevelUpAscension", () => {
     expect(trigger).toHaveBeenCalledWith("win");
   });
 
-  it("uses opaque theme surfaces rather than a glass panel or tier-colored text", () => {
+  it("uses opaque theme surfaces and readable theme text instead of glass styling", () => {
     useLevelUpStore.getState().show(13, 14, 1_340);
     renderIt();
 
     const panel = screen.getByRole("heading", { name: /level/i }).closest(".bg-surface-1");
+    expect(panel).not.toBeNull();
     expect(panel).toHaveClass("text-ink-hi");
     expect(panel).not.toHaveAttribute("style");
-    expect(screen.getByText(/Claim them in your Level Roadmap/i).parentElement).toHaveClass("bg-surface-0", "text-ink-mid");
+    expect(screen.getByText(/60 XP to your next level/i).parentElement).toHaveClass("bg-surface-0", "text-ink-mid");
     expect(screen.getByRole("button", { name: /play a game/i })).toHaveClass("bg-amber-300");
     expect(screen.getByRole("button", { name: /play a game/i })).not.toHaveAttribute("style");
     expect(screen.getByRole("button", { name: /later/i })).toHaveClass("text-ink-mid");
