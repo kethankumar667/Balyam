@@ -24,6 +24,7 @@ import { useSignOut } from "../../../hooks/useSignOut";
 import { findAvatar } from "../../../lib/avatars";
 import SeatAvatar from "../../../components/profile/SeatAvatar";
 import { useRoomStore } from "../../../store/roomStore";
+import { useResolvedCosmetics } from "../../../lib/cosmeticsResolver";
 import { useAuthStore, useIdentityPresentation } from "../../../store/authStore";
 import { peekGuestDisplayName } from "../../../lib/playerIdentity";
 import { useTheme } from "../../../lib/useTheme";
@@ -60,6 +61,8 @@ export function ProfileSheet({
 }) {
   const { playerName, avatarId } = useRoomStore();
   const avatar = findAvatar(avatarId);
+  const { avatarAura } = useResolvedCosmetics();
+  const equippedFrame = avatarAura && avatarAura !== "aura_none" ? avatarAura : undefined;
   const isGuestSession = useAuthStore((s) => !s.isMember);
   // A guest has no name of their own: outside a room they are "Guest 12345678".
   const guestName = isGuestSession ? peekGuestDisplayName() : null;
@@ -166,19 +169,25 @@ export function ProfileSheet({
         >
           {/* Avatar with edit pencil badge */}
           <div className="relative mx-auto w-20 h-20 mb-3">
-            <div
-              className="w-20 h-20 rounded-full overflow-hidden
-                         ring-4 ring-[#FBE7BD] border-2 border-[#D49E24]
-                         shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]
-                         flex items-center justify-center text-bhalyam-wood-dark bg-[#FFF8E7]
-                         group-hover:scale-105 transition-transform duration-150"
-            >
-              <SeatAvatar
-                avatar={avatarId ?? undefined}
-                name={shownName || identity.label}
-                className="w-full h-full"
-                textClassName="text-2xl font-black"
-              />
+            {/* The frame is drawn outside the avatar's edge, so nothing here may clip: the plain gold ring is a
+                sibling that only shows when no frame is worn, and the frame replaces it. */}
+            <div className="relative w-20 h-20 group-hover:scale-105 transition-transform duration-150">
+              {!equippedFrame && (
+                <span
+                  aria-hidden
+                  className="absolute inset-0 rounded-full ring-4 ring-[#FBE7BD] border-2 border-[#D49E24] bg-[#FFF8E7]
+                             shadow-[0_6px_20px_rgba(212,158,36,0.45),inset_0_2px_4px_rgba(0,0,0,0.15)]"
+                />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center">
+                <SeatAvatar
+                  avatar={avatarId ?? undefined}
+                  aura={equippedFrame}
+                  name={shownName || identity.label}
+                  className={equippedFrame ? "h-full w-full" : "h-[calc(100%-4px)] w-[calc(100%-4px)]"}
+                  textClassName="text-2xl font-black"
+                />
+              </span>
             </div>
             <span
               className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full inline-flex items-center
