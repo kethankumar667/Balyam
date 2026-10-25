@@ -4177,6 +4177,7 @@ export function RevealStage({
         <RevealPlayerCard
           name={me?.name ?? "You"}
           avatar={me?.avatar}
+          playerId={me?.id}
           role="You"
           pick={myShown}
           big={big}
@@ -4216,6 +4217,7 @@ export function RevealStage({
         <RevealPlayerCard
           name={opp?.name ?? "Opponent"}
           avatar={opp?.avatar}
+          playerId={opp?.id}
           role="Opp"
           pick={oppShown}
           big={big}
@@ -4284,6 +4286,7 @@ export function RevealStage({
 function RevealPlayerCard({
   name,
   avatar,
+  playerId,
   role,
   pick,
   pending,
@@ -4292,6 +4295,7 @@ function RevealPlayerCard({
 }: {
   name: string;
   avatar?: string;
+  playerId?: string;
   role: string;
   pick: number | null;
   pending?: boolean;
@@ -4311,7 +4315,7 @@ function RevealPlayerCard({
   return (
     <div className="flex flex-col items-center min-w-[70px] sm:min-w-[90px]">
       <div className="flex items-center gap-1.5 mb-1">
-        <SeatAvatar avatar={avatar} name={name} className="w-5 h-5" textClassName="text-[9px]" />
+        <SeatAvatar avatar={avatar} playerId={playerId} name={name} className="w-5 h-5" textClassName="text-[9px]" />
         <span className="font-hand font-bold text-xs text-stone-800 truncate max-w-[65px] sm:max-w-[85px]">
           {name}
         </span>

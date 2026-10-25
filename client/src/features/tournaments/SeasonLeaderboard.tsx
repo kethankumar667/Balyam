@@ -50,6 +50,7 @@ export default function SeasonLeaderboard({ leaderboard }: SeasonLeaderboardProp
                   <div className="flex items-center gap-3 font-sans">
                     <SeatAvatar
                       avatar={item.avatar}
+                      playerId={item.playerId}
                       name={item.displayName}
                       className="w-8 h-8 rounded-xl flex-shrink-0"
                       textClassName="text-sm"

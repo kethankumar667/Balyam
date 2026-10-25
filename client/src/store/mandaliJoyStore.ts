@@ -12,6 +12,7 @@ export type JoyKind = "received" | "sent";
 
 /** One side of the transfer, as much as this screen knows of them. */
 export interface JoyParty {
+  playerId?: string;
   /** Display name, or `null` when it is not known here (the stage then says "A friend"). */
   name: string | null;
   /** The member's avatar as the server stored it; absent means the BHALYAM logo is drawn. */

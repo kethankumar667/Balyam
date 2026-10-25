@@ -91,6 +91,7 @@ export default function OnlineFriendsPanel({
             >
               <SeatAvatar
                 avatar={f.avatar}
+                playerId={f.friendPlayerId}
                 name={f.displayName}
                 className="w-6 h-6 rounded-lg flex-shrink-0"
                 textClassName="text-xs"

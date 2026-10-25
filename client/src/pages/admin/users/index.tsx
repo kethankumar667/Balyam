@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type { AdminUserSummary, AdminUsersResponse } from "@shared/adminUsers";
 import ThemedSelect from "../../../components/ThemedSelect";
+import SeatFrame from "../../../components/cosmetics/frames/SeatFrame";
 import {
   Users,
   UserCheck,
@@ -154,8 +155,9 @@ export default function AdminUsersPage() {
       header: "Player Account",
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center shrink-0">
+          <div className="relative w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center shrink-0">
             {row.name.charAt(0).toUpperCase()}
+            <SeatFrame playerId={row.id} />
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">

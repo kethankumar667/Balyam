@@ -21,11 +21,14 @@ vi.mock("../../../store/authStore", () => ({
     spectate: true,
   }),
   currentAccessToken: () => "test_token_123",
-  useAuthStore: {
+  useAuthStore: Object.assign(
+    <T,>(selector: (state: { kind: string; userId: null }) => T) => selector({ kind: "member", userId: null }),
+    {
     getState: () => ({
       kind: "member",
     }),
-  },
+    },
+  ),
 }));
 
 // Mock canvas particles for HappyDOM test environment

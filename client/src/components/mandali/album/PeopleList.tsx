@@ -45,7 +45,7 @@ export function PeopleList({ members, currentUserId, onCoinsWith }: PeopleListPr
               aria-label={t("mandali.people.viewProfile", { name: member.displayName })}
               className="flex min-h-[44px] min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-album-foil"
             >
-              <AlbumAvatar avatar={member.avatar} name="" presence={member.presence} />
+              <AlbumAvatar avatar={member.avatar} playerId={member.playerId} name="" presence={member.presence} />
               <div className="min-w-0 flex-1">
                 <p className="m-0 flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-album-ink">
                   <span className="truncate">{member.displayName}</span>

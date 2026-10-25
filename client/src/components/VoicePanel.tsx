@@ -161,6 +161,7 @@ export default function VoicePanel({
                 <span className="relative flex-shrink-0">
                   <SeatAvatar
                     avatar={avatarOf(p.playerId)}
+                    playerId={p.playerId}
                     name={nameOf(p.playerId)}
                     className="w-6 h-6"
                     textClassName="text-[10px]"
@@ -199,4 +200,3 @@ export default function VoicePanel({
     </div>
   );
 }
-

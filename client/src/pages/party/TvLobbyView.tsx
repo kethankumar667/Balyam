@@ -1,3 +1,4 @@
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { Crown, Bot, WifiOff, CheckCircle2, QrCode, Gamepad2, Volume2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { GameKind, Player } from "@shared/types";
@@ -109,9 +110,11 @@ export function TvLobbyView({
                   }`}
                 >
                   {/* Avatar */}
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-amber-500/30 flex-shrink-0 bg-stone-900">
+                  <div className="relative w-12 h-12 rounded-xl  border border-amber-500/30 flex-shrink-0 bg-stone-900">
                     {avatarObj?.src ? (
-                      <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                      <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                        <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                      </span>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center font-black text-amber-200 text-sm">
                         {p.name.slice(0, 2).toUpperCase()}
@@ -125,6 +128,7 @@ export function TvLobbyView({
                         <Crown className="w-3 h-3" />
                       </div>
                     )}
+                    <SeatFrame playerId={p.id} />
                   </div>
 
                   {/* Info */}

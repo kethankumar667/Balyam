@@ -1454,6 +1454,7 @@ function TableSeat({
         >
           {name.slice(0, 1).toUpperCase()}
         </div>
+        <SeatFrame playerId={seat.id} />
         <CountBadge count={pub.cardCount} />
       </motion.div>
       <div

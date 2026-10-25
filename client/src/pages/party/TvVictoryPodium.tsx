@@ -1,3 +1,4 @@
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { useEffect } from "react";
 import { Crown, Trophy, Medal, Award, Flame } from "lucide-react";
 import type { Player } from "@shared/types";
@@ -75,18 +76,21 @@ export function TvVictoryPodium({
         {second ? (
           <div className="flex flex-col items-center order-1">
             <div className="relative mb-3 flex flex-col items-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-stone-900 border-2 border-slate-300 shadow-[0_0_25px_rgba(203,213,225,0.4)] flex items-center justify-center overflow-hidden">
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-stone-900 border-2 border-slate-300 shadow-[0_0_25px_rgba(203,213,225,0.4)] flex items-center justify-center ">
                 {second.avatar ? (
-                  <img
-                    src={findAvatar(second.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={second.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(second.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={second.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-xl sm:text-2xl font-black text-slate-200">
                     {second.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={second.playerId} />
               </div>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-950 text-xs font-mono font-black flex items-center gap-1 shadow-md border border-white">
                 <Medal className="w-3.5 h-3.5 text-slate-800" />
@@ -126,18 +130,21 @@ export function TvVictoryPodium({
                 <Crown className="w-8 h-8 filter drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
               </div>
 
-              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl bg-amber-950 border-4 border-amber-300 shadow-[0_0_35px_rgba(245,158,11,0.6)] flex items-center justify-center overflow-hidden">
+              <div className="relative w-20 h-20 sm:w-28 sm:h-28 rounded-3xl bg-amber-950 border-4 border-amber-300 shadow-[0_0_35px_rgba(245,158,11,0.6)] flex items-center justify-center ">
                 {first.avatar ? (
-                  <img
-                    src={findAvatar(first.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={first.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(first.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={first.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-2xl sm:text-3xl font-black text-amber-200">
                     {first.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={first.playerId} />
               </div>
               <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-stone-950 text-xs font-mono font-black flex items-center gap-1 shadow-lg border border-amber-200">
                 <Flame className="w-3.5 h-3.5 text-orange-950" />
@@ -170,18 +177,21 @@ export function TvVictoryPodium({
         {third ? (
           <div className="flex flex-col items-center order-3">
             <div className="relative mb-3 flex flex-col items-center">
-              <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-stone-900 border-2 border-amber-700 shadow-[0_0_20px_rgba(217,119,6,0.3)] flex items-center justify-center overflow-hidden">
+              <div className="relative w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-stone-900 border-2 border-amber-700 shadow-[0_0_20px_rgba(217,119,6,0.3)] flex items-center justify-center ">
                 {third.avatar ? (
-                  <img
-                    src={findAvatar(third.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={third.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(third.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={third.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-xl sm:text-2xl font-black text-amber-600">
                     {third.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={third.playerId} />
               </div>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-amber-700 text-amber-100 text-xs font-mono font-black flex items-center gap-1 shadow-md border border-amber-500">
                 <Award className="w-3.5 h-3.5 text-amber-200" />

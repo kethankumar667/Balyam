@@ -282,7 +282,7 @@ function Row({
   const withFace = (card: ReactNode) => (
     <div className={`mt-3 flex gap-2.5 ${isMine ? "flex-row-reverse" : ""}`}>
       <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="mt-1 flex-shrink-0 self-start">
-        <AlbumAvatar avatar={message.senderAvatar} name="" size="sm" />
+        <AlbumAvatar avatar={message.senderAvatar} playerId={message.senderId} name="" size="sm" />
       </ProfileTap>
       {card}
     </div>
@@ -314,7 +314,7 @@ function Row({
 
   return (
     <div className={`group flex gap-2.5 ${isRun ? "mt-0.5" : "mt-4"} ${isMine ? "flex-row-reverse" : ""}`}>
-      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="mt-0.5 flex-shrink-0 self-start"><AlbumAvatar avatar={message.senderAvatar} name="" size="sm" /></ProfileTap>)}
+      {!isMine && (isRun ? <span className="w-8 flex-shrink-0" aria-hidden="true" /> : <ProfileTap senderId={message.senderId} name={message.senderName} members={members} onOpenProfile={onOpenProfile} className="mt-0.5 flex-shrink-0 self-start"><AlbumAvatar avatar={message.senderAvatar} playerId={message.senderId} name="" size="sm" /></ProfileTap>)}
 
       <div className={`flex min-w-0 ${bubbleWidth} flex-col ${isMine ? "items-end" : "items-start"}`}>
         {!isRun && (

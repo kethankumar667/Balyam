@@ -1,20 +1,31 @@
 import { useRoomStore } from "../../../store/roomStore";
 import AvatarFrameOverlay, { hasAvatarFrameArtwork } from "./AvatarFrameOverlay";
+import { usePublicAvatarAura } from "../../../lib/publicAvatarAura";
+import { getAvatarAuraConfig } from "../../../lib/cosmeticsResolver";
+import { useAuthStore } from "../../../store/authStore";
+import { useCosmeticsStore } from "../../../store/cosmeticsStore";
+import { peekPlayerCredential } from "../../../lib/playerIdentity";
+import { createContext, useContext } from "react";
+import type { Player } from "@shared/types";
+
+/** Spectator screens own public room state locally, independently of the viewer's seated room. */
+export const AvatarPlayersContext = createContext<readonly Player[] | undefined>(undefined);
 
 /**
- * The animated frame the player in a seat wears, found by player id in the live room state.
- *
- * A game board knows who sits where but draws the face itself, often with its own markup, so it cannot hand
- * `SeatAvatar` an aura. This is the lookup they share. It returns only a drawn frame (never a legacy ring or
- * "none"), and what it reads, `cosmetics.avatarAura`, is what the server has already filtered down to the
- * items that player owns.
+ * Resolve by owner, never by face or display name. Room seats (including bots/local seats) use
+ * server-filtered live state; outside rooms only the public equipped decoration is requested.
  */
 export function useSeatFrame(playerId: string | undefined): string | undefined {
-  return useRoomStore((state) => {
-    if (!playerId) return undefined;
-    const aura = state.roomState?.players.find((player) => player.id === playerId)?.cosmetics?.avatarAura;
-    return hasAvatarFrameArtwork(aura) ? aura : undefined;
-  });
+  const contextualSeat = useContext(AvatarPlayersContext)?.find(player => player.id === playerId);
+  const roomSeat = useRoomStore(state => state.roomState?.players.find(player => player.id === playerId)
+    ?? state.roomState?.lastMatchPlayers?.find(player => player.id === playerId));
+  const seat = contextualSeat ?? roomSeat;
+  const memberId = useAuthStore(state => state.userId);
+  const selfId = memberId ?? peekPlayerCredential()?.playerId;
+  const selfAura = useCosmeticsStore(state => state.resolved.avatarAura);
+  const isSelf = !!playerId && playerId === selfId;
+  const publicAura = usePublicAvatarAura(playerId && !seat && !isSelf ? playerId : undefined);
+  return seat ? seat.cosmetics?.avatarAura : isSelf ? selfAura : publicAura;
 }
 
 /**
@@ -24,5 +35,7 @@ export function useSeatFrame(playerId: string | undefined): string | undefined {
  */
 export default function SeatFrame({ playerId }: { playerId: string | undefined }) {
   const frame = useSeatFrame(playerId);
-  return frame ? <AvatarFrameOverlay frameId={frame} /> : null;
+  const legacy = getAvatarAuraConfig(frame);
+  if (hasAvatarFrameArtwork(frame) && frame) return <AvatarFrameOverlay frameId={frame} />;
+  return legacy?.className ? <span aria-hidden="true" className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${legacy.className}`} /> : null;
 }

@@ -2,6 +2,7 @@
  * BHALYAM — Cosmetics HTTP REST Controller
  * Exposes server-authoritative cosmetics endpoints:
  *   GET  /api/cosmetics/catalog  — Public catalog listing
+ *   GET  /api/cosmetics/avatar-auras — Public equipped frames, up to 25 owners
  *   GET  /api/cosmetics/loadout  — Current user's inventory & equipped slots
  *   POST /api/cosmetics/purchase — Atomic idempotent coin purchase
  *   POST /api/cosmetics/refund   — Atomic idempotent self-service refund (15-min window)
@@ -16,6 +17,7 @@ import { CosmeticsService } from "./CosmeticsService.js";
 import { operationalAuthConfig, getUserRole, secretsMatch } from "../security/operationalAuth.js";
 import { devAssertionsAllowed } from "../lib/supabaseAuth.js";
 import { UnownedCosmeticError } from "./CosmeticsRepository.js";
+import { parseAvatarPlayerIds, type AvatarAurasResponse } from "@shared/avatarPresentation.js";
 import {
   type CosmeticCategory,
   type CosmeticGameScope,
@@ -72,6 +74,22 @@ export function isCallerAdmin(req: Request): boolean {
 
 export function createCosmeticsRouter(cosmeticsService: CosmeticsService): Router {
   const router = Router();
+
+  router.get("/avatar-auras", async (req: Request, res: Response) => {
+    const ids = parseAvatarPlayerIds(req.query.playerIds);
+    if (!ids) {
+      res.status(400).json({ error: "Provide between 1 and 25 valid player IDs." });
+      return;
+    }
+    try {
+      const body: AvatarAurasResponse = { auras: await cosmeticsService.getAvatarAuras(ids) };
+      res.setHeader("Cache-Control", "no-store");
+      res.json(body);
+    } catch (err) {
+      logger.error({ message: `GET /api/cosmetics/avatar-auras failed: ${String(err)}`, module: "COSMETICS_API" });
+      res.status(500).json({ error: "Could not load avatar decorations." });
+    }
+  });
 
   /**
    * GET /api/cosmetics/catalog

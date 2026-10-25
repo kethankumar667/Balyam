@@ -125,6 +125,7 @@ export default function FriendsList({
                   <div className="flex items-center gap-3">
                     <SeatAvatar
                       avatar={f.avatar}
+                      playerId={f.friendPlayerId}
                       name={f.displayName}
                       className="w-12 h-12 rounded-2xl border border-[var(--auth-field-edge)] shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform"
                       textClassName="text-xl"

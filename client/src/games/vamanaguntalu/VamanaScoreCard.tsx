@@ -5,6 +5,7 @@ import { CARD_CREAM, CARD_INK, CARD_INK_SOFT, TURN_GREEN, TURN_GREEN_BRIGHT } fr
 export interface VamanaScoreCardProps {
   name: string;
   avatar?: string;
+  playerId?: string;
   isSelf: boolean;
   /** Seeds this player has captured so far (after the match, including the seeds kept from their row). */
   captured: number;
@@ -27,7 +28,7 @@ export interface VamanaScoreCardProps {
  * in the green edge (an arrow and a label), so it never depends on colour alone, and the leader is
  * named by a crown that is hidden from the accessible name (the numbers already say who is ahead).
  */
-export function VamanaScoreCard({ name, avatar, isSelf, captured, onRow, isActiveTurn, isBot, isLeading = false, turnFraction = null, compact, isAvatarHidden = false }: VamanaScoreCardProps) {
+export function VamanaScoreCard({ name, avatar, playerId, isSelf, captured, onRow, isActiveTurn, isBot, isLeading = false, turnFraction = null, compact, isAvatarHidden = false }: VamanaScoreCardProps) {
   const role = isSelf ? "You" : isBot ? "Bot" : "";
   const detail = isActiveTurn ? (isSelf ? "▶ Your turn" : "▶ Their turn") : `${onRow} on row`;
 
@@ -41,7 +42,7 @@ export function VamanaScoreCard({ name, avatar, isSelf, captured, onRow, isActiv
       }}
     >
       {!isAvatarHidden && (
-        <SeatAvatar avatar={avatar} name={name} className={compact ? "hidden h-8 w-8 min-[360px]:inline-flex" : "hidden h-8 w-8 min-[340px]:inline-flex md:h-14 md:w-14"} />
+        <SeatAvatar avatar={avatar} playerId={playerId} name={name} className={compact ? "hidden h-8 w-8 min-[360px]:inline-flex" : "hidden h-8 w-8 min-[340px]:inline-flex md:h-14 md:w-14"} />
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">

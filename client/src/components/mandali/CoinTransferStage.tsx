@@ -181,7 +181,7 @@ function Face({ party, label, role, lands = false, amount }: FaceProps) {
         <span
           className={`relative block rounded-full p-1 ring-2 ring-album-foilfill/70 ring-offset-2 ring-offset-album-page ${lands ? "coin-stage-catch" : ""}`}
         >
-          <AlbumAvatar avatar={party.avatar} name="" size="hero" />
+          <AlbumAvatar avatar={party.avatar} playerId={party.playerId} name="" size="hero" />
         </span>
       </div>
       <p className="m-0 mt-2 w-full truncate text-sm font-semibold leading-tight text-album-ink">{label}</p>

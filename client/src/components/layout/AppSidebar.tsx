@@ -7,6 +7,7 @@ import { useRoomStore } from "../../store/roomStore";
 import { peekGuestDisplayName } from "../../lib/playerIdentity";
 import { useAuthStore, useIdentityPresentation } from "../../store/authStore";
 import SeatAvatar from "../profile/SeatAvatar";
+import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
 import { Tooltip } from "../../design-system/dls";
 import BhalyamLogo from "../bhalyam/BhalyamLogo";
 import { useTheme } from "../../lib/useTheme";
@@ -66,6 +67,7 @@ export default function AppSidebar({
   const { play } = useAudio();
   const { recentItems } = useRecentlyPlayed();
   const { playerName, avatarId } = useRoomStore();
+  const { avatarAura } = useResolvedCosmetics();
   const identity = useIdentityPresentation();
   const currentDisplayName =
     playerName.trim() || (identity.mode === "guest" ? peekGuestDisplayName() : null) || identity.label;
@@ -249,9 +251,10 @@ export default function AppSidebar({
             )}
             <div className="flex items-center gap-2.5 pt-0.5">
               {section.id === "profile" ? (
-                <div className="w-8 h-8 rounded-xl overflow-hidden border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
+                <div className="w-8 h-8 rounded-xl border border-[var(--chrome-border)] flex items-center justify-center flex-shrink-0 bg-[var(--chrome-active-bg)]">
                   <SeatAvatar
                     avatar={avatarId ?? undefined}
+                    aura={avatarAura}
                     name={currentDisplayName}
                     className="w-full h-full"
                     textClassName="text-xs font-black"

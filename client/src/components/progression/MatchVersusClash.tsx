@@ -103,7 +103,7 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
               style={{ backgroundColor: p1Tier.themeColor }}
             />
             <div className="flex justify-center mb-3">
-              <SeatAvatar avatar={player1.avatar} name={player1.name} className="w-16 h-16 shadow-lg" />
+              <SeatAvatar avatar={player1.avatar} playerId={player1.id} name={player1.name} className="w-16 h-16 shadow-lg" />
             </div>
             <h3 className="text-lg font-black text-white truncate font-display mb-1">{player1.name}</h3>
             <div className="text-xs font-mono font-bold mb-3" style={{ color: p1Tier.themeColor }}>
@@ -150,7 +150,7 @@ export const MatchVersusClash: React.FC<MatchVersusClashProps> = ({
               style={{ backgroundColor: p2Tier.themeColor }}
             />
             <div className="flex justify-center mb-3">
-              <SeatAvatar avatar={player2.avatar} name={player2.name} className="w-16 h-16 shadow-lg" />
+              <SeatAvatar avatar={player2.avatar} playerId={player2.id} name={player2.name} className="w-16 h-16 shadow-lg" />
             </div>
             <h3 className="text-lg font-black text-white truncate font-display mb-1">{player2.name}</h3>
             <div className="text-xs font-mono font-bold mb-3" style={{ color: p2Tier.themeColor }}>

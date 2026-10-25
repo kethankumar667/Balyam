@@ -107,7 +107,7 @@ export function MemberProfileSheet({ member, isSelf, onClose, onCoinsWith }: Mem
               className="block rounded-full p-0.5 ring-2"
               style={{ ["--tw-ring-color" as string]: tier ? tier.themeColor : "rgb(var(--album-foil-fill) / 0.6)" }}
             >
-              <AlbumAvatar avatar={member.avatar} name="" size="lg" presence={member.presence} />
+              <AlbumAvatar avatar={member.avatar} playerId={member.playerId} name="" size="lg" presence={member.presence} />
             </span>
             {record.progression && (
               <span className="absolute -bottom-2 left-1/2 -translate-x-1/2">

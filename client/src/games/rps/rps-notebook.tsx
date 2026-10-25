@@ -44,6 +44,7 @@ import type { ReactNode } from "react";
 import type { RpsChoice } from "@shared/types";
 import type { RoundOutcome } from "./useRpsBoard";
 import { findAvatar } from "../../lib/avatars";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import SeatTargetReactionWheel from "../../components/reactions/SeatTargetReactionWheel";
 import GameThemeToggle from "../../components/theme/GameThemeToggle";
 import { useFullscreenToggle } from "../../hooks/useFullscreenToggle";
@@ -365,7 +366,10 @@ export function NotebookPlayerCard({
         <div>
           {/* Avatar + name row */}
           <div className="flex items-center gap-2.5 mt-2">
-            <CartoonAvatar color={color} avatar={avatar} />
+            <span className="relative inline-flex shrink-0">
+              <CartoonAvatar color={color} avatar={avatar} />
+              <SeatFrame playerId={targetPlayerId ?? undefined} />
+            </span>
             <div className="min-w-0 flex-1">
               <div className="font-black leading-tight truncate" style={{ color, fontSize: 15 }}>
                 {name}

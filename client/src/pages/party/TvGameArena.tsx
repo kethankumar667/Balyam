@@ -1,3 +1,4 @@
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Dice6, Layers, RotateCw, RotateCcw, Radio, Flame, ShieldAlert, Crown, Swords, Trophy, Zap, Star } from "lucide-react";
 import type {
@@ -213,6 +214,7 @@ export function TvGameArena({ room, gameState, activeTurn, audience = false }: T
           totalSeconds={activeTurn.turnTimerSeconds || 30}
           playerName={activeTurn.name}
           playerAvatar={activeTurn.avatar}
+          playerId={activeTurn.playerId}
           playerColor={activeTurn.color}
           actionText={activeTurn.actionText}
         />
@@ -449,11 +451,13 @@ function LudoTvBoard({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border-2 flex-shrink-0 bg-stone-800 shadow-md relative"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl  border-2 flex-shrink-0 bg-stone-800 shadow-md relative"
                   style={{ borderColor: hex }}
                 >
                   {avatarObj?.src ? (
-                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                      <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    </span>
                   ) : (
                     <span className="flex items-center justify-center h-full font-black text-white text-[11px]">
                       {p.name.slice(0, 2).toUpperCase()}
@@ -464,6 +468,7 @@ function LudoTvBoard({
                       <Crown className="w-2.5 h-2.5 text-stone-950" />
                     </div>
                   )}
+                  <SeatFrame playerId={p.id} />
                 </div>
 
                 <div className="min-w-0">
@@ -679,14 +684,17 @@ function SnlTvBoard({
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0 w-44 flex-shrink-0">
-                <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/50 bg-stone-800 flex-shrink-0 shadow-md">
+                <div className="relative w-9 h-9 rounded-xl  border border-amber-400/50 bg-stone-800 flex-shrink-0 shadow-md">
                   {avatarObj?.src ? (
-                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                      <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    </span>
                   ) : (
                     <span className="flex items-center justify-center h-full font-black text-white text-[11px]">
                       {p.name.slice(0, 2).toUpperCase()}
                     </span>
                   )}
+                  <SeatFrame playerId={p.id} />
                 </div>
                 <div className="min-w-0">
                   <span className="block font-black text-amber-100 text-xs sm:text-sm truncate">{p.name}</span>
@@ -872,17 +880,20 @@ function UnoTvBoard({
 
               <div className="flex items-center gap-2 min-w-0">
                 <div
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border-2 flex-shrink-0 bg-stone-800 shadow-md ${
+                  className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl  border-2 flex-shrink-0 bg-stone-800 shadow-md ${
                     hasUno ? "border-rose-500" : isActive ? "border-amber-400" : "border-stone-700"
                   }`}
                 >
                   {avatarObj?.src ? (
-                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                      <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    </span>
                   ) : (
                     <span className="flex items-center justify-center h-full font-black text-white text-[11px]">
                       {p.name.slice(0, 2).toUpperCase()}
                     </span>
                   )}
+                  <SeatFrame playerId={p.id} />
                 </div>
 
                 <div className="min-w-0">
@@ -997,14 +1008,17 @@ function RpsTvBoard({
       <div className="flex-1 w-full flex items-center justify-around my-auto py-2">
         {/* Fighter 1 */}
         <div className="flex flex-col items-center">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-3 border-rose-500/80 bg-stone-800 shadow-xl mb-2">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl  border-3 border-rose-500/80 bg-stone-800 shadow-xl mb-2">
             {p1?.avatar ? (
-              <img src={findAvatar(p1.avatar)?.src ?? ""} alt={p1.name} className="w-full h-full object-cover" />
+              <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                <img src={findAvatar(p1.avatar)?.src ?? ""} alt={p1.name} className="w-full h-full object-cover" />
+              </span>
             ) : (
               <span className="flex items-center justify-center h-full font-black text-2xl text-white">
                 {p1?.name.slice(0, 2).toUpperCase() ?? "P1"}
               </span>
             )}
+            <SeatFrame playerId={p1?.id} />
           </div>
           <span className="font-black text-amber-100 text-sm sm:text-base">{p1?.name ?? "Player 1"}</span>
           <span className="text-3xl font-black font-mono text-rose-400 mt-1">{scores[p1?.id ?? ""] ?? 0}</span>
@@ -1022,14 +1036,17 @@ function RpsTvBoard({
 
         {/* Fighter 2 */}
         <div className="flex flex-col items-center">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-3 border-blue-500/80 bg-stone-800 shadow-xl mb-2">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl  border-3 border-blue-500/80 bg-stone-800 shadow-xl mb-2">
             {p2?.avatar ? (
-              <img src={findAvatar(p2.avatar)?.src ?? ""} alt={p2.name} className="w-full h-full object-cover" />
+              <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                <img src={findAvatar(p2.avatar)?.src ?? ""} alt={p2.name} className="w-full h-full object-cover" />
+              </span>
             ) : (
               <span className="flex items-center justify-center h-full font-black text-2xl text-white">
                 {p2?.name.slice(0, 2).toUpperCase() ?? "P2"}
               </span>
             )}
+            <SeatFrame playerId={p2?.id} />
           </div>
           <span className="font-black text-amber-100 text-sm sm:text-base">{p2?.name ?? "Player 2"}</span>
           <span className="text-3xl font-black font-mono text-blue-400 mt-1">{scores[p2?.id ?? ""] ?? 0}</span>
@@ -1294,14 +1311,17 @@ function HandCricketTvBoard({
         {/* Batting Card */}
         <div className={`p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-lg ${themeClasses.cardBatting}`}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-amber-400/60 bg-stone-900 flex-shrink-0 shadow-md">
+            <div className="relative w-11 h-11 rounded-xl  border-2 border-amber-400/60 bg-stone-900 flex-shrink-0 shadow-md">
               {battingAvatar?.src ? (
-                <img src={battingAvatar.src} alt={battingPlayer?.name ?? "Batter"} className="w-full h-full object-cover" />
+                <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                  <img src={battingAvatar.src} alt={battingPlayer?.name ?? "Batter"} className="w-full h-full object-cover" />
+                </span>
               ) : (
                 <span className="flex items-center justify-center h-full font-black text-white text-xs">
                   {battingPlayer?.name?.slice(0, 2).toUpperCase() ?? "BAT"}
                 </span>
               )}
+              <SeatFrame playerId={battingPlayer?.id} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
@@ -1322,14 +1342,17 @@ function HandCricketTvBoard({
         {/* Bowling Card */}
         <div className={`p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-lg ${themeClasses.cardBowling}`}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-stone-600 bg-stone-900 flex-shrink-0 shadow-md">
+            <div className="relative w-11 h-11 rounded-xl  border-2 border-stone-600 bg-stone-900 flex-shrink-0 shadow-md">
               {bowlingAvatar?.src ? (
-                <img src={bowlingAvatar.src} alt={bowlingPlayer?.name ?? "Bowler"} className="w-full h-full object-cover" />
+                <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                  <img src={bowlingAvatar.src} alt={bowlingPlayer?.name ?? "Bowler"} className="w-full h-full object-cover" />
+                </span>
               ) : (
                 <span className="flex items-center justify-center h-full font-black text-white text-xs">
                   {bowlingPlayer?.name?.slice(0, 2).toUpperCase() ?? "BOWL"}
                 </span>
               )}
+              <SeatFrame playerId={bowlingPlayer?.id} />
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-mono font-black uppercase text-stone-400 block">🎯 Bowling</span>
@@ -1454,14 +1477,17 @@ function RummyTvBoard({
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-500/30 flex-shrink-0 bg-stone-800 shadow-md">
+                <div className="relative w-10 h-10 rounded-xl  border border-amber-500/30 flex-shrink-0 bg-stone-800 shadow-md">
                   {avatarObj?.src ? (
-                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                      <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                    </span>
                   ) : (
                     <span className="flex items-center justify-center h-full font-black text-white text-xs">
                       {p.name.slice(0, 2).toUpperCase()}
                     </span>
                   )}
+                  <SeatFrame playerId={p.id} />
                 </div>
                 <span className="font-black text-amber-100 text-sm truncate">{p.name}</span>
               </div>
@@ -1574,14 +1600,17 @@ function WordBuildingTvBoard({
                   : "bg-stone-900/70 border-stone-800"
               }`}
             >
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-blue-400/50 mb-1.5 shadow-md">
+              <div className="relative w-12 h-12 rounded-xl  border border-blue-400/50 mb-1.5 shadow-md">
                 {avatarObj?.src ? (
-                  <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  </span>
                 ) : (
                   <span className="flex items-center justify-center h-full font-black text-white text-xs">
                     {p.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={p.id} />
               </div>
               <span className="font-black text-amber-100 text-sm truncate max-w-full">{p.name}</span>
               <span className="text-2xl font-black font-mono text-blue-400 mt-1">{score} pts</span>
@@ -1680,14 +1709,17 @@ function DotsBoxesTvBoard({
                   : "bg-stone-900/70 border-stone-800"
               }`}
             >
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-amber-400/50 mb-1.5 shadow-md">
+              <div className="relative w-12 h-12 rounded-xl  border border-amber-400/50 mb-1.5 shadow-md">
                 {avatarObj?.src ? (
-                  <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  </span>
                 ) : (
                   <span className="flex items-center justify-center h-full font-black text-white text-xs">
                     {p.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={p.id} />
               </div>
               <span className="font-black text-amber-100 text-sm truncate max-w-full">{p.name}</span>
               <span className="text-2xl font-black font-mono text-amber-400 mt-1">{score} boxes</span>
@@ -1755,14 +1787,17 @@ function StarTvBoard({
                   : "bg-stone-900/70 border-stone-800"
               }`}
             >
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-yellow-400/50 mb-1.5 shadow-md">
+              <div className="relative w-12 h-12 rounded-xl  border border-yellow-400/50 mb-1.5 shadow-md">
                 {avatarObj?.src ? (
-                  <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img src={avatarObj.src} alt={p.name} className="w-full h-full object-cover" />
+                  </span>
                 ) : (
                   <span className="flex items-center justify-center h-full font-black text-white text-xs">
                     {p.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={p.id} />
               </div>
               <span className="font-black text-amber-100 text-sm truncate max-w-full">{p.name}</span>
             </div>

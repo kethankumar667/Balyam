@@ -1,3 +1,4 @@
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import { findAvatar } from "../../lib/avatars";
@@ -7,6 +8,7 @@ export interface TvTurnTimerProps {
   totalSeconds?: number;
   playerName: string;
   playerAvatar?: string;
+  playerId?: string;
   playerColor?: string;
   actionText?: string;
 }
@@ -16,6 +18,7 @@ export function TvTurnTimer({
   totalSeconds = 30,
   playerName,
   playerAvatar,
+  playerId,
   playerColor,
   actionText,
 }: TvTurnTimerProps) {
@@ -64,16 +67,19 @@ export function TvTurnTimer({
       {/* Active Player Spotlight */}
       <div className="flex items-center gap-4 min-w-0">
         <div
-          className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 flex-shrink-0 shadow-md"
+          className="relative w-14 h-14 rounded-2xl  border-2 flex-shrink-0 shadow-md"
           style={{ borderColor: playerColor || (isUrgent ? "#EF4444" : "#F59E0B") }}
         >
           {avatarObj?.src ? (
-            <img src={avatarObj.src} alt={playerName} className="w-full h-full object-cover" />
+            <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+              <img src={avatarObj.src} alt={playerName} className="w-full h-full object-cover" />
+            </span>
           ) : (
             <div className="w-full h-full bg-stone-800 flex items-center justify-center font-black text-amber-200 text-lg">
               {playerName.slice(0, 2).toUpperCase()}
             </div>
           )}
+          <SeatFrame playerId={playerId} />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">

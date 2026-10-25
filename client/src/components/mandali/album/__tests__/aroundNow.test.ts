@@ -101,7 +101,7 @@ describe("pickOpenTables", () => {
     const tables = pickOpenTables([invite("LDO482", 5, { roomInvite: { game: "ludo", gameName: "Ludo 🎲", maxPlayers: 4, roomName: "Sunday night Ludo", hostName: "Asha" } } as never)], { LDO482: status("LDO482") }, NOW);
 
     expect(tables).toEqual([
-      { code: "LDO482", hostName: "Asha", hostAvatar: "asha.png", title: "Sunday night Ludo", gameName: "Ludo", players: 2, maxPlayers: 4 },
+      { code: "LDO482", hostPlayerId: "asha", hostName: "Asha", hostAvatar: "asha.png", title: "Sunday night Ludo", gameName: "Ludo", players: 2, maxPlayers: 4 },
     ]);
   });
 

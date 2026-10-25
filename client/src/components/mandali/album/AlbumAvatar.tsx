@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { FALLBACK_AVATAR, getAvatarUrl } from "./avatarUrl";
+import SeatFrame from "../../cosmetics/frames/SeatFrame";
 
 const SIZES = {
   sm: "w-8 h-8",
@@ -21,6 +22,7 @@ const BADGE_SIZE: Record<keyof typeof SIZES, { box: string; glyph: string }> = {
 
 export interface AlbumAvatarProps {
   avatar?: string;
+  playerId?: string;
   /** Read out by screen readers; pass an empty string when the name is already written beside it. */
   name: string;
   size?: keyof typeof SIZES;
@@ -59,7 +61,7 @@ const BADGE: Record<AvatarPresence, { fill: string; mark: ReactNode }> = {
  * A person's picture. Round, hairline-ringed, and never broken: a failed image
  * quietly becomes the BHALYAM logo.
  */
-export function AlbumAvatar({ avatar, name, size = "md", presence, className = "" }: AlbumAvatarProps) {
+export function AlbumAvatar({ avatar, playerId, name, size = "md", presence, className = "" }: AlbumAvatarProps) {
   return (
     <span className={`relative inline-flex flex-shrink-0 ${className}`}>
       <img
@@ -71,11 +73,12 @@ export function AlbumAvatar({ avatar, name, size = "md", presence, className = "
           if (!img.src.endsWith(FALLBACK_AVATAR)) img.src = FALLBACK_AVATAR;
         }}
       />
+      <SeatFrame playerId={playerId} />
       {presence !== undefined && (
         <span
           aria-hidden="true"
           data-presence={presence}
-          className={`absolute -bottom-0.5 -right-0.5 flex ${BADGE_SIZE[size].box} items-center justify-center rounded-full ring-2 ${size === "xl" ? "ring-album-raised" : "ring-album-page"} ${BADGE[presence].fill}`}
+          className={`absolute -bottom-0.5 -right-0.5 z-20 flex ${BADGE_SIZE[size].box} items-center justify-center rounded-full ring-2 ${size === "xl" ? "ring-album-raised" : "ring-album-page"} ${BADGE[presence].fill}`}
         >
           <svg viewBox="0 0 10 10" className={BADGE_SIZE[size].glyph}>
             {BADGE[presence].mark}

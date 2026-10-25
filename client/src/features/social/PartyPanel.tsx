@@ -117,6 +117,7 @@ export default function PartyPanel({
             <div className="flex items-center justify-between">
               <SeatAvatar
                 avatar={member.avatar}
+                playerId={member.playerId}
                 name={member.displayName}
                 className="w-12 h-12 rounded-2xl border border-[var(--auth-field-edge)] shadow-inner"
                 textClassName="text-xl"

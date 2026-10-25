@@ -62,6 +62,7 @@ export default function VamanaBoardDesktop({ state, players, selfId, messages, r
       compact={isShort}
       name={rival?.name ?? "Opponent"}
       avatar={rival?.avatar}
+      playerId={rival?.id}
       isSelf={false}
       isBot={rival?.isBot}
       captured={replay.captured[rivalId] ?? 0}
@@ -76,6 +77,7 @@ export default function VamanaBoardDesktop({ state, players, selfId, messages, r
       compact={isShort}
       name={mine?.name ?? "You"}
       avatar={mine?.avatar}
+      playerId={mine?.id}
       isSelf={board.isPlayer}
       isBot={mine?.isBot}
       captured={replay.captured[mineId] ?? 0}

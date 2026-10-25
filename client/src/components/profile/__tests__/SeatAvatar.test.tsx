@@ -14,6 +14,16 @@ const AVATAR = AVATARS[0].id;
  * seats looked uneven. These pin the two things that make every avatar a circle of the size it is given.
  */
 describe("SeatAvatar shape", () => {
+  it("keeps the equipped frame around a custom fallback", () => {
+    const { container } = render(<SeatAvatar name="Player" aura="aura_nostalgia_gold" fallback={<span>No photo</span>} />);
+    expect(container.querySelector('[data-frame="aura_nostalgia_gold"]')).toBeInTheDocument();
+    expect(container).toHaveTextContent("No photo");
+  });
+
+  it("does not invent a prestige aura for an unequipped player", () => {
+    const { container } = render(<SeatAvatar name="Player" aura="aura_none" level={250} />);
+    expect(container.querySelector(".animate-pulse")).not.toBeInTheDocument();
+  });
   it("shows the earned Golden Reunion artwork rather than a generic dashed placeholder", () => {
     const { container } = render(<SeatAvatar name="Kethan" aura="aura_nostalgia_gold" />);
     expect(container.querySelector('svg[data-frame="aura_nostalgia_gold"]')).toBeInTheDocument();

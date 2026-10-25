@@ -112,7 +112,7 @@ export default function RoomInviteCard({ message, selfId }: RoomInviteCardProps)
           className={`pointer-events-none absolute -right-3 -top-3 h-24 w-24 -rotate-12 ${muted ? "opacity-[0.07]" : "opacity-[0.16]"}`}
         />
         <span className="relative flex-shrink-0 rounded-full p-0.5 ring-2 ring-current/40">
-          <AlbumAvatar avatar={message.senderAvatar} name="" size="md" />
+          <AlbumAvatar avatar={message.senderAvatar} playerId={message.senderId} name="" size="md" />
         </span>
         <div className="relative min-w-0 flex-1">
           <p className="m-0 truncate text-[15px] font-semibold leading-snug">

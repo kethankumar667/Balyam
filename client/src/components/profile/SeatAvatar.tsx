@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { findAvatar } from "../../lib/avatars";
 import { getAvatarAuraConfig } from "../../lib/cosmeticsResolver";
 import { MiniclipLevelBadge } from "../progression/MiniclipLevelBadge";
-import { getLevelTier } from "@shared/progression/MiniclipProgression";
 import AvatarFrameOverlay, { hasAvatarFrameArtwork } from "../cosmetics/frames/AvatarFrameOverlay";
 import { useSeatFrame } from "../cosmetics/frames/SeatFrame";
 
@@ -60,8 +59,8 @@ export interface SeatAvatarProps {
   /** Cosmetic avatar aura identifier: an animated frame (frame_royal_crown, …) or a legacy ring (aura_ludo_king). */
   aura?: string;
   /**
-   * Who sits here. With no explicit `aura`, the frame this player wears (from the live room state) is drawn.
-   * Game boards pass this so every seat shows its player's frame without each one resolving it.
+   * Room seat ID or persistent profile ID. With no explicit aura, resolves this owner's equipped
+   * decoration from live room state, the local loadout, or the batched public presentation lookup.
    */
   playerId?: string;
   /** Player's progression level for Miniclip-style corner badge */
@@ -116,9 +115,6 @@ export default function SeatAvatar({
   // avatar behind the previous occupant's failure.
   useEffect(() => setFailed(false), [option?.src, avatar]);
 
-  const tier = level !== undefined && level >= 1 ? getLevelTier(level) : null;
-  const hasPrestigeAura = !auraConfig && tier !== null && tier.id >= 4;
-
   const wrapWithAura = (node: React.ReactNode) => {
     return (
       // A caller that sizes the avatar as `w-full h-full` is relying on this wrapper having a size to be a
@@ -126,18 +122,9 @@ export default function SeatAvatar({
       // dimensions from the image file: a portrait-shaped picture became an egg. Passing the fill down fixes
       // that for every caller at once.
       <span className={`relative inline-flex items-center justify-center ${className.includes("w-full") ? "h-full w-full" : ""}`}>
-        {hasPrestigeAura && tier && (
-          <span
-            className="absolute -inset-1 rounded-full pointer-events-none z-10 animate-pulse border"
-            style={{
-              borderColor: tier.themeColor,
-              boxShadow: `0 0 8px ${tier.glowColor}`,
-            }}
-          />
-        )}
         {hasFrameArtwork && effectiveAura && <AvatarFrameOverlay frameId={effectiveAura} />}
         {!hasFrameArtwork && auraConfig && auraConfig.className && (
-          <span className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
+          <span aria-hidden="true" className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none z-10 ${auraConfig.className}`} />
         )}
         {node}
         {level !== undefined && level >= 1 && (
@@ -194,7 +181,7 @@ export default function SeatAvatar({
   }
 
   if (fallback !== undefined) {
-    return <>{fallback}</>;
+    return wrapWithAura(<span className={`inline-flex aspect-square items-center justify-center ${className}`}>{fallback}</span>);
   }
 
   return wrapWithAura(

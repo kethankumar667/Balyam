@@ -55,7 +55,7 @@ function celebrateCoinRequest(payload: unknown): void {
   if (!me) return;
   const partyOf = (id: string): JoyParty => {
     const member = useMandaliStore.getState().members.find((m) => m.playerId === id);
-    return { name: member?.displayName?.trim() || null, avatar: member?.avatar };
+    return { playerId: id, name: member?.displayName?.trim() || null, avatar: member?.avatar };
   };
   const self = partyOf(me);
 

@@ -249,7 +249,7 @@ export function DoordarshanHeader({
               border: `1px solid ${DD.line}`,
             }}
           >
-            <DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} side={ddSideFor(0)} size={26} />
+            <DdAvatar name={nameOf(p0)} avatar={avatarOf(p0)} playerId={p0} side={ddSideFor(0)} size={26} />
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>
@@ -290,7 +290,7 @@ export function DoordarshanHeader({
               border: `1px solid ${DD.line}`,
             }}
           >
-            <DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} side={ddSideFor(1)} size={26} />
+            <DdAvatar name={nameOf(p1)} avatar={avatarOf(p1)} playerId={p1} side={ddSideFor(1)} size={26} />
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="font-crt font-bold text-xs uppercase tracking-wide truncate" style={{ color: DD.ink }}>

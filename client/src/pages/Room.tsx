@@ -2742,7 +2742,7 @@ function GenericScorecardModal({
   onClose,
   onLeave,
 }: {
-  players: { id: string; name: string }[];
+  players: Pick<Player, "id" | "name" | "avatar" | "cosmetics">[];
   selfId: string | null;
   winnerName?: string | null;
   winnerId?: string | null;
@@ -2864,9 +2864,7 @@ function GenericScorecardModal({
                   <span className="w-6 text-center text-sm font-black text-amber-300 shrink-0">
                     {medal}
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center font-bold text-xs shrink-0 text-amber-200">
-                    {p.name.charAt(0).toUpperCase()}
-                  </div>
+                  <SeatAvatar avatar={p.avatar} playerId={p.id} aura={p.cosmetics?.avatarAura} name={p.name} className="w-7 h-7" />
                   <span className="flex-1 text-xs sm:text-sm font-bold text-white/95 truncate">
                     {p.name} {isSelf && <span className="text-[10px] text-amber-400 font-normal">(You)</span>}
                   </span>

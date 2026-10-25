@@ -4109,7 +4109,7 @@ export class RoomManager {
       recentPlayersService.recordMatch({
         roomCode: room.code,
         game: room.game,
-        participants,
+        participants: [...canonicalParticipants.values()],
       });
       rankingService.invalidateCache();
     } catch (err) {

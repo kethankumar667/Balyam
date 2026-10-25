@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { findAvatar } from "../../lib/avatars";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 
 /**
  * BROADCAST KIT — the shared visual language for the "professional" skin.
@@ -372,12 +373,14 @@ export function ProIconButton({
 export function ProAvatar({
   name,
   avatar,
+  playerId,
   side,
   size = 40,
   ring = false,
 }: {
   name: string;
   avatar?: string;
+  playerId?: string;
   side: ProSide;
   size?: number;
   /** Gold ring — marks whose turn it is. */
@@ -389,6 +392,7 @@ export function ProAvatar({
   useEffect(() => setImgFailed(false), [option?.src]);
   const showImage = !!option && !imgFailed;
   return (
+    <span className="relative inline-flex shrink-0">
     <div
       className="grid shrink-0 place-items-center rounded-full font-black overflow-hidden"
       style={{
@@ -417,6 +421,8 @@ export function ProAvatar({
         initial
       )}
     </div>
+    <SeatFrame playerId={playerId} />
+    </span>
   );
 }
 

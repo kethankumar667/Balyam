@@ -62,6 +62,7 @@ export default function ProfileHeader({
           <div className="relative shrink-0">
             <div className="h-[4.5rem] w-[4.5rem] rounded-[1.15rem] border-2 border-info/70 bg-surface-1 p-1 shadow-[0_0_30px_-12px_var(--color-info)] sm:h-24 sm:w-24 sm:rounded-[1.4rem]">
               <SeatAvatar
+                playerId={profile.playerId}
                 avatar={effectiveAvatar}
                 name={effectiveName}
                 className="h-full w-full rounded-[0.9rem] sm:rounded-[1.1rem]"

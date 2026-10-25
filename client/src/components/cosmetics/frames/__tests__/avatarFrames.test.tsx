@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,7 @@ import { useRoomStore } from "../../../../store/roomStore";
 import ParticipantRow from "../../../room/ParticipantRow";
 
 const STYLESHEET = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "avatar-frames.css"), "utf8");
+afterEach(cleanup);
 
 const human = (over: Partial<Player> = {}): Player => ({
   id: "p_1",
@@ -111,15 +112,20 @@ describe("a frame found by player id", () => {
       roomState: { players: [seat("p1", "frame_royal_crown"), seat("p2", "aura_ludo_king"), seat("p3")] } as never,
     });
   });
-  afterEach(() => useRoomStore.setState({ roomState: null as never }));
+  afterEach(() => { cleanup(); useRoomStore.setState({ roomState: null }); });
 
   it("draws the frame the seat's player wears, for a board that knows only who sits there", () => {
     const { container } = render(<SeatFrame playerId="p1" />);
     expect(container.querySelector('svg[data-frame="frame_royal_crown"]')).not.toBeNull();
   });
 
-  it("draws nothing for a legacy ring, for a player with no frame, for an unknown player or for no player", () => {
-    for (const playerId of ["p2", "p3", "nobody", undefined]) {
+  it("also draws the seat's legacy aura without requiring artwork", () => {
+    const { container } = render(<SeatFrame playerId="p2" />);
+    expect(container.querySelector(".border-dashed")).not.toBeNull();
+  });
+
+  it("draws nothing for an unequipped seat or for no owner", () => {
+    for (const playerId of ["p3", undefined]) {
       const { container, unmount } = render(<SeatFrame playerId={playerId} />);
       expect(container, String(playerId)).toBeEmptyDOMElement();
       unmount();

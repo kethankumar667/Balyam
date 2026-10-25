@@ -109,7 +109,7 @@ export function WhosAroundStrip({ members, messages, selfId }: WhosAroundStripPr
                   title={`${m.displayName} · ${t(PRESENCE_KEY[m.presence])}`}
                   className={`block rounded-full ring-2 ring-album-raised ${GLOW[m.presence]}`}
                 >
-                  <AlbumAvatar avatar={m.avatar} name={`${m.displayName}, ${t(PRESENCE_KEY[m.presence])}`} size="sm" presence={m.presence} />
+                  <AlbumAvatar avatar={m.avatar} playerId={m.playerId} name={`${m.displayName}, ${t(PRESENCE_KEY[m.presence])}`} size="sm" presence={m.presence} />
                 </span>
               </li>
             ))}
@@ -160,7 +160,7 @@ function WatchRow({ match }: { match: WatchableMatch }) {
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-album-line bg-album-field/60 px-3 py-2">
-      <AlbumAvatar avatar={first.avatar} name="" size="md" />
+      <AlbumAvatar avatar={first.avatar} playerId={first.playerId} name="" size="md" />
       <div className="min-w-0 flex-1">
         <p className="m-0 truncate text-[15px] font-semibold leading-snug text-album-ink">{line}</p>
         <p className="m-0 truncate text-[13px] leading-snug text-album-ink3">{t("mandali.around.watchHint")}</p>
@@ -185,7 +185,7 @@ function OpenTableRow({ table }: { table: OpenTable }) {
   return (
     <div className="rounded-xl border border-album-foil/40 bg-album-foilfill/10 px-3 py-2">
       <div className="flex items-center gap-3">
-        <AlbumAvatar avatar={table.hostAvatar} name="" size="md" />
+        <AlbumAvatar avatar={table.hostAvatar} playerId={table.hostPlayerId} name="" size="md" />
         <div className="min-w-0 flex-1">
           <p className="m-0 truncate text-[15px] font-semibold leading-snug text-album-ink">{table.title}</p>
           <p className="m-0 truncate text-[13px] leading-snug text-album-ink3">

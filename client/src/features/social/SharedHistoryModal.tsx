@@ -37,6 +37,7 @@ export default function SharedHistoryModal({
         <div className="flex justify-center">
           <SeatAvatar
             avatar={friend.avatar}
+            playerId={friend.friendPlayerId}
             name={friend.displayName}
             className="w-16 h-16 rounded-2xl border border-stone-800 shadow"
             textClassName="text-2xl"

@@ -65,6 +65,7 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
             <ProPlayerCard
               name={m.me?.name ?? "You"}
               avatar={m.me?.avatar}
+              playerId={m.me?.id}
               isSelf
               score={m.myScore}
               target={m.target}
@@ -92,6 +93,7 @@ export default function RpsBroadcastDesktop(props: RpsBoardProps) {
             <ProPlayerCard
               name={m.opponent?.name ?? "Opponent"}
               avatar={m.opponent?.avatar}
+              playerId={m.opponent?.id}
               score={m.oppScore}
               target={m.target}
               streak={m.oppStreak}

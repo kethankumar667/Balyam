@@ -148,6 +148,7 @@ export default function LeaderboardTable({
                         <div className="flex items-center gap-2.5 font-sans">
                           <SeatAvatar
                             avatar={item.avatar}
+                            playerId={item.playerId}
                             name={item.displayName}
                             className="w-7 h-7 rounded-xl flex-shrink-0"
                             textClassName="text-xs"
@@ -218,6 +219,7 @@ export default function LeaderboardTable({
                       <span className="font-bold text-stone-400">{getRankBadge(item.rank)}</span>
                       <SeatAvatar
                         avatar={item.avatar}
+                        playerId={item.playerId}
                         name={item.displayName}
                         className="w-7 h-7 rounded-xl flex-shrink-0"
                         textClassName="text-xs"

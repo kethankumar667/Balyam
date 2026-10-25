@@ -195,11 +195,13 @@ export default function DotsBoxesScorecardModal({
                 className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 mb-2.5 flex items-center justify-center shadow-md"
                 style={{ backgroundColor: winner?.theme.primary ?? "#F59E0B" }}
               >
-                <div className="w-full h-full rounded-full bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden">
-                  {winner?.avatar ? (
-                    <SeatAvatar avatar={winner.avatar} name={winner.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span
+                <div className="w-full h-full rounded-full bg-white dark:bg-slate-950 flex items-center justify-center">
+                  <SeatAvatar
+                    avatar={winner?.avatar}
+                    playerId={winner?.pid}
+                    name={winner?.name ?? ""}
+                    className="w-full h-full object-cover"
+                    fallback={<span
                       className="font-black text-xl"
                       style={{
                         color: winner?.theme.primary,
@@ -207,8 +209,8 @@ export default function DotsBoxesScorecardModal({
                       }}
                     >
                       {getPlayerInitials(winner?.name ?? "")}
-                    </span>
-                  )}
+                    </span>}
+                  />
                 </div>
               </div>
 
@@ -334,17 +336,19 @@ export default function DotsBoxesScorecardModal({
                         className="w-8 h-8 rounded-full p-0.5 flex-shrink-0 flex items-center justify-center shadow-xs"
                         style={{ backgroundColor: p.theme.primary }}
                       >
-                        <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden">
-                          {p.avatar ? (
-                            <SeatAvatar avatar={p.avatar} name={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span
+                        <div className="w-full h-full rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
+                          <SeatAvatar
+                            avatar={p.avatar}
+                            playerId={p.pid}
+                            name={p.name}
+                            className="w-full h-full object-cover"
+                            fallback={<span
                               className="font-bold text-xs"
                               style={{ color: p.theme.primary, fontFamily: handwritingFont }}
                             >
                               {getPlayerInitials(p.name)}
-                            </span>
-                          )}
+                            </span>}
+                          />
                         </div>
                       </div>
 

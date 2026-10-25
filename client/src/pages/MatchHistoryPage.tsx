@@ -310,7 +310,7 @@ export default function MatchHistoryPage() {
                 {detail.participants.map((participant) => (
                   <li key={participant.playerId} className="flex min-h-[58px] items-center justify-between gap-3 rounded-xl border border-stone-300/70 bg-surface-0 px-3 py-2 dark:border-slate-700/70">
                     <div className="flex min-w-0 items-center gap-3">
-                      <SeatAvatar avatar={participant.avatar} name={participant.name} className="h-9 w-9" textClassName="text-xs" />
+                      <SeatAvatar avatar={participant.avatar} playerId={participant.playerId} name={participant.name} className="h-9 w-9" textClassName="text-xs" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-ink-hi">{participant.name}{participant.isBot ? " · Bot" : ""}</p>
                         <p className="text-[11px] text-ink-mid">{participant.isWinner ? "Winner" : "Contender"}</p>

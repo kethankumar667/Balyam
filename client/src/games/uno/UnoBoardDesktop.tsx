@@ -519,6 +519,7 @@ export default function UnoBoardDesktop(props: UnoBoardProps) {
                         <StadiumSelfPlate
                           name={selfName}
                           avatar={selfPlayer?.avatar}
+                          playerId={selfPlayer?.id}
                           seatNumber={selfSeatNumber}
                           handSize={m.sortedHand.length}
                           isTurn={m.myTurn}

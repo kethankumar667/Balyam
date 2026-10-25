@@ -39,7 +39,7 @@ export default function SelfAvatar({
     <SeatAvatar
       avatar={avatarId || undefined}
       // The player's own equipped frame: someone who has just bought one should see it on themselves at once.
-      aura={avatarAura === "aura_none" ? undefined : avatarAura}
+      aura={avatarAura}
       name={displayName}
       className={className}
       textClassName={textClassName}

@@ -5,6 +5,7 @@ import { createEngine } from "../../games/registry.js";
 import { scorecardService } from "../../profile/ScorecardService.js";
 import { readPersistedScorecards } from "../../profile/scorecardPersistence.js";
 import { progressionSync } from "../../persistence/ProgressionSync.js";
+import { recentPlayersService } from "../../ranking/RecentPlayersService.js";
 import { InMemoryProgressionRepository, setProgressionRepository } from "../../persistence/index.js";
 import type { ClientToServerEvents, HcGameOptions, ServerToClientEvents } from "@shared/types.js";
 
@@ -16,6 +17,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await progressionSync.drain();
   setProgressionRepository(null);
+  recentPlayersService.reset();
   vi.restoreAllMocks();
 });
 
@@ -49,6 +51,23 @@ function table(game: "handcricket" | "rummy", options: object, account: string, 
 }
 
 describe("finished rooms project account-based personal records", () => {
+  it("records recent opponents under persistent owners for profile and frame lookups", async () => {
+    const account = `recent-owners-${sequence++}`;
+    const { host, record } = table("handcricket", { mode: "single", format: "t20" }, account, false);
+    const recent = vi.spyOn(recentPlayersService, "recordMatch");
+    await record({ winnerId: host.id });
+    expect(recent).toHaveBeenCalledWith(expect.objectContaining({
+      participants: expect.arrayContaining([
+        expect.objectContaining({ playerId: account }),
+        expect.objectContaining({ playerId: `${account}-opponent` }),
+      ]),
+    }));
+    expect(recentPlayersService.getRecentPlayers(account)).toEqual([
+      expect.objectContaining({ playerId: `${account}-opponent` }),
+    ]);
+    expect(recentPlayersService.getRecentPlayers(host.id)).toEqual([]);
+  });
+
   it.each([
     [{ mode: "single", category: "international", format: "t20" }, "international_t20"],
     [{ mode: "single", category: "international", format: "odi" }, "international_odi"],

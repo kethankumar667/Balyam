@@ -488,6 +488,7 @@ export default function UnoBoardMobile(props: UnoBoardProps) {
                     <StadiumSelfPlate
                       name={selfName}
                       avatar={players.find((p) => p.id === selfId)?.avatar}
+                      playerId={selfId ?? undefined}
                       seatNumber={selfSeatNumber}
                       handSize={m.sortedHand.length}
                       isTurn={m.myTurn}

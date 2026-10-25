@@ -118,6 +118,7 @@ export default function RecentPlayersHub({
                 <div className="flex items-center gap-3">
                   <SeatAvatar
                     avatar={rp.avatar}
+                    playerId={rp.playerId}
                     name={rp.displayName}
                     className="w-10 h-10 rounded-xl flex-shrink-0"
                     textClassName="text-base"
@@ -163,6 +164,7 @@ export default function RecentPlayersHub({
                 <div className="flex items-center gap-3">
                   <SeatAvatar
                     avatar={f.avatar}
+                    playerId={f.playerId}
                     name={f.displayName}
                     className="w-10 h-10 rounded-xl flex-shrink-0"
                     textClassName="text-base"

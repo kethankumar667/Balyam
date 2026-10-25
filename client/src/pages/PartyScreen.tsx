@@ -15,6 +15,7 @@ import { TvClimaxBanner, isGameInClimax } from "./party/TvClimaxBanner";
 import { TvCommentaryTicker } from "./party/TvCommentaryTicker";
 import { AudienceBar } from "./party/AudienceBar";
 import type { TvActiveTurnInfo, TvPodiumEntry } from "./party/types";
+import { AvatarPlayersContext } from "../components/cosmetics/frames/SeatFrame";
 
 /**
  * Smart TV / Party Mode — the big-screen living-room spectator experience.
@@ -380,6 +381,7 @@ export default function PartyScreen({ mode = "tv" }: PartyScreenProps = {}): JSX
   }
 
   return (
+    <AvatarPlayersContext.Provider value={[...room.players, ...(room.lastMatchPlayers ?? [])]}>
     <TvShell shakeLevel={shakeLevel} inClimax={inClimax}>
       {/* Top TV Status Bar */}
       <TvHeader
@@ -444,6 +446,7 @@ export default function PartyScreen({ mode = "tv" }: PartyScreenProps = {}): JSX
 
       {isAudience && <AudienceBar onLeave={leaveAudience} />}
     </TvShell>
+    </AvatarPlayersContext.Provider>
   );
 }
 

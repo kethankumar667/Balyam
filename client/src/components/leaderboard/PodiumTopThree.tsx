@@ -1,3 +1,4 @@
+import SeatFrame from "../cosmetics/frames/SeatFrame";
 import { Crown, Medal, Award, Zap } from "lucide-react";
 import { findAvatar } from "../../lib/avatars";
 import type { FoilTier } from "@shared/profile/Scorecard";
@@ -40,18 +41,21 @@ export default function PodiumTopThree({ competitors, unit = "ELO" }: PodiumTopT
           <div className="flex flex-col items-center order-1 group">
             {/* Player Avatar & Floating Badge */}
             <div className="relative mb-2 flex flex-col items-center">
-              <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-slate-900 border-2 border-slate-300 shadow-[0_0_20px_rgba(203,213,225,0.4)] flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-slate-900 border-2 border-slate-300 shadow-[0_0_20px_rgba(203,213,225,0.4)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 {second.avatar ? (
-                  <img
-                    src={findAvatar(second.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={second.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(second.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={second.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-xl sm:text-2xl font-black text-slate-200">
                     {second.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={second.playerId} />
               </div>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-200 text-slate-950 text-[10px] font-mono font-black flex items-center gap-1 shadow-md border border-white">
                 <Medal className="w-3 h-3 text-slate-800" />
@@ -90,18 +94,21 @@ export default function PodiumTopThree({ competitors, unit = "ELO" }: PodiumTopT
                 <Crown className="w-6 h-6 fill-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
               </div>
 
-              <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-3xl bg-amber-950/60 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.5)] flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-18 h-18 sm:w-22 sm:h-22 rounded-3xl bg-amber-950/60 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.5)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 {first.avatar ? (
-                  <img
-                    src={findAvatar(first.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={first.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(first.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={first.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-2xl sm:text-3xl font-black text-amber-300">
                     {first.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={first.playerId} />
               </div>
               <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 text-xs font-mono font-black flex items-center gap-1 shadow-lg border border-amber-200">
                 <Zap className="w-3 h-3 fill-slate-950" />
@@ -136,18 +143,21 @@ export default function PodiumTopThree({ competitors, unit = "ELO" }: PodiumTopT
           <div className="flex flex-col items-center order-3 group">
             {/* Player Avatar & Floating Badge */}
             <div className="relative mb-2 flex flex-col items-center">
-              <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-amber-950/40 border-2 border-amber-700/70 shadow-[0_0_20px_rgba(180,83,9,0.3)] flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-amber-950/40 border-2 border-amber-700/70 shadow-[0_0_20px_rgba(180,83,9,0.3)] flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 {third.avatar ? (
-                  <img
-                    src={findAvatar(third.avatar)?.src || "/Avatars/avatar-01.png"}
-                    alt={third.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                    <img
+                      src={findAvatar(third.avatar)?.src || "/Avatars/avatar-01.png"}
+                      alt={third.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
                 ) : (
                   <span className="text-xl sm:text-2xl font-black text-amber-600">
                     {third.name.slice(0, 2).toUpperCase()}
                   </span>
                 )}
+                <SeatFrame playerId={third.playerId} />
               </div>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-amber-700 text-amber-100 text-[10px] font-mono font-black flex items-center gap-1 shadow-md border border-amber-600">
                 <Award className="w-3 h-3 text-amber-300" />

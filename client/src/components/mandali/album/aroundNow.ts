@@ -78,6 +78,7 @@ export function watchableMatches(around: readonly MandaliMember[]): WatchableMat
 
 export interface OpenTable {
   code: string;
+  hostPlayerId: string;
   hostName: string;
   hostAvatar: string | undefined;
   /** Room name if the host gave one, else "<Game> room". */
@@ -112,6 +113,7 @@ export function pickOpenTables(
     const gameName = plainGameName(meta?.gameName ?? "") || (meta?.game ? gameLabel(meta.game) : "Game");
     tables.push({
       code,
+      hostPlayerId: message.senderId,
       hostName: meta?.hostName ?? message.senderName,
       hostAvatar: message.senderAvatar,
       title: meta?.roomName || `${gameName} room`,

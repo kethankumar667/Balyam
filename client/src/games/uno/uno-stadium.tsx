@@ -609,6 +609,7 @@ function StadiumArrowArc({
 // ---------------------------------------------------------------------
 
 import { findAvatar } from "../../lib/avatars";
+import SeatFrame from "../../components/cosmetics/frames/SeatFrame";
 import { AVATAR_FILES } from "@shared/avatars";
 
 const PALETTES: Array<[string, string]> = [
@@ -835,7 +836,7 @@ export function StadiumOpponentSeat({
 
           {/* Squircle Avatar Frame with Character Picture */}
           <div
-            className={`rounded-2xl overflow-hidden flex items-center justify-center relative shadow-xl transition group-hover:scale-105 ${
+            className={`rounded-2xl flex items-center justify-center relative shadow-xl transition group-hover:scale-105 ${
               handSize <= 2 ? "ring-2 ring-yellow-400 ring-offset-2 ring-offset-black/60 shadow-[0_0_20px_rgba(250,204,21,0.7)]" : ""
             }`}
             style={{
@@ -847,6 +848,7 @@ export function StadiumOpponentSeat({
             }}
           >
             <UnoSeatAvatar avatar={avatar} name={name} size={tile} />
+            <SeatFrame playerId={profilePlayer?.id} />
 
             {/* Dynamic Emotion Badge Overlays */}
             {handSize <= 2 && (
@@ -964,12 +966,14 @@ function StadiumMiniFan({ count, compact }: { count: number; compact: boolean })
 export function StadiumSelfPlate({
   name,
   avatar,
+  playerId,
   seatNumber,
   handSize,
   isTurn,
 }: {
   name: string;
   avatar?: string;
+  playerId?: string;
   seatNumber: number;
   handSize: number;
   isTurn: boolean;
@@ -986,7 +990,7 @@ export function StadiumSelfPlate({
           />
         )}
         <div
-          className="rounded-2xl overflow-hidden flex items-center justify-center relative shadow-xl"
+          className="rounded-2xl flex items-center justify-center relative shadow-xl"
           style={{
             width: 54,
             height: 54,
@@ -996,6 +1000,7 @@ export function StadiumSelfPlate({
           }}
         >
           <UnoSeatAvatar avatar={avatar} name={name} size={54} />
+          <SeatFrame playerId={playerId} />
         </div>
         {/* YOU badge — gold pill overlapping the avatar's base */}
         <span

@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { Crown, ShieldCheck, ChevronDown, UserMinus, Ban, ArrowLeftRight } from "lucide-react";
-import { AlbumSheet } from "./album";
+import { AlbumAvatar, AlbumSheet } from "./album";
 import type { MandaliMember } from "@shared/mandali/types.js";
 
 export interface MemberManagementSheetProps {
@@ -28,12 +28,6 @@ export interface MemberManagementSheetProps {
   onKick: (targetId: string) => Promise<{ success: boolean; error?: string }>;
   onBan: (targetId: string) => Promise<{ success: boolean; error?: string }>;
   onTransferOwnership: (targetId: string) => Promise<{ success: boolean; error?: string }>;
-}
-
-function avatarUrl(avatar?: string): string {
-  if (!avatar) return "/Bhalyam-logo.png";
-  if (avatar.startsWith("/") || avatar.startsWith("http")) return avatar;
-  return `/Avatars/${avatar}`;
 }
 
 export default function MemberManagementSheet({
@@ -94,12 +88,7 @@ export default function MemberManagementSheet({
                 key={member.playerId}
                 className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-album-field transition-colors relative"
               >
-                <img
-                  src={avatarUrl(member.avatar)}
-                  alt=""
-                  className="w-10 h-10 rounded-full object-cover bg-album-field shrink-0"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/Bhalyam-logo.png"; }}
-                />
+                <AlbumAvatar avatar={member.avatar} playerId={member.playerId} name="" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-album-ink truncate flex items-center gap-1.5">
                     {member.displayName}

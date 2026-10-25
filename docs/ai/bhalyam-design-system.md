@@ -25,6 +25,28 @@
 
 ## 2. Standardized Component Library
 
+### Player avatars and equipped decoration
+
+Use `SeatAvatar` with the owner's room-seat `playerId` in games, or persistent
+profile `playerId` outside rooms. `SelfAvatar` uses the current local equipped
+loadout; Mandali's `AlbumAvatar` accepts the same owner ID while preserving its
+logo fallback and presence badge. Never infer ownership from a picture or name.
+An explicit `aura` overrides lookup; `aura_none` and unequipped players stay
+plain, regardless of progression level. Picker thumbnails remain undecorated.
+
+Bespoke portraits use one sibling `SeatFrame` inside a relative avatar-sized
+box. Clip only the picture, not the frame: artwork extends 12% on each side.
+Do not also enable owner lookup on an inner `SeatAvatar` in that box, which
+would draw the decoration twice. Both artwork and legacy equipped rings work.
+Decoration is non-interactive and hidden from assistive technology.
+
+Live room cosmetics are server-filtered and take precedence. Outside rooms,
+`GET /api/cosmetics/avatar-auras?playerIds=...` exposes only equipped aura IDs,
+not inventory, entitlements, or account data. Requests are deduplicated, batched
+at 25 owners, cached for 60 seconds and refreshed for visible mounted surfaces.
+These passive GETs never create a guest. Failed lookups log an explicit warning
+and retry rather than caching an unequipped success.
+
 ### Level-up celebration
 
 `LevelUpAscension` uses opaque `surface.1` / `surface.0` panels and `ink.hi` /

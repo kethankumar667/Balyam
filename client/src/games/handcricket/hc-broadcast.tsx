@@ -1271,6 +1271,7 @@ export function HcProPlayersBar({
           name={bowler?.name ?? "Waiting…"}
           avatar={bowler ? bowlingPlayer?.avatar : undefined}
           avatarName={bowler ? bowlingPlayer?.name : undefined}
+          avatarPlayerId={bowler ? bowlingPlayer?.id : undefined}
           sub={
             bowler
               ? bowlerStats
@@ -1296,6 +1297,7 @@ function CreaseCell({
   mine,
   avatar,
   avatarName,
+  avatarPlayerId,
   dim = false,
   warn = false,
   onStrike = false,
@@ -1318,6 +1320,7 @@ function CreaseCell({
   avatar?: string;
   /** Real player name backing `avatar`, used for the initial/colour fallback. */
   avatarName?: string;
+  avatarPlayerId?: string;
   dim?: boolean;
   warn?: boolean;
   onStrike?: boolean;
@@ -1368,6 +1371,7 @@ function CreaseCell({
         {avatarName && (
           <SeatAvatar
             avatar={avatar}
+            playerId={avatarPlayerId}
             name={avatarName}
             className={compact ? "w-5 h-5" : "w-6 h-6"}
             textClassName="text-[9px]"

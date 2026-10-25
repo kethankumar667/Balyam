@@ -11,6 +11,7 @@ import UserRoleElevation from "./UserRoleElevation";
 import { GuestBadge, RoleBadge } from "./UserBadges";
 import { maskEmail, PersonalDataProvider, usePersonalData } from "./personalData";
 import { useModerationOutcomeStore } from "./moderationOutcomeStore";
+import SeatFrame from "../../../components/cosmetics/frames/SeatFrame";
 
 const UNNAMED_PLAYER = "Unnamed player";
 
@@ -23,13 +24,14 @@ function listQueryFrom(state: unknown): string {
   return typeof from === "string" && from.startsWith("?") ? from : "";
 }
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, playerId }: { name: string; playerId: string }) {
   return (
     <span
       aria-hidden="true"
-      className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-lg font-semibold uppercase text-[var(--chrome-ink)] sm:h-14 sm:w-14 sm:text-xl"
+      className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[var(--chrome-border)] bg-[var(--chrome-control)] text-lg font-semibold uppercase text-[var(--chrome-ink)] sm:h-14 sm:w-14 sm:text-xl"
     >
       {Array.from(name.trim())[0] ?? "?"}
+      <SeatFrame playerId={playerId} />
     </span>
   );
 }
@@ -77,7 +79,7 @@ function UserDetailBody({ userId }: { userId: string }) {
       <PageHeader
         title={displayName ?? "User profile"}
         description={user ? (user.email ? (isRevealed ? user.email : maskEmail(user.email)) : "No email recorded") : undefined}
-        leading={displayName ? <Avatar name={displayName} /> : undefined}
+        leading={displayName ? <Avatar name={displayName} playerId={userId} /> : undefined}
         badge={user ? <PlayerBadges user={user} /> : undefined}
         breadcrumbs={[
           { label: "Admin", href: "/admin" },

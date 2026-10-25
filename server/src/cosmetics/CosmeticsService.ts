@@ -20,6 +20,7 @@ import {
   sanitizeCosmeticId,
   resolveEffectiveLoadout,
   getDefaultCosmetic,
+  sanitizePublicPresentation,
 } from "@shared/cosmetics.js";
 import {
   type CosmeticsRepository,
@@ -90,6 +91,15 @@ export class CosmeticsService {
 
   async getCatalog(): Promise<CosmeticCatalogItem[]> {
     return this.repository.getCatalog();
+  }
+
+  async getAvatarAuras(playerIds: readonly string[]): Promise<Record<string, string | null>> {
+    const entries = await Promise.all(playerIds.map(async playerId => {
+      const equipped = await this.repository.getUserEquipped(playerId);
+      const aura = sanitizePublicPresentation({ avatarAura: equipped.avatarAura }).avatarAura;
+      return [playerId, aura && aura !== "aura_none" ? aura : null] as const;
+    }));
+    return Object.fromEntries(entries);
   }
 
   async getUserLoadout(userId: string, isAdmin = false): Promise<CosmeticsStateResponsePayload> {

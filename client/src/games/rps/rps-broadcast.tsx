@@ -299,6 +299,7 @@ export function ProTopBar({
 export function ProPlayerCard({
   name,
   avatar,
+  playerId,
   isSelf,
   score,
   target,
@@ -314,6 +315,7 @@ export function ProPlayerCard({
 }: {
   name: string;
   avatar?: string;
+  playerId?: string;
   isSelf?: boolean;
   score: number;
   target: number;
@@ -337,7 +339,7 @@ export function ProPlayerCard({
       <div ref={cardRef} className="flex-1 flex flex-col justify-between">
         <div>
           <div className={`flex items-center gap-3 ${right ? "flex-row-reverse text-right" : ""}`}>
-            <ProAvatar name={name} avatar={avatar} side={side} size={compact ? 34 : 44} ring={matchPoint} />
+            <ProAvatar name={name} avatar={avatar} playerId={playerId} side={side} size={compact ? 34 : 44} ring={matchPoint} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5" style={{ justifyContent: right ? "flex-end" : "flex-start" }}>
                 <span className="truncate text-[13px] font-extrabold" style={{ color: PRO.ink }}>

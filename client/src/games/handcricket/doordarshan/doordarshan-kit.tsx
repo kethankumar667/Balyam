@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { findAvatar } from "../../../lib/avatars";
+import SeatFrame from "../../../components/cosmetics/frames/SeatFrame";
 
 /**
  * Retro Broadcast primitives. Legacy identifiers preserve saved preferences.
@@ -282,13 +283,14 @@ export function DdIconButton({ children, onClick, title, className = "" }: { chi
 
 /* ── identity ────────────────────────────────────────────────────────────── */
 
-export function DdAvatar({ name, avatar, side, size = 40, ring = false }: { name: string; avatar?: string; side: DdSide; size?: number; ring?: boolean }) {
+export function DdAvatar({ name, avatar, playerId, side, size = 40, ring = false }: { name: string; avatar?: string; playerId?: string; side: DdSide; size?: number; ring?: boolean }) {
   const initial = (name?.trim()?.[0] ?? "?").toUpperCase();
   const option = findAvatar(avatar);
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => setImgFailed(false), [option?.src]);
   const showImage = !!option && !imgFailed;
   return (
+    <span className="relative inline-flex shrink-0">
     <div
       className="grid shrink-0 place-items-center overflow-hidden"
       style={{
@@ -317,6 +319,8 @@ export function DdAvatar({ name, avatar, side, size = 40, ring = false }: { name
         initial
       )}
     </div>
+    <SeatFrame playerId={playerId} />
+    </span>
   );
 }
 

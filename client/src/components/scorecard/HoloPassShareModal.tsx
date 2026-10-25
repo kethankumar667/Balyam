@@ -3,6 +3,8 @@ import { Trophy, Zap, Share2, Copy, Check, X, QrCode } from "lucide-react";
 import type { ModeScorecard, AllGameSlug } from "@shared/profile/Scorecard";
 import { getGameModeConfig } from "@shared/profile/GameModes";
 import { gameLaunch } from "../../lib/gameLaunch";
+import { useResolvedCosmetics } from "../../lib/cosmeticsResolver";
+import SeatAvatar from "../profile/SeatAvatar";
 
 interface HoloPassShareModalProps {
   game: AllGameSlug;
@@ -20,6 +22,7 @@ export default function HoloPassShareModal({
   onClose,
 }: HoloPassShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const { avatarAura } = useResolvedCosmetics();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const gameConfig = getGameModeConfig(game);
@@ -103,17 +106,7 @@ export default function HoloPassShareModal({
 
           {/* Player info */}
           <div className="flex items-center gap-3 mb-4">
-            {avatar ? (
-              <img
-                src={`/Avatars/${avatar}`}
-                alt={playerName}
-                className="w-12 h-12 rounded-xl object-cover border-2 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-black text-white text-lg shadow-[0_0_12px_rgba(6,182,212,0.4)]">
-                {playerName.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <SeatAvatar avatar={avatar} aura={avatarAura} name={playerName} className="w-12 h-12 border-2 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]" textClassName="text-lg" />
             <div>
               <div className="text-base font-extrabold text-white leading-tight">{playerName}</div>
               <div className="text-xs text-slate-400 font-mono">{gameConfig.displayName}</div>

@@ -1,3 +1,4 @@
+import SeatFrame from "../cosmetics/frames/SeatFrame";
 import { useState, useEffect } from "react";
 import { Trophy, Zap, Gamepad2, Award, ArrowUpRight } from "lucide-react";
 import { apiJson } from "../../lib/playerIdentity";
@@ -301,14 +302,17 @@ export default function ModeScorecardsLeaderboard() {
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-stone-900 border border-stone-800 overflow-hidden shrink-0 flex items-center justify-center">
+                            <div className="relative w-7 h-7 rounded-lg bg-stone-900 border border-stone-800  shrink-0 flex items-center justify-center">
                               {avatar ? (
-                                <img src={avatar.src} alt={item.displayName} className="w-full h-full object-cover" />
+                                <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
+                                  <img src={avatar.src} alt={item.displayName} className="w-full h-full object-cover" />
+                                </span>
                               ) : (
                                 <span className="text-[10px] font-black text-amber-400">
                                   {item.displayName.slice(0, 2).toUpperCase()}
                                 </span>
                               )}
+                              <SeatFrame playerId={item.playerId} />
                             </div>
                             <span className="font-bold text-[var(--chrome-ink)]">
                               {item.displayName}
