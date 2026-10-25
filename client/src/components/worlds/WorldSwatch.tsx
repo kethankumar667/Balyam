@@ -69,13 +69,21 @@ function Mark({ world }: { world: WorldId }) {
   }
 }
 
-/** The School Slate look for the classic Rummy table: a chalkboard in a wooden frame, in the picker's swatch size. */
+/** The School Slate look for the classic Rummy table: a teak-framed blackboard with a dot sum and a chalk ledge. */
 export function SlateSwatch({ className = "h-12 w-12", isDimmed = false }: { className?: string; isDimmed?: boolean }) {
   return (
-    <span aria-hidden className={`relative inline-block flex-shrink-0 overflow-hidden rounded-xl border border-black/10 ${className}`} style={{ background: "radial-gradient(ellipse, #324c46, #132b27)", opacity: isDimmed ? 0.55 : 1 }}>
+    <span aria-hidden className={`relative inline-block flex-shrink-0 overflow-hidden rounded-xl border border-black/10 ${className}`} style={{ background: "radial-gradient(ellipse at 40% 35%, #3a5f4c, #1f372b)", opacity: isDimmed ? 0.55 : 1 }}>
       <svg viewBox="0 0 40 40" className="absolute inset-0 h-full w-full">
-        <rect x="3" y="3" width="34" height="34" rx="3" fill="none" stroke="#a88350" strokeWidth="2.4" />
-        <path d="M9 14 H31 M9 21 H31 M9 28 H24" fill="none" stroke="#e1eadd" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+        <rect x="2.5" y="2.5" width="35" height="31" rx="2" fill="none" stroke="#9a6a38" strokeWidth="3" />
+        <g fill="#eef2e6" opacity="0.8">
+          <circle cx="10" cy="14" r="1.8" /><circle cx="15" cy="14" r="1.8" />
+          <circle cx="25" cy="14" r="1.8" /><circle cx="30" cy="14" r="1.8" />
+        </g>
+        <path d="M18.5 14h3M20 12.5v3" stroke="#f2d675" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+        <path d="M9 23q3-2 6 0t6 0 6 0 4 0" stroke="#eef2e6" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5" />
+        <rect x="2.5" y="34" width="35" height="3.5" fill="#8a5a2b" />
+        <rect x="8" y="32.2" width="8" height="2" rx="0.8" fill="#f6f2e7" />
+        <rect x="18" y="32.4" width="6" height="1.8" rx="0.8" fill="#f4dc83" />
       </svg>
     </span>
   );

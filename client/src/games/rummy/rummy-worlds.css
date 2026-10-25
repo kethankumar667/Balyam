@@ -14,27 +14,89 @@
  * Every pair of ink on felt below was chosen to clear 4.5:1 on all the felt depths of its own world.
  */
 
-/* Personal material on the classic table only; a host's world always wins. */
+/* ── SCHOOL SLATE — a classroom blackboard in a teak frame (a personal look on the classic table; a host's world wins).
+   Green board, chalk-yellow accents, the ghost of old doodles under the eraser's sweeps, and a chalk ledge below the
+   board. The doodles are one shared drawing (public/textures/school-slate.svg) that the shop preview uses too. ───── */
 .rm-room.rm-world-classic.rm-school-slate {
-  --rm-room-bg: #112622;
-  --rm-felt-deep: #19332c;
-  --rm-felt: #29453d;
-  --rm-felt-lit: #35564c;
-  --rm-panel: #1a312b;
-  --rm-panel-lit: #284a3e;
-  --rm-felt-thread: #e1eadd0d;
-  --rm-felt-weave: #e1eadd08;
-  --rm-ink: #f1f5ec;
-  --rm-ink-mid: #dae7d7;
-  --rm-ink-low: #bfcfbd;
+  --rm-room-bg: #15271e;
+  --rm-felt-deep: #1f372b;
+  --rm-felt: #2a4638;
+  --rm-felt-lit: #3a5f4c;
+  --rm-panel: #1a2f24;
+  --rm-panel-lit: #2a4a3a;
+  --rm-edge: #8f6334;
+  --rm-edge-strong: #c4955a;
+  --rm-edge-quiet: #6a4825;
+  --rm-surface-highlight: #eef2e610;
+  --rm-felt-thread: #eef2e608;
+  --rm-felt-weave: #eef2e605;
+  --rm-brass: #f2d675;
+  --rm-brass-dim: #c9ae5b;
+  --rm-brass-glow: #fff0b3;
+  --rm-ink: #f4f7ee;
+  --rm-ink-mid: #dce6d6;
+  --rm-ink-low: #c3d1bf;
+}
+.rm-room.rm-world-classic.rm-school-slate {
+  background:
+    linear-gradient(104deg, transparent 8%, #eef2e60a 22%, transparent 40%),
+    linear-gradient(97deg, transparent 52%, #eef2e608 66%, transparent 82%),
+    radial-gradient(ellipse 60% 40% at 78% 18%, #eef2e60d, transparent 70%),
+    radial-gradient(ellipse 50% 45% at 18% 82%, #eef2e60a, transparent 70%),
+    url("/textures/school-slate.svg") 0 0 / 820px 564px repeat,
+    radial-gradient(ellipse 120% 100% at 50% 40%, #223a2d 0%, #15271e 100%);
 }
 .rm-world-classic.rm-school-slate {
-  --rm-m-table: repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #132b27);
-  --rm-m-frame: 0 0 0 5px #a88350 inset, 0 0 0 8px #e4d4ad inset, 0 0 35px #0008 inset;
+  --rm-m-table:
+    linear-gradient(104deg, transparent 8%, #eef2e60a 22%, transparent 40%),
+    radial-gradient(ellipse 70% 40% at 75% 15%, #eef2e60f, transparent 70%),
+    url("/textures/school-slate.svg") 0 0 / 420px 289px repeat,
+    radial-gradient(ellipse 120% 90% at 50% 38%, #2f503f 0%, #1a2f24 100%);
+  --rm-m-frame: 0 0 0 6px #7b5127 inset, 0 0 0 7px #c79a5f inset, 0 0 0 10px #4d3115 inset, 0 0 46px #000a inset;
 }
+/* The board itself: a teak frame, chalk dust and an eraser smear over the drawing, and a ledge underneath. */
 .rm-room.rm-world-classic.rm-school-slate .rm-felt {
-  background: repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #19332c);
-  border-color: #a88350;
+  background:
+    radial-gradient(ellipse 50% 40% at 28% 28%, #eef2e612, transparent 70%),
+    linear-gradient(100deg, transparent 30%, #eef2e60c 48%, transparent 66%),
+    url("/textures/school-slate.svg") 10px 10px / 640px 440px repeat,
+    radial-gradient(ellipse 70% 85% at 50% 40%, #3a5f4c 0%, #2a4638 55%, #1f372b 100%);
+  border-color: #9a6a38;
+  box-shadow:
+    inset 0 0 0 2px #00000040,
+    inset 0 2px 0 #ffffff22,
+    inset 0 0 44px #00000070,
+    0 0 0 3px #5e3d1c,
+    0 9px 0 -1px #8a5a2b,
+    0 15px 16px -6px #000000b0;
+}
+/* Chalk and the duster resting on that ledge. */
+.rm-room.rm-world-classic.rm-school-slate .rm-felt::before,
+.rm-room.rm-world-classic.rm-school-slate .rm-felt::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+.rm-room.rm-world-classic.rm-school-slate .rm-felt::before {
+  left: 9%;
+  bottom: -14px;
+  width: 92px;
+  height: 6px;
+  background:
+    linear-gradient(#f6f2e7, #cfc9b6) 0 0 / 34px 6px no-repeat,
+    linear-gradient(#f4dc83, #cdb15c) 40px 1px / 30px 5px no-repeat,
+    linear-gradient(#eaa9b8, #c07e8e) 74px 0 / 18px 6px no-repeat;
+  filter: drop-shadow(0 1px 0 #0007);
+}
+.rm-room.rm-world-classic.rm-school-slate .rm-felt::after {
+  right: 10%;
+  bottom: -16px;
+  width: 54px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(#e2d4ae 0 40%, #4d4338 40% 100%);
+  filter: drop-shadow(0 1px 0 #0007);
 }
 
 /* ── NEON DECK — a night on the glass. Deep navy felt, cyan rails, pale-cyan ink. ─────────────────────────────── */

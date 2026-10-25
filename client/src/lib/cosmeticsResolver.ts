@@ -40,8 +40,12 @@ export const TABLE_THEMES: Record<string, TableThemeConfig> = {
     id: "table_retro_school_slate",
     name: "School Slate",
     bgClass: "bg-slate-900",
-    surfaceClass: "bg-slate-900 border-[#a88350]",
-    feltStyle: { background: "repeating-linear-gradient(0deg, transparent 0 27px, #d5e7db12 28px 29px), radial-gradient(ellipse, #324c46, #132b27)" },
+    surfaceClass: "bg-[#1a2f24] border-[#9a6a38]",
+    // A blackboard: the shared chalk doodles (public/textures/school-slate.svg) over green board with dust and an eraser smear.
+    feltStyle: {
+      background:
+        'radial-gradient(ellipse 50% 40% at 28% 28%, #eef2e614, transparent 70%), linear-gradient(100deg, transparent 30%, #eef2e60c 48%, transparent 66%), url("/textures/school-slate.svg") 0 0 / 300px 206px repeat, radial-gradient(ellipse 70% 85% at 50% 40%, #3a5f4c 0%, #2a4638 55%, #1f372b 100%)',
+    },
   },
   table_classic_green: {
     id: "table_classic_green",

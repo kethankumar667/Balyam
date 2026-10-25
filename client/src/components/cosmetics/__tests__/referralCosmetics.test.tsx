@@ -27,10 +27,10 @@ describe("earned referral cosmetics across presentation surfaces", () => {
     const { container } = render(<CollectibleThumbnail item={items[0]} category="AVATAR_AURA" isSelected={false} rarity="RARE" />);
     expect(container.querySelector('svg[data-frame="aura_nostalgia_gold"]')).toBeInTheDocument();
   });
-  it.each(["FULL_TABLE", "PLAYER_VIEW", "MOBILE_VIEW"] as const)("previews the chalk-lined School Slate in %s", mode => {
+  it.each(["FULL_TABLE", "PLAYER_VIEW", "MOBILE_VIEW"] as const)("previews the School Slate blackboard with its chalk doodles in %s", mode => {
     // happy-dom discards earlier background layers; inspect the CSS sent to the browser.
     const markup = renderToStaticMarkup(<ItemPreviewVisual item={items[2]} category="TABLE_THEME" scope="rummy" mode={mode} displayName="Player" avatarId={null} />);
-    expect(markup).toContain("background:repeating-linear-gradient");
+    expect(markup).toContain("/textures/school-slate.svg");
   });
   it("resolves the actual earned Gang Leader title", () => {
     expect(getPodiumTitleConfig("title_gang_leader")).toMatchObject({ label: "Gang Leader" });

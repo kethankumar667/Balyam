@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" width="640" height="440">
+  <!-- School Slate: the faint ghost of what was chalked here before the duster went over it. Drawn in strokes
+       (no text) so it renders the same on every device; the wobble filter is what makes it look hand-drawn. -->
+  <defs>
+    <filter id="chalk" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="grain"/>
+      <feDisplacementMap in="SourceGraphic" in2="grain" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="wobble"/>
+      <feComponentTransfer in="grain" result="speckle">
+        <feFuncA type="discrete" tableValues="0 1 1 1 0.55 1"/>
+      </feComponentTransfer>
+      <feComposite in="wobble" in2="speckle" operator="in"/>
+    </filter>
+  </defs>
+  <g filter="url(#chalk)" fill="none" stroke="#eef2e6" stroke-opacity="0.2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- two dots + three dots = five dots, the way a first sum is taught -->
+    <g fill="#eef2e6" fill-opacity="0.2" stroke="none">
+      <circle cx="44" cy="62" r="6"/><circle cx="62" cy="62" r="6"/>
+      <circle cx="116" cy="62" r="6"/><circle cx="134" cy="62" r="6"/><circle cx="152" cy="62" r="6"/>
+      <circle cx="226" cy="62" r="6"/><circle cx="244" cy="62" r="6"/><circle cx="262" cy="62" r="6"/><circle cx="280" cy="62" r="6"/><circle cx="298" cy="62" r="6"/>
+    </g>
+    <path d="M82 62h18M91 53v18"/>
+    <path d="M168 56h40M168 68h40"/>
+
+    <!-- sun with a smile -->
+    <circle cx="540" cy="84" r="22"/>
+    <path d="M540 44v-12M540 124v12M500 84h-12M580 84h12M512 56l-9-9M568 112l9 9M568 56l9-9M512 112l-9 9"/>
+    <path d="M530 90q10 9 20 0M531 78v2M549 78v2"/>
+
+    <!-- house with a chimney and curling smoke -->
+    <path d="M52 330v-72h92v72zM42 260l56-44 56 44M118 238v-26h14v36"/>
+    <path d="M82 330v-34h24v34M90 276h8"/>
+    <path d="M125 204q-8-10 2-16t-2-16"/>
+
+    <!-- right triangle with its square corner -->
+    <path d="M258 358V262l128 96z"/>
+    <path d="M258 340h18v18"/>
+    <path d="M246 300h8M318 304l8 6M322 372h8"/>
+
+    <!-- kite with a tail of bows -->
+    <path d="M470 150l36 44-36 62-36-62z M470 150v106M434 194h72"/>
+    <path d="M470 256q-14 14 0 28t0 26t-16 24"/>
+    <path d="M462 276l-8-6v12zM478 276l8-6v12zM456 316l-8-4v10zM470 318l8-4v10z"/>
+
+    <!-- tally marks, one bundle of five and a few more -->
+    <path d="M300 160v46M318 160v46M336 160v46M354 160v46M290 188l78-24"/>
+    <path d="M388 160v46M406 160v46"/>
+
+    <!-- hopscotch -->
+    <path d="M168 380h28v-28h-28zM196 380h28v-28h-28zM168 352h56M182 352v-28h28v28M182 324h28v-28h-28z"/>
+
+    <!-- a tick, a star, a cloud -->
+    <path d="M590 190l14 16 30-38"/>
+    <path d="M590 360l9 20 22 3-16 15 4 22-19-11-19 11 4-22-16-15 22-3z"/>
+    <path d="M330 52q-12 0-12 12t14 11h38q14 0 14-12t-14-11q-4-14-20-10t-20 10z" transform="translate(60 -14)"/>
+
+    <!-- underline waving under the lesson -->
+    <path d="M40 148q16-12 32 0t32 0 32 0 32 0 32 0 32 0"/>
+    <path d="M40 408q20-10 40 0t40 0 40 0 40 0 40 0 40 0 40 0 40 0 40 0"/>
+  </g>
+</svg>
