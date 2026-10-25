@@ -25,6 +25,15 @@
 
 ## 2. Standardized Component Library
 
+### Level-up celebration
+
+`LevelUpAscension` uses opaque `surface.1` / `surface.0` panels and `ink.hi` /
+`ink.mid` text in both document themes, not a translucent glass card. Tier
+colors remain decorative on the badge and its contained celebration effects;
+readable text, XP progress and the solid gold action do not depend on a tier's
+art color. The shared `Modal` retains its backdrop, focus trap and dismissal.
+Reward amounts, XP and navigation continue to use the existing level-up model.
+
 ### Nostalgia Network Hub footer
 
 The home `Footer` sits outside the page's constrained content wrapper and

@@ -134,6 +134,19 @@ describe("LevelUpAscension", () => {
     expect(trigger).toHaveBeenCalledWith("win");
   });
 
+  it("uses opaque theme surfaces rather than a glass panel or tier-colored text", () => {
+    useLevelUpStore.getState().show(13, 14, 1_340);
+    renderIt();
+
+    const panel = screen.getByRole("heading", { name: /level/i }).closest(".bg-surface-1");
+    expect(panel).toHaveClass("text-ink-hi");
+    expect(panel).not.toHaveAttribute("style");
+    expect(screen.getByText(/Claim them in your Level Roadmap/i).parentElement).toHaveClass("bg-surface-0", "text-ink-mid");
+    expect(screen.getByRole("button", { name: /play a game/i })).toHaveClass("bg-amber-300");
+    expect(screen.getByRole("button", { name: /play a game/i })).not.toHaveAttribute("style");
+    expect(screen.getByRole("button", { name: /later/i })).toHaveClass("text-ink-mid");
+  });
+
   it("says plainly when level rewards are ready to claim, and where", () => {
     useLevelUpStore.getState().show(4, 5, 440);
 

@@ -90,8 +90,7 @@ export function LevelUpAscension() {
         }
       `}</style>
       <div
-        className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
-        style={{ background: `radial-gradient(ellipse 90% 60% at 50% 22%, ${tier.glowColor}55, #0B1020 70%)` }}
+        className="relative overflow-hidden rounded-3xl border border-stone-200 bg-surface-1 text-ink-hi shadow-2xl dark:border-slate-700"
       >
         {/* The stage: light, rings and rising stars behind the badge. Contained, so nothing escapes the panel. */}
         <div className="relative h-60 overflow-hidden" aria-hidden="true">
@@ -152,9 +151,9 @@ export function LevelUpAscension() {
         </div>
 
         <div className="px-6 pb-2 text-center">
-          <h2 id="ascension-title" className="m-0 flex items-center justify-center gap-2 text-white">
-            <span className="text-lg font-bold text-white/80">Level</span>
-            <span className="relative inline-block h-14 min-w-[3.5rem] overflow-hidden text-5xl font-black leading-[3.5rem] tabular-nums" style={{ color: tier.themeColor }}>
+          <h2 id="ascension-title" className="m-0 flex items-center justify-center gap-2 text-ink-hi">
+            <span className="text-lg font-bold text-ink-mid">Level</span>
+            <span className="relative inline-block h-14 min-w-[3.5rem] overflow-hidden text-5xl font-black leading-[3.5rem] tabular-nums">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={shown}
@@ -169,35 +168,34 @@ export function LevelUpAscension() {
               </AnimatePresence>
             </span>
           </h2>
-          <p className="m-0 mt-1 text-base font-semibold text-white/85">{view.title}</p>
+          <p className="m-0 mt-1 text-base font-semibold text-ink-hi">{view.title}</p>
           {view.isNewTier && (
-            <p className="m-0 mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold" style={{ background: `${tier.themeColor}26`, color: tier.themeColor }}>
+            <p className="m-0 mt-2 inline-block rounded-full bg-surface-0 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300">
               Welcome to the {tier.name} tier
             </p>
           )}
-          {levelsLabel && <p className="m-0 mt-2 text-xs font-semibold text-white/60">{levelsLabel}</p>}
+          {levelsLabel && <p className="m-0 mt-2 text-xs font-semibold text-ink-mid">{levelsLabel}</p>}
         </div>
 
         {/* The climb begins again: the bar is full for the level just earned, then drops to real progress. */}
         <div className="px-6 pt-3">
-          <div className="h-3 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuemin={0} aria-valuemax={view.xpPerLevel} aria-valuenow={view.xpIntoLevel} aria-label={`Progress to level ${view.toLevel + 1}`}>
+          <div className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-valuemin={0} aria-valuemax={view.xpPerLevel} aria-valuenow={view.xpIntoLevel} aria-label={`Progress to level ${view.toLevel + 1}`}>
             <motion.div
-              className="h-full origin-left rounded-full"
-              style={{ background: `linear-gradient(90deg, ${tier.secondaryColor}, ${tier.themeColor})` }}
+              className="h-full origin-left rounded-full bg-amber-700 dark:bg-amber-300"
               initial={reduceMotion ? { width: `${view.progressPercent}%` } : { width: "100%" }}
               animate={{ width: `${view.progressPercent}%` }}
               transition={reduceMotion ? { duration: 0 } : { delay: 1.1, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             />
           </div>
-          <p className="m-0 mt-1.5 text-xs font-semibold text-white/70 tabular-nums">
+          <p className="m-0 mt-1.5 text-xs font-semibold text-ink-mid tabular-nums">
             {view.xpIntoLevel} of {view.xpPerLevel} XP toward Level {view.toLevel + 1}
           </p>
         </div>
 
-        <div className="mx-6 mt-4 space-y-1.5 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5 text-sm leading-snug text-white/85">
+        <div className="mx-6 mt-4 space-y-1.5 rounded-2xl border border-stone-200 bg-surface-0 p-3.5 text-sm leading-snug text-ink-mid dark:border-slate-700">
           {view.unlockedCoins > 0 && (
             <p className="m-0">
-              <strong className="text-amber-300">{view.unlockedCoins.toLocaleString()} coins</strong> of level rewards are ready. Claim them in your Level Roadmap.
+              <strong className="text-amber-800 dark:text-amber-300">{view.unlockedCoins.toLocaleString()} coins</strong> of level rewards are ready. Claim them in your Level Roadmap.
             </p>
           )}
           <p className="m-0">
@@ -205,7 +203,7 @@ export function LevelUpAscension() {
           </p>
           {view.next && (
             <p className="m-0">
-              Next reward: <strong className="text-amber-300">{view.next.coins.toLocaleString()} coins</strong>
+              Next reward: <strong className="text-amber-800 dark:text-amber-300">{view.next.coins.toLocaleString()} coins</strong>
               {view.next.title ? ` and the title ${view.next.title}` : ""} at Level {view.next.level}, {view.next.levelsAway} {view.next.levelsAway === 1 ? "level" : "levels"} away.
             </p>
           )}
@@ -216,15 +214,14 @@ export function LevelUpAscension() {
             ref={playRef}
             type="button"
             onClick={play}
-            className="min-h-[52px] w-full cursor-pointer rounded-2xl px-6 text-base font-black text-[#1a0f00] shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1020]"
-            style={{ background: `linear-gradient(135deg, #FFE08A, ${tier.themeColor})` }}
+            className="min-h-[52px] w-full cursor-pointer rounded-2xl bg-amber-300 px-6 text-base font-black text-stone-950 shadow-lg transition-colors hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-1 dark:focus-visible:ring-amber-300 motion-reduce:transition-none"
           >
             Play a game
           </button>
           <button
             type="button"
             onClick={clear}
-            className="min-h-[44px] w-full cursor-pointer rounded-2xl px-6 text-sm font-semibold text-white/75 transition-colors hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/70"
+            className="min-h-[44px] w-full cursor-pointer rounded-2xl px-6 text-sm font-semibold text-ink-mid transition-colors hover:bg-surface-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 dark:focus-visible:ring-amber-300 motion-reduce:transition-none"
           >
             Later
           </button>
