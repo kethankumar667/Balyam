@@ -69,6 +69,18 @@ function Mark({ world }: { world: WorldId }) {
   }
 }
 
+/** The School Slate look for the classic Rummy table: a chalkboard in a wooden frame, in the picker's swatch size. */
+export function SlateSwatch({ className = "h-12 w-12", isDimmed = false }: { className?: string; isDimmed?: boolean }) {
+  return (
+    <span aria-hidden className={`relative inline-block flex-shrink-0 overflow-hidden rounded-xl border border-black/10 ${className}`} style={{ background: "radial-gradient(ellipse, #324c46, #132b27)", opacity: isDimmed ? 0.55 : 1 }}>
+      <svg viewBox="0 0 40 40" className="absolute inset-0 h-full w-full">
+        <rect x="3" y="3" width="34" height="34" rx="3" fill="none" stroke="#a88350" strokeWidth="2.4" />
+        <path d="M9 14 H31 M9 21 H31 M9 28 H24" fill="none" stroke="#e1eadd" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+      </svg>
+    </span>
+  );
+}
+
 export function WorldSwatch({ world, className = "h-12 w-12", isDimmed = false }: { world: WorldId; className?: string; isDimmed?: boolean }) {
   return (
     <span aria-hidden className={`relative inline-block flex-shrink-0 overflow-hidden rounded-xl border border-black/10 ${className}`} style={{ ...GROUND[world], opacity: isDimmed ? 0.55 : 1 }}>

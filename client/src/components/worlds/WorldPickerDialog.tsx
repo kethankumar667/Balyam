@@ -1,11 +1,26 @@
-import { useRef } from "react";
+import { Fragment, useRef } from "react";
 import { Check, Lock, X } from "lucide-react";
 import type { GameKind } from "@shared/types";
 import type { WorldId } from "@shared/worlds";
 import { artWorldsFor } from "../../lib/worlds/worldArt";
 import { WORLD_META, requirementFor } from "../../lib/worlds/worldMeta";
 import Modal from "../Modal";
-import { WorldSwatch } from "./WorldSwatch";
+import { SlateSwatch, WorldSwatch } from "./WorldSwatch";
+
+/**
+ * A look for the classic table that a player owns, offered straight under Classic because it only draws on a classic
+ * table. It is the player's own cosmetic rather than a world, so only the chooser's table is restyled by it.
+ */
+export interface ClassicTheme {
+  name: string;
+  blurb: string;
+  /** The account owns it (earned, or everything is open for an admin). */
+  isOpen: boolean;
+  /** What it takes to get it, shown while it is locked. */
+  requirement: string;
+  isChosen: boolean;
+  onChoose: () => void;
+}
 
 export interface WorldPickerDialogProps {
   open: boolean;
@@ -20,13 +35,15 @@ export interface WorldPickerDialogProps {
   onChoose: (world: WorldId) => void;
   /** Why the server refused the last choice, if it did. */
   error: string | null;
+  /** An owned look for the classic table, listed under Classic (Rummy's School Slate). */
+  classicTheme?: ClassicTheme;
 }
 
 /**
  * Where the host chooses the table's world. Every player at the table will see it, which the dialog says first.
  * A world that has not been earned is listed with what it asks for, and cannot be picked.
  */
-export function WorldPickerDialog({ open, onClose, game, current, unlocked, isAllOpen, onChoose, error }: WorldPickerDialogProps) {
+export function WorldPickerDialog({ open, onClose, game, current, unlocked, isAllOpen, onChoose, error, classicTheme }: WorldPickerDialogProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const worlds = artWorldsFor(game);
   return (
@@ -62,10 +79,11 @@ export function WorldPickerDialog({ open, onClose, game, current, unlocked, isAl
         <div role="radiogroup" aria-label="World" className="max-h-[60dvh] space-y-2 overflow-y-auto pr-1">
           {worlds.map((id) => {
             const isOpen = unlocked.includes(id);
-            const isChosen = current === id;
+            // Classic is the plain table: it is not the chosen one while a look sits on it.
+            const isChosen = current === id && !(id === "classic" && classicTheme?.isChosen);
             return (
+              <Fragment key={id}>
               <button
-                key={id}
                 type="button"
                 role="radio"
                 aria-checked={isChosen}
@@ -86,6 +104,30 @@ export function WorldPickerDialog({ open, onClose, game, current, unlocked, isAl
                 {isChosen && <Check aria-hidden className="h-5 w-5 flex-shrink-0 text-amber-600" />}
                 {!isOpen && <Lock aria-hidden className="h-4 w-4 flex-shrink-0 text-stone-500 dark:text-slate-400" />}
               </button>
+              {id === "classic" && classicTheme && (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={classicTheme.isChosen}
+                  aria-disabled={!classicTheme.isOpen}
+                  onClick={() => {
+                    if (classicTheme.isOpen) classicTheme.onChoose();
+                  }}
+                  className={`ml-5 flex min-h-[64px] w-[calc(100%-1.25rem)] cursor-pointer items-center gap-3 rounded-2xl border px-3 py-2 text-left transition-colors aria-disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 ${
+                    classicTheme.isChosen ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30" : "border-stone-200 bg-stone-50/80 hover:bg-stone-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <SlateSwatch isDimmed={!classicTheme.isOpen} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold text-[#2B3550] dark:text-slate-100">{classicTheme.name}</span>
+                    <span className="block text-xs leading-snug text-stone-600 dark:text-slate-300">{classicTheme.blurb}</span>
+                    {!classicTheme.isOpen && <span className="mt-0.5 block text-xs font-semibold leading-snug text-amber-800 dark:text-amber-300">{classicTheme.requirement}</span>}
+                  </span>
+                  {classicTheme.isChosen && <Check aria-hidden className="h-5 w-5 flex-shrink-0 text-amber-600" />}
+                  {!classicTheme.isOpen && <Lock aria-hidden className="h-4 w-4 flex-shrink-0 text-stone-500 dark:text-slate-400" />}
+                </button>
+              )}
+              </Fragment>
             );
           })}
         </div>
