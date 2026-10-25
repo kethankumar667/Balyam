@@ -5,6 +5,31 @@ export default {
   theme: {
     extend: {
       colors: {
+        journey: {
+          canvas: "rgb(var(--journey-canvas) / <alpha-value>)",
+          chip: "rgb(var(--journey-chip) / <alpha-value>)",
+          panel: "rgb(var(--journey-panel) / <alpha-value>)",
+          input: "rgb(var(--journey-input) / <alpha-value>)",
+          "play-start": "rgb(var(--journey-play-start) / <alpha-value>)",
+          "play-end": "rgb(var(--journey-play-end) / <alpha-value>)",
+          "level-start": "rgb(var(--journey-level-start) / <alpha-value>)",
+          "level-end": "rgb(var(--journey-level-end) / <alpha-value>)",
+          "social-start": "rgb(var(--journey-social-start) / <alpha-value>)",
+          "social-end": "rgb(var(--journey-social-end) / <alpha-value>)",
+          ink: "rgb(var(--journey-ink) / <alpha-value>)",
+          soft: "rgb(var(--journey-soft) / <alpha-value>)",
+          detail: "rgb(var(--journey-detail) / <alpha-value>)",
+          gold: "rgb(var(--journey-gold) / <alpha-value>)",
+          mint: "rgb(var(--journey-mint) / <alpha-value>)",
+          cyan: "rgb(var(--journey-cyan) / <alpha-value>)",
+          violet: "rgb(var(--journey-violet) / <alpha-value>)",
+          edge: "rgb(var(--journey-edge) / <alpha-value>)",
+          track: "rgb(var(--journey-track) / <alpha-value>)",
+          skeleton: "rgb(var(--journey-skeleton) / <alpha-value>)",
+          signal: "rgb(var(--journey-signal) / <alpha-value>)",
+          "play-action": "rgb(var(--journey-play-action) / <alpha-value>)",
+          "play-hover": "rgb(var(--journey-play-hover) / <alpha-value>)",
+        },
         footer: {
           night: "rgb(var(--footer-night) / <alpha-value>)",
           deep: "rgb(var(--footer-deep) / <alpha-value>)",

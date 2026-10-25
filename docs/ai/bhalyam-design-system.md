@@ -79,11 +79,17 @@ the prerendered footer's hydration contract.
 ### Personal Journey Command Center
 
 The home `PlayerJourneyDashboard` connects an emerald latest-game poster,
-a cyan/violet XP module and a violet/gold `ReferralQuest` within one navy
+a cyan/violet XP module and a violet/gold `ReferralQuest` within one themed
 landscape. Cards stack beside a vertical route below 1024px; desktop uses
 three columns and a horizontal route. Primary actions are at least 52px.
-The panel intentionally stays navy in either app theme; it never changes
-the document theme. Decoration is original SVG, noninteractive and hidden
+Scoped `.bhalyam-journey` RGB tokens and opacity-aware `journey.*` utilities
+follow the document theme: warm ivory with dark ink and deeper green, blue
+and violet accents in Light mode; the navy landscape in Dark mode. Surfaces,
+text, progress indicators, sharing controls, focus rings and loading states
+switch together without a JavaScript theme branch or a separate preference.
+The School Slate collectible keeps its actual material colors in both modes.
+The panel never changes the document theme or game worlds.
+Decoration is original SVG, noninteractive and hidden
 from assistive technology; hover movement respects reduced motion.
 
 Only display real snapshot data. Level XP uses `describeXpJourney`;
