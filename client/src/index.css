@@ -571,6 +571,42 @@ body, #root, .bhalyam-paper {
   color: #3f2a1d;
 }
 
+.profile-command {
+  --surface-0: #fff9ed;
+  --surface-1: #fffdf7;
+  --surface-2: #eee5d4;
+  --text-hi: #35281d;
+  --text-mid: #66533f;
+  --text-lo: #66533f;
+  --command-edge: #ad9d83;
+  --command-gold: #805611;
+  --command-cyan: #00617b;
+  --command-track: #c4bbaa;
+  --command-art-wood: #c69559;
+  --command-art-shade: #a27345;
+  --command-art-sky: #99d8e2;
+  --command-art-sun: #edbc68;
+  --command-art-ball: #a84b38;
+}
+
+:root[data-theme="dark"] .profile-command {
+  --surface-0: #091a2a;
+  --surface-1: #0c1e30;
+  --surface-2: #17344b;
+  --text-hi: #f4f5f8;
+  --text-mid: #b5c5d6;
+  --text-lo: #b5c5d6;
+  --command-edge: #536e85;
+  --command-gold: #f8ce78;
+  --command-cyan: #5ce2ed;
+  --command-track: #3a536a;
+  --command-art-wood: #98602f;
+  --command-art-shade: #4a3528;
+  --command-art-sky: #34558e;
+  --command-art-sun: #dc994a;
+  --command-art-ball: #b9523d;
+}
+
 .trophy-vault {
   --vault-canvas: #fff9ec;
   --vault-section: #fffdf7;

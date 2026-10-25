@@ -34,6 +34,23 @@ readable text, XP progress and the solid gold action do not depend on a tier's
 art color. The shared `Modal` retains its backdrop, focus trap and dismissal.
 Reward amounts, XP and navigation continue to use the existing level-up model.
 
+### Profile command center
+
+The `/profile` overview keeps the shared profile header and section navigation.
+Its scoped `.profile-command` palette pairs opaque ivory/ink surfaces in Light
+with navy/gold/cyan in Dark; existing profile primitives inherit these tokens.
+`LevelJourneyCard` groups the real XP ring, base earning amounts and actual next
+milestones into three columns on desktop and a vertical stack on phones.
+`CommandRoomArtwork` is original decorative SVG, with themed room props and no
+external image or animation loop. The ring respects reduced motion.
+Career metrics and mastery require ready, non-demo stats; achievement totals
+have an independent loading/unavailable state. Recent unlocks sort by recorded
+unlock time; closest challenges retain the complete requirement. Progress-trail
+markers are not dated milestones: only the account join date is known.
+The existing roadmap/claim flow, profile controls, data export, deletion and
+server-loaded trust details remain functional. No new reward, mastery rank,
+cosmetic unlock or fair-play certification is inferred from the reference art.
+
 ### Nostalgia Network Hub footer
 
 The home `Footer` sits outside the page's constrained content wrapper and

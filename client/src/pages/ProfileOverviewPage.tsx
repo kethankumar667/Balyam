@@ -1,302 +1,143 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useOutletContext } from "react-router-dom";
-import {
-  ArrowRight,
-  Award,
-  BarChart3,
-  Download,
-  Gamepad2,
-  History,
-  Medal,
-  Pencil,
-  ShieldCheck,
-  Target,
-  Trash2,
-  Trophy,
-  UserRoundCog,
-} from "lucide-react";
+import { ArrowRight, Award, BarChart3, CheckCircle2, Circle, Download, Flame, Gamepad2, History, Pencil, Route, ShieldCheck, Target, Trash2, Trophy, UserRoundCog } from "lucide-react";
 import DeleteAccountModal from "../components/auth/DeleteAccountModal";
 import { loadAccountDetails } from "../lib/accountGenerator";
 import { downloadPlayerExport } from "../lib/privacy/exportData";
-import {
-  ProfileEmptyState,
-  ProfileErrorState,
-  ProfileMetricTile,
-  ProfilePageHeading,
-  ProfilePanelSkeleton,
-  ProfileProgressBar,
-  ProfileSection,
-} from "../features/profile/ProfilePrimitives";
+import { ProfileEmptyState, ProfileErrorState, ProfileMetricTile, ProfilePanelSkeleton, ProfileProgressBar, ProfileSection } from "../features/profile/ProfilePrimitives";
 import { getProfileGameLabel } from "../features/profile/gameLabel";
 import { TrustTierCard } from "../features/profile/TrustTierCard";
 import LevelJourneyCard from "../features/profile/LevelJourneyCard";
+import { VaultAchievementCard } from "../features/profile/VaultAchievementCard";
+import { AchievementRevealModal } from "../features/profile/AchievementRevealModal";
+import { describeXpJourney } from "../lib/xpJourney";
 import type { ProfileFamilyOutletContext } from "../components/layout/ProfileFamilyLayout";
 import type { Achievement } from "@shared/profile/Achievements";
 import type { GameStats } from "@shared/profile/PlayerStats";
 
-function achievementIcon(achievement: Achievement) {
-  if (achievement.category === "resilience") return ShieldCheck;
-  if (achievement.category === "progression") return Medal;
-  return Trophy;
-}
+const CONTROL = "flex min-h-[48px] w-full items-center gap-3 rounded-xl bg-surface-0 px-3 text-left text-sm font-semibold text-ink-hi hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--command-gold)]";
+const VIEW_ALL = "inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-[var(--command-cyan)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--command-gold)]";
 
 function formatPlayedAt(timestamp?: number): string {
   if (!timestamp) return "Recorded match";
-  const elapsedMinutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
-  if (elapsedMinutes < 60) return elapsedMinutes <= 1 ? "Just now" : `${elapsedMinutes} min ago`;
-  const elapsedHours = Math.round(elapsedMinutes / 60);
-  if (elapsedHours < 24) return `${elapsedHours} hr ago`;
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(timestamp);
+  return new Intl.DateTimeFormat("en-IN", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(timestamp);
 }
 
 export default function ProfileOverviewPage() {
-  const {
-    profile,
-    stats,
-    achievements,
-    recentMatches,
-    resources,
-    isMember,
-    effectivePlayerId,
-    retryProfileData,
-    openEditModal,
-    openAvatarModal,
-  } = useOutletContext<ProfileFamilyOutletContext>();
+  const { profile, stats, achievements, recentMatches, resources, isMember, effectivePlayerId, retryProfileData, openEditModal, openAvatarModal } = useOutletContext<ProfileFamilyOutletContext>();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const statsReady = resources.stats.status === "ready" && stats !== null && !stats.demo;
+  const achievementsReady = resources.achievements.status === "ready";
 
   useEffect(() => {
     if (location.hash !== "#mastery") return;
     const frame = requestAnimationFrame(() => {
       const mastery = document.getElementById("mastery");
-      mastery?.scrollIntoView({ block: "start", behavior: "smooth" });
+      mastery?.scrollIntoView({ block: "start", behavior: "instant" });
       mastery?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [location.hash]);
 
-  const mastery = useMemo(() => {
-    if (!stats) return [];
-    return Object.values(stats.perGame)
-      .filter((item): item is GameStats => Boolean(item))
-      .sort((left, right) => right.matchesPlayed - left.matchesPlayed)
-      .slice(0, 5);
-  }, [stats]);
-
-  const achievementPreview = useMemo(() => [...achievements]
-    .sort((left, right) => Number(right.unlocked) - Number(left.unlocked) || right.progressPercent - left.progressPercent)
-    .slice(0, 4), [achievements]);
+  const mastery = useMemo(() => statsReady && stats ? Object.values(stats.perGame)
+    .filter((item): item is GameStats => Boolean(item)).sort((a, b) => b.matchesPlayed - a.matchesPlayed).slice(0, 5) : [], [stats, statsReady]);
+  const recentAchievements = useMemo(() => achievements.filter(a => a.unlocked)
+    .sort((a, b) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0)).slice(0, 3), [achievements]);
+  const closest = useMemo(() => achievements.filter(a => !a.unlocked && a.progressPercent > 0)
+    .sort((a, b) => b.progressPercent - a.progressPercent).slice(0, 1), [achievements]);
 
   if (!isMember || !profile) return null;
+  const unlocked = achievements.filter(a => a.unlocked).length;
+  const completion = achievements.length ? Math.round(unlocked / achievements.length * 100) : 0;
+  const journey = describeXpJourney(profile.experiencePoints);
+  const markers = [
+    { label: "Joined", detail: new Intl.DateTimeFormat("en-IN", { month: "short", day: "numeric", year: "numeric" }).format(profile.joinedAt), reached: true },
+    { label: "First match", detail: statsReady ? stats.totalMatches > 0 ? "Recorded" : "Not yet" : "Unavailable", reached: statsReady && stats.totalMatches > 0 },
+    { label: "First victory", detail: statsReady ? stats.wins > 0 ? "Recorded" : "Not yet" : "Unavailable", reached: statsReady && stats.wins > 0 },
+    { label: `Level ${journey.level}`, detail: "You are here", reached: true },
+    { label: `Level ${journey.upcoming[0]?.level ?? journey.nextLevel}`, detail: "Next step", reached: false },
+  ];
 
-  const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked).length;
-  const achievementCompletion = achievements.length > 0
-    ? Math.round((unlockedAchievements / achievements.length) * 100)
-    : 0;
+  const achievementState = (emptyTitle: string, emptyDescription: string) => resources.achievements.status === "loading"
+    ? <ProfilePanelSkeleton rows={2} />
+    : resources.achievements.status === "error"
+      ? <ProfileErrorState title="Achievements unavailable" description={resources.achievements.message} onRetry={retryProfileData} />
+      : <ProfileEmptyState icon={Award} title={emptyTitle} description={emptyDescription} />;
 
-  return (
-    <div className="space-y-5 sm:space-y-6">
-      <ProfilePageHeading
-        icon={Target}
-        eyebrow="Career HQ"
-        title="Career command center"
-        description="Your verified match record, strongest games, recent results, and achievement progress in one focused view."
-        accent="gold"
-      />
+  return <div className="profile-command trophy-vault space-y-4 text-ink-hi sm:space-y-5">
+    <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} onPlay={() => navigate("/games")} />
 
-      <LevelJourneyCard experiencePoints={profile.experiencePoints} playerId={effectivePlayerId ?? undefined} />
+    {resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={2} /> : statsReady ? (
+      <section aria-label="Career metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ProfileMetricTile label="Matches played" value={stats.totalMatches.toLocaleString()} detail="Completed matches" icon={Gamepad2} accent="cyan" />
+        <ProfileMetricTile label="Win rate" value={`${Math.round(stats.winRate)}%`} detail={`${stats.wins.toLocaleString()} wins`} icon={Target} accent="green" />
+        <ProfileMetricTile label="Achievements" value={achievementsReady ? `${unlocked} / ${achievements.length}` : "—"} detail={achievementsReady ? `${completion}% complete` : resources.achievements.status === "loading" ? "Loading collection" : "Unavailable"} icon={Trophy} accent="gold" />
+        <ProfileMetricTile label="Best streak" value={stats.bestWinStreak.toLocaleString()} detail="Consecutive wins" icon={Flame} accent="coral" />
+      </section>
+    ) : <ProfileErrorState title="Career metrics unavailable" description={resources.stats.status === "error" ? resources.stats.message : "Verified career statistics are not available yet."} onRetry={retryProfileData} />}
 
-      {resources.stats.status === "loading" ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="h-28 animate-pulse rounded-xl bg-surface-2" />
-          ))}
-        </div>
-      ) : stats ? (
-        <section aria-label="Career metrics" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <ProfileMetricTile label="Matches played" value={stats.totalMatches.toLocaleString()} detail="Career total" icon={Gamepad2} accent="gold" />
-          <ProfileMetricTile label="Win rate" value={`${Math.round(stats.winRate)}%`} detail={`${stats.wins.toLocaleString()} wins`} icon={Target} accent="cyan" />
-          <ProfileMetricTile label="Achievements" value={unlockedAchievements.toLocaleString()} detail={`${achievementCompletion}% complete`} icon={Award} accent="violet" />
-          <ProfileMetricTile label="Best streak" value={stats.bestWinStreak.toLocaleString()} detail="Consecutive wins" icon={Trophy} accent="coral" />
-        </section>
-      ) : (
-        <ProfileErrorState title="Career metrics unavailable" description={resources.stats.status === "error" ? resources.stats.message : "Career statistics could not be loaded."} onRetry={retryProfileData} />
-      )}
-
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-        <ProfileSection
-          id="mastery"
-          title="Game mastery"
-          description="Performance by game, ordered by matches played."
-          icon={BarChart3}
-          accent="cyan"
-          className="scroll-mt-24 lg:col-span-8"
-          action={mastery.length > 0 ? <span className="font-mono text-xs font-bold text-cyan-800 dark:text-cyan-300">{mastery.length} games tracked</span> : undefined}
-        >
-          {resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={4} /> : null}
-          {resources.stats.status === "error" ? (
-            <ProfileErrorState title="Mastery unavailable" description={resources.stats.message} onRetry={retryProfileData} />
-          ) : null}
-          {resources.stats.status === "ready" && mastery.length === 0 ? (
-            <ProfileEmptyState
-              icon={Gamepad2}
-              title="No mastery data yet"
-              description="Play a completed match to begin tracking performance by game."
-              actionLabel="Explore games"
-              onAction={() => navigate("/games")}
-            />
-          ) : null}
-          {resources.stats.status === "ready" && mastery.length > 0 ? (
-            <div className="divide-y divide-stone-300/70 dark:divide-slate-700/70">
-              {mastery.map((game) => (
-                <article key={game.game} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-4 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="truncate text-sm font-bold text-ink-hi">{getProfileGameLabel(game.game)}</h4>
-                        <p className="mt-0.5 text-xs text-ink-mid">{game.matchesPlayed} matches · {game.wins} wins</p>
-                      </div>
-                    </div>
-                    <ProfileProgressBar label={`${getProfileGameLabel(game.game)} win rate`} value={game.winRate} accent="cyan" showValue={false} />
-                  </div>
-                  <div className="self-center text-right">
-                    <p className="font-mono text-xl font-black text-cyan-800 tabular-nums dark:text-cyan-300">{Math.round(game.winRate)}%</p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-lo">Win rate</p>
-                  </div>
-                </article>
-              ))}
+    <div className="grid items-start gap-4 lg:grid-cols-2 sm:gap-5">
+      <ProfileSection id="mastery" title="Game mastery" description="Your record across games. Bars show win rate." icon={BarChart3} accent="cyan" className="scroll-mt-24"
+        action={<Link to="/myrecords" className={VIEW_ALL}>View all <ArrowRight size={14} aria-hidden="true" /></Link>}>
+        {resources.stats.status === "loading" ? <ProfilePanelSkeleton rows={4} /> : !statsReady ? <ProfileErrorState title="Mastery unavailable" description="Your game statistics could not be loaded." onRetry={retryProfileData} />
+          : mastery.length ? <div className="space-y-3">{mastery.map(game => <article key={game.game} className="rounded-xl border border-[var(--command-edge)] bg-surface-0 p-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--command-edge)] bg-surface-1 text-[var(--command-cyan)]"><Gamepad2 size={23} aria-hidden="true" /></span>
+              <div className="min-w-0 flex-1"><h4 className="text-sm font-bold">{getProfileGameLabel(game.game)}</h4><p className="mt-1 text-xs text-ink-mid">{game.matchesPlayed} matches · {game.wins} wins</p></div>
+              <span className="font-mono text-sm font-bold text-[var(--command-cyan)]">{Math.round(game.winRate)}%</span>
             </div>
-          ) : null}
-        </ProfileSection>
-
-        <ProfileSection
-          title="Recent battles"
-          description="Your latest completed matches."
-          icon={History}
-          accent="gold"
-          className="lg:col-span-4"
-          action={(
-            <Link to="/profile/matches" className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-lamp-800 hover:bg-lamp-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500 dark:text-lamp-300 dark:hover:bg-lamp-500/10">
-              All <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          )}
-        >
-          {resources.recentMatches.status === "loading" ? <ProfilePanelSkeleton rows={3} /> : null}
-          {resources.recentMatches.status === "error" ? (
-            <ProfileErrorState title="Recent battles unavailable" description={resources.recentMatches.message} onRetry={retryProfileData} />
-          ) : null}
-          {resources.recentMatches.status === "ready" && recentMatches.length === 0 ? (
-            <ProfileEmptyState
-              icon={History}
-              title="Your battle log is ready"
-              description="Completed matches will appear here with their recorded result."
-              actionLabel="Play a game"
-              onAction={() => navigate("/games")}
-            />
-          ) : null}
-          {resources.recentMatches.status === "ready" && recentMatches.length > 0 ? (
-            <div className="divide-y divide-stone-300/70 dark:divide-slate-700/70">
-              {recentMatches.map((match) => {
-                const resultLabel = match.result === "won" ? "Win" : match.result === "lost" ? "Loss" : "Draw";
-                const resultClass = match.result === "won"
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-300"
-                  : match.result === "lost"
-                    ? "bg-rose-100 text-rose-800 dark:bg-rose-400/10 dark:text-rose-300"
-                    : "bg-cyan-100 text-cyan-800 dark:bg-cyan-400/10 dark:text-cyan-300";
-                return (
-                  <div key={match.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-ink-hi">{getProfileGameLabel(match.game)}</p>
-                      <p className="mt-0.5 text-xs text-ink-mid">{formatPlayedAt(match.playedAt)}</p>
-                    </div>
-                    <span className={`rounded-md px-2 py-1 font-mono text-[10px] font-black uppercase tracking-wide ${resultClass}`}>{resultLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </ProfileSection>
-
-        <ProfileSection
-          title="Achievement progress"
-          description="Milestones recorded across the lounge."
-          icon={Award}
-          accent="violet"
-          className="lg:col-span-8"
-          action={(
-            <Link to="/profile/achievements" className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-violet-800 hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-violet-300 dark:hover:bg-violet-400/10">
-              Vault <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          )}
-        >
-          {resources.achievements.status === "loading" ? <ProfilePanelSkeleton rows={3} /> : null}
-          {resources.achievements.status === "error" ? (
-            <ProfileErrorState title="Achievements unavailable" description={resources.achievements.message} onRetry={retryProfileData} />
-          ) : null}
-          {resources.achievements.status === "ready" && achievements.length === 0 ? (
-            <ProfileEmptyState icon={Award} title="No achievements recorded" description="Achievement progress will appear when the server records a supported milestone." />
-          ) : null}
-          {resources.achievements.status === "ready" && achievementPreview.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {achievementPreview.map((achievement) => {
-                const Icon = achievementIcon(achievement);
-                return (
-                  <article key={achievement.id} className="rounded-xl border border-stone-300/70 bg-surface-0 p-3.5 dark:border-slate-700/70">
-                    <div className="flex items-start gap-3">
-                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${achievement.unlocked ? "bg-violet-100 text-violet-800 dark:bg-violet-400/10 dark:text-violet-300" : "bg-surface-2 text-ink-lo"}`}>
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-bold text-ink-hi">{achievement.title}</h4>
-                          <span className="shrink-0 font-mono text-[10px] font-bold uppercase text-ink-mid">{achievement.unlocked ? "Unlocked" : "In progress"}</span>
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-mid">{achievement.description}</p>
-                        <div className="mt-3">
-                          <ProfileProgressBar label={`${achievement.title} progress`} value={achievement.progressPercent} accent="violet" showValue={false} />
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
-        </ProfileSection>
-
-        <ProfileSection title="Profile controls" description="Identity, privacy, and account actions." icon={UserRoundCog} accent="coral" className="lg:col-span-4">
-          <div className="space-y-2">
-            <button type="button" onClick={openEditModal} className="flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-surface-0 px-3 text-left text-sm font-semibold text-ink-hi transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500">
-              <Pencil className="h-4 w-4 text-lamp-700 dark:text-lamp-300" aria-hidden="true" />
-              Edit personal information
-            </button>
-            <button type="button" onClick={openAvatarModal} className="flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-surface-0 px-3 text-left text-sm font-semibold text-ink-hi transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500">
-              <UserRoundCog className="h-4 w-4 text-cyan-800 dark:text-cyan-300" aria-hidden="true" />
-              Change avatar
-            </button>
-            <button type="button" onClick={() => downloadPlayerExport(profile, stats, loadAccountDetails())} className="flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-surface-0 px-3 text-left text-sm font-semibold text-ink-hi transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500">
-              <Download className="h-4 w-4 text-violet-800 dark:text-violet-300" aria-hidden="true" />
-              Download player data
-            </button>
-            <Link to="/privacy" className="flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-surface-0 px-3 text-left text-sm font-semibold text-ink-hi transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp-500">
-              <ShieldCheck className="h-4 w-4 text-emerald-800 dark:text-emerald-300" aria-hidden="true" />
-              Privacy and data
-            </Link>
-            <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-danger transition hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger">
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              Delete account
-            </button>
-          </div>
-        </ProfileSection>
-        {effectivePlayerId ? (
-          <div className="lg:col-span-12">
-            <TrustTierCard playerId={effectivePlayerId} />
-          </div>
-        ) : null}
-      </div>
-
-      <DeleteAccountModal open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
+            <div className="mt-2"><ProfileProgressBar label={`${getProfileGameLabel(game.game)} win rate`} value={game.winRate} accent="cyan" showValue={false} /></div>
+          </article>)}</div> : <ProfileEmptyState icon={Gamepad2} title="No mastery data yet" description="Complete a match to start your game record." actionLabel="Explore games" onAction={() => navigate("/games")} />}
+      </ProfileSection>
+      <ProfileSection title="Recent activity" description="Your latest completed matches and recorded results." icon={History} accent="cyan"
+        action={<Link to="/profile/matches" className={VIEW_ALL}>View all <ArrowRight size={14} aria-hidden="true" /></Link>}>
+        {resources.recentMatches.status === "loading" ? <ProfilePanelSkeleton rows={3} /> : resources.recentMatches.status === "error"
+          ? <ProfileErrorState title="Recent activity unavailable" description={resources.recentMatches.message} onRetry={retryProfileData} />
+          : recentMatches.length ? <ul className="space-y-3">{recentMatches.map(match => <li key={match.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--command-edge)] bg-surface-0 p-3">
+            <div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-[var(--command-gold)]"><Gamepad2 size={20} aria-hidden="true" /></span>
+              <div className="min-w-0"><p className="text-sm font-bold">{getProfileGameLabel(match.game)}</p><p className="mt-1 text-xs text-ink-mid">{formatPlayedAt(match.playedAt)}</p></div></div>
+            <span className={`shrink-0 rounded-lg border border-current px-2 py-1 text-[10px] font-bold uppercase ${match.result === "won" ? "text-[var(--vault-green)]" : match.result === "lost" ? "text-rose-800 dark:text-rose-300" : "text-[var(--command-cyan)]"}`}>{match.result === "won" ? "Win" : match.result === "lost" ? "Loss" : "Draw"}</span>
+          </li>)}</ul> : <ProfileEmptyState icon={History} title="Your battle log is ready" description="Completed matches will appear here with their recorded result." actionLabel="Play a game" onAction={() => navigate("/games")} />}
+      </ProfileSection>
     </div>
-  );
+
+    <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr] sm:gap-5">
+      <ProfileSection title="Achievement highlights" description="Your most recent unlocks." icon={Trophy} accent="gold"
+        action={<Link to="/profile/achievements" className={VIEW_ALL}>View all <ArrowRight size={14} aria-hidden="true" /></Link>}>
+        {achievementsReady && recentAchievements.length ? <div className="grid gap-3 xl:grid-cols-3">{recentAchievements.map(a => <VaultAchievementCard key={a.id} achievement={a} onSelect={setActiveAchievement} compact />)}</div>
+          : achievementState("Your first trophy is waiting", "Complete a challenge to start your achievement collection.")}
+      </ProfileSection>
+      <ProfileSection title="Almost yours" description="Your closest unfinished challenge." icon={Target} accent="violet">
+        {achievementsReady && closest.length ? closest.map(a => <VaultAchievementCard key={a.id} achievement={a} onSelect={setActiveAchievement} />)
+          : resources.achievements.status === "ready" ? <ProfileEmptyState icon={Target} title={achievements.length && unlocked === achievements.length ? "Collection complete" : "Your next challenge awaits"} description="Visit the Trophy Vault to explore all your achievements." actionLabel="Open Trophy Vault" onAction={() => navigate("/profile/achievements")} />
+            : <p className="text-sm text-ink-mid">{resources.achievements.status === "loading" ? "Your closest challenge will appear when progress loads." : "Load your achievements to see the next challenge."}</p>}
+      </ProfileSection>
+    </div>
+
+    <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr] sm:gap-5">
+      <ProfileSection title="Your BHALYAM journey" description="Progress markers, not a dated activity history." icon={Route} accent="gold">
+        <ol className="grid gap-4 sm:grid-cols-5">{markers.map((marker, i) => <li key={marker.label} className="relative flex items-center gap-3 sm:flex-col sm:text-center">
+          <span className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-surface-0 ${marker.reached ? "border-[var(--command-cyan)] text-[var(--command-cyan)]" : "border-[var(--command-edge)] text-ink-mid"}`}>{i === 3 ? <Trophy size={18} aria-hidden="true" /> : marker.reached ? <CheckCircle2 size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}</span>
+          <span><span className="block text-xs font-bold">{marker.label}</span><span className="mt-1 block text-[11px] leading-relaxed text-ink-mid">{marker.detail}</span></span>
+        </li>)}</ol>
+      </ProfileSection>
+      <ProfileSection title="Profile controls" description="Your identity, preferences and privacy." icon={UserRoundCog} accent="cyan">
+        <div className="space-y-2">
+          <button type="button" onClick={openEditModal} className={CONTROL}><Pencil size={17} aria-hidden="true" />Edit personal information</button>
+          <button type="button" onClick={openAvatarModal} className={CONTROL}><UserRoundCog size={17} aria-hidden="true" />Change avatar</button>
+          <Link to="/settings/preferences" className={CONTROL}><Gamepad2 size={17} aria-hidden="true" />Game preferences</Link>
+          <Link to="/privacy" className={CONTROL}><ShieldCheck size={17} aria-hidden="true" />Privacy and data</Link>
+          <button type="button" onClick={() => downloadPlayerExport(profile, stats, loadAccountDetails())} className={CONTROL}><Download size={17} aria-hidden="true" />Download player data</button>
+          <button type="button" onClick={() => setIsDeleteModalOpen(true)} className={`${CONTROL} !text-rose-800 dark:!text-rose-300`}><Trash2 size={17} aria-hidden="true" />Delete account</button>
+        </div>
+      </ProfileSection>
+    </div>
+    {effectivePlayerId && <TrustTierCard playerId={effectivePlayerId} />}
+    <p className="text-center font-script text-xl text-[var(--command-gold)]">Same games. Bigger memories.</p>
+    <AchievementRevealModal achievement={activeAchievement} isOpen={activeAchievement !== null} onClose={() => setActiveAchievement(null)} />
+    <DeleteAccountModal open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
+  </div>;
 }
