@@ -571,6 +571,38 @@ body, #root, .bhalyam-paper {
   color: #3f2a1d;
 }
 
+.trophy-vault {
+  --vault-canvas: #fff9ec;
+  --vault-section: #fffdf7;
+  --vault-panel: #f7f0e2;
+  --vault-inset: #fffaf0;
+  --vault-ink: #35281d;
+  --vault-soft: #66533f;
+  --vault-edge: #a5967e;
+  --vault-gold: #805611;
+  --vault-cyan: #00617b;
+  --vault-green: #136544;
+  --vault-violet: #67418a;
+  --vault-track: #c4bbaa;
+  --vault-glow: #f4c65d33;
+}
+
+:root[data-theme="dark"] .trophy-vault {
+  --vault-canvas: #09192a;
+  --vault-section: #0c1e30;
+  --vault-panel: #10273b;
+  --vault-inset: #091a2a;
+  --vault-ink: #f4f5f8;
+  --vault-soft: #b5c5d6;
+  --vault-edge: #536e85;
+  --vault-gold: #f8ce78;
+  --vault-cyan: #5ce2ed;
+  --vault-green: #5be2ad;
+  --vault-violet: #cfb2ff;
+  --vault-track: #3a536a;
+  --vault-glow: #f1a82320;
+}
+
 /* Journey shares the document theme without changing game-world materials. */
 .bhalyam-journey {
   --journey-canvas: 255 250 239;

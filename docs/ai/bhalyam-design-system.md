@@ -103,6 +103,23 @@ saved mode, XP reward or continuation estimate. The earned School Slate
 material is personal, Rummy-only, and applies in both layouts only while the
 host's world is classic. Non-classic host worlds take priority.
 
+### Trophy vault
+
+`/profile/achievements` retains the shared profile shell and uses scoped
+`.trophy-vault` tokens for ivory/gold Light mode and navy/cyan Dark mode,
+including its portalled detail dialog. `TrophyVaultArtwork` is original
+responsive SVG; live HTML carries every count and label. `VaultAchievementCard`
+shares category-colored badge art with the dialog. No rarity, secret challenge,
+reward entitlement or player rank is invented from the visual reference.
+
+The vault reads the profile outlet's existing resources. Loading/errors never
+show stale achievement totals as loaded progress. Recent unlocks sort by
+`unlockedAt` (missing dates are not invented); closest goals retain their full
+requirements, including compound criteria. Collection markers are explicitly
+non-reward counts. Search, category and status combine; sorting and incremental
+display operate on the same real collection. Both themes must be checked in a
+browser for contrast, focus, dialog dismissal and responsive reflow.
+
 ### Coin wallet drawer
 
 `components/economy/WalletDrawer.tsx` uses a warm ivory shell (charcoal in
